@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: allthrive_ai
+          POSTGRES_USER: allthrive
+          POSTGRES_PASSWORD: allthrive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U allthrive -d allthrive_ai"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Configure Django to use the Postgres service
+      DATABASE_URL: postgresql://allthrive:allthrive@localhost:5432/allthrive_ai
+      SECRET_KEY: ci-secret-key
+      DEBUG: "False"
+      ALLOWED_HOSTS: "localhost,127.0.0.1"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          . venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for Postgres (psycopg2)
+        run: |
+          . venv/bin/activate
+          python - <<'PY'
+          import os, time, psycopg2
+          url = os.environ['DATABASE_URL']
+          for i in range(60):
+              try:
+                  psycopg2.connect(url).close()
+                  print('DB ready')
+                  break
+              except Exception as e:
+                  print('Waiting for DB...', e)
+                  time.sleep(1)
+          else:
+              raise SystemExit('Database not available')
+          PY
+
+      - name: Django checks and migrations
+        run: |
+          . venv/bin/activate
+          python manage.py check --deploy
+          python manage.py migrate --noinput
+          # Ensure no model changes are pending
+          python manage.py makemigrations --check --dry-run
+
+      - name: Run tests
+        run: |
+          . venv/bin/activate
+          python manage.py test --verbosity=2
+
+      - name: DB health endpoint smoke test
+        run: |
+          . venv/bin/activate
+          # Start server in background
+          python manage.py runserver 127.0.0.1:8000 >/dev/null 2>&1 &
+          SRV_PID=$!
+          # Wait for server and hit health endpoint
+          for i in {1..60}; do
+            if curl -sSf http://127.0.0.1:8000/api/db/health/ > /dev/null; then
+              echo "Healthcheck OK"; OK=1; break; fi; sleep 1; done
+          kill $SRV_PID || true
+          if [ "${OK:-0}" != "1" ]; then echo "Healthcheck failed"; exit 1; fi

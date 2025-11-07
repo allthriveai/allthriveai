@@ -1,9 +1,27 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from django.db import connections
+from django.db.utils import OperationalError
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def db_health(request):
+    """Health check endpoint to verify database connectivity.
+
+    Returns 200 with {'status': 'ok'} when SELECT 1 succeeds, 503 otherwise.
+    """
+    try:
+        with connections['default'].cursor() as cursor:
+            cursor.execute('SELECT 1;')
+            cursor.fetchone()
+        return Response({'status': 'ok'})
+    except OperationalError as e:
+        return Response({'status': 'error', 'detail': str(e)}, status=503)
 
 class ConversationViewSet(viewsets.ModelViewSet):
     """ViewSet for managing conversations."""
