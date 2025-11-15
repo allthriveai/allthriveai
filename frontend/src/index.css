@@ -92,8 +92,8 @@
   }
 
   .dark .glass-subtle {
-    @apply bg-slate-900/60 backdrop-blur-glass-sm;
-    @apply border border-slate-700/30;
+    @apply bg-black/60 backdrop-blur-glass-sm;
+    @apply border border-white/10;
     @apply shadow-glass;
   }
 
@@ -105,21 +105,25 @@
   }
 
   .dark .glass {
-    @apply bg-slate-900/75 backdrop-blur-glass;
-    @apply border border-slate-700/40;
+    @apply bg-black/75 backdrop-blur-glass;
+    @apply border border-white/20;
     @apply shadow-glass-lg;
   }
 
   /* Level 3: Strong Glass - Overlays, Chat panel, Dropdowns */
   .glass-strong {
-    @apply bg-white/85 backdrop-blur-glass-lg;
-    @apply border border-white/40;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    @apply border border-white/20;
     @apply shadow-glass-lg;
   }
 
   .dark .glass-strong {
-    @apply bg-slate-900/90 backdrop-blur-glass-lg;
-    @apply border border-slate-700/50;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    @apply border border-white/10;
     @apply shadow-glass-xl;
   }
 
@@ -135,7 +139,7 @@
   }
 
   .dark .glass-hover:hover {
-    @apply bg-slate-900/85;
+    @apply bg-black/85;
     @apply shadow-glass-xl;
   }
 

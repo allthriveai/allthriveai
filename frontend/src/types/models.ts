@@ -1,11 +1,20 @@
+// User roles
+export type UserRole = 'explorer' | 'expert' | 'mentor' | 'patron' | 'admin';
+
 // User model
 export interface User {
   id: number;
   email: string;
+  username: string;
   firstName: string;
   lastName: string;
   fullName: string;
+  role: UserRole;
+  roleDisplay: string;
+  avatarUrl?: string;
+  bio?: string;
   createdAt: string;
+  lastLogin?: string;
 }
 
 // Authentication state

@@ -41,7 +41,7 @@ export default function HomePage() {
     <HeroSection
       title="Grow Your AI Curiosity"
       highlightText="In Community"
-      description="Learn by doing. Showcase your work. Get real feedback."
+      description="An AI playground for collaborative learning and project showcases"
       buttonText="Request invitation to join"
       onButtonClick={handleInvitationClick}
       colors={[

@@ -1,9 +1,10 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
 import HomePage from '@/pages/HomePage';
 import AboutPage from '@/pages/AboutPage';
-import LoginPage from '@/pages/LoginPage';
+import AuthPage from '@/pages/AuthPage';
 import DashboardPage from '@/pages/DashboardPage';
+import ProfilePage from '@/pages/ProfilePage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
 
@@ -15,22 +16,34 @@ export function AppRoutes() {
       <Route path="/about" element={<AboutPage />} />
       <Route path="/styleguide" element={<StyleGuidePage />} />
 
-      {/* Auth route - redirect if already authenticated */}
+      {/* Auth routes - unified chat-based auth */}
       <Route
-        path="/login"
+        path="/auth"
         element={
           <ProtectedRoute redirectIfAuthenticated>
-            <LoginPage />
+            <AuthPage />
           </ProtectedRoute>
         }
       />
+      
+      {/* Redirect old routes to new unified auth */}
+      <Route path="/login" element={<Navigate to="/auth" replace />} />
+      <Route path="/signup" element={<Navigate to="/auth" replace />} />
 
       {/* Protected routes */}
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <DashboardPage />
+            <Navigate to="/profile" replace />
           </ProtectedRoute>
         }
       />

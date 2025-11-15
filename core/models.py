@@ -1,5 +1,8 @@
 from django.db import models
-from django.contrib.auth.models import User
+from .user_models import User, UserRole
+
+# Export User and UserRole for easy imports
+__all__ = ['User', 'UserRole', 'Conversation', 'Message']
 
 
 class Conversation(models.Model):

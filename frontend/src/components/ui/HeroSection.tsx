@@ -99,7 +99,7 @@ export function HeroSection({
                 >
                   {title} <span className="text-primary">{highlightText}</span>
                 </h1>
-                <p className={`text-xl text-white/90 leading-relaxed max-w-xl ${descriptionClassName}`}>
+                <p className={`text-xl text-white/90 leading-relaxed ${descriptionClassName}`}>
                   {description}
                 </p>
                 <div>
