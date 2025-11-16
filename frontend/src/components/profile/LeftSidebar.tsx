@@ -9,7 +9,18 @@ import {
   HomeIcon,
   Bars3Icon,
   XMarkIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faCompass,
+  faGamepad,
+  faGraduationCap,
+  faCrown,
+  faInfoCircle,
+  faUser,
+} from '@fortawesome/free-solid-svg-icons';
 
 interface LeftSidebarProps {
   onMenuClick: (menuItem: string) => void;
@@ -25,6 +36,7 @@ interface MenuItem {
 
 interface MenuSection {
   title: string;
+  icon: any;
   items: MenuItem[];
 }
 
@@ -53,6 +65,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
   const menuSections: MenuSection[] = [
     {
       title: 'EXPLORE',
+      icon: faCompass,
       items: [
         { label: 'For You', href: '#' },
         { label: 'Trending', href: '#' },
@@ -63,6 +76,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
     },
     {
       title: 'PLAY',
+      icon: faGamepad,
       items: [
         { label: 'Leaderboards', href: '#' },
         { label: "This Week's Challenge", href: '#' },
@@ -71,6 +85,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
     },
     {
       title: 'LEARN',
+      icon: faGraduationCap,
       items: [
         { label: 'Learning Paths', href: '#' },
         { label: 'Mentorship', href: '#' },
@@ -78,6 +93,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
     },
     {
       title: 'MEMBERSHIP',
+      icon: faCrown,
       items: [
         { label: 'Perks', href: '#' },
         { label: 'Tool Discounts', href: '#' },
@@ -87,6 +103,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
     },
     {
       title: 'ABOUT',
+      icon: faInfoCircle,
       items: [
         { label: 'About Us', href: '#' },
         { label: 'Values', href: '#' },
@@ -97,6 +114,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
     },
     {
       title: 'ACCOUNT',
+      icon: faUser,
       items: [
         { label: 'My Profile', href: '#' },
         { label: 'My Projects', href: '#' },
@@ -118,27 +136,59 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
 
       {/* Sidebar */}
       <div
-        className={`fixed md:relative w-64 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-y-auto z-50 transition-transform duration-300 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        className={`fixed h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-y-auto z-50 transition-all duration-300 ${
+          isOpen ? 'w-64 translate-x-0' : 'w-20 translate-x-0 max-md:-translate-x-full'
         }`}
       >
-        {/* Header with close button */}
+        {/* Header with close/collapse buttons */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-          >
-            <HomeIcon className="w-5 h-5" />
-            <span className="font-semibold">All Thrive</span>
-          </button>
+          {isOpen ? (
+            <>
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                <HomeIcon className="w-5 h-5" />
+                <span className="font-semibold">All Thrive</span>
+              </button>
 
-          {/* Close button (mobile only) */}
-          <button
-            onClick={onToggle}
-            className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-          >
-            <XMarkIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          </button>
+              <div className="flex items-center gap-2">
+                {/* Collapse button (desktop only) */}
+                <button
+                  onClick={onToggle}
+                  className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  aria-label="Collapse sidebar"
+                >
+                  <ChevronLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </button>
+
+                {/* Close button (mobile only) */}
+                <button
+                  onClick={onToggle}
+                  className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  aria-label="Close sidebar"
+                >
+                  <XMarkIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="w-full flex flex-col items-center gap-2">
+              <button
+                onClick={() => navigate('/')}
+                className="w-full flex items-center justify-center text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                <HomeIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={onToggle}
+                className="hidden md:flex items-center justify-center p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                aria-label="Expand sidebar"
+              >
+                <ChevronRightIcon className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
       {/* Menu Sections */}
@@ -148,18 +198,28 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
             {/* Section Header */}
             <button
               onClick={() => toggleSection(section.title)}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              className={`w-full flex items-center px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-300 transition-colors ${
+                isOpen ? 'justify-between' : 'justify-center'
+              }`}
+              title={!isOpen ? section.title : undefined}
             >
-              <span>{section.title}</span>
-              {openSections.includes(section.title) ? (
-                <ChevronUpIcon className="w-4 h-4" />
-              ) : (
-                <ChevronDownIcon className="w-4 h-4" />
+              <div className={`flex items-center gap-3 ${
+                isOpen ? '' : 'justify-center'
+              }`}>
+                <FontAwesomeIcon icon={section.icon} className="w-4 h-4" />
+                {isOpen && <span>{section.title}</span>}
+              </div>
+              {isOpen && (
+                openSections.includes(section.title) ? (
+                  <ChevronUpIcon className="w-4 h-4" />
+                ) : (
+                  <ChevronDownIcon className="w-4 h-4" />
+                )
               )}
             </button>
 
             {/* Section Items */}
-            {openSections.includes(section.title) && (
+            {isOpen && openSections.includes(section.title) && (
               <div className="mt-1 space-y-1">
                 {section.items.map((item) => (
                   <a
@@ -187,18 +247,24 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         {isAuthenticated ? (
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+            className={`w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors ${
+              isOpen ? '' : 'justify-center px-0'
+            }`}
+            title={!isOpen ? 'Log Out' : undefined}
           >
             <ArrowRightOnRectangleIcon className="w-5 h-5" />
-            <span className="font-medium">Log Out</span>
+            {isOpen && <span className="font-medium">Log Out</span>}
           </button>
         ) : (
           <button
             onClick={() => navigate('/auth')}
-            className="w-full flex items-center gap-3 px-4 py-3 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors ${
+              isOpen ? '' : 'justify-center px-0'
+            }`}
+            title={!isOpen ? 'Log In' : undefined}
           >
             <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-            <span className="font-medium">Log In</span>
+            {isOpen && <span className="font-medium">Log In</span>}
           </button>
         )}
       </div>
