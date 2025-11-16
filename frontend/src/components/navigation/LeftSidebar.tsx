@@ -18,8 +18,8 @@ import {
   faGamepad,
   faGraduationCap,
   faCrown,
-  faInfoCircle,
   faUser,
+  faLifeRing,
 } from '@fortawesome/free-solid-svg-icons';
 
 interface LeftSidebarProps {
@@ -30,8 +30,9 @@ interface LeftSidebarProps {
 
 interface MenuItem {
   label: string;
-  href: string;
+  href?: string;
   onClick?: () => void;
+  subItems?: MenuItem[];
 }
 
 interface MenuSection {
@@ -44,12 +45,21 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<string[]>(['EXPLORE']);
+  const [openSubItems, setOpenSubItems] = useState<string[]>([]);
 
   const toggleSection = (title: string) => {
     setOpenSections(prev =>
       prev.includes(title)
         ? prev.filter(s => s !== title)
         : [...prev, title]
+    );
+  };
+
+  const toggleSubItem = (label: string) => {
+    setOpenSubItems(prev =>
+      prev.includes(label)
+        ? prev.filter(s => s !== label)
+        : [...prev, label]
     );
   };
 
@@ -69,9 +79,9 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
       items: [
         { label: 'For You', href: '#' },
         { label: 'Trending', href: '#' },
-        { label: 'Topics', href: '#' },
-        { label: 'Tools', href: '#' },
-        { label: 'Profile', href: '#' },
+        { label: 'By Topics', href: '#' },
+        { label: 'By Tools', href: '#' },
+        { label: 'Top Profiles', href: '#' },
       ],
     },
     {
@@ -79,6 +89,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
       icon: faGamepad,
       items: [
         { label: 'Leaderboards', href: '#' },
+        { label: 'Vote', href: '#' },
         { label: "This Week's Challenge", href: '#' },
         { label: 'Side Quests', href: '#' },
       ],
@@ -88,7 +99,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
       icon: faGraduationCap,
       items: [
         { label: 'Learning Paths', href: '#' },
-        { label: 'Mentorship', href: '#' },
+        { label: 'Mentorship Program', href: '#' },
       ],
     },
     {
@@ -96,20 +107,24 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
       icon: faCrown,
       items: [
         { label: 'Perks', href: '#' },
-        { label: 'Tool Discounts', href: '#' },
         { label: 'Events Calendar', href: '#' },
-        { label: 'Pricing', href: '#' },
       ],
     },
     {
-      title: 'ABOUT',
-      icon: faInfoCircle,
+      title: 'SUPPORT',
+      icon: faLifeRing,
       items: [
-        { label: 'About Us', href: '#' },
-        { label: 'Values', href: '#' },
-        { label: 'Support', href: '#' },
+        { label: 'Report an Issue', href: '#' },
         { label: 'Chat', href: '#' },
-        { label: 'Chrome Extension', href: '#' },
+        { label: 'Whats New', href: '#' },
+        { 
+          label: 'About All Thrive',
+          subItems: [
+            { label: 'About Us', href: '#' },
+            { label: 'Our Values', href: '#' },
+          ]
+        },
+        { label: 'Pricing', href: '#' },
       ],
     },
     {
@@ -119,7 +134,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         { label: 'My Profile', href: '#' },
         { label: 'My Projects', href: '#' },
         { label: 'My Account', href: '#' },
-        { label: 'Report an Issue', href: '#' },
+        { label: 'Chrome Extension', href: '#' },
       ],
     },
   ];
@@ -222,19 +237,57 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
             {isOpen && openSections.includes(section.title) && (
               <div className="mt-1 space-y-1">
                 {section.items.map((item) => (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    onClick={(e) => {
-                      if (item.onClick) {
-                        e.preventDefault();
-                        item.onClick();
-                      }
-                    }}
-                    className="block px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
-                  >
-                    {item.label}
-                  </a>
+                  <div key={item.label}>
+                    {item.subItems ? (
+                      // Item with submenu
+                      <>
+                        <button
+                          onClick={() => toggleSubItem(item.label)}
+                          className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                        >
+                          <span>{item.label}</span>
+                          {openSubItems.includes(item.label) ? (
+                            <ChevronUpIcon className="w-3 h-3" />
+                          ) : (
+                            <ChevronDownIcon className="w-3 h-3" />
+                          )}
+                        </button>
+                        {openSubItems.includes(item.label) && (
+                          <div className="ml-4 mt-1 space-y-1">
+                            {item.subItems.map((subItem) => (
+                              <a
+                                key={subItem.label}
+                                href={subItem.href}
+                                onClick={(e) => {
+                                  if (subItem.onClick) {
+                                    e.preventDefault();
+                                    subItem.onClick();
+                                  }
+                                }}
+                                className="block px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                              >
+                                {subItem.label}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      // Regular item
+                      <a
+                        href={item.href}
+                        onClick={(e) => {
+                          if (item.onClick) {
+                            e.preventDefault();
+                            item.onClick();
+                          }
+                        }}
+                        className="block px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                      >
+                        {item.label}
+                      </a>
+                    )}
+                  </div>
                 ))}
               </div>
             )}

@@ -1,6 +1,6 @@
 import { useState, ReactNode } from 'react';
 import { Bars3Icon } from '@heroicons/react/24/outline';
-import { LeftSidebar } from '@/components/profile/LeftSidebar';
+import { LeftSidebar } from '@/components/navigation/LeftSidebar';
 
 interface DashboardLayoutProps {
   children: ReactNode;

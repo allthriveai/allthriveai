@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { ProfileCenter } from '@/components/profile/ProfileCenter';
-import { RightChatPanel } from '@/components/profile/RightChatPanel';
+import { RightChatPanel } from '@/components/chat/RightChatPanel';
 
 export default function ProfilePage() {
   const { user } = useAuth();

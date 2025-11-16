@@ -1,0 +1,1 @@
+export { RightChatPanel } from './RightChatPanel';
