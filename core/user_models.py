@@ -1,5 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.exceptions import ValidationError
+from urllib.parse import urlparse
+import bleach
 
 
 class UserRole(models.TextChoices):
@@ -13,6 +16,9 @@ class UserRole(models.TextChoices):
 class User(AbstractUser):
     """Custom user model with role-based permissions."""
     
+    # Override email to make it unique
+    email = models.EmailField(unique=True, blank=False)
+    
     role = models.CharField(
         max_length=20,
         choices=UserRole.choices,
@@ -25,6 +31,51 @@ class User(AbstractUser):
     
     class Meta:
         ordering = ['-date_joined']
+    
+    def clean(self):
+        """Validate and sanitize user input fields."""
+        super().clean()
+        
+        # Sanitize bio to prevent XSS attacks
+        if self.bio:
+            allowed_tags = ['p', 'br', 'strong', 'em', 'a', 'ul', 'ol', 'li']
+            allowed_attrs = {'a': ['href', 'title']}
+            self.bio = bleach.clean(
+                self.bio,
+                tags=allowed_tags,
+                attributes=allowed_attrs,
+                strip=True
+            )
+            # Limit bio length
+            if len(self.bio) > 5000:
+                raise ValidationError("Bio must be less than 5000 characters.")
+        
+        # Validate avatar_url is from allowed domains
+        if self.avatar_url:
+            allowed_domains = [
+                'githubusercontent.com',
+                'gravatar.com',
+                'googleusercontent.com',
+                'github.com',
+                'avatars.githubusercontent.com'
+            ]
+            try:
+                parsed = urlparse(self.avatar_url)
+                domain = parsed.netloc
+                if not any(allowed in domain for allowed in allowed_domains):
+                    raise ValidationError(
+                        f"Avatar URL must be from an allowed domain: {', '.join(allowed_domains)}"
+                    )
+            except Exception as e:
+                raise ValidationError(f"Invalid avatar URL: {str(e)}")
+    
+    def save(self, *args, **kwargs):
+        """Normalize username to lowercase for case-insensitivity."""
+        if self.username:
+            self.username = self.username.lower()
+        # Run validation before saving
+        self.full_clean()
+        super().save(*args, **kwargs)
     
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"

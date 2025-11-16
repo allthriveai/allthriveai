@@ -1,14 +1,26 @@
-"""Quick test script for Azure OpenAI setup."""
+"""Quick test script for Azure OpenAI setup.
+
+Moved from project root to `services/tests/test_azure_openai.py` so that
+all test-related scripts live outside the project root.
+"""
+
 import os
 import sys
+from pathlib import Path
+
 import django
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Ensure project root is on sys.path so `config.settings` and `services`
+# can be imported correctly regardless of where this script lives.
+BASE_DIR = Path(__file__).resolve().parents[2]
+if str(BASE_DIR) not in sys.path:
+    sys.path.append(str(BASE_DIR))
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
-from services import AIProvider
-from django.conf import settings
+from services import AIProvider  # noqa: E402
+from django.conf import settings  # noqa: E402
 
 print("=" * 70)
 print("AZURE OPENAI CONFIGURATION TEST")
@@ -40,7 +52,7 @@ try:
     response = ai.complete(
         prompt="What is 2+2?",
         system_message="You are a math teacher. Be very brief.",
-        temperature=0.1
+        temperature=0.1,
     )
     print(f"   ✓ Response: {response}")
     print("   ✓ System message: PASSED")

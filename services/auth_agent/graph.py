@@ -7,6 +7,9 @@ from .nodes import (
     welcome_node,
     ask_email_node,
     check_email_node,
+    ask_username_suggest_node,
+    ask_username_custom_node,
+    confirm_username_node,
     ask_name_node,
     ask_password_node,
     ask_interests_node,
@@ -32,6 +35,9 @@ def create_auth_graph():
     graph.add_node("welcome", welcome_node)
     graph.add_node("ask_email", ask_email_node)
     graph.add_node("check_email", check_email_node)
+    graph.add_node("ask_username_suggest", ask_username_suggest_node)
+    graph.add_node("ask_username_custom", ask_username_custom_node)
+    graph.add_node("confirm_username", confirm_username_node)
     graph.add_node("ask_name", ask_name_node)
     graph.add_node("ask_password", ask_password_node)
     graph.add_node("ask_interests", ask_interests_node)
@@ -52,15 +58,25 @@ def create_auth_graph():
     
     # Check Email branches:
     # - If user exists -> ask for password (login flow)
-    # - If new user -> ask for name (signup flow)
+    # - If new user -> suggest username (signup flow)
     graph.add_conditional_edges(
         "check_email",
         lambda state: "login" if state.get("user_exists") else "signup",
         {
             "login": "ask_password",
-            "signup": "ask_name"
+            "signup": "ask_username_suggest"
         }
     )
+    
+    # Username suggest / custom nodes are interaction points where the graph
+    # should pause and wait for user input. We do NOT add self-loop edges here,
+    # because that would create an infinite cycle and hit the LangGraph
+    # recursion limit. The view will explicitly continue the graph by
+    # specifying the next node (e.g., "confirm_username" or
+    # "ask_username_custom").
+    
+    # Confirm username -> Name
+    graph.add_edge("confirm_username", "ask_name")
     
     # Signup flow: Name -> Password
     graph.add_edge("ask_name", "ask_password")

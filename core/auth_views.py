@@ -126,9 +126,18 @@ def oauth_urls(request):
     base_url = request.build_absolute_uri('/')[:-1]
     
     return Response({
-        'google': f'{base_url}/api/auth/google/',
-        'github': f'{base_url}/api/auth/github/',
+        'google': f'{base_url}/api/v1/auth/google/',
+        'github': f'{base_url}/api/v1/auth/github/',
     })
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def csrf_token(request):
+    """Return CSRF token for the frontend."""
+    from django.middleware.csrf import get_token
+    token = get_token(request)
+    return Response({'csrfToken': token})
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
@@ -143,6 +152,17 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         if self.request.method in ['PUT', 'PATCH']:
             return UserUpdateSerializer
         return UserSerializer
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def username_profile_view(request, username):
+    """View user profile by username."""
+    from django.shortcuts import get_object_or_404
+    
+    user = get_object_or_404(User, username=username.lower())
+    serializer = UserSerializer(user)
+    return Response(serializer.data)
 
 
 from django.http import HttpResponse
@@ -195,8 +215,11 @@ def oauth_callback(request):
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
         
+        # Get username for redirect
+        username = request.user.username
+        
         # Create response with HTML that closes the popup
-        html = '''
+        html = f'''
         <!DOCTYPE html>
         <html>
         <head>
@@ -204,13 +227,14 @@ def oauth_callback(request):
         </head>
         <body>
             <script>
-                // Close popup window after successful authentication
-                if (window.opener) {
+                // After successful authentication, redirect opener to profile and close popup
+                if (window.opener) {{
+                    window.opener.location.href = 'http://localhost:3000/{username}';
                     window.close();
-                } else {
-                    // If not in popup, redirect to dashboard
-                    window.location.href = 'http://localhost:3000/dashboard';
-                }
+                }} else {{
+                    // If not in popup, redirect to user profile directly
+                    window.location.href = 'http://localhost:3000/{username}';
+                }}
             </script>
             <p>Authentication successful! This window will close automatically.</p>
         </body>

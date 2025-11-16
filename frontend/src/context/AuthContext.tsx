@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { User, AuthState } from '@/types/models';
 import * as authService from '@/services/auth';
+import { ensureCsrfToken } from '@/services/api';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
@@ -20,7 +21,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check authentication status on mount
   useEffect(() => {
-    checkAuth();
+    async function initAuth() {
+      await ensureCsrfToken();
+      await checkAuth();
+    }
+    initAuth();
   }, []);
 
   async function checkAuth() {

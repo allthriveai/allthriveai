@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronDownIcon,
@@ -11,6 +12,8 @@ import {
   XMarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  SunIcon,
+  MoonIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -43,9 +46,16 @@ interface MenuSection {
 
 export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps) {
   const { user, logout, isAuthenticated } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<string[]>(['EXPLORE']);
   const [openSubItems, setOpenSubItems] = useState<string[]>([]);
+  const [showComingSoon, setShowComingSoon] = useState(false);
+
+  // Log user for debugging
+  useEffect(() => {
+    console.log('LeftSidebar user:', user);
+  }, [user]);
 
   const toggleSection = (title: string) => {
     setOpenSections(prev =>
@@ -66,11 +76,24 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/auth');
+      navigate('/login');
     } catch (error) {
       console.error('Logout failed:', error);
     }
   };
+
+  const handleComingSoon = () => {
+    setShowComingSoon(true);
+  };
+
+  useEffect(() => {
+    if (showComingSoon) {
+      const timer = setTimeout(() => {
+        setShowComingSoon(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showComingSoon]);
 
   const menuSections: MenuSection[] = [
     {
@@ -115,7 +138,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
       icon: faLifeRing,
       items: [
         { label: 'Report an Issue', href: '#' },
-        { label: 'Chat', href: '#' },
+        { label: 'Chat', onClick: () => onMenuClick('Chat') },
         { label: 'Whats New', href: '#' },
         { 
           label: 'About All Thrive',
@@ -131,9 +154,21 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
       title: 'ACCOUNT',
       icon: faUser,
       items: [
-        { label: 'My Profile', href: '#' },
+        { 
+          label: 'My Profile', 
+          href: '#',
+          onClick: () => {
+            console.log('My Profile clicked, user:', user);
+            if (user && user.username) {
+              console.log('Navigating to:', `/${user.username}`);
+              navigate(`/${user.username}`);
+            } else {
+              console.warn('User or username not available');
+            }
+          }
+        },
         { label: 'My Projects', href: '#' },
-        { label: 'My Account', href: '#' },
+        { label: 'My Account', onClick: () => navigate('/account/settings') },
         { label: 'Chrome Extension', href: '#' },
       ],
     },
@@ -151,17 +186,17 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
 
       {/* Sidebar */}
       <div
-        className={`fixed h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-y-auto z-50 transition-all duration-300 ${
+        className={`fixed h-screen glass-strong flex flex-col overflow-y-auto z-50 transition-all duration-300 ${
           isOpen ? 'w-64 translate-x-0' : 'w-20 translate-x-0 max-md:-translate-x-full'
         }`}
       >
         {/* Header with close/collapse buttons */}
-        <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+        <div className="p-6 border-b border-white/10 flex items-center justify-between">
           {isOpen ? (
             <>
               <button
                 onClick={() => navigate('/')}
-                className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                className="flex items-center gap-2 text-slate-900 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
               >
                 <HomeIcon className="w-5 h-5" />
                 <span className="font-semibold">All Thrive</span>
@@ -171,19 +206,19 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                 {/* Collapse button (desktop only) */}
                 <button
                   onClick={onToggle}
-                  className="hidden md:block p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  className="hidden md:block p-2 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors"
                   aria-label="Collapse sidebar"
                 >
-                  <ChevronLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  <ChevronLeftIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                 </button>
 
                 {/* Close button (mobile only) */}
                 <button
                   onClick={onToggle}
-                  className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  className="md:hidden p-2 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors"
                   aria-label="Close sidebar"
                 >
-                  <XMarkIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  <XMarkIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                 </button>
               </div>
             </>
@@ -191,13 +226,13 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
             <div className="w-full flex flex-col items-center gap-2">
               <button
                 onClick={() => navigate('/')}
-                className="w-full flex items-center justify-center text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                className="w-full flex items-center justify-center text-slate-900 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
               >
                 <HomeIcon className="w-5 h-5" />
               </button>
               <button
                 onClick={onToggle}
-                className="hidden md:flex items-center justify-center p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                className="hidden md:flex items-center justify-center p-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
                 aria-label="Expand sidebar"
               >
                 <ChevronRightIcon className="w-4 h-4" />
@@ -213,7 +248,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
             {/* Section Header */}
             <button
               onClick={() => toggleSection(section.title)}
-              className={`w-full flex items-center px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-300 transition-colors ${
+              className={`w-full flex items-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-300 transition-colors ${
                 isOpen ? 'justify-between' : 'justify-center'
               }`}
               title={!isOpen ? section.title : undefined}
@@ -243,7 +278,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                       <>
                         <button
                           onClick={() => toggleSubItem(item.label)}
-                          className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                          className="w-full flex items-center justify-between px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-white/10 dark:hover:bg-white/5 rounded-md transition-colors"
                         >
                           <span>{item.label}</span>
                           {openSubItems.includes(item.label) ? (
@@ -259,12 +294,14 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                                 key={subItem.label}
                                 href={subItem.href}
                                 onClick={(e) => {
+                                  e.preventDefault();
                                   if (subItem.onClick) {
-                                    e.preventDefault();
                                     subItem.onClick();
+                                  } else if (subItem.href === '#') {
+                                    handleComingSoon();
                                   }
                                 }}
-                                className="block px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                                className="block px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-white/10 dark:hover:bg-white/5 rounded-md transition-colors"
                               >
                                 {subItem.label}
                               </a>
@@ -277,12 +314,14 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                       <a
                         href={item.href}
                         onClick={(e) => {
+                          e.preventDefault();
                           if (item.onClick) {
-                            e.preventDefault();
                             item.onClick();
+                          } else if (item.href === '#') {
+                            handleComingSoon();
                           }
                         }}
-                        className="block px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                        className="block px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-white/10 dark:hover:bg-white/5 rounded-md transition-colors"
                       >
                         {item.label}
                       </a>
@@ -295,12 +334,33 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         ))}
       </nav>
 
-      {/* Auth Button */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+      {/* Theme Toggle & Auth Button */}
+      <div className="p-4 border-t border-white/10 space-y-2">
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className={`w-full flex items-center gap-3 px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors ${
+            isOpen ? '' : 'justify-center px-0'
+          }`}
+          title={!isOpen ? (theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode') : undefined}
+        >
+          {theme === 'light' ? (
+            <MoonIcon className="w-5 h-5" />
+          ) : (
+            <SunIcon className="w-5 h-5" />
+          )}
+          {isOpen && (
+            <span className="font-medium">
+              {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+            </span>
+          )}
+        </button>
+
+        {/* Auth Button */}
         {isAuthenticated ? (
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors ${
+            className={`w-full flex items-center gap-3 px-4 py-3 text-red-500 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/10 rounded-lg transition-colors ${
               isOpen ? '' : 'justify-center px-0'
             }`}
             title={!isOpen ? 'Log Out' : undefined}
@@ -310,8 +370,8 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
           </button>
         ) : (
           <button
-            onClick={() => navigate('/auth')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors ${
+            onClick={() => navigate('/login')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-500 dark:text-primary-400 hover:bg-primary-500/10 dark:hover:bg-primary-500/10 rounded-lg transition-colors ${
               isOpen ? '' : 'justify-center px-0'
             }`}
             title={!isOpen ? 'Log In' : undefined}
@@ -322,6 +382,20 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         )}
       </div>
       </div>
+
+      {/* Coming Soon Toast */}
+      {showComingSoon && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
+          <div className="glass-strong px-6 py-4 rounded-xl shadow-glass-xl border border-white/20">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                Coming Soon! 🚀
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

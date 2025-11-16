@@ -9,11 +9,14 @@ import { MeshGradient } from '@paper-design/shaders-react';
 
 export default function AuthPage() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const {
     state,
     startChat,
     submitEmail,
+    acceptUsername,
+    rejectUsername,
+    submitUsername,
     submitName,
     submitPassword,
     submitInterests,
@@ -22,6 +25,7 @@ export default function AuthPage() {
   } = useAuthChatStream();
 
   const [emailInput, setEmailInput] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
   const [firstNameInput, setFirstNameInput] = useState('');
   const [lastNameInput, setLastNameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -51,16 +55,24 @@ export default function AuthPage() {
 
   // Redirect if authenticated and flow complete
   useEffect(() => {
-    if (isAuthenticated && state.step === 'complete') {
-      navigate('/profile');
+    if (isAuthenticated && state.step === 'complete' && user?.username) {
+      navigate(`/${user.username}`);
     }
-  }, [isAuthenticated, state.step, navigate]);
+  }, [isAuthenticated, state.step, user?.username, navigate]);
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (emailInput.trim()) {
       submitEmail(emailInput.trim());
       setEmailInput('');
+    }
+  };
+
+  const handleUsernameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (usernameInput.trim()) {
+      submitUsername(usernameInput.trim());
+      setUsernameInput('');
     }
   };
 
@@ -191,6 +203,55 @@ export default function AuthPage() {
               <button
                 type="submit"
                 disabled={!emailInput.trim() || state.isStreaming}
+                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </form>
+          )}
+
+          {/* Username Suggest - Yes/No Choice */}
+          {state.step === 'username_suggest' && !state.isStreaming && (
+            <div className="space-y-3">
+              <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4 mb-4">
+                <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                  Suggested username: <span className="font-bold">@{state.suggestedUsername}</span>
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={acceptUsername}
+                  disabled={state.isStreaming}
+                  className="bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={rejectUsername}
+                  disabled={state.isStreaming}
+                  className="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  No
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Username Custom Input */}
+          {state.step === 'username_custom' && !state.isStreaming && (
+            <form onSubmit={handleUsernameSubmit} className="space-y-3">
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value.toLowerCase())}
+                placeholder="your_username"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                autoFocus
+                disabled={state.isStreaming}
+              />
+              <button
+                type="submit"
+                disabled={!usernameInput.trim() || state.isStreaming}
                 className="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue

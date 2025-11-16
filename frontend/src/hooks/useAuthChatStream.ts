@@ -3,6 +3,8 @@ import { useState, useCallback, useRef } from 'react';
 export type ChatStep = 
   | 'welcome'
   | 'email'
+  | 'username_suggest'
+  | 'username_custom'
   | 'name'
   | 'password'
   | 'interests'
@@ -26,12 +28,16 @@ export interface AuthChatState {
   messages: ChatMessage[];
   isStreaming: boolean;
   error: string | null;
+  suggestedUsername: string | null;
 }
 
 export interface UseAuthChatStreamReturn {
   state: AuthChatState;
   startChat: () => Promise<void>;
   submitEmail: (email: string) => Promise<void>;
+  acceptUsername: () => Promise<void>;
+  rejectUsername: () => Promise<void>;
+  submitUsername: (username: string) => Promise<void>;
   submitName: (firstName: string, lastName: string) => Promise<void>;
   submitPassword: (password: string) => Promise<void>;
   submitInterests: (interests: string[]) => Promise<void>;
@@ -42,7 +48,7 @@ export interface UseAuthChatStreamReturn {
 // Re-export for convenience
 export type { ChatMessage };
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 export function useAuthChatStream(): UseAuthChatStreamReturn {
   const [state, setState] = useState<AuthChatState>({
@@ -52,6 +58,7 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
     messages: [],
     isStreaming: false,
     error: null,
+    suggestedUsername: null,
   });
 
   const currentMessageRef = useRef<string>('');
@@ -167,6 +174,7 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
                     step: data.step,
                     mode: data.mode,
                     sessionId: data.session_id || prev.sessionId,
+                    suggestedUsername: data.suggested_username || prev.suggestedUsername,
                     isStreaming: false,
                   };
                 });
@@ -205,6 +213,21 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
     await streamChat('submit_email', { email });
   }, [streamChat, addMessage]);
 
+  const acceptUsername = useCallback(async () => {
+    addMessage('user', 'Yes');
+    await streamChat('accept_username');
+  }, [streamChat, addMessage]);
+
+  const rejectUsername = useCallback(async () => {
+    addMessage('user', 'No, I\'ll choose my own');
+    await streamChat('reject_username');
+  }, [streamChat, addMessage]);
+
+  const submitUsername = useCallback(async (username: string) => {
+    addMessage('user', username);
+    await streamChat('submit_username', { username });
+  }, [streamChat, addMessage]);
+
   const submitName = useCallback(async (firstName: string, lastName: string) => {
     addMessage('user', `${firstName} ${lastName}`);
     await streamChat('submit_name', { first_name: firstName, last_name: lastName });
@@ -240,6 +263,9 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
     state,
     startChat,
     submitEmail,
+    acceptUsername,
+    rejectUsername,
+    submitUsername,
     submitName,
     submitPassword,
     submitInterests,

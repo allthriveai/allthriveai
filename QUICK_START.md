@@ -101,7 +101,7 @@ print(f"Default: {settings.DEFAULT_AI_PROVIDER}")
 
 ```bash
 # Functional tests
-docker exec allthriveai-web-1 python test_azure_openai.py
+docker exec allthriveai-web-1 python services/tests/test_azure_openai.py
 
 # Unit tests
 docker exec allthriveai-web-1 python manage.py test services

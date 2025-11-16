@@ -99,3 +99,54 @@ def validate_interests(interests: list) -> Tuple[bool, Optional[str]]:
             return False, f"Invalid interest: {interest}"
     
     return True, None
+
+
+def validate_username(username: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validate username format and availability.
+    
+    Args:
+        username: Username to validate
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    from core.models import User
+    
+    if not username:
+        return False, "Username is required"
+    
+    # Remove leading @ if present
+    username = username.lstrip('@')
+    
+    if len(username) < 3:
+        return False, "Username must be at least 3 characters"
+    
+    if len(username) > 30:
+        return False, "Username must be less than 30 characters"
+    
+    # Only allow alphanumeric, underscores, and hyphens
+    if not re.match(r'^[a-zA-Z0-9_-]+$', username):
+        return False, "Username can only contain letters, numbers, underscores, and hyphens"
+    
+    # Check if username is taken
+    if User.objects.filter(username=username).exists():
+        return False, f"Username '{username}' is already taken"
+    
+    return True, None
+
+
+def generate_username_from_email(email: str) -> str:
+    """
+    Generate suggested username from email (part before @).
+    
+    Args:
+        email: Email address
+        
+    Returns:
+        Suggested username
+    """
+    username = email.split('@')[0]
+    # Remove any special characters except underscore and hyphen
+    username = re.sub(r'[^a-zA-Z0-9_-]', '', username)
+    return username.lower()

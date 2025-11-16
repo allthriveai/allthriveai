@@ -28,6 +28,19 @@ Welcome them back warmly! Keep it short - one sentence. Use their first name."""
 EMAIL_NEW_PROMPT = """The email '{email}' is new! 
 Say something exciting about creating their account. Keep it very short - one sentence."""
 
+USERNAME_SUGGEST_PROMPT = """The user's email is '{email}' and we've suggested '{suggested_username}' as their username.
+Ask them if they'd like to use '{suggested_username}' as their username, or if they'd like to choose their own.
+Be friendly and casual. Keep it short - 2 sentences max. Mention they can click Yes or No."""
+
+USERNAME_CUSTOM_PROMPT = """Ask them to enter their desired username.
+Be encouraging! Tell them it should be unique and memorable. Keep it short - one sentence."""
+
+USERNAME_TAKEN_PROMPT = """The username '{username}' is already taken!
+Ask them to try another one. Be sympathetic but upbeat. Keep it short - one sentence."""
+
+USERNAME_CONFIRMED_PROMPT = """Their username '{username}' is available and confirmed!
+Celebrate briefly and let them know we're moving forward. Keep it short - one sentence with an emoji."""
+
 NAME_PROMPT = """Ask for their first and last name in a friendly way. 
 Keep it short and casual - one sentence."""
 

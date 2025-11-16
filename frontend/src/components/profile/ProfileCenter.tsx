@@ -2,15 +2,14 @@ import type { User } from '@/types/models';
 
 interface ProfileCenterProps {
   user: User | null;
-  activeTab: 'showcase' | 'playground' | 'settings';
-  onTabChange: (tab: 'showcase' | 'playground' | 'settings') => void;
+  activeTab: 'showcase' | 'playground';
+  onTabChange: (tab: 'showcase' | 'playground') => void;
 }
 
 export function ProfileCenter({ user, activeTab, onTabChange }: ProfileCenterProps) {
   const tabs = [
     { id: 'showcase', label: 'Showcase' },
     { id: 'playground', label: 'Playground' },
-    { id: 'settings', label: 'Settings' },
   ] as const;
 
   return (
@@ -41,20 +40,6 @@ export function ProfileCenter({ user, activeTab, onTabChange }: ProfileCenterPro
             <p className="text-gray-600 dark:text-gray-400 mb-4 max-w-2xl">
               {user?.bio || 'No bio added yet.'}
             </p>
-            <div className="flex gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">0</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Projects</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">0</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Followers</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">0</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Following</div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -98,40 +83,6 @@ export function ProfileCenter({ user, activeTab, onTabChange }: ProfileCenterPro
           </div>
         )}
 
-        {activeTab === 'settings' && (
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Settings</h2>
-            <div className="space-y-6 max-w-2xl">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={user?.email || ''}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Bio
-                </label>
-                <textarea
-                  value={user?.bio || ''}
-                  disabled
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white cursor-not-allowed"
-                />
-              </div>
-
-              <button className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium">
-                Edit Profile
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

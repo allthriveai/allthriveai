@@ -5,6 +5,7 @@ import AboutPage from '@/pages/AboutPage';
 import AuthPage from '@/pages/AuthPage';
 import DashboardPage from '@/pages/DashboardPage';
 import ProfilePage from '@/pages/ProfilePage';
+import AccountSettingsPage from '@/pages/AccountSettingsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
 
@@ -18,7 +19,7 @@ export function AppRoutes() {
 
       {/* Auth routes - unified chat-based auth */}
       <Route
-        path="/auth"
+        path="/login"
         element={
           <ProtectedRoute redirectIfAuthenticated>
             <AuthPage />
@@ -27,12 +28,20 @@ export function AppRoutes() {
       />
       
       {/* Redirect old routes to new unified auth */}
-      <Route path="/login" element={<Navigate to="/auth" replace />} />
-      <Route path="/signup" element={<Navigate to="/auth" replace />} />
+      <Route path="/auth" element={<Navigate to="/login" replace />} />
+      <Route path="/signup" element={<Navigate to="/login" replace />} />
 
       {/* Protected routes */}
       <Route
-        path="/profile"
+        path="/account/settings"
+        element={
+          <ProtectedRoute>
+            <AccountSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/:username"
         element={
           <ProtectedRoute>
             <ProfilePage />
@@ -43,7 +52,7 @@ export function AppRoutes() {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Navigate to="/profile" replace />
+            <ProfilePage />
           </ProtectedRoute>
         }
       />

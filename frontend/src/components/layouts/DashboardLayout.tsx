@@ -1,6 +1,7 @@
 import { useState, ReactNode } from 'react';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 import { LeftSidebar } from '@/components/navigation/LeftSidebar';
+import { RightChatPanel } from '@/components/chat/RightChatPanel';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -8,6 +9,18 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
+
+  const handleMenuClick = (menuItem: string) => {
+    setSelectedMenuItem(menuItem);
+    setChatOpen(true);
+  };
+
+  const handleCloseChat = () => {
+    setChatOpen(false);
+    setSelectedMenuItem(null);
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-brand-dark overflow-hidden">
@@ -24,7 +37,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Left Sidebar */}
       <LeftSidebar
-        onMenuClick={() => {}}
+        onMenuClick={handleMenuClick}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
@@ -35,6 +48,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       }`}>
         {children}
       </div>
+
+      {/* Right Chat Panel */}
+      <RightChatPanel
+        isOpen={chatOpen}
+        onClose={handleCloseChat}
+        selectedMenuItem={selectedMenuItem}
+      />
+
+      {/* Overlay when chat is open */}
+      {chatOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-30 md:hidden"
+          onClick={handleCloseChat}
+        />
+      )}
     </div>
   );
 }

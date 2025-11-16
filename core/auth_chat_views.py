@@ -17,7 +17,8 @@ from services.auth_agent.validators import (
     validate_email,
     validate_name,
     validate_password,
-    validate_interests
+    validate_interests,
+    validate_username
 )
 from core.models import User
 
@@ -96,6 +97,57 @@ def auth_chat_stream(request):
                     
                     # Continue graph - check email
                     result = auth_graph.invoke(None, config)
+                
+                elif action == "accept_username":
+                    # User accepted suggested username
+                    suggested_username = current_state.values.get('suggested_username')
+                    
+                    # Validate it's still available
+                    is_valid, error = validate_username(suggested_username)
+                    if not is_valid:
+                        yield f"data: {json.dumps({'type': 'error', 'message': error})}\\n\\n"
+                        return
+                    
+                    # Update state with username
+                    auth_graph.update_state(config, {"username": suggested_username})
+                    
+                    # Add user message
+                    new_msg = {"role": "user", "content": "Yes"}
+                    messages = current_state.values.get('messages', [])
+                    auth_graph.update_state(config, {"messages": messages + [new_msg]})
+                    
+                    # Move to confirm_username node
+                    result = auth_graph.invoke(None, config, {"next": "confirm_username"})
+                    
+                elif action == "reject_username":
+                    # User wants to choose own username
+                    # Add user message
+                    new_msg = {"role": "user", "content": "No, I'll choose my own"}
+                    messages = current_state.values.get('messages', [])
+                    auth_graph.update_state(config, {"messages": messages + [new_msg]})
+                    
+                    # Move to ask_username_custom node
+                    result = auth_graph.invoke(None, config, {"next": "ask_username_custom"})
+                    
+                elif action == "submit_username":
+                    username = data.get('username', '').strip().lower()
+                    
+                    # Validate username
+                    is_valid, error = validate_username(username)
+                    if not is_valid:
+                        yield f"data: {json.dumps({'type': 'error', 'message': error})}\\n\\n"
+                        return
+                    
+                    # Update state with username
+                    auth_graph.update_state(config, {"username": username})
+                    
+                    # Add user message
+                    new_msg = {"role": "user", "content": username}
+                    messages = current_state.values.get('messages', [])
+                    auth_graph.update_state(config, {"messages": messages + [new_msg]})
+                    
+                    # Move to confirm_username node
+                    result = auth_graph.invoke(None, config, {"next": "confirm_username"})
                     
                 elif action == "submit_name":
                     first_name = data.get('first_name', '').strip()
@@ -198,7 +250,7 @@ def auth_chat_stream(request):
                         
                         # Create user
                         user = User.objects.create_user(
-                            username=state['email'],  # Email is username
+                            username=state.get('username', state['email']),  # Use chosen username or fallback to email
                             email=state['email'],
                             password=state['password'],
                             first_name=state['first_name'],
@@ -233,12 +285,14 @@ def auth_chat_stream(request):
                 # Send completion event with next step
                 step = final_state.values.get('step')
                 mode = final_state.values.get('mode')
+                suggested_username = final_state.values.get('suggested_username')
                 
                 completion_data = {
                     'type': 'complete',
                     'step': step,
                     'mode': mode,
-                    'session_id': session_id
+                    'session_id': session_id,
+                    'suggested_username': suggested_username
                 }
                 yield f"data: {json.dumps(completion_data)}\n\n"
                 

@@ -16,53 +16,22 @@ export function OAuthButtons({ onEmailClick }: OAuthButtonsProps) {
     const height = 600;
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
-    
-    // Create a form and submit it to open in popup
-    // This bypasses the GET intermediate page
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `${backendUrl}/accounts/${provider}/login/`;
-    form.target = 'oauth_popup';
-    
-    // Add CSRF token (we'll need to get it from cookies)
-    const csrfToken = document.cookie.split('; ')
-      .find(row => row.startsWith('csrftoken='))
-      ?.split('=')[1];
-    
-    if (csrfToken) {
-      const csrfInput = document.createElement('input');
-      csrfInput.type = 'hidden';
-      csrfInput.name = 'csrfmiddlewaretoken';
-      csrfInput.value = csrfToken;
-      form.appendChild(csrfInput);
-    }
-    
-    // Add process input
-    const processInput = document.createElement('input');
-    processInput.type = 'hidden';
-    processInput.name = 'process';
-    processInput.value = 'login';
-    form.appendChild(processInput);
-    
-    document.body.appendChild(form);
-    
-    // Open popup
+
+    // Build OAuth login URL (GET request, no CSRF needed)
+    const loginUrl = `${backendUrl}/accounts/${provider}/login/?process=login`;
+
+    // Open popup directly to the OAuth login URL
     const popup = window.open(
-      '',
+      loginUrl,
       'oauth_popup',
       `width=${width},height=${height},left=${left},top=${top},popup=1`
     );
 
     if (!popup) {
       setIsLoading(false);
-      document.body.removeChild(form);
       alert('Please allow popups for this site to sign in with ' + provider);
       return;
     }
-    
-    // Submit form to popup
-    form.submit();
-    document.body.removeChild(form);
 
     // Poll for popup close and check authentication
     const pollTimer = setInterval(async () => {

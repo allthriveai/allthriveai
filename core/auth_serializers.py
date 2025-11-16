@@ -3,7 +3,11 @@ from .models import User, UserRole
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for User model."""
+    """Serializer for User model with field-level permissions.
+    
+    Hides sensitive fields (email) unless viewing own profile or staff.
+    Prevents role field modification unless superuser.
+    """
     
     full_name = serializers.SerializerMethodField()
     role_display = serializers.CharField(source='get_role_display', read_only=True)
@@ -24,11 +28,36 @@ class UserSerializer(serializers.ModelSerializer):
             'date_joined',
             'last_login',
         ]
-        read_only_fields = ['id', 'date_joined', 'last_login']
+        read_only_fields = ['id', 'date_joined', 'last_login', 'role']  # Prevent role escalation
+    
+    def get_fields(self):
+        """Dynamically adjust fields based on request context."""
+        fields = super().get_fields()
+        request = self.context.get('request')
+        
+        # Hide sensitive fields unless viewing own profile or staff
+        if request and hasattr(request, 'user'):
+            if not (request.user.is_authenticated and 
+                    (self.instance == request.user or request.user.is_staff)):
+                # Remove email from public profiles
+                fields.pop('email', None)
+                fields.pop('last_login', None)
+        
+        return fields
     
     def get_full_name(self, obj):
         """Return user's full name."""
         return f"{obj.first_name} {obj.last_name}".strip() or obj.username
+    
+    def validate_role(self, value):
+        """Prevent role escalation - only superusers can change roles."""
+        request = self.context.get('request')
+        if request and not request.user.is_superuser:
+            if self.instance and self.instance.role != value:
+                raise serializers.ValidationError(
+                    "You do not have permission to change user roles."
+                )
+        return value
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -74,7 +103,11 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for updating user profile."""
+    """Serializer for updating user profile.
+    
+    Only allows updates to safe, non-sensitive fields.
+    The User model's clean() method handles input validation.
+    """
     
     class Meta:
         model = User
@@ -84,3 +117,17 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'avatar_url',
             'bio',
         ]
+    
+    def validate(self, attrs):
+        """Ensure the user instance will pass model-level validation."""
+        # Create a copy of the instance with new values for validation
+        if self.instance:
+            instance_copy = self.instance
+            for attr, value in attrs.items():
+                setattr(instance_copy, attr, value)
+            # This will trigger the User.clean() method for XSS prevention
+            try:
+                instance_copy.clean()
+            except Exception as e:
+                raise serializers.ValidationError(str(e))
+        return attrs

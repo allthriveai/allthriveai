@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Pre-push hook script for AllThrive AI
+# Fails pushes if new API paths are introduced without an explicit version prefix (/api/v1).
+#
+# Usage:
+#   - Place this file at repo root (already done).
+#   - Configure Git to use it as the pre-push hook, for example:
+#       mkdir -p .git/hooks
+#       ln -sf "$(pwd)/pre-push" .git/hooks/pre-push
+#       chmod +x pre-push
+#   - From then on, pushes will be blocked if new "/api/" paths are added
+#     that do not include "/api/v1".
+
+set -euo pipefail
+
+printf '\n[pre-push] Running API versioning check (enforcing /api/v1)...\n'
+
+# Determine the range of commits being pushed compared to the remote tracking branch.
+current_branch="$(git rev-parse --abbrev-ref HEAD)"
+range=""
+
+if git rev-parse --verify "origin/${current_branch}" >/dev/null 2>&1; then
+  # Compare local branch to its remote tracking branch
+  range="origin/${current_branch}..HEAD"
+else
+  # First push: compare against empty tree
+  empty_tree="$(git hash-object -t tree /dev/null)"
+  range="${empty_tree}..HEAD"
+fi
+
+# Get the diff for the range and look for newly added lines containing "/api/"
+# that do NOT already include "/api/v1".
+violations="$(
+  git diff "${range}" -U0 \
+    | grep -E '^\+' \
+    | grep '/api/' \
+    | grep -v '/api/v1/' \
+    | grep -v '^\+\+\+' \
+    || true
+)"
+
+if [ -n "${violations}" ]; then
+  printf '\n[pre-push] ERROR: Found new API paths without /api/v1 in diff (%s):\n' "${range}"
+  echo "------------------------------------------------------------"
+  echo "${violations}"
+  echo "------------------------------------------------------------"
+  echo "All new internal API endpoints must be versioned as '/api/v1/...'."
+  echo "Please update these paths (and any related docs) to use '/api/v1/'."
+  echo
+  exit 1
+fi
+
+printf '[pre-push] API versioning check passed.\n\n'
+exit 0

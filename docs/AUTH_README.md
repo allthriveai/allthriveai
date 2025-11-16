@@ -73,14 +73,14 @@ Higher roles inherit all permissions from lower roles. For example, an **Expert*
 ## 🌐 API Endpoints
 
 ```
-POST   /api/auth/signup/      - Create new user account
-POST   /api/auth/google/      - Google OAuth login
-POST   /api/auth/github/      - GitHub OAuth login
-GET    /api/auth/me/          - Get current user info
-POST   /api/auth/logout/      - Logout user
-GET    /api/auth/profile/     - Get user profile
-PATCH  /api/auth/profile/     - Update user profile
-GET    /api/auth/urls/        - Get OAuth provider URLs
+POST   /api/v1/auth/signup/      - Create new user account
+POST   /api/v1/auth/google/      - Google OAuth login
+POST   /api/v1/auth/github/      - GitHub OAuth login
+GET    /api/v1/auth/me/          - Get current user info
+POST   /api/v1/auth/logout/      - Logout user
+GET    /api/v1/auth/profile/     - Get user profile
+PATCH  /api/v1/auth/profile/     - Update user profile
+GET    /api/v1/auth/urls/        - Get OAuth provider URLs
 ```
 
 ## 🎨 Frontend Components
