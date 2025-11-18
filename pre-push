@@ -3,8 +3,8 @@
 # Fails pushes if new API paths are introduced without an explicit version prefix (/api/v1).
 #
 # Usage:
-#   - Place this file at repo root (already done).
-#   - Configure Git to use it as the pre-push hook, for example:
+#   - Place this file at repo root as `pre-push`
+#   - Configure Git to use it as the pre-push hook:
 #       mkdir -p .git/hooks
 #       ln -sf "$(pwd)/pre-push" .git/hooks/pre-push
 #       chmod +x pre-push
