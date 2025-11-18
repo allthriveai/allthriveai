@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useAuthChatStream } from '@/hooks/useAuthChatStream';
 import { MessageList } from '@/components/auth/MessageList';
 import { OAuthButtons } from '@/components/auth/OAuthButtons';
@@ -12,7 +12,6 @@ export default function AuthPage() {
   const { isAuthenticated, user } = useAuth();
   const {
     state,
-    startChat,
     submitEmail,
     acceptUsername,
     rejectUsername,
@@ -22,6 +21,7 @@ export default function AuthPage() {
     submitInterests,
     agreeToValues,
     clearError,
+    beginEmailEntry,
   } = useAuthChatStream();
 
   const [emailInput, setEmailInput] = useState('');
@@ -46,12 +46,8 @@ export default function AuthPage() {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // Start chat on mount
-  useEffect(() => {
-    if (state.messages.length === 0) {
-      startChat();
-    }
-  }, []);
+  // The initial welcome message is typed locally in the chat hook, so we
+  // don't need to start the backend chat until the user submits data.
 
   // Redirect if authenticated and flow complete
   useEffect(() => {
@@ -152,7 +148,7 @@ export default function AuthPage() {
       {/* Main Chat Container */}
       <div className="w-full max-w-3xl h-[calc(100vh-2rem)] mx-auto relative z-20">
         {/* Chat Card */}
-        <div className="glass-strong rounded-3xl overflow-hidden h-full flex flex-col">
+        <div className="glass-strong rounded overflow-hidden h-full flex flex-col">
           {/* Header */}
           <div className="px-8 py-6 text-center border-b border-white/10 flex-shrink-0">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome to All Thrive</h1>
@@ -167,7 +163,7 @@ export default function AuthPage() {
           {/* Error Display */}
           {state.error && (
             <div className="px-6 py-3">
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm flex justify-between items-center">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded text-sm flex justify-between items-center">
                 <span>{state.error}</span>
                 <button
                   onClick={clearError}
@@ -184,7 +180,7 @@ export default function AuthPage() {
           {/* Welcome - Show OAuth Buttons */}
           {state.step === 'welcome' && (
             <div className="flex flex-col items-center">
-              <OAuthButtons onEmailClick={() => submitEmail('')} />
+              <OAuthButtons onEmailClick={beginEmailEntry} />
             </div>
           )}
 
@@ -196,14 +192,14 @@ export default function AuthPage() {
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="your@email.com"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 autoFocus
                 disabled={state.isStreaming}
               />
               <button
                 type="submit"
                 disabled={!emailInput.trim() || state.isStreaming}
-                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full btn-primary text-white py-3 px-4 rounded  transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue
               </button>
@@ -213,8 +209,8 @@ export default function AuthPage() {
           {/* Username Suggest - Yes/No Choice */}
           {state.step === 'username_suggest' && !state.isStreaming && (
             <div className="space-y-3">
-              <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4 mb-4">
-                <p className="text-sm text-indigo-700 dark:text-indigo-300">
+              <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded p-4 mb-4">
+                <p className="text-sm text-primary-700 dark:text-indigo-300">
                   Suggested username: <span className="font-bold">@{state.suggestedUsername}</span>
                 </p>
               </div>
@@ -222,14 +218,14 @@ export default function AuthPage() {
                 <button
                   onClick={acceptUsername}
                   disabled={state.isStreaming}
-                  className="bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary text-white py-3 px-4 rounded  transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Yes
                 </button>
                 <button
                   onClick={rejectUsername}
                   disabled={state.isStreaming}
-                  className="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   No
                 </button>
@@ -245,14 +241,14 @@ export default function AuthPage() {
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value.toLowerCase())}
                 placeholder="your_username"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 autoFocus
                 disabled={state.isStreaming}
               />
               <button
                 type="submit"
                 disabled={!usernameInput.trim() || state.isStreaming}
-                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full btn-primary text-white py-3 px-4 rounded  transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue
               </button>
@@ -268,7 +264,7 @@ export default function AuthPage() {
                   value={firstNameInput}
                   onChange={(e) => setFirstNameInput(e.target.value)}
                   placeholder="First name"
-                  className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500"
+                  className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500"
                   autoFocus
                 />
                 <input
@@ -276,13 +272,13 @@ export default function AuthPage() {
                   value={lastNameInput}
                   onChange={(e) => setLastNameInput(e.target.value)}
                   placeholder="Last name"
-                  className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500"
+                  className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500"
                 />
               </div>
               <button
                 type="submit"
                 disabled={!firstNameInput.trim() || !lastNameInput.trim()}
-                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all duration-200 font-medium disabled:opacity-50"
+                className="w-full btn-primary text-white py-3 px-4 rounded  transition-all duration-200 font-medium disabled:opacity-50"
               >
                 Continue
               </button>
@@ -297,7 +293,7 @@ export default function AuthPage() {
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500"
                 autoFocus
                 minLength={8}
               />
@@ -307,7 +303,7 @@ export default function AuthPage() {
               <button
                 type="submit"
                 disabled={!passwordInput}
-                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all duration-200 font-medium disabled:opacity-50"
+                className="w-full btn-primary text-white py-3 px-4 rounded  transition-all duration-200 font-medium disabled:opacity-50"
               >
                 {state.mode === 'login' ? 'Log In' : 'Continue'}
               </button>
@@ -323,10 +319,10 @@ export default function AuthPage() {
                     key={interest.id}
                     type="button"
                     onClick={() => toggleInterest(interest.id)}
-                    className={`px-4 py-3 rounded-xl border-2 transition-all duration-200 font-medium text-sm ${
+                    className={`px-4 py-3 rounded border-2 transition-all duration-200 font-medium text-sm ${
                       selectedInterests.includes(interest.id)
-                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
-                        : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:border-indigo-400'
+                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                        : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary-400'
                     }`}
                   >
                     {interest.label}
@@ -336,7 +332,7 @@ export default function AuthPage() {
               <button
                 onClick={handleInterestsSubmit}
                 disabled={selectedInterests.length === 0}
-                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all duration-200 font-medium disabled:opacity-50"
+                className="w-full btn-primary text-white py-3 px-4 rounded  transition-all duration-200 font-medium disabled:opacity-50"
               >
                 Continue
               </button>
@@ -348,7 +344,7 @@ export default function AuthPage() {
             <div className="space-y-3">
               <button
                 onClick={agreeToValues}
-                className="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all duration-200 font-medium"
+                className="w-full btn-primary text-white py-3 px-4 rounded  transition-all duration-200 font-medium"
               >
                 Yes, I Agree
               </button>

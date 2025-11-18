@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, ensureCsrfToken } from './api';
 import type { User, LoginCredentials } from '@/types/models';
 import type { ApiResponse } from '@/types/api';
 
@@ -10,6 +10,8 @@ export async function login(credentials: LoginCredentials): Promise<User> {
 
 // Logout user
 export async function logout(): Promise<void> {
+  // Ensure we have a CSRF token before logout
+  await ensureCsrfToken();
   await api.post('/auth/logout/');
 }
 

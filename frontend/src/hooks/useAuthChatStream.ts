@@ -43,23 +43,32 @@ export interface UseAuthChatStreamReturn {
   submitInterests: (interests: string[]) => Promise<void>;
   agreeToValues: () => Promise<void>;
   clearError: () => void;
+  beginEmailEntry: () => void;
 }
 
 // Re-export for convenience
 export type { ChatMessage };
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const WELCOME_TEXT = 'Welcome to All Thrive. We are glad you are here.';
 
 export function useAuthChatStream(): UseAuthChatStreamReturn {
-  const [state, setState] = useState<AuthChatState>({
+  const [state, setState] = useState<AuthChatState>(() => ({
     sessionId: null,
     step: 'welcome',
     mode: 'signup',
-    messages: [],
+    messages: [
+      {
+        id: 'welcome-msg',
+        role: 'assistant',
+        content: WELCOME_TEXT,
+        timestamp: new Date(),
+      },
+    ],
     isStreaming: false,
     error: null,
     suggestedUsername: null,
-  });
+  }));
 
   const currentMessageRef = useRef<string>('');
   const messageIdRef = useRef<number>(0);
@@ -84,7 +93,7 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
     }));
   }, [generateMessageId]);
 
-  const streamChat = useCallback(async (action: string, data?: any) => {
+  const streamChat = useCallback(async (action: string, data?: Record<string, unknown>) => {
     setState(prev => ({ ...prev, isStreaming: true, error: null }));
     currentMessageRef.current = '';
 
@@ -134,26 +143,31 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
               if (data.type === 'token') {
                 currentMessageRef.current += data.content;
                 setState(prev => {
-                  const messages = [...prev.messages];
-                  const lastMessage = messages[messages.length - 1];
+                  const lastMessage = prev.messages[prev.messages.length - 1];
                   
                   if (lastMessage && lastMessage.role === 'assistant' && lastMessage.id.startsWith('streaming-')) {
-                    // Update existing streaming message
-                    messages[messages.length - 1] = {
-                      ...lastMessage,
-                      content: currentMessageRef.current,
-                    };
+                    // Update existing streaming message - create new array with updated message
+                    const newMessages = [
+                      ...prev.messages.slice(0, -1),
+                      {
+                        ...lastMessage,
+                        content: currentMessageRef.current,
+                      }
+                    ];
+                    return { ...prev, messages: newMessages };
                   } else {
                     // Create new streaming message
-                    messages.push({
-                      id: 'streaming-' + Date.now(),
-                      role: 'assistant',
-                      content: currentMessageRef.current,
-                      timestamp: new Date(),
-                    });
+                    const newMessages = [
+                      ...prev.messages,
+                      {
+                        id: 'streaming-' + Date.now(),
+                        role: 'assistant',
+                        content: currentMessageRef.current,
+                        timestamp: new Date(),
+                      }
+                    ];
+                    return { ...prev, messages: newMessages };
                   }
-
-                  return { ...prev, messages };
                 });
               } else if (data.type === 'complete') {
                 // Finalize streaming message
@@ -259,6 +273,11 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
     setState(prev => ({ ...prev, error: null }));
   }, []);
 
+  const beginEmailEntry = useCallback(() => {
+    // Move UI to the email input step without hitting the backend yet
+    setState(prev => ({ ...prev, step: 'email' }));
+  }, []);
+
   return {
     state,
     startChat,
@@ -271,5 +290,6 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
     submitInterests,
     agreeToValues,
     clearError,
+    beginEmailEntry,
   };
 }

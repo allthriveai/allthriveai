@@ -1,53 +1,17 @@
 import { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
 
 interface OAuthButtonsProps {
   onEmailClick: () => void;
 }
 
 export function OAuthButtons({ onEmailClick }: OAuthButtonsProps) {
-  const { refreshUser } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   const handleOAuthLogin = (provider: 'google' | 'github') => {
-    setIsLoading(true);
+    // Simple full-page redirect to OAuth - no popup
     const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    const width = 500;
-    const height = 600;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
-    // Build OAuth login URL (GET request, no CSRF needed)
     const loginUrl = `${backendUrl}/accounts/${provider}/login/?process=login`;
-
-    // Open popup directly to the OAuth login URL
-    const popup = window.open(
-      loginUrl,
-      'oauth_popup',
-      `width=${width},height=${height},left=${left},top=${top},popup=1`
-    );
-
-    if (!popup) {
-      setIsLoading(false);
-      alert('Please allow popups for this site to sign in with ' + provider);
-      return;
-    }
-
-    // Poll for popup close and check authentication
-    const pollTimer = setInterval(async () => {
-      if (popup.closed) {
-        clearInterval(pollTimer);
-        // Check if user is now authenticated
-        try {
-          await refreshUser();
-          // If we get here, user is authenticated
-          window.location.href = '/dashboard';
-        } catch (error) {
-          // User cancelled or authentication failed
-          setIsLoading(false);
-        }
-      }
-    }, 500);
+    window.location.href = loginUrl;
   };
 
   return (

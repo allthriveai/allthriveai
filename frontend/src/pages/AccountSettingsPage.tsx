@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { api } from '@/services/api';
+import axios from 'axios';
 
 interface ProfileFormData {
   firstName: string;
@@ -68,9 +69,11 @@ export default function AccountSettingsPage() {
       
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch (error: any) {
-      console.error('Failed to update profile:', error);
-      setErrorMessage(error.response?.data?.detail || 'Failed to update profile. Please try again.');
+    } catch (error) {
+      const errorMsg = axios.isAxiosError(error) && error.response?.data?.detail
+        ? String(error.response.data.detail)
+        : 'Failed to update profile. Please try again.';
+      setErrorMessage(errorMsg);
       setSaveStatus('error');
     } finally {
       setIsLoading(false);

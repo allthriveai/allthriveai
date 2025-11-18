@@ -18,6 +18,7 @@ export function useChatSession({
   onMessageReceived,
 }: UseChatSessionOptions) {
   const sessionIdRef = useRef(generateId());
+  const initialMessageAddedRef = useRef(false);
 
   const [state, setState] = useState<ChatSessionState>({
     messages: [],
@@ -35,7 +36,7 @@ export function useChatSession({
 
   // Add initial message on mount
   useEffect(() => {
-    if (state.messages.length === 0 && agent.getInitialMessage) {
+    if (!initialMessageAddedRef.current && agent.getInitialMessage) {
       const initialMessage: ChatMessage = {
         id: generateId(),
         sender: 'agent',
@@ -51,6 +52,7 @@ export function useChatSession({
           conversationHistory: [initialMessage],
         },
       }));
+      initialMessageAddedRef.current = true;
     }
   }, [agent]);
 

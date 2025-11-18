@@ -16,7 +16,6 @@ interface HeroSectionProps {
   titleClassName?: string
   descriptionClassName?: string
   buttonClassName?: string
-  maxWidth?: string
   veilOpacity?: string
   fontFamily?: string
   fontWeight?: number
@@ -39,7 +38,6 @@ export function HeroSection({
   titleClassName = "",
   descriptionClassName = "",
   buttonClassName = "",
-  maxWidth = "max-w-6xl",
   veilOpacity = "bg-white/20 dark:bg-black/25",
   fontFamily = "Satoshi, sans-serif",
   fontWeight = 500,

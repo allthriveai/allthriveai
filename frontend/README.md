@@ -1,73 +1,137 @@
-# React + TypeScript + Vite
+# AllThrive AI - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Modern React + TypeScript frontend for the AllThrive AI platform.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19** - UI library
+- **TypeScript 5.9** - Type safety
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Styling
+- **React Router** - Client-side routing
+- **Axios** - HTTP client
+- **TanStack Query** - Server state management
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 🔐 Secure authentication with first-party cookies and CSRF protection
+- 🎨 Dark mode support with system preference detection
+- 💬 Modular chat system with pluggable AI agents
+- 📱 Responsive design for mobile and desktop
+- ⚡ Fast refresh and HMR
+- 🧪 Testing setup with Vitest and Playwright
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 18+ and npm
+- Backend API running (see main repository)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Environment Variables
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Create a `.env` file in the frontend directory:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_API_URL=http://localhost:8000
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Installation
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
+
+### Development
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+### Build
+
+```bash
+npm run build
+```
+
+### Testing
+
+```bash
+# Run unit tests
+npm run test
+
+# Run with UI
+npm run test:ui
+
+# Run with coverage
+npm run test:coverage
+
+# Run E2E tests
+npm run test:e2e
+```
+
+### Linting & Type Checking
+
+```bash
+# Run ESLint
+npm run lint
+
+# Type check
+npm run type-check
+```
+
+## Project Structure
+
+```
+src/
+├── components/        # Reusable UI components
+│   ├── auth/         # Authentication-related components
+│   ├── chat/         # Chat interface components
+│   ├── common/       # Common/shared components
+│   ├── layouts/      # Layout components
+│   ├── navigation/   # Navigation components
+│   ├── profile/      # Profile-related components
+│   └── ui/           # UI primitives
+├── context/          # React context providers
+├── hooks/            # Custom React hooks
+├── pages/            # Page components (routes)
+├── routes/           # Route definitions
+├── services/         # API and business logic
+│   └── agents/       # AI agent implementations
+├── types/            # TypeScript type definitions
+└── utils/            # Utility functions
+```
+
+## Documentation
+
+See the `docs/` folder for detailed documentation:
+
+- [Chat System Architecture](./docs/CHAT_SYSTEM.md)
+- [Chat Architecture Review](./docs/CHAT_ARCHITECTURE_REVIEW.md)
+- [Chat Quick Start](./docs/CHAT_QUICK_START.md)
+
+## Key Features
+
+### Authentication
+
+- First-party cookie-based auth (no localStorage tokens)
+- CSRF protection
+- OAuth2 integration (Google, GitHub)
+- Protected routes
+
+### Chat System
+
+- Modular AI agent architecture
+- Pluggable agents for different use cases
+- Real-time streaming responses
+- Context-aware conversations
+
+### Styling
+
+- Tailwind CSS for utility-first styling
+- Dark mode with system preference detection
+- Responsive design patterns
+- Custom glass morphism effects

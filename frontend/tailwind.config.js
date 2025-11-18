@@ -14,6 +14,7 @@ export default {
           cyan: '#39bdd6',
           teal: '#3bd4cb',
           dark: '#080b12',
+          light: '#F2F5FA',
           'gradient-start': 'rgb(0, 164, 189)',
           'gradient-end': 'rgb(0, 189, 165)',
         },
@@ -123,7 +124,15 @@ export default {
         '128': '32rem',
       },
       borderRadius: {
+        'DEFAULT': '4px',
+        'sm': '2px',
+        'md': '4px',
+        'lg': '8px',
+        'xl': '12px',
+        '2xl': '16px',
+        '3xl': '24px',
         '4xl': '2rem',
+        'full': '9999px',
       },
       backgroundImage: {
         'gradient-primary': 'linear-gradient(86deg, rgb(0, 164, 189) -3.28%, rgb(0, 189, 165) 97.8%)',

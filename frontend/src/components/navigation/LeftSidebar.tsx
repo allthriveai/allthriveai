@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronDownIcon,
@@ -8,7 +8,6 @@ import {
   ArrowRightOnRectangleIcon,
   ArrowLeftOnRectangleIcon,
   HomeIcon,
-  Bars3Icon,
   XMarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -40,7 +39,7 @@ interface MenuItem {
 
 interface MenuSection {
   title: string;
-  icon: any;
+  icon: typeof import('@fortawesome/free-solid-svg-icons').IconDefinition;
   items: MenuItem[];
 }
 
@@ -51,11 +50,6 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
   const [openSections, setOpenSections] = useState<string[]>(['EXPLORE']);
   const [openSubItems, setOpenSubItems] = useState<string[]>([]);
   const [showComingSoon, setShowComingSoon] = useState(false);
-
-  // Log user for debugging
-  useEffect(() => {
-    console.log('LeftSidebar user:', user);
-  }, [user]);
 
   const toggleSection = (title: string) => {
     setOpenSections(prev =>
@@ -122,6 +116,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
       icon: faGraduationCap,
       items: [
         { label: 'Learning Paths', href: '#' },
+        { label: 'Quick Quizzes', href: '#' },
         { label: 'Mentorship Program', href: '#' },
       ],
     },
@@ -158,18 +153,15 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
           label: 'My Profile', 
           href: '#',
           onClick: () => {
-            console.log('My Profile clicked, user:', user);
             if (user && user.username) {
-              console.log('Navigating to:', `/${user.username}`);
               navigate(`/${user.username}`);
-            } else {
-              console.warn('User or username not available');
             }
           }
         },
         { label: 'My Projects', href: '#' },
         { label: 'My Account', onClick: () => navigate('/account/settings') },
         { label: 'Chrome Extension', href: '#' },
+        { label: 'My Referral Codes', href: '#' },
       ],
     },
   ];

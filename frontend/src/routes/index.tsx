@@ -3,7 +3,6 @@ import { ProtectedRoute } from './ProtectedRoute';
 import HomePage from '@/pages/HomePage';
 import AboutPage from '@/pages/AboutPage';
 import AuthPage from '@/pages/AuthPage';
-import DashboardPage from '@/pages/DashboardPage';
 import ProfilePage from '@/pages/ProfilePage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
 import NotFoundPage from '@/pages/NotFoundPage';

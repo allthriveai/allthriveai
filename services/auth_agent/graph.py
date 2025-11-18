@@ -58,14 +58,14 @@ def create_auth_graph():
     
     # Check Email branches:
     # - If user exists -> ask for password (login flow)
-    # - If new user -> suggest username (signup flow)
+    # - If new user -> ask for name (signup flow)
     graph.add_conditional_edges(
         "check_email",
         lambda state: "login" if state.get("user_exists") else "signup",
         {
             "login": "ask_password",
-            "signup": "ask_username_suggest"
-        }
+            "signup": "ask_name",
+        },
     )
     
     # Username suggest / custom nodes are interaction points where the graph

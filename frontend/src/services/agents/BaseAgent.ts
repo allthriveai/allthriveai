@@ -38,7 +38,8 @@ export abstract class BaseAgent implements IChatAgent {
   /**
    * Optional: Called when context changes
    */
-  onContextChange(context: Partial<ChatContext>): void {
+  onContextChange(): void {
     // Override in subclass if needed
+    // Subclasses can accept context parameter if needed
   }
 }

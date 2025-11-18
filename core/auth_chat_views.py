@@ -23,6 +23,21 @@ from services.auth_agent.validators import (
 from core.models import User
 
 
+def _get_state_values(state_snapshot):
+    """Return the underlying dict of state values.
+
+    LangGraph's get_state() may return an object with a `.values` dict
+    attribute, or in some cases a plain dict. This helper normalizes both
+    so the rest of the code can safely call `.get(...)` on the result.
+    """
+    values = getattr(state_snapshot, "values", None)
+    if isinstance(values, dict):
+        return values
+    if isinstance(state_snapshot, dict):
+        return state_snapshot
+    return {}
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def auth_chat_stream(request):
@@ -55,9 +70,10 @@ def auth_chat_stream(request):
             try:
                 # Get current state
                 current_state = auth_graph.get_state(config)
+                state_values = _get_state_values(current_state)
                 
                 # Initialize state if new session
-                if not current_state.values.get('messages'):
+                if not state_values.get('messages'):
                     initial_state = {
                         "messages": [],
                         "step": "welcome",
@@ -72,11 +88,26 @@ def auth_chat_stream(request):
                         "error": None
                     }
                     current_state = auth_graph.update_state(config, initial_state)
+                    state_values = _get_state_values(current_state)
                 
                 # Handle different actions
                 if action == "start":
-                    # Start the graph - welcome message
-                    result = auth_graph.invoke(None, config)
+                    # Start chat with a static welcome message (no AI call)
+                    welcome_text = "Welcome to All Thrive. We are glad you are here."
+                    messages = state_values.get('messages', [])
+
+                    # Update graph state so future actions (submit_email, etc.)
+                    # see this first assistant message and the correct step/mode
+                    auth_graph.update_state(config, {
+                        "messages": messages + [{"role": "assistant", "content": welcome_text}],
+                        "step": "welcome",
+                        "mode": state_values.get('mode', 'signup'),
+                    })
+
+                    # We don't need to invoke the graph here; the generic
+                    # streaming logic below will read the updated state and
+                    # stream this static message as tokens.
+                    result = None
                     
                 elif action == "submit_email":
                     email = data.get('email', '').strip().lower()
@@ -84,23 +115,42 @@ def auth_chat_stream(request):
                     # Validate email
                     is_valid, error = validate_email(email)
                     if not is_valid:
-                        yield f"data: {json.dumps({'type': 'error', 'message': error})}\\n\\n"
+                        yield f"data: {json.dumps({'type': 'error', 'message': error})}\n\n"
                         return
-                    
-                    # Update state with email
-                    auth_graph.update_state(config, {"email": email})
                     
                     # Add user message
                     new_msg = {"role": "user", "content": email}
-                    messages = current_state.values.get('messages', [])
-                    auth_graph.update_state(config, {"messages": messages + [new_msg]})
+                    messages = state_values.get('messages', [])
                     
-                    # Continue graph - check email
-                    result = auth_graph.invoke(None, config)
+                    # Check if user exists
+                    try:
+                        user = User.objects.get(email=email)
+                        # Email already registered
+                        response_text = f"This email is already registered! Would you like to log in instead? Please enter your password to continue, or use a different email."
+                        auth_graph.update_state(config, {
+                            "email": email,
+                            "first_name": user.first_name,
+                            "user_exists": True,
+                            "mode": "login",
+                            "step": "password",
+                            "messages": messages + [new_msg, {"role": "assistant", "content": response_text}]
+                        })
+                    except User.DoesNotExist:
+                        # New user - signup flow
+                        response_text = "Great! Let's create your account. What's your name?"
+                        auth_graph.update_state(config, {
+                            "email": email,
+                            "user_exists": False,
+                            "mode": "signup",
+                            "step": "name",
+                            "messages": messages + [new_msg, {"role": "assistant", "content": response_text}]
+                        })
+                    
+                    result = None
                 
                 elif action == "accept_username":
                     # User accepted suggested username
-                    suggested_username = current_state.values.get('suggested_username')
+                    suggested_username = state_values.get('suggested_username')
                     
                     # Validate it's still available
                     is_valid, error = validate_username(suggested_username)
@@ -113,7 +163,7 @@ def auth_chat_stream(request):
                     
                     # Add user message
                     new_msg = {"role": "user", "content": "Yes"}
-                    messages = current_state.values.get('messages', [])
+                    messages = state_values.get('messages', [])
                     auth_graph.update_state(config, {"messages": messages + [new_msg]})
                     
                     # Move to confirm_username node
@@ -123,7 +173,7 @@ def auth_chat_stream(request):
                     # User wants to choose own username
                     # Add user message
                     new_msg = {"role": "user", "content": "No, I'll choose my own"}
-                    messages = current_state.values.get('messages', [])
+                    messages = state_values.get('messages', [])
                     auth_graph.update_state(config, {"messages": messages + [new_msg]})
                     
                     # Move to ask_username_custom node
@@ -143,7 +193,7 @@ def auth_chat_stream(request):
                     
                     # Add user message
                     new_msg = {"role": "user", "content": username}
-                    messages = current_state.values.get('messages', [])
+                    messages = state_values.get('messages', [])
                     auth_graph.update_state(config, {"messages": messages + [new_msg]})
                     
                     # Move to confirm_username node
@@ -156,22 +206,23 @@ def auth_chat_stream(request):
                     # Validate name
                     is_valid, error = validate_name(first_name, last_name)
                     if not is_valid:
-                        yield f"data: {json.dumps({'type': 'error', 'message': error})}\\n\\n"
+                        yield f"data: {json.dumps({'type': 'error', 'message': error})}\n\n"
                         return
+                    
+                    # Add user message
+                    new_msg = {"role": "user", "content": f"{first_name} {last_name}"}
+                    messages = state_values.get('messages', [])
+                    response_text = "Create a secure password (at least 8 characters with letters and numbers)."
                     
                     # Update state
                     auth_graph.update_state(config, {
                         "first_name": first_name,
-                        "last_name": last_name
+                        "last_name": last_name,
+                        "step": "password",
+                        "messages": messages + [new_msg, {"role": "assistant", "content": response_text}]
                     })
                     
-                    # Add user message
-                    new_msg = {"role": "user", "content": f"{first_name} {last_name}"}
-                    messages = current_state.values.get('messages', [])
-                    auth_graph.update_state(config, {"messages": messages + [new_msg]})
-                    
-                    # Continue graph
-                    result = auth_graph.invoke(None, config)
+                    result = None
                     
                 elif action == "submit_password":
                     password = data.get('password')
@@ -179,22 +230,18 @@ def auth_chat_stream(request):
                     # Validate password
                     is_valid, error = validate_password(password)
                     if not is_valid:
-                        yield f"data: {json.dumps({'type': 'error', 'message': error})}\\n\\n"
+                        yield f"data: {json.dumps({'type': 'error', 'message': error})}\n\n"
                         return
-                    
-                    # Update state
-                    auth_graph.update_state(config, {"password": password})
                     
                     # Add user message (don't show actual password)
                     new_msg = {"role": "user", "content": "••••••••"}
-                    messages = current_state.values.get('messages', [])
-                    auth_graph.update_state(config, {"messages": messages + [new_msg]})
+                    messages = state_values.get('messages', [])
                     
                     # Check if login or signup
-                    mode = current_state.values.get('mode')
+                    mode = state_values.get('mode')
                     if mode == 'login':
                         # Attempt login
-                        email = current_state.values.get('email')
+                        email = state_values.get('email')
                         user = authenticate(request, username=email, password=password)
                         
                         if user is None:
@@ -203,9 +250,24 @@ def auth_chat_stream(request):
                         
                         # Login successful
                         login(request, user)
+                        first_name = user.first_name
+                        response_text = f"Welcome back, {first_name}! You're all set."
                         
-                    # Continue graph
-                    result = auth_graph.invoke(None, config)
+                        auth_graph.update_state(config, {
+                            "password": password,
+                            "step": "complete",
+                            "messages": messages + [new_msg, {"role": "assistant", "content": response_text}]
+                        })
+                    else:
+                        # Signup flow - ask for interests
+                        response_text = "What brings you to All Thrive? Select all that apply: Explore, Share my skills, Invest in AI projects, or Mentor others."
+                        auth_graph.update_state(config, {
+                            "password": password,
+                            "step": "interests",
+                            "messages": messages + [new_msg, {"role": "assistant", "content": response_text}]
+                        })
+                        
+                    result = None
                     
                 elif action == "submit_interests":
                     interests = data.get('interests', [])
@@ -216,9 +278,6 @@ def auth_chat_stream(request):
                         yield f"data: {json.dumps({'type': 'error', 'message': error})}\n\n"
                         return
                     
-                    # Update state
-                    auth_graph.update_state(config, {"interests": interests})
-                    
                     # Add user message
                     interest_labels = {
                         'explore': 'Explore',
@@ -228,29 +287,39 @@ def auth_chat_stream(request):
                     }
                     selected = [interest_labels.get(i, i) for i in interests]
                     new_msg = {"role": "user", "content": ", ".join(selected)}
-                    messages = current_state.values.get('messages', [])
-                    auth_graph.update_state(config, {"messages": messages + [new_msg]})
+                    messages = state_values.get('messages', [])
                     
-                    # Continue graph
-                    result = auth_graph.invoke(None, config)
+                    # Show values
+                    values_text = """Here are the core values that guide our community:
+
+🌟 **Innovation** - We embrace new ideas and creative solutions
+🤝 **Collaboration** - We thrive together, supporting each other
+💡 **Growth** - We're always learning and improving
+🎯 **Impact** - We focus on making a real difference
+
+Do you agree to these values?"""
+                    
+                    auth_graph.update_state(config, {
+                        "interests": interests,
+                        "step": "values",
+                        "messages": messages + [new_msg, {"role": "assistant", "content": values_text}]
+                    })
+                    
+                    result = None
                     
                 elif action == "agree_values":
-                    # Update state
-                    auth_graph.update_state(config, {"agreed_to_values": True})
-                    
                     # Add user message
                     new_msg = {"role": "user", "content": "Yes, I agree"}
-                    messages = current_state.values.get('messages', [])
-                    auth_graph.update_state(config, {"messages": messages + [new_msg]})
+                    messages = state_values.get('messages', [])
                     
                     # Create user account if signup
-                    mode = current_state.values.get('mode')
+                    mode = state_values.get('mode')
                     if mode == 'signup':
-                        state = current_state.values
+                        state = state_values
                         
                         # Create user
                         user = User.objects.create_user(
-                            username=state.get('username', state['email']),  # Use chosen username or fallback to email
+                            username=state.get('username', state['email']),  # Use email as username
                             email=state['email'],
                             password=state['password'],
                             first_name=state['first_name'],
@@ -258,20 +327,26 @@ def auth_chat_stream(request):
                             role='explorer'  # Default role
                         )
                         
-                        # Store interests (you can add an interests field to User model)
-                        # For now, we'll skip storing interests
-                        
                         # Auto-login
                         login(request, user)
+                        
+                        first_name = state['first_name']
+                        response_text = f"Welcome to All Thrive, {first_name}! Your account is ready."
+                        
+                        auth_graph.update_state(config, {
+                            "agreed_to_values": True,
+                            "step": "complete",
+                            "messages": messages + [new_msg, {"role": "assistant", "content": response_text}]
+                        })
                     
-                    # Continue graph - completion message
-                    result = auth_graph.invoke(None, config)
+                    result = None
                 
                 # Get final state
                 final_state = auth_graph.get_state(config)
+                final_values = _get_state_values(final_state)
                 
                 # Stream the last message (AI response)
-                messages = final_state.values.get('messages', [])
+                messages = final_values.get('messages', [])
                 if messages:
                     last_message = messages[-1]
                     if last_message['role'] == 'assistant':
@@ -283,9 +358,9 @@ def auth_chat_stream(request):
                             yield f"data: {json.dumps({'type': 'token', 'content': word + ' '})}\n\n"
                 
                 # Send completion event with next step
-                step = final_state.values.get('step')
-                mode = final_state.values.get('mode')
-                suggested_username = final_state.values.get('suggested_username')
+                step = final_values.get('step')
+                mode = final_values.get('mode')
+                suggested_username = final_values.get('suggested_username')
                 
                 completion_data = {
                     'type': 'complete',
@@ -333,17 +408,18 @@ def auth_chat_state(request):
     
     try:
         current_state = auth_graph.get_state(config)
+        values = _get_state_values(current_state)
         
         return Response({
             'session_id': session_id,
-            'step': current_state.values.get('step'),
-            'mode': current_state.values.get('mode'),
-            'messages': current_state.values.get('messages', []),
-            'has_email': bool(current_state.values.get('email')),
-            'has_name': bool(current_state.values.get('first_name')),
-            'has_password': bool(current_state.values.get('password')),
-            'has_interests': len(current_state.values.get('interests', [])) > 0,
-            'agreed_to_values': current_state.values.get('agreed_to_values', False)
+            'step': values.get('step'),
+            'mode': values.get('mode'),
+            'messages': values.get('messages', []),
+            'has_email': bool(values.get('email')),
+            'has_name': bool(values.get('first_name')),
+            'has_password': bool(values.get('password')),
+            'has_interests': len(values.get('interests', [])) > 0,
+            'agreed_to_values': values.get('agreed_to_values', False)
         })
         
     except Exception as e:

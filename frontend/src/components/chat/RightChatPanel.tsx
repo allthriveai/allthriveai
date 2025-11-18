@@ -12,15 +12,15 @@ interface RightChatPanelProps {
 export function RightChatPanel({ isOpen, onClose, selectedMenuItem }: RightChatPanelProps) {
   const { user } = useAuth();
   
-  // Don't render anything if no menu item selected
-  if (!selectedMenuItem) return null;
-
-  const agent = createAgent(selectedMenuItem);
+  // Create agent and session hook (must be called unconditionally)
+  const agent = selectedMenuItem ? createAgent(selectedMenuItem) : createAgent('discovery');
   const chatSession = useChatSession({
     agent,
     userId: user?.id?.toString() || 'anonymous',
-    onError: (error) => console.error('Chat error:', error),
   });
+  
+  // Don't render anything if no menu item selected
+  if (!selectedMenuItem) return null;
 
   return (
     <ChatInterface

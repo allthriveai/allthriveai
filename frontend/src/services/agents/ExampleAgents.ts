@@ -1,11 +1,10 @@
 import { BaseAgent } from './BaseAgent';
-import type { ChatConfig, ChatContext } from '@/types/chat';
 
 /**
  * Simple placeholder agent - demonstrates basic implementation
  */
 export class PlaceholderAgent extends BaseAgent {
-  async handleMessage(userMessage: string, context?: ChatContext): Promise<string> {
+  async handleMessage(userMessage: string): Promise<string> {
     // Simulate a delay for API call
     await new Promise((resolve) => setTimeout(resolve, 500));
     return `Placeholder response to: "${userMessage}"`;
@@ -28,7 +27,7 @@ export class DiscoveryAgent extends BaseAgent {
     });
   }
 
-  async handleMessage(userMessage: string, context?: ChatContext): Promise<string> {
+  async handleMessage(userMessage: string): Promise<string> {
     // This would call your backend API to get discovery info
     await new Promise((resolve) => setTimeout(resolve, 800));
     return `I found some interesting agents related to "${userMessage}". In a real implementation, this would query our agent database.`;
@@ -50,7 +49,7 @@ export class NetworkAgent extends BaseAgent {
     });
   }
 
-  async handleMessage(userMessage: string, context?: ChatContext): Promise<string> {
+  async handleMessage(userMessage: string): Promise<string> {
     await new Promise((resolve) => setTimeout(resolve, 600));
     return `I can help you find people interested in "${userMessage}". This would search the network in a real implementation.`;
   }
@@ -72,7 +71,7 @@ export class LearningAgent extends BaseAgent {
     });
   }
 
-  async handleMessage(userMessage: string, context?: ChatContext): Promise<string> {
+  async handleMessage(userMessage: string): Promise<string> {
     await new Promise((resolve) => setTimeout(resolve, 700));
     return `Great question about "${userMessage}"! I found several resources that might help. In a real implementation, I would provide curated learning materials.`;
   }
@@ -93,7 +92,7 @@ export class SettingsAgent extends BaseAgent {
     });
   }
 
-  async handleMessage(userMessage: string, context?: ChatContext): Promise<string> {
+  async handleMessage(userMessage: string): Promise<string> {
     await new Promise((resolve) => setTimeout(resolve, 500));
     return `I can help you with "${userMessage}". This would apply settings changes in a real implementation.`;
   }
@@ -113,7 +112,7 @@ export const agentFactoryMap: Record<string, () => BaseAgent> = {
 export function createAgent(agentId: string): BaseAgent {
   const factory = agentFactoryMap[agentId];
   if (!factory) {
-    console.warn(`Unknown agent ID: ${agentId}, using placeholder`);
+    // Fall back to placeholder for unknown agents
     return new PlaceholderAgent({
       agentId,
       agentName: agentId,

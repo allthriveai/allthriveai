@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 
 export default function LoginPage() {
@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
+  const from = (location.state as { from?: { pathname: string }; message?: string })?.from?.pathname || '/dashboard';
 
   useEffect(() => {
     // Check for success message from signup
@@ -29,7 +29,7 @@ export default function LoginPage() {
     try {
       const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       window.location.href = `${backendUrl}/accounts/google/login/?process=login`;
-    } catch (err) {
+    } catch {
       setError('Failed to initiate Google login');
     }
   };
@@ -38,7 +38,7 @@ export default function LoginPage() {
     try {
       const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       window.location.href = `${backendUrl}/accounts/github/login/?process=login`;
-    } catch (err) {
+    } catch {
       setError('Failed to initiate GitHub login');
     }
   };

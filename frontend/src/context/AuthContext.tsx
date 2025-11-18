@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { User, AuthState } from '@/types/models';
+import { createContext, useState, useEffect, ReactNode } from 'react';
+import type { AuthState } from '@/types/models';
 import * as authService from '@/services/auth';
 import { ensureCsrfToken } from '@/services/api';
 
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
-    } catch (error) {
+    } catch {
       setAuthState({
         user: null,
         isAuthenticated: false,
@@ -57,12 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = (error && typeof error === 'object' && 'error' in error) 
+        ? String(error.error) 
+        : 'Login failed';
       setAuthState({
         user: null,
         isAuthenticated: false,
         isLoading: false,
-        error: error.error || 'Login failed',
+        error: errorMessage,
       });
       throw error;
     }
@@ -78,11 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = (error && typeof error === 'object' && 'error' in error) 
+        ? String(error.error) 
+        : 'Logout failed';
       setAuthState((prev) => ({
         ...prev,
         isLoading: false,
-        error: error.error || 'Logout failed',
+        error: errorMessage,
       }));
     }
   }
@@ -95,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: true,
       }));
-    } catch (error) {
+    } catch {
       setAuthState({
         user: null,
         isAuthenticated: false,
@@ -112,10 +118,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
+// Export context for hooks/useAuth.ts  
+export { AuthContext };

@@ -6,7 +6,7 @@ export interface ChatMessage {
   sender: 'user' | 'agent';
   content: string;
   timestamp?: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   messageType?: 'text' | 'action' | 'error' | 'suggestion';
 }
 
@@ -22,7 +22,7 @@ export interface ChatConfig {
   systemPrompt?: string;
   contextWindow?: number;
   responseTimeout?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -45,7 +45,7 @@ export interface ChatContext {
   sessionId: string;
   conversationHistory: ChatMessage[];
   agentId: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**

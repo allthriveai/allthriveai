@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { ProfileCenter } from '@/components/profile/ProfileCenter';
 
@@ -16,10 +16,6 @@ export default function ProfilePage() {
       navigate(`/${user.username}`, { replace: true });
     }
   }, [username, user?.username, navigate]);
-
-  // For now, we only show the logged-in user's profile
-  // TODO: In the future, fetch profile data based on username parameter for public profiles
-  const isOwnProfile = !username || username === user?.username;
 
   return (
     <DashboardLayout>

@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.shortcuts import redirect
+from django.views.decorators.csrf import csrf_exempt
+from csp.decorators import csp_exempt
 from rest_framework import status, generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -87,15 +89,53 @@ def current_user(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])  # Allow anyone to logout
+@csrf_exempt
 def logout_view(request):
     """Logout user and clear cookies."""
     response = Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
     
-    # Clear authentication cookies
-    response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE'])
-    response.delete_cookie('refresh_token')
-    response.delete_cookie('csrftoken')
+    # Get cookie domain from settings
+    cookie_domain = settings.COOKIE_DOMAIN
+    cookie_secure = settings.SIMPLE_JWT['AUTH_COOKIE_SECURE']
+    cookie_samesite = settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE']
+    
+    # Delete cookies with domain (how they were set in oauth_callback)
+    response.delete_cookie(
+        key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+        domain=cookie_domain,
+        path='/',
+        samesite=cookie_samesite,
+    )
+    response.delete_cookie(
+        key='refresh_token',
+        domain=cookie_domain,
+        path='/',
+        samesite=cookie_samesite,
+    )
+    response.delete_cookie(
+        key='csrftoken',
+        domain=cookie_domain,
+        path='/',
+        samesite=cookie_samesite,
+    )
+    
+    # Also delete without domain as fallback
+    response.delete_cookie(
+        key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+        path='/',
+        samesite=cookie_samesite,
+    )
+    response.delete_cookie(
+        key='refresh_token',
+        path='/',
+        samesite=cookie_samesite,
+    )
+    response.delete_cookie(
+        key='csrftoken',
+        path='/',
+        samesite=cookie_samesite,
+    )
     
     return response
 
@@ -204,6 +244,7 @@ def oauth_redirect(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@csp_exempt()
 def oauth_callback(request):
     """
     Handle OAuth callback and close popup after setting authentication cookies.
@@ -213,72 +254,36 @@ def oauth_callback(request):
         # Generate JWT tokens
         refresh = RefreshToken.for_user(request.user)
         access_token = str(refresh.access_token)
-        refresh_token = str(refresh)
+        refresh_token_str = str(refresh)
         
-        # Get username for redirect
+        # Redirect to user profile with cookies set
         username = request.user.username
+        redirect_url = f"{settings.FRONTEND_URL}/{username}"
+        response = redirect(redirect_url)
         
-        # Create response with HTML that closes the popup
-        html = f'''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Authentication Successful</title>
-        </head>
-        <body>
-            <script>
-                // After successful authentication, redirect opener to profile and close popup
-                if (window.opener) {{
-                    window.opener.location.href = 'http://localhost:3000/{username}';
-                    window.close();
-                }} else {{
-                    // If not in popup, redirect to user profile directly
-                    window.location.href = 'http://localhost:3000/{username}';
-                }}
-            </script>
-            <p>Authentication successful! This window will close automatically.</p>
-        </body>
-        </html>
-        '''
-        
-        response = HttpResponse(html)
-        
-        # Set JWT tokens in HTTP-only cookies
+        # Set JWT tokens in HTTP-only cookies with shared domain
+        cookie_domain = settings.COOKIE_DOMAIN
         response.set_cookie(
             key=settings.SIMPLE_JWT['AUTH_COOKIE'],
             value=access_token,
+            domain=cookie_domain,
             httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
             secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
             samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+            path='/',
         )
         
         response.set_cookie(
             key='refresh_token',
-            value=refresh_token,
+            value=refresh_token_str,
+            domain=cookie_domain,
             httponly=True,
             secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
             samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+            path='/',
         )
         
         return response
     else:
-        # OAuth failed, show error page that closes popup
-        html = '''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Authentication Failed</title>
-        </head>
-        <body>
-            <script>
-                if (window.opener) {
-                    window.close();
-                } else {
-                    window.location.href = 'http://localhost:3000/auth?error=oauth_failed';
-                }
-            </script>
-            <p>Authentication failed. This window will close automatically.</p>
-        </body>
-        </html>
-        '''
-        return HttpResponse(html)
+        # OAuth failed, redirect to login with error
+        return redirect(f"{settings.FRONTEND_URL}/login?error=oauth_failed")

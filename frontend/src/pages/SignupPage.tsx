@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import axios from 'axios';
 
@@ -42,7 +42,7 @@ export default function SignupPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -113,14 +113,16 @@ export default function SignupPage() {
       navigate('/login', { 
         state: { message: 'Account created successfully! Please log in.' } 
       });
-    } catch (error: any) {
-      if (error.response?.data) {
-        const apiErrors = error.response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data) {
+        const apiErrors = error.response.data as Record<string, unknown>;
         setErrors({
-          email: apiErrors.email?.[0],
-          username: apiErrors.username?.[0],
-          password: apiErrors.password?.[0],
-          form: apiErrors.detail || apiErrors.non_field_errors?.[0] || 'Signup failed. Please try again.',
+          email: Array.isArray(apiErrors.email) ? String(apiErrors.email[0]) : undefined,
+          username: Array.isArray(apiErrors.username) ? String(apiErrors.username[0]) : undefined,
+          password: Array.isArray(apiErrors.password) ? String(apiErrors.password[0]) : undefined,
+          form: (apiErrors.detail as string) || 
+                (Array.isArray(apiErrors.non_field_errors) ? String(apiErrors.non_field_errors[0]) : undefined) || 
+                'Signup failed. Please try again.',
         });
       } else {
         setErrors({ form: 'Network error. Please try again.' });

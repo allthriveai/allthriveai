@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { HeroSection } from '@/components/ui/HeroSection';
 import DisplayCards from '@/components/ui/DisplayCards';
 import { LiquidGlassButton } from '@/components/ui/LiquidGlassButton';
+import { Modal } from '@/components/ui/Modal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBrain, faLightbulb, faUsers } from '@fortawesome/free-solid-svg-icons';
 
 export default function HomePage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const handleInvitationClick = () => {
-    // TODO: Add invitation request functionality
-    console.log('Request invitation clicked');
+    setIsModalOpen(true);
   };
 
   const cards = [
@@ -38,32 +41,47 @@ export default function HomePage() {
   ];
 
   return (
-    <HeroSection
-      title="Grow Your AI Curiosity"
-      highlightText="In Community"
-      description="An AI playground for collaborative learning and project showcases"
-      buttonText="Request invitation to join"
-      onButtonClick={handleInvitationClick}
-      colors={[
-        "#4991e5",  // brand blue
-        "#39bdd6",  // brand cyan
-        "#3bd4cb",  // brand teal
-        "#00a4bd",  // primary 600
-        "#00bda5",  // primary 500
-        "#080b12",  // brand dark
-      ]}
-      distortion={0.7}
-      swirl={0.5}
-      speed={0.3}
-      veilOpacity="bg-black/30"
-      className="bg-brand-dark"
-      titleClassName="bg-gradient-to-r from-white via-primary-300 to-accent-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient-shift"
-      rightContent={<DisplayCards cards={cards} />}
-      customButton={
-        <LiquidGlassButton onClick={handleInvitationClick} variant="primary" className="max-w-[620px] w-full">
-          Request invitation to join
-        </LiquidGlassButton>
-      }
-    />
+    <>
+      <HeroSection
+        title="Grow Your AI Curiosity"
+        highlightText="In Community"
+        description="An AI playground for collaborative learning and project showcases"
+        buttonText="Request invitation to join"
+        onButtonClick={handleInvitationClick}
+        colors={[
+          "#4991e5",  // brand blue
+          "#39bdd6",  // brand cyan
+          "#3bd4cb",  // brand teal
+          "#00a4bd",  // primary 600
+          "#00bda5",  // primary 500
+          "#080b12",  // brand dark
+        ]}
+        distortion={0.7}
+        swirl={0.5}
+        speed={0.3}
+        veilOpacity="bg-black/30"
+        className="bg-brand-dark"
+        titleClassName="bg-gradient-to-r from-white via-primary-300 to-accent-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient-shift"
+        rightContent={<DisplayCards cards={cards} />}
+        customButton={
+          <LiquidGlassButton onClick={handleInvitationClick} variant="primary" className="max-w-[620px] w-full">
+            Request invitation to join
+          </LiquidGlassButton>
+        }
+      />
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Coming Soon"
+      >
+        <p className="text-lg mb-4">
+          We're putting the finishing touches on our invitation system!
+        </p>
+        <p className="text-gray-400">
+          Stay tuned for updates. We'll be opening invitations very soon.
+        </p>
+      </Modal>
+    </>
   );
 }

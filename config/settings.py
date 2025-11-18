@@ -201,12 +201,15 @@ ACCOUNT_EMAIL_VERIFICATION = 'optional'
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_LOGIN_ON_GET = True  # Skip intermediate page and go directly to provider
+SOCIALACCOUNT_STORE_TOKENS = False  # Don't store OAuth tokens in DB
 
 # Redirect after OAuth login
 LOGIN_REDIRECT_URL = '/api/v1/auth/callback/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 
 # OAuth Provider Settings
+# Note: Client ID and Secret are stored in database via SocialApp model
+# See: python manage.py setup_github_oauth or Django Admin
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': [
@@ -216,25 +219,22 @@ SOCIALACCOUNT_PROVIDERS = {
         'AUTH_PARAMS': {
             'access_type': 'online',
         },
-        'APP': {
-            'client_id': config('GOOGLE_CLIENT_ID', default=''),
-            'secret': config('GOOGLE_CLIENT_SECRET', default=''),
-        }
     },
     'github': {
         'SCOPE': [
             'user',
             'user:email',
         ],
-        'APP': {
-            'client_id': config('GITHUB_CLIENT_ID', default=''),
-            'secret': config('GITHUB_CLIENT_SECRET', default=''),
-        }
     }
 }
 
 # JWT Settings
 from datetime import timedelta
+
+# Cookie domain for cross-subdomain support
+# For localhost:3000 and localhost:8000 to share cookies, use 'localhost'
+# For production (e.g., api.example.com and app.example.com), use '.example.com'
+COOKIE_DOMAIN = config('COOKIE_DOMAIN', default='localhost')
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
@@ -246,20 +246,23 @@ SIMPLE_JWT = {
     'AUTH_COOKIE_HTTP_ONLY': True,
     'AUTH_COOKIE_SAMESITE': 'Lax',  # Lax for cross-origin OAuth flows
     'AUTH_COOKIE_PATH': '/',
-    'AUTH_COOKIE_DOMAIN': None,  # Let browser determine from request
+    'AUTH_COOKIE_DOMAIN': COOKIE_DOMAIN,
 }
+
+# Frontend URL for OAuth redirects
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
 
 # Session settings for first-party cookies
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SAMESITE = 'Lax'  # Lax required for OAuth flows
-SESSION_COOKIE_DOMAIN = None  # Let browser determine
+SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN
 
 # CSRF settings
 CSRF_COOKIE_HTTPONLY = False  # Must be False so JavaScript can read it
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SAMESITE = 'Lax'  # Lax required for OAuth callbacks
-CSRF_COOKIE_DOMAIN = None  # Let browser determine
+CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN
 CSRF_USE_SESSIONS = False  # Use cookie-based CSRF
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_TRUSTED_ORIGINS = config(

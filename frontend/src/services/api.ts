@@ -31,9 +31,8 @@ api.interceptors.request.use(
 
     if (needsCsrf) {
       const csrfToken = getCookie('csrftoken');
-      if (csrfToken) {
-        // Axios headers can be mutated directly; ensure object exists
-        (config.headers as any)['X-CSRFToken'] = csrfToken;
+      if (csrfToken && config.headers) {
+        config.headers['X-CSRFToken'] = csrfToken;
       }
     }
 
