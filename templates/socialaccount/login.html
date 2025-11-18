@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In with {{ provider.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">All Thrive</h1>
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Sign In with {{ provider.name }}</h2>
+            <p class="text-gray-600">You are about to sign in using {{ provider.name }}</p>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if process == "connect" %}
+                <input type="hidden" name="process" value="connect">
+            {% else %}
+                <input type="hidden" name="process" value="login">
+            {% endif %}
+
+            <button 
+                type="submit"
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+                Continue with {{ provider.name }}
+            </button>
+        </form>
+
+        <div class="mt-6 text-center">
+            <p class="text-sm text-gray-500">
+                By continuing, you agree to our Terms of Service and Privacy Policy
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Auto-submit immediately to go to Google
+        document.querySelector('form').submit();
+    </script>
+</body>
+</html>

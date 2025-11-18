@@ -1,11 +1,11 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.db import connections
 from django.db.utils import OperationalError
-from .models import Conversation, Message
-from .serializers import ConversationSerializer, MessageSerializer
+from .models import Conversation, Message, Project
+from .serializers import ConversationSerializer, MessageSerializer, ProjectSerializer
 
 
 @api_view(['GET'])
@@ -78,3 +78,23 @@ class MessageViewSet(viewsets.ReadOnlyModelViewSet):
         if self.request.user.is_authenticated:
             return Message.objects.filter(conversation__user=self.request.user)
         return Message.objects.none()
+
+
+class ProjectViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing user projects.
+
+    All projects are scoped to the authenticated user; `user` is never
+    client-controlled.
+    """
+
+    serializer_class = ProjectSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Only return projects for the current user
+        return Project.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Bind project to the authenticated user and let the model handle slug
+        # generation / uniqueness on save.
+        serializer.save(user=self.request.user)
