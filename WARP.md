@@ -31,7 +31,7 @@ allthriveai/
 ### Key Files
 
 - `manage.py` - Django management script
-- `celery.py` - Celery task queue configuration
+- `config/celery.py` - Celery task queue configuration
 - `docker-compose.yml` - Multi-service Docker setup
 - `Makefile` - Development commands and shortcuts
 - `pre-push` - Git hook for pre-push validations

@@ -67,7 +67,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A celery worker --loglevel=info
+    command: celery -A config worker --loglevel=info
 
   frontend:
     image: node:20-alpine
