@@ -186,18 +186,12 @@ export default function PromptBattlePage() {
         )}
 
         {/* Action Buttons */}
-        <div className="mb-8 flex gap-4">
+        <div className="mb-8">
           <button
             onClick={() => setShowInviteModal(true)}
             className="btn-primary"
           >
             Challenge User
-          </button>
-          <button
-            onClick={() => navigate('/play/prompt-battle/leaderboard')}
-            className="btn-secondary"
-          >
-            Leaderboard
           </button>
         </div>
 

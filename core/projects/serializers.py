@@ -105,8 +105,16 @@ class ProjectSerializer(serializers.ModelSerializer):
         return value
 
     def validate_thumbnail_url(self, value):
-        """Validate thumbnail URL if provided."""
+        """Validate thumbnail URL if provided.
+
+        Accepts both absolute URLs (https://...) and relative paths (/path/to/image).
+        """
         if value:
+            # Allow relative paths (starting with /)
+            if value.startswith("/"):
+                return value
+
+            # Validate absolute URLs
             from django.core.exceptions import ValidationError as DjangoValidationError
             from django.core.validators import URLValidator
 
@@ -114,5 +122,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             try:
                 validator(value)
             except DjangoValidationError:
-                raise serializers.ValidationError("Invalid thumbnail URL.")
+                raise serializers.ValidationError(
+                    "Invalid thumbnail URL. Must be a valid URL or relative path starting with /."
+                )
         return value

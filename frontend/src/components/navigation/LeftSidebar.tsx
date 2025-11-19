@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -48,6 +48,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
   const { user, logout, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const [openSections, setOpenSections] = useState<string[]>(['EXPLORE']);
   const [openSubItems, setOpenSubItems] = useState<string[]>([]);
   const [showComingSoon, setShowComingSoon] = useState(false);
@@ -58,11 +59,38 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
     console.log('LeftSidebar user:', user);
   }, [user]);
 
+  // Auto-expand section containing active menu item
+  useEffect(() => {
+    menuSections.forEach(section => {
+      const hasActiveItem = section.items.some(item => {
+        if (isMenuItemActive(item)) return true;
+        if (item.subItems) {
+          return item.subItems.some(subItem => isMenuItemActive(subItem));
+        }
+        return false;
+      });
+
+      if (hasActiveItem && !openSections.includes(section.title)) {
+        setOpenSections(prev => [...prev, section.title]);
+      }
+
+      // Auto-expand sub-items containing active item
+      section.items.forEach(item => {
+        if (item.subItems) {
+          const hasActiveSubItem = item.subItems.some(subItem => isMenuItemActive(subItem));
+          if (hasActiveSubItem && !openSubItems.includes(item.label)) {
+            setOpenSubItems(prev => [...prev, item.label]);
+          }
+        }
+      });
+    });
+  }, [location.pathname, location.search, user?.username]);
+
   const toggleSection = (title: string) => {
     setOpenSections(prev =>
       prev.includes(title)
         ? prev.filter(s => s !== title)
-        : [...prev, title]
+        : [title] // Only keep the clicked section open
     );
   };
 
@@ -85,6 +113,42 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
 
   const handleComingSoon = () => {
     setShowComingSoon(true);
+  };
+
+  // Helper function to check if a menu item is active
+  const isMenuItemActive = (item: MenuItem): boolean => {
+    const currentPath = location.pathname;
+    const currentSearch = location.search;
+
+    // Check if item has a direct path match (not # placeholders)
+    if (item.href && item.href !== '#') {
+      return currentPath === item.href;
+    }
+
+    // Check for specific route patterns
+    if (item.label === 'Quick Quizzes' && currentPath === '/quick-quizzes') return true;
+    if (item.label === 'Prompt Battle' && currentPath === '/play/prompt-battle') return true;
+    if (item.label === 'Chat' && currentSearch.includes('chat=')) return true;
+
+    // My Account - but NOT sub-pages like /referrals
+    if (item.label === 'My Account' && currentPath === '/account/settings' && !currentSearch) return true;
+
+    // My Referral Codes - specific settings sub-page
+    if (item.label === 'My Referral Codes' && currentPath === '/account/settings/referrals') return true;
+
+    // Check profile and projects - only when on the actual profile page
+    if (user?.username && currentPath === `/${user.username}`) {
+      // My Profile is active when on showcase tab OR no tab specified (default)
+      if (item.label === 'My Profile') {
+        return currentSearch.includes('tab=showcase') || !currentSearch.includes('tab=');
+      }
+      // My Projects is active when explicitly on playground tab
+      if (item.label === 'My Projects') {
+        return currentSearch.includes('tab=playground');
+      }
+    }
+
+    return false;
   };
 
   useEffect(() => {
@@ -335,8 +399,12 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
             {/* Section Header */}
             <button
               onClick={() => toggleSection(section.title)}
-              className={`w-full flex items-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-300 transition-colors ${
+              className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
                 isOpen ? 'justify-between' : 'justify-center'
+              } ${
+                openSections.includes(section.title)
+                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'
               }`}
               title={!isOpen ? section.title : undefined}
             >
@@ -365,7 +433,11 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                       <>
                         <button
                           onClick={() => toggleSubItem(item.label)}
-                          className="w-full flex items-center justify-between px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-white/10 dark:hover:bg-white/5 rounded-md transition-colors"
+                          className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all ${
+                            openSubItems.includes(item.label)
+                              ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30 font-medium'
+                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100'
+                          }`}
                         >
                           <span>{item.label}</span>
                           {openSubItems.includes(item.label) ? (
@@ -388,7 +460,11 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                                     handleComingSoon();
                                   }
                                 }}
-                                className="block px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-white/10 dark:hover:bg-white/5 rounded-md transition-colors"
+                                className={`block px-3 py-2 text-sm rounded-lg transition-all ${
+                                  isMenuItemActive(subItem)
+                                    ? 'bg-primary-100 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 font-semibold'
+                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal'
+                                }`}
                               >
                                 {subItem.label}
                               </a>
@@ -408,7 +484,11 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                             handleComingSoon();
                           }
                         }}
-                        className="block px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-white/10 dark:hover:bg-white/5 rounded-md transition-colors"
+                        className={`block px-3 py-2 text-sm rounded-lg transition-all ${
+                          isMenuItemActive(item)
+                            ? 'bg-primary-100 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 font-semibold'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal hover:font-medium'
+                        }`}
                       >
                         {item.label}
                       </a>

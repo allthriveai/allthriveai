@@ -13,6 +13,9 @@ export interface User {
   roleDisplay: string;
   avatarUrl?: string;
   bio?: string;
+  tagline?: string;
+  location?: string;
+  pronouns?: string;
   websiteUrl?: string;
   calendarUrl?: string;
   linkedinUrl?: string;

@@ -14,6 +14,7 @@ interface ProjectCardProps {
   isSelected?: boolean;
   onSelect?: (projectId: number) => void;
   isOwner?: boolean;  // Is the current user the owner of this project
+  variant?: 'default' | 'masonry';  // Layout variant
 }
 
 const typeIcons = {
@@ -30,7 +31,7 @@ const typeLabels = {
   other: 'Project',
 };
 
-export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false }: ProjectCardProps) {
+export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default' }: ProjectCardProps) {
   const navigate = useNavigate();
   const Icon = typeIcons[project.type];
   const projectUrl = `/${project.username}/${project.slug}`;
@@ -46,6 +47,87 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const cardProps = selectionMode
     ? { onClick: handleClick, style: { cursor: 'pointer' } }
     : { to: projectUrl };
+
+  // Masonry variant - image-focused with hover overlay
+  if (variant === 'masonry') {
+    return (
+      <CardWrapper
+        {...cardProps as any}
+        className={`block relative rounded-xl overflow-hidden group ${
+          isSelected ? 'ring-4 ring-primary-500' : ''
+        }`}
+      >
+        {/* Selection checkbox */}
+        {selectionMode && (
+          <div className="absolute top-3 left-3 z-20">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onSelect && onSelect(project.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="w-5 h-5 rounded border-2 border-white shadow-lg cursor-pointer"
+            />
+          </div>
+        )}
+
+        {/* Main image */}
+        <div className="relative w-full">
+          <img
+            src={project.thumbnailUrl || '/allthrive-placeholder.svg'}
+            alt={project.title}
+            className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+
+          {/* Edit button - always visible for owner */}
+          {isOwner && !selectionMode && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate(`/${project.username}/${project.slug}/edit`);
+              }}
+              className="absolute top-3 right-3 p-2 rounded-full bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 text-primary-600 dark:text-primary-400 shadow-lg transition-all hover:scale-110 z-10"
+              title="Edit project"
+            >
+              <PencilIcon className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Hover overlay with description */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 z-10">
+            <h3 className="text-lg font-bold text-white mb-2">
+              {project.title}
+            </h3>
+            {project.description && (
+              <p className="text-sm text-white/90 line-clamp-3">
+                {project.description}
+              </p>
+            )}
+            {/* Tags on hover */}
+            {project.content?.tags && project.content.tags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {project.content.tags.slice(0, 3).map((tag, index) => (
+                  <span
+                    key={index}
+                    className="px-2 py-1 text-xs rounded-md bg-white/20 text-white backdrop-blur-sm"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Small title always visible at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 group-hover:opacity-0 transition-opacity duration-300">
+            <h3 className="text-sm font-semibold text-white line-clamp-1">
+              {project.title}
+            </h3>
+          </div>
+        </div>
+      </CardWrapper>
+    );
+  }
 
   return (
     <CardWrapper
@@ -68,18 +150,12 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       )}
 
       {/* Thumbnail or placeholder */}
-      <div className="relative aspect-video bg-gradient-to-br from-primary-500/20 to-secondary-500/20 overflow-hidden">
-        {project.thumbnailUrl ? (
-          <img
-            src={project.thumbnailUrl}
-            alt={project.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Icon className="w-16 h-16 text-slate-400 dark:text-slate-600" />
-          </div>
-        )}
+      <div className="relative aspect-video overflow-hidden">
+        <img
+          src={project.thumbnailUrl || '/allthrive-placeholder.svg'}
+          alt={project.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        />
 
         {/* Type badge and Edit button */}
         <div className="absolute top-3 right-3 flex items-center gap-2">

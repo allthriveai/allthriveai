@@ -12,6 +12,7 @@ class UserRole(models.TextChoices):
     MENTOR = "mentor", "Mentor"
     PATRON = "patron", "Patron"
     ADMIN = "admin", "Admin"
+    BOT = "bot", "Bot"
 
 
 class User(AbstractUser):
@@ -64,8 +65,8 @@ class User(AbstractUser):
             if len(self.bio) > 5000:
                 raise ValidationError("Bio must be less than 5000 characters.")
 
-        # Validate avatar_url is from allowed domains
-        if self.avatar_url:
+        # Validate avatar_url is from allowed domains (skip for bots)
+        if self.avatar_url and self.role != UserRole.BOT:
             allowed_domains = [
                 "githubusercontent.com",
                 "gravatar.com",
@@ -111,6 +112,10 @@ class User(AbstractUser):
     @property
     def is_admin_role(self):
         return self.role == UserRole.ADMIN or self.is_superuser
+
+    @property
+    def is_bot(self):
+        return self.role == UserRole.BOT
 
     def has_role_permission(self, required_role: str) -> bool:
         """Check if user has at least the required role level."""

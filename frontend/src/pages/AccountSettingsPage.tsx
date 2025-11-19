@@ -11,6 +11,9 @@ interface ProfileFormData {
   firstName: string;
   lastName: string;
   bio: string;
+  tagline: string;
+  location: string;
+  pronouns: string;
   avatarUrl: string;
   websiteUrl: string;
   calendarUrl: string;
@@ -23,6 +26,9 @@ export default function AccountSettingsPage() {
     firstName: '',
     lastName: '',
     bio: '',
+    tagline: '',
+    location: '',
+    pronouns: '',
     avatarUrl: '',
     websiteUrl: '',
     calendarUrl: '',
@@ -39,6 +45,9 @@ export default function AccountSettingsPage() {
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         bio: user.bio || '',
+        tagline: user.tagline || '',
+        location: user.location || '',
+        pronouns: user.pronouns || '',
         avatarUrl: user.avatarUrl || '',
         websiteUrl: user.websiteUrl || '',
         calendarUrl: user.calendarUrl || '',
@@ -71,6 +80,9 @@ export default function AccountSettingsPage() {
         first_name: formData.firstName,
         last_name: formData.lastName,
         bio: formData.bio,
+        tagline: formData.tagline,
+        location: formData.location,
+        pronouns: formData.pronouns,
         avatar_url: formData.avatarUrl,
         website_url: formData.websiteUrl,
         calendar_url: formData.calendarUrl,
@@ -192,7 +204,58 @@ export default function AccountSettingsPage() {
                       onChange={handleChange}
                       className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
-                  </div>
+                </div>
+              </div>
+
+                <div>
+                  <label htmlFor="pronouns" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Pronouns <span className="text-slate-500 dark:text-slate-400">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="pronouns"
+                    name="pronouns"
+                    value={formData.pronouns}
+                    onChange={handleChange}
+                    placeholder="e.g. she/her, he/him, they/them"
+                    maxLength={50}
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="tagline" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Tagline <span className="text-slate-500 dark:text-slate-400">(max 150 characters)</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tagline"
+                    name="tagline"
+                    value={formData.tagline}
+                    onChange={handleChange}
+                    placeholder="e.g. AI Engineer building creative tools"
+                    maxLength={150}
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {formData.tagline.length} / 150 characters
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="location" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    placeholder='e.g. San Francisco, CA or "Remote"'
+                    maxLength={100}
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
                 </div>
 
                 <div>
