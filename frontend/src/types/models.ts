@@ -186,3 +186,108 @@ export interface UserInteraction {
   extractedKeywords: string[];
   createdAt: string;
 }
+
+// Tool types
+export type ToolCategory = 'chat' | 'code' | 'image' | 'video' | 'audio' | 'writing' | 'research' | 'productivity' | 'data' | 'design' | 'other';
+export type PricingModel = 'free' | 'freemium' | 'subscription' | 'pay_per_use' | 'enterprise' | 'open_source';
+
+export interface ToolFeature {
+  title: string;
+  description: string;
+}
+
+export interface ToolUseCase {
+  title: string;
+  description: string;
+  example?: string;
+}
+
+export interface Tool {
+  id: number;
+  name: string;
+  slug: string;
+  tagline: string;
+  description: string;
+
+  // Categorization
+  category: ToolCategory;
+  categoryDisplay: string;
+  tags: string[];
+
+  // Media
+  logoUrl?: string;
+  bannerUrl?: string;
+  screenshotUrls: string[];
+  demoVideoUrl?: string;
+
+  // Links
+  websiteUrl: string;
+  documentationUrl?: string;
+  pricingUrl?: string;
+  githubUrl?: string;
+  twitterHandle?: string;
+  discordUrl?: string;
+
+  // Pricing
+  pricingModel: PricingModel;
+  pricingModelDisplay: string;
+  startingPrice?: string;
+  hasFreeTier: boolean;
+  requiresApiKey: boolean;
+  requiresWaitlist: boolean;
+
+  // Content Sections
+  overview?: string;
+  keyFeatures: ToolFeature[];
+  useCases: ToolUseCase[];
+  usageTips: string[];
+  bestPractices: string[];
+  limitations: string[];
+  alternatives: string[];
+
+  // Technical
+  modelInfo: Record<string, any>;
+  integrations: string[];
+  apiAvailable: boolean;
+  languagesSupported: string[];
+
+  // SEO
+  metaDescription: string;
+  keywords: string[];
+
+  // Status & Metrics
+  isActive: boolean;
+  isFeatured: boolean;
+  isVerified: boolean;
+  viewCount: number;
+  popularityScore: number;
+  averageRating?: number;
+  reviewCount: number;
+  bookmarkCount: number;
+
+  // Taxonomy Link
+  taxonomy?: number;
+
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+  lastVerifiedAt?: string;
+}
+
+export interface ToolReview {
+  id: number;
+  tool: number;
+  rating: number;
+  title: string;
+  content: string;
+  pros: string[];
+  cons: string[];
+  useCase?: string;
+  userUsername: string;
+  userAvatarUrl?: string;
+  userRole: string;
+  isVerifiedUser: boolean;
+  helpfulCount: number;
+  createdAt: string;
+  updatedAt: string;
+}

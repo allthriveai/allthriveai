@@ -3,21 +3,28 @@ import logging
 from django.db import transaction
 from django.db.models import Count, Q
 from rest_framework import status, viewsets
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import UserRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 from .models import Referral, ReferralCode, ReferralStatus
 from .serializers import ReferralCodeSerializer, ReferralSerializer, ReferralStatsSerializer
+from .utils import ReferralCodeValidator, check_code_availability, generate_default_referral_code
 
 logger = logging.getLogger(__name__)
 
 
 class ReferralRegenerateThrottle(UserRateThrottle):
-    """Limit referral code regeneration to prevent abuse."""
+    """Limit referral code changes to prevent abuse."""
 
-    rate = "3/day"
+    rate = "5/day"
+
+
+class ReferralValidationThrottle(AnonRateThrottle):
+    """Limit public referral code validation to prevent enumeration."""
+
+    rate = "20/minute"
 
 
 class ReferralCodeViewSet(viewsets.ModelViewSet):
@@ -51,29 +58,30 @@ class ReferralCodeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def _create_unique_referral_code(self, user, max_attempts=10):
-        """Create a referral code using username with fallback."""
+        """Create a referral code with smart defaults."""
         from django.db import IntegrityError
 
-        # Try to use username as code (case-insensitive, uppercase)
-        username_code = user.username.upper()
+        # Generate a clean default code from username
+        default_code = generate_default_referral_code(user.username)
 
         for attempt in range(max_attempts):
             try:
                 if attempt == 0:
-                    # First attempt: use username
-                    code = username_code
+                    code = default_code
                 else:
-                    # Fallback: username + number suffix
-                    code = f"{username_code}{attempt}"
+                    # Add suffix on collision
+                    from django.utils.crypto import get_random_string
+
+                    suffix = get_random_string(3, allowed_chars="23456789")
+                    code = f"{default_code[:15]}{suffix}"
 
                 referral_code = ReferralCode.objects.create(user=user, code=code)
                 logger.info(f"Created referral code {referral_code.code} for user {user.username}")
                 return referral_code
             except IntegrityError:
-                # Code collision - try with suffix
                 logger.warning(f"Referral code collision on attempt {attempt + 1} for user {user.username}")
                 if attempt == max_attempts - 1:
-                    raise ValueError(f"Unable to generate unique referral code for username {user.username}")
+                    raise ValueError(f"Unable to generate unique referral code for user {user.username}")
                 continue
 
         raise ValueError("Unable to generate unique referral code")
@@ -125,30 +133,70 @@ class ReferralCodeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=["post"], throttle_classes=[ReferralRegenerateThrottle])
-    def regenerate(self, request):
-        """Regenerate the user's referral code.
+    def update_code(self, request):
+        """Update the user's referral code to a custom vanity code.
 
-        This deactivates the old code and creates a new one.
-        Use with caution as old links will stop working.
+        Allows users to set a memorable, custom referral code.
+        The code must be:
+        - 3-20 characters
+        - Alphanumeric with hyphens/underscores
+        - Not profane or reserved
+        - Unique (not already taken)
 
-        Rate limited to 3 times per day to prevent abuse.
+        Rate limited to 5 times per day to prevent abuse.
         """
+        custom_code = request.data.get("code", "").strip().upper()
+
+        if not custom_code:
+            return Response({"error": "Code is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate the code
+        is_valid, error_msg = ReferralCodeValidator.validate(custom_code)
+        if not is_valid:
+            return Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check availability
+        if not check_code_availability(custom_code, exclude_user_id=request.user.id):
+            return Response({"error": "This code is already taken"}, status=status.HTTP_400_BAD_REQUEST)
+
         with transaction.atomic():
             try:
-                # Use select_for_update to prevent race conditions
-                old_code = ReferralCode.objects.select_for_update().get(user=request.user)
-                old_code_value = old_code.code
-                old_code.is_active = False
-                old_code.save(update_fields=["is_active"])
-                logger.info(f"User {request.user.username} deactivated referral code: {old_code_value}")
+                # Update existing code
+                referral_code = ReferralCode.objects.select_for_update().get(user=request.user)
+                old_code = referral_code.code
+                referral_code.code = custom_code
+                referral_code.save(update_fields=["code"])
+                logger.info(f"User {request.user.username} changed referral code from {old_code} to {custom_code}")
             except ReferralCode.DoesNotExist:
-                logger.info(f"User {request.user.username} generating first referral code via regenerate")
+                # Create new code with custom value
+                referral_code = ReferralCode.objects.create(user=request.user, code=custom_code)
+                logger.info(f"User {request.user.username} created custom referral code: {custom_code}")
 
-            new_code = self._create_unique_referral_code(request.user)
-            logger.info(f"User {request.user.username} generated new referral code: {new_code.code}")
-
-        serializer = self.get_serializer(new_code)
+        serializer = self.get_serializer(referral_code)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["post"])
+    def check_availability(self, request):
+        """Check if a referral code is available.
+
+        Allows users to preview if their desired code is available before saving.
+        """
+        code = request.data.get("code", "").strip().upper()
+
+        if not code:
+            return Response({"available": False, "error": "Code is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate format
+        is_valid, error_msg = ReferralCodeValidator.validate(code)
+        if not is_valid:
+            return Response({"available": False, "error": error_msg}, status=status.HTTP_200_OK)
+
+        # Check availability
+        is_available = check_code_availability(code, exclude_user_id=request.user.id)
+
+        return Response(
+            {"available": is_available, "code": code, "error": None if is_available else "This code is already taken"}
+        )
 
 
 class ReferralViewSet(viewsets.ReadOnlyModelViewSet):
@@ -170,6 +218,7 @@ class ReferralViewSet(viewsets.ReadOnlyModelViewSet):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])  # Must be public for signup flow
+@throttle_classes([ReferralValidationThrottle])  # Rate limit to prevent enumeration
 def validate_referral_code(request, code):
     """Validate a referral code.
 
@@ -179,7 +228,7 @@ def validate_referral_code(request, code):
     Public endpoint (no authentication required) so new users can validate
     codes before creating an account.
 
-    Case-insensitive lookup for username-based codes.
+    Rate limited to 20 requests per minute to prevent username enumeration attacks.
     """
     try:
         # Case-insensitive lookup for username-based codes

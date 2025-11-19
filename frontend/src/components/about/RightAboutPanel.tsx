@@ -39,7 +39,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
           </div>
 
           {/* Main Content */}
-          <div className="p-6 space-y-8">
+          <div id="about-us" className="p-6 space-y-8">
             {/* Hero Statement */}
             <div className="bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20 p-6 rounded-lg border-l-4 border-primary-500">
               <p className="text-xl font-bold text-gray-900 dark:text-white leading-relaxed">

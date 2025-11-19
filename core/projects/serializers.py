@@ -31,6 +31,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             "type",
             "is_showcase",
             "is_archived",
+            "is_published",
+            "published_at",
             "thumbnail_url",
             "content",
             "created_at",

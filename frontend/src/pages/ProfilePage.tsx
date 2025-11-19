@@ -9,13 +9,13 @@ export default function ProfilePage() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab') as 'showcase' | 'playground' | 'activity' | null;
-  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'activity'>(tabParam || 'showcase');
+  const tabParam = searchParams.get('tab') as 'showcase' | 'playground' | 'activity' | 'achievements' | null;
+  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'activity' | 'achievements'>(tabParam || 'showcase');
   const isOwnProfile = username === user?.username;
 
   // Update tab when query parameter changes
   useEffect(() => {
-    if (tabParam && ['showcase', 'playground', 'activity'].includes(tabParam)) {
+    if (tabParam && ['showcase', 'playground', 'activity', 'achievements'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [tabParam]);

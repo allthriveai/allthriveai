@@ -21,11 +21,7 @@ interface RichTextEditorProps {
 export function RichTextEditor({ content, onChange, placeholder, className = '' }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: {
-          levels: [2, 3],
-        },
-      }),
+      StarterKit,
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {

@@ -1,11 +1,16 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import type { Project } from '@/types/models';
 import {
   CodeBracketIcon,
   PhotoIcon,
   ChatBubbleLeftRightIcon,
   DocumentTextIcon,
-  PencilIcon
+  PencilIcon,
+  EllipsisVerticalIcon,
+  TrashIcon,
+  EyeSlashIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
 
 interface ProjectCardProps {
@@ -15,6 +20,8 @@ interface ProjectCardProps {
   onSelect?: (projectId: number) => void;
   isOwner?: boolean;  // Is the current user the owner of this project
   variant?: 'default' | 'masonry';  // Layout variant
+  onDelete?: (projectId: number) => void;
+  onToggleShowcase?: (projectId: number) => void;
 }
 
 const typeIcons = {
@@ -31,8 +38,9 @@ const typeLabels = {
   other: 'Project',
 };
 
-export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default' }: ProjectCardProps) {
+export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase }: ProjectCardProps) {
   const navigate = useNavigate();
+  const [showMenu, setShowMenu] = useState(false);
   const Icon = typeIcons[project.type];
   const projectUrl = `/${project.username}/${project.slug}`;
 
@@ -78,19 +86,72 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
             className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
           />
 
-          {/* Edit button - always visible for owner */}
+          {/* Menu button for owner */}
           {isOwner && !selectionMode && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                navigate(`/${project.username}/${project.slug}/edit`);
-              }}
-              className="absolute top-3 right-3 p-2 rounded-full bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 text-primary-600 dark:text-primary-400 shadow-lg transition-all hover:scale-110 z-10"
-              title="Edit project"
-            >
-              <PencilIcon className="w-4 h-4" />
-            </button>
+            <div className="absolute top-3 right-3 z-20">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }}
+                className="p-2 rounded-full bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 shadow-lg transition-all hover:scale-110"
+                title="Options"
+              >
+                <EllipsisVerticalIcon className="w-4 h-4" />
+              </button>
+
+              {/* Dropdown menu */}
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      navigate(`/${project.username}/${project.slug}/edit`);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      onToggleShowcase && onToggleShowcase(project.id);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    {project.isShowcase ? (
+                      <>
+                        <EyeSlashIcon className="w-4 h-4" />
+                        Remove from Showcase
+                      </>
+                    ) : (
+                      <>
+                        <EyeIcon className="w-4 h-4" />
+                        Add to Showcase
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      onDelete && onDelete(project.id);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 border-t border-gray-200 dark:border-gray-700"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Hover overlay with description */}
@@ -157,34 +218,78 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
 
-        {/* Type badge and Edit button */}
+        {/* Type badge and Menu button */}
         <div className="absolute top-3 right-3 flex items-center gap-2">
           {isOwner && !selectionMode && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                navigate(`/${project.username}/${project.slug}/edit`);
-              }}
-              className="p-2 rounded-full bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 text-primary-600 dark:text-primary-400 shadow-lg transition-all hover:scale-110"
-              title="Edit project"
-            >
-              <PencilIcon className="w-4 h-4" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }}
+                className="p-2 rounded-full bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 shadow-lg transition-all hover:scale-110"
+                title="Options"
+              >
+                <EllipsisVerticalIcon className="w-4 h-4" />
+              </button>
+
+              {/* Dropdown menu */}
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      navigate(`/${project.username}/${project.slug}/edit`);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      onToggleShowcase && onToggleShowcase(project.id);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    {project.isShowcase ? (
+                      <>
+                        <EyeSlashIcon className="w-4 h-4" />
+                        Remove from Showcase
+                      </>
+                    ) : (
+                      <>
+                        <EyeIcon className="w-4 h-4" />
+                        Add to Showcase
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      onDelete && onDelete(project.id);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 border-t border-gray-200 dark:border-gray-700"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
           )}
           <span className="px-2 py-1 text-xs font-medium rounded-full glass-strong border border-white/20 text-slate-700 dark:text-slate-300">
             {typeLabels[project.type]}
           </span>
         </div>
-
-        {/* Showcase badge - shift left in selection mode */}
-        {project.isShowcase && !selectionMode && (
-          <div className="absolute top-3 left-3">
-            <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-500/90 text-white">
-              ⭐ Showcase
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Content */}

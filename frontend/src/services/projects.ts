@@ -3,41 +3,36 @@ import type { Project, ProjectPayload, PaginatedResponse } from '@/types/models'
 import type { ApiResponse } from '@/types/api';
 
 /**
- * Transform backend snake_case fields to frontend camelCase
+ * Transform backend data to frontend Project type
+ * Note: API interceptor already converts snake_case to camelCase,
+ * so we just need to normalize the data structure
  */
-function transformProject(backendProject: any): Project {
+function transformProject(data: any): Project {
   return {
-    id: backendProject.id,
-    username: backendProject.username,
-    title: backendProject.title,
-    slug: backendProject.slug,
-    description: backendProject.description || '',
-    type: backendProject.type,
-    isShowcase: backendProject.is_showcase,
-    isArchived: backendProject.is_archived,
-    isPublished: backendProject.is_published ?? false,
-    publishedAt: backendProject.published_at,
-    thumbnailUrl: backendProject.thumbnail_url,
-    content: backendProject.content || {},
-    createdAt: backendProject.created_at,
-    updatedAt: backendProject.updated_at,
+    id: data.id,
+    username: data.username,
+    title: data.title,
+    slug: data.slug,
+    description: data.description || '',
+    type: data.type,
+    isShowcase: data.isShowcase,
+    isArchived: data.isArchived,
+    isPublished: data.isPublished ?? false,
+    publishedAt: data.publishedAt,
+    thumbnailUrl: data.thumbnailUrl,
+    content: data.content || {},
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
   };
 }
 
 /**
- * Transform frontend camelCase to backend snake_case
+ * Transform frontend payload
+ * Note: API interceptor automatically converts camelCase to snake_case,
+ * so we can just return the payload as-is
  */
 function transformPayload(payload: ProjectPayload): any {
-  return {
-    title: payload.title,
-    slug: payload.slug,
-    description: payload.description,
-    type: payload.type,
-    is_showcase: payload.isShowcase,
-    is_archived: payload.isArchived,
-    thumbnail_url: payload.thumbnailUrl,
-    content: payload.content,
-  };
+  return payload;
 }
 
 /**

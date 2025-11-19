@@ -133,14 +133,15 @@ export function ImageUpload({
         type="file"
         accept={acceptedFormats.join(',')}
         onChange={handleFileSelect}
+        aria-label="Upload profile image"
         className="hidden"
       />
 
       {preview ? (
-        <div className="relative inline-block">
+        <div className="relative inline-block" role="img" aria-label="Profile image preview">
           <img
             src={preview}
-            alt="Preview"
+            alt="Profile picture preview"
             className="w-32 h-32 rounded-full object-cover border-4 border-slate-200 dark:border-slate-700"
             onError={(e) => {
               e.currentTarget.src = `https://ui-avatars.com/api/?name=U&size=128&background=6366f1&color=fff`;
@@ -157,8 +158,9 @@ export function ImageUpload({
             </button>
           )}
           {isUploading && (
-            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center" role="status" aria-live="polite">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+              <span className="sr-only">Uploading image...</span>
             </div>
           )}
         </div>
@@ -169,10 +171,21 @@ export function ImageUpload({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          role="button"
+          tabIndex={0}
+          aria-label="Upload image - click or drag and drop"
+          aria-disabled={isUploading}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleClick();
+            }
+          }}
           className={`
             relative w-32 h-32 rounded-full border-4 border-dashed
             flex flex-col items-center justify-center cursor-pointer
             transition-all duration-200
+            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
             ${isDragging
               ? 'border-primary-500 bg-primary-500/10 scale-105'
               : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500 bg-slate-50 dark:bg-slate-800/50'
@@ -181,7 +194,10 @@ export function ImageUpload({
           `}
         >
           {isUploading ? (
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
+            <>
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500" role="status"></div>
+              <span className="sr-only">Uploading...</span>
+            </>
           ) : (
             <>
               <PhotoIcon className="w-10 h-10 text-slate-400 dark:text-slate-500 mb-1" />
@@ -194,7 +210,7 @@ export function ImageUpload({
       )}
 
       {error && (
-        <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert" aria-live="assertive">
           {error}
         </p>
       )}

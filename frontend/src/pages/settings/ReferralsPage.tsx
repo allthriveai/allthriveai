@@ -103,7 +103,6 @@ export default function ReferralsPage() {
         }));
         setReferrals(referralsData);
       } catch (error) {
-        console.error('Failed to fetch referral data:', error);
         setError('Unable to load referral information. Please try again later.');
       } finally {
         setLoadingReferrals(false);
@@ -114,6 +113,29 @@ export default function ReferralsPage() {
       fetchReferralData();
     }
   }, [user]);
+
+  const handleCodeUpdate = async (newCode: string) => {
+    try {
+      const response = await api.post('/me/referral-code/update_code/', {
+        code: newCode,
+      });
+
+      const updatedCode = response.data;
+      setReferralCode({
+        id: updatedCode.id,
+        code: updatedCode.code,
+        referralUrl: updatedCode.referral_url,
+        usesCount: updatedCode.uses_count,
+        maxUses: updatedCode.max_uses,
+        isValid: updatedCode.is_valid,
+        createdAt: updatedCode.created_at,
+      });
+    } catch (error: any) {
+      console.error('Failed to update code:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to update code';
+      throw new Error(errorMsg);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -173,6 +195,7 @@ export default function ReferralsPage() {
                   usesCount={referralCode.usesCount}
                   maxUses={referralCode.maxUses}
                   isValid={referralCode.isValid}
+                  onCodeUpdate={handleCodeUpdate}
                 />
 
                 {/* Referral Stats */}

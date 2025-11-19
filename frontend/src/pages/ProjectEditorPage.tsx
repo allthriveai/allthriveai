@@ -39,6 +39,7 @@ export default function ProjectEditorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Editor state - stored directly as we edit
   const [blocks, setBlocks] = useState<any[]>([]);
@@ -102,6 +103,24 @@ export default function ProjectEditorPage() {
     loadProject();
   }, [projectSlug, username]);
 
+  // Autosave effect - save 2 seconds after last change
+  useEffect(() => {
+    if (!hasUnsavedChanges || !project) return;
+
+    const timer = setTimeout(() => {
+      handleSave();
+    }, 2000); // 2 second debounce
+
+    return () => clearTimeout(timer);
+  }, [blocks, hasUnsavedChanges, project]);
+
+  // Mark as having unsaved changes when blocks change
+  useEffect(() => {
+    if (project && blocks.length > 0) {
+      setHasUnsavedChanges(true);
+    }
+  }, [blocks]);
+
   const handleSave = async () => {
     if (!project) return;
 
@@ -119,9 +138,27 @@ export default function ProjectEditorPage() {
       });
       setProject(updatedProject);
       setLastSaved(new Date());
+      setHasUnsavedChanges(false);
     } catch (err) {
       console.error('Failed to save:', err);
-      alert('Failed to save changes');
+      // Don't show alert for autosave failures
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleShowcase = async () => {
+    if (!project) return;
+
+    setIsSaving(true);
+    try {
+      const updatedProject = await updateProject(project.id, {
+        isShowcase: !project.isShowcase,
+      });
+      setProject(updatedProject);
+    } catch (err) {
+      console.error('Failed to update showcase setting:', err);
+      alert('Failed to update showcase setting');
     } finally {
       setIsSaving(false);
     }
@@ -254,9 +291,11 @@ export default function ProjectEditorPage() {
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
               {blocks.find(b => b.type === 'text' && b.style === 'heading')?.content || 'Untitled Project'}
             </h1>
-            {lastSaved && (
+            {isSaving ? (
+              <p className="text-xs text-gray-500">Saving...</p>
+            ) : lastSaved ? (
               <p className="text-xs text-gray-500">Saved {lastSaved.toLocaleTimeString()}</p>
-            )}
+            ) : null}
           </div>
           {!project.isPublished && (
             <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
@@ -266,19 +305,24 @@ export default function ProjectEditorPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Showcase Toggle */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={project.isShowcase}
+              onChange={handleToggleShowcase}
+              disabled={isSaving}
+              className="w-4 h-4 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">Feature on Showcase</span>
+          </label>
+
           <button
             onClick={() => window.open(`/${project.username}/${project.slug}`, '_blank')}
             className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
           >
             <EyeIcon className="w-5 h-5" />
             Preview
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="px-4 py-2 bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 text-white rounded-lg disabled:opacity-50"
-          >
-            {isSaving ? 'Saving...' : 'Save'}
           </button>
           {!project.isPublished && (
             <button
@@ -367,6 +411,13 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
 
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Create sensors for nested drag and drop (column blocks)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   const handleUpload = async (file: File) => {
     setIsUploading(true);
@@ -554,8 +605,33 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
 
                 // Parse IDs: format is "columnIndex-blockId"
                 const [activeColIdx, activeBlockId] = String(active.id).split('-');
-                const [overColIdx, overBlockId] = String(over.id).split('-');
                 const activeColumnIndex = parseInt(activeColIdx);
+
+                // Handle dropping on column container (empty area)
+                if (String(over.id).startsWith('column-')) {
+                  const overColumnIndex = parseInt(String(over.id).replace('column-', ''));
+
+                  if (activeColumnIndex !== overColumnIndex) {
+                    // Move to different column (append to end)
+                    const sourceBlocks = [...block.columns[activeColumnIndex].blocks];
+                    const blockIndex = sourceBlocks.findIndex((b: any) => b.id === activeBlockId);
+                    const [movedBlock] = sourceBlocks.splice(blockIndex, 1);
+
+                    const updatedColumns = [...block.columns];
+                    updatedColumns[activeColumnIndex] = {
+                      ...updatedColumns[activeColumnIndex],
+                      blocks: sourceBlocks,
+                    };
+                    updatedColumns[overColumnIndex] = {
+                      ...updatedColumns[overColumnIndex],
+                      blocks: [...block.columns[overColumnIndex].blocks, movedBlock],
+                    };
+                    onChange({ columns: updatedColumns });
+                  }
+                  return;
+                }
+
+                const [overColIdx, overBlockId] = String(over.id).split('-');
                 const overColumnIndex = parseInt(overColIdx);
 
                 if (activeColumnIndex === overColumnIndex) {
@@ -564,7 +640,7 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
                   const oldIndex = columnBlocks.findIndex((b: any) => b.id === activeBlockId);
                   const newIndex = columnBlocks.findIndex((b: any) => b.id === overBlockId);
 
-                  if (oldIndex !== newIndex) {
+                  if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
                     const updatedColumns = [...block.columns];
                     updatedColumns[activeColumnIndex] = {
                       ...updatedColumns[activeColumnIndex],
@@ -577,6 +653,9 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
                   const sourceBlocks = [...block.columns[activeColumnIndex].blocks];
                   const targetBlocks = [...block.columns[overColumnIndex].blocks];
                   const blockIndex = sourceBlocks.findIndex((b: any) => b.id === activeBlockId);
+
+                  if (blockIndex === -1) return;
+
                   const [movedBlock] = sourceBlocks.splice(blockIndex, 1);
 
                   const targetIndex = targetBlocks.findIndex((b: any) => b.id === overBlockId);
@@ -602,18 +681,18 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
                   'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
                 }`}>
                 {block.columns?.map((column: any, colIndex: number) => (
-                  <div key={column.id} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 min-h-[200px]">
-                    {column.blocks?.length === 0 ? (
-                      <div className="h-full flex flex-wrap items-center justify-center gap-1.5">
+                  <SortableContext key={`sortable-${colIndex}`} items={column.blocks.map((b: any) => `${colIndex}-${b.id}`)} strategy={verticalListSortingStrategy}>
+                    <div key={column.id} id={`column-${colIndex}`} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 min-h-[200px]">
+                      {column.blocks?.length === 0 ? (
+                        <div className="h-full flex flex-wrap items-center justify-center gap-1.5">
                         <button onClick={() => addColumnBlock(colIndex, 'text')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaFont className="w-3 h-3" /> Text</button>
                         <button onClick={() => addColumnBlock(colIndex, 'image')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaImage className="w-3 h-3" /> Image</button>
                         <button onClick={() => addColumnBlock(colIndex, 'video')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaVideo className="w-3 h-3" /> Video</button>
                         <button onClick={() => addColumnBlock(colIndex, 'file')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaFileAlt className="w-3 h-3" /> File</button>
                         <button onClick={() => addColumnBlock(colIndex, 'button')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaMousePointer className="w-3 h-3" /> Button</button>
                         <button onClick={() => addColumnBlock(colIndex, 'divider')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaMinus className="w-3 h-3" /> Divider</button>
-                      </div>
-                    ) : (
-                      <SortableContext items={column.blocks.map((b: any) => `${colIndex}-${b.id}`)} strategy={verticalListSortingStrategy}>
+                        </div>
+                      ) : (
                         <div className="space-y-2">
                           {column.blocks.map((colBlock: any) => (
                             <DraggableColumnBlock
@@ -634,9 +713,9 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
                             <button onClick={() => addColumnBlock(colIndex, 'divider')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> Divider</button>
                           </div>
                         </div>
-                      </SortableContext>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  </SortableContext>
                 ))}
                 </div>
               </div>

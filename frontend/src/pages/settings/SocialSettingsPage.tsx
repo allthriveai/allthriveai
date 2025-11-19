@@ -22,7 +22,10 @@ export default function SocialSettingsPage() {
   const [syncingGithub, setSyncingGithub] = useState(false);
   const [githubSyncStatus, setGithubSyncStatus] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [profileLinks, setProfileLinks] = useState({
+    websiteUrl: user?.websiteUrl || '',
     linkedinUrl: user?.linkedinUrl || '',
     twitterUrl: user?.twitterUrl || '',
     githubUrl: user?.githubUrl || '',
@@ -38,6 +41,7 @@ export default function SocialSettingsPage() {
   useEffect(() => {
     if (user) {
       setProfileLinks({
+        websiteUrl: user.websiteUrl || '',
         linkedinUrl: user.linkedinUrl || '',
         twitterUrl: user.twitterUrl || '',
         githubUrl: user.githubUrl || '',
@@ -72,7 +76,7 @@ export default function SocialSettingsPage() {
       await loadProviders();
     } catch (error) {
       console.error('Failed to connect provider:', error);
-      alert(
+      setErrorMessage(
         error instanceof Error ? error.message : 'Failed to connect. Please try again.'
       );
     } finally {
@@ -93,7 +97,7 @@ export default function SocialSettingsPage() {
       }
     } catch (error) {
       console.error('Failed to disconnect provider:', error);
-      alert('Failed to disconnect. Please try again.');
+      setErrorMessage('Failed to disconnect. Please try again.');
     }
   };
 
@@ -105,19 +109,21 @@ export default function SocialSettingsPage() {
       }
     } catch (error) {
       // Silently fail - user might not have GitHub connected
-      console.log('GitHub not connected');
     }
   };
 
   const handleSaveProfileLinks = async () => {
     try {
       setSaving(true);
+      setErrorMessage('');
+      setSuccessMessage('');
       await updateProfile(profileLinks);
       await refreshUser();
-      alert('Social media links updated successfully!');
+      setSuccessMessage('Social media links updated successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Failed to update profile links:', error);
-      alert('Failed to update social media links. Please try again.');
+      setErrorMessage('Failed to update social media links. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -140,17 +146,15 @@ export default function SocialSettingsPage() {
 
       if (response.data.success) {
         const { created, updated, skipped } = response.data.data;
-        alert(
-          `GitHub sync complete!\n` +
-          `Created: ${created} projects\n` +
-          `Updated: ${updated} projects\n` +
-          `Skipped: ${skipped} repositories`
+        setSuccessMessage(
+          `GitHub sync complete! Created: ${created}, Updated: ${updated}, Skipped: ${skipped}`
         );
+        setTimeout(() => setSuccessMessage(''), 5000);
         await loadGithubSyncStatus();
       }
     } catch (error: any) {
       console.error('Failed to sync GitHub:', error);
-      alert(error.response?.data?.error || 'Failed to sync repositories. Please try again.');
+      setErrorMessage(error.response?.data?.error || 'Failed to sync repositories. Please try again.');
     } finally {
       setSyncingGithub(false);
     }
@@ -170,15 +174,39 @@ export default function SocialSettingsPage() {
               </p>
             </div>
 
+            {/* Error/Success Messages */}
+            {errorMessage && (
+              <div role="alert" aria-live="assertive" className="mb-6 glass-strong rounded-xl p-4 border border-red-500/20 bg-red-500/5">
+                <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
+              </div>
+            )}
+            {successMessage && (
+              <div role="status" aria-live="polite" className="mb-6 glass-strong rounded-xl p-4 border border-green-500/20 bg-green-500/5">
+                <p className="text-sm text-green-600 dark:text-green-400">{successMessage}</p>
+              </div>
+            )}
+
             {/* Public Profile Links */}
-            <div className="mb-8">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+            <section className="mb-8" aria-labelledby="profile-links-heading">
+              <h2 id="profile-links-heading" className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Public Profile Links
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                 These links will appear on your public Showcase profile
               </p>
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Website
+                  </label>
+                  <input
+                    type="url"
+                    value={profileLinks.websiteUrl}
+                    onChange={(e) => setProfileLinks({ ...profileLinks, websiteUrl: e.target.value })}
+                    placeholder="https://yourwebsite.com"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     LinkedIn
@@ -242,32 +270,34 @@ export default function SocialSettingsPage() {
                 <button
                   onClick={handleSaveProfileLinks}
                   disabled={saving}
+                  aria-busy={saving}
+                  aria-label={saving ? 'Saving social media links' : 'Save social media links'}
                   className="px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? 'Saving...' : 'Save Links'}
                 </button>
               </div>
-            </div>
+            </section>
 
             {/* Account Connections */}
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+            <section className="mb-4" aria-labelledby="connections-heading">
+              <h2 id="connections-heading" className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
                 Account Connections
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                 Connect your accounts to enhance your AllThrive experience
               </p>
-            </div>
 
             {loading ? (
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4" role="list" aria-label="Social account connections">
                 {providers.map((provider) => (
                   <div
                     key={provider.key}
+                    role="listitem"
                     className="glass-strong rounded-xl p-6 border border-white/20 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4">
@@ -297,6 +327,8 @@ export default function SocialSettingsPage() {
                             <button
                               onClick={handleGithubSync}
                               disabled={syncingGithub}
+                              aria-busy={syncingGithub}
+                              aria-label={syncingGithub ? 'Syncing GitHub repositories' : 'Sync GitHub repositories'}
                               className="px-4 py-2 rounded-lg bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {syncingGithub ? 'Syncing...' : 'Sync Repos'}
@@ -304,6 +336,7 @@ export default function SocialSettingsPage() {
                           )}
                           <button
                             onClick={() => handleDisconnect(provider.key, provider.label)}
+                            aria-label={`Disconnect ${provider.label}`}
                             className="px-4 py-2 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors text-sm font-medium"
                           >
                             Disconnect
@@ -313,6 +346,8 @@ export default function SocialSettingsPage() {
                         <button
                           onClick={() => handleConnect(provider.key)}
                           disabled={connectingProvider === provider.key}
+                          aria-busy={connectingProvider === provider.key}
+                          aria-label={connectingProvider === provider.key ? `Connecting to ${provider.label}` : `Connect ${provider.label}`}
                           className={`px-4 py-2 rounded-lg text-white transition-colors text-sm font-medium ${
                             connectingProvider === provider.key
                               ? 'bg-gray-400 cursor-not-allowed'
@@ -334,6 +369,7 @@ export default function SocialSettingsPage() {
                 ))}
               </div>
             )}
+            </section>
 
             {githubSyncStatus && githubSyncStatus.connected && (
               <div className="mt-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">

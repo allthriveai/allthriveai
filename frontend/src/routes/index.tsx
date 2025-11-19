@@ -14,13 +14,13 @@ import NotificationsSettingsPage from '@/pages/settings/NotificationsSettingsPag
 import BillingSettingsPage from '@/pages/settings/BillingSettingsPage';
 import PrivacySettingsPage from '@/pages/settings/PrivacySettingsPage';
 import TeamsSettingsPage from '@/pages/settings/TeamsSettingsPage';
-import ReferralsSettingsPage from '@/pages/settings/ReferralsSettingsPage';
 import ReferralsPage from '@/pages/settings/ReferralsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
 import QuizListPage from '@/pages/quizzes/QuizListPage';
 import QuizPage from '@/pages/quizzes/QuizPage';
 import ToolDirectoryPage from '@/pages/ToolDirectoryPage';
+import ToolDetailPage from '@/pages/ToolDetailPage';
 import PromptBattlePage from '@/pages/play/PromptBattlePage';
 import BattleDetailPage from '@/pages/play/BattleDetailPage';
 
@@ -37,8 +37,10 @@ export function AppRoutes() {
       <Route path="/quick-quizzes" element={<QuizListPage />} />
       <Route path="/quick-quizzes/:slug" element={<QuizPage />} />
 
-      {/* Tool Directory - public route */}
-      <Route path="/tools" element={<ToolDirectoryPage />} />
+      {/* Tool Directory - public routes */}
+      <Route path="/tools" element={<ToolDirectoryPage />}>
+        <Route path=":slug" element={<ToolDetailPage />} />
+      </Route>
 
       {/* Play routes - protected */}
       <Route
@@ -142,14 +144,6 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <TeamsSettingsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/account/settings/referrals"
-        element={
-          <ProtectedRoute>
-            <ReferralsSettingsPage />
           </ProtectedRoute>
         }
       />

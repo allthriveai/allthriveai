@@ -42,11 +42,15 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         if not project_ids:
             return Response(
-                {"error": "project_ids is required and must be a non-empty list"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": {"field": "project_ids", "message": "This field is required and must be a non-empty list"}},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         if not isinstance(project_ids, list):
-            return Response({"error": "project_ids must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"field": "project_ids", "message": "This field must be a list"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Only delete projects owned by the authenticated user
         deleted_count, _ = Project.objects.filter(id__in=project_ids, user=request.user).delete()
@@ -92,7 +96,8 @@ def public_user_projects(request, username):
 
     # Check cache for public projects
     is_own_profile = request.user.is_authenticated and request.user.username.lower() == username.lower()
-    cache_key = f"projects:{username.lower()}:{'own' if is_own_profile else 'public'}"
+    # Include version in cache key to prevent stale data after schema changes
+    cache_key = f"projects:v1:{username.lower()}:{'own' if is_own_profile else 'public'}"
 
     cached_data = cache.get(cache_key)
     if cached_data:
@@ -121,10 +126,12 @@ def public_user_projects(request, username):
     )
 
     # If the requesting user is authenticated and viewing their own profile,
-    # also include playground projects
+    # also include playground projects (non-showcase projects)
     if is_own_profile:
         playground_projects = (
-            Project.objects.select_related("user").filter(user=user, is_archived=False).order_by("-created_at")
+            Project.objects.select_related("user")
+            .filter(user=user, is_showcase=False, is_archived=False)
+            .order_by("-created_at")
         )
 
         response_data = {

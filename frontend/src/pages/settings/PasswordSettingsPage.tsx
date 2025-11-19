@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { api } from '@/services/api';
@@ -19,6 +19,18 @@ export default function PasswordSettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const successRef = useRef<HTMLSpanElement>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -47,6 +59,17 @@ export default function PasswordSettingsPage() {
       return;
     }
 
+    // Check password complexity
+    const hasUppercase = /[A-Z]/.test(formData.newPassword);
+    const hasLowercase = /[a-z]/.test(formData.newPassword);
+    const hasNumber = /[0-9]/.test(formData.newPassword);
+
+    if (!hasUppercase || !hasLowercase || !hasNumber) {
+      setErrorMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number');
+      setSaveStatus('error');
+      return;
+    }
+
     setIsLoading(true);
     setSaveStatus('saving');
     setErrorMessage('');
@@ -63,13 +86,17 @@ export default function PasswordSettingsPage() {
         newPassword: '',
         confirmPassword: '',
       });
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      // Focus success message for screen readers
+      setTimeout(() => successRef.current?.focus(), 100);
+      timeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       const errorMsg = axios.isAxiosError(error) && error.response?.data?.detail
         ? String(error.response.data.detail)
         : 'Failed to update password. Please try again.';
       setErrorMessage(errorMsg);
       setSaveStatus('error');
+      // Focus error message for screen readers
+      setTimeout(() => errorRef.current?.focus(), 100);
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +118,7 @@ export default function PasswordSettingsPage() {
             </div>
 
             {/* Password Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" aria-label="Change password form">
               <div className="glass-strong rounded-xl p-6 border border-white/20">
                 <div className="space-y-4">
                   <div>
@@ -105,6 +132,9 @@ export default function PasswordSettingsPage() {
                       value={formData.currentPassword}
                       onChange={handleChange}
                       required
+                      aria-label="Current password"
+                      aria-invalid={saveStatus === 'error'}
+                      autoComplete="current-password"
                       className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -120,10 +150,13 @@ export default function PasswordSettingsPage() {
                       value={formData.newPassword}
                       onChange={handleChange}
                       required
+                      aria-describedby="password-requirements"
+                      aria-invalid={saveStatus === 'error'}
+                      autoComplete="new-password"
                       className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Must be at least 8 characters
+                    <p id="password-requirements" className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Must be at least 8 characters with uppercase, lowercase, and numbers
                     </p>
                   </div>
 
@@ -138,6 +171,9 @@ export default function PasswordSettingsPage() {
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       required
+                      aria-label="Confirm new password"
+                      aria-invalid={saveStatus === 'error'}
+                      autoComplete="new-password"
                       className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -146,7 +182,13 @@ export default function PasswordSettingsPage() {
 
               {/* Error message */}
               {errorMessage && (
-                <div className="glass-strong rounded-xl p-4 border border-red-500/20 bg-red-500/5">
+                <div
+                  ref={errorRef}
+                  tabIndex={-1}
+                  role="alert"
+                  aria-live="assertive"
+                  className="glass-strong rounded-xl p-4 border border-red-500/20 bg-red-500/5 focus:outline-none"
+                >
                   <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
                 </div>
               )}
@@ -156,13 +198,21 @@ export default function PasswordSettingsPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
+                  aria-busy={isLoading}
+                  aria-label={isLoading ? 'Updating password' : 'Update password'}
                   className="px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Updating...' : 'Update Password'}
                 </button>
 
                 {saveStatus === 'success' && (
-                  <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                  <span
+                    ref={successRef}
+                    tabIndex={-1}
+                    role="status"
+                    aria-live="polite"
+                    className="text-sm text-green-600 dark:text-green-400 font-medium focus:outline-none"
+                  >
                     ✓ Password updated successfully
                   </span>
                 )}

@@ -51,7 +51,8 @@ class Project(models.Model):
     is_archived = models.BooleanField(default=False)
     is_published = models.BooleanField(default=False, help_text="Whether project is publicly visible")
     published_at = models.DateTimeField(null=True, blank=True, help_text="When project was first published")
-    thumbnail_url = models.URLField(blank=True, null=True)
+    # CharField supports both full URLs and relative paths (e.g., /path/to/image)
+    thumbnail_url = models.CharField(max_length=500, blank=True)
     # Structured layout blocks for the project page (cover, tags, text/image blocks)
     content = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -69,6 +70,7 @@ class Project(models.Model):
             models.Index(fields=["user", "slug"]),
             models.Index(fields=["is_showcase", "is_archived", "-created_at"]),
             models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["is_published", "-published_at"]),  # For browse/explore pages
         ]
 
     def __str__(self):

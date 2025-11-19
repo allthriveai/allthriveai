@@ -30,6 +30,7 @@ class ToolListSerializer(serializers.ModelSerializer):
             "is_verified",
             "view_count",
             "popularity_score",
+            "taxonomy",
             "created_at",
             "updated_at",
         ]
@@ -101,6 +102,8 @@ class ToolDetailSerializer(serializers.ModelSerializer):
             "average_rating",
             "review_count",
             "bookmark_count",
+            # Taxonomy Link
+            "taxonomy",
             # Timestamps
             "created_at",
             "updated_at",

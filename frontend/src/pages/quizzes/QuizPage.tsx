@@ -50,7 +50,9 @@ export default function QuizPage() {
 
     try {
       const response = await startQuiz(slug);
-      setAttemptId(response.attempt_id);
+      console.log('Quiz started successfully, attemptId:', response.attemptId);
+
+      setAttemptId(response.attemptId);
       setQuestions(response.questions);
       setQuizState('taking');
       setCurrentQuestionIndex(0);
@@ -58,17 +60,22 @@ export default function QuizPage() {
       questionStartTime.current = Date.now();
     } catch (err: any) {
       console.error('Failed to start quiz:', err);
-      const errorMessage = err?.error || 'Failed to start quiz. Please make sure you are logged in.';
+      const errorMessage = err?.error || 'Please log in to take quizzes. Click "Log In" in the sidebar to continue.';
       setError(errorMessage);
       setQuizState('intro');
     }
   };
 
-  const handleAnswer = useCallback(async (answer: string) => {
-    if (!attemptId || !questions[currentQuestionIndex] || submittingAnswer) return;
+  const handleAnswer = async (answer: string) => {
+    if (!attemptId || !questions[currentQuestionIndex] || submittingAnswer) {
+      console.log('handleAnswer blocked:', { attemptId, hasQuestion: !!questions[currentQuestionIndex], submittingAnswer });
+      return;
+    }
 
     const timeSpent = Math.floor((Date.now() - questionStartTime.current) / 1000);
     const question = questions[currentQuestionIndex];
+
+    console.log('Submitting answer:', answer, 'for question:', question.id);
 
     try {
       setSubmittingAnswer(true);
@@ -101,7 +108,7 @@ export default function QuizPage() {
       console.error('Failed to submit answer:', err);
       setSubmittingAnswer(false);
     }
-  }, [attemptId, questions, currentQuestionIndex, submittingAnswer]);
+  };
 
   const handleCompleteQuiz = async () => {
     if (!attemptId) return;

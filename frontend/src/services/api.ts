@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { ApiError } from '@/types/api';
+import { keysToCamel, keysToSnake } from '@/utils/caseTransform';
 
 // Simple cookie reader for CSRF token
 function getCookie(name: string): string | null {
@@ -23,7 +24,7 @@ const api: AxiosInstance = axios.create({
   withCredentials: true, // Important for httpOnly cookies
 });
 
-// Request interceptor - attach CSRF token for unsafe methods
+// Request interceptor - attach CSRF token and transform data to snake_case
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const method = (config.method || 'get').toLowerCase();
@@ -36,6 +37,12 @@ api.interceptors.request.use(
       }
     }
 
+    // Transform request data from camelCase to snake_case
+    // Skip transformation for FormData (used for file uploads)
+    if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
+      config.data = keysToSnake(config.data);
+    }
+
     return config;
   },
   (error: AxiosError) => {
@@ -43,9 +50,13 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor - handle errors globally
+// Response interceptor - transform data to camelCase and handle errors
 api.interceptors.response.use(
   (response) => {
+    // Transform response data from snake_case to camelCase
+    if (response.data && typeof response.data === 'object') {
+      response.data = keysToCamel(response.data);
+    }
     return response;
   },
   (error: AxiosError) => {

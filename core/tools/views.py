@@ -1,7 +1,8 @@
-from django.db.models import Q
+from django.db.models import F, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
@@ -41,9 +42,11 @@ class ToolViewSet(viewsets.ReadOnlyModelViewSet):
         """Get tool detail and increment view count."""
         instance = self.get_object()
 
-        # Increment view count asynchronously (or with update to avoid race conditions)
-        Tool.objects.filter(pk=instance.pk).update(view_count=instance.view_count + 1)
+        # Atomic increment at database level to prevent race conditions
+        Tool.objects.filter(pk=instance.pk).update(view_count=F("view_count") + 1)
 
+        # Refresh instance to get updated view_count for serializer
+        instance.refresh_from_db()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
@@ -91,10 +94,28 @@ class ToolViewSet(viewsets.ReadOnlyModelViewSet):
         tool = self.get_object()
 
         # Find tools in same category or with overlapping tags
+        # Optimize query: only fetch needed fields, prefetch related data
         similar_tools = (
             Tool.objects.filter(is_active=True)
             .exclude(pk=tool.pk)
             .filter(Q(category=tool.category) | Q(tags__overlap=tool.tags))
+            .only(
+                "id",
+                "name",
+                "slug",
+                "tagline",
+                "logo_url",
+                "category",
+                "tags",
+                "pricing_model",
+                "has_free_tier",
+                "is_featured",
+                "is_verified",
+                "view_count",
+                "popularity_score",
+                "created_at",
+                "updated_at",
+            )
             .distinct()[:5]
         )
 
@@ -131,12 +152,25 @@ class ToolReviewViewSet(viewsets.ModelViewSet):
         """Create review for authenticated user."""
         serializer.save(user=self.request.user)
 
+    def perform_update(self, serializer):
+        """Update review - only allow users to edit their own reviews."""
+        if serializer.instance.user != self.request.user:
+            raise PermissionDenied("You can only edit your own reviews")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """Delete review - only allow users to delete their own reviews."""
+        if instance.user != self.request.user:
+            raise PermissionDenied("You can only delete your own reviews")
+        instance.delete()
+
     @action(detail=True, methods=["post"])
     def mark_helpful(self, request, pk=None):
         """Mark a review as helpful."""
         review = self.get_object()
-        review.helpful_count += 1
-        review.save(update_fields=["helpful_count"])
+        # Atomic increment to prevent race conditions
+        ToolReview.objects.filter(pk=review.pk).update(helpful_count=F("helpful_count") + 1)
+        review.refresh_from_db()
         return Response({"helpful_count": review.helpful_count})
 
 
@@ -161,6 +195,18 @@ class ToolComparisonViewSet(viewsets.ModelViewSet):
         """Create comparison for authenticated user."""
         serializer.save(user=self.request.user)
 
+    def perform_update(self, serializer):
+        """Update comparison - only allow users to edit their own comparisons."""
+        if serializer.instance.user != self.request.user:
+            raise PermissionDenied("You can only edit your own comparisons")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """Delete comparison - only allow users to delete their own comparisons."""
+        if instance.user != self.request.user:
+            raise PermissionDenied("You can only delete your own comparisons")
+        instance.delete()
+
 
 class ToolBookmarkViewSet(viewsets.ModelViewSet):
     """
@@ -179,6 +225,18 @@ class ToolBookmarkViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Create bookmark for authenticated user."""
         serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        """Update bookmark - only allow users to edit their own bookmarks."""
+        if serializer.instance.user != self.request.user:
+            raise PermissionDenied("You can only edit your own bookmarks")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """Delete bookmark - only allow users to delete their own bookmarks."""
+        if instance.user != self.request.user:
+            raise PermissionDenied("You can only delete your own bookmarks")
+        instance.delete()
 
     @action(detail=False, methods=["post"])
     def toggle(self, request):

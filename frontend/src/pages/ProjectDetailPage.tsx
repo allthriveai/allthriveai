@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { getProjectBySlug } from '@/services/projects';
+import { getProjectBySlug, updateProject, deleteProject } from '@/services/projects';
+import { useAuth } from '@/hooks/useAuth';
 import type { Project } from '@/types/models';
 import {
   ArrowLeftIcon,
   CodeBracketIcon,
   PhotoIcon,
   ChatBubbleLeftRightIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  EllipsisVerticalIcon,
+  PencilIcon,
+  TrashIcon,
+  EyeIcon,
+  EyeSlashIcon
 } from '@heroicons/react/24/outline';
 
 const typeIcons = {
@@ -28,9 +34,11 @@ const typeLabels = {
 export default function ProjectDetailPage() {
   const { username, projectSlug } = useParams<{ username: string; projectSlug: string }>();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     async function loadProject() {
@@ -56,6 +64,39 @@ export default function ProjectDetailPage() {
 
     loadProject();
   }, [username, projectSlug]);
+
+  const isOwner = isAuthenticated && user && project && user.username.toLowerCase() === project.username.toLowerCase();
+
+  const handleDeleteProject = async () => {
+    if (!project) return;
+
+    if (!window.confirm('Are you sure you want to delete this project?')) {
+      return;
+    }
+
+    try {
+      await deleteProject(project.id);
+      navigate(`/${username}`);
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      alert('Failed to delete project');
+    }
+  };
+
+  const handleToggleShowcase = async () => {
+    if (!project) return;
+
+    try {
+      const updatedProject = await updateProject(project.id, {
+        isShowcase: !project.isShowcase,
+      });
+      setProject(updatedProject);
+      setShowMenu(false);
+    } catch (error) {
+      console.error('Failed to update showcase setting:', error);
+      alert('Failed to update showcase setting');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -99,8 +140,8 @@ export default function ProjectDetailPage() {
   return (
     <DashboardLayout>
       <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto">
-        {/* Header with back button */}
-        <div className="border-b border-gray-200 dark:border-gray-800 px-8 py-4">
+        {/* Header with back button and actions */}
+        <div className="border-b border-gray-200 dark:border-gray-800 px-8 py-4 flex items-center justify-between">
           <Link
             to={`/${project.username}`}
             className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
@@ -108,6 +149,58 @@ export default function ProjectDetailPage() {
             <ArrowLeftIcon className="w-5 h-5" />
             Back to {project.username}'s profile
           </Link>
+
+          {/* Action Menu - only for owner */}
+          {isOwner && (
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors"
+                title="Options"
+              >
+                <EllipsisVerticalIcon className="w-6 h-6" />
+              </button>
+
+              {/* Dropdown menu */}
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      navigate(`/${project.username}/${project.slug}/edit`);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={handleToggleShowcase}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    {project.isShowcase ? (
+                      <>
+                        <EyeSlashIcon className="w-4 h-4" />
+                        Remove from Showcase
+                      </>
+                    ) : (
+                      <>
+                        <EyeIcon className="w-4 h-4" />
+                        Add to Showcase
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleDeleteProject}
+                    className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 border-t border-gray-200 dark:border-gray-700"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Cover Image */}

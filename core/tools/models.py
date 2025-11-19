@@ -1,5 +1,9 @@
+from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.utils.text import slugify
+
+from core.taxonomy.models import Taxonomy
 
 
 class Tool(models.Model):
@@ -106,6 +110,16 @@ class Tool(models.Model):
     view_count = models.IntegerField(default=0)
     popularity_score = models.FloatField(default=0.0, help_text="Calculated popularity score for ranking")
 
+    # Taxonomy Link (for personalization)
+    taxonomy = models.OneToOneField(
+        Taxonomy,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tool_entity",
+        help_text="Link to taxonomy entry for user personalization/tagging",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -115,8 +129,11 @@ class Tool(models.Model):
         ordering = ["-is_featured", "-popularity_score", "name"]
         indexes = [
             models.Index(fields=["category", "is_active"]),
-            models.Index(fields=["-popularity_score"]),
-            models.Index(fields=["-created_at"]),
+            models.Index(fields=["is_active", "-popularity_score"]),
+            models.Index(fields=["is_active", "-created_at"]),
+            models.Index(fields=["is_featured", "is_active"]),
+            GinIndex(fields=["tags"], name="tool_tags_gin_idx"),
+            GinIndex(fields=["keywords"], name="tool_keywords_gin_idx"),
         ]
 
     def save(self, *args, **kwargs):
@@ -143,7 +160,7 @@ class ToolReview(models.Model):
     """User reviews/ratings for tools."""
 
     tool = models.ForeignKey(Tool, on_delete=models.CASCADE, related_name="reviews")
-    user = models.ForeignKey("User", on_delete=models.CASCADE, related_name="tool_reviews")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tool_reviews")
     rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)], help_text="1-5 star rating")
     title = models.CharField(max_length=200, blank=True)
     content = models.TextField(blank=True)
@@ -179,7 +196,7 @@ class ToolComparison(models.Model):
     Allows users to save and share tool comparisons.
     """
 
-    user = models.ForeignKey("User", on_delete=models.CASCADE, related_name="tool_comparisons")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tool_comparisons")
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     tools = models.ManyToManyField(Tool, related_name="comparisons")
@@ -200,7 +217,7 @@ class ToolComparison(models.Model):
 class ToolBookmark(models.Model):
     """User bookmarks/favorites for tools."""
 
-    user = models.ForeignKey("User", on_delete=models.CASCADE, related_name="tool_bookmarks")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tool_bookmarks")
     tool = models.ForeignKey(Tool, on_delete=models.CASCADE, related_name="bookmarks")
     notes = models.TextField(blank=True, help_text="Personal notes about the tool")
 

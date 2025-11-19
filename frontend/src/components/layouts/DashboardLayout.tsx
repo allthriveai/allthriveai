@@ -26,19 +26,17 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
 
   const handleMenuClick = (menuItem: string) => {
     if (menuItem === 'About Us') {
+      const wasOpen = aboutOpen;
       setAboutOpen(true);
       setChatOpen(false);
       setSelectedMenuItem(null);
-      // Scroll to top of the about panel
+      // Scroll to About Us section
       setTimeout(() => {
-        const aboutPanel = document.querySelector('[class*="right-0"][class*="top-0"]');
-        if (aboutPanel) {
-          const scrollContainer = aboutPanel.querySelector('.overflow-y-auto');
-          if (scrollContainer) {
-            scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
-          }
+        const element = document.getElementById('about-us');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-      }, 100);
+      }, wasOpen ? 50 : 150); // Shorter delay if already open
     } else if (menuItem === 'Our Values') {
       setAboutOpen(true);
       setChatOpen(false);
