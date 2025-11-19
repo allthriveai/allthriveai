@@ -64,3 +64,9 @@ export async function getUserActivity(): Promise<ActivityData> {
   const response = await api.get<ApiResponse<ActivityData>>('/me/activity/');
   return response.data.data;
 }
+
+// Update user profile
+export async function updateProfile(data: Partial<User>): Promise<User> {
+  const response = await api.patch<ApiResponse<User>>('/auth/me/', data);
+  return response.data.data;
+}

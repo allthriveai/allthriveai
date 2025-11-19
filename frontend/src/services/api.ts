@@ -85,7 +85,7 @@ export async function ensureCsrfToken(): Promise<void> {
   if (getCookie('csrftoken')) {
     return;
   }
-  
+
   // Fetch CSRF token from backend
   try {
     await api.get('/auth/csrf/');

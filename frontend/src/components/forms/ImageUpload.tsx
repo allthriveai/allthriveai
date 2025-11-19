@@ -170,11 +170,11 @@ export function ImageUpload({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={`
-            relative w-32 h-32 rounded-full border-4 border-dashed 
+            relative w-32 h-32 rounded-full border-4 border-dashed
             flex flex-col items-center justify-center cursor-pointer
             transition-all duration-200
-            ${isDragging 
-              ? 'border-primary-500 bg-primary-500/10 scale-105' 
+            ${isDragging
+              ? 'border-primary-500 bg-primary-500/10 scale-105'
               : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500 bg-slate-50 dark:bg-slate-800/50'
             }
             ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}

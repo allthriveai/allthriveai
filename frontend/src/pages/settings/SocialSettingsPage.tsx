@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { api } from '@/services/api';
+import { useAuth } from '@/hooks/useAuth';
+import { updateProfile } from '@/services/auth';
 import {
   getAvailableProviders,
   connectProvider,
@@ -13,16 +15,37 @@ import {
 } from '@/services/socialApi';
 
 export default function SocialSettingsPage() {
+  const { user, refreshUser } = useAuth();
   const [providers, setProviders] = useState<SocialProvider[]>([]);
   const [loading, setLoading] = useState(true);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const [syncingGithub, setSyncingGithub] = useState(false);
   const [githubSyncStatus, setGithubSyncStatus] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [profileLinks, setProfileLinks] = useState({
+    linkedinUrl: user?.linkedinUrl || '',
+    twitterUrl: user?.twitterUrl || '',
+    githubUrl: user?.githubUrl || '',
+    youtubeUrl: user?.youtubeUrl || '',
+    instagramUrl: user?.instagramUrl || '',
+  });
 
   useEffect(() => {
     loadProviders();
     loadGithubSyncStatus();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      setProfileLinks({
+        linkedinUrl: user.linkedinUrl || '',
+        twitterUrl: user.twitterUrl || '',
+        githubUrl: user.githubUrl || '',
+        youtubeUrl: user.youtubeUrl || '',
+        instagramUrl: user.instagramUrl || '',
+      });
+    }
+  }, [user]);
 
   const loadProviders = async () => {
     try {
@@ -41,10 +64,10 @@ export default function SocialSettingsPage() {
     try {
       setConnectingProvider(providerKey);
       const authUrl = await connectProvider(providerKey);
-      
+
       // Open OAuth popup
       await openOAuthPopup(authUrl, providerKey);
-      
+
       // Reload providers to update connection status
       await loadProviders();
     } catch (error) {
@@ -83,6 +106,20 @@ export default function SocialSettingsPage() {
     } catch (error) {
       // Silently fail - user might not have GitHub connected
       console.log('GitHub not connected');
+    }
+  };
+
+  const handleSaveProfileLinks = async () => {
+    try {
+      setSaving(true);
+      await updateProfile(profileLinks);
+      await refreshUser();
+      alert('Social media links updated successfully!');
+    } catch (error) {
+      console.error('Failed to update profile links:', error);
+      alert('Failed to update social media links. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -129,7 +166,96 @@ export default function SocialSettingsPage() {
                 Social Profiles
               </h1>
               <p className="text-slate-600 dark:text-slate-400">
-                Connect your social media and development accounts to enhance your AllThrive experience
+                Manage your public social media links and account connections
+              </p>
+            </div>
+
+            {/* Public Profile Links */}
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                Public Profile Links
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                These links will appear on your public Showcase profile
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    LinkedIn
+                  </label>
+                  <input
+                    type="url"
+                    value={profileLinks.linkedinUrl}
+                    onChange={(e) => setProfileLinks({ ...profileLinks, linkedinUrl: e.target.value })}
+                    placeholder="https://linkedin.com/in/username"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Twitter / X
+                  </label>
+                  <input
+                    type="url"
+                    value={profileLinks.twitterUrl}
+                    onChange={(e) => setProfileLinks({ ...profileLinks, twitterUrl: e.target.value })}
+                    placeholder="https://twitter.com/username"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    GitHub
+                  </label>
+                  <input
+                    type="url"
+                    value={profileLinks.githubUrl}
+                    onChange={(e) => setProfileLinks({ ...profileLinks, githubUrl: e.target.value })}
+                    placeholder="https://github.com/username"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    YouTube
+                  </label>
+                  <input
+                    type="url"
+                    value={profileLinks.youtubeUrl}
+                    onChange={(e) => setProfileLinks({ ...profileLinks, youtubeUrl: e.target.value })}
+                    placeholder="https://youtube.com/@username"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Instagram
+                  </label>
+                  <input
+                    type="url"
+                    value={profileLinks.instagramUrl}
+                    onChange={(e) => setProfileLinks({ ...profileLinks, instagramUrl: e.target.value })}
+                    placeholder="https://instagram.com/username"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveProfileLinks}
+                  disabled={saving}
+                  className="px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? 'Saving...' : 'Save Links'}
+                </button>
+              </div>
+            </div>
+
+            {/* Account Connections */}
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                Account Connections
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                Connect your accounts to enhance your AllThrive experience
               </p>
             </div>
 

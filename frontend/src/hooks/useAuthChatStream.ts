@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 
-export type ChatStep = 
+export type ChatStep =
   | 'welcome'
   | 'email'
   | 'username_suggest'
@@ -131,7 +131,7 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        
+
         // Keep the last incomplete line in buffer
         buffer = lines.pop() || '';
 
@@ -144,7 +144,7 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
                 currentMessageRef.current += data.content;
                 setState(prev => {
                   const lastMessage = prev.messages[prev.messages.length - 1];
-                  
+
                   if (lastMessage && lastMessage.role === 'assistant' && lastMessage.id.startsWith('streaming-')) {
                     // Update existing streaming message - create new array with updated message
                     const newMessages = [
@@ -174,7 +174,7 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
                 setState(prev => {
                   const messages = [...prev.messages];
                   const lastMessage = messages[messages.length - 1];
-                  
+
                   if (lastMessage && lastMessage.id.startsWith('streaming-')) {
                     messages[messages.length - 1] = {
                       ...lastMessage,

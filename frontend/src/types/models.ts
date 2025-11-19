@@ -15,6 +15,12 @@ export interface User {
   bio?: string;
   websiteUrl?: string;
   calendarUrl?: string;
+  linkedinUrl?: string;
+  twitterUrl?: string;
+  githubUrl?: string;
+  youtubeUrl?: string;
+  instagramUrl?: string;
+  playgroundIsPublic?: boolean;
   createdAt: string;
   lastLogin?: string;
 }
@@ -135,6 +141,10 @@ export interface Taxonomy {
   categoryDisplay: string;
   description: string;
   isActive: boolean;
+  website_url?: string;
+  logo_url?: string;
+  usage_tips?: string[];
+  best_for?: string[];
 }
 
 // User tag types

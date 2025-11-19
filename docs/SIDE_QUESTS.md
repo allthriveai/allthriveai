@@ -226,6 +226,46 @@ This document outlines potential "side quests" - interactive games and challenge
 
 ---
 
+### 13a. Image Prompt Battle Arena
+**Concept**: Competitive image generation prompt engineering challenge.
+
+**Mechanics**:
+- Two users compete to create images matching a specific goal/theme
+- Users craft prompts for AI image generators (DALL-E, Midjourney, Stable Diffusion)
+- Judging criteria: accuracy to brief, artistic quality, prompt efficiency
+- Voting modes:
+  - Community voting (spectators choose winner)
+  - AI judge evaluation (scores adherence to criteria)
+  - Hybrid (combined scores)
+- Challenge categories:
+  - **Theme Match**: Create image matching specific description
+  - **Style Transfer**: Match a particular artistic style
+  - **Concept Fusion**: Combine multiple concepts coherently
+  - **Technical Precision**: Exact specifications (composition, lighting, colors)
+  - **Creative Freedom**: Most creative interpretation of abstract prompt
+- Show both prompts and resulting images side-by-side
+- Token/parameter tracking (negative prompts, weights, model settings)
+- Prompt reveal after voting to learn techniques
+- Save winning prompts to personal collection
+- Leaderboard by category and overall rating
+
+**Learning Outcomes**:
+- Image prompt engineering techniques
+- Understanding model-specific syntax (DALL-E vs Midjourney vs SD)
+- Negative prompting strategies
+- Weight and parameter optimization
+- Artistic direction and composition control
+- Learning from community techniques
+
+**Technical Considerations**:
+- Integration with multiple image generation APIs
+- Image storage and gallery system
+- Real-time voting mechanism
+- Cost management (credit system for image generation)
+- Content moderation for generated images
+
+---
+
 ### 14. AI Agent Training Ground
 **Concept**: Configure and optimize AI agents for complex tasks.
 

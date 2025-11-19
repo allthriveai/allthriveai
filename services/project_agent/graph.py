@@ -1,15 +1,17 @@
 """LangGraph state machine for project creation."""
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
+
+from services.auth_agent.checkpointer import get_checkpointer
+
 from .nodes import (
     ProjectState,
-    welcome_node,
-    process_title_node,
-    process_description_node,
-    process_type_node,
-    process_showcase_node,
     create_project_node,
+    process_description_node,
+    process_showcase_node,
+    process_title_node,
+    process_type_node,
+    welcome_node,
 )
-from services.auth_agent.checkpointer import get_checkpointer
 
 
 def should_create_project(state: ProjectState) -> str:
@@ -50,7 +52,7 @@ workflow.add_conditional_edges(
     {
         "done": END,
         "error": END,
-    }
+    },
 )
 
 # Compile the graph with checkpointer for persistence

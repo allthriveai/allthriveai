@@ -58,8 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: null,
       });
     } catch (error) {
-      const errorMessage = (error && typeof error === 'object' && 'error' in error) 
-        ? String(error.error) 
+      const errorMessage = (error && typeof error === 'object' && 'error' in error)
+        ? String(error.error)
         : 'Login failed';
       setAuthState({
         user: null,
@@ -82,8 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: null,
       });
     } catch (error) {
-      const errorMessage = (error && typeof error === 'object' && 'error' in error) 
-        ? String(error.error) 
+      const errorMessage = (error && typeof error === 'object' && 'error' in error)
+        ? String(error.error)
         : 'Logout failed';
       setAuthState((prev) => ({
         ...prev,
@@ -118,5 +118,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Export context for hooks/useAuth.ts  
+// Export context for hooks/useAuth.ts
 export { AuthContext };

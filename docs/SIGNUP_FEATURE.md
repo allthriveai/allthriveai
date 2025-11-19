@@ -157,7 +157,7 @@ Users can choose their account type during signup:
     - Returns to app
     - User created with explorer role
     - Redirects to dashboard
-    
+
 3b. Email/Password Path:
     - Validates form
     - Submits to /api/auth/signup/

@@ -17,12 +17,25 @@ AllThrive AI is a full-stack AI application featuring:
 
 ```
 allthriveai/
-├── core/              # Main Django app with models, views, serializers
+├── core/              # Django app with domain-driven architecture
+│   ├── agents/        # Conversation & Message models
+│   ├── auth/          # Authentication views, serializers, tests
+│   ├── users/         # User, UserRole, UserProfile models
+│   ├── projects/      # Project models, views, serializers
+│   ├── quizzes/       # Quiz, QuizAttempt, QuizQuestion models
+│   ├── referrals/     # Referral, ReferralCode models
+│   ├── taxonomy/      # Taxonomy, UserTag, UserInteraction models
+│   ├── social/        # SocialConnection, SocialProvider models
+│   ├── battles/       # Battle-related models
+│   ├── uploads/       # FileUpload models
+│   ├── tools/         # Tool-related models
+│   ├── audits/        # UserAuditLog models
+│   └── tests/         # Integration tests only (domain tests in respective folders)
 ├── services/          # Business logic and AI provider integrations
 ├── config/            # Django settings and configuration
 ├── frontend/          # TypeScript/React frontend application
 ├── docs/              # All documentation files
-├── scripts/           # Utility scripts (e.g., setup_oauth.py)
+├── scripts/           # Utility scripts (setup_oauth.py, pre-commit hooks)
 ├── templates/         # Django HTML templates
 ├── staticfiles/       # Collected static files
 └── examples/          # Example code and demos
@@ -34,7 +47,7 @@ allthriveai/
 - `config/celery.py` - Celery task queue configuration
 - `docker-compose.yml` - Multi-service Docker setup
 - `Makefile` - Development commands and shortcuts
-- `pre-push` - Git hook for pre-push validations
+- `.pre-commit-config.yaml` - Pre-commit hooks configuration
 - `requirements.txt` - Python dependencies
 
 ## Development Practices
@@ -54,16 +67,26 @@ allthriveai/
 
 ### Git Workflow
 
-- **Never bypass pre-commit hooks** (no `--no-verify`)
+- **Pre-commit hooks are INSTALLED and ACTIVE**
+- **Never bypass pre-commit hooks** (no `git commit --no-verify`)
 - **Never bypass pre-push hooks** (no `git push --no-verify`)
-- Run all checks in the pre-push hook before pushing
+- Hooks automatically enforce:
+  - Code formatting (black, isort)
+  - Linting (flake8, autoflake)
+  - Security checks (bandit)
+  - No hardcoded URLs
+  - Explicit ViewSet permissions
+  - Domain imports (no `from core.models import`)
+  - `settings.AUTH_USER_MODEL` usage
 - Only commit when explicitly asked by the user
+- See `docs/PRE_COMMIT_SETUP.md` for details
 
 ### Code Quality
 
-- Use **ruff** for Python code formatting (not black - avoid conflicts)
+- Pre-commit hooks use **black** for Python formatting (line length: 120)
+- Use **isort** for import sorting (compatible with black)
 - Use **TypeScript** for all frontend development
-- Run linting and type checking before committing
+- Hooks automatically run linting and formatting on commit
 - Write tests for new features
 
 ## Code Organization Rules
@@ -74,18 +97,66 @@ allthriveai/
 - Services handle AI provider integrations, authentication logic, etc.
 - Example: `services/ai_provider.py`, `services/auth_agent/`
 
-### Models
+### Domain-Driven Architecture
 
-- User models: `core/user_models.py`
-- Audit models: `core/audit_models.py`
-- Main models: `core/models.py`
+**IMPORTANT**: Core has been restructured into 12 domain packages. Always use domain imports.
 
-### Views & Serializers
+#### Import Guidelines
 
-- Authentication views: `core/auth_views.py`, `core/auth_chat_views.py`
-- Authentication serializers: `core/auth_serializers.py`
-- General views: `core/views.py`
-- General serializers: `core/serializers.py`
+```python
+# ✅ CORRECT - Domain imports
+from core.users.models import User, UserRole, UserProfile
+from core.projects.models import Project
+from core.agents.models import Conversation, Message
+from core.quizzes.models import Quiz, QuizAttempt
+from core.referrals.models import Referral, ReferralCode
+from core.taxonomy.models import Taxonomy, UserTag
+from core.social.models import SocialConnection, SocialProvider
+from core.audits.models import UserAuditLog
+
+# ❌ WRONG - Never import from core.models
+from core.models import User, Project  # Pre-commit hook will reject this!
+```
+
+#### ForeignKey Usage
+
+```python
+# ✅ CORRECT - Use settings.AUTH_USER_MODEL
+from django.conf import settings
+
+class Project(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+
+# ❌ WRONG - Direct User import
+from core.users.models import User
+
+class Project(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+```
+
+#### Domain Structure
+
+Each domain package contains:
+- `models.py` - Domain models
+- `serializers.py` - API serializers
+- `views.py` - ViewSets and views
+- `tests/` - Domain-specific tests
+- `__init__.py` - Explicit exports with `__all__`
+
+#### Key Domains
+
+- **users**: User, UserRole, UserProfile
+- **projects**: Project and related models
+- **agents**: Conversation, Message (AI chat)
+- **auth**: Authentication views, serializers, logic
+- **quizzes**: Quiz system
+- **referrals**: Referral tracking
+- **taxonomy**: Tags and personalization
+- **social**: OAuth connections
+- **audits**: User activity logs
 
 ### Documentation
 
@@ -132,7 +203,9 @@ make test-frontend     # Frontend tests only
 
 ### Test Organization
 
-- Backend tests: `core/tests/`, `services/tests/`
+- **Domain tests**: `core/<domain>/tests/` (e.g., `core/projects/tests/test_projects.py`)
+- **Integration tests**: `core/tests/` (cross-domain tests)
+- **Service tests**: `services/tests/`
 - Always verify code with tests before marking work complete
 - Check README or codebase for project-specific test frameworks
 
@@ -178,15 +251,18 @@ All API endpoints are versioned under `/api/v1/`:
 ## Important Reminders
 
 1. **Never disable or bypass pre-commit/pre-push hooks**
-2. **Never commit .env files**
-3. **Always use Docker with standard ports (3000/8000)**
-4. **Keep documentation in /docs folder**
-5. **Use TypeScript for frontend development**
-6. **Use ruff for Python formatting**
-7. **Test before committing**
-8. **Only commit when explicitly requested**
-9. **Use first-party cookies for auth (not localStorage)**
-10. **Generate/include thumbnails when relevant**
+2. **Always use domain imports** (never `from core.models import`)
+3. **Use `settings.AUTH_USER_MODEL`** in ForeignKeys
+4. **Never commit .env files**
+5. **Always use Docker with standard ports (3000/8000)**
+6. **Keep documentation in /docs folder**
+7. **Use TypeScript for frontend development**
+8. **Use black + isort** (pre-commit enforces this)
+9. **Test before committing**
+10. **Only commit when explicitly requested**
+11. **Use first-party cookies for auth (not localStorage)**
+12. **Generate/include thumbnails when relevant**
+13. **All ViewSets must have explicit `permission_classes`**
 
 ## Style & Documentation
 
@@ -202,9 +278,58 @@ All API endpoints are versioned under `/api/v1/`:
 - See `frontend/README.md` for frontend-specific guidelines
 - Frontend code should not access `localStorage` for tokens
 
+## Pre-Commit Hooks
+
+### What Gets Checked
+
+**Standard Tools:**
+- Black (formatting, line length 120)
+- isort (import sorting)
+- flake8 (linting with docstrings)
+- autoflake (remove unused imports)
+- bandit (security scanning)
+- Django upgrade (Django 4.2+ patterns)
+
+**Custom AllThrive AI Rules:**
+1. **No Hardcoded URLs** - Blocks `http://localhost:3000`, requires `settings.FRONTEND_URL`
+2. **Explicit Permissions** - All ViewSets must have `permission_classes = [...]`
+3. **Domain Imports** - Blocks `from core.models import`, requires domain imports
+4. **AUTH_USER_MODEL** - ForeignKeys must use `settings.AUTH_USER_MODEL`
+5. **Magic Numbers** - Warns about magic numbers (doesn't block)
+
+### Setup
+
+```bash
+# Pre-commit is already installed and configured
+# Hooks run automatically on commit
+
+# Manual run on all files
+pre-commit run --all-files
+
+# Manual run on specific files
+pre-commit run --files core/projects/models.py
+```
+
+### Common Fixes
+
+```bash
+# If hooks fail, they often auto-fix files
+# Just re-add and commit:
+git add .
+git commit -m "Your message"
+
+# View hook details
+cat .pre-commit-config.yaml
+```
+
+See `docs/PRE_COMMIT_SETUP.md` for complete documentation.
+
 ## Troubleshooting
 
 - Check `docs/` folder for specific implementation guides
 - OAuth issues: see `docs/OAUTH_COMPLETE_SUMMARY.md`
 - Security: see `docs/SECURITY_IMPLEMENTATION.md`
 - Deployment: see `docs/DEPLOYMENT_CONFIG.md`
+- Domain structure: see `docs/CORE_REFACTOR_CODE_REVIEW.md`
+- Import guidelines: see `docs/IMPORT_GUIDELINES.md`
+- Pre-commit setup: see `docs/PRE_COMMIT_SETUP.md`

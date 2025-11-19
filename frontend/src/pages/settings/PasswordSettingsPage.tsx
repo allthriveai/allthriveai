@@ -33,7 +33,7 @@ export default function PasswordSettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (formData.newPassword !== formData.confirmPassword) {
       setErrorMessage('New passwords do not match');
@@ -56,7 +56,7 @@ export default function PasswordSettingsPage() {
         current_password: formData.currentPassword,
         new_password: formData.newPassword,
       });
-      
+
       setSaveStatus('success');
       setFormData({
         currentPassword: '',

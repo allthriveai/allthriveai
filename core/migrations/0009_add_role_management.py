@@ -6,57 +6,126 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0008_add_website_calendar_fields'),
+        ("core", "0008_add_website_calendar_fields"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='RolePermission',
+            name="RolePermission",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('role', models.CharField(choices=[('explorer', 'Explorer'), ('expert', 'Expert'), ('mentor', 'Mentor'), ('patron', 'Patron'), ('admin', 'Admin')], max_length=20, unique=True)),
-                ('display_name', models.CharField(max_length=100)),
-                ('description', models.TextField()),
-                ('badge_color', models.CharField(default='gray', max_length=20)),
-                ('can_create_projects', models.BooleanField(default=True)),
-                ('max_projects', models.IntegerField(default=10)),
-                ('can_create_showcase', models.BooleanField(default=False)),
-                ('max_showcase_projects', models.IntegerField(default=0)),
-                ('can_access_ai_chat', models.BooleanField(default=True)),
-                ('ai_requests_per_day', models.IntegerField(default=10)),
-                ('can_mentor_users', models.BooleanField(default=False)),
-                ('can_access_mentorship', models.BooleanField(default=False)),
-                ('can_access_premium_features', models.BooleanField(default=False)),
-                ('can_moderate_content', models.BooleanField(default=False)),
-                ('can_manage_users', models.BooleanField(default=False)),
-                ('hierarchy_level', models.IntegerField(default=1)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "role",
+                    models.CharField(
+                        choices=[
+                            ("explorer", "Explorer"),
+                            ("expert", "Expert"),
+                            ("mentor", "Mentor"),
+                            ("patron", "Patron"),
+                            ("admin", "Admin"),
+                        ],
+                        max_length=20,
+                        unique=True,
+                    ),
+                ),
+                ("display_name", models.CharField(max_length=100)),
+                ("description", models.TextField()),
+                ("badge_color", models.CharField(default="gray", max_length=20)),
+                ("can_create_projects", models.BooleanField(default=True)),
+                ("max_projects", models.IntegerField(default=10)),
+                ("can_create_showcase", models.BooleanField(default=False)),
+                ("max_showcase_projects", models.IntegerField(default=0)),
+                ("can_access_ai_chat", models.BooleanField(default=True)),
+                ("ai_requests_per_day", models.IntegerField(default=10)),
+                ("can_mentor_users", models.BooleanField(default=False)),
+                ("can_access_mentorship", models.BooleanField(default=False)),
+                ("can_access_premium_features", models.BooleanField(default=False)),
+                ("can_moderate_content", models.BooleanField(default=False)),
+                ("can_manage_users", models.BooleanField(default=False)),
+                ("hierarchy_level", models.IntegerField(default=1)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'ordering': ['hierarchy_level'],
+                "ordering": ["hierarchy_level"],
             },
         ),
         migrations.CreateModel(
-            name='RoleUpgradeRequest',
+            name="RoleUpgradeRequest",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('current_role', models.CharField(choices=[('explorer', 'Explorer'), ('expert', 'Expert'), ('mentor', 'Mentor'), ('patron', 'Patron'), ('admin', 'Admin')], help_text='Role at the time of request', max_length=20)),
-                ('requested_role', models.CharField(choices=[('explorer', 'Explorer'), ('expert', 'Expert'), ('mentor', 'Mentor'), ('patron', 'Patron'), ('admin', 'Admin')], help_text='Role user is requesting', max_length=20)),
-                ('reason', models.TextField(help_text="User's explanation for requesting this role")),
-                ('status', models.CharField(choices=[('pending', 'Pending Review'), ('approved', 'Approved'), ('rejected', 'Rejected'), ('cancelled', 'Cancelled')], default='pending', max_length=20)),
-                ('review_notes', models.TextField(blank=True, help_text='Admin notes about the decision')),
-                ('reviewed_at', models.DateTimeField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('reviewed_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='reviewed_role_requests', to=settings.AUTH_USER_MODEL)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='role_upgrade_requests', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "current_role",
+                    models.CharField(
+                        choices=[
+                            ("explorer", "Explorer"),
+                            ("expert", "Expert"),
+                            ("mentor", "Mentor"),
+                            ("patron", "Patron"),
+                            ("admin", "Admin"),
+                        ],
+                        help_text="Role at the time of request",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "requested_role",
+                    models.CharField(
+                        choices=[
+                            ("explorer", "Explorer"),
+                            ("expert", "Expert"),
+                            ("mentor", "Mentor"),
+                            ("patron", "Patron"),
+                            ("admin", "Admin"),
+                        ],
+                        help_text="Role user is requesting",
+                        max_length=20,
+                    ),
+                ),
+                ("reason", models.TextField(help_text="User's explanation for requesting this role")),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending Review"),
+                            ("approved", "Approved"),
+                            ("rejected", "Rejected"),
+                            ("cancelled", "Cancelled"),
+                        ],
+                        default="pending",
+                        max_length=20,
+                    ),
+                ),
+                ("review_notes", models.TextField(blank=True, help_text="Admin notes about the decision")),
+                ("reviewed_at", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "reviewed_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="reviewed_role_requests",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="role_upgrade_requests",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['user', 'status'], name='core_roleup_user_id_3f84e6_idx'), models.Index(fields=['status', 'created_at'], name='core_roleup_status_51a993_idx')],
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(fields=["user", "status"], name="core_roleup_user_id_3f84e6_idx"),
+                    models.Index(fields=["status", "created_at"], name="core_roleup_status_51a993_idx"),
+                ],
             },
         ),
     ]

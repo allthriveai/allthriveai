@@ -96,6 +96,16 @@ export async function deleteProject(id: number): Promise<void> {
 }
 
 /**
+ * Bulk delete multiple projects
+ */
+export async function bulkDeleteProjects(projectIds: number[]): Promise<{ deleted_count: number; message: string }> {
+  const response = await api.post<{ deleted_count: number; message: string }>('/me/projects/bulk-delete/', {
+    project_ids: projectIds,
+  });
+  return response.data;
+}
+
+/**
  * Get projects for a specific user (showcase and playground)
  * For logged-out users, only returns showcase projects.
  * For logged-in users viewing their own profile, returns all projects.
@@ -110,7 +120,7 @@ export async function getUserProjects(username: string): Promise<{
     showcase: any[];
     playground: any[];
   }>(`/users/${username}/projects/`);
-  
+
   return {
     showcase: response.data.showcase.map(transformProject),
     playground: response.data.playground.map(transformProject),

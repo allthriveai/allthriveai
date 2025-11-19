@@ -1,0 +1,3 @@
+[tool.bandit]
+exclude_dirs = ["tests", "migrations", ".venv", "venv", "env"]
+skips = ["B101"]  # Skip assert warnings in tests

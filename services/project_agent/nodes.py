@@ -1,18 +1,20 @@
 """LangGraph nodes for project creation flow."""
-from typing import TypedDict, Literal
+from typing import Literal, TypedDict
+
 from .prompts import (
-    WELCOME_MESSAGE,
     ASK_DESCRIPTION,
-    ASK_TYPE,
     ASK_SHOWCASE,
+    ASK_TYPE,
     CONFIRM_PROJECT,
-    SUCCESS_MESSAGE,
     ERROR_MESSAGE,
+    SUCCESS_MESSAGE,
+    WELCOME_MESSAGE,
 )
 
 
 class ProjectState(TypedDict):
     """State for project creation conversation."""
+
     messages: list[dict]
     step: Literal["welcome", "title", "description", "type", "showcase", "confirm", "create", "done", "error"]
     title: str | None
@@ -29,10 +31,7 @@ class ProjectState(TypedDict):
 def welcome_node(state: ProjectState) -> ProjectState:
     """Welcome user and ask for project title."""
     state["step"] = "title"
-    state["messages"].append({
-        "role": "assistant",
-        "content": WELCOME_MESSAGE
-    })
+    state["messages"].append({"role": "assistant", "content": WELCOME_MESSAGE})
     return state
 
 
@@ -42,12 +41,9 @@ def process_title_node(state: ProjectState) -> ProjectState:
     last_msg = next((m for m in reversed(state["messages"]) if m["role"] == "user"), None)
     if last_msg:
         state["title"] = last_msg["content"].strip()
-    
+
     state["step"] = "description"
-    state["messages"].append({
-        "role": "assistant",
-        "content": ASK_DESCRIPTION
-    })
+    state["messages"].append({"role": "assistant", "content": ASK_DESCRIPTION})
     return state
 
 
@@ -60,12 +56,9 @@ def process_description_node(state: ProjectState) -> ProjectState:
             state["description"] = last_msg["content"].strip()
         else:
             state["description"] = ""
-    
+
     state["step"] = "type"
-    state["messages"].append({
-        "role": "assistant",
-        "content": ASK_TYPE
-    })
+    state["messages"].append({"role": "assistant", "content": ASK_TYPE})
     return state
 
 
@@ -74,7 +67,7 @@ def process_type_node(state: ProjectState) -> ProjectState:
     last_msg = next((m for m in reversed(state["messages"]) if m["role"] == "user"), None)
     if last_msg:
         content = last_msg["content"].strip().lower()
-        
+
         # Map user input to project types
         type_mapping = {
             "1": "github_repo",
@@ -96,14 +89,11 @@ def process_type_node(state: ProjectState) -> ProjectState:
             "4": "other",
             "other": "other",
         }
-        
+
         state["project_type"] = type_mapping.get(content, "other")
-    
+
     state["step"] = "showcase"
-    state["messages"].append({
-        "role": "assistant",
-        "content": ASK_SHOWCASE
-    })
+    state["messages"].append({"role": "assistant", "content": ASK_SHOWCASE})
     return state
 
 
@@ -113,7 +103,7 @@ def process_showcase_node(state: ProjectState) -> ProjectState:
     if last_msg:
         content = last_msg["content"].strip().lower()
         state["is_showcase"] = content in ["yes", "y", "yeah", "sure", "yep", "true", "1"]
-    
+
     # Build confirmation message
     type_labels = {
         "github_repo": "GitHub Repository",
@@ -121,34 +111,32 @@ def process_showcase_node(state: ProjectState) -> ProjectState:
         "prompt": "Prompt",
         "other": "Other",
     }
-    
+
     confirmation = CONFIRM_PROJECT.format(
         title=state.get("title", "Untitled"),
         description=state.get("description") or "(No description)",
         type_label=type_labels.get(state.get("project_type", "other"), "Other"),
-        showcase="Yes" if state.get("is_showcase") else "No"
+        showcase="Yes" if state.get("is_showcase") else "No",
     )
-    
+
     state["step"] = "confirm"
-    state["messages"].append({
-        "role": "assistant",
-        "content": confirmation
-    })
+    state["messages"].append({"role": "assistant", "content": confirmation})
     return state
 
 
 def create_project_node(state: ProjectState) -> ProjectState:
     """Create the project via API."""
-    from core.models import Project, User
-    
+    from core.projects.models import Project
+    from core.users.models import User
+
     try:
         # Get user
         if not state.get("user_id"):
             raise ValueError("User not authenticated")
-        
+
         user = User.objects.get(id=state["user_id"])
         state["username"] = user.username
-        
+
         # Create project
         project = Project.objects.create(
             user=user,
@@ -157,30 +145,24 @@ def create_project_node(state: ProjectState) -> ProjectState:
             type=state.get("project_type", "other"),
             is_showcase=state.get("is_showcase", False),
         )
-        
+
         state["project_id"] = project.id
         state["project_slug"] = project.slug
         state["step"] = "done"
-        
+
         # Success message
         success_msg = SUCCESS_MESSAGE.format(
             title=project.title,
             username=user.username,
             slug=project.slug,
-            tab="Showcase" if project.is_showcase else "Playground"
+            tab="Showcase" if project.is_showcase else "Playground",
         )
-        
-        state["messages"].append({
-            "role": "assistant",
-            "content": success_msg
-        })
-        
+
+        state["messages"].append({"role": "assistant", "content": success_msg})
+
     except Exception as e:
         state["step"] = "error"
         state["error"] = str(e)
-        state["messages"].append({
-            "role": "assistant",
-            "content": ERROR_MESSAGE.format(error=str(e))
-        })
-    
+        state["messages"].append({"role": "assistant", "content": ERROR_MESSAGE.format(error=str(e))})
+
     return state

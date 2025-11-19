@@ -28,7 +28,7 @@ export default function QuizPage() {
   useEffect(() => {
     const fetchQuiz = async () => {
       if (!slug) return;
-      
+
       try {
         setLoading(true);
         const data = await getQuiz(slug);
@@ -47,7 +47,7 @@ export default function QuizPage() {
 
   const handleStartQuiz = async () => {
     if (!slug) return;
-    
+
     try {
       const response = await startQuiz(slug);
       setAttemptId(response.attempt_id);
@@ -66,29 +66,29 @@ export default function QuizPage() {
 
   const handleAnswer = useCallback(async (answer: string) => {
     if (!attemptId || !questions[currentQuestionIndex] || submittingAnswer) return;
-    
+
     const timeSpent = Math.floor((Date.now() - questionStartTime.current) / 1000);
     const question = questions[currentQuestionIndex];
-    
+
     try {
       setSubmittingAnswer(true);
       const response = await submitAnswer(attemptId, question.id, answer, timeSpent);
-      
+
       setLastAnswerCorrect(response.correct);
       if (response.correct) {
         setScore(prev => prev + 1);
       }
-      
+
       // Show feedback
       setShowFeedback(true);
       setQuizState('feedback');
-      
+
       const FEEDBACK_DISPLAY_DURATION = 2000; // ms
       // Auto-advance after FEEDBACK_DISPLAY_DURATION
       setTimeout(() => {
         setShowFeedback(false);
         setSubmittingAnswer(false);
-        
+
         if (currentQuestionIndex < questions.length - 1) {
           setCurrentQuestionIndex(prev => prev + 1);
           setQuizState('taking');
@@ -105,7 +105,7 @@ export default function QuizPage() {
 
   const handleCompleteQuiz = async () => {
     if (!attemptId) return;
-    
+
     try {
       await completeQuiz(attemptId);
       setQuizState('results');
@@ -165,11 +165,11 @@ export default function QuizPage() {
                       className="w-full h-64 object-cover rounded-lg mb-6"
                     />
                   )}
-                  
+
                   <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
                     {quiz.title}
                   </h1>
-                  
+
                   <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
                     {quiz.description}
                   </p>
@@ -220,9 +220,9 @@ export default function QuizPage() {
             {/* Taking Quiz State */}
             {(quizState === 'taking' || quizState === 'feedback') && currentQuestion && (
               <div>
-                <QuizProgress 
-                  current={currentQuestionIndex + 1} 
-                  total={questions.length} 
+                <QuizProgress
+                  current={currentQuestionIndex + 1}
+                  total={questions.length}
                 />
                 <div className="relative">
                   <QuizCard

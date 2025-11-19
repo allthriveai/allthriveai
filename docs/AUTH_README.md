@@ -190,7 +190,7 @@ from rest_framework.permissions import IsAuthenticated
 def expert_only_feature(request):
     if not request.user.has_role_permission('expert'):
         return Response({'error': 'Expert role required'}, status=403)
-    
+
     return Response({'data': 'success'})
 ```
 
@@ -200,11 +200,11 @@ import { useAuth } from '@/context/AuthContext';
 
 function PremiumFeature() {
   const { user } = useAuth();
-  
+
   if (user.role !== 'patron' && user.role !== 'admin') {
     return <div>Upgrade to Patron to access this feature</div>;
   }
-  
+
   return <div>Premium content here</div>;
 }
 ```

@@ -1,17 +1,43 @@
 import { api } from './api';
-import type { 
-  Taxonomy, 
-  UserTag, 
+import type {
+  Taxonomy,
+  UserTag,
   UserPersonalization,
-  InteractionType 
+  InteractionType
 } from '@/types/models';
 
 /**
  * Get all available taxonomies
+ * Fetches all pages if paginated
  */
 export async function getTaxonomies(): Promise<Taxonomy[]> {
-  const response = await api.get('/taxonomies/');
-  return response.data;
+  let allTaxonomies: Taxonomy[] = [];
+  let nextUrl: string | null = '/taxonomies/';
+
+  // Fetch all pages
+  while (nextUrl) {
+    const response = await api.get(nextUrl);
+    const data = response.data;
+
+    // Handle both paginated and non-paginated responses
+    if (data.results) {
+      allTaxonomies = allTaxonomies.concat(data.results);
+      // Extract relative path from next URL
+      if (data.next) {
+        const url = new URL(data.next);
+        nextUrl = url.pathname + url.search;
+        // Remove /api/v1 prefix if present since api base already includes it
+        nextUrl = nextUrl.replace('/api/v1', '');
+      } else {
+        nextUrl = null;
+      }
+    } else {
+      allTaxonomies = data;
+      nextUrl = null;
+    }
+  }
+
+  return allTaxonomies;
 }
 
 /**

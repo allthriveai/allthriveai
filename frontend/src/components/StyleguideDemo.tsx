@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 /**
  * StyleguideDemo Component
- * 
+ *
  * Comprehensive showcase of the All Thrive AI design system
  * Demonstrates glassmorphism, light/dark themes, and all global CSS classes
  */

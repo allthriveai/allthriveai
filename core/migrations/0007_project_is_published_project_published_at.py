@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0006_quiz_core_quiz_slug_55043c_idx_and_more'),
+        ("core", "0006_quiz_core_quiz_slug_55043c_idx_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='project',
-            name='is_published',
-            field=models.BooleanField(default=False, help_text='Whether project is publicly visible'),
+            model_name="project",
+            name="is_published",
+            field=models.BooleanField(default=False, help_text="Whether project is publicly visible"),
         ),
         migrations.AddField(
-            model_name='project',
-            name='published_at',
-            field=models.DateTimeField(blank=True, help_text='When project was first published', null=True),
+            model_name="project",
+            name="published_at",
+            field=models.DateTimeField(blank=True, help_text="When project was first published", null=True),
         ),
     ]

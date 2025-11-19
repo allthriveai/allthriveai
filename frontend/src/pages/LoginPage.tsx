@@ -28,7 +28,10 @@ export default function LoginPage() {
   const handleGoogleLogin = () => {
     try {
       const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      window.location.href = `${backendUrl}/accounts/google/login/?process=login`;
+      // Ensure we hit the Django origin even if VITE_API_URL includes a path like /api/v1
+      const apiUrl = new URL(backendUrl);
+      const backendOrigin = `${apiUrl.protocol}//${apiUrl.hostname}${apiUrl.port ? `:${apiUrl.port}` : ''}`;
+      window.location.href = `${backendOrigin}/accounts/google/login/?process=login`;
     } catch {
       setError('Failed to initiate Google login');
     }
@@ -37,7 +40,9 @@ export default function LoginPage() {
   const handleGitHubLogin = () => {
     try {
       const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      window.location.href = `${backendUrl}/accounts/github/login/?process=login`;
+      const apiUrl = new URL(backendUrl);
+      const backendOrigin = `${apiUrl.protocol}//${apiUrl.hostname}${apiUrl.port ? `:${apiUrl.port}` : ''}`;
+      window.location.href = `${backendOrigin}/accounts/github/login/?process=login`;
     } catch {
       setError('Failed to initiate GitHub login');
     }
@@ -71,7 +76,7 @@ export default function LoginPage() {
               {successMessage}
             </div>
           )}
-          
+
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl">
               {error}

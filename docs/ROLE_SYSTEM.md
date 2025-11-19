@@ -49,7 +49,7 @@ AllThrive AI uses a hierarchical role system to manage user permissions and acce
 
 **Badge Color**: Blue
 
-**Auto-Upgrade Path**: Can upgrade to Patron instantly  
+**Auto-Upgrade Path**: Can upgrade to Patron instantly
 **Upgrade Requirements**: None (self-service from Explorer)
 
 ---
@@ -71,7 +71,7 @@ AllThrive AI uses a hierarchical role system to manage user permissions and acce
 
 **Badge Color**: Purple
 
-**Upgrade Requirements**: 
+**Upgrade Requirements**:
 - ❗ **Admin approval required**
 - Must submit application with reasoning
 - Reviewed by platform administrators
@@ -95,7 +95,7 @@ AllThrive AI uses a hierarchical role system to manage user permissions and acce
 
 **Badge Color**: Amber (Gold)
 
-**Auto-Upgrade Path**: Can upgrade from any lower role instantly  
+**Auto-Upgrade Path**: Can upgrade from any lower role instantly
 **Upgrade Requirements**: Payment/subscription (future integration)
 
 ---
@@ -117,7 +117,7 @@ AllThrive AI uses a hierarchical role system to manage user permissions and acce
 
 **Badge Color**: Red
 
-**Upgrade Requirements**: 
+**Upgrade Requirements**:
 - ❗ **Admin approval required**
 - Reserved for platform staff and trusted administrators
 - Manual assignment only

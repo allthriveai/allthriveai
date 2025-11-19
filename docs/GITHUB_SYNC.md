@@ -233,7 +233,7 @@ if sync_service.is_connected():
         include_forks=False,
         min_stars=5
     )
-    
+
     print(f"Created: {result['created']}")
     print(f"Updated: {result['updated']}")
     print(f"Skipped: {result['skipped']}")

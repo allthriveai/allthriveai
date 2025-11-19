@@ -8,11 +8,11 @@ import type { Quiz, QuizDifficulty, QuizFilters } from '@/components/quiz/types'
 export default function QuizListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filter states from URL
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [selectedTopics, setSelectedTopics] = useState<string[]>(
@@ -32,7 +32,7 @@ export default function QuizListPage() {
           topic: selectedTopics.length > 0 ? selectedTopics : undefined,
           difficulty: selectedDifficulties.length > 0 ? selectedDifficulties : undefined,
         };
-        
+
         const response = await getQuizzes(filters);
         setQuizzes(response.results);
         setError(null);
@@ -255,7 +255,7 @@ export default function QuizListPage() {
                       <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                         {quiz.title}
                       </h3>
-                      
+
                       <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
                         {quiz.description}
                       </p>

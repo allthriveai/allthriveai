@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0004_quiz_quizattempt_quizquestion'),
+        ("core", "0004_quiz_quizattempt_quizquestion"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='quiz',
-            name='slug',
-            field=models.SlugField(blank=True, help_text='URL-friendly version of title', max_length=200, null=True, unique=True),
+            model_name="quiz",
+            name="slug",
+            field=models.SlugField(
+                blank=True, help_text="URL-friendly version of title", max_length=200, null=True, unique=True
+            ),
         ),
     ]

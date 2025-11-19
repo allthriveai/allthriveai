@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { ProfileCenter } from '@/components/profile/ProfileCenter';
@@ -8,8 +8,17 @@ export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'activity'>('showcase');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as 'showcase' | 'playground' | 'activity' | null;
+  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'activity'>(tabParam || 'showcase');
   const isOwnProfile = username === user?.username;
+
+  // Update tab when query parameter changes
+  useEffect(() => {
+    if (tabParam && ['showcase', 'playground', 'activity'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   // Redirect to user's own profile if no username in URL and logged in
   useEffect(() => {

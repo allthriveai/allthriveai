@@ -1,0 +1,262 @@
+[
+  {
+    "model": "core.taxonomy",
+    "pk": 1001,
+    "fields": {
+      "name": "ChatGPT",
+      "category": "tool",
+      "description": "OpenAI's conversational AI that can assist with writing, coding, analysis, and creative tasks through natural language interactions.",
+      "is_active": true,
+      "website_url": "https://chat.openai.com",
+      "logo_url": "https://cdn.osstatic.net/logos/openai-chatgpt.svg",
+      "usage_tips": [
+        "Ask it to explain complex concepts in simple terms",
+        "Use it for brainstorming and ideation sessions",
+        "Request step-by-step coding help with explanations",
+        "Have it review and improve your writing",
+        "Create custom instructions to tailor responses to your needs"
+      ],
+      "best_for": [
+        "Content creation and writing assistance",
+        "Code debugging and explanation",
+        "Learning new concepts quickly",
+        "Brainstorming and problem-solving",
+        "Quick research and summarization"
+      ]
+    }
+  },
+  {
+    "model": "core.taxonomy",
+    "pk": 1002,
+    "fields": {
+      "name": "Claude",
+      "category": "tool",
+      "description": "Anthropic's AI assistant known for nuanced conversations, detailed analysis, and strong capabilities in coding and long-form content.",
+      "is_active": true,
+      "website_url": "https://claude.ai",
+      "logo_url": "https://cdn.prod.website-files.com/65d6e4a5bcf1b9e5592edd9a/65e1f7c6c6a3f8e7d1e43fd1_claude-logo.svg",
+      "usage_tips": [
+        "Leverage its 200K token context window for analyzing long documents",
+        "Ask for detailed, well-reasoned explanations",
+        "Use it for code review with thorough feedback",
+        "Request structured analysis with clear reasoning",
+        "Upload PDFs and documents for comprehensive analysis"
+      ],
+      "best_for": [
+        "Long document analysis and summarization",
+        "Detailed code reviews and refactoring",
+        "Research assistance with citations",
+        "Complex reasoning and analysis",
+        "Professional writing and editing"
+      ]
+    }
+  },
+  {
+    "model": "core.taxonomy",
+    "pk": 1003,
+    "fields": {
+      "name": "Midjourney",
+      "category": "tool",
+      "description": "AI-powered image generation tool that creates stunning, artistic visuals from text descriptions through Discord.",
+      "is_active": true,
+      "website_url": "https://www.midjourney.com",
+      "logo_url": "https://cdn.sanity.io/images/4zrzovbb/website/0b2d2e3c7d5c8f9f5c5b7e5b7c5b7e5b7c5b7e5b-512x512.png",
+      "usage_tips": [
+        "Start with simple prompts and iterate with parameters",
+        "Use aspect ratio flags (--ar) to control image dimensions",
+        "Combine artistic styles and mediums in your prompts",
+        "Use the /describe command to learn from existing images",
+        "Experiment with chaos values (--c) for varied results"
+      ],
+      "best_for": [
+        "Concept art and creative visualization",
+        "Marketing and social media graphics",
+        "Storyboarding and mood boards",
+        "Book covers and illustrations",
+        "Artistic exploration and inspiration"
+      ]
+    }
+  },
+  {
+    "model": "core.taxonomy",
+    "pk": 1004,
+    "fields": {
+      "name": "GitHub Copilot",
+      "category": "tool",
+      "description": "AI pair programmer that suggests code completions and entire functions in your IDE as you type.",
+      "is_active": true,
+      "website_url": "https://github.com/features/copilot",
+      "logo_url": "https://github.githubassets.com/images/modules/site/copilot/copilot.png",
+      "usage_tips": [
+        "Write descriptive comments to guide better suggestions",
+        "Use it to generate boilerplate and repetitive code",
+        "Accept suggestions with Tab, cycle through alternatives",
+        "Ask Copilot Chat questions about your codebase",
+        "Use it to learn new libraries and frameworks"
+      ],
+      "best_for": [
+        "Rapid prototyping and development",
+        "Learning new programming languages",
+        "Writing tests and documentation",
+        "Reducing repetitive coding tasks",
+        "Exploring API usage and patterns"
+      ]
+    }
+  },
+  {
+    "model": "core.taxonomy",
+    "pk": 1005,
+    "fields": {
+      "name": "Notion AI",
+      "category": "tool",
+      "description": "AI features integrated into Notion to help with writing, brainstorming, and organizing information in your workspace.",
+      "is_active": true,
+      "website_url": "https://www.notion.so/product/ai",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png",
+      "usage_tips": [
+        "Use AI to generate first drafts of documents",
+        "Ask it to summarize long meeting notes",
+        "Have it create action items from discussions",
+        "Use AI to translate content into multiple languages",
+        "Ask it to change tone or simplify complex text"
+      ],
+      "best_for": [
+        "Meeting notes and summaries",
+        "Project documentation",
+        "Content organization and planning",
+        "Team collaboration workflows",
+        "Knowledge base creation"
+      ]
+    }
+  },
+  {
+    "model": "core.taxonomy",
+    "pk": 1006,
+    "fields": {
+      "name": "Perplexity",
+      "category": "tool",
+      "description": "AI-powered search engine that provides direct answers with sources, combining search and conversational AI.",
+      "is_active": true,
+      "website_url": "https://www.perplexity.ai",
+      "logo_url": "https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/perplexity-ai-icon.png",
+      "usage_tips": [
+        "Use it for research that needs citations",
+        "Ask follow-up questions to dig deeper",
+        "Use Pro Search for academic or detailed research",
+        "Check the sources provided for verification",
+        "Save searches to collections for later reference"
+      ],
+      "best_for": [
+        "Academic research with citations",
+        "Current events and news analysis",
+        "Comparative product research",
+        "Technical documentation lookup",
+        "Fact-checking and verification"
+      ]
+    }
+  },
+  {
+    "model": "core.taxonomy",
+    "pk": 1007,
+    "fields": {
+      "name": "Runway",
+      "category": "tool",
+      "description": "AI-powered creative suite for video editing, generation, and effects with cutting-edge generative AI models.",
+      "is_active": true,
+      "website_url": "https://runwayml.com",
+      "logo_url": "https://assets-global.website-files.com/6502af467b2a8c4792ea2975/6502af467b2a8c4792ea2a05_icon.svg",
+      "usage_tips": [
+        "Use text-to-video for quick concept visualization",
+        "Try image-to-video to animate static images",
+        "Use inpainting to remove or modify video elements",
+        "Experiment with style transfer on existing footage",
+        "Combine multiple AI tools for complex effects"
+      ],
+      "best_for": [
+        "Video content creation and editing",
+        "Social media content production",
+        "Marketing and advertising visuals",
+        "Film and animation prototyping",
+        "Creative experimentation with video"
+      ]
+    }
+  },
+  {
+    "model": "core.taxonomy",
+    "pk": 1008,
+    "fields": {
+      "name": "Grammarly",
+      "category": "tool",
+      "description": "AI writing assistant that helps with grammar, spelling, style, and tone across all your writing.",
+      "is_active": true,
+      "website_url": "https://www.grammarly.com",
+      "logo_url": "https://static.grammarly.com/assets/files/efe96a8e0e7f1f4f4f8f0e7f1f4f4f8f/grammarly-logo.svg",
+      "usage_tips": [
+        "Set goals for audience, formality, and intent",
+        "Use tone detection to match your desired voice",
+        "Review clarity and engagement suggestions",
+        "Check plagiarism for academic writing",
+        "Use browser extension for writing everywhere"
+      ],
+      "best_for": [
+        "Professional email communication",
+        "Academic writing and papers",
+        "Content creation and blogging",
+        "Business documentation",
+        "ESL writing improvement"
+      ]
+    }
+  },
+  {
+    "model": "core.taxonomy",
+    "pk": 1009,
+    "fields": {
+      "name": "Jasper",
+      "category": "tool",
+      "description": "AI content platform designed for marketing teams to create on-brand content at scale.",
+      "is_active": true,
+      "website_url": "https://www.jasper.ai",
+      "logo_url": "https://www.jasper.ai/hubfs/jasper-logo-purple.svg",
+      "usage_tips": [
+        "Train it on your brand voice and style",
+        "Use templates for specific content types",
+        "Leverage the AI art generator for visuals",
+        "Create content briefs before generating",
+        "Use campaigns to keep content organized"
+      ],
+      "best_for": [
+        "Marketing copy and campaigns",
+        "Blog posts and articles",
+        "Social media content at scale",
+        "Product descriptions",
+        "Email marketing campaigns"
+      ]
+    }
+  },
+  {
+    "model": "core.taxonomy",
+    "pk": 1010,
+    "fields": {
+      "name": "Cursor",
+      "category": "tool",
+      "description": "AI-first code editor built on VS Code, designed for AI-assisted development with deep codebase understanding.",
+      "is_active": true,
+      "website_url": "https://cursor.sh",
+      "logo_url": "https://cursor.sh/brand/icon.svg",
+      "usage_tips": [
+        "Use Cmd+K to edit code with natural language",
+        "Chat with your entire codebase for context",
+        "Use @-mentions to reference specific files",
+        "Apply suggested changes with one click",
+        "Leverage AI to understand unfamiliar code"
+      ],
+      "best_for": [
+        "Full-stack development workflows",
+        "Large codebase navigation",
+        "Refactoring and code improvements",
+        "Learning new codebases quickly",
+        "Pair programming with AI"
+      ]
+    }
+  }
+]

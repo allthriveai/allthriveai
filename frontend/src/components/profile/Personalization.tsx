@@ -36,7 +36,7 @@ export function Personalization() {
       setManualTags(data.manual_tags || []);
       setAutoTags(data.auto_generated_tags || []);
       setTaxonomies(data.available_taxonomies || []);
-      
+
       // Pre-select existing manual tags
       const existingTaxonomyIds = new Set(
         (data.manual_tags || [])
@@ -56,24 +56,24 @@ export function Personalization() {
     try {
       setIsSaving(true);
       setError(null);
-      
+
       // Find which taxonomies to add (newly selected)
       const existingIds = new Set(
         manualTags.filter(tag => tag.taxonomy).map(tag => tag.taxonomy!)
       );
       const toAdd = Array.from(selectedTaxonomies).filter(id => !existingIds.has(id));
-      
+
       // Find which tags to remove (unselected taxonomies)
       const toRemove = manualTags.filter(
         tag => tag.taxonomy && !selectedTaxonomies.has(tag.taxonomy)
       );
-      
+
       // Add new tags
       if (toAdd.length > 0) {
         const newTags = await bulkCreateTags(toAdd);
         setManualTags(prev => [...prev, ...newTags]);
       }
-      
+
       // Remove unselected tags
       for (const tag of toRemove) {
         await deleteUserTag(tag.id);
@@ -155,7 +155,7 @@ export function Personalization() {
           Personalization
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          Select your interests and preferences to personalize your experience. 
+          Select your interests and preferences to personalize your experience.
           We also automatically generate tags based on your activity.
         </p>
       </div>
@@ -300,7 +300,7 @@ export function Personalization() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             These tags were automatically generated based on your activity on the site.
           </p>
-          
+
           <div className="flex flex-wrap gap-2">
             {autoTags.map((tag) => (
               <div

@@ -118,13 +118,13 @@ export class CreateProjectAgent extends BaseAgent {
 
   async handleMessage(userMessage: string): Promise<string> {
     const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-    
+
     console.log('CreateProjectAgent.handleMessage:', userMessage);
     console.log('Session ID:', this.sessionId);
-    
+
     try {
       console.log('Calling v2 API');
-      
+
       const response = await fetch(`${apiUrl}/project/chat/v2/stream/`, {
         method: 'POST',
         headers: {
@@ -136,7 +136,7 @@ export class CreateProjectAgent extends BaseAgent {
           message: userMessage,
         }),
       });
-      
+
       console.log('Response status:', response.status);
 
       if (!response.ok) {
@@ -159,12 +159,12 @@ export class CreateProjectAgent extends BaseAgent {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                
+
                 if (data.type === 'token') {
                   fullResponse += data.content;
                 } else if (data.type === 'complete') {
                   this.sessionId = data.session_id;
-                  
+
                   // If project was created, could trigger a refresh here
                   if (data.project_id) {
                     console.log('Project created:', data.project_id, data.project_slug);
@@ -208,19 +208,19 @@ export const agentFactoryMap: Record<string, () => BaseAgent> = {
 export function createAgent(agentId: string): BaseAgent {
   // Try direct match first
   let factory = agentFactoryMap[agentId];
-  
+
   // Try lowercase match
   if (!factory) {
     const lowerCaseId = agentId.toLowerCase();
     factory = agentFactoryMap[lowerCaseId];
   }
-  
+
   // Try kebab-case conversion (e.g., "Create Project" -> "create-project")
   if (!factory) {
     const kebabCase = agentId.toLowerCase().replace(/\s+/g, '-');
     factory = agentFactoryMap[kebabCase];
   }
-  
+
   if (!factory) {
     console.log('Unknown agent ID:', agentId, 'Available agents:', Object.keys(agentFactoryMap));
     // Fall back to placeholder for unknown agents

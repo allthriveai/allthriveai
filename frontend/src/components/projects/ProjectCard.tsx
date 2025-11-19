@@ -1,14 +1,19 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Project } from '@/types/models';
-import { 
-  CodeBracketIcon, 
-  PhotoIcon, 
+import {
+  CodeBracketIcon,
+  PhotoIcon,
   ChatBubbleLeftRightIcon,
-  DocumentTextIcon 
+  DocumentTextIcon,
+  PencilIcon
 } from '@heroicons/react/24/outline';
 
 interface ProjectCardProps {
   project: Project;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: (projectId: number) => void;
+  isOwner?: boolean;  // Is the current user the owner of this project
 }
 
 const typeIcons = {
@@ -25,15 +30,43 @@ const typeLabels = {
   other: 'Project',
 };
 
-export function ProjectCard({ project }: ProjectCardProps) {
+export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false }: ProjectCardProps) {
+  const navigate = useNavigate();
   const Icon = typeIcons[project.type];
   const projectUrl = `/${project.username}/${project.slug}`;
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (selectionMode && onSelect) {
+      e.preventDefault();
+      onSelect(project.id);
+    }
+  };
+
+  const CardWrapper = selectionMode ? 'div' : Link;
+  const cardProps = selectionMode
+    ? { onClick: handleClick, style: { cursor: 'pointer' } }
+    : { to: projectUrl };
+
   return (
-    <Link
-      to={projectUrl}
-      className="block glass-subtle hover:glass-strong transition-all duration-300 rounded-xl overflow-hidden group"
+    <CardWrapper
+      {...cardProps as any}
+      className={`block glass-subtle hover:glass-strong transition-all duration-300 rounded-xl overflow-hidden group relative ${
+        isSelected ? 'ring-4 ring-primary-500' : ''
+      }`}
     >
+      {/* Selection checkbox - positioned absolutely over the card */}
+      {selectionMode && (
+        <div className="absolute top-3 left-3 z-10">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onSelect && onSelect(project.id)}
+            onClick={(e) => e.stopPropagation()}
+            className="w-5 h-5 rounded border-2 border-white shadow-lg cursor-pointer"
+          />
+        </div>
+      )}
+
       {/* Thumbnail or placeholder */}
       <div className="relative aspect-video bg-gradient-to-br from-primary-500/20 to-secondary-500/20 overflow-hidden">
         {project.thumbnailUrl ? (
@@ -47,16 +80,29 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <Icon className="w-16 h-16 text-slate-400 dark:text-slate-600" />
           </div>
         )}
-        
-        {/* Type badge */}
-        <div className="absolute top-3 right-3">
+
+        {/* Type badge and Edit button */}
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          {isOwner && !selectionMode && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate(`/${project.username}/${project.slug}/edit`);
+              }}
+              className="p-2 rounded-full bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 text-primary-600 dark:text-primary-400 shadow-lg transition-all hover:scale-110"
+              title="Edit project"
+            >
+              <PencilIcon className="w-4 h-4" />
+            </button>
+          )}
           <span className="px-2 py-1 text-xs font-medium rounded-full glass-strong border border-white/20 text-slate-700 dark:text-slate-300">
             {typeLabels[project.type]}
           </span>
         </div>
 
-        {/* Showcase badge */}
-        {project.isShowcase && (
+        {/* Showcase badge - shift left in selection mode */}
+        {project.isShowcase && !selectionMode && (
           <div className="absolute top-3 left-3">
             <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-500/90 text-white">
               ⭐ Showcase
@@ -70,7 +116,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-1">
           {project.title}
         </h3>
-        
+
         {project.description && (
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 line-clamp-2">
             {project.description}
@@ -105,6 +151,6 @@ export function ProjectCard({ project }: ProjectCardProps) {
           <span>{new Date(project.createdAt).toLocaleDateString()}</span>
         </div>
       </div>
-    </Link>
+    </CardWrapper>
   );
 }

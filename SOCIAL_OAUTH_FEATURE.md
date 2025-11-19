@@ -144,7 +144,7 @@ if github:
     # Tokens are automatically decrypted
     token = github.access_token
     username = github.provider_username
-    
+
     # Use token for API calls
     import requests
     response = requests.get(

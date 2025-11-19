@@ -18,11 +18,11 @@ interface BlockProps {
 /**
  * Wrapper for sortable blocks with drag handle
  */
-function SortableBlock({ 
-  id, 
-  children 
-}: { 
-  id: string; 
+function SortableBlock({
+  id,
+  children
+}: {
+  id: string;
   children: React.ReactNode;
 }) {
   const {
@@ -54,7 +54,7 @@ function SortableBlock({
       >
         <Bars3Icon className="w-5 h-5 text-gray-400" />
       </div>
-      
+
       {children}
     </div>
   );
@@ -304,6 +304,6 @@ export function BlockRenderer({ block, onUpdate, onDelete }: BlockProps) {
   } else if (block.type === 'image') {
     return <ImageBlock block={block} onUpdate={onUpdate} onDelete={onDelete} />;
   }
-  
+
   return null;
 }

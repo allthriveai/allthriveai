@@ -77,10 +77,10 @@ export default function AccountSettingsPage() {
       };
 
       await api.patch('/me/profile/', payload);
-      
+
       // Refresh user data
       await refreshUser();
-      
+
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
@@ -127,7 +127,7 @@ export default function AccountSettingsPage() {
                   Profile Photo
                 </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                  Upload a profile photo by dragging and dropping or clicking to select a file. 
+                  Upload a profile photo by dragging and dropping or clicking to select a file.
                   Images are stored securely and will be displayed on your profile.
                 </p>
                 {formData.avatarUrl && (
@@ -145,7 +145,7 @@ export default function AccountSettingsPage() {
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">
                 Profile Information
               </h2>
-              
+
               <div className="space-y-5">
                 <div>
                   <label htmlFor="username" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -256,7 +256,7 @@ export default function AccountSettingsPage() {
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">
                 Account Information
               </h2>
-              
+
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">

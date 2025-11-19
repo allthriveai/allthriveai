@@ -62,7 +62,7 @@ export default function ReferralsPage() {
           api.get('/me/referral-code/stats/'),
           api.get('/me/referrals/')
         ]);
-        
+
         // Convert snake_case to camelCase
         const codeData = codeResponse.data;
         setReferralCode({
@@ -74,7 +74,7 @@ export default function ReferralsPage() {
           isValid: codeData.is_valid,
           createdAt: codeData.created_at,
         });
-        
+
         const statsData = statsResponse.data;
         setReferralStats({
           totalReferrals: statsData.total_referrals,
@@ -160,8 +160,8 @@ export default function ReferralsPage() {
                 {/* Info Box */}
                 <div className="mb-6 glass-strong rounded-lg p-4 border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
                   <p className="text-sm text-blue-900 dark:text-blue-100">
-                    <span className="font-semibold">How it works:</span> Share your referral code or link with friends. 
-                    When they sign up using your code, you'll both be eligible for rewards. 
+                    <span className="font-semibold">How it works:</span> Share your referral code or link with friends.
+                    When they sign up using your code, you'll both be eligible for rewards.
                     We're currently designing our rewards program — stay tuned for updates!
                   </p>
                 </div>

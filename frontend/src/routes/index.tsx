@@ -14,11 +14,15 @@ import NotificationsSettingsPage from '@/pages/settings/NotificationsSettingsPag
 import BillingSettingsPage from '@/pages/settings/BillingSettingsPage';
 import PrivacySettingsPage from '@/pages/settings/PrivacySettingsPage';
 import TeamsSettingsPage from '@/pages/settings/TeamsSettingsPage';
+import ReferralsSettingsPage from '@/pages/settings/ReferralsSettingsPage';
 import ReferralsPage from '@/pages/settings/ReferralsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
 import QuizListPage from '@/pages/quizzes/QuizListPage';
 import QuizPage from '@/pages/quizzes/QuizPage';
+import ToolDirectoryPage from '@/pages/ToolDirectoryPage';
+import PromptBattlePage from '@/pages/play/PromptBattlePage';
+import BattleDetailPage from '@/pages/play/BattleDetailPage';
 
 export function AppRoutes() {
   return (
@@ -28,10 +32,31 @@ export function AppRoutes() {
       <Route path="/about" element={<AboutPage />} />
       <Route path="/about-us" element={<AboutPage />} />
       <Route path="/styleguide" element={<StyleGuidePage />} />
-      
+
       {/* Quiz routes - must come before /:username routes */}
       <Route path="/quick-quizzes" element={<QuizListPage />} />
       <Route path="/quick-quizzes/:slug" element={<QuizPage />} />
+
+      {/* Tool Directory - public route */}
+      <Route path="/tools" element={<ToolDirectoryPage />} />
+
+      {/* Play routes - protected */}
+      <Route
+        path="/play/prompt-battle"
+        element={
+          <ProtectedRoute>
+            <PromptBattlePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/play/prompt-battle/:battleId"
+        element={
+          <ProtectedRoute>
+            <BattleDetailPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Auth routes - unified chat-based auth */}
       <Route
@@ -42,7 +67,7 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      
+
       {/* Redirect old routes to new unified auth */}
       <Route path="/auth" element={<Navigate to="/login" replace />} />
       <Route path="/signup" element={<Navigate to="/login" replace />} />
@@ -117,6 +142,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <TeamsSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/settings/referrals"
+        element={
+          <ProtectedRoute>
+            <ReferralsSettingsPage />
           </ProtectedRoute>
         }
       />

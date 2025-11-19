@@ -6,6 +6,7 @@ import { uploadImage } from '@/services/upload';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import type { Project, ProjectBlock } from '@/types/models';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -17,17 +18,28 @@ import {
   TrashIcon,
   PhotoIcon,
 } from '@heroicons/react/24/outline';
+import {
+  FaColumns,
+  FaFont,
+  FaImage,
+  FaVideo,
+  FaFileAlt,
+  FaMousePointer,
+  FaMinus,
+  FaExpand,
+  FaCompress
+} from 'react-icons/fa';
 
 export default function ProjectEditorPage() {
   const { username, projectSlug } = useParams<{ username: string; projectSlug: string }>();
   const navigate = useNavigate();
-  
+
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  
+
   // Editor state - stored directly as we edit
   const [blocks, setBlocks] = useState<any[]>([]);
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
@@ -54,20 +66,20 @@ export default function ProjectEditorPage() {
       try {
         const projects = await listProjects();
         const foundProject = projects.find(p => p.slug === projectSlug && p.username === username);
-        
+
         if (!foundProject) {
           setError('Project not found');
           return;
         }
-        
+
         setProject(foundProject);
-        
+
         // Initialize blocks
         const blocksWithIds = (foundProject.content.blocks || []).map((block: any) => ({
           ...block,
           id: block.id || crypto.randomUUID(),
         }));
-        
+
         // If no blocks, start with a title block
         if (blocksWithIds.length === 0) {
           blocksWithIds.push({
@@ -77,7 +89,7 @@ export default function ProjectEditorPage() {
             style: 'heading',
           });
         }
-        
+
         setBlocks(blocksWithIds);
       } catch (err) {
         console.error('Failed to load project:', err);
@@ -123,7 +135,7 @@ export default function ProjectEditorPage() {
     }
 
     await handleSave(); // Save first
-    
+
     setIsSaving(true);
     try {
       const updatedProject = await updateProject(project.id, {
@@ -140,7 +152,7 @@ export default function ProjectEditorPage() {
     }
   };
 
-  const addBlock = (afterId: string | null, type: 'text' | 'image' | 'columns') => {
+  const addBlock = (afterId: string | null, type: 'text' | 'image' | 'columns' | 'video' | 'file' | 'button' | 'divider') => {
     const newBlock: any = {
       id: crypto.randomUUID(),
       type,
@@ -154,10 +166,30 @@ export default function ProjectEditorPage() {
       newBlock.caption = '';
     } else if (type === 'columns') {
       newBlock.columnCount = 2;
+      newBlock.containerWidth = 'full';  // full or boxed
       newBlock.columns = [
         { id: crypto.randomUUID(), blocks: [] },
         { id: crypto.randomUUID(), blocks: [] },
       ];
+    } else if (type === 'video') {
+      newBlock.url = '';
+      newBlock.embedUrl = '';  // For YouTube/Vimeo
+      newBlock.caption = '';
+    } else if (type === 'file') {
+      newBlock.url = '';
+      newBlock.filename = '';
+      newBlock.fileType = '';
+      newBlock.fileSize = 0;
+      newBlock.label = 'Download File';
+      newBlock.icon = 'FaDownload';
+    } else if (type === 'button') {
+      newBlock.text = 'Click Here';
+      newBlock.url = '';
+      newBlock.icon = 'FaArrowRight';
+      newBlock.style = 'primary';  // primary, secondary, outline
+      newBlock.size = 'medium';  // small, medium, large
+    } else if (type === 'divider') {
+      newBlock.style = 'line';  // line, dotted, dashed, space
     }
 
     if (afterId === null) {
@@ -262,7 +294,7 @@ export default function ProjectEditorPage() {
 
       {/* Editor Canvas */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto py-12 px-8">
+        <div className="py-12 px-8">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -294,7 +326,7 @@ export default function ProjectEditorPage() {
                       setBlocks(blocks.filter(b => b.id !== block.id));
                     }}
                   />
-                  
+
                   {/* Add Block Menu */}
                   <AddBlockMenu
                     show={showAddMenu === block.id}
@@ -323,8 +355,8 @@ export default function ProjectEditorPage() {
 
 // Block Editor Component
 function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: any) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
-    id: block.id 
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: block.id
   });
 
   const style = {
@@ -349,19 +381,46 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
     }
   };
 
-  const addColumnBlock = (columnIndex: number, type: 'text' | 'image') => {
+  const addColumnBlock = (columnIndex: number, type: 'text' | 'image' | 'video' | 'file' | 'button' | 'divider') => {
     const newBlock: any = {
       id: crypto.randomUUID(),
       type,
-      ...(type === 'text' ? { content: '', style: 'body' } : { url: '', caption: '' }),
     };
-    
+
+    // Initialize block based on type
+    if (type === 'text') {
+      newBlock.content = '';
+      newBlock.style = 'body';
+    } else if (type === 'image') {
+      newBlock.url = '';
+      newBlock.caption = '';
+    } else if (type === 'video') {
+      newBlock.url = '';
+      newBlock.embedUrl = '';
+      newBlock.caption = '';
+    } else if (type === 'file') {
+      newBlock.url = '';
+      newBlock.filename = '';
+      newBlock.fileType = '';
+      newBlock.fileSize = 0;
+      newBlock.label = 'Download File';
+      newBlock.icon = 'FaDownload';
+    } else if (type === 'button') {
+      newBlock.text = 'Click Here';
+      newBlock.url = '';
+      newBlock.icon = 'FaArrowRight';
+      newBlock.style = 'primary';
+      newBlock.size = 'medium';
+    } else if (type === 'divider') {
+      newBlock.style = 'line';
+    }
+
     const updatedColumns = [...block.columns];
     updatedColumns[columnIndex] = {
       ...updatedColumns[columnIndex],
       blocks: [...updatedColumns[columnIndex].blocks, newBlock],
     };
-    
+
     onChange({ columns: updatedColumns });
   };
 
@@ -369,7 +428,7 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
     const updatedColumns = [...block.columns];
     updatedColumns[columnIndex] = {
       ...updatedColumns[columnIndex],
-      blocks: updatedColumns[columnIndex].blocks.map((b: any) => 
+      blocks: updatedColumns[columnIndex].blocks.map((b: any) =>
         b.id === blockId ? { ...b, ...updates } : b
       ),
     };
@@ -388,7 +447,7 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
   const changeColumnCount = (count: 1 | 2 | 3) => {
     const currentColumns = block.columns || [];
     const newColumns = [];
-    
+
     for (let i = 0; i < count; i++) {
       if (currentColumns[i]) {
         newColumns.push(currentColumns[i]);
@@ -396,7 +455,7 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
         newColumns.push({ id: crypto.randomUUID(), blocks: [] });
       }
     }
-    
+
     // If reducing columns, merge extra blocks into last column
     if (count < currentColumns.length) {
       const extraBlocks = currentColumns.slice(count).flatMap((col: any) => col.blocks);
@@ -404,8 +463,13 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
         newColumns[count - 1].blocks = [...newColumns[count - 1].blocks, ...extraBlocks];
       }
     }
-    
+
     onChange({ columnCount: count, columns: newColumns });
+  };
+
+  const toggleContainerWidth = () => {
+    const newWidth = block.containerWidth === 'full' ? 'boxed' : 'full';
+    onChange({ containerWidth: newWidth });
   };
 
   return (
@@ -430,93 +494,153 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
       <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus-within:border-primary-500 transition-colors">
         {block.type === 'columns' ? (
           <div>
-            {/* Column count selector */}
-            <div className="flex gap-2 mb-4 justify-end">
+            {/* Column controls */}
+            <div className="flex gap-2 mb-4 justify-between">
+              {/* Container width toggle */}
               <button
-                onClick={() => changeColumnCount(1)}
-                className={`px-3 py-1 rounded text-sm ${
-                  block.columnCount === 1
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
+                onClick={toggleContainerWidth}
+                className="px-3 py-1 rounded text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center gap-1.5"
+                title={block.containerWidth === 'boxed' ? 'Switch to full width' : 'Switch to boxed container'}
               >
-                1 Col
+                {block.containerWidth === 'boxed' ? (
+                  <><FaCompress className="w-3.5 h-3.5" /> Boxed</>
+                ) : (
+                  <><FaExpand className="w-3.5 h-3.5" /> Full Width</>
+                )}
               </button>
-              <button
-                onClick={() => changeColumnCount(2)}
-                className={`px-3 py-1 rounded text-sm ${
-                  block.columnCount === 2
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                2 Col
-              </button>
-              <button
-                onClick={() => changeColumnCount(3)}
-                className={`px-3 py-1 rounded text-sm ${
-                  block.columnCount === 3
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                3 Col
-              </button>
+
+              {/* Column count selector */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => changeColumnCount(1)}
+                  className={`px-3 py-1 rounded text-sm ${
+                    block.columnCount === 1
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  1 Col
+                </button>
+                <button
+                  onClick={() => changeColumnCount(2)}
+                  className={`px-3 py-1 rounded text-sm ${
+                    block.columnCount === 2
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  2 Col
+                </button>
+                <button
+                  onClick={() => changeColumnCount(3)}
+                  className={`px-3 py-1 rounded text-sm ${
+                    block.columnCount === 3
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  3 Col
+                </button>
+              </div>
             </div>
-            
-            {/* Columns */}
-            <div className={`grid gap-4 ${
-              block.columnCount === 1 ? 'grid-cols-1' :
-              block.columnCount === 2 ? 'grid-cols-1 md:grid-cols-2' :
-              'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-            }`}>
-              {block.columns?.map((column: any, colIndex: number) => (
-                <div key={column.id} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 min-h-[200px]">
-                  {column.blocks?.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center gap-2">
-                      <button
-                        onClick={() => addColumnBlock(colIndex, 'text')}
-                        className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-sm"
-                      >
-                        + Text
-                      </button>
-                      <button
-                        onClick={() => addColumnBlock(colIndex, 'image')}
-                        className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-sm"
-                      >
-                        + Image
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {column.blocks.map((colBlock: any) => (
-                        <ColumnBlockEditor
-                          key={colBlock.id}
-                          block={colBlock}
-                          onChange={(updates: any) => updateColumnBlock(colIndex, colBlock.id, updates)}
-                          onDelete={() => deleteColumnBlock(colIndex, colBlock.id)}
-                          onUpload={handleUpload}
-                        />
-                      ))}
-                      <div className="flex gap-2 justify-center pt-2">
-                        <button
-                          onClick={() => addColumnBlock(colIndex, 'text')}
-                          className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"
-                        >
-                          + Text
-                        </button>
-                        <button
-                          onClick={() => addColumnBlock(colIndex, 'image')}
-                          className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"
-                        >
-                          + Image
-                        </button>
+
+            {/* Columns with Drag & Drop */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event: DragEndEvent) => {
+                const { active, over } = event;
+                if (!over) return;
+
+                // Parse IDs: format is "columnIndex-blockId"
+                const [activeColIdx, activeBlockId] = String(active.id).split('-');
+                const [overColIdx, overBlockId] = String(over.id).split('-');
+                const activeColumnIndex = parseInt(activeColIdx);
+                const overColumnIndex = parseInt(overColIdx);
+
+                if (activeColumnIndex === overColumnIndex) {
+                  // Reorder within same column
+                  const columnBlocks = block.columns[activeColumnIndex].blocks;
+                  const oldIndex = columnBlocks.findIndex((b: any) => b.id === activeBlockId);
+                  const newIndex = columnBlocks.findIndex((b: any) => b.id === overBlockId);
+
+                  if (oldIndex !== newIndex) {
+                    const updatedColumns = [...block.columns];
+                    updatedColumns[activeColumnIndex] = {
+                      ...updatedColumns[activeColumnIndex],
+                      blocks: arrayMove(columnBlocks, oldIndex, newIndex),
+                    };
+                    onChange({ columns: updatedColumns });
+                  }
+                } else {
+                  // Move between columns
+                  const sourceBlocks = [...block.columns[activeColumnIndex].blocks];
+                  const targetBlocks = [...block.columns[overColumnIndex].blocks];
+                  const blockIndex = sourceBlocks.findIndex((b: any) => b.id === activeBlockId);
+                  const [movedBlock] = sourceBlocks.splice(blockIndex, 1);
+
+                  const targetIndex = targetBlocks.findIndex((b: any) => b.id === overBlockId);
+                  targetBlocks.splice(targetIndex >= 0 ? targetIndex : targetBlocks.length, 0, movedBlock);
+
+                  const updatedColumns = [...block.columns];
+                  updatedColumns[activeColumnIndex] = {
+                    ...updatedColumns[activeColumnIndex],
+                    blocks: sourceBlocks,
+                  };
+                  updatedColumns[overColumnIndex] = {
+                    ...updatedColumns[overColumnIndex],
+                    blocks: targetBlocks,
+                  };
+                  onChange({ columns: updatedColumns });
+                }
+              }}
+            >
+              <div className={block.containerWidth === 'boxed' ? 'max-w-6xl mx-auto' : ''}>
+                <div className={`grid gap-4 ${
+                  block.columnCount === 1 ? 'grid-cols-1' :
+                  block.columnCount === 2 ? 'grid-cols-1 md:grid-cols-2' :
+                  'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                }`}>
+                {block.columns?.map((column: any, colIndex: number) => (
+                  <div key={column.id} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 min-h-[200px]">
+                    {column.blocks?.length === 0 ? (
+                      <div className="h-full flex flex-wrap items-center justify-center gap-1.5">
+                        <button onClick={() => addColumnBlock(colIndex, 'text')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaFont className="w-3 h-3" /> Text</button>
+                        <button onClick={() => addColumnBlock(colIndex, 'image')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaImage className="w-3 h-3" /> Image</button>
+                        <button onClick={() => addColumnBlock(colIndex, 'video')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaVideo className="w-3 h-3" /> Video</button>
+                        <button onClick={() => addColumnBlock(colIndex, 'file')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaFileAlt className="w-3 h-3" /> File</button>
+                        <button onClick={() => addColumnBlock(colIndex, 'button')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaMousePointer className="w-3 h-3" /> Button</button>
+                        <button onClick={() => addColumnBlock(colIndex, 'divider')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaMinus className="w-3 h-3" /> Divider</button>
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <SortableContext items={column.blocks.map((b: any) => `${colIndex}-${b.id}`)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-2">
+                          {column.blocks.map((colBlock: any) => (
+                            <DraggableColumnBlock
+                              key={colBlock.id}
+                              id={`${colIndex}-${colBlock.id}`}
+                              block={colBlock}
+                              onChange={(updates: any) => updateColumnBlock(colIndex, colBlock.id, updates)}
+                              onDelete={() => deleteColumnBlock(colIndex, colBlock.id)}
+                              onUpload={handleUpload}
+                            />
+                          ))}
+                          <div className="flex flex-wrap gap-1 justify-center pt-2 border-t border-gray-200 dark:border-gray-700">
+                            <button onClick={() => addColumnBlock(colIndex, 'text')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> Text</button>
+                            <button onClick={() => addColumnBlock(colIndex, 'image')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> Image</button>
+                            <button onClick={() => addColumnBlock(colIndex, 'video')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> Video</button>
+                            <button onClick={() => addColumnBlock(colIndex, 'file')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> File</button>
+                            <button onClick={() => addColumnBlock(colIndex, 'button')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> Button</button>
+                            <button onClick={() => addColumnBlock(colIndex, 'divider')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> Divider</button>
+                          </div>
+                        </div>
+                      </SortableContext>
+                    )}
+                  </div>
+                ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            </DndContext>
           </div>
         ) : block.type === 'text' ? (
           <div>
@@ -585,8 +709,31 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
   );
 }
 
-// Column Block Editor (simpler, no drag/drop within columns)
-function ColumnBlockEditor({ block, onChange, onDelete, onUpload }: any) {
+// Draggable Column Block Wrapper
+function DraggableColumnBlock({ id, block, onChange, onDelete, onUpload }: any) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <ColumnBlockEditor
+        block={block}
+        onChange={onChange}
+        onDelete={onDelete}
+        onUpload={onUpload}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+    </div>
+  );
+}
+
+// Column Block Editor
+function ColumnBlockEditor({ block, onChange, onDelete, onUpload, dragHandleProps }: any) {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleUpload = async (file: File) => {
@@ -604,6 +751,16 @@ function ColumnBlockEditor({ block, onChange, onDelete, onUpload }: any) {
 
   return (
     <div className="group/col relative bg-gray-50 dark:bg-gray-900/50 rounded p-2">
+      {/* Drag handle */}
+      {dragHandleProps && (
+        <div
+          {...dragHandleProps}
+          className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/col:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1 bg-gray-300 dark:bg-gray-600 rounded"
+        >
+          <Bars3Icon className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+        </div>
+      )}
+
       <button
         onClick={onDelete}
         className="absolute -top-1 -right-1 opacity-0 group-hover/col:opacity-100 transition-opacity p-1 bg-red-100 dark:bg-red-900/20 text-red-600 rounded-full"
@@ -675,24 +832,48 @@ function AddBlockMenu({ show, onAdd, onToggle }: any) {
       </button>
 
       {show && (
-        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-2 flex gap-2 z-10">
+        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 grid grid-cols-4 gap-2 z-10">
+          <button
+            onClick={() => onAdd('columns')}
+            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
+          >
+            <FaColumns className="w-3.5 h-3.5" /> Columns
+          </button>
           <button
             onClick={() => onAdd('text')}
-            className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm"
+            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
           >
-            Text
+            <FaFont className="w-3.5 h-3.5" /> Text
           </button>
           <button
             onClick={() => onAdd('image')}
-            className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm"
+            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
           >
-            Image
+            <FaImage className="w-3.5 h-3.5" /> Image
           </button>
           <button
-            onClick={() => onAdd('columns')}
-            className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm"
+            onClick={() => onAdd('video')}
+            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
           >
-            Columns
+            <FaVideo className="w-3.5 h-3.5" /> Video
+          </button>
+          <button
+            onClick={() => onAdd('file')}
+            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
+          >
+            <FaFileAlt className="w-3.5 h-3.5" /> File
+          </button>
+          <button
+            onClick={() => onAdd('button')}
+            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
+          >
+            <FaMousePointer className="w-3.5 h-3.5" /> Button
+          </button>
+          <button
+            onClick={() => onAdd('divider')}
+            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
+          >
+            <FaMinus className="w-3.5 h-3.5" /> Divider
           </button>
         </div>
       )}

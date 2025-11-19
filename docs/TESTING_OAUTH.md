@@ -187,7 +187,7 @@ User = get_user_model()
 
 class MyTestCase(TestCase):
     """Description of what this test case covers."""
-    
+
     def setUp(self):
         """Set up test fixtures before each test."""
         self.user = User.objects.create_user(
@@ -196,15 +196,15 @@ class MyTestCase(TestCase):
             password='testpass123'
         )
         self.client = Client()
-    
+
     def test_something(self):
         """Test that something works correctly."""
         # Arrange
         self.client.force_login(self.user)
-        
+
         # Act
         response = self.client.get('/api/v1/some-endpoint/')
-        
+
         # Assert
         self.assertEqual(response.status_code, 200)
 ```

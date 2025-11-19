@@ -54,8 +54,8 @@ The project creation agent has been completely rebuilt using proper agentic arch
 #### URL-Based Creation
 ```
 User: "https://github.com/user/my-repo"
-Agent: *extracts URL* → *fetches GitHub metadata* 
-      → "I found your Python repository with 150 stars! 
+Agent: *extracts URL* → *fetches GitHub metadata*
+      → "I found your Python repository with 150 stars!
          Add to Showcase or Playground?"
 User: "showcase"
 Agent: *creates project* → "✅ Created! View at /username/my-repo"
@@ -164,7 +164,7 @@ data: {"type": "complete", "session_id": "...", "project_id": 123, "project_slug
 - [ ] Thumbnail generation from URLs
 - [ ] Content extraction for better descriptions
 
-### Medium Priority  
+### Medium Priority
 - [ ] Multi-turn editing (modify existing projects via chat)
 - [ ] Batch creation (multiple projects from one conversation)
 - [ ] Template suggestions based on type

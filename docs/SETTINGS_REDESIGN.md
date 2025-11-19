@@ -109,7 +109,7 @@ All settings routes are protected and require authentication:
 
 ### Edit Profile
 - **Endpoint**: `PATCH /api/v1/me/profile/`
-- **Fields**: 
+- **Fields**:
   - `username` (required): User's unique identifier
   - `first_name`: User's first name
   - `last_name`: User's last name
@@ -122,7 +122,7 @@ All settings routes are protected and require authentication:
   - Automatic lowercase normalization
   - XSS prevention on bio field
   - URL validation for avatar_url, website_url, calendar_url
-- **Features**: 
+- **Features**:
   - Large profile photo preview with fallback to initials
   - Real-time character counter for bio
   - Success/error feedback
@@ -131,7 +131,7 @@ All settings routes are protected and require authentication:
 ### Change Password
 - **Endpoint**: `POST /api/v1/auth/change-password/`
 - **Fields**: current_password, new_password
-- **Validation**: 
+- **Validation**:
   - Password match confirmation
   - Minimum length requirement
   - Current password verification
@@ -142,11 +142,11 @@ All settings routes are protected and require authentication:
 1. **Social Profiles**: Connect GitHub, LinkedIn, Twitter accounts
 2. **Email Notifications**: Granular notification preferences
 3. **Billing**: Stripe integration for subscriptions
-4. **Privacy & Security**: 
+4. **Privacy & Security**:
    - Two-factor authentication
    - Active sessions management
    - Data export/deletion
-5. **Teams**: 
+5. **Teams**:
    - Create and manage teams
    - Team member invitations
    - Role-based permissions

@@ -160,10 +160,10 @@ from services import AIProvider
 def chat_completion(request):
     prompt = request.data.get('prompt')
     provider = request.data.get('provider', None)  # Optional
-    
+
     ai = AIProvider(provider=provider)
     response = ai.complete(prompt)
-    
+
     return Response({
         'response': response,
         'provider': ai.current_provider
@@ -180,13 +180,13 @@ from services import AIProvider
 @api_view(['POST'])
 def chat_stream(request):
     prompt = request.data.get('prompt')
-    
+
     ai = AIProvider()
-    
+
     def generate():
         for chunk in ai.stream_complete(prompt):
             yield chunk
-    
+
     return StreamingHttpResponse(generate(), content_type='text/plain')
 ```
 
@@ -201,9 +201,9 @@ from services import AIProvider
 def compare_providers(request):
     prompt = request.data.get('prompt')
     providers = ['azure', 'openai', 'anthropic']
-    
+
     results = {}
-    
+
     for provider_name in providers:
         try:
             ai = AIProvider(provider=provider_name)
@@ -211,7 +211,7 @@ def compare_providers(request):
             results[provider_name] = response
         except Exception as e:
             results[provider_name] = f"Error: {str(e)}"
-    
+
     return Response(results)
 ```
 
@@ -229,12 +229,12 @@ class AICompletionView(APIView):
         prompt = request.data.get('prompt')
         provider = request.data.get('provider', None)
         use_cache = request.data.get('use_cache', True)
-        
+
         # Create cache key
         cache_key = hashlib.md5(
             f"{provider or 'default'}:{prompt}".encode()
         ).hexdigest()
-        
+
         # Check cache
         if use_cache:
             cached_response = cache.get(cache_key)
@@ -243,15 +243,15 @@ class AICompletionView(APIView):
                     'response': cached_response,
                     'cached': True
                 })
-        
+
         # Generate response
         ai = AIProvider(provider=provider)
         response = ai.complete(prompt)
-        
+
         # Cache for 1 hour
         if use_cache:
             cache.set(cache_key, response, 3600)
-        
+
         return Response({
             'response': response,
             'provider': ai.current_provider,
@@ -311,7 +311,7 @@ def safe_ai_completion(prompt, fallback_providers=['azure', 'openai', 'anthropic
         except Exception as e:
             print(f"Provider {provider} failed: {e}")
             continue
-    
+
     return {
         'response': None,
         'provider': None,

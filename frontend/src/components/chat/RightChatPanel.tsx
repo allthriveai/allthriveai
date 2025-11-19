@@ -12,13 +12,13 @@ interface RightChatPanelProps {
 
 export function RightChatPanel({ isOpen, onClose, selectedMenuItem }: RightChatPanelProps) {
   const { user } = useAuth();
-  
+
   // Memoize agent creation to prevent infinite loop
   const agent = useMemo(() => {
     console.log('Creating agent for:', selectedMenuItem);
     return selectedMenuItem ? createAgent(selectedMenuItem) : createAgent('discovery');
   }, [selectedMenuItem]);
-  
+
   const chatSession = useChatSession({
     agent,
     userId: user?.id?.toString() || 'anonymous',

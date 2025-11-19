@@ -306,18 +306,18 @@ fetch('/api/auth/chat/stream/', {
 }).then(response => {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  
+
   function readStream() {
     reader.read().then(({ done, value }) => {
       if (done) return;
-      
+
       const text = decoder.decode(value);
       const lines = text.split('\n');
-      
+
       lines.forEach(line => {
         if (line.startsWith('data: ')) {
           const data = JSON.parse(line.slice(6));
-          
+
           if (data.type === 'token') {
             // Append token to current message
             appendToken(data.content);
@@ -330,11 +330,11 @@ fetch('/api/auth/chat/stream/', {
           }
         }
       });
-      
+
       readStream();
     });
   }
-  
+
   readStream();
 });
 ```

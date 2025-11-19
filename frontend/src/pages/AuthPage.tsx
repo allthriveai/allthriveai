@@ -144,7 +144,7 @@ export default function AuthPage() {
       <div className="fixed top-6 right-6 z-30">
         <ThemeToggle />
       </div>
-      
+
       {/* Main Chat Container */}
       <div className="w-full max-w-3xl h-[calc(100vh-2rem)] mx-auto relative z-20">
         {/* Chat Card */}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function OAuthCallbackPage() {
   const [searchParams] = useSearchParams();
@@ -31,7 +31,7 @@ export default function OAuthCallbackPage() {
 
         // Store tokens in cookies (handled by the browser via Set-Cookie headers)
         // The backend already set HTTP-only cookies, but we received tokens in URL as backup
-        
+
         // Refresh user data to update auth state
         await refreshUser();
 

@@ -3,12 +3,12 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { getProjectBySlug } from '@/services/projects';
 import type { Project } from '@/types/models';
-import { 
+import {
   ArrowLeftIcon,
-  CodeBracketIcon, 
-  PhotoIcon, 
+  CodeBracketIcon,
+  PhotoIcon,
   ChatBubbleLeftRightIcon,
-  DocumentTextIcon 
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
 const typeIcons = {
@@ -139,7 +139,7 @@ export default function ProjectDetailPage() {
                 </span>
               )}
             </div>
-            
+
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
               {project.title}
             </h1>
@@ -166,10 +166,10 @@ export default function ProjectDetailPage() {
 
             {/* Metadata */}
             <div className="mt-6 flex items-center gap-6 text-sm text-gray-500 dark:text-gray-500">
-              <span>Created {new Date(project.createdAt).toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              <span>Created {new Date(project.createdAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
               })}</span>
               <span>•</span>
               <span>by <Link to={`/${project.username}`} className="text-primary-600 dark:text-primary-400 hover:underline">{project.username}</Link></span>
@@ -183,8 +183,8 @@ export default function ProjectDetailPage() {
                 <div key={index}>
                   {block.type === 'text' && (
                     <div className={`prose dark:prose-invert max-w-none ${
-                      block.style === 'heading' ? 'text-2xl font-bold' : 
-                      block.style === 'quote' ? 'border-l-4 border-primary-500 pl-6 italic' : 
+                      block.style === 'heading' ? 'text-2xl font-bold' :
+                      block.style === 'quote' ? 'border-l-4 border-primary-500 pl-6 italic' :
                       ''
                     }`}>
                       {block.content}

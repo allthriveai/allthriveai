@@ -7,10 +7,10 @@ interface UseSwipeGestureProps {
   threshold?: number;
 }
 
-export function useSwipeGesture({ 
-  onSwipeLeft, 
-  onSwipeRight, 
-  threshold = 100 
+export function useSwipeGesture({
+  onSwipeLeft,
+  onSwipeRight,
+  threshold = 100
 }: UseSwipeGestureProps) {
   const [{ x, y, rotate }, api] = useSpring(() => ({
     x: 0,
@@ -22,7 +22,7 @@ export function useSwipeGesture({
   const bind = useDrag(({ active, movement: [mx, my], direction: [xDir], velocity: [vx] }) => {
     const trigger = vx > 0.2; // Velocity threshold for flick
     const dir = xDir < 0 ? -1 : 1;
-    
+
     if (!active && trigger) {
       // Card was flicked with enough velocity
       if (dir === 1 && onSwipeRight) {
@@ -53,11 +53,11 @@ export function useSwipeGesture({
       }
     } else if (active) {
       // While dragging
-      api.start({ 
-        x: mx, 
-        y: my, 
+      api.start({
+        x: mx,
+        y: my,
         rotate: mx / 10,
-        immediate: true 
+        immediate: true
       });
     } else {
       // Return to center

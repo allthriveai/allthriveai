@@ -6,45 +6,62 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0012_taxonomy_userinteraction_usertag_and_more'),
+        ("core", "0012_taxonomy_userinteraction_usertag_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='conversation',
-            name='deleted_at',
-            field=models.DateTimeField(blank=True, db_index=True, help_text='Timestamp when object was soft deleted', null=True),
+            model_name="conversation",
+            name="deleted_at",
+            field=models.DateTimeField(
+                blank=True, db_index=True, help_text="Timestamp when object was soft deleted", null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='conversation',
-            name='user',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='conversations', to=settings.AUTH_USER_MODEL),
+            model_name="conversation",
+            name="user",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="conversations",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='taxonomy',
-            name='category',
-            field=models.CharField(choices=[('interest', 'Interest'), ('skill', 'Skill'), ('goal', 'Goal'), ('topic', 'Topic'), ('industry', 'Industry'), ('tool', 'Tool')], default='interest', max_length=20),
+            model_name="taxonomy",
+            name="category",
+            field=models.CharField(
+                choices=[
+                    ("interest", "Interest"),
+                    ("skill", "Skill"),
+                    ("goal", "Goal"),
+                    ("topic", "Topic"),
+                    ("industry", "Industry"),
+                    ("tool", "Tool"),
+                ],
+                default="interest",
+                max_length=20,
+            ),
         ),
         migrations.AddIndex(
-            model_name='conversation',
-            index=models.Index(fields=['user', '-updated_at'], name='core_conver_user_id_3e2a4b_idx'),
+            model_name="conversation",
+            index=models.Index(fields=["user", "-updated_at"], name="core_conver_user_id_3e2a4b_idx"),
         ),
         migrations.AddIndex(
-            model_name='conversation',
-            index=models.Index(fields=['user', '-created_at'], name='core_conver_user_id_d88fc9_idx'),
+            model_name="conversation",
+            index=models.Index(fields=["user", "-created_at"], name="core_conver_user_id_d88fc9_idx"),
         ),
         migrations.AddIndex(
-            model_name='conversation',
-            index=models.Index(fields=['-updated_at', 'deleted_at'], name='core_conver_updated_72bec7_idx'),
+            model_name="conversation",
+            index=models.Index(fields=["-updated_at", "deleted_at"], name="core_conver_updated_72bec7_idx"),
         ),
         migrations.AddIndex(
-            model_name='message',
-            index=models.Index(fields=['conversation', 'created_at'], name='core_messag_convers_d2b392_idx'),
+            model_name="message",
+            index=models.Index(fields=["conversation", "created_at"], name="core_messag_convers_d2b392_idx"),
         ),
         migrations.AddIndex(
-            model_name='message',
-            index=models.Index(fields=['conversation', 'role'], name='core_messag_convers_8de701_idx'),
+            model_name="message",
+            index=models.Index(fields=["conversation", "role"], name="core_messag_convers_8de701_idx"),
         ),
     ]

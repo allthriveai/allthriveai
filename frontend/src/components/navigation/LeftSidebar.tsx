@@ -105,11 +105,11 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
       .map(section => {
         // Check if section title matches
         const sectionMatches = section.title.toLowerCase().includes(query);
-        
+
         // Filter items that match the query
         const filteredItems = section.items.filter(item => {
           const itemMatches = item.label.toLowerCase().includes(query);
-          const subItemMatches = item.subItems?.some(subItem => 
+          const subItemMatches = item.subItems?.some(subItem =>
             subItem.label.toLowerCase().includes(query)
           );
           return itemMatches || subItemMatches;
@@ -133,12 +133,12 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
       // Open all sections that have matching results
       const matchingSections = filterMenuSections(menuSections).map(s => s.title);
       setOpenSections(matchingSections);
-      
+
       // Open all sub-items that have matching results
       const matchingSubItems: string[] = [];
       menuSections.forEach(section => {
         section.items.forEach(item => {
-          if (item.subItems?.some(sub => 
+          if (item.subItems?.some(sub =>
             sub.label.toLowerCase().includes(searchQuery.toLowerCase())
           )) {
             matchingSubItems.push(item.label);
@@ -169,6 +169,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         { label: 'Vote', href: '#' },
         { label: "This Week's Challenge", href: '#' },
         { label: 'Side Quests', href: '#' },
+        { label: 'Prompt Battle', onClick: () => navigate('/play/prompt-battle') },
       ],
     },
     {
@@ -195,7 +196,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         { label: 'Report an Issue', href: '#' },
         { label: 'Chat', onClick: () => onMenuClick('Chat') },
         { label: 'Whats New', href: '#' },
-        { 
+        {
           label: 'About All Thrive',
           subItems: [
             { label: 'About Us', onClick: () => onMenuClick('About Us') },
@@ -209,19 +210,27 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
       title: 'ACCOUNT',
       icon: faUser,
       items: [
-        { 
-          label: 'My Profile', 
+        {
+          label: 'My Profile',
           href: '#',
           onClick: () => {
             if (user && user.username) {
-              navigate(`/${user.username}`);
+              navigate(`/${user.username}?tab=showcase`);
             }
           }
         },
-        { label: 'My Projects', href: '#' },
+        {
+          label: 'My Projects',
+          href: '#',
+          onClick: () => {
+            if (user && user.username) {
+              navigate(`/${user.username}?tab=playground`);
+            }
+          }
+        },
         { label: 'My Account', onClick: () => navigate('/account/settings') },
         { label: 'Chrome Extension', href: '#' },
-        { label: 'My Referral Codes', href: '#' },
+        { label: 'My Referral Codes', onClick: () => navigate('/account/settings/referrals') },
       ],
     },
   ];

@@ -50,11 +50,11 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
             {/* Problem & Solution */}
             <div className="space-y-4 text-gray-700 dark:text-gray-300 leading-relaxed">
               <p className="text-base">
-                Hundreds of AI tools now let you create, prototype, and launch new ideas, yet you still lack a single 
+                Hundreds of AI tools now let you create, prototype, and launch new ideas, yet you still lack a single
                 place to consolidate, showcase, and get feedback on every project regardless of the tool.
               </p>
               <p className="text-base">
-                You scatter your projects across platforms, face overwhelming choices about where to start, and encounter spaces 
+                You scatter your projects across platforms, face overwhelming choices about where to start, and encounter spaces
                 that assume you need senior engineering skills to share something worthwhile.
               </p>
             </div>
@@ -108,7 +108,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                 💫 Simple promise
               </h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                We promise to hold space for curiosity, connection, and shared learning. AllThrive is a place 
+                We promise to hold space for curiosity, connection, and shared learning. AllThrive is a place
                 where trying matters, ideas are welcomed, and everyone can explore what is possible with AI.
               </p>
             </div>
@@ -128,7 +128,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                     1. Curiosity First
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                    We champion exploration over expertise. Questions matter more than answers, and trying 
+                    We champion exploration over expertise. Questions matter more than answers, and trying
                     something new is always worth celebrating.
                   </p>
                 </div>
@@ -138,7 +138,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                     2. Learn by Doing
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                    We believe the best way to understand AI is to build with it. Every experiment, prototype, 
+                    We believe the best way to understand AI is to build with it. Every experiment, prototype,
                     and project is a chance to learn something new.
                   </p>
                 </div>
@@ -148,7 +148,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                     3. We Thrive Together
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                    We celebrate both collaboration and healthy competition. Whether we're building together or 
+                    We celebrate both collaboration and healthy competition. Whether we're building together or
                     challenging each other in hackathons, we all grow stronger by lifting each other up.
                   </p>
                 </div>
@@ -158,7 +158,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                     4. Lead with Kindness & Respect
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                    We treat others the way we want to be treated. Leading by example with empathy, thoughtfulness, 
+                    We treat others the way we want to be treated. Leading by example with empathy, thoughtfulness,
                     and respect creates the supportive community we all deserve.
                   </p>
                 </div>
@@ -168,7 +168,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                     5. Celebrate the Messy Middle
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                    We share the journey, not just the highlights. Failures, experiments, and lessons learned are 
+                    We share the journey, not just the highlights. Failures, experiments, and lessons learned are
                     just as valuable as the wins because they help everyone grow faster.
                   </p>
                 </div>
@@ -178,7 +178,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                     6. You Belong Here
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                    You are enough as you are. You can learn this. Your perspective matters. All you need is 
+                    You are enough as you are. You can learn this. Your perspective matters. All you need is
                     curiosity and the willingness to start.
                   </p>
                 </div>

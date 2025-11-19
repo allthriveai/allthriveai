@@ -16,13 +16,13 @@ import {
 export default function ProjectEditPage() {
   const { username, projectSlug } = useParams<{ username: string; projectSlug: string }>();
   const navigate = useNavigate();
-  
+
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  
+
   // Editor state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -54,12 +54,12 @@ export default function ProjectEditPage() {
         // TODO: Add dedicated endpoint GET /api/v1/me/projects/by-slug/:slug/
         const projects = await listProjects();
         const foundProject = projects.find(p => p.slug === projectSlug && p.username === username);
-        
+
         if (!foundProject) {
           setError('Project not found');
           return;
         }
-        
+
         setProject(foundProject);
       } catch (err) {
         console.error('Failed to load project:', err);

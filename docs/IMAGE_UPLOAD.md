@@ -290,11 +290,11 @@ describe('ImageUpload', () => {
   it('validates file type', () => {
     // Test invalid file type rejection
   });
-  
+
   it('validates file size', () => {
     // Test size limit enforcement
   });
-  
+
   it('uploads successfully', async () => {
     // Test successful upload flow
   });

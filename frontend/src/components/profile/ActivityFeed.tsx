@@ -46,10 +46,10 @@ export function ActivityFeed() {
     if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
+
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
@@ -153,7 +153,7 @@ export function ActivityFeed() {
       {/* Recent Activity */}
       <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
-        
+
         {activities.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500 dark:text-gray-400">No recent activity</p>

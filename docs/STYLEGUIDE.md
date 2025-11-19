@@ -255,9 +255,9 @@ Solid background for readability:
 ```tsx
 <div>
   <label className="label">Email Address</label>
-  <input 
-    type="email" 
-    className="input" 
+  <input
+    type="email"
+    className="input"
     placeholder="you@example.com"
   />
 </div>
@@ -276,8 +276,8 @@ Solid background for readability:
 ### Textarea (`.textarea`)
 
 ```tsx
-<textarea 
-  className="textarea" 
+<textarea
+  className="textarea"
   rows={4}
   placeholder="Enter your message..."
 />
@@ -467,9 +467,9 @@ Use Tailwind's z-index utilities:
 ```tsx
 <div className="card-hover">
   <div className="flex items-start gap-4">
-    <img 
-      src="/avatar.jpg" 
-      alt="User" 
+    <img
+      src="/avatar.jpg"
+      alt="User"
       className="w-12 h-12 rounded-full"
     />
     <div className="flex-1">
@@ -491,29 +491,29 @@ Use Tailwind's z-index utilities:
 ```tsx
 <form className="card-solid max-w-md">
   <h2 className="text-2xl font-semibold mb-6">Sign In</h2>
-  
+
   <div className="mb-4">
     <label className="label">Email</label>
-    <input 
-      type="email" 
-      className="input" 
+    <input
+      type="email"
+      className="input"
       placeholder="you@example.com"
     />
   </div>
-  
+
   <div className="mb-6">
     <label className="label">Password</label>
-    <input 
-      type="password" 
-      className="input" 
+    <input
+      type="password"
+      className="input"
       placeholder="••••••••"
     />
   </div>
-  
+
   <button className="btn-primary w-full">
     Sign In
   </button>
-  
+
   <p className="text-center text-muted text-sm mt-4">
     Don't have an account? <a href="/signup" className="link">Sign up</a>
   </p>
@@ -533,12 +533,12 @@ Use Tailwind's z-index utilities:
       <a href="/projects" className="nav-link">Projects</a>
     </div>
   </nav>
-  
+
   {/* Main Content */}
   <main className="ml-72 mr-96 content-container">
     <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
     <p className="text-muted mb-8">Welcome back!</p>
-    
+
     <div className="grid grid-cols-2 gap-6">
       <div className="card">
         <h3 className="text-xl font-semibold mb-2">Active Projects</h3>
@@ -550,7 +550,7 @@ Use Tailwind's z-index utilities:
       </div>
     </div>
   </main>
-  
+
   {/* Right Context Tray */}
   <aside className="context-tray p-6">
     <h3 className="text-xl font-semibold mb-4">AI Assistant</h3>
@@ -614,6 +614,6 @@ All interactive elements have visible focus rings using `focus:ring-2`.
 
 ---
 
-**Version**: 1.0  
-**Last Updated**: November 2025  
+**Version**: 1.0
+**Last Updated**: November 2025
 **Maintained By**: All Thrive AI Collective

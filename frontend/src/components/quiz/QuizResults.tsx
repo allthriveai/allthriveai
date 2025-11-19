@@ -10,7 +10,7 @@ interface QuizResultsProps {
 
 export function QuizResults({ score, totalQuestions, onRetake, onBackToList }: QuizResultsProps) {
   const percentage = Math.round((score / totalQuestions) * 100);
-  
+
   const getScoreMessage = () => {
     if (percentage === 100) return '🎉 Perfect Score!';
     if (percentage >= 80) return '🌟 Excellent Work!';

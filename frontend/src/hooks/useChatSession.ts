@@ -39,7 +39,7 @@ export function useChatSession({
     // Reset session when agent changes
     sessionIdRef.current = generateId();
     initialMessageAddedRef.current = false;
-    
+
     if (agent.getInitialMessage) {
       const initialMessage: ChatMessage = {
         id: generateId(),
@@ -83,7 +83,7 @@ export function useChatSession({
   const sendMessage = useCallback(
     async (userInput: string) => {
       console.log('useChatSession.sendMessage called with:', userInput);
-      
+
       if (agent.validateInput && !agent.validateInput(userInput)) {
         const error = new Error('Invalid input for this agent');
         onError?.(error);

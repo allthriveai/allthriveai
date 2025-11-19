@@ -131,7 +131,7 @@ You're good to go if:
 
 ### 1. SECRET_KEY is now REQUIRED
 
-**Before:** Had default value  
+**Before:** Had default value
 **After:** Must be set explicitly or app won't start
 
 **Fix:** Add to `.env` (see Step 1)
@@ -140,10 +140,10 @@ You're good to go if:
 
 ### 2. Email Verification is MANDATORY
 
-**Before:** Optional email verification  
+**Before:** Optional email verification
 **After:** Users must verify email to access app
 
-**Impact:** 
+**Impact:**
 - New signups receive verification email
 - Frontend may need to handle verification flow
 - For dev: emails print to console
@@ -152,7 +152,7 @@ You're good to go if:
 
 ### 3. Conversations use Soft Deletion
 
-**Before:** Deleted conversations removed from DB  
+**Before:** Deleted conversations removed from DB
 **After:** Marked with `deleted_at` timestamp
 
 **Benefits:**
@@ -286,8 +286,8 @@ If you encounter issues:
 
 ---
 
-**Implementation Time:** ~30 minutes  
-**Difficulty:** Intermediate  
+**Implementation Time:** ~30 minutes
+**Difficulty:** Intermediate
 **Impact:** High security improvement
 
 Good luck! 🚀

@@ -19,19 +19,19 @@ import type {
 // Get all published quizzes with optional filters
 export async function getQuizzes(filters?: QuizFilters): Promise<QuizListResponse> {
   const params = new URLSearchParams();
-  
+
   if (filters?.topic && filters.topic.length > 0) {
     filters.topic.forEach(t => params.append('topic', t));
   }
-  
+
   if (filters?.difficulty && filters.difficulty.length > 0) {
     filters.difficulty.forEach(d => params.append('difficulty', d));
   }
-  
+
   if (filters?.search) {
     params.append('search', filters.search);
   }
-  
+
   const response = await api.get<QuizListResponse>('/quizzes/', { params });
   return response.data;
 }

@@ -137,7 +137,7 @@ Create a simple login button in your frontend:
 
 ```html
 <!-- In your frontend (React example) -->
-<a href="http://localhost:8000/accounts/google/login/" 
+<a href="http://localhost:8000/accounts/google/login/"
    className="google-login-btn">
   Sign in with Google
 </a>
@@ -177,7 +177,7 @@ def google_callback(request):
         refresh = RefreshToken.for_user(request.user)
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
-        
+
         # Get user info from social account
         try:
             social_account = SocialAccount.objects.get(user=request.user, provider='google')
@@ -187,7 +187,7 @@ def google_callback(request):
         except SocialAccount.DoesNotExist:
             email = request.user.email
             name = request.user.get_full_name()
-        
+
         # Redirect to frontend with tokens
         frontend_url = f"http://localhost:3000/auth/callback?access_token={access_token}&refresh_token={refresh_token}&email={email}&name={name}"
         return redirect(frontend_url)
