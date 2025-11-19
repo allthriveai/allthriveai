@@ -1,4 +1,4 @@
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { ChatInterface } from '@/components/chat/ChatInterface';
 import { useChatSession } from '@/hooks/useChatSession';
 import { createAgent } from '@/services/agents/ExampleAgents';
