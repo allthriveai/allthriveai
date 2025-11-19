@@ -99,6 +99,100 @@ export class SettingsAgent extends BaseAgent {
 }
 
 /**
+ * Create Project Agent - guides users through creating a new project
+ * Uses backend streaming API for agentic project creation
+ */
+export class CreateProjectAgent extends BaseAgent {
+  private sessionId: string | null = null;
+
+  constructor() {
+    super({
+      agentId: 'create-project',
+      agentName: 'Create Project',
+      agentDescription: 'Create a new project with AI guidance',
+      initialMessage:
+        "Let's create a new project! I'll help you set it up.\n\nYou can either:\n• Add a link and I can auto-generate your project for you\n• Begin to explain your project or prompt\n\nAfterwards, you'll be able to adjust your project page. What would you like to do?",
+      systemPrompt: 'You are a helpful project creation assistant. Guide users through creating a project conversationally.',
+    });
+  }
+
+  async handleMessage(userMessage: string): Promise<string> {
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    
+    console.log('CreateProjectAgent.handleMessage:', userMessage);
+    console.log('Session ID:', this.sessionId);
+    
+    try {
+      console.log('Calling v2 API');
+      
+      const response = await fetch(`${apiUrl}/project/chat/v2/stream/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          session_id: this.sessionId,
+          message: userMessage,
+        }),
+      });
+      
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                
+                if (data.type === 'token') {
+                  fullResponse += data.content;
+                } else if (data.type === 'complete') {
+                  this.sessionId = data.session_id;
+                  
+                  // If project was created, could trigger a refresh here
+                  if (data.project_id) {
+                    console.log('Project created:', data.project_id, data.project_slug);
+                    // Optionally dispatch event for profile refresh
+                    window.dispatchEvent(new CustomEvent('project-created', {
+                      detail: { projectId: data.project_id, slug: data.project_slug }
+                    }));
+                  }
+                } else if (data.type === 'error') {
+                  throw new Error(data.message);
+                }
+              } catch (e) {
+                // Ignore JSON parse errors for incomplete chunks
+              }
+            }
+          }
+        }
+      }
+
+      return fullResponse.trim() || 'Processing...';
+    } catch (error) {
+      console.error('Project agent error:', error);
+      return `Sorry, there was an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`;
+    }
+  }
+}
+
+/**
  * Agent Factory - creates agents by ID
  */
 export const agentFactoryMap: Record<string, () => BaseAgent> = {
@@ -106,12 +200,29 @@ export const agentFactoryMap: Record<string, () => BaseAgent> = {
   network: () => new NetworkAgent(),
   learning: () => new LearningAgent(),
   settings: () => new SettingsAgent(),
+  'create-project': () => new CreateProjectAgent(),
+  'Create Project': () => new CreateProjectAgent(),
   placeholder: () => new PlaceholderAgent(),
 };
 
 export function createAgent(agentId: string): BaseAgent {
-  const factory = agentFactoryMap[agentId];
+  // Try direct match first
+  let factory = agentFactoryMap[agentId];
+  
+  // Try lowercase match
   if (!factory) {
+    const lowerCaseId = agentId.toLowerCase();
+    factory = agentFactoryMap[lowerCaseId];
+  }
+  
+  // Try kebab-case conversion (e.g., "Create Project" -> "create-project")
+  if (!factory) {
+    const kebabCase = agentId.toLowerCase().replace(/\s+/g, '-');
+    factory = agentFactoryMap[kebabCase];
+  }
+  
+  if (!factory) {
+    console.log('Unknown agent ID:', agentId, 'Available agents:', Object.keys(agentFactoryMap));
     // Fall back to placeholder for unknown agents
     return new PlaceholderAgent({
       agentId,

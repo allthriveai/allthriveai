@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import User, UserRole
+from .social_models import SocialConnection
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -11,6 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
     
     full_name = serializers.SerializerMethodField()
     role_display = serializers.CharField(source='get_role_display', read_only=True)
+    social_connections = serializers.SerializerMethodField()
     
     class Meta:
         model = User
@@ -25,10 +27,13 @@ class UserSerializer(serializers.ModelSerializer):
             'role_display',
             'avatar_url',
             'bio',
+            'website_url',
+            'calendar_url',
             'date_joined',
             'last_login',
+            'social_connections',
         ]
-        read_only_fields = ['id', 'date_joined', 'last_login', 'role']  # Prevent role escalation
+        read_only_fields = ['id', 'date_joined', 'last_login', 'role', 'social_connections']  # Prevent role escalation
     
     def get_fields(self):
         """Dynamically adjust fields based on request context."""
@@ -48,6 +53,32 @@ class UserSerializer(serializers.ModelSerializer):
     def get_full_name(self, obj):
         """Return user's full name."""
         return f"{obj.first_name} {obj.last_name}".strip() or obj.username
+    
+    def get_social_connections(self, obj):
+        """Return connected social accounts (only for own profile)."""
+        request = self.context.get('request')
+        
+        # Only include social connections for own profile or staff
+        if not request or not hasattr(request, 'user'):
+            return None
+        
+        if not (request.user.is_authenticated and 
+                (obj == request.user or request.user.is_staff)):
+            return None
+        
+        # Return list of connected providers (without sensitive token data)
+        connections = SocialConnection.objects.filter(user=obj, is_active=True)
+        return [
+            {
+                'provider': conn.provider,
+                'providerDisplay': conn.get_provider_display(),
+                'providerUsername': conn.provider_username,
+                'profileUrl': conn.profile_url,
+                'avatarUrl': conn.avatar_url,
+                'connectedAt': conn.created_at.isoformat(),
+            }
+            for conn in connections
+        ]
     
     def validate_role(self, value):
         """Prevent role escalation - only superusers can change roles."""
@@ -112,11 +143,42 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
+            'username',
             'first_name',
             'last_name',
             'avatar_url',
             'bio',
+            'website_url',
+            'calendar_url',
         ]
+    
+    def validate_username(self, value):
+        """Validate username is unique (excluding current user) and meets requirements."""
+        # Normalize username to lowercase
+        value = value.lower().strip()
+        
+        # Check if username is changing
+        if self.instance and self.instance.username == value:
+            return value
+        
+        # Check uniqueness
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError('This username is already taken.')
+        
+        # Check length
+        if len(value) < 3:
+            raise serializers.ValidationError('Username must be at least 3 characters long.')
+        if len(value) > 30:
+            raise serializers.ValidationError('Username must be less than 30 characters.')
+        
+        # Check format (alphanumeric, underscores, hyphens only)
+        import re
+        if not re.match(r'^[a-z0-9_-]+$', value):
+            raise serializers.ValidationError(
+                'Username can only contain lowercase letters, numbers, underscores, and hyphens.'
+            )
+        
+        return value
     
     def validate(self, attrs):
         """Ensure the user instance will pass model-level validation."""

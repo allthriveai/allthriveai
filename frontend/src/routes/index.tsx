@@ -5,7 +5,16 @@ import AboutPage from '@/pages/AboutPage';
 import AuthPage from '@/pages/AuthPage';
 import ProfilePage from '@/pages/ProfilePage';
 import ProjectDetailPage from '@/pages/ProjectDetailPage';
+import ProjectEditorPage from '@/pages/ProjectEditorPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
+import PasswordSettingsPage from '@/pages/settings/PasswordSettingsPage';
+import SocialSettingsPage from '@/pages/settings/SocialSettingsPage';
+import PersonalizationSettingsPage from '@/pages/settings/PersonalizationSettingsPage';
+import NotificationsSettingsPage from '@/pages/settings/NotificationsSettingsPage';
+import BillingSettingsPage from '@/pages/settings/BillingSettingsPage';
+import PrivacySettingsPage from '@/pages/settings/PrivacySettingsPage';
+import TeamsSettingsPage from '@/pages/settings/TeamsSettingsPage';
+import ReferralsPage from '@/pages/settings/ReferralsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
 import QuizListPage from '@/pages/quizzes/QuizListPage';
@@ -38,7 +47,7 @@ export function AppRoutes() {
       <Route path="/auth" element={<Navigate to="/login" replace />} />
       <Route path="/signup" element={<Navigate to="/login" replace />} />
 
-      {/* Protected routes */}
+      {/* Protected routes - Settings */}
       <Route
         path="/account/settings"
         element={
@@ -47,8 +56,80 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/account/settings/password"
+        element={
+          <ProtectedRoute>
+            <PasswordSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/settings/social"
+        element={
+          <ProtectedRoute>
+            <SocialSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/settings/personalization"
+        element={
+          <ProtectedRoute>
+            <PersonalizationSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/settings/referrals"
+        element={
+          <ProtectedRoute>
+            <ReferralsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/settings/notifications"
+        element={
+          <ProtectedRoute>
+            <NotificationsSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/settings/billing"
+        element={
+          <ProtectedRoute>
+            <BillingSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/settings/privacy"
+        element={
+          <ProtectedRoute>
+            <PrivacySettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/settings/teams"
+        element={
+          <ProtectedRoute>
+            <TeamsSettingsPage />
+          </ProtectedRoute>
+        }
+      />
       {/* Public profile route - shows only showcase when logged out */}
       <Route path="/:username" element={<ProfilePage />} />
+      <Route
+        path="/:username/:projectSlug/edit"
+        element={
+          <ProtectedRoute>
+            <ProjectEditorPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/:username/:projectSlug"
         element={

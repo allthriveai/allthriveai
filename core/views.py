@@ -4,8 +4,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.db import connections
 from django.db.utils import OperationalError
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
+import logging
+import json
 from .models import Conversation, Message, Project, User
 from .serializers import ConversationSerializer, MessageSerializer, ProjectSerializer
+
+logger = logging.getLogger('django.security')
 
 
 @api_view(['GET'])
@@ -22,6 +28,42 @@ def db_health(request):
         return Response({'status': 'ok'})
     except OperationalError as e:
         return Response({'status': 'error', 'detail': str(e)}, status=503)
+
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def csp_report(request):
+    """Content Security Policy violation reporting endpoint.
+    
+    Logs CSP violations to help identify and fix security policy issues.
+    This endpoint must accept POST requests from browsers reporting CSP violations.
+    """
+    try:
+        # Parse CSP violation report
+        if request.content_type == 'application/csp-report':
+            report_data = json.loads(request.body.decode('utf-8'))
+        elif request.content_type == 'application/json':
+            report_data = request.data
+        else:
+            report_data = {'raw_body': request.body.decode('utf-8', errors='ignore')}
+        
+        # Log the violation
+        logger.warning(
+            f"CSP Violation Report: {json.dumps(report_data, indent=2)}",
+            extra={
+                'user_agent': request.META.get('HTTP_USER_AGENT', 'Unknown'),
+                'ip_address': request.META.get('REMOTE_ADDR', 'Unknown'),
+                'report': report_data,
+            }
+        )
+        
+        # Return 204 No Content (standard for reporting endpoints)
+        return HttpResponse(status=204)
+        
+    except Exception as e:
+        logger.error(f"Error processing CSP report: {str(e)}")
+        return HttpResponse(status=400)
 
 class ConversationViewSet(viewsets.ModelViewSet):
     """ViewSet for managing conversations."""

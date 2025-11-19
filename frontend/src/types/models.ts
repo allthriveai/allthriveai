@@ -13,6 +13,8 @@ export interface User {
   roleDisplay: string;
   avatarUrl?: string;
   bio?: string;
+  websiteUrl?: string;
+  calendarUrl?: string;
   createdAt: string;
   lastLogin?: string;
 }
@@ -66,3 +68,108 @@ export const StorageKeys = {
   THEME: 'theme',
   REMEMBER_ME: 'remember_me',
 } as const;
+
+// Project types
+export type ProjectType = 'github_repo' | 'image_collection' | 'prompt' | 'other';
+
+// Project model
+export interface Project {
+  id: number;
+  username: string; // Owner's username for URL construction
+  title: string;
+  slug: string;
+  description: string;
+  type: ProjectType;
+  isShowcase: boolean;
+  isArchived: boolean;
+  isPublished: boolean;
+  publishedAt?: string;
+  thumbnailUrl?: string;
+  content: ProjectContent;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Project content structure (portfolio-style blocks)
+export interface ProjectContent {
+  coverImage?: {
+    url: string;
+    alt?: string;
+  };
+  tags?: string[];
+  blocks?: ProjectBlock[];
+}
+
+export type ProjectBlock =
+  | { type: 'text'; style: 'body' | 'heading' | 'quote'; content: string }
+  | { type: 'image'; url: string; caption?: string }
+  | { type: 'imageGrid'; images: Array<{ url: string; caption?: string }>; caption?: string };
+
+// Project creation/update payload
+export interface ProjectPayload {
+  title: string;
+  slug?: string;
+  description?: string;
+  type?: ProjectType;
+  isShowcase?: boolean;
+  isArchived?: boolean;
+  thumbnailUrl?: string;
+  content?: ProjectContent;
+}
+
+// Paginated response
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+// Taxonomy types
+export type TaxonomyCategory = 'interest' | 'skill' | 'goal' | 'topic' | 'industry' | 'tool';
+
+export interface Taxonomy {
+  id: number;
+  name: string;
+  category: TaxonomyCategory;
+  categoryDisplay: string;
+  description: string;
+  isActive: boolean;
+}
+
+// User tag types
+export type TagSource = 'manual' | 'auto_project' | 'auto_conversation' | 'auto_activity';
+
+export interface UserTag {
+  id: number;
+  name: string;
+  taxonomy: number | null;
+  taxonomyName?: string;
+  taxonomyCategory?: TaxonomyCategory;
+  source: TagSource;
+  sourceDisplay: string;
+  confidenceScore: number;
+  interactionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// User personalization overview
+export interface UserPersonalization {
+  manual_tags: UserTag[];
+  auto_generated_tags: UserTag[];
+  available_taxonomies: Taxonomy[];
+  total_interactions: number;
+}
+
+// Interaction types
+export type InteractionType = 'project_view' | 'project_create' | 'conversation' | 'search' | 'content_view';
+
+export interface UserInteraction {
+  id: number;
+  interactionType: InteractionType;
+  interactionTypeDisplay: string;
+  metadata: Record<string, any>;
+  extractedKeywords: string[];
+  createdAt: string;
+}

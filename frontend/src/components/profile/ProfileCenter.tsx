@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { User, Project, ProjectType } from '@/types/models';
 import { getUserProjects, createProject } from '@/services/projects';
 import { getUserByUsername } from '@/services/auth';
@@ -17,6 +18,7 @@ interface ProfileCenterProps {
 }
 
 export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, activeTab, onTabChange, onOpenChat }: ProfileCenterProps) {
+  const navigate = useNavigate();
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<{ showcase: Project[]; playground: Project[] }>({ 
     showcase: [], 
@@ -203,9 +205,21 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
         {/* Add Project Button - only show for authenticated users on their own profile */}
         {isAuthenticated && isOwnProfile && (activeTab === 'showcase' || activeTab === 'playground') && (
           <button
-            onClick={() => {
-              console.log('Opening chat with Create Project');
-              onOpenChat?.('Create Project');
+            onClick={async () => {
+              // Create a blank project and navigate to editor
+              try {
+                const newProject = await createProject({
+                  title: 'Untitled Project',
+                  description: '',
+                  type: 'other',
+                  isShowcase: activeTab === 'showcase',
+                  content: { blocks: [] },
+                });
+                navigate(`/${user?.username}/${newProject.slug}/edit`);
+              } catch (error) {
+                console.error('Failed to create project:', error);
+                alert('Failed to create project');
+              }
             }}
             className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors shadow-sm"
           >
@@ -253,7 +267,21 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                 </p>
                 {isAuthenticated && isOwnProfile && (
                   <button
-                    onClick={() => setShowAddModal(true)}
+                    onClick={async () => {
+                      try {
+                        const newProject = await createProject({
+                          title: 'Untitled Project',
+                          description: '',
+                          type: 'other',
+                          isShowcase: true,
+                          content: { blocks: [] },
+                        });
+                        navigate(`/${user?.username}/${newProject.slug}/edit`);
+                      } catch (error) {
+                        console.error('Failed to create project:', error);
+                        alert('Failed to create project');
+                      }
+                    }}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
                   >
                     <PlusIcon className="w-5 h-5" />
@@ -301,7 +329,21 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                 </p>
                 {isAuthenticated && isOwnProfile && (
                   <button
-                    onClick={() => setShowAddModal(true)}
+                    onClick={async () => {
+                      try {
+                        const newProject = await createProject({
+                          title: 'Untitled Project',
+                          description: '',
+                          type: 'other',
+                          isShowcase: false,
+                          content: { blocks: [] },
+                        });
+                        navigate(`/${user?.username}/${newProject.slug}/edit`);
+                      } catch (error) {
+                        console.error('Failed to create project:', error);
+                        alert('Failed to create project');
+                      }
+                    }}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
                   >
                     <PlusIcon className="w-5 h-5" />

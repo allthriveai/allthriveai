@@ -13,6 +13,7 @@ import {
   ChevronRightIcon,
   SunIcon,
   MoonIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -50,6 +51,12 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
   const [openSections, setOpenSections] = useState<string[]>(['EXPLORE']);
   const [openSubItems, setOpenSubItems] = useState<string[]>([]);
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Debug: log user object when it changes
+  useEffect(() => {
+    console.log('LeftSidebar user:', user);
+  }, [user]);
 
   const toggleSection = (title: string) => {
     setOpenSections(prev =>
@@ -89,6 +96,59 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
     }
   }, [showComingSoon]);
 
+  // Filter menu sections and items based on search query
+  const filterMenuSections = (sections: MenuSection[]): MenuSection[] => {
+    if (!searchQuery.trim()) return sections;
+
+    const query = searchQuery.toLowerCase();
+    return sections
+      .map(section => {
+        // Check if section title matches
+        const sectionMatches = section.title.toLowerCase().includes(query);
+        
+        // Filter items that match the query
+        const filteredItems = section.items.filter(item => {
+          const itemMatches = item.label.toLowerCase().includes(query);
+          const subItemMatches = item.subItems?.some(subItem => 
+            subItem.label.toLowerCase().includes(query)
+          );
+          return itemMatches || subItemMatches;
+        });
+
+        // Include section if title matches OR if any items match
+        if (sectionMatches || filteredItems.length > 0) {
+          return {
+            ...section,
+            items: sectionMatches ? section.items : filteredItems,
+          };
+        }
+        return null;
+      })
+      .filter((section): section is MenuSection => section !== null);
+  };
+
+  // Auto-expand sections when searching
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      // Open all sections that have matching results
+      const matchingSections = filterMenuSections(menuSections).map(s => s.title);
+      setOpenSections(matchingSections);
+      
+      // Open all sub-items that have matching results
+      const matchingSubItems: string[] = [];
+      menuSections.forEach(section => {
+        section.items.forEach(item => {
+          if (item.subItems?.some(sub => 
+            sub.label.toLowerCase().includes(searchQuery.toLowerCase())
+          )) {
+            matchingSubItems.push(item.label);
+          }
+        });
+      });
+      setOpenSubItems(matchingSubItems);
+    }
+  }, [searchQuery]);
+
   const menuSections: MenuSection[] = [
     {
       title: 'EXPLORE',
@@ -116,7 +176,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
       icon: faGraduationCap,
       items: [
         { label: 'Learning Paths', href: '#' },
-        { label: 'Quick Quizzes', href: '#' },
+        { label: 'Quick Quizzes', onClick: () => navigate('/quick-quizzes') },
         { label: 'Mentorship Program', href: '#' },
       ],
     },
@@ -138,8 +198,8 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         { 
           label: 'About All Thrive',
           subItems: [
-            { label: 'About Us', href: '#' },
-            { label: 'Our Values', href: '#' },
+            { label: 'About Us', onClick: () => onMenuClick('About Us') },
+            { label: 'Our Values', onClick: () => onMenuClick('Our Values') },
           ]
         },
         { label: 'Pricing', href: '#' },
@@ -233,9 +293,35 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
           )}
         </div>
 
+        {/* Search Bar */}
+        {isOpen && (
+          <div className="px-4 pt-4 pb-2">
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search menu..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/20 rounded-lg text-slate-700 dark:text-slate-300 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 dark:hover:bg-white/5 rounded transition-colors"
+                  aria-label="Clear search"
+                >
+                  <XMarkIcon className="w-3 h-3 text-slate-400" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
       {/* Menu Sections */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {menuSections.map((section) => (
+        {filterMenuSections(menuSections).length > 0 ? (
+          filterMenuSections(menuSections).map((section) => (
           <div key={section.title} className="mb-2">
             {/* Section Header */}
             <button
@@ -323,7 +409,14 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
               </div>
             )}
           </div>
-        ))}
+        ))
+        ) : (
+          <div className="px-3 py-8 text-center">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              No results found for "{searchQuery}"
+            </p>
+          </div>
+        )}
       </nav>
 
       {/* Theme Toggle & Auth Button */}

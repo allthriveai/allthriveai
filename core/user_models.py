@@ -28,6 +28,8 @@ class User(AbstractUser):
     
     avatar_url = models.URLField(blank=True, null=True)
     bio = models.TextField(blank=True)
+    website_url = models.URLField(blank=True, null=True, help_text='Personal website or portfolio URL')
+    calendar_url = models.URLField(blank=True, null=True, help_text='Public calendar URL for scheduling')
     
     class Meta:
         ordering = ['-date_joined']

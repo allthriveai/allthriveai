@@ -2,27 +2,92 @@ from django.db import models
 from django.utils.text import slugify
 from .user_models import User, UserRole
 from .audit_models import UserAuditLog
+from .role_models import RoleUpgradeRequest, RolePermission
+from .referral_models import ReferralCode, Referral, ReferralStatus
+from .taxonomy_models import Taxonomy, UserTag, UserInteraction
 
 # Export User and UserRole for easy imports
-__all__ = ['User', 'UserRole', 'Conversation', 'Message', 'Project', 'UserAuditLog']
+__all__ = [
+    'User', 'UserRole', 'Conversation', 'Message', 'Project', 
+    'UserAuditLog', 'RoleUpgradeRequest', 'RolePermission',
+    'ReferralCode', 'Referral', 'ReferralStatus',
+    'Taxonomy', 'UserTag', 'UserInteraction', 'SoftDeleteManager', 'BaseModel'
+]
 
 
-class Conversation(models.Model):
-    """Model to store AI conversation history."""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversations')
+class SoftDeleteManager(models.Manager):
+    """Manager that excludes soft-deleted objects by default."""
+    
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+
+class BaseModel(models.Model):
+    """Base model with soft delete capability and audit timestamps.
+    
+    All models that need soft deletion should inherit from this.
+    Soft deleted objects are excluded from default queries but can be
+    accessed via all_objects manager.
+    """
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='Timestamp when object was soft deleted'
+    )
+    
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()  # Include soft-deleted objects
+    
+    class Meta:
+        abstract = True
+    
+    def soft_delete(self):
+        """Mark object as deleted without removing from database."""
+        from django.utils import timezone
+        self.deleted_at = timezone.now()
+        self.save(update_fields=['deleted_at'])
+    
+    def restore(self):
+        """Restore a soft-deleted object."""
+        self.deleted_at = None
+        self.save(update_fields=['deleted_at'])
+    
+    @property
+    def is_deleted(self):
+        """Check if object is soft-deleted."""
+        return self.deleted_at is not None
+
+
+class Conversation(BaseModel):
+    """Model to store AI conversation history.
+    
+    Supports soft deletion to maintain audit trail even when user deletes conversations.
+    """
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='conversations')
     title = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['user', '-updated_at']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['-updated_at', 'deleted_at']),
+        ]
 
     def __str__(self):
-        return f"{self.title or 'Conversation'} - {self.user.username}"
+        username = self.user.username if self.user else 'Unknown'
+        return f"{self.title or 'Conversation'} - {username}"
 
 
 class Message(models.Model):
-    """Model to store individual messages in a conversation."""
+    """Model to store individual messages in a conversation.
+    
+    Messages are CASCADE deleted if conversation is hard-deleted,
+    but soft-deletion of conversation preserves messages.
+    """
     ROLE_CHOICES = [
         ('user', 'User'),
         ('assistant', 'Assistant'),
@@ -36,6 +101,10 @@ class Message(models.Model):
 
     class Meta:
         ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['conversation', 'created_at']),
+            models.Index(fields=['conversation', 'role']),
+        ]
 
     def __str__(self):
         return f"{self.role}: {self.content[:50]}..."
@@ -48,15 +117,15 @@ class ProjectQuerySet(models.QuerySet):
         """Return projects accessible to the given user."""
         if user.is_staff:
             return self.all()
-        # User's own projects + public showcase projects from others
+        # User's own projects (published or draft) + published public showcase projects from others
         return self.filter(
             models.Q(user=user) | 
-            models.Q(is_showcase=True, is_archived=False)
+            models.Q(is_showcase=True, is_published=True, is_archived=False)
         )
     
     def public_showcase(self):
-        """Return only public showcase projects."""
-        return self.filter(is_showcase=True, is_archived=False)
+        """Return only published public showcase projects."""
+        return self.filter(is_showcase=True, is_published=True, is_archived=False)
     
     def by_user(self, username):
         """Return projects by username."""
@@ -90,6 +159,8 @@ class Project(models.Model):
     )
     is_showcase = models.BooleanField(default=False)
     is_archived = models.BooleanField(default=False)
+    is_published = models.BooleanField(default=False, help_text="Whether project is publicly visible")
+    published_at = models.DateTimeField(null=True, blank=True, help_text="When project was first published")
     thumbnail_url = models.URLField(blank=True, null=True)
     # Structured layout blocks for the project page (cover, tags, text/image blocks)
     content = models.JSONField(default=dict, blank=True)

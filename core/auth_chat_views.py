@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from services.auth_agent.graph import auth_graph
+from services.project_agent.graph import project_graph
 from services.auth_agent.validators import (
     validate_email,
     validate_name,
@@ -424,3 +425,221 @@ def auth_chat_state(request):
         
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def project_chat_stream(request):
+    """
+    Streaming endpoint for project creation chat.
+    Uses Server-Sent Events (SSE) to stream AI responses.
+    Requires authentication.
+    
+    Request body:
+        {
+            "session_id": "uuid",
+            "action": "start" | "submit",
+            "message": "user message"  // For submit action
+        }
+    """
+    print("[PROJECT_CHAT] Request received")
+    
+    # Check authentication
+    if not request.user.is_authenticated:
+        print("[PROJECT_CHAT] User not authenticated")
+        return JsonResponse({'error': 'Authentication required'}, status=401)
+    
+    print(f"[PROJECT_CHAT] User: {request.user.username} (id={request.user.id})")
+    
+    try:
+        body = json.loads(request.body)
+        session_id = body.get('session_id') or str(uuid.uuid4())
+        action = body.get('action', 'start')
+        user_message = body.get('message', '')
+        
+        print(f"[PROJECT_CHAT] Session: {session_id}, Action: {action}, Message: {user_message}")
+        
+        # Configure for streaming
+        config = {
+            "configurable": {
+                "thread_id": session_id
+            }
+        }
+        
+        def event_stream():
+            """Generator for SSE events."""
+            try:
+                print(f"[PROJECT_CHAT] Starting event stream for session {session_id}")
+                # Get current state
+                current_state = project_graph.get_state(config)
+                state_values = _get_state_values(current_state)
+                print(f"[PROJECT_CHAT] Current state step at start: {state_values.get('step')}")
+                
+                # Initialize state if new session
+                if not state_values.get('messages'):
+                    initial_state = {
+                        "messages": [],
+                        "step": "welcome",
+                        "title": None,
+                        "description": None,
+                        "project_type": None,
+                        "is_showcase": False,
+                        "user_id": request.user.id,
+                        "username": request.user.username,
+                        "error": None,
+                        "project_id": None,
+                        "project_slug": None,
+                    }
+                    current_state = project_graph.update_state(config, initial_state)
+                    state_values = _get_state_values(current_state)
+                
+                # Handle different actions
+                if action == "start":
+                    print("[PROJECT_CHAT] Action=start: invoking welcome node")
+                    try:
+                        # Invoke welcome node first
+                        result = project_graph.invoke(None, config)
+                        print(f"[PROJECT_CHAT] Welcome node completed: {result}")
+                    except Exception as e:
+                        print(f"[PROJECT_CHAT] Error invoking welcome node: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                        return
+                    
+                    # If a message was provided with start, process it as the title
+                    if user_message:
+                        print(f"[PROJECT_CHAT] Processing message with start: {user_message}")
+                        try:
+                            # Get updated state after welcome
+                            current_state = project_graph.get_state(config)
+                            state_values = _get_state_values(current_state)
+                            print(f"[PROJECT_CHAT] State after welcome: step={state_values.get('step')}")
+                            
+                            # Add user message
+                            messages = state_values.get('messages', [])
+                            new_msg = {"role": "user", "content": user_message}
+                            messages.append(new_msg)
+                            project_graph.update_state(config, {"messages": messages})
+                            print(f"[PROJECT_CHAT] Updated messages, invoking process_title")
+                            
+                            # Process the title (first step after welcome)
+                            # Call the node function directly since graph ends at each node
+                            from services.project_agent.nodes import process_title_node
+                            updated_state = process_title_node(state_values)
+                            project_graph.update_state(config, updated_state)
+                            print(f"[PROJECT_CHAT] process_title completed")
+                        except Exception as e:
+                            print(f"[PROJECT_CHAT] Error processing title: {e}")
+                            import traceback
+                            traceback.print_exc()
+                            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                            return
+                    
+                elif action == "submit":
+                    if not user_message:
+                        print("[PROJECT_CHAT] Error: submit without message")
+                        yield f"data: {json.dumps({'type': 'error', 'message': 'Message required'})}\n\n"
+                        return
+                    
+                    print(f"[PROJECT_CHAT] Received user message: {user_message}")
+                    
+                    # Add user message
+                    messages = state_values.get('messages', [])
+                    new_msg = {"role": "user", "content": user_message}
+                    messages.append(new_msg)
+                    
+                    # Update state with user message
+                    project_graph.update_state(config, {"messages": messages})
+                    
+                    # Determine which node to invoke based on current step
+                    step = state_values.get('step')
+                    print(f"[PROJECT_CHAT] Current step before processing: {step}")
+                    node_map = {
+                        "welcome": "process_title",
+                        "title": "process_title",
+                        "description": "process_description",
+                        "type": "process_type",
+                        "showcase": "process_showcase",
+                        "confirm": "create_project",  # User confirmed, create it
+                    }
+                    
+                    next_node = node_map.get(step)
+                    print(f"[PROJECT_CHAT] Next node: {next_node}, current step: {step}")
+                    if next_node:
+                        # Call the node function directly
+                        from services.project_agent.nodes import (
+                            process_title_node,
+                            process_description_node,
+                            process_type_node,
+                            process_showcase_node,
+                            create_project_node,
+                        )
+                        
+                        node_functions = {
+                            "process_title": process_title_node,
+                            "process_description": process_description_node,
+                            "process_type": process_type_node,
+                            "process_showcase": process_showcase_node,
+                            "create_project": create_project_node,
+                        }
+                        
+                        node_fn = node_functions.get(next_node)
+                        if node_fn:
+                            # Get current state
+                            current_state = project_graph.get_state(config)
+                            state_values = _get_state_values(current_state)
+                            # Call node function
+                            updated_state = node_fn(state_values)
+                            # Update graph state
+                            project_graph.update_state(config, updated_state)
+                            print(f"[PROJECT_CHAT] {next_node} completed")
+                    else:
+                        print("[PROJECT_CHAT] No next node mapped for step", step)
+                
+                # Get final state
+                final_state = project_graph.get_state(config)
+                final_values = _get_state_values(final_state)
+                print(f"[PROJECT_CHAT] Final step: {final_values.get('step')}")
+                
+                # Stream the last message (AI response)
+                messages = final_values.get('messages', [])
+                if messages:
+                    last_message = messages[-1]
+                    if last_message['role'] == 'assistant':
+                        content = last_message['content']
+                        
+                        # Stream word by word for effect
+                        words = content.split()
+                        for word in words:
+                            yield f"data: {json.dumps({'type': 'token', 'content': word + ' '})}\n\n"
+                
+                # Send completion event with current step
+                step = final_values.get('step')
+                project_id = final_values.get('project_id')
+                project_slug = final_values.get('project_slug')
+                
+                completion_data = {
+                    'type': 'complete',
+                    'step': step,
+                    'session_id': session_id,
+                    'project_id': project_id,
+                    'project_slug': project_slug,
+                }
+                yield f"data: {json.dumps(completion_data)}\n\n"
+                
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        
+        response = StreamingHttpResponse(
+            event_stream(),
+            content_type='text/event-stream'
+        )
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'
+        return response
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

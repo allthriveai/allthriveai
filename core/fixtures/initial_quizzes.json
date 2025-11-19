@@ -1,0 +1,212 @@
+[
+  {
+    "model": "core.quiz",
+    "pk": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+    "fields": {
+      "title": "AI Agent Frameworks Showdown",
+      "slug": "ai-agent-frameworks-showdown",
+      "description": "Quick dive into the most popular AI agent frameworks. Learn which framework fits your next project in just 5 minutes!",
+      "topic": "AI Frameworks",
+      "difficulty": "beginner",
+      "estimated_time": 5,
+      "thumbnail_url": "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80",
+      "is_published": true,
+      "created_by_id": 1,
+      "created_at": "2024-01-19T07:00:00Z",
+      "updated_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quizquestion",
+    "pk": "11111111-1111-1111-1111-111111111111",
+    "fields": {
+      "quiz_id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+      "question": "LangChain is best known for chaining together LLM calls and tools",
+      "type": "true_false",
+      "correct_answer": "true",
+      "options": null,
+      "explanation": "Correct! LangChain's core strength is creating chains that connect LLMs with various tools, APIs, and data sources, making it easy to build complex AI workflows.",
+      "hint": "Think about what the name 'LangChain' suggests",
+      "order": 1,
+      "image_url": "https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&q=80",
+      "created_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quizquestion",
+    "pk": "22222222-2222-2222-2222-222222222222",
+    "fields": {
+      "quiz_id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+      "question": "Which framework specializes in building multi-agent systems with graph-based workflows?",
+      "type": "multiple_choice",
+      "correct_answer": "LangGraph",
+      "options": ["LangChain", "LangGraph", "AutoGen", "CrewAI"],
+      "explanation": "LangGraph is specifically designed for building stateful, multi-agent applications using graph-based workflows. It's perfect for complex agent coordination!",
+      "hint": "The name has 'Graph' in it",
+      "order": 2,
+      "image_url": "https://images.unsplash.com/photo-1639322537228-f710d846310a?w=800&q=80",
+      "created_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quizquestion",
+    "pk": "33333333-3333-3333-3333-333333333333",
+    "fields": {
+      "quiz_id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+      "question": "CrewAI uses a role-based approach where AI agents work together like a team",
+      "type": "true_false",
+      "correct_answer": "true",
+      "options": null,
+      "explanation": "Exactly right! CrewAI is all about creating teams of AI agents with specific roles (like manager, researcher, writer) that collaborate to complete tasks.",
+      "hint": "The word 'Crew' suggests teamwork",
+      "order": 3,
+      "image_url": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&q=80",
+      "created_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quizquestion",
+    "pk": "44444444-4444-4444-4444-444444444444",
+    "fields": {
+      "quiz_id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+      "question": "Which framework is developed by Microsoft Research for autonomous agent conversations?",
+      "type": "multiple_choice",
+      "correct_answer": "AutoGen",
+      "options": ["Semantic Kernel", "AutoGen", "LangChain", "Haystack"],
+      "explanation": "AutoGen, created by Microsoft Research, enables building applications with multiple conversational agents that can collaborate autonomously to solve tasks.",
+      "hint": "It starts with 'Auto' and was made by Microsoft",
+      "order": 4,
+      "image_url": "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&q=80",
+      "created_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quizquestion",
+    "pk": "55555555-5555-5555-5555-555555555555",
+    "fields": {
+      "quiz_id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+      "question": "All major AI agent frameworks require you to use OpenAI's GPT models only",
+      "type": "true_false",
+      "correct_answer": "false",
+      "options": null,
+      "explanation": "False! Most modern frameworks are model-agnostic and support multiple LLM providers including OpenAI, Anthropic, Google, open-source models, and more.",
+      "hint": "Think about flexibility and vendor lock-in",
+      "order": 5,
+      "image_url": "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800&q=80",
+      "created_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quiz",
+    "pk": "f6e5d4c3-b2a1-4d5e-9c8b-7a6f5e4d3c2b",
+    "fields": {
+      "title": "Prompt Engineering Essentials",
+      "slug": "prompt-engineering-essentials",
+      "description": "Master the art of talking to AI! Learn key techniques to get better results from any AI model.",
+      "topic": "Prompt Engineering",
+      "difficulty": "beginner",
+      "estimated_time": 4,
+      "thumbnail_url": "https://images.unsplash.com/photo-1676277791608-ac5a88e3f47e?w=800&q=80",
+      "is_published": true,
+      "created_by_id": 1,
+      "created_at": "2024-01-19T07:00:00Z",
+      "updated_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quizquestion",
+    "pk": "66666666-6666-6666-6666-666666666666",
+    "fields": {
+      "quiz_id": "f6e5d4c3-b2a1-4d5e-9c8b-7a6f5e4d3c2b",
+      "question": "Being specific and clear in your prompts leads to better AI responses",
+      "type": "true_false",
+      "correct_answer": "true",
+      "options": null,
+      "explanation": "Absolutely! Specific, clear prompts help the AI understand exactly what you want. Compare 'write something' vs 'write a 3-paragraph blog intro about AI ethics for beginners.'",
+      "hint": "Would you prefer clear or vague instructions?",
+      "order": 1,
+      "image_url": "https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?w=800&q=80",
+      "created_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quizquestion",
+    "pk": "77777777-7777-7777-7777-777777777777",
+    "fields": {
+      "quiz_id": "f6e5d4c3-b2a1-4d5e-9c8b-7a6f5e4d3c2b",
+      "question": "What technique involves showing the AI examples before asking it to do a task?",
+      "type": "multiple_choice",
+      "correct_answer": "Few-shot learning",
+      "options": ["Zero-shot learning", "Few-shot learning", "Chain-of-thought", "Role prompting"],
+      "explanation": "Few-shot learning! By providing 2-3 examples of input-output pairs, you teach the AI the pattern you want. It's like showing instead of just telling.",
+      "hint": "The name refers to how many examples you give",
+      "order": 2,
+      "image_url": "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&q=80",
+      "created_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quizquestion",
+    "pk": "88888888-8888-8888-8888-888888888888",
+    "fields": {
+      "quiz_id": "f6e5d4c3-b2a1-4d5e-9c8b-7a6f5e4d3c2b",
+      "question": "Chain-of-thought prompting asks the AI to explain its reasoning step by step",
+      "type": "true_false",
+      "correct_answer": "true",
+      "options": null,
+      "explanation": "Correct! Adding 'Let's think step by step' or 'Explain your reasoning' helps the AI break down complex problems and often improves accuracy on logical tasks.",
+      "hint": "Think about breaking things into steps",
+      "order": 3,
+      "image_url": "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&q=80",
+      "created_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quizquestion",
+    "pk": "99999999-9999-9999-9999-999999999999",
+    "fields": {
+      "quiz_id": "f6e5d4c3-b2a1-4d5e-9c8b-7a6f5e4d3c2b",
+      "question": "Which is the MOST important element of a good prompt?",
+      "type": "multiple_choice",
+      "correct_answer": "Clear context and goals",
+      "options": ["Using complex vocabulary", "Making it very long", "Clear context and goals", "Adding emojis"],
+      "explanation": "Clear context and goals! The AI needs to understand what you want and why. Length and fancy words don't matter if the AI doesn't know your objective.",
+      "hint": "What helps someone understand a task?",
+      "order": 4,
+      "image_url": "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=800&q=80",
+      "created_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quizquestion",
+    "pk": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "fields": {
+      "quiz_id": "f6e5d4c3-b2a1-4d5e-9c8b-7a6f5e4d3c2b",
+      "question": "You should never iterate and refine your prompts based on the results",
+      "type": "true_false",
+      "correct_answer": "false",
+      "options": null,
+      "explanation": "False! Prompt engineering is iterative. Your first prompt rarely gives perfect results. Experiment, refine, and improve based on what works and what doesn't.",
+      "hint": "Is practice and improvement useful?",
+      "order": 5,
+      "image_url": "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&q=80",
+      "created_at": "2024-01-19T07:00:00Z"
+    }
+  },
+  {
+    "model": "core.quizquestion",
+    "pk": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    "fields": {
+      "quiz_id": "f6e5d4c3-b2a1-4d5e-9c8b-7a6f5e4d3c2b",
+      "question": "Giving the AI a role (like 'You are an expert teacher') can improve responses",
+      "type": "true_false",
+      "correct_answer": "true",
+      "options": null,
+      "explanation": "True! Role prompting helps set the tone and expertise level. 'You are a friendly Python tutor' will give different responses than 'You are a senior software architect.'",
+      "hint": "Does setting expectations help?",
+      "order": 6,
+      "image_url": "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80",
+      "created_at": "2024-01-19T07:00:00Z"
+    }
+  }
+]

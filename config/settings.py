@@ -10,7 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
+# No default - must be set explicitly in environment
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
@@ -77,13 +78,21 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database
-# Database
 DATABASE_URL = config('DATABASE_URL', default='')
 if DATABASE_URL:
     # Use DATABASE_URL if provided (e.g., postgresql://user:pass@host:5432/dbname)
     import dj_database_url
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,  # Enable connection health checks
+        )
+    }
+    # Add connection pooling and timeouts for PostgreSQL
+    DATABASES['default']['OPTIONS'] = {
+        'connect_timeout': 10,
+        'options': '-c statement_timeout=30000',  # 30 second query timeout
     }
 else:
     DATABASES = {
@@ -154,6 +163,7 @@ CORS_ALLOWED_ORIGINS = config(
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
 CORS_ALLOW_CREDENTIALS = True
+CORS_PREFLIGHT_MAX_AGE = 86400  # Cache preflight requests for 24 hours
 
 # REST Framework settings
 REST_FRAMEWORK = {
@@ -183,6 +193,26 @@ ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 # GitHub API Token (for project agent)
 GITHUB_API_TOKEN = config('GITHUB_API_TOKEN', default='')  # Optional, increases rate limit
 
+# Social OAuth Provider Credentials
+# These are for account linking (separate from authentication OAuth)
+GITHUB_OAUTH_CLIENT_ID = config('GITHUB_OAUTH_CLIENT_ID', default='')
+GITHUB_OAUTH_CLIENT_SECRET = config('GITHUB_OAUTH_CLIENT_SECRET', default='')
+
+GITLAB_OAUTH_CLIENT_ID = config('GITLAB_OAUTH_CLIENT_ID', default='')
+GITLAB_OAUTH_CLIENT_SECRET = config('GITLAB_OAUTH_CLIENT_SECRET', default='')
+
+LINKEDIN_OAUTH_CLIENT_ID = config('LINKEDIN_OAUTH_CLIENT_ID', default='')
+LINKEDIN_OAUTH_CLIENT_SECRET = config('LINKEDIN_OAUTH_CLIENT_SECRET', default='')
+
+FIGMA_OAUTH_CLIENT_ID = config('FIGMA_OAUTH_CLIENT_ID', default='')
+FIGMA_OAUTH_CLIENT_SECRET = config('FIGMA_OAUTH_CLIENT_SECRET', default='')
+
+HUGGINGFACE_OAUTH_CLIENT_ID = config('HUGGINGFACE_OAUTH_CLIENT_ID', default='')
+HUGGINGFACE_OAUTH_CLIENT_SECRET = config('HUGGINGFACE_OAUTH_CLIENT_SECRET', default='')
+
+MIDJOURNEY_OAUTH_CLIENT_ID = config('MIDJOURNEY_OAUTH_CLIENT_ID', default='')
+MIDJOURNEY_OAUTH_CLIENT_SECRET = config('MIDJOURNEY_OAUTH_CLIENT_SECRET', default='')
+
 # Azure OpenAI Configuration
 AZURE_OPENAI_API_KEY = config('AZURE_OPENAI_API_KEY', default='')
 AZURE_OPENAI_ENDPOINT = config('AZURE_OPENAI_ENDPOINT', default='')
@@ -210,9 +240,6 @@ CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
         'LOCATION': config('CACHE_URL', default='redis://redis:6379/2'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        },
         'KEY_PREFIX': 'allthrive',
         'TIMEOUT': 300,  # 5 minutes default
     }
@@ -225,11 +252,122 @@ CACHE_TTL = {
     'USER_PROJECTS': 60,    # 1 minute for own projects
 }
 
+# Logging Configuration
+import os
+os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'django.log',
+            'maxBytes': 1024 * 1024 * 15,  # 15MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+        'security': {
+            'level': 'WARNING',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'security.log',
+            'maxBytes': 1024 * 1024 * 15,
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+            'filters': ['require_debug_false'],
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+        },
+        'django.security': {
+            'handlers': ['security', 'mail_admins'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['file', 'mail_admins'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'core': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+        },
+        'services': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+        },
+    },
+    'root': {
+        'level': 'INFO',
+        'handlers': ['console'],
+    },
+}
+
+# MinIO / S3 Configuration
+# MINIO_ENDPOINT: Internal Docker network endpoint (backend -> MinIO)
+MINIO_ENDPOINT = config('MINIO_ENDPOINT', default='localhost:9000')
+# MINIO_ENDPOINT_PUBLIC: Public endpoint for browser access (browser -> MinIO)
+MINIO_ENDPOINT_PUBLIC = config('MINIO_ENDPOINT_PUBLIC', default='localhost:9000')
+MINIO_ACCESS_KEY = config('MINIO_ACCESS_KEY', default='minioadmin')
+MINIO_SECRET_KEY = config('MINIO_SECRET_KEY', default='minioadmin')
+MINIO_USE_SSL = config('MINIO_USE_SSL', default=False, cast=bool)
+MINIO_BUCKET_NAME = config('MINIO_BUCKET_NAME', default='allthrive-media')
+
+# Media files configuration (uploaded by users)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'  # Fallback for local development without MinIO
+
 # Custom User Model
 AUTH_USER_MODEL = 'core.User'
 
 # Django Sites Framework
 SITE_ID = 1
+
+# Email Configuration
+if not DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = config('EMAIL_HOST', default='smtp.sendgrid.net')
+    EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@allthrive.ai')
+    ADMINS = [('Admin', config('ADMIN_EMAIL', default='admin@allthrive.ai'))]
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = 'noreply@allthrive.ai'
 
 # Django Allauth Configuration
 AUTHENTICATION_BACKENDS = [
@@ -240,7 +378,7 @@ AUTHENTICATION_BACKENDS = [
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = 'optional'
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'  # Changed from 'optional' to 'mandatory'
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_LOGIN_ON_GET = True  # Skip intermediate page and go directly to provider
@@ -322,5 +460,6 @@ CONTENT_SECURITY_POLICY = {
         'connect-src': ("'self'",) + tuple(config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000', cast=lambda v: [s.strip() for s in v.split(',')])),
         'font-src': ("'self'", "data:"),
         'frame-ancestors': ("'none'",),
+        'report-uri': '/api/v1/csp-report/',  # CSP violation reporting
     }
 }

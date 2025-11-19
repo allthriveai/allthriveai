@@ -15,6 +15,8 @@ function transformProject(backendProject: any): Project {
     type: backendProject.type,
     isShowcase: backendProject.is_showcase,
     isArchived: backendProject.is_archived,
+    isPublished: backendProject.is_published ?? false,
+    publishedAt: backendProject.published_at,
     thumbnailUrl: backendProject.thumbnail_url,
     content: backendProject.content || {},
     createdAt: backendProject.created_at,

@@ -1,13 +1,16 @@
 from urllib.parse import urlencode
+import time
 
 from django.conf import settings
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
+from django_ratelimit.decorators import ratelimit
 from csp.decorators import csp_exempt
 from rest_framework import status, generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework.exceptions import Throttled
 from rest_framework_simplejwt.tokens import RefreshToken
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.github.views import GitHubOAuth2Adapter
@@ -145,22 +148,67 @@ def logout_view(request):
     return response
 
 
+@ratelimit(key='ip', rate='5/h', method='POST', block=True)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def signup(request):
-    """Register a new user."""
+    """Register a new user with rate limiting and timing attack protection.
+    
+    Rate limits:
+    - 5 attempts per hour per IP address
+    
+    Security:
+    - Consistent response time to prevent user enumeration
+    - Rate limiting to prevent automated account creation
+    """
     from .auth_serializers import UserCreateSerializer
-
+    from django.core.cache import cache
+    
+    start_time = time.time()
+    
+    # Check additional rate limit for signup attempts
+    ip_address = request.META.get('REMOTE_ADDR')
+    cache_key = f"signup_attempts:{ip_address}"
+    attempts = cache.get(cache_key, 0)
+    
+    if attempts >= 5:
+        elapsed = time.time() - start_time
+        if elapsed < 0.1:
+            time.sleep(0.1 - elapsed)
+        return Response(
+            {'error': 'Too many signup attempts. Please try again later.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+    
     serializer = UserCreateSerializer(data=request.data)
+    
     if serializer.is_valid():
         user = serializer.save()
+        
+        # Clear signup attempts on success
+        cache.delete(cache_key)
+        
+        # Ensure minimum response time
+        elapsed = time.time() - start_time
+        if elapsed < 0.1:
+            time.sleep(0.1 - elapsed)
+        
         return Response(
             {
-                'message': 'User created successfully',
+                'message': 'User created successfully. Please check your email to verify your account.',
                 'user': UserSerializer(user).data
             },
             status=status.HTTP_201_CREATED
         )
+    
+    # Increment failed attempts
+    cache.set(cache_key, attempts + 1, 3600)  # 1 hour expiry
+    
+    # Ensure minimum response time to prevent timing attacks
+    elapsed = time.time() - start_time
+    if elapsed < 0.1:
+        time.sleep(0.1 - elapsed)
+    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
