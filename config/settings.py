@@ -1,6 +1,7 @@
 """
 Django settings for allthrive-ai-django project.
 """
+from datetime import timedelta
 from pathlib import Path
 from decouple import config
 
@@ -163,6 +164,14 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
+    'DEFAULT_THROTTLE_RATES': {
+        'public_profile': '60/hour',
+        'public_projects': '100/hour',
+        'authenticated_profile': '300/hour',
+        'authenticated_projects': '500/hour',
+        'quiz_start': '10/hour',
+        'quiz_answer': '100/minute',
+    },
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
 }
@@ -170,6 +179,9 @@ REST_FRAMEWORK = {
 # AI API Keys
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
+
+# GitHub API Token (for project agent)
+GITHUB_API_TOKEN = config('GITHUB_API_TOKEN', default='')  # Optional, increases rate limit
 
 # Azure OpenAI Configuration
 AZURE_OPENAI_API_KEY = config('AZURE_OPENAI_API_KEY', default='')
@@ -187,6 +199,31 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+
+# Redis Configuration for LangChain State
+REDIS_URL = config('REDIS_URL', default='redis://redis:6379/1')  # Use DB 1 for LangChain
+CHAT_SESSION_TTL = config('CHAT_SESSION_TTL', default=1800, cast=int)  # 30 minutes
+
+# Cache Configuration
+# Use Redis for caching (DB 2 for cache)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': config('CACHE_URL', default='redis://redis:6379/2'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'KEY_PREFIX': 'allthrive',
+        'TIMEOUT': 300,  # 5 minutes default
+    }
+}
+
+# Cache timeouts for different data types
+CACHE_TTL = {
+    'PUBLIC_PROFILE': 300,  # 5 minutes
+    'PUBLIC_PROJECTS': 180,  # 3 minutes
+    'USER_PROJECTS': 60,    # 1 minute for own projects
+}
 
 # Custom User Model
 AUTH_USER_MODEL = 'core.User'
@@ -235,8 +272,6 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 # JWT Settings
-from datetime import timedelta
-
 # Cookie domain for cross-subdomain support
 # For localhost:3000 and localhost:8000 to share cookies, use 'localhost'
 # For production (e.g., api.example.com and app.example.com), use '.example.com'

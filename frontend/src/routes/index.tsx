@@ -4,9 +4,12 @@ import HomePage from '@/pages/HomePage';
 import AboutPage from '@/pages/AboutPage';
 import AuthPage from '@/pages/AuthPage';
 import ProfilePage from '@/pages/ProfilePage';
+import ProjectDetailPage from '@/pages/ProjectDetailPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
+import QuizListPage from '@/pages/quizzes/QuizListPage';
+import QuizPage from '@/pages/quizzes/QuizPage';
 
 export function AppRoutes() {
   return (
@@ -14,7 +17,12 @@ export function AppRoutes() {
       {/* Public routes */}
       <Route path="/" element={<HomePage />} />
       <Route path="/about" element={<AboutPage />} />
+      <Route path="/about-us" element={<AboutPage />} />
       <Route path="/styleguide" element={<StyleGuidePage />} />
+      
+      {/* Quiz routes - must come before /:username routes */}
+      <Route path="/quick-quizzes" element={<QuizListPage />} />
+      <Route path="/quick-quizzes/:slug" element={<QuizPage />} />
 
       {/* Auth routes - unified chat-based auth */}
       <Route
@@ -39,11 +47,13 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      {/* Public profile route - shows only showcase when logged out */}
+      <Route path="/:username" element={<ProfilePage />} />
       <Route
-        path="/:username"
+        path="/:username/:projectSlug"
         element={
           <ProtectedRoute>
-            <ProfilePage />
+            <ProjectDetailPage />
           </ProtectedRoute>
         }
       />
