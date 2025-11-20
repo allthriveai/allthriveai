@@ -164,7 +164,9 @@ export function AppRoutes() {
             <ProjectDetailPage />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route path="tools/:slug" element={<ToolDetailPage />} />
+      </Route>
       <Route
         path="/dashboard"
         element={

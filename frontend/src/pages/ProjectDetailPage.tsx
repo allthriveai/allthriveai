@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, Outlet } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { getProjectBySlug, updateProject, deleteProject, toggleProjectLike } from '@/services/projects';
 import { getProjectComments, createProjectComment, voteOnComment, type Comment } from '@/services/comments';
@@ -400,7 +400,7 @@ export default function ProjectDetailPage() {
                       {project.toolsDetails.map((tool) => (
                         <button
                           key={tool.id}
-                          onClick={() => navigate(`/tools/${tool.slug}`)}
+                          onClick={() => navigate(`tools/${tool.slug}`)}
                           className="group flex items-center gap-2.5 px-4 py-2 bg-white/5 hover:bg-white/15 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/30 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                         >
                           {tool.logoUrl ? (
@@ -961,6 +961,9 @@ export default function ProjectDetailPage() {
           </>
         )}
       </div>
+
+      {/* Nested route outlet for tool detail overlay */}
+      <Outlet />
     </DashboardLayout>
   );
 }
