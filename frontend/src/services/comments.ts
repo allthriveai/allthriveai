@@ -1,4 +1,4 @@
-import api from './api';
+import { api } from './api';
 
 export interface Comment {
   id: number;
@@ -27,6 +27,8 @@ export interface CommentVoteData {
  */
 export async function getProjectComments(projectId: number): Promise<Comment[]> {
   const response = await api.get(`/projects/${projectId}/comments/`);
+  console.log('Comments API response:', response.data);
+  console.log('Is array?', Array.isArray(response.data));
   return response.data;
 }
 

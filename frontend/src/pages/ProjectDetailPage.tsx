@@ -5,7 +5,7 @@ import { getProjectBySlug, updateProject, deleteProject, toggleProjectLike } fro
 import { getProjectComments, createProjectComment, voteOnComment, type Comment } from '@/services/comments';
 import { useAuth } from '@/hooks/useAuth';
 import type { Project } from '@/types/models';
-import { FaFire } from 'react-icons/fa';
+import { FaStar } from 'react-icons/fa';
 import { useReward } from 'react-rewards';
 import {
   ArrowLeftIcon,
@@ -56,14 +56,14 @@ export default function ProjectDetailPage() {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   // React Rewards for comment submission celebration
-  const { reward: rewardComment } = useReward('commentReward', 'emoji', {
-    emoji: ['⭐'],
+  const { reward: rewardComment } = useReward('commentReward', 'confetti', {
     angle: 90,
     decay: 0.91,
     spread: 100,
     startVelocity: 25,
     elementCount: 50,
     lifetime: 200,
+    colors: ['#FFD700', '#FFA500', '#FFFF00'],
   });
 
   // React Rewards for project likes
@@ -114,9 +114,16 @@ export default function ProjectDetailPage() {
       setIsLoadingComments(true);
       try {
         const data = await getProjectComments(project.id);
-        setComments(data);
+        // Ensure data is an array
+        if (Array.isArray(data)) {
+          setComments(data);
+        } else {
+          console.error('Comments data is not an array:', data);
+          setComments([]);
+        }
       } catch (err) {
         console.error('Failed to load comments:', err);
+        setComments([]);
       } finally {
         setIsLoadingComments(false);
       }
@@ -724,10 +731,8 @@ export default function ProjectDetailPage() {
           <div className="fixed top-4 right-4 z-[60] animate-[slide-in-right_0.3s_ease-out]">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 p-4 min-w-[320px] max-w-md">
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg">
+                  <FaStar className="text-white text-lg" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
@@ -780,10 +785,10 @@ export default function ProjectDetailPage() {
 
                     {/* Points Incentive Banner */}
                     {isAuthenticated && (
-                      <div className="mb-4 p-4 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                      <div className="mb-4 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center shadow-lg">
-                            <FaFire className="text-white text-lg" />
+                          <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg">
+                            <FaStar className="text-white text-lg" />
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -878,7 +883,7 @@ export default function ProjectDetailPage() {
                       Comments ({comments.length})
                     </h4>
 
-                    {comments.length === 0 ? (
+                    {!Array.isArray(comments) || comments.length === 0 ? (
                       <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
                         No comments yet. Be the first to share your thoughts!
                       </p>
