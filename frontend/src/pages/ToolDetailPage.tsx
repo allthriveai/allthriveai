@@ -26,7 +26,7 @@ export default function ToolDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleClose = useCallback(() => {
-    navigate('/tools');
+    navigate(-1);
   }, [navigate]);
 
   useEffect(() => {
