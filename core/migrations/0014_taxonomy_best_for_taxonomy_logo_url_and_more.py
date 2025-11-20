@@ -5,28 +5,28 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0013_conversation_deleted_at_alter_conversation_user_and_more"),
+        ('core', '0013_conversation_deleted_at_alter_conversation_user_and_more'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name="taxonomy",
-            name="best_for",
-            field=models.JSONField(blank=True, default=list, help_text="List of use cases when this tool is best"),
+            model_name='taxonomy',
+            name='best_for',
+            field=models.JSONField(blank=True, default=list, help_text='List of use cases when this tool is best'),
         ),
         migrations.AddField(
-            model_name="taxonomy",
-            name="logo_url",
-            field=models.URLField(blank=True, help_text="Logo image URL", null=True),
+            model_name='taxonomy',
+            name='logo_url',
+            field=models.URLField(blank=True, help_text='Logo image URL', null=True),
         ),
         migrations.AddField(
-            model_name="taxonomy",
-            name="usage_tips",
-            field=models.JSONField(blank=True, default=list, help_text="List of usage tips/bullet points"),
+            model_name='taxonomy',
+            name='usage_tips',
+            field=models.JSONField(blank=True, default=list, help_text='List of usage tips/bullet points'),
         ),
         migrations.AddField(
-            model_name="taxonomy",
-            name="website_url",
-            field=models.URLField(blank=True, help_text="Official website URL", null=True),
+            model_name='taxonomy',
+            name='website_url',
+            field=models.URLField(blank=True, help_text='Official website URL', null=True),
         ),
     ]

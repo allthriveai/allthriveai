@@ -1,4 +1,5 @@
 """Custom permission classes for user profile and project security."""
+
 from rest_framework import permissions
 
 
@@ -56,7 +57,7 @@ class CanModifyRole(permissions.BasePermission):
 
     def has_permission(self, request, view):
         # If the request is trying to modify the 'role' field
-        if request.method in ["POST", "PUT", "PATCH"]:
-            if "role" in request.data:
+        if request.method in ['POST', 'PUT', 'PATCH']:
+            if 'role' in request.data:
                 return request.user.is_superuser
         return True

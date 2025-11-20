@@ -5,13 +5,13 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0016_user_playground_is_public"),
+        ('core', '0016_user_playground_is_public'),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name="user",
-            name="playground_is_public",
-            field=models.BooleanField(default=True, help_text="Allow others to view your Playground projects"),
+            model_name='user',
+            name='playground_is_public',
+            field=models.BooleanField(default=True, help_text='Allow others to view your Playground projects'),
         ),
     ]

@@ -31,14 +31,14 @@ class Project(models.Model):
     """
 
     class ProjectType(models.TextChoices):
-        GITHUB_REPO = "github_repo", "GitHub Repository"
-        IMAGE_COLLECTION = "image_collection", "Image Collection"
-        PROMPT = "prompt", "Prompt / Conversation"
-        OTHER = "other", "Other"
+        GITHUB_REPO = 'github_repo', 'GitHub Repository'
+        IMAGE_COLLECTION = 'image_collection', 'Image Collection'
+        PROMPT = 'prompt', 'Prompt / Conversation'
+        OTHER = 'other', 'Other'
 
     objects = ProjectQuerySet.as_manager()
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="projects")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='projects')
     slug = models.SlugField(max_length=200)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
@@ -49,32 +49,32 @@ class Project(models.Model):
     )
     is_showcase = models.BooleanField(default=False)
     is_archived = models.BooleanField(default=False)
-    is_published = models.BooleanField(default=False, help_text="Whether project is publicly visible")
-    published_at = models.DateTimeField(null=True, blank=True, help_text="When project was first published")
+    is_published = models.BooleanField(default=False, help_text='Whether project is publicly visible')
+    published_at = models.DateTimeField(null=True, blank=True, help_text='When project was first published')
     # CharField supports both full URLs and relative paths (e.g., /path/to/image)
-    thumbnail_url = models.CharField(max_length=500, blank=True, default="")
+    thumbnail_url = models.CharField(max_length=500, blank=True, default='')
     # Structured layout blocks for the project page (cover, tags, text/image blocks)
     content = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ['-created_at']
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "slug"],
-                name="unique_project_slug_per_user",
+                fields=['user', 'slug'],
+                name='unique_project_slug_per_user',
             )
         ]
         indexes = [
-            models.Index(fields=["user", "slug"]),
-            models.Index(fields=["is_showcase", "is_archived", "-created_at"]),
-            models.Index(fields=["user", "-created_at"]),
-            models.Index(fields=["is_published", "-published_at"]),  # For browse/explore pages
+            models.Index(fields=['user', 'slug']),
+            models.Index(fields=['is_showcase', 'is_archived', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['is_published', '-published_at']),  # For browse/explore pages
         ]
 
     def __str__(self):
-        return f"{self.title} ({self.user.username}/{self.slug})"
+        return f'{self.title} ({self.user.username}/{self.slug})'
 
     def ensure_unique_slug(self):
         """Ensure `slug` is set and unique for this user.
@@ -82,12 +82,12 @@ class Project(models.Model):
         If slug is empty, generate from title. If there is a collision for this
         user, append a numeric suffix (-2, -3, ...) until unique.
         """
-        base = self.slug or self.title or "project"
-        slug = slugify(base) or "project"
+        base = self.slug or self.title or 'project'
+        slug = slugify(base) or 'project'
         existing = Project.objects.filter(user=self.user, slug=slug).exclude(pk=self.pk)
         counter = 2
         while existing.exists():
-            candidate = f"{slug}-{counter}"
+            candidate = f'{slug}-{counter}'
             existing = Project.objects.filter(user=self.user, slug=candidate).exclude(pk=self.pk)
             if not existing.exists():
                 slug = candidate

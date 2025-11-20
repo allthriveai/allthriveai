@@ -5,18 +5,18 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0007_project_is_published_project_published_at"),
+        ('core', '0007_project_is_published_project_published_at'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name="user",
-            name="calendar_url",
-            field=models.URLField(blank=True, help_text="Public calendar URL for scheduling", null=True),
+            model_name='user',
+            name='calendar_url',
+            field=models.URLField(blank=True, help_text='Public calendar URL for scheduling', null=True),
         ),
         migrations.AddField(
-            model_name="user",
-            name="website_url",
-            field=models.URLField(blank=True, help_text="Personal website or portfolio URL", null=True),
+            model_name='user',
+            name='website_url',
+            field=models.URLField(blank=True, help_text='Personal website or portfolio URL', null=True),
         ),
     ]

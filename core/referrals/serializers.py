@@ -1,4 +1,5 @@
 """Referral serializers."""
+
 from rest_framework import serializers
 
 from .models import Referral, ReferralCode
@@ -11,25 +12,25 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
     The user field is read-only and automatically set to the authenticated user.
     """
 
-    username = serializers.ReadOnlyField(source="user.username")
+    username = serializers.ReadOnlyField(source='user.username')
     is_valid = serializers.SerializerMethodField()
     referral_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ReferralCode
         fields = [
-            "id",
-            "code",
-            "username",
-            "created_at",
-            "uses_count",
-            "max_uses",
-            "is_active",
-            "expires_at",
-            "is_valid",
-            "referral_url",
+            'id',
+            'code',
+            'username',
+            'created_at',
+            'uses_count',
+            'max_uses',
+            'is_active',
+            'expires_at',
+            'is_valid',
+            'referral_url',
         ]
-        read_only_fields = ["id", "code", "username", "created_at", "uses_count"]
+        read_only_fields = ['id', 'code', 'username', 'created_at', 'uses_count']
 
     def get_is_valid(self, obj):
         """Check if the referral code is currently valid."""
@@ -44,7 +45,7 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
         from django.conf import settings
 
         base_url = settings.FRONTEND_URL  # No fallback - must be configured
-        return f"{base_url}/signup?ref={obj.code}"
+        return f'{base_url}/signup?ref={obj.code}'
 
 
 class ReferralSerializer(serializers.ModelSerializer):
@@ -53,24 +54,24 @@ class ReferralSerializer(serializers.ModelSerializer):
     Tracks the relationship between referrer and referred users.
     """
 
-    referrer_username = serializers.ReadOnlyField(source="referrer.username")
+    referrer_username = serializers.ReadOnlyField(source='referrer.username')
     referred_username = serializers.SerializerMethodField()
-    referral_code_value = serializers.ReadOnlyField(source="referral_code.code")
-    status_display = serializers.ReadOnlyField(source="get_status_display")
+    referral_code_value = serializers.ReadOnlyField(source='referral_code.code')
+    status_display = serializers.ReadOnlyField(source='get_status_display')
 
     class Meta:
         model = Referral
         fields = [
-            "id",
-            "referrer_username",
-            "referred_username",
-            "referral_code_value",
-            "created_at",
-            "status",
-            "status_display",
-            "reward_data",
+            'id',
+            'referrer_username',
+            'referred_username',
+            'referral_code_value',
+            'created_at',
+            'status',
+            'status_display',
+            'reward_data',
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ['id', 'created_at']
 
     def get_referred_username(self, obj):
         """Get referred user's username if available."""

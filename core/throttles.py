@@ -8,8 +8,8 @@ class PublicProfileThrottle(AnonRateThrottle):
     Authenticated users get more generous limits.
     """
 
-    rate = "60/hour"
-    scope = "public_profile"
+    rate = '60/hour'
+    scope = 'public_profile'
 
 
 class PublicProjectsThrottle(AnonRateThrottle):
@@ -18,8 +18,8 @@ class PublicProjectsThrottle(AnonRateThrottle):
     Prevents data harvesting and DoS attacks.
     """
 
-    rate = "100/hour"
-    scope = "public_projects"
+    rate = '100/hour'
+    scope = 'public_projects'
 
 
 class AuthenticatedProfileThrottle(UserRateThrottle):
@@ -28,8 +28,8 @@ class AuthenticatedProfileThrottle(UserRateThrottle):
     More generous than anonymous rate limit.
     """
 
-    rate = "300/hour"
-    scope = "authenticated_profile"
+    rate = '300/hour'
+    scope = 'authenticated_profile'
 
 
 class AuthenticatedProjectsThrottle(UserRateThrottle):
@@ -38,5 +38,5 @@ class AuthenticatedProjectsThrottle(UserRateThrottle):
     More generous than anonymous rate limit.
     """
 
-    rate = "500/hour"
-    scope = "authenticated_projects"
+    rate = '500/hour'
+    scope = 'authenticated_projects'

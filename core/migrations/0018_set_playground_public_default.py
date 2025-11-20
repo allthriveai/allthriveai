@@ -5,13 +5,13 @@ from django.db import migrations
 
 def set_playground_public(apps, schema_editor):
     """Set playground_is_public to True for all existing users."""
-    User = apps.get_model("core", "User")
+    User = apps.get_model('core', 'User')
     User.objects.all().update(playground_is_public=True)
 
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0017_alter_user_playground_is_public"),
+        ('core', '0017_alter_user_playground_is_public'),
     ]
 
     operations = [

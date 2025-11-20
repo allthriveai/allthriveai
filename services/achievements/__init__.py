@@ -2,4 +2,4 @@
 
 from services.achievements.tracker import AchievementTracker
 
-__all__ = ["AchievementTracker"]
+__all__ = ['AchievementTracker']

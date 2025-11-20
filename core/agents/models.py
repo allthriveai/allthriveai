@@ -18,7 +18,7 @@ class BaseModel(models.Model):
     """
 
     deleted_at = models.DateTimeField(
-        null=True, blank=True, db_index=True, help_text="Timestamp when object was soft deleted"
+        null=True, blank=True, db_index=True, help_text='Timestamp when object was soft deleted'
     )
 
     objects = SoftDeleteManager()
@@ -32,12 +32,12 @@ class BaseModel(models.Model):
         from django.utils import timezone
 
         self.deleted_at = timezone.now()
-        self.save(update_fields=["deleted_at"])
+        self.save(update_fields=['deleted_at'])
 
     def restore(self):
         """Restore a soft-deleted object."""
         self.deleted_at = None
-        self.save(update_fields=["deleted_at"])
+        self.save(update_fields=['deleted_at'])
 
     @property
     def is_deleted(self):
@@ -52,23 +52,23 @@ class Conversation(BaseModel):
     """
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="conversations"
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='conversations'
     )
     title = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-updated_at"]
+        ordering = ['-updated_at']
         indexes = [
-            models.Index(fields=["user", "-updated_at"]),
-            models.Index(fields=["user", "-created_at"]),
-            models.Index(fields=["-updated_at", "deleted_at"]),
+            models.Index(fields=['user', '-updated_at']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['-updated_at', 'deleted_at']),
         ]
 
     def __str__(self):
-        username = self.user.username if self.user else "Unknown"
-        return f"{self.title or 'Conversation'} - {username}"
+        username = self.user.username if self.user else 'Unknown'
+        return f'{self.title or "Conversation"} - {username}'
 
 
 class Message(models.Model):
@@ -79,22 +79,22 @@ class Message(models.Model):
     """
 
     ROLE_CHOICES = [
-        ("user", "User"),
-        ("assistant", "Assistant"),
-        ("system", "System"),
+        ('user', 'User'),
+        ('assistant', 'Assistant'),
+        ('system', 'System'),
     ]
 
-    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["created_at"]
+        ordering = ['created_at']
         indexes = [
-            models.Index(fields=["conversation", "created_at"]),
-            models.Index(fields=["conversation", "role"]),
+            models.Index(fields=['conversation', 'created_at']),
+            models.Index(fields=['conversation', 'role']),
         ]
 
     def __str__(self):
-        return f"{self.role}: {self.content[:50]}..."
+        return f'{self.role}: {self.content[:50]}...'

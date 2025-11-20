@@ -2,8 +2,8 @@
 AI Provider Service
 Supports Azure OpenAI, OpenAI, and Anthropic with easy switching between providers.
 """
+
 from enum import Enum
-from typing import Optional
 
 from django.conf import settings
 
@@ -11,9 +11,9 @@ from django.conf import settings
 class AIProviderType(Enum):
     """Supported AI provider types."""
 
-    AZURE = "azure"
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
+    AZURE = 'azure'
+    OPENAI = 'openai'
+    ANTHROPIC = 'anthropic'
 
 
 class AIProvider:
@@ -34,7 +34,7 @@ class AIProvider:
         response = ai.complete("What is Django?")
     """
 
-    def __init__(self, provider: Optional[str] = None, **kwargs):
+    def __init__(self, provider: str | None = None, **kwargs):
         """
         Initialize AI provider.
 
@@ -48,7 +48,7 @@ class AIProvider:
         self._config = kwargs
 
         # Set provider (uses default from settings if not specified)
-        provider_type = provider or getattr(settings, "DEFAULT_AI_PROVIDER", "azure")
+        provider_type = provider or getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
         self.set_provider(provider_type)
 
     def set_provider(self, provider: str) -> None:
@@ -61,7 +61,7 @@ class AIProvider:
         try:
             provider_enum = AIProviderType(provider.lower())
         except ValueError:
-            raise ValueError(f"Invalid provider: {provider}. " f"Must be one of: {[p.value for p in AIProviderType]}")
+            raise ValueError(f'Invalid provider: {provider}. Must be one of: {[p.value for p in AIProviderType]}')
 
         self._provider = provider_enum
         self._client = self._initialize_client()
@@ -80,16 +80,16 @@ class AIProvider:
         try:
             from openai import AzureOpenAI
         except ImportError:
-            raise ImportError("OpenAI library not installed. Install with: pip install openai")
+            raise ImportError('OpenAI library not installed. Install with: pip install openai')
 
-        api_key = getattr(settings, "AZURE_OPENAI_API_KEY", None)
-        endpoint = getattr(settings, "AZURE_OPENAI_ENDPOINT", None)
-        api_version = getattr(settings, "AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+        api_key = getattr(settings, 'AZURE_OPENAI_API_KEY', None)
+        endpoint = getattr(settings, 'AZURE_OPENAI_ENDPOINT', None)
+        api_version = getattr(settings, 'AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
 
         if not api_key or not endpoint:
             raise ValueError(
-                "Azure OpenAI credentials not configured. "
-                "Set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT in settings."
+                'Azure OpenAI credentials not configured. '
+                'Set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT in settings.'
             )
 
         return AzureOpenAI(
@@ -103,12 +103,12 @@ class AIProvider:
         try:
             from openai import OpenAI
         except ImportError:
-            raise ImportError("OpenAI library not installed. Install with: pip install openai")
+            raise ImportError('OpenAI library not installed. Install with: pip install openai')
 
-        api_key = getattr(settings, "OPENAI_API_KEY", None)
+        api_key = getattr(settings, 'OPENAI_API_KEY', None)
 
         if not api_key:
-            raise ValueError("OpenAI API key not configured. Set OPENAI_API_KEY in settings.")
+            raise ValueError('OpenAI API key not configured. Set OPENAI_API_KEY in settings.')
 
         return OpenAI(api_key=api_key)
 
@@ -117,22 +117,22 @@ class AIProvider:
         try:
             from anthropic import Anthropic
         except ImportError:
-            raise ImportError("Anthropic library not installed. Install with: pip install anthropic")
+            raise ImportError('Anthropic library not installed. Install with: pip install anthropic')
 
-        api_key = getattr(settings, "ANTHROPIC_API_KEY", None)
+        api_key = getattr(settings, 'ANTHROPIC_API_KEY', None)
 
         if not api_key:
-            raise ValueError("Anthropic API key not configured. Set ANTHROPIC_API_KEY in settings.")
+            raise ValueError('Anthropic API key not configured. Set ANTHROPIC_API_KEY in settings.')
 
         return Anthropic(api_key=api_key)
 
     def complete(
         self,
         prompt: str,
-        model: Optional[str] = None,
+        model: str | None = None,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        system_message: Optional[str] = None,
+        max_tokens: int | None = None,
+        system_message: str | None = None,
         **kwargs,
     ) -> str:
         """
@@ -159,19 +159,19 @@ class AIProvider:
     def _complete_azure(
         self,
         prompt: str,
-        model: Optional[str],
+        model: str | None,
         temperature: float,
-        max_tokens: Optional[int],
-        system_message: Optional[str],
+        max_tokens: int | None,
+        system_message: str | None,
         **kwargs,
     ) -> str:
         """Azure OpenAI completion."""
-        deployment_name = model or getattr(settings, "AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4")
+        deployment_name = model or getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
 
         messages = []
         if system_message:
-            messages.append({"role": "system", "content": system_message})
-        messages.append({"role": "user", "content": prompt})
+            messages.append({'role': 'system', 'content': system_message})
+        messages.append({'role': 'user', 'content': prompt})
 
         response = self._client.chat.completions.create(
             model=deployment_name, messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
@@ -182,19 +182,19 @@ class AIProvider:
     def _complete_openai(
         self,
         prompt: str,
-        model: Optional[str],
+        model: str | None,
         temperature: float,
-        max_tokens: Optional[int],
-        system_message: Optional[str],
+        max_tokens: int | None,
+        system_message: str | None,
         **kwargs,
     ) -> str:
         """OpenAI completion."""
-        model_name = model or "gpt-4"
+        model_name = model or 'gpt-4'
 
         messages = []
         if system_message:
-            messages.append({"role": "system", "content": system_message})
-        messages.append({"role": "user", "content": prompt})
+            messages.append({'role': 'system', 'content': system_message})
+        messages.append({'role': 'user', 'content': prompt})
 
         response = self._client.chat.completions.create(
             model=model_name, messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
@@ -205,22 +205,22 @@ class AIProvider:
     def _complete_anthropic(
         self,
         prompt: str,
-        model: Optional[str],
+        model: str | None,
         temperature: float,
-        max_tokens: Optional[int],
-        system_message: Optional[str],
+        max_tokens: int | None,
+        system_message: str | None,
         **kwargs,
     ) -> str:
         """Anthropic completion."""
-        model_name = model or "claude-3-5-sonnet-20241022"
+        model_name = model or 'claude-3-5-sonnet-20241022'
         max_tokens = max_tokens or 1024  # Anthropic requires max_tokens
 
         response = self._client.messages.create(
             model=model_name,
             max_tokens=max_tokens,
             temperature=temperature,
-            system=system_message or "",
-            messages=[{"role": "user", "content": prompt}],
+            system=system_message or '',
+            messages=[{'role': 'user', 'content': prompt}],
             **kwargs,
         )
 
@@ -229,10 +229,10 @@ class AIProvider:
     def stream_complete(
         self,
         prompt: str,
-        model: Optional[str] = None,
+        model: str | None = None,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        system_message: Optional[str] = None,
+        max_tokens: int | None = None,
+        system_message: str | None = None,
         **kwargs,
     ):
         """
@@ -259,19 +259,19 @@ class AIProvider:
     def _stream_azure(
         self,
         prompt: str,
-        model: Optional[str],
+        model: str | None,
         temperature: float,
-        max_tokens: Optional[int],
-        system_message: Optional[str],
+        max_tokens: int | None,
+        system_message: str | None,
         **kwargs,
     ):
         """Azure OpenAI streaming completion."""
-        deployment_name = model or getattr(settings, "AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4")
+        deployment_name = model or getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
 
         messages = []
         if system_message:
-            messages.append({"role": "system", "content": system_message})
-        messages.append({"role": "user", "content": prompt})
+            messages.append({'role': 'system', 'content': system_message})
+        messages.append({'role': 'user', 'content': prompt})
 
         stream = self._client.chat.completions.create(
             model=deployment_name,
@@ -284,25 +284,25 @@ class AIProvider:
 
         for chunk in stream:
             if chunk.choices and len(chunk.choices) > 0:
-                if hasattr(chunk.choices[0].delta, "content") and chunk.choices[0].delta.content:
+                if hasattr(chunk.choices[0].delta, 'content') and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
 
     def _stream_openai(
         self,
         prompt: str,
-        model: Optional[str],
+        model: str | None,
         temperature: float,
-        max_tokens: Optional[int],
-        system_message: Optional[str],
+        max_tokens: int | None,
+        system_message: str | None,
         **kwargs,
     ):
         """OpenAI streaming completion."""
-        model_name = model or "gpt-4"
+        model_name = model or 'gpt-4'
 
         messages = []
         if system_message:
-            messages.append({"role": "system", "content": system_message})
-        messages.append({"role": "user", "content": prompt})
+            messages.append({'role': 'system', 'content': system_message})
+        messages.append({'role': 'user', 'content': prompt})
 
         stream = self._client.chat.completions.create(
             model=model_name, messages=messages, temperature=temperature, max_tokens=max_tokens, stream=True, **kwargs
@@ -310,28 +310,28 @@ class AIProvider:
 
         for chunk in stream:
             if chunk.choices and len(chunk.choices) > 0:
-                if hasattr(chunk.choices[0].delta, "content") and chunk.choices[0].delta.content:
+                if hasattr(chunk.choices[0].delta, 'content') and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
 
     def _stream_anthropic(
         self,
         prompt: str,
-        model: Optional[str],
+        model: str | None,
         temperature: float,
-        max_tokens: Optional[int],
-        system_message: Optional[str],
+        max_tokens: int | None,
+        system_message: str | None,
         **kwargs,
     ):
         """Anthropic streaming completion."""
-        model_name = model or "claude-3-5-sonnet-20241022"
+        model_name = model or 'claude-3-5-sonnet-20241022'
         max_tokens = max_tokens or 1024
 
         with self._client.messages.stream(
             model=model_name,
             max_tokens=max_tokens,
             temperature=temperature,
-            system=system_message or "",
-            messages=[{"role": "user", "content": prompt}],
+            system=system_message or '',
+            messages=[{'role': 'user', 'content': prompt}],
             **kwargs,
         ) as stream:
             for text in stream.text_stream:

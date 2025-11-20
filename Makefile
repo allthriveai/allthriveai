@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-frontend restart-backend build logs shell-frontend shell-backend test test-backend test-frontend test-username test-coverage frontend
+.PHONY: help up down restart restart-frontend restart-backend build logs shell-frontend shell-backend test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip
 
 help:
 	@echo "Available commands:"
@@ -12,6 +12,10 @@ help:
 	@echo "  make logs            - View logs for all services"
 	@echo "  make shell-frontend  - Open shell in frontend container"
 	@echo "  make shell-backend   - Open shell in backend container"
+	@echo ""
+	@echo "Data commands:"
+	@echo "  make create-pip      - Create Pip bot user (if doesn't exist)"
+	@echo "  make recreate-pip    - Delete and recreate Pip with latest data"
 	@echo ""
 	@echo "Testing commands:"
 	@echo "  make test            - Run all tests (backend + frontend)"
@@ -55,6 +59,15 @@ shell-frontend:
 
 shell-backend:
 	docker-compose exec web /bin/bash
+
+# Data commands
+create-pip:
+	@echo "Creating Pip bot user..."
+	docker-compose exec web python manage.py create_pip
+
+recreate-pip:
+	@echo "Recreating Pip with latest data..."
+	docker-compose exec web python manage.py create_pip --recreate
 
 # Testing commands
 test: test-backend test-frontend

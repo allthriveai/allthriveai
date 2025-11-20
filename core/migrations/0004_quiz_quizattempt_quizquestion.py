@@ -9,116 +9,116 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0003_userauditlog_project_core_projec_user_id_425284_idx_and_more"),
+        ('core', '0003_userauditlog_project_core_projec_user_id_425284_idx_and_more'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name="Quiz",
+            name='Quiz',
             fields=[
-                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ("title", models.CharField(max_length=200)),
-                ("description", models.TextField()),
-                ("topic", models.CharField(max_length=100)),
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('title', models.CharField(max_length=200)),
+                ('description', models.TextField()),
+                ('topic', models.CharField(max_length=100)),
                 (
-                    "difficulty",
+                    'difficulty',
                     models.CharField(
-                        choices=[("beginner", "Beginner"), ("intermediate", "Intermediate"), ("advanced", "Advanced")],
-                        default="beginner",
+                        choices=[('beginner', 'Beginner'), ('intermediate', 'Intermediate'), ('advanced', 'Advanced')],
+                        default='beginner',
                         max_length=20,
                     ),
                 ),
-                ("estimated_time", models.IntegerField(help_text="Estimated time in minutes")),
-                ("thumbnail_url", models.URLField(blank=True, null=True)),
-                ("is_published", models.BooleanField(default=False)),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
+                ('estimated_time', models.IntegerField(help_text='Estimated time in minutes')),
+                ('thumbnail_url', models.URLField(blank=True, null=True)),
+                ('is_published', models.BooleanField(default=False)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
                 (
-                    "created_by",
+                    'created_by',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="created_quizzes",
+                        related_name='created_quizzes',
                         to=settings.AUTH_USER_MODEL,
                     ),
                 ),
             ],
             options={
-                "verbose_name_plural": "quizzes",
-                "ordering": ["-created_at"],
+                'verbose_name_plural': 'quizzes',
+                'ordering': ['-created_at'],
             },
         ),
         migrations.CreateModel(
-            name="QuizAttempt",
+            name='QuizAttempt',
             fields=[
-                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 (
-                    "answers",
+                    'answers',
                     models.JSONField(
                         default=dict,
-                        help_text="Store all answers with metadata: {question_id: {answer, correct, timeSpent}}",
+                        help_text='Store all answers with metadata: {question_id: {answer, correct, timeSpent}}',
                     ),
                 ),
-                ("score", models.IntegerField(default=0)),
-                ("total_questions", models.IntegerField()),
-                ("started_at", models.DateTimeField(auto_now_add=True)),
-                ("completed_at", models.DateTimeField(blank=True, null=True)),
+                ('score', models.IntegerField(default=0)),
+                ('total_questions', models.IntegerField()),
+                ('started_at', models.DateTimeField(auto_now_add=True)),
+                ('completed_at', models.DateTimeField(blank=True, null=True)),
                 (
-                    "quiz",
+                    'quiz',
                     models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE, related_name="attempts", to="core.quiz"
+                        on_delete=django.db.models.deletion.CASCADE, related_name='attempts', to='core.quiz'
                     ),
                 ),
                 (
-                    "user",
+                    'user',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="quiz_attempts",
+                        related_name='quiz_attempts',
                         to=settings.AUTH_USER_MODEL,
                     ),
                 ),
             ],
             options={
-                "ordering": ["-started_at"],
-                "indexes": [
-                    models.Index(fields=["user", "-started_at"], name="core_quizat_user_id_41beaa_idx"),
-                    models.Index(fields=["quiz", "-started_at"], name="core_quizat_quiz_id_5f5662_idx"),
+                'ordering': ['-started_at'],
+                'indexes': [
+                    models.Index(fields=['user', '-started_at'], name='core_quizat_user_id_41beaa_idx'),
+                    models.Index(fields=['quiz', '-started_at'], name='core_quizat_quiz_id_5f5662_idx'),
                 ],
             },
         ),
         migrations.CreateModel(
-            name="QuizQuestion",
+            name='QuizQuestion',
             fields=[
-                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ("question", models.TextField()),
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('question', models.TextField()),
                 (
-                    "type",
+                    'type',
                     models.CharField(
                         choices=[
-                            ("true_false", "True/False"),
-                            ("multiple_choice", "Multiple Choice"),
-                            ("swipe", "Swipe"),
+                            ('true_false', 'True/False'),
+                            ('multiple_choice', 'Multiple Choice'),
+                            ('swipe', 'Swipe'),
                         ],
-                        default="true_false",
+                        default='true_false',
                         max_length=20,
                     ),
                 ),
-                ("correct_answer", models.JSONField(help_text="String or list of strings for correct answer(s)")),
-                ("options", models.JSONField(blank=True, help_text="Options for multiple choice questions", null=True)),
-                ("explanation", models.TextField()),
-                ("hint", models.TextField(blank=True, null=True)),
-                ("order", models.IntegerField(default=0)),
-                ("image_url", models.URLField(blank=True, null=True)),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ('correct_answer', models.JSONField(help_text='String or list of strings for correct answer(s)')),
+                ('options', models.JSONField(blank=True, help_text='Options for multiple choice questions', null=True)),
+                ('explanation', models.TextField()),
+                ('hint', models.TextField(blank=True, null=True)),
+                ('order', models.IntegerField(default=0)),
+                ('image_url', models.URLField(blank=True, null=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
                 (
-                    "quiz",
+                    'quiz',
                     models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE, related_name="questions", to="core.quiz"
+                        on_delete=django.db.models.deletion.CASCADE, related_name='questions', to='core.quiz'
                     ),
                 ),
             ],
             options={
-                "ordering": ["order"],
-                "unique_together": {("quiz", "order")},
+                'ordering': ['order'],
+                'unique_together': {('quiz', 'order')},
             },
         ),
     ]

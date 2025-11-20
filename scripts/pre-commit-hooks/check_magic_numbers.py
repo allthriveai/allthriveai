@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Pre-commit hook to detect magic numbers in Python files."""
+
 import re
 import sys
 from pathlib import Path
@@ -9,12 +10,12 @@ ALLOWED_NUMBERS = {0, 1, 2, -1, 100, 1000}
 
 # Patterns to ignore
 IGNORE_PATTERNS = [
-    r"#.*",  # Comments
+    r'#.*',  # Comments
     r'""".*"""',  # Docstrings
     r"'''.*'''",  # Docstrings
-    r"range\(",  # range() calls
-    r"sleep\(",  # sleep() calls
-    r"random\.",  # random module calls
+    r'range\(',  # range() calls
+    r'sleep\(',  # sleep() calls
+    r'random\.',  # random module calls
 ]
 
 
@@ -31,7 +32,7 @@ def is_magic_number(line: str) -> list[str]:
 
     # Find numeric literals (but not in variable names or strings)
     # This is a simplified check - may have false positives
-    number_pattern = r"\b(\d+)\b"
+    number_pattern = r'\b(\d+)\b'
 
     magic_numbers = []
     for match in re.finditer(number_pattern, line):
@@ -44,7 +45,7 @@ def is_magic_number(line: str) -> list[str]:
                 context = line[start : match.end() + 10]
 
                 # Skip if it looks like a port, version, or ID
-                if any(keyword in context.lower() for keyword in ["port", "version", "id", "status", "http"]):
+                if any(keyword in context.lower() for keyword in ['port', 'version', 'id', 'status', 'http']):
                     continue
 
                 magic_numbers.append(num_str)
@@ -63,14 +64,14 @@ def check_file(filepath: Path) -> list[tuple[int, str, list[str]]]:
     findings = []
 
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding='utf-8') as f:
             for line_num, line in enumerate(f, 1):
                 magic_nums = is_magic_number(line)
                 if magic_nums:
                     findings.append((line_num, line.strip(), magic_nums))
 
     except Exception as e:
-        print(f"Error reading {filepath}: {e}", file=sys.stderr)
+        print(f'Error reading {filepath}: {e}', file=sys.stderr)
 
     return findings
 
@@ -89,24 +90,24 @@ def main(filenames: list[str]) -> int:
 
         if findings:
             has_violations = True
-            print(f"\n⚠️  Potential magic numbers in {filepath}:")
+            print(f'\n⚠️  Potential magic numbers in {filepath}:')
             for line_num, line, magic_nums in findings:
-                print(f"  Line {line_num}: {line}")
-                print(f"    Numbers: {', '.join(magic_nums)}")
-            print("\n  Fix: Extract to constants file")
-            print("  Example: Create constants.py and use named constants")
+                print(f'  Line {line_num}: {line}')
+                print(f'    Numbers: {", ".join(magic_nums)}')
+            print('\n  Fix: Extract to constants file')
+            print('  Example: Create constants.py and use named constants')
 
     if has_violations:
-        print("\n" + "=" * 60)
-        print("WARN: Potential magic numbers detected")
-        print("Consider extracting to constants for better maintainability")
-        print("=" * 60)
-        print("\nThis is a warning only - commit will proceed")
+        print('\n' + '=' * 60)
+        print('WARN: Potential magic numbers detected')
+        print('Consider extracting to constants for better maintainability')
+        print('=' * 60)
+        print('\nThis is a warning only - commit will proceed')
         # Return 0 to allow commit, just warn
         return 0
 
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))

@@ -21,30 +21,30 @@ class ConversationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=['post'])
     def send_message(self, request, pk=None):
         """Send a message in a conversation and get AI response."""
         conversation = self.get_object()
-        message_content = request.data.get("content", "")
+        message_content = request.data.get('content', '')
 
         if not message_content:
-            return Response({"error": "Message content is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Message content is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create user message
-        user_message = Message.objects.create(conversation=conversation, role="user", content=message_content)
+        user_message = Message.objects.create(conversation=conversation, role='user', content=message_content)
 
         # TODO: Integrate with AI service (OpenAI/Anthropic)
         # For now, return a placeholder response
-        assistant_response = "AI response placeholder - integrate with OpenAI/Anthropic"
+        assistant_response = 'AI response placeholder - integrate with OpenAI/Anthropic'
 
         assistant_message = Message.objects.create(
-            conversation=conversation, role="assistant", content=assistant_response
+            conversation=conversation, role='assistant', content=assistant_response
         )
 
         return Response(
             {
-                "user_message": MessageSerializer(user_message).data,
-                "assistant_message": MessageSerializer(assistant_message).data,
+                'user_message': MessageSerializer(user_message).data,
+                'assistant_message': MessageSerializer(assistant_message).data,
             }
         )
 

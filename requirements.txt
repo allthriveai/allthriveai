@@ -29,3 +29,5 @@ Pillow>=10.0.0
 python-magic>=0.4.27
 requests>=2.31.0
 better-profanity==0.7.0
+ruff>=0.6.4
+bandit[toml]>=1.7.6

@@ -13,43 +13,43 @@ from .users.models import User
 
 @admin.register(Conversation)
 class ConversationAdmin(admin.ModelAdmin):
-    list_display = ["id", "title", "user", "created_at", "updated_at"]
-    list_filter = ["created_at", "updated_at"]
-    search_fields = ["title", "user__username"]
+    list_display = ['id', 'title', 'user', 'created_at', 'updated_at']
+    list_filter = ['created_at', 'updated_at']
+    search_fields = ['title', 'user__username']
 
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ["id", "conversation", "role", "content_preview", "created_at"]
-    list_filter = ["role", "created_at"]
-    search_fields = ["content"]
+    list_display = ['id', 'conversation', 'role', 'content_preview', 'created_at']
+    list_filter = ['role', 'created_at']
+    search_fields = ['content']
 
-    @admin.display(description="Content")
+    @admin.display(description='Content')
     def content_preview(self, obj):
-        return obj.content[:50] + "..." if len(obj.content) > 50 else obj.content
+        return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
 
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ["username", "email", "role", "first_name", "last_name", "is_staff", "date_joined"]
-    list_filter = ["role", "is_staff", "is_superuser", "is_active", "date_joined"]
-    search_fields = ["username", "email", "first_name", "last_name"]
-    ordering = ["-date_joined"]
+    list_display = ['username', 'email', 'role', 'first_name', 'last_name', 'is_staff', 'date_joined']
+    list_filter = ['role', 'is_staff', 'is_superuser', 'is_active', 'date_joined']
+    search_fields = ['username', 'email', 'first_name', 'last_name']
+    ordering = ['-date_joined']
 
     fieldsets = BaseUserAdmin.fieldsets + (
         (
-            "Role & Profile",
+            'Role & Profile',
             {
-                "fields": ("role", "avatar_url", "bio"),
+                'fields': ('role', 'avatar_url', 'bio'),
             },
         ),
     )
 
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
         (
-            "Role & Profile",
+            'Role & Profile',
             {
-                "fields": ("role", "email", "first_name", "last_name"),
+                'fields': ('role', 'email', 'first_name', 'last_name'),
             },
         ),
     )
@@ -58,16 +58,16 @@ class UserAdmin(BaseUserAdmin):
 class QuizQuestionInline(admin.TabularInline):
     model = QuizQuestion
     extra = 1
-    fields = ["order", "question", "type", "correct_answer", "explanation"]
-    ordering = ["order"]
+    fields = ['order', 'question', 'type', 'correct_answer', 'explanation']
+    ordering = ['order']
 
 
 @admin.register(Quiz)
 class QuizAdmin(admin.ModelAdmin):
-    list_display = ["title", "topic", "difficulty", "estimated_time", "question_count", "is_published", "created_at"]
-    list_filter = ["difficulty", "topic", "is_published", "created_at"]
-    search_fields = ["title", "description", "topic"]
-    ordering = ["-created_at"]
+    list_display = ['title', 'topic', 'difficulty', 'estimated_time', 'question_count', 'is_published', 'created_at']
+    list_filter = ['difficulty', 'topic', 'is_published', 'created_at']
+    search_fields = ['title', 'description', 'topic']
+    ordering = ['-created_at']
     inlines = [QuizQuestionInline]
 
     def save_model(self, request, obj, form, change):
@@ -78,44 +78,44 @@ class QuizAdmin(admin.ModelAdmin):
 
 @admin.register(QuizQuestion)
 class QuizQuestionAdmin(admin.ModelAdmin):
-    list_display = ["quiz", "order", "question_preview", "type", "created_at"]
-    list_filter = ["type", "quiz", "created_at"]
-    search_fields = ["question", "explanation"]
-    ordering = ["quiz", "order"]
+    list_display = ['quiz', 'order', 'question_preview', 'type', 'created_at']
+    list_filter = ['type', 'quiz', 'created_at']
+    search_fields = ['question', 'explanation']
+    ordering = ['quiz', 'order']
 
-    @admin.display(description="Question")
+    @admin.display(description='Question')
     def question_preview(self, obj):
-        return obj.question[:80] + "..." if len(obj.question) > 80 else obj.question
+        return obj.question[:80] + '...' if len(obj.question) > 80 else obj.question
 
 
 @admin.register(QuizAttempt)
 class QuizAttemptAdmin(admin.ModelAdmin):
     list_display = [
-        "user",
-        "quiz",
-        "score",
-        "total_questions",
-        "percentage_score",
-        "is_completed",
-        "started_at",
-        "completed_at",
+        'user',
+        'quiz',
+        'score',
+        'total_questions',
+        'percentage_score',
+        'is_completed',
+        'started_at',
+        'completed_at',
     ]
-    list_filter = ["quiz", "started_at", "completed_at"]
-    search_fields = ["user__username", "quiz__title"]
-    ordering = ["-started_at"]
-    readonly_fields = ["started_at", "percentage_score"]
+    list_filter = ['quiz', 'started_at', 'completed_at']
+    search_fields = ['user__username', 'quiz__title']
+    ordering = ['-started_at']
+    readonly_fields = ['started_at', 'percentage_score']
 
 
 @admin.register(ReferralCode)
 class ReferralCodeAdmin(admin.ModelAdmin):
-    list_display = ["code", "user", "uses_count", "max_uses", "is_active", "is_valid_display", "created_at"]
-    list_filter = ["is_active", "created_at"]
-    search_fields = ["code", "user__username", "user__email"]
-    ordering = ["-created_at"]
-    readonly_fields = ["code", "created_at", "updated_at"]
+    list_display = ['code', 'user', 'uses_count', 'max_uses', 'is_active', 'is_valid_display', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['code', 'user__username', 'user__email']
+    ordering = ['-created_at']
+    readonly_fields = ['code', 'created_at', 'updated_at']
 
     @admin.display(
-        description="Valid",
+        description='Valid',
         boolean=True,
     )
     def is_valid_display(self, obj):
@@ -124,42 +124,42 @@ class ReferralCodeAdmin(admin.ModelAdmin):
 
 @admin.register(Referral)
 class ReferralAdmin(admin.ModelAdmin):
-    list_display = ["referrer", "referred_user", "referral_code", "status", "created_at"]
-    list_filter = ["status", "created_at"]
-    search_fields = ["referrer__username", "referred_user__username", "referral_code__code"]
-    ordering = ["-created_at"]
-    readonly_fields = ["created_at"]
-    raw_id_fields = ["referrer", "referred_user", "referral_code"]
+    list_display = ['referrer', 'referred_user', 'referral_code', 'status', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['referrer__username', 'referred_user__username', 'referral_code__code']
+    ordering = ['-created_at']
+    readonly_fields = ['created_at']
+    raw_id_fields = ['referrer', 'referred_user', 'referral_code']
 
 
 @admin.register(Taxonomy)
 class TaxonomyAdmin(admin.ModelAdmin):
-    list_display = ["name", "category", "has_website", "has_logo", "is_active", "created_at"]
-    list_filter = ["category", "is_active", "created_at"]
-    search_fields = ["name", "description"]
-    ordering = ["category", "name"]
+    list_display = ['name', 'category', 'has_website', 'has_logo', 'is_active', 'created_at']
+    list_filter = ['category', 'is_active', 'created_at']
+    search_fields = ['name', 'description']
+    ordering = ['category', 'name']
 
     fieldsets = (
-        ("Basic Information", {"fields": ("name", "category", "description", "is_active")}),
+        ('Basic Information', {'fields': ('name', 'category', 'description', 'is_active')}),
         (
-            "Tool Details (for Tool category)",
+            'Tool Details (for Tool category)',
             {
-                "fields": ("website_url", "logo_url", "usage_tips", "best_for"),
-                "classes": ("collapse",),
-                "description": "These fields are primarily for tools in the Tool Directory",
+                'fields': ('website_url', 'logo_url', 'usage_tips', 'best_for'),
+                'classes': ('collapse',),
+                'description': 'These fields are primarily for tools in the Tool Directory',
             },
         ),
     )
 
     @admin.display(
-        description="Website",
+        description='Website',
         boolean=True,
     )
     def has_website(self, obj):
         return bool(obj.website_url)
 
     @admin.display(
-        description="Logo",
+        description='Logo',
         boolean=True,
     )
     def has_logo(self, obj):
@@ -168,139 +168,139 @@ class TaxonomyAdmin(admin.ModelAdmin):
 
 @admin.register(UserTag)
 class UserTagAdmin(admin.ModelAdmin):
-    list_display = ["user", "name", "taxonomy", "source", "confidence_score", "interaction_count", "created_at"]
-    list_filter = ["source", "created_at"]
-    search_fields = ["user__username", "name", "taxonomy__name"]
-    ordering = ["-created_at"]
-    readonly_fields = ["created_at", "updated_at"]
-    raw_id_fields = ["user", "taxonomy"]
+    list_display = ['user', 'name', 'taxonomy', 'source', 'confidence_score', 'interaction_count', 'created_at']
+    list_filter = ['source', 'created_at']
+    search_fields = ['user__username', 'name', 'taxonomy__name']
+    ordering = ['-created_at']
+    readonly_fields = ['created_at', 'updated_at']
+    raw_id_fields = ['user', 'taxonomy']
 
 
 @admin.register(UserInteraction)
 class UserInteractionAdmin(admin.ModelAdmin):
-    list_display = ["user", "interaction_type", "created_at", "keywords_preview"]
-    list_filter = ["interaction_type", "created_at"]
-    search_fields = ["user__username"]
-    ordering = ["-created_at"]
-    readonly_fields = ["created_at"]
-    raw_id_fields = ["user"]
+    list_display = ['user', 'interaction_type', 'created_at', 'keywords_preview']
+    list_filter = ['interaction_type', 'created_at']
+    search_fields = ['user__username']
+    ordering = ['-created_at']
+    readonly_fields = ['created_at']
+    raw_id_fields = ['user']
 
-    @admin.display(description="Keywords")
+    @admin.display(description='Keywords')
     def keywords_preview(self, obj):
         keywords = obj.extracted_keywords[:5] if obj.extracted_keywords else []
-        return ", ".join(keywords) if keywords else "None"
+        return ', '.join(keywords) if keywords else 'None'
 
 
 @admin.register(Tool)
 class ToolAdmin(admin.ModelAdmin):
     list_display = [
-        "name",
-        "category",
-        "pricing_model",
-        "is_featured",
-        "is_verified",
-        "is_active",
-        "view_count",
-        "popularity_score",
-        "created_at",
+        'name',
+        'category',
+        'pricing_model',
+        'is_featured',
+        'is_verified',
+        'is_active',
+        'view_count',
+        'popularity_score',
+        'created_at',
     ]
     list_filter = [
-        "category",
-        "pricing_model",
-        "is_featured",
-        "is_verified",
-        "is_active",
-        "has_free_tier",
-        "requires_api_key",
-        "created_at",
+        'category',
+        'pricing_model',
+        'is_featured',
+        'is_verified',
+        'is_active',
+        'has_free_tier',
+        'requires_api_key',
+        'created_at',
     ]
-    search_fields = ["name", "tagline", "description", "tags"]
-    readonly_fields = ["slug", "view_count", "popularity_score", "created_at", "updated_at"]
-    ordering = ["-created_at"]
-    prepopulated_fields = {"slug": ("name",)}
+    search_fields = ['name', 'tagline', 'description', 'tags']
+    readonly_fields = ['slug', 'view_count', 'popularity_score', 'created_at', 'updated_at']
+    ordering = ['-created_at']
+    prepopulated_fields = {'slug': ('name',)}
 
     fieldsets = (
-        ("Basic Information", {"fields": ("name", "slug", "tagline", "description", "category", "tags")}),
-        ("Media & Branding", {"fields": ("logo_url", "banner_url", "screenshot_urls", "demo_video_url")}),
+        ('Basic Information', {'fields': ('name', 'slug', 'tagline', 'description', 'category', 'tags')}),
+        ('Media & Branding', {'fields': ('logo_url', 'banner_url', 'screenshot_urls', 'demo_video_url')}),
         (
-            "Links & Social",
+            'Links & Social',
             {
-                "fields": (
-                    "website_url",
-                    "documentation_url",
-                    "pricing_url",
-                    "github_url",
-                    "twitter_handle",
-                    "discord_url",
+                'fields': (
+                    'website_url',
+                    'documentation_url',
+                    'pricing_url',
+                    'github_url',
+                    'twitter_handle',
+                    'discord_url',
                 )
             },
         ),
         (
-            "Pricing & Access",
-            {"fields": ("pricing_model", "starting_price", "has_free_tier", "requires_api_key", "requires_waitlist")},
+            'Pricing & Access',
+            {'fields': ('pricing_model', 'starting_price', 'has_free_tier', 'requires_api_key', 'requires_waitlist')},
         ),
         (
-            "Content Sections",
+            'Content Sections',
             {
-                "fields": (
-                    "overview",
-                    "key_features",
-                    "use_cases",
-                    "usage_tips",
-                    "best_practices",
-                    "limitations",
-                    "alternatives",
+                'fields': (
+                    'overview',
+                    'key_features',
+                    'use_cases',
+                    'usage_tips',
+                    'best_practices',
+                    'limitations',
+                    'alternatives',
                 ),
-                "classes": ("collapse",),
+                'classes': ('collapse',),
             },
         ),
         (
-            "Technical Details",
+            'Technical Details',
             {
-                "fields": ("model_info", "integrations", "api_available", "languages_supported"),
-                "classes": ("collapse",),
+                'fields': ('model_info', 'integrations', 'api_available', 'languages_supported'),
+                'classes': ('collapse',),
             },
         ),
-        ("SEO", {"fields": ("meta_description", "keywords"), "classes": ("collapse",)}),
-        ("Status & Metrics", {"fields": ("is_active", "is_featured", "is_verified", "view_count", "popularity_score")}),
-        ("Timestamps", {"fields": ("created_at", "updated_at", "last_verified_at"), "classes": ("collapse",)}),
+        ('SEO', {'fields': ('meta_description', 'keywords'), 'classes': ('collapse',)}),
+        ('Status & Metrics', {'fields': ('is_active', 'is_featured', 'is_verified', 'view_count', 'popularity_score')}),
+        ('Timestamps', {'fields': ('created_at', 'updated_at', 'last_verified_at'), 'classes': ('collapse',)}),
     )
 
 
 @admin.register(ToolReview)
 class ToolReviewAdmin(admin.ModelAdmin):
-    list_display = ["tool", "user", "rating", "title_preview", "is_approved", "helpful_count", "created_at"]
-    list_filter = ["rating", "is_approved", "is_verified_user", "created_at"]
-    search_fields = ["tool__name", "user__username", "title", "content"]
-    readonly_fields = ["created_at", "updated_at"]
-    ordering = ["-created_at"]
-    raw_id_fields = ["tool", "user"]
+    list_display = ['tool', 'user', 'rating', 'title_preview', 'is_approved', 'helpful_count', 'created_at']
+    list_filter = ['rating', 'is_approved', 'is_verified_user', 'created_at']
+    search_fields = ['tool__name', 'user__username', 'title', 'content']
+    readonly_fields = ['created_at', 'updated_at']
+    ordering = ['-created_at']
+    raw_id_fields = ['tool', 'user']
 
-    @admin.display(description="Title")
+    @admin.display(description='Title')
     def title_preview(self, obj):
-        return obj.title[:50] if obj.title else "(No title)"
+        return obj.title[:50] if obj.title else '(No title)'
 
 
 @admin.register(ToolComparison)
 class ToolComparisonAdmin(admin.ModelAdmin):
-    list_display = ["title", "user", "tool_count", "is_public", "created_at"]
-    list_filter = ["is_public", "created_at"]
-    search_fields = ["title", "description", "user__username"]
-    readonly_fields = ["slug", "created_at", "updated_at"]
-    ordering = ["-created_at"]
-    filter_horizontal = ["tools"]
-    raw_id_fields = ["user"]
+    list_display = ['title', 'user', 'tool_count', 'is_public', 'created_at']
+    list_filter = ['is_public', 'created_at']
+    search_fields = ['title', 'description', 'user__username']
+    readonly_fields = ['slug', 'created_at', 'updated_at']
+    ordering = ['-created_at']
+    filter_horizontal = ['tools']
+    raw_id_fields = ['user']
 
-    @admin.display(description="Tools")
+    @admin.display(description='Tools')
     def tool_count(self, obj):
         return obj.tools.count()
 
 
 @admin.register(ToolBookmark)
 class ToolBookmarkAdmin(admin.ModelAdmin):
-    list_display = ["user", "tool", "created_at"]
-    list_filter = ["created_at"]
-    search_fields = ["user__username", "tool__name"]
-    readonly_fields = ["created_at"]
-    ordering = ["-created_at"]
-    raw_id_fields = ["user", "tool"]
+    list_display = ['user', 'tool', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['user__username', 'tool__name']
+    readonly_fields = ['created_at']
+    ordering = ['-created_at']
+    raw_id_fields = ['user', 'tool']

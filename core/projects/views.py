@@ -29,7 +29,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # generation / uniqueness on save.
         serializer.save(user=self.request.user)
 
-    @action(detail=False, methods=["post"], url_path="bulk-delete")
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
     def bulk_delete(self, request):
         """Bulk delete projects for the authenticated user.
 
@@ -38,17 +38,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         Only deletes projects owned by the authenticated user.
         """
-        project_ids = request.data.get("project_ids", [])
+        project_ids = request.data.get('project_ids', [])
 
         if not project_ids:
             return Response(
-                {"error": {"field": "project_ids", "message": "This field is required and must be a non-empty list"}},
+                {'error': {'field': 'project_ids', 'message': 'This field is required and must be a non-empty list'}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         if not isinstance(project_ids, list):
             return Response(
-                {"error": {"field": "project_ids", "message": "This field must be a list"}},
+                {'error': {'field': 'project_ids', 'message': 'This field must be a list'}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -56,12 +56,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
         deleted_count, _ = Project.objects.filter(id__in=project_ids, user=request.user).delete()
 
         return Response(
-            {"deleted_count": deleted_count, "message": f"Successfully deleted {deleted_count} project(s)"},
+            {'deleted_count': deleted_count, 'message': f'Successfully deleted {deleted_count} project(s)'},
             status=status.HTTP_200_OK,
         )
 
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([AllowAny])
 def public_user_projects(request, username):
     """Get public showcase projects for a user by username.
@@ -97,7 +97,7 @@ def public_user_projects(request, username):
     # Check cache for public projects
     is_own_profile = request.user.is_authenticated and request.user.username.lower() == username.lower()
     # Include version in cache key to prevent stale data after schema changes
-    cache_key = f"projects:v1:{username.lower()}:{'own' if is_own_profile else 'public'}"
+    cache_key = f'projects:v1:{username.lower()}:{"own" if is_own_profile else "public"}'
 
     cached_data = cache.get(cache_key)
     if cached_data:
@@ -108,45 +108,45 @@ def public_user_projects(request, username):
     except User.DoesNotExist:
         # Log suspicious activity - repeated requests for non-existent users
         logger.warning(
-            f"Public project access attempt for non-existent user: {username} "
-            f"from IP: {request.META.get('REMOTE_ADDR')}"
+            f'Public project access attempt for non-existent user: {username} '
+            f'from IP: {request.META.get("REMOTE_ADDR")}'
         )
         # Return 404 but maintain consistent response time (prevent timing attacks)
         elapsed = time.time() - start_time
         if elapsed < MIN_RESPONSE_TIME_SECONDS:
             time.sleep(MIN_RESPONSE_TIME_SECONDS - elapsed)
-        return Response({"error": "User not found", "showcase": [], "playground": []}, status=404)
+        return Response({'error': 'User not found', 'showcase': [], 'playground': []}, status=404)
 
     # Optimize query with select_related to prevent N+1 queries
     # The serializer accesses user.username, so we fetch user data upfront
     showcase_projects = (
-        Project.objects.select_related("user")
+        Project.objects.select_related('user')
         .filter(user=user, is_showcase=True, is_archived=False)
-        .order_by("-created_at")
+        .order_by('-created_at')
     )
 
     # If the requesting user is authenticated and viewing their own profile,
     # also include playground projects (non-showcase projects)
     if is_own_profile:
         playground_projects = (
-            Project.objects.select_related("user")
+            Project.objects.select_related('user')
             .filter(user=user, is_showcase=False, is_archived=False)
-            .order_by("-created_at")
+            .order_by('-created_at')
         )
 
         response_data = {
-            "showcase": ProjectSerializer(showcase_projects, many=True).data,
-            "playground": ProjectSerializer(playground_projects, many=True).data,
+            'showcase': ProjectSerializer(showcase_projects, many=True).data,
+            'playground': ProjectSerializer(playground_projects, many=True).data,
         }
         # Shorter cache for own projects (they change more frequently)
-        cache.set(cache_key, response_data, settings.CACHE_TTL.get("USER_PROJECTS", 60))
+        cache.set(cache_key, response_data, settings.CACHE_TTL.get('USER_PROJECTS', 60))
     else:
         # For non-authenticated users or other users, only return showcase
         response_data = {
-            "showcase": ProjectSerializer(showcase_projects, many=True).data,
-            "playground": [],
+            'showcase': ProjectSerializer(showcase_projects, many=True).data,
+            'playground': [],
         }
         # Longer cache for public projects
-        cache.set(cache_key, response_data, settings.CACHE_TTL.get("PUBLIC_PROJECTS", 180))
+        cache.set(cache_key, response_data, settings.CACHE_TTL.get('PUBLIC_PROJECTS', 180))
 
     return Response(response_data)

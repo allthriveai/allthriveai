@@ -1,7 +1,6 @@
 """Achievement tracking service for monitoring and awarding user achievements."""
 
 import logging
-from typing import Optional
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -52,7 +51,7 @@ class AchievementTracker:
 
                 # Get or create progress
                 progress, created = AchievementProgress.objects.get_or_create(
-                    user=user, achievement=achievement, defaults={"current_value": 0}
+                    user=user, achievement=achievement, defaults={'current_value': 0}
                 )
 
                 # Update progress based on criteria type
@@ -79,8 +78,8 @@ class AchievementTracker:
                     if newly_unlocked:
                         unlocked.append(newly_unlocked)
                         logger.info(
-                            f"Achievement unlocked: {achievement.name} for user {user.username} "
-                            f"(progress: {old_value} -> {progress.current_value})"
+                            f'Achievement unlocked: {achievement.name} for user {user.username} '
+                            f'(progress: {old_value} -> {progress.current_value})'
                         )
 
         return unlocked
@@ -106,7 +105,7 @@ class AchievementTracker:
         return earned_count == required.count()
 
     @staticmethod
-    def _unlock_achievement(user, achievement: Achievement, progress_value: int) -> Optional[Achievement]:
+    def _unlock_achievement(user, achievement: Achievement, progress_value: int) -> Achievement | None:
         """
         Unlock an achievement for a user.
 
@@ -180,11 +179,11 @@ class AchievementTracker:
         try:
             user_achievement = UserAchievement.objects.get(user=user, achievement=achievement)
             return {
-                "is_earned": True,
-                "earned_at": user_achievement.earned_at,
-                "current_value": user_achievement.progress_at_unlock or achievement.criteria_value,
-                "target_value": achievement.criteria_value,
-                "percentage": 100,
+                'is_earned': True,
+                'earned_at': user_achievement.earned_at,
+                'current_value': user_achievement.progress_at_unlock or achievement.criteria_value,
+                'target_value': achievement.criteria_value,
+                'percentage': 100,
             }
         except UserAchievement.DoesNotExist:
             pass
@@ -193,19 +192,19 @@ class AchievementTracker:
         try:
             progress = AchievementProgress.objects.get(user=user, achievement=achievement)
             return {
-                "is_earned": False,
-                "earned_at": None,
-                "current_value": progress.current_value,
-                "target_value": achievement.criteria_value,
-                "percentage": progress.percentage,
+                'is_earned': False,
+                'earned_at': None,
+                'current_value': progress.current_value,
+                'target_value': achievement.criteria_value,
+                'percentage': progress.percentage,
             }
         except AchievementProgress.DoesNotExist:
             return {
-                "is_earned": False,
-                "earned_at": None,
-                "current_value": 0,
-                "target_value": achievement.criteria_value,
-                "percentage": 0,
+                'is_earned': False,
+                'earned_at': None,
+                'current_value': 0,
+                'target_value': achievement.criteria_value,
+                'percentage': 0,
             }
 
     @staticmethod
@@ -233,13 +232,13 @@ class AchievementTracker:
 
         # Track project-related achievements
         if project_count > 0:
-            unlocked.extend(AchievementTracker.track_event(user, "project_count", project_count))
+            unlocked.extend(AchievementTracker.track_event(user, 'project_count', project_count))
         if published_count > 0:
-            unlocked.extend(AchievementTracker.track_event(user, "published_project_count", published_count))
+            unlocked.extend(AchievementTracker.track_event(user, 'published_project_count', published_count))
 
         # TODO: Add more retroactive tracking for battles, quizzes, etc.
 
-        logger.info(f"Retroactive achievements awarded to {user.username}: " f"{len(unlocked)} achievements unlocked")
+        logger.info(f'Retroactive achievements awarded to {user.username}: {len(unlocked)} achievements unlocked')
 
         return unlocked
 
@@ -256,12 +255,12 @@ class AchievementTracker:
         """
         if not user or not user.is_authenticated:
             return {
-                "total_achievements": 0,
-                "earned_count": 0,
-                "total_points": 0,
-                "completion_percentage": 0,
-                "by_category": {},
-                "by_rarity": {},
+                'total_achievements': 0,
+                'earned_count': 0,
+                'total_points': 0,
+                'completion_percentage': 0,
+                'by_category': {},
+                'by_rarity': {},
             }
 
         total = Achievement.objects.filter(is_active=True).count()
@@ -269,35 +268,35 @@ class AchievementTracker:
 
         # Calculate total points earned
         total_points = (
-            UserAchievement.objects.filter(user=user).aggregate(total=Count("achievement__points")).get("total", 0) or 0
+            UserAchievement.objects.filter(user=user).aggregate(total=Count('achievement__points')).get('total', 0) or 0
         )
 
         # Group by category
         by_category = {}
-        for category in Achievement.objects.filter(is_active=True).values_list("category", flat=True).distinct():
+        for category in Achievement.objects.filter(is_active=True).values_list('category', flat=True).distinct():
             category_total = Achievement.objects.filter(is_active=True, category=category).count()
             category_earned = UserAchievement.objects.filter(user=user, achievement__category=category).count()
             by_category[category] = {
-                "total": category_total,
-                "earned": category_earned,
-                "percentage": int((category_earned / category_total * 100)) if category_total > 0 else 0,
+                'total': category_total,
+                'earned': category_earned,
+                'percentage': int(category_earned / category_total * 100) if category_total > 0 else 0,
             }
 
         # Group by rarity
         by_rarity = {}
-        for rarity in Achievement.objects.filter(is_active=True).values_list("rarity", flat=True).distinct():
+        for rarity in Achievement.objects.filter(is_active=True).values_list('rarity', flat=True).distinct():
             rarity_total = Achievement.objects.filter(is_active=True, rarity=rarity).count()
             rarity_earned = UserAchievement.objects.filter(user=user, achievement__rarity=rarity).count()
             by_rarity[rarity] = {
-                "total": rarity_total,
-                "earned": rarity_earned,
+                'total': rarity_total,
+                'earned': rarity_earned,
             }
 
         return {
-            "total_achievements": total,
-            "earned_count": earned,
-            "total_points": total_points,
-            "completion_percentage": int((earned / total * 100)) if total > 0 else 0,
-            "by_category": by_category,
-            "by_rarity": by_rarity,
+            'total_achievements': total,
+            'earned_count': earned,
+            'total_points': total_points,
+            'completion_percentage': int(earned / total * 100) if total > 0 else 0,
+            'by_category': by_category,
+            'by_rarity': by_rarity,
         }

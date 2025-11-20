@@ -5,30 +5,30 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0018_set_playground_public_default"),
+        ('core', '0018_set_playground_public_default'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name="user",
-            name="current_status",
+            model_name='user',
+            name='current_status',
             field=models.CharField(
                 blank=True, help_text="Current availability or what you're working on", max_length=200
             ),
         ),
         migrations.AddField(
-            model_name="user",
-            name="location",
+            model_name='user',
+            name='location',
             field=models.CharField(blank=True, help_text='City, state/country or "Remote"', max_length=100),
         ),
         migrations.AddField(
-            model_name="user",
-            name="pronouns",
-            field=models.CharField(blank=True, help_text="e.g. she/her, he/him, they/them", max_length=50),
+            model_name='user',
+            name='pronouns',
+            field=models.CharField(blank=True, help_text='e.g. she/her, he/him, they/them', max_length=50),
         ),
         migrations.AddField(
-            model_name="user",
-            name="tagline",
-            field=models.CharField(blank=True, help_text="Short headline or professional title", max_length=150),
+            model_name='user',
+            name='tagline',
+            field=models.CharField(blank=True, help_text='Short headline or professional title', max_length=150),
         ),
     ]

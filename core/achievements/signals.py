@@ -21,15 +21,15 @@ def track_project_created(sender, instance, created, **kwargs):
     if created:
         try:
             # Track project creation
-            unlocked = AchievementTracker.track_event(user=instance.user, tracking_field="project_count", value=1)
+            unlocked = AchievementTracker.track_event(user=instance.user, tracking_field='project_count', value=1)
 
             if unlocked:
                 logger.info(
-                    f"User {instance.user.username} unlocked {len(unlocked)} achievement(s) "
-                    f"for creating project: {instance.title}"
+                    f'User {instance.user.username} unlocked {len(unlocked)} achievement(s) '
+                    f'for creating project: {instance.title}'
                 )
         except Exception as e:
-            logger.error(f"Error tracking project creation achievement: {e}")
+            logger.error(f'Error tracking project creation achievement: {e}')
 
 
 @receiver(post_save, sender=Project)
@@ -48,16 +48,16 @@ def track_project_published(sender, instance, created, **kwargs):
             # For now, we'll increment on any save where is_published=True
 
             unlocked = AchievementTracker.track_event(
-                user=instance.user, tracking_field="published_project_count", value=1
+                user=instance.user, tracking_field='published_project_count', value=1
             )
 
             if unlocked:
                 logger.info(
-                    f"User {instance.user.username} unlocked {len(unlocked)} achievement(s) "
-                    f"for publishing project: {instance.title}"
+                    f'User {instance.user.username} unlocked {len(unlocked)} achievement(s) '
+                    f'for publishing project: {instance.title}'
                 )
         except Exception as e:
-            logger.error(f"Error tracking project publish achievement: {e}")
+            logger.error(f'Error tracking project publish achievement: {e}')
 
 
 # TODO: Add more signals for other trackable events:

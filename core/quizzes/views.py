@@ -26,23 +26,23 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
 
     permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = QuizSerializer
-    lookup_field = "slug"
+    lookup_field = 'slug'
 
     def get_queryset(self):
-        queryset = Quiz.objects.filter(is_published=True).select_related("created_by")
+        queryset = Quiz.objects.filter(is_published=True).select_related('created_by')
 
         # Filter by topic
-        topic = self.request.query_params.get("topic")
+        topic = self.request.query_params.get('topic')
         if topic:
             queryset = queryset.filter(topic__iexact=topic)
 
         # Filter by difficulty
-        difficulty = self.request.query_params.get("difficulty")
+        difficulty = self.request.query_params.get('difficulty')
         if difficulty:
             queryset = queryset.filter(difficulty=difficulty)
 
         # Search by title or description
-        search = self.request.query_params.get("search")
+        search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(
                 Q(title__icontains=search) | Q(description__icontains=search) | Q(topic__icontains=search)
@@ -51,11 +51,11 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
     def get_serializer_class(self):
-        if self.action == "retrieve":
+        if self.action == 'retrieve':
             return QuizDetailSerializer
         return QuizSerializer
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated], throttle_classes=[QuizStartThrottle])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated], throttle_classes=[QuizStartThrottle])
     def start(self, request, slug=None):
         """Start a new quiz attempt"""
         quiz = self.get_object()
@@ -69,15 +69,15 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
         questions = quiz.questions.all()
         questions_data = QuizQuestionPublicSerializer(questions, many=True).data
 
-        return Response({"attempt_id": attempt.id, "questions": questions_data}, status=status.HTTP_201_CREATED)
+        return Response({'attempt_id': attempt.id, 'questions': questions_data}, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=["get"])
+    @action(detail=True, methods=['get'])
     def questions(self, request, slug=None):
         """Get all questions for a quiz (without correct answers)"""
         quiz = self.get_object()
         questions = quiz.questions.all()
         serializer = QuizQuestionPublicSerializer(questions, many=True)
-        return Response({"questions": serializer.data})
+        return Response({'questions': serializer.data})
 
 
 class QuizAttemptViewSet(viewsets.GenericViewSet):
@@ -90,7 +90,7 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
     serializer_class = QuizAttemptSerializer
 
     def get_queryset(self):
-        return QuizAttempt.objects.filter(user=self.request.user).select_related("quiz", "user")
+        return QuizAttempt.objects.filter(user=self.request.user).select_related('quiz', 'user')
 
     def retrieve(self, request, pk=None):
         """Get a specific quiz attempt"""
@@ -99,9 +99,9 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
             serializer = self.get_serializer(attempt)
             return Response(serializer.data)
         except QuizAttempt.DoesNotExist:
-            return Response({"error": "Quiz attempt not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Quiz attempt not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=["post"], throttle_classes=[QuizAnswerThrottle])
+    @action(detail=True, methods=['post'], throttle_classes=[QuizAnswerThrottle])
     @transaction.atomic
     def answer(self, request, pk=None):
         """Submit an answer for a question"""
@@ -110,31 +110,31 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
             attempt = self.get_queryset().select_for_update().get(pk=pk)
         except QuizAttempt.DoesNotExist:
             return Response(
-                {"error": "Quiz attempt not found or does not belong to you"}, status=status.HTTP_403_FORBIDDEN
+                {'error': 'Quiz attempt not found or does not belong to you'}, status=status.HTTP_403_FORBIDDEN
             )
 
         # Check if already completed
         if attempt.is_completed:
-            return Response({"error": "This quiz attempt is already completed"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'This quiz attempt is already completed'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = SubmitAnswerSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        question_id = str(serializer.validated_data["question_id"])
+        question_id = str(serializer.validated_data['question_id'])
         # Sanitize user input to prevent injection attacks
-        user_answer = bleach.clean(serializer.validated_data["answer"], strip=True)
-        time_spent = serializer.validated_data["time_spent"]
+        user_answer = bleach.clean(serializer.validated_data['answer'], strip=True)
+        time_spent = serializer.validated_data['time_spent']
 
         # Check if question has already been answered
         if question_id in attempt.answers:
-            return Response({"error": "This question has already been answered"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'This question has already been answered'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get the question
         try:
             question = QuizQuestion.objects.get(id=question_id, quiz=attempt.quiz)
         except QuizQuestion.DoesNotExist:
-            return Response({"error": "Question not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Question not found'}, status=status.HTTP_404_NOT_FOUND)
 
         # Check if answer is correct
         correct_answer = question.correct_answer
@@ -142,91 +142,145 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
             is_correct = user_answer in correct_answer
         else:
             # Case-insensitive for true/false, exact match for multiple choice
-            if question.type == "true_false":
+            if question.type == 'true_false':
                 is_correct = user_answer.lower().strip() == str(correct_answer).lower().strip()
             else:
                 is_correct = user_answer.strip() == str(correct_answer).strip()
 
         # Store the answer
         answers = attempt.answers
-        answers[question_id] = {"answer": user_answer, "correct": is_correct, "time_spent": time_spent}
+        answers[question_id] = {'answer': user_answer, 'correct': is_correct, 'time_spent': time_spent}
         attempt.answers = answers
 
         # Update score using atomic operation to prevent race conditions
         if is_correct:
-            attempt.score = F("score") + 1
+            attempt.score = F('score') + 1
 
         attempt.save()
         attempt.refresh_from_db()  # Get the actual score value
 
         return Response(
             {
-                "correct": is_correct,
-                "explanation": question.explanation,
-                "correct_answer": correct_answer if not is_correct else None,
+                'correct': is_correct,
+                'explanation': question.explanation,
+                'correct_answer': correct_answer if not is_correct else None,
             }
         )
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):
         """Mark quiz attempt as completed"""
         try:
             attempt = self.get_queryset().get(pk=pk)
         except QuizAttempt.DoesNotExist:
-            return Response({"error": "Quiz attempt not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Quiz attempt not found'}, status=status.HTTP_404_NOT_FOUND)
 
         if attempt.is_completed:
-            return Response({"error": "This quiz attempt is already completed"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'This quiz attempt is already completed'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Mark as completed
         attempt.completed_at = timezone.now()
         attempt.save()
 
+        # Award points for completing the quiz (with idempotency check)
+        from django.db.models import Sum
+
+        from core.points.models import ActivityType, PointsHistory
+        from services.points import PointsService
+
+        # Check if points already awarded for this quiz attempt (idempotency)
+        already_awarded = PointsHistory.objects.filter(
+            user=request.user, metadata__quiz_attempt_id=str(attempt.id)
+        ).exists()
+
+        if not already_awarded:
+            # Base points for completing quiz
+            metadata = {
+                'quiz_attempt_id': str(attempt.id),  # For idempotency
+                'quiz_id': str(attempt.quiz.id),
+                'quiz_title': attempt.quiz.title,
+                'score': attempt.score,
+                'total_questions': attempt.total_questions,
+                'percentage_score': attempt.percentage_score,
+            }
+
+            try:
+                PointsService.award_points(
+                    user=request.user,
+                    activity_type=ActivityType.QUIZ_COMPLETED,
+                    description=f"Completed '{attempt.quiz.title}' quiz with {attempt.percentage_score}% score",
+                    metadata=metadata,
+                )
+
+                # Bonus points for perfect score
+                if attempt.percentage_score == 100:
+                    PointsService.award_points(
+                        user=request.user,
+                        activity_type=ActivityType.QUIZ_PERFECT_SCORE,
+                        description=f"Perfect score on '{attempt.quiz.title}'!",
+                        metadata=metadata,
+                    )
+            except Exception as e:
+                # Log error but don't fail the quiz completion
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.error(f'Failed to award points for quiz completion: {e}', exc_info=True)
+
+        # Calculate total points earned for this quiz attempt
+        total_points_earned = (
+            PointsHistory.objects.filter(user=request.user, metadata__quiz_attempt_id=str(attempt.id)).aggregate(
+                total=Sum('points_awarded')
+            )['total']
+            or 0
+        )
+
         serializer = self.get_serializer(attempt)
         return Response(
             {
-                "score": attempt.score,
-                "total_questions": attempt.total_questions,
-                "percentage_score": attempt.percentage_score,
-                "results": serializer.data,
+                'score': attempt.score,
+                'total_questions': attempt.total_questions,
+                'percentage_score': attempt.percentage_score,
+                'results': serializer.data,
+                'points_earned': total_points_earned,
             }
         )
 
-    @action(detail=False, methods=["get"], url_path="history")
+    @action(detail=False, methods=['get'], url_path='history')
     def quiz_history(self, request):
         """Get user's quiz attempt history"""
-        attempts = self.get_queryset().filter(completed_at__isnull=False).order_by("-completed_at")
+        attempts = self.get_queryset().filter(completed_at__isnull=False).order_by('-completed_at')
         serializer = self.get_serializer(attempts, many=True)
-        return Response({"attempts": serializer.data})
+        return Response({'attempts': serializer.data})
 
-    @action(detail=False, methods=["get"], url_path="stats")
+    @action(detail=False, methods=['get'], url_path='stats')
     def quiz_stats(self, request):
         """Get user's quiz statistics"""
         attempts = self.get_queryset().filter(completed_at__isnull=False)
 
         total_attempts = attempts.count()
         if total_attempts == 0:
-            return Response({"total_attempts": 0, "average_score": 0, "topic_breakdown": {}})
+            return Response({'total_attempts': 0, 'average_score': 0, 'topic_breakdown': {}})
 
         # Calculate average score
-        avg_score = attempts.aggregate(avg_score=Avg("score"), avg_total=Avg("total_questions"))
-        average_percentage = (avg_score["avg_score"] / avg_score["avg_total"] * 100) if avg_score["avg_total"] else 0
+        avg_score = attempts.aggregate(avg_score=Avg('score'), avg_total=Avg('total_questions'))
+        average_percentage = (avg_score['avg_score'] / avg_score['avg_total'] * 100) if avg_score['avg_total'] else 0
 
         # Topic breakdown
         topic_stats = {}
-        topics = attempts.values("quiz__topic").distinct()
+        topics = attempts.values('quiz__topic').distinct()
         for topic_dict in topics:
-            topic = topic_dict["quiz__topic"]
+            topic = topic_dict['quiz__topic']
             topic_attempts = attempts.filter(quiz__topic=topic)
-            topic_avg = topic_attempts.aggregate(avg_score=Avg("score"), avg_total=Avg("total_questions"))
-            topic_percentage = (topic_avg["avg_score"] / topic_avg["avg_total"] * 100) if topic_avg["avg_total"] else 0
+            topic_avg = topic_attempts.aggregate(avg_score=Avg('score'), avg_total=Avg('total_questions'))
+            topic_percentage = (topic_avg['avg_score'] / topic_avg['avg_total'] * 100) if topic_avg['avg_total'] else 0
 
-            topic_stats[topic] = {"attempts": topic_attempts.count(), "average_score": round(topic_percentage, 1)}
+            topic_stats[topic] = {'attempts': topic_attempts.count(), 'average_score': round(topic_percentage, 1)}
 
         return Response(
             {
-                "total_attempts": total_attempts,
-                "average_score": round(average_percentage, 1),
-                "topic_breakdown": topic_stats,
+                'total_attempts': total_attempts,
+                'average_score': round(average_percentage, 1),
+                'topic_breakdown': topic_stats,
             }
         )

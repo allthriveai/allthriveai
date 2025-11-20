@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import type { User, Project, ProjectType } from '@/types/models';
 import { getUserProjects, createProject, bulkDeleteProjects, updateProject, deleteProject } from '@/services/projects';
 import { getUserByUsername } from '@/services/auth';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProfileSidebar } from './ProfileSidebar';
 import { ActivityFeed } from './ActivityFeed';
-import { PlusIcon, TrashIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, CheckIcon, BoltIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faRocket,
@@ -330,9 +330,24 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
 
               {/* Bio */}
               {displayUser?.bio && (
-                <p className="text-base text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                  {displayUser.bio}
-                </p>
+                <div
+                  className="text-base text-gray-600 dark:text-gray-400 mb-6 leading-relaxed prose dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: displayUser.bio }}
+                />
+              )}
+
+              {/* Challenge to Battle Button - Only for Pip (Bot) */}
+              {displayUser?.role === 'bot' && (
+                <div className="mb-6">
+                  <Link
+                    to="/play/prompt-battle"
+                    state={{ opponentUsername: displayUser.username }}
+                    className="btn-primary"
+                  >
+                    <BoltIcon className="w-5 h-5" />
+                    Challenge to Prompt Battle
+                  </Link>
+                </div>
               )}
 
               {/* Location and Role */}

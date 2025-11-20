@@ -1,6 +1,7 @@
 """
 Models for role management and upgrade requests.
 """
+
 from django.conf import settings
 from django.db import models
 
@@ -14,16 +15,16 @@ class RoleUpgradeRequest(models.Model):
     """
 
     class RequestStatus(models.TextChoices):
-        PENDING = "pending", "Pending Review"
-        APPROVED = "approved", "Approved"
-        REJECTED = "rejected", "Rejected"
-        CANCELLED = "cancelled", "Cancelled"
+        PENDING = 'pending', 'Pending Review'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+        CANCELLED = 'cancelled', 'Cancelled'
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="role_upgrade_requests")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='role_upgrade_requests')
 
-    current_role = models.CharField(max_length=20, choices=UserRole.choices, help_text="Role at the time of request")
+    current_role = models.CharField(max_length=20, choices=UserRole.choices, help_text='Role at the time of request')
 
-    requested_role = models.CharField(max_length=20, choices=UserRole.choices, help_text="Role user is requesting")
+    requested_role = models.CharField(max_length=20, choices=UserRole.choices, help_text='Role user is requesting')
 
     reason = models.TextField(help_text="User's explanation for requesting this role")
 
@@ -35,10 +36,10 @@ class RoleUpgradeRequest(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="reviewed_role_requests",
+        related_name='reviewed_role_requests',
     )
 
-    review_notes = models.TextField(blank=True, help_text="Admin notes about the decision")
+    review_notes = models.TextField(blank=True, help_text='Admin notes about the decision')
 
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
@@ -47,14 +48,14 @@ class RoleUpgradeRequest(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ['-created_at']
         indexes = [
-            models.Index(fields=["user", "status"]),
-            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['status', 'created_at']),
         ]
 
     def __str__(self):
-        return f"{self.user.username}: {self.current_role} → {self.requested_role} ({self.status})"
+        return f'{self.user.username}: {self.current_role} → {self.requested_role} ({self.status})'
 
     def can_auto_approve(self) -> bool:
         """
@@ -101,7 +102,7 @@ class RolePermission(models.Model):
 
     display_name = models.CharField(max_length=100)
     description = models.TextField()
-    badge_color = models.CharField(max_length=20, default="gray")
+    badge_color = models.CharField(max_length=20, default='gray')
 
     # Permission flags
     can_create_projects = models.BooleanField(default=True)
@@ -128,7 +129,7 @@ class RolePermission(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["hierarchy_level"]
+        ordering = ['hierarchy_level']
 
     def __str__(self):
-        return f"{self.display_name} (Level {self.hierarchy_level})"
+        return f'{self.display_name} (Level {self.hierarchy_level})'

@@ -7,56 +7,56 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0001_initial"),
+        ('core', '0001_initial'),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name="user",
-            name="email",
+            model_name='user',
+            name='email',
             field=models.EmailField(max_length=254, unique=True),
         ),
         migrations.CreateModel(
-            name="Project",
+            name='Project',
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("slug", models.SlugField(max_length=200)),
-                ("title", models.CharField(max_length=255)),
-                ("description", models.TextField(blank=True)),
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('slug', models.SlugField(max_length=200)),
+                ('title', models.CharField(max_length=255)),
+                ('description', models.TextField(blank=True)),
                 (
-                    "type",
+                    'type',
                     models.CharField(
                         choices=[
-                            ("github_repo", "GitHub Repository"),
-                            ("image_collection", "Image Collection"),
-                            ("prompt", "Prompt / Conversation"),
-                            ("other", "Other"),
+                            ('github_repo', 'GitHub Repository'),
+                            ('image_collection', 'Image Collection'),
+                            ('prompt', 'Prompt / Conversation'),
+                            ('other', 'Other'),
                         ],
-                        default="other",
+                        default='other',
                         max_length=32,
                     ),
                 ),
-                ("is_showcase", models.BooleanField(default=False)),
-                ("is_archived", models.BooleanField(default=False)),
-                ("thumbnail_url", models.URLField(blank=True, null=True)),
-                ("content", models.JSONField(blank=True, default=dict)),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
+                ('is_showcase', models.BooleanField(default=False)),
+                ('is_archived', models.BooleanField(default=False)),
+                ('thumbnail_url', models.URLField(blank=True, null=True)),
+                ('content', models.JSONField(blank=True, default=dict)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
                 (
-                    "user",
+                    'user',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="projects",
+                        related_name='projects',
                         to=settings.AUTH_USER_MODEL,
                     ),
                 ),
             ],
             options={
-                "ordering": ["-created_at"],
+                'ordering': ['-created_at'],
             },
         ),
         migrations.AddConstraint(
-            model_name="project",
-            constraint=models.UniqueConstraint(fields=("user", "slug"), name="unique_project_slug_per_user"),
+            model_name='project',
+            constraint=models.UniqueConstraint(fields=('user', 'slug'), name='unique_project_slug_per_user'),
         ),
     ]

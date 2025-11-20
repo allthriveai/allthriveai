@@ -229,11 +229,11 @@ export default function QuizListPage() {
                     onClick={() => navigate(`/quick-quizzes/${quiz.slug}`)}
                     className="glass-strong rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative"
                   >
-                    {/* Attempted Badge */}
-                    {quiz.userHasAttempted && (
+                    {/* Completion Badge */}
+                    {quiz.userCompleted && quiz.userLatestScore !== null && (
                       <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-green-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
                         <CheckCircleIcon className="w-4 h-4" />
-                        {quiz.userBestScore !== null && `${quiz.userBestScore}%`}
+                        {quiz.userLatestScore}%
                       </div>
                     )}
 

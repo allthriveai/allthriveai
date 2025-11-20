@@ -26,6 +26,9 @@ export interface User {
   playgroundIsPublic?: boolean;
   createdAt: string;
   lastLogin?: string;
+  totalPoints?: number;
+  level?: number;
+  currentStreak?: number;
 }
 
 // Authentication state

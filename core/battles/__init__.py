@@ -3,6 +3,7 @@
 This domain handles competitive prompt generation battles between users,
 including battle invitations, submissions, and scoring.
 """
+
 from .models import (
     BattleInvitation,
     BattleStatus,
@@ -16,17 +17,17 @@ from .views import BattleInvitationViewSet, PromptBattleViewSet, battle_leaderbo
 
 __all__ = [
     # Models
-    "PromptBattle",
-    "BattleSubmission",
-    "BattleInvitation",
-    "BattleStatus",
-    "BattleType",
-    "SubmissionType",
-    "InvitationStatus",
+    'PromptBattle',
+    'BattleSubmission',
+    'BattleInvitation',
+    'BattleStatus',
+    'BattleType',
+    'SubmissionType',
+    'InvitationStatus',
     # Views
-    "PromptBattleViewSet",
-    "BattleInvitationViewSet",
-    "battle_stats",
-    "battle_leaderboard",
-    "expire_battles",
+    'PromptBattleViewSet',
+    'BattleInvitationViewSet',
+    'battle_stats',
+    'battle_leaderboard',
+    'expire_battles',
 ]

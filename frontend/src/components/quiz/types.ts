@@ -18,6 +18,8 @@ export interface Quiz {
   userHasAttempted: boolean;
   userBestScore: number | null;
   userAttemptCount: number;
+  userCompleted: boolean;
+  userLatestScore: number | null;
 }
 
 export interface QuizQuestion {

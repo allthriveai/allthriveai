@@ -7,16 +7,16 @@ import core.referrals.models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0010_referralcode_referral_socialconnection_and_more"),
+        ('core', '0010_referralcode_referral_socialconnection_and_more'),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name="referralcode",
-            name="code",
+            model_name='referralcode',
+            name='code',
             field=models.CharField(
                 default=core.referrals.models.generate_referral_code,
-                help_text="Unique referral code (typically username)",
+                help_text='Unique referral code (typically username)',
                 max_length=50,
                 unique=True,
             ),

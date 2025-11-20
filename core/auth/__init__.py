@@ -3,6 +3,7 @@
 This domain handles user authentication, OAuth (Google/GitHub),
 user signup, login, and profile management.
 """
+
 from .serializers import UserSerializer
 from .views import (
     GitHubLogin,
@@ -20,17 +21,17 @@ from .views import (
 
 __all__ = [
     # Views
-    "GoogleLogin",
-    "GitHubLogin",
-    "current_user",
-    "logout_view",
-    "signup",
-    "oauth_urls",
-    "oauth_callback",
-    "csrf_token",
-    "UserProfileView",
-    "user_activity",
-    "username_profile_view",
+    'GoogleLogin',
+    'GitHubLogin',
+    'current_user',
+    'logout_view',
+    'signup',
+    'oauth_urls',
+    'oauth_callback',
+    'csrf_token',
+    'UserProfileView',
+    'user_activity',
+    'username_profile_view',
     # Serializers
-    "UserSerializer",
+    'UserSerializer',
 ]

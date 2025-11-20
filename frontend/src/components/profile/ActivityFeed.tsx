@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getUserActivity } from '@/services/auth';
-import type { UserActivity, UserStatistics } from '@/services/auth';
+import type { UserActivity, UserStatistics, QuizScore, PointsHistory } from '@/services/auth';
 import {
   ClockIcon,
   ChartBarIcon,
@@ -8,11 +9,17 @@ import {
   GlobeAltIcon,
   CheckCircleIcon,
   XCircleIcon,
+  TrophyIcon,
+  AcademicCapIcon,
+  SparklesIcon,
+  PlusCircleIcon,
 } from '@heroicons/react/24/outline';
 
 export function ActivityFeed() {
+  const navigate = useNavigate();
   const [activities, setActivities] = useState<UserActivity[]>([]);
   const [statistics, setStatistics] = useState<UserStatistics | null>(null);
+  const [pointsFeed, setPointsFeed] = useState<PointsHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +29,7 @@ export function ActivityFeed() {
         const data = await getUserActivity();
         setActivities(data.activities);
         setStatistics(data.statistics);
+        setPointsFeed(data.pointsFeed || []);
       } catch (err: any) {
         console.error('Failed to load activity:', err);
         setError(err?.message || 'Failed to load activity data');
@@ -190,29 +198,150 @@ export function ActivityFeed() {
         )}
       </div>
 
-      {/* Future Analytics Sections - Placeholder */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Quiz Scores Placeholder */}
-        <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800 opacity-60">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Quiz Scores</h3>
+      {/* Quiz Scores Section */}
+      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <AcademicCapIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Quiz Scores</h3>
+          </div>
+          <button
+            onClick={() => navigate('/quick-quizzes')}
+            className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+          >
+            View all quizzes →
+          </button>
+        </div>
+
+        {statistics?.quizScores && statistics.quizScores.length > 0 ? (
+          <div className="space-y-3">
+            {statistics.quizScores.map((quiz: QuizScore) => (
+              <div
+                key={quiz.id}
+                onClick={() => navigate(`/quick-quizzes/${quiz.quizSlug}`)}
+                className="flex items-center justify-between p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-colors border border-gray-200 dark:border-gray-700 cursor-pointer group"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                      {quiz.quizTitle}
+                    </h4>
+                    {quiz.percentageScore >= 80 && (
+                      <TrophyIcon className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <span className="capitalize">{quiz.topic}</span>
+                    <span>•</span>
+                    <span className="capitalize">{quiz.difficulty}</span>
+                    <span>•</span>
+                    <span>
+                      {quiz.completedAt
+                        ? formatDate(quiz.completedAt)
+                        : 'Recently'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 ml-4">
+                  <div className="text-right">
+                    <div className={`text-2xl font-bold ${
+                      quiz.percentageScore >= 80
+                        ? 'text-green-600 dark:text-green-400'
+                        : quiz.percentageScore >= 60
+                        ? 'text-yellow-600 dark:text-yellow-400'
+                        : 'text-red-600 dark:text-red-400'
+                    }`}>
+                      {quiz.percentageScore}%
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {quiz.score}/{quiz.totalQuestions}
+                    </div>
+                  </div>
+                  <CheckCircleIcon className="w-6 h-6 text-green-500 flex-shrink-0" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
           <div className="text-center py-8">
-            <p className="text-gray-500 dark:text-gray-400">Coming soon</p>
-            <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-              Track your quiz performance and progress
+            <AcademicCapIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-500 dark:text-gray-400 mb-2">No quiz attempts yet</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">
+              Start taking quizzes to track your progress
             </p>
+            <button
+              onClick={() => navigate('/quick-quizzes')}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              Browse Quizzes
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Points Tracker Section */}
+      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+              <SparklesIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Points Tracker</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+              {statistics?.totalPoints || 0}
+            </span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">pts</span>
           </div>
         </div>
 
-        {/* Analytics Placeholder */}
-        <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800 opacity-60">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Analytics</h3>
+        {pointsFeed && pointsFeed.length > 0 ? (
+          <div className="space-y-3">
+            {pointsFeed.map((point: PointsHistory) => (
+              <div
+                key={point.id}
+                className="flex items-center justify-between p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white">
+                      {point.activityDisplay}
+                    </h4>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                    {point.description}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    {formatDate(point.createdAt)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 ml-4">
+                  <div className={`text-2xl font-bold ${
+                    point.pointsAwarded > 0
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {point.pointsAwarded > 0 ? '+' : ''}{point.pointsAwarded}
+                  </div>
+                  {point.pointsAwarded > 0 && (
+                    <PlusCircleIcon className="w-6 h-6 text-green-500 flex-shrink-0" />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
           <div className="text-center py-8">
-            <p className="text-gray-500 dark:text-gray-400">Coming soon</p>
-            <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-              View detailed insights and trends
+            <SparklesIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-500 dark:text-gray-400 mb-2">No points earned yet</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">
+              Complete quizzes, create projects, and engage with the community to earn points!
             </p>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

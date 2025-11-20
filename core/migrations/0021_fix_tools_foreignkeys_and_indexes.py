@@ -6,36 +6,36 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0020_tool_taxonomy_alter_rolepermission_role_and_more"),
+        ('core', '0020_tool_taxonomy_alter_rolepermission_role_and_more'),
     ]
 
     operations = [
         migrations.RemoveIndex(
-            model_name="tool",
-            name="core_tool_popular_900d29_idx",
+            model_name='tool',
+            name='core_tool_popular_900d29_idx',
         ),
         migrations.RemoveIndex(
-            model_name="tool",
-            name="core_tool_created_b5a846_idx",
+            model_name='tool',
+            name='core_tool_created_b5a846_idx',
         ),
         migrations.AddIndex(
-            model_name="tool",
-            index=models.Index(fields=["is_active", "-popularity_score"], name="core_tool_is_acti_b73cab_idx"),
+            model_name='tool',
+            index=models.Index(fields=['is_active', '-popularity_score'], name='core_tool_is_acti_b73cab_idx'),
         ),
         migrations.AddIndex(
-            model_name="tool",
-            index=models.Index(fields=["is_active", "-created_at"], name="core_tool_is_acti_5aaad5_idx"),
+            model_name='tool',
+            index=models.Index(fields=['is_active', '-created_at'], name='core_tool_is_acti_5aaad5_idx'),
         ),
         migrations.AddIndex(
-            model_name="tool",
-            index=models.Index(fields=["is_featured", "is_active"], name="core_tool_is_feat_f7c426_idx"),
+            model_name='tool',
+            index=models.Index(fields=['is_featured', 'is_active'], name='core_tool_is_feat_f7c426_idx'),
         ),
         migrations.AddIndex(
-            model_name="tool",
-            index=django.contrib.postgres.indexes.GinIndex(fields=["tags"], name="tool_tags_gin_idx"),
+            model_name='tool',
+            index=django.contrib.postgres.indexes.GinIndex(fields=['tags'], name='tool_tags_gin_idx'),
         ),
         migrations.AddIndex(
-            model_name="tool",
-            index=django.contrib.postgres.indexes.GinIndex(fields=["keywords"], name="tool_keywords_gin_idx"),
+            model_name='tool',
+            index=django.contrib.postgres.indexes.GinIndex(fields=['keywords'], name='tool_keywords_gin_idx'),
         ),
     ]

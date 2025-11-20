@@ -1,3 +1,37 @@
 [tool.bandit]
 exclude_dirs = ["tests", "migrations", ".venv", "venv", "env"]
 skips = ["B101"]  # Skip assert warnings in tests
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "DJ", "S"]
+ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107", "D200", "D205", "D400", "D401", "D403"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S105", "S106", "F841", "B017", "B018"]
+"core/migrations/**" = ["E501", "F401", "F403", "DJ001"]
+"examples/**" = ["E402"]
+"scripts/test_project_chat.py" = ["E402"]
+"core/agents/models.py" = ["DJ012"]
+"core/projects/models.py" = ["DJ012"]
+"core/tools/models.py" = ["DJ012"]
+"core/battles/models.py" = ["DJ001"]
+"core/quizzes/models.py" = ["DJ001"]
+"core/social/models.py" = ["DJ001"]
+"core/taxonomy/models.py" = ["DJ001"]
+"core/users/models.py" = ["DJ001"]
+"services/battle_service.py" = ["S311", "B904"]
+"services/ai_provider.py" = ["B904", "UP038", "UP028"]
+"services/storage_service.py" = ["B904"]
+"core/logging_utils.py" = ["UP038"]
+"core/middleware.py" = ["S110"]
+"core/management/commands/setup_test_battle.py" = ["S311"]
+"services/auth_agent/prompts.py" = ["S105"]
+"core/referrals/tests/test_views.py" = ["B007"]

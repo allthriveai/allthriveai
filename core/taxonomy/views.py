@@ -27,7 +27,7 @@ class TaxonomyViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_permissions(self):
         """Allow public access for list and retrieve, require auth for other actions."""
-        if self.action in ["list", "retrieve"]:
+        if self.action in ['list', 'retrieve']:
             return [AllowAny()]
         return [IsAuthenticated()]
 
@@ -35,7 +35,7 @@ class TaxonomyViewSet(viewsets.ReadOnlyModelViewSet):
         """Return only active taxonomies."""
         return Taxonomy.objects.filter(is_active=True)
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=['get'])
     def by_category(self, request):
         """Get taxonomies grouped by category."""
         taxonomies = self.get_queryset()
@@ -62,11 +62,11 @@ class UserTagViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return only tags for the authenticated user."""
-        return UserTag.objects.filter(user=self.request.user).select_related("taxonomy")
+        return UserTag.objects.filter(user=self.request.user).select_related('taxonomy')
 
     def get_serializer_class(self):
         """Use different serializer for creation."""
-        if self.action == "create":
+        if self.action == 'create':
             return UserTagCreateSerializer
         return UserTagSerializer
 
@@ -74,14 +74,14 @@ class UserTagViewSet(viewsets.ModelViewSet):
         """Create a new manual user tag."""
         serializer.save()
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=['get'])
     def manual(self, request):
         """Get only manually selected tags."""
         tags = self.get_queryset().filter(source=UserTag.TagSource.MANUAL)
         serializer = self.get_serializer(tags, many=True)
         return Response(serializer.data)
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=['get'])
     def auto_generated(self, request):
         """Get only auto-generated tags."""
         tags = (
@@ -91,18 +91,18 @@ class UserTagViewSet(viewsets.ModelViewSet):
                 | Q(source=UserTag.TagSource.AUTO_CONVERSATION)
                 | Q(source=UserTag.TagSource.AUTO_ACTIVITY)
             )
-            .order_by("-confidence_score", "-interaction_count")
+            .order_by('-confidence_score', '-interaction_count')
         )
         serializer = self.get_serializer(tags, many=True)
         return Response(serializer.data)
 
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=['post'])
     def bulk_create(self, request):
         """Create multiple tags at once from taxonomy selections."""
-        taxonomy_ids = request.data.get("taxonomy_ids", [])
+        taxonomy_ids = request.data.get('taxonomy_ids', [])
 
         if not taxonomy_ids:
-            return Response({"error": "taxonomy_ids is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'taxonomy_ids is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         taxonomies = Taxonomy.objects.filter(id__in=taxonomy_ids, is_active=True)
         created_tags = []
@@ -112,9 +112,9 @@ class UserTagViewSet(viewsets.ModelViewSet):
                 user=request.user,
                 name=taxonomy.name,
                 defaults={
-                    "taxonomy": taxonomy,
-                    "source": UserTag.TagSource.MANUAL,
-                    "confidence_score": 1.0,
+                    'taxonomy': taxonomy,
+                    'source': UserTag.TagSource.MANUAL,
+                    'confidence_score': 1.0,
                 },
             )
             if created:
@@ -123,20 +123,20 @@ class UserTagViewSet(viewsets.ModelViewSet):
         serializer = UserTagSerializer(created_tags, many=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=["delete"])
+    @action(detail=False, methods=['delete'])
     def bulk_delete(self, request):
         """Delete multiple tags at once."""
-        tag_ids = request.data.get("tag_ids", [])
+        tag_ids = request.data.get('tag_ids', [])
 
         if not tag_ids:
-            return Response({"error": "tag_ids is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'tag_ids is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         deleted_count, _ = UserTag.objects.filter(user=request.user, id__in=tag_ids).delete()
 
-        return Response({"deleted": deleted_count}, status=status.HTTP_200_OK)
+        return Response({'deleted': deleted_count}, status=status.HTTP_200_OK)
 
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def user_personalization_overview(request):
     """Get a comprehensive overview of user's personalization data.
@@ -149,13 +149,13 @@ def user_personalization_overview(request):
     """
     user = request.user
 
-    manual_tags = UserTag.objects.filter(user=user, source=UserTag.TagSource.MANUAL).select_related("taxonomy")
+    manual_tags = UserTag.objects.filter(user=user, source=UserTag.TagSource.MANUAL).select_related('taxonomy')
 
     auto_tags = (
         UserTag.objects.filter(user=user)
         .exclude(source=UserTag.TagSource.MANUAL)
-        .select_related("taxonomy")
-        .order_by("-confidence_score", "-interaction_count")
+        .select_related('taxonomy')
+        .order_by('-confidence_score', '-interaction_count')
     )
 
     available_taxonomies = Taxonomy.objects.filter(is_active=True)
@@ -163,17 +163,17 @@ def user_personalization_overview(request):
     total_interactions = UserInteraction.objects.filter(user=user).count()
 
     data = {
-        "manual_tags": UserTagSerializer(manual_tags, many=True).data,
-        "auto_generated_tags": UserTagSerializer(auto_tags, many=True).data,
-        "available_taxonomies": TaxonomySerializer(available_taxonomies, many=True).data,
-        "total_interactions": total_interactions,
+        'manual_tags': UserTagSerializer(manual_tags, many=True).data,
+        'auto_generated_tags': UserTagSerializer(auto_tags, many=True).data,
+        'available_taxonomies': TaxonomySerializer(available_taxonomies, many=True).data,
+        'total_interactions': total_interactions,
     }
 
     serializer = UserPersonalizationSerializer(data)
     return Response(serializer.data)
 
 
-@api_view(["POST"])
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def track_interaction(request):
     """Track a user interaction for auto-tagging purposes.
@@ -181,18 +181,18 @@ def track_interaction(request):
     This endpoint should be called when users perform significant actions
     that could be used for personalization (viewing projects, conversations, etc.).
     """
-    interaction_type = request.data.get("interaction_type")
-    metadata = request.data.get("metadata", {})
-    extracted_keywords = request.data.get("extracted_keywords", [])
+    interaction_type = request.data.get('interaction_type')
+    metadata = request.data.get('metadata', {})
+    extracted_keywords = request.data.get('extracted_keywords', [])
 
     if not interaction_type:
-        return Response({"error": "interaction_type is required"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'interaction_type is required'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Validate interaction type
     valid_types = [choice[0] for choice in UserInteraction.InteractionType.choices]
     if interaction_type not in valid_types:
         return Response(
-            {"error": f'Invalid interaction_type. Must be one of: {", ".join(valid_types)}'},
+            {'error': f'Invalid interaction_type. Must be one of: {", ".join(valid_types)}'},
             status=status.HTTP_400_BAD_REQUEST,
         )
 

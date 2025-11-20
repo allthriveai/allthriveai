@@ -11,18 +11,18 @@ class QuizQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuizQuestion
         fields = [
-            "id",
-            "quiz_id",
-            "question",
-            "type",
-            "correct_answer",
-            "options",
-            "explanation",
-            "hint",
-            "order",
-            "image_url",
+            'id',
+            'quiz_id',
+            'question',
+            'type',
+            'correct_answer',
+            'options',
+            'explanation',
+            'hint',
+            'order',
+            'image_url',
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ['id']
 
 
 class QuizQuestionPublicSerializer(serializers.ModelSerializer):
@@ -30,8 +30,8 @@ class QuizQuestionPublicSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = QuizQuestion
-        fields = ["id", "quiz_id", "question", "type", "options", "hint", "order", "image_url"]
-        read_only_fields = ["id"]
+        fields = ['id', 'quiz_id', 'question', 'type', 'options', 'hint', 'order', 'image_url']
+        read_only_fields = ['id']
 
 
 class QuizSerializer(serializers.ModelSerializer):
@@ -42,39 +42,43 @@ class QuizSerializer(serializers.ModelSerializer):
     user_has_attempted = serializers.SerializerMethodField()
     user_best_score = serializers.SerializerMethodField()
     user_attempt_count = serializers.SerializerMethodField()
+    user_completed = serializers.SerializerMethodField()
+    user_latest_score = serializers.SerializerMethodField()
 
     class Meta:
         model = Quiz
         fields = [
-            "id",
-            "title",
-            "slug",
-            "description",
-            "topic",
-            "difficulty",
-            "estimated_time",
-            "question_count",
-            "thumbnail_url",
-            "is_published",
-            "created_at",
-            "updated_at",
-            "created_by",
-            "user_has_attempted",
-            "user_best_score",
-            "user_attempt_count",
+            'id',
+            'title',
+            'slug',
+            'description',
+            'topic',
+            'difficulty',
+            'estimated_time',
+            'question_count',
+            'thumbnail_url',
+            'is_published',
+            'created_at',
+            'updated_at',
+            'created_by',
+            'user_has_attempted',
+            'user_best_score',
+            'user_attempt_count',
+            'user_completed',
+            'user_latest_score',
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "question_count"]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'question_count']
 
     def get_user_has_attempted(self, obj):
         """Check if the current user has attempted this quiz"""
-        request = self.context.get("request")
+        request = self.context.get('request')
         if request and request.user.is_authenticated:
             return QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False).exists()
         return False
 
     def get_user_best_score(self, obj):
         """Get the user's best score percentage for this quiz"""
-        request = self.context.get("request")
+        request = self.context.get('request')
         if request and request.user.is_authenticated:
             attempts = QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False)
             if attempts.exists():
@@ -84,10 +88,30 @@ class QuizSerializer(serializers.ModelSerializer):
 
     def get_user_attempt_count(self, obj):
         """Get the number of times the user has completed this quiz"""
-        request = self.context.get("request")
+        request = self.context.get('request')
         if request and request.user.is_authenticated:
             return QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False).count()
         return 0
+
+    def get_user_completed(self, obj):
+        """Check if the user has completed this quiz"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False).exists()
+        return False
+
+    def get_user_latest_score(self, obj):
+        """Get the user's most recent score percentage for this quiz"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            latest_attempt = (
+                QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False)
+                .order_by('-completed_at')
+                .first()
+            )
+            if latest_attempt:
+                return round(latest_attempt.percentage_score, 1)
+        return None
 
 
 class QuizDetailSerializer(QuizSerializer):
@@ -96,7 +120,7 @@ class QuizDetailSerializer(QuizSerializer):
     questions = QuizQuestionSerializer(many=True, read_only=True)
 
     class Meta(QuizSerializer.Meta):
-        fields = QuizSerializer.Meta.fields + ["questions"]
+        fields = QuizSerializer.Meta.fields + ['questions']
 
 
 class QuizAttemptSerializer(serializers.ModelSerializer):
@@ -110,18 +134,18 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuizAttempt
         fields = [
-            "id",
-            "quiz",
-            "user",
-            "answers",
-            "score",
-            "total_questions",
-            "percentage_score",
-            "is_completed",
-            "started_at",
-            "completed_at",
+            'id',
+            'quiz',
+            'user',
+            'answers',
+            'score',
+            'total_questions',
+            'percentage_score',
+            'is_completed',
+            'started_at',
+            'completed_at',
         ]
-        read_only_fields = ["id", "started_at"]
+        read_only_fields = ['id', 'started_at']
 
 
 class StartQuizSerializer(serializers.Serializer):
@@ -135,7 +159,7 @@ class SubmitAnswerSerializer(serializers.Serializer):
 
     question_id = serializers.UUIDField()
     answer = serializers.CharField()
-    time_spent = serializers.IntegerField(min_value=0, help_text="Time spent in seconds")
+    time_spent = serializers.IntegerField(min_value=0, help_text='Time spent in seconds')
 
 
 class CompleteQuizSerializer(serializers.Serializer):

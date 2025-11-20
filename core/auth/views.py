@@ -31,25 +31,25 @@ class GoogleLogin(SocialLoginView):
         """Override to set JWT tokens in cookies."""
         response = super().post(request, *args, **kwargs)
 
-        if response.status_code == 200:
-            user = User.objects.get(email=request.data.get("email"))
+        if response.status_code == 200 and request.user and request.user.is_authenticated:
+            user = request.user
             refresh = RefreshToken.for_user(user)
 
             # Set tokens in HTTP-only cookies
             response.set_cookie(
-                key=settings.SIMPLE_JWT["AUTH_COOKIE"],
+                key=settings.SIMPLE_JWT['AUTH_COOKIE'],
                 value=str(refresh.access_token),
-                httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
-                secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
-                samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
+                httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
             )
 
             response.set_cookie(
-                key="refresh_token",
+                key='refresh_token',
                 value=str(refresh),
                 httponly=True,
-                secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
-                samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
+                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
             )
 
         return response
@@ -64,91 +64,91 @@ class GitHubLogin(SocialLoginView):
         """Override to set JWT tokens in cookies."""
         response = super().post(request, *args, **kwargs)
 
-        if response.status_code == 200:
-            user = User.objects.get(email=request.data.get("email"))
+        if response.status_code == 200 and request.user and request.user.is_authenticated:
+            user = request.user
             refresh = RefreshToken.for_user(user)
 
             # Set tokens in HTTP-only cookies
             response.set_cookie(
-                key=settings.SIMPLE_JWT["AUTH_COOKIE"],
+                key=settings.SIMPLE_JWT['AUTH_COOKIE'],
                 value=str(refresh.access_token),
-                httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
-                secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
-                samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
+                httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
             )
 
             response.set_cookie(
-                key="refresh_token",
+                key='refresh_token',
                 value=str(refresh),
                 httponly=True,
-                secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
-                samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
+                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
             )
 
         return response
 
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def current_user(request):
     """Get current authenticated user info."""
-    serializer = UserSerializer(request.user, context={"request": request})
-    return Response({"success": True, "data": serializer.data})
+    serializer = UserSerializer(request.user, context={'request': request})
+    return Response({'success': True, 'data': serializer.data})
 
 
-@api_view(["POST"])
+@api_view(['POST'])
 @permission_classes([AllowAny])  # Allow anyone to logout
 @csrf_exempt
 def logout_view(request):
     """Logout user and clear cookies."""
-    response = Response({"message": "Successfully logged out"}, status=status.HTTP_200_OK)
+    response = Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
 
     # Get cookie domain from settings
     cookie_domain = settings.COOKIE_DOMAIN
-    cookie_samesite = settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"]
+    cookie_samesite = settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE']
 
     # Delete cookies with domain (how they were set in oauth_callback)
     response.delete_cookie(
-        key=settings.SIMPLE_JWT["AUTH_COOKIE"],
+        key=settings.SIMPLE_JWT['AUTH_COOKIE'],
         domain=cookie_domain,
-        path="/",
+        path='/',
         samesite=cookie_samesite,
     )
     response.delete_cookie(
-        key="refresh_token",
+        key='refresh_token',
         domain=cookie_domain,
-        path="/",
+        path='/',
         samesite=cookie_samesite,
     )
     response.delete_cookie(
-        key="csrftoken",
+        key='csrftoken',
         domain=cookie_domain,
-        path="/",
+        path='/',
         samesite=cookie_samesite,
     )
 
     # Also delete without domain as fallback
     response.delete_cookie(
-        key=settings.SIMPLE_JWT["AUTH_COOKIE"],
-        path="/",
+        key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+        path='/',
         samesite=cookie_samesite,
     )
     response.delete_cookie(
-        key="refresh_token",
-        path="/",
+        key='refresh_token',
+        path='/',
         samesite=cookie_samesite,
     )
     response.delete_cookie(
-        key="csrftoken",
-        path="/",
+        key='csrftoken',
+        path='/',
         samesite=cookie_samesite,
     )
 
     return response
 
 
-@ratelimit(key="ip", rate="5/h", method="POST", block=True)
-@api_view(["POST"])
+@ratelimit(key='ip', rate='5/h', method='POST', block=True)
+@api_view(['POST'])
 @permission_classes([AllowAny])
 def signup(request):
     """Register a new user with rate limiting and timing attack protection.
@@ -167,8 +167,8 @@ def signup(request):
     start_time = time.time()
 
     # Check additional rate limit for signup attempts
-    ip_address = request.META.get("REMOTE_ADDR")
-    cache_key = f"signup_attempts:{ip_address}"
+    ip_address = request.META.get('REMOTE_ADDR')
+    cache_key = f'signup_attempts:{ip_address}'
     attempts = cache.get(cache_key, 0)
 
     if attempts >= 5:
@@ -176,7 +176,7 @@ def signup(request):
         if elapsed < 0.1:
             time.sleep(0.1 - elapsed)
         return Response(
-            {"error": "Too many signup attempts. Please try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS
+            {'error': 'Too many signup attempts. Please try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS
         )
 
     serializer = UserCreateSerializer(data=request.data)
@@ -194,8 +194,8 @@ def signup(request):
 
         return Response(
             {
-                "message": "User created successfully. Please check your email to verify your account.",
-                "user": UserSerializer(user).data,
+                'message': 'User created successfully. Please check your email to verify your account.',
+                'user': UserSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -211,28 +211,28 @@ def signup(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([AllowAny])
 def oauth_urls(request):
     """Return OAuth provider URLs for frontend."""
-    base_url = request.build_absolute_uri("/")[:-1]
+    base_url = request.build_absolute_uri('/')[:-1]
 
     return Response(
         {
-            "google": f"{base_url}/api/v1/auth/google/",
-            "github": f"{base_url}/api/v1/auth/github/",
+            'google': f'{base_url}/api/v1/auth/google/',
+            'github': f'{base_url}/api/v1/auth/github/',
         }
     )
 
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([AllowAny])
 def csrf_token(request):
     """Return CSRF token for the frontend."""
     from django.middleware.csrf import get_token
 
     token = get_token(request)
-    return Response({"csrfToken": token})
+    return Response({'csrfToken': token})
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
@@ -245,12 +245,12 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
     def get_serializer_class(self):
-        if self.request.method in ["PUT", "PATCH"]:
+        if self.request.method in ['PUT', 'PATCH']:
             return UserUpdateSerializer
         return UserSerializer
 
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([AllowAny])
 def username_profile_view(request, username):
     """View user profile by username.
@@ -276,24 +276,24 @@ def username_profile_view(request, username):
     start_time = time.time()
 
     # Check cache first
-    cache_key = f"profile:{username.lower()}"
+    cache_key = f'profile:{username.lower()}'
     cached_data = cache.get(cache_key)
     if cached_data:
-        return Response(cached_data["response"], status=cached_data["status"])
+        return Response(cached_data['response'], status=cached_data['status'])
 
     try:
         user = User.objects.get(username=username.lower())
-        serializer = UserSerializer(user, context={"request": request})
-        response_data = {"success": True, "data": serializer.data}
+        serializer = UserSerializer(user, context={'request': request})
+        response_data = {'success': True, 'data': serializer.data}
         status_code = 200
 
         # Cache successful responses
         cache.set(
-            cache_key, {"response": response_data, "status": status_code}, settings.CACHE_TTL.get("PUBLIC_PROFILE", 300)
+            cache_key, {'response': response_data, 'status': status_code}, settings.CACHE_TTL.get('PUBLIC_PROFILE', 300)
         )
     except User.DoesNotExist:
         # Return 404 but maintain consistent response time to prevent timing attacks
-        response_data = {"success": False, "error": "User not found", "data": None}
+        response_data = {'success': False, 'error': 'User not found', 'data': None}
         status_code = 404
         # Don't cache 404s to avoid poisoning cache with enumeration attempts
 
@@ -305,40 +305,40 @@ def username_profile_view(request, username):
     return Response(response_data, status=status_code)
 
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([AllowAny])
 def oauth_redirect(request):
     """
     Direct redirect to Google OAuth without intermediate page.
     """
-    provider = request.GET.get("provider", "google")
+    provider = request.GET.get('provider', 'google')
 
-    if provider == "google":
+    if provider == 'google':
         # Get the social app credentials
         try:
-            social_app = SocialApp.objects.get(provider="google")
+            social_app = SocialApp.objects.get(provider='google')
             client_id = social_app.client_id
         except SocialApp.DoesNotExist:
-            client_id = settings.SOCIALACCOUNT_PROVIDERS["google"]["APP"]["client_id"]
+            client_id = settings.SOCIALACCOUNT_PROVIDERS['google']['APP']['client_id']
 
         # Build Google OAuth URL
-        redirect_uri = f"{settings.BACKEND_URL}/accounts/google/login/callback/"
+        redirect_uri = f'{settings.BACKEND_URL}/accounts/google/login/callback/'
         params = {
-            "client_id": client_id,
-            "redirect_uri": redirect_uri,
-            "scope": "openid email profile",
-            "response_type": "code",
-            "access_type": "online",
+            'client_id': client_id,
+            'redirect_uri': redirect_uri,
+            'scope': 'openid email profile',
+            'response_type': 'code',
+            'access_type': 'online',
         }
 
-        google_auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+        google_auth_url = f'https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}'
         return redirect(google_auth_url)
 
     # Fallback to allauth for other providers
-    return redirect(f"/accounts/{provider}/login/?process=login")
+    return redirect(f'/accounts/{provider}/login/?process=login')
 
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([AllowAny])
 @csp_exempt()
 def oauth_callback(request):
@@ -354,56 +354,56 @@ def oauth_callback(request):
 
         # Redirect to user profile with cookies set
         username = request.user.username
-        redirect_url = f"{settings.FRONTEND_URL}/{username}"
+        redirect_url = f'{settings.FRONTEND_URL}/{username}'
         response = redirect(redirect_url)
 
         # Set JWT tokens in HTTP-only cookies with shared domain
         cookie_domain = settings.COOKIE_DOMAIN
         response.set_cookie(
-            key=settings.SIMPLE_JWT["AUTH_COOKIE"],
+            key=settings.SIMPLE_JWT['AUTH_COOKIE'],
             value=access_token,
             domain=cookie_domain,
-            httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
-            secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
-            samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
-            path="/",
+            httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+            path='/',
         )
 
         response.set_cookie(
-            key="refresh_token",
+            key='refresh_token',
             value=refresh_token_str,
             domain=cookie_domain,
             httponly=True,
-            secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
-            samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
-            path="/",
+            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+            path='/',
         )
 
         return response
     else:
         # OAuth failed, redirect to login with error
-        return redirect(f"{settings.FRONTEND_URL}/login?error=oauth_failed")
+        return redirect(f'{settings.FRONTEND_URL}/login?error=oauth_failed')
 
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def user_activity(request):
     """Get current user's recent activity and statistics."""
     user = request.user
 
     # Get recent audit logs (last 20 activities)
-    recent_activities = UserAuditLog.objects.filter(user=user).order_by("-timestamp")[:20]
+    recent_activities = UserAuditLog.objects.filter(user=user).order_by('-timestamp')[:20]
 
     # Format activity data
     activities = [
         {
-            "id": log.id,
-            "action": log.get_action_display(),
-            "actionType": log.action,
-            "timestamp": log.timestamp.isoformat(),
-            "ipAddress": log.ip_address,
-            "success": log.success,
-            "details": log.details,
+            'id': log.id,
+            'action': log.get_action_display(),
+            'actionType': log.action,
+            'timestamp': log.timestamp.isoformat(),
+            'ipAddress': log.ip_address,
+            'success': log.success,
+            'details': log.details,
         }
         for log in recent_activities
     ]
@@ -417,29 +417,74 @@ def user_activity(request):
         UserAuditLog.objects.filter(
             user=user, action__in=[UserAuditLog.Action.LOGIN, UserAuditLog.Action.OAUTH_LOGIN], success=True
         )
-        .order_by("-timestamp")
+        .order_by('-timestamp')
         .first()
     )
 
+    # Get quiz scores (last 10 completed attempts)
+    from core.quizzes.models import QuizAttempt
+
+    quiz_attempts = (
+        QuizAttempt.objects.filter(user=user, completed_at__isnull=False)
+        .select_related('quiz')
+        .order_by('-completed_at')[:10]
+    )
+
+    quiz_scores = [
+        {
+            'id': str(attempt.id),
+            'quizTitle': attempt.quiz.title,
+            'quizSlug': attempt.quiz.slug,
+            'score': attempt.score,
+            'totalQuestions': attempt.total_questions,
+            'percentageScore': attempt.percentage_score,
+            'completedAt': attempt.completed_at.isoformat() if attempt.completed_at else None,
+            'topic': attempt.quiz.topic,
+            'difficulty': attempt.quiz.difficulty,
+        }
+        for attempt in quiz_attempts
+    ]
+
+    # Get points history (last 20 point activities)
+    from core.points.models import PointsHistory
+
+    points_history = PointsHistory.objects.filter(user=user).order_by('-created_at')[:20]
+
+    points_feed = [
+        {
+            'id': str(history.id),
+            'activityType': history.activity_type,
+            'activityDisplay': history.get_activity_type_display(),
+            'pointsAwarded': history.points_awarded,
+            'description': history.description,
+            'metadata': history.metadata,
+            'createdAt': history.created_at.isoformat(),
+        }
+        for history in points_history
+    ]
+
     return Response(
         {
-            "success": True,
-            "data": {
-                "activities": activities,
-                "statistics": {
-                    "totalLogins": login_count,
-                    "lastLogin": user.last_login.isoformat() if user.last_login else None,
-                    "lastLoginDetails": {
-                        "timestamp": last_login_log.timestamp.isoformat() if last_login_log else None,
-                        "ipAddress": last_login_log.ip_address if last_login_log else None,
+            'success': True,
+            'data': {
+                'activities': activities,
+                'statistics': {
+                    'totalLogins': login_count,
+                    'lastLogin': user.last_login.isoformat() if user.last_login else None,
+                    'lastLoginDetails': {
+                        'timestamp': last_login_log.timestamp.isoformat() if last_login_log else None,
+                        'ipAddress': last_login_log.ip_address if last_login_log else None,
                     }
                     if last_login_log
                     else None,
-                    "accountCreated": user.date_joined.isoformat(),
-                    # Placeholder for future analytics
-                    "quizScores": [],
-                    "projectCount": user.projects.count(),
+                    'accountCreated': user.date_joined.isoformat(),
+                    'quizScores': quiz_scores,
+                    'projectCount': user.projects.count(),
+                    'totalPoints': user.total_points,
+                    'level': user.level,
+                    'currentStreak': user.current_streak,
                 },
+                'pointsFeed': points_feed,
             },
         }
     )

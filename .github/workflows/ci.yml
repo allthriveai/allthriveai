@@ -88,7 +88,7 @@ jobs:
           SRV_PID=$!
           # Wait for server and hit health endpoint
           for i in {1..60}; do
-            if curl -sSf http://127.0.0.1:8000/api/db/health/ > /dev/null; then
+            if curl -sSf http://127.0.0.1:8000/api/v1/db/health/ > /dev/null; then
               echo "Healthcheck OK"; OK=1; break; fi; sleep 1; done
           kill $SRV_PID || true
           if [ "${OK:-0}" != "1" ]; then echo "Healthcheck failed"; exit 1; fi

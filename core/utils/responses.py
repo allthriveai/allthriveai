@@ -1,5 +1,6 @@
 """Standardized response helpers for consistent API responses."""
-from typing import Any, Dict, Optional
+
+from typing import Any
 
 from rest_framework import status
 from rest_framework.response import Response
@@ -19,7 +20,7 @@ def error_response(message: str, status_code: int = status.HTTP_400_BAD_REQUEST,
     Example:
         return error_response('Invalid input', field='email')
     """
-    data: Dict[str, Any] = {"error": message}
+    data: dict[str, Any] = {'error': message}
     data.update(extra)
     return Response(data, status=status_code)
 
@@ -39,12 +40,12 @@ def validation_error(field: str, message: str, **extra: Any) -> Response:
         return validation_error('email', 'Invalid email format')
     """
     return error_response(
-        message=f"Validation error: {message}", field=field, status_code=status.HTTP_400_BAD_REQUEST, **extra
+        message=f'Validation error: {message}', field=field, status_code=status.HTTP_400_BAD_REQUEST, **extra
     )
 
 
 def success_response(
-    message: Optional[str] = None, data: Optional[Dict[str, Any]] = None, status_code: int = status.HTTP_200_OK
+    message: str | None = None, data: dict[str, Any] | None = None, status_code: int = status.HTTP_200_OK
 ) -> Response:
     """Create a standardized success response.
 
@@ -61,11 +62,11 @@ def success_response(
     """
     response_data = data or {}
     if message:
-        response_data["message"] = message
+        response_data['message'] = message
     return Response(response_data, status=status_code)
 
 
-def created_response(data: Dict[str, Any], message: str = "Created successfully") -> Response:
+def created_response(data: dict[str, Any], message: str = 'Created successfully') -> Response:
     """Create a standardized 201 Created response.
 
     Args:
@@ -87,7 +88,7 @@ def no_content_response() -> Response:
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-def not_found_error(resource: str, identifier: Optional[str] = None) -> Response:
+def not_found_error(resource: str, identifier: str | None = None) -> Response:
     """Create a standardized 404 Not Found response.
 
     Args:
@@ -100,13 +101,13 @@ def not_found_error(resource: str, identifier: Optional[str] = None) -> Response
     Example:
         return not_found_error('Project', '123')
     """
-    message = f"{resource} not found"
+    message = f'{resource} not found'
     if identifier:
         message = f"{resource} '{identifier}' not found"
     return error_response(message, status_code=status.HTTP_404_NOT_FOUND, resource=resource)
 
 
-def permission_denied_error(message: str = "Permission denied") -> Response:
+def permission_denied_error(message: str = 'Permission denied') -> Response:
     """Create a standardized 403 Forbidden response.
 
     Args:
@@ -118,7 +119,7 @@ def permission_denied_error(message: str = "Permission denied") -> Response:
     return error_response(message, status_code=status.HTTP_403_FORBIDDEN)
 
 
-def unauthorized_error(message: str = "Authentication required") -> Response:
+def unauthorized_error(message: str = 'Authentication required') -> Response:
     """Create a standardized 401 Unauthorized response.
 
     Args:

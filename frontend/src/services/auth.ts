@@ -12,6 +12,28 @@ export interface UserActivity {
   details: Record<string, any>;
 }
 
+export interface QuizScore {
+  id: string;
+  quizTitle: string;
+  quizSlug: string;
+  score: number;
+  totalQuestions: number;
+  percentageScore: number;
+  completedAt: string | null;
+  topic: string;
+  difficulty: string;
+}
+
+export interface PointsHistory {
+  id: string;
+  activityType: string;
+  activityDisplay: string;
+  pointsAwarded: number;
+  description: string;
+  metadata: Record<string, any>;
+  createdAt: string;
+}
+
 export interface UserStatistics {
   totalLogins: number;
   lastLogin: string | null;
@@ -20,13 +42,17 @@ export interface UserStatistics {
     ipAddress: string | null;
   } | null;
   accountCreated: string;
-  quizScores: any[];
+  quizScores: QuizScore[];
   projectCount: number;
+  totalPoints: number;
+  level: number;
+  currentStreak: number;
 }
 
 export interface ActivityData {
   activities: UserActivity[];
   statistics: UserStatistics;
+  pointsFeed: PointsHistory[];
 }
 
 // Login user

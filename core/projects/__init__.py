@@ -3,17 +3,18 @@
 This domain handles all project-related functionality including creating,
 editing, and displaying user projects in their profiles.
 """
+
 from .models import Project, ProjectQuerySet
 from .serializers import ProjectSerializer
 from .views import ProjectViewSet, public_user_projects
 
 __all__ = [
     # Models
-    "Project",
-    "ProjectQuerySet",
+    'Project',
+    'ProjectQuerySet',
     # Views
-    "ProjectViewSet",
-    "public_user_projects",
+    'ProjectViewSet',
+    'public_user_projects',
     # Serializers
-    "ProjectSerializer",
+    'ProjectSerializer',
 ]

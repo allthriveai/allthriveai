@@ -123,9 +123,7 @@ export class CreateProjectAgent extends BaseAgent {
     console.log('Session ID:', this.sessionId);
 
     try {
-      console.log('Calling v2 API');
-
-      const response = await fetch(`${apiUrl}/project/chat/v2/stream/`, {
+      const response = await fetch(`${apiUrl}/project/chat/stream/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

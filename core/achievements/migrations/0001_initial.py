@@ -14,179 +14,179 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name="Achievement",
+            name='Achievement',
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 (
-                    "key",
+                    'key',
                     models.CharField(
                         help_text="Unique key for this achievement (e.g., 'first_project')", max_length=100, unique=True
                     ),
                 ),
-                ("name", models.CharField(help_text="Display name of the achievement", max_length=200)),
-                ("description", models.TextField(help_text="Description of what this achievement represents")),
+                ('name', models.CharField(help_text='Display name of the achievement', max_length=200)),
+                ('description', models.TextField(help_text='Description of what this achievement represents')),
                 (
-                    "icon",
+                    'icon',
                     models.CharField(
-                        default="faTrophy", help_text="FontAwesome icon name (e.g., 'faRocket')", max_length=50
+                        default='faTrophy', help_text="FontAwesome icon name (e.g., 'faRocket')", max_length=50
                     ),
                 ),
                 (
-                    "color_from",
+                    'color_from',
                     models.CharField(
-                        default="blue-500", help_text="Gradient start color (e.g., 'blue-500')", max_length=20
+                        default='blue-500', help_text="Gradient start color (e.g., 'blue-500')", max_length=20
                     ),
                 ),
                 (
-                    "color_to",
+                    'color_to',
                     models.CharField(
-                        default="blue-600", help_text="Gradient end color (e.g., 'blue-600')", max_length=20
+                        default='blue-600', help_text="Gradient end color (e.g., 'blue-600')", max_length=20
                     ),
                 ),
                 (
-                    "category",
+                    'category',
                     models.CharField(
                         choices=[
-                            ("projects", "Projects"),
-                            ("battles", "Battles"),
-                            ("community", "Community"),
-                            ("engagement", "Engagement"),
-                            ("streaks", "Streaks"),
+                            ('projects', 'Projects'),
+                            ('battles', 'Battles'),
+                            ('community', 'Community'),
+                            ('engagement', 'Engagement'),
+                            ('streaks', 'Streaks'),
                         ],
-                        help_text="Category this achievement belongs to",
+                        help_text='Category this achievement belongs to',
                         max_length=20,
                     ),
                 ),
-                ("points", models.IntegerField(default=10, help_text="Points awarded for earning this achievement")),
+                ('points', models.IntegerField(default=10, help_text='Points awarded for earning this achievement')),
                 (
-                    "criteria_type",
+                    'criteria_type',
                     models.CharField(
                         choices=[
-                            ("count", "Count"),
-                            ("threshold", "Threshold"),
-                            ("streak", "Streak"),
-                            ("first_time", "First Time"),
-                            ("cumulative", "Cumulative"),
+                            ('count', 'Count'),
+                            ('threshold', 'Threshold'),
+                            ('streak', 'Streak'),
+                            ('first_time', 'First Time'),
+                            ('cumulative', 'Cumulative'),
                         ],
-                        help_text="Type of criteria for unlocking",
+                        help_text='Type of criteria for unlocking',
                         max_length=20,
                     ),
                 ),
-                ("criteria_value", models.IntegerField(help_text="Target value to reach (e.g., 10 for '10 projects')")),
+                ('criteria_value', models.IntegerField(help_text="Target value to reach (e.g., 10 for '10 projects')")),
                 (
-                    "tracking_field",
+                    'tracking_field',
                     models.CharField(
                         help_text="Field name to track for progress (e.g., 'project_count')", max_length=100
                     ),
                 ),
                 (
-                    "is_secret",
+                    'is_secret',
                     models.BooleanField(
-                        default=False, help_text="Hide this achievement until earned (secret achievement)"
+                        default=False, help_text='Hide this achievement until earned (secret achievement)'
                     ),
                 ),
                 (
-                    "rarity",
+                    'rarity',
                     models.CharField(
-                        choices=[("common", "Common"), ("rare", "Rare"), ("epic", "Epic"), ("legendary", "Legendary")],
-                        default="common",
-                        help_text="Rarity level of this achievement",
+                        choices=[('common', 'Common'), ('rare', 'Rare'), ('epic', 'Epic'), ('legendary', 'Legendary')],
+                        default='common',
+                        help_text='Rarity level of this achievement',
                         max_length=20,
                     ),
                 ),
                 (
-                    "order",
-                    models.IntegerField(default=0, help_text="Display order within category (lower numbers first)"),
+                    'order',
+                    models.IntegerField(default=0, help_text='Display order within category (lower numbers first)'),
                 ),
                 (
-                    "is_active",
-                    models.BooleanField(default=True, help_text="Whether this achievement is currently active"),
+                    'is_active',
+                    models.BooleanField(default=True, help_text='Whether this achievement is currently active'),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
                 (
-                    "requires_achievements",
+                    'requires_achievements',
                     models.ManyToManyField(
                         blank=True,
-                        help_text="Achievements required before this one",
-                        related_name="unlocks",
-                        to="achievements.achievement",
+                        help_text='Achievements required before this one',
+                        related_name='unlocks',
+                        to='achievements.achievement',
                     ),
                 ),
             ],
             options={
-                "verbose_name": "Achievement",
-                "verbose_name_plural": "Achievements",
-                "ordering": ["category", "order", "criteria_value"],
+                'verbose_name': 'Achievement',
+                'verbose_name_plural': 'Achievements',
+                'ordering': ['category', 'order', 'criteria_value'],
             },
         ),
         migrations.CreateModel(
-            name="AchievementProgress",
+            name='AchievementProgress',
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("current_value", models.IntegerField(default=0, help_text="Current progress value")),
-                ("last_updated", models.DateTimeField(auto_now=True, help_text="Last time progress was updated")),
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('current_value', models.IntegerField(default=0, help_text='Current progress value')),
+                ('last_updated', models.DateTimeField(auto_now=True, help_text='Last time progress was updated')),
                 (
-                    "achievement",
+                    'achievement',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="user_progress",
-                        to="achievements.achievement",
+                        related_name='user_progress',
+                        to='achievements.achievement',
                     ),
                 ),
                 (
-                    "user",
+                    'user',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="achievement_progress",
+                        related_name='achievement_progress',
                         to=settings.AUTH_USER_MODEL,
                     ),
                 ),
             ],
             options={
-                "verbose_name": "Achievement Progress",
-                "verbose_name_plural": "Achievement Progress",
-                "indexes": [models.Index(fields=["user", "last_updated"], name="achievement_user_id_44304b_idx")],
-                "unique_together": {("user", "achievement")},
+                'verbose_name': 'Achievement Progress',
+                'verbose_name_plural': 'Achievement Progress',
+                'indexes': [models.Index(fields=['user', 'last_updated'], name='achievement_user_id_44304b_idx')],
+                'unique_together': {('user', 'achievement')},
             },
         ),
         migrations.CreateModel(
-            name="UserAchievement",
+            name='UserAchievement',
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("earned_at", models.DateTimeField(auto_now_add=True, help_text="When the achievement was earned")),
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('earned_at', models.DateTimeField(auto_now_add=True, help_text='When the achievement was earned')),
                 (
-                    "progress_at_unlock",
+                    'progress_at_unlock',
                     models.IntegerField(
-                        blank=True, help_text="The progress value when this achievement was unlocked", null=True
+                        blank=True, help_text='The progress value when this achievement was unlocked', null=True
                     ),
                 ),
                 (
-                    "achievement",
+                    'achievement',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="earned_by",
-                        to="achievements.achievement",
+                        related_name='earned_by',
+                        to='achievements.achievement',
                     ),
                 ),
                 (
-                    "user",
+                    'user',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="earned_achievements",
+                        related_name='earned_achievements',
                         to=settings.AUTH_USER_MODEL,
                     ),
                 ),
             ],
             options={
-                "verbose_name": "User Achievement",
-                "verbose_name_plural": "User Achievements",
-                "ordering": ["-earned_at"],
-                "indexes": [
-                    models.Index(fields=["user", "earned_at"], name="achievement_user_id_f54b28_idx"),
-                    models.Index(fields=["achievement", "earned_at"], name="achievement_achieve_06fdd4_idx"),
+                'verbose_name': 'User Achievement',
+                'verbose_name_plural': 'User Achievements',
+                'ordering': ['-earned_at'],
+                'indexes': [
+                    models.Index(fields=['user', 'earned_at'], name='achievement_user_id_f54b28_idx'),
+                    models.Index(fields=['achievement', 'earned_at'], name='achievement_achieve_06fdd4_idx'),
                 ],
-                "unique_together": {("user", "achievement")},
+                'unique_together': {('user', 'achievement')},
             },
         ),
     ]
