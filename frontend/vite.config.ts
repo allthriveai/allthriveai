@@ -11,11 +11,7 @@ export default defineConfig({
     },
   },
   server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
-    },
+    // No proxy needed - frontend makes requests directly to backend from browser
+    // Both services expose ports to host, so browser can access both
   },
 })

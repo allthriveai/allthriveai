@@ -4,6 +4,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { listProjects, updateProject } from '@/services/projects';
 import { uploadImage } from '@/services/upload';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import { ToolSelector } from '@/components/projects/ToolSelector';
 import type { Project, ProjectBlock } from '@/types/models';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -17,6 +18,9 @@ import {
   Bars3Icon,
   TrashIcon,
   PhotoIcon,
+  XMarkIcon,
+  Cog6ToothIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import {
   FaColumns,
@@ -27,7 +31,11 @@ import {
   FaMousePointer,
   FaMinus,
   FaExpand,
-  FaCompress
+  FaCompress,
+  FaStar,
+  FaLock,
+  FaEye,
+  FaCamera,
 } from 'react-icons/fa';
 
 export default function ProjectEditorPage() {
@@ -43,8 +51,21 @@ export default function ProjectEditorPage() {
 
   // Editor state - stored directly as we edit
   const [blocks, setBlocks] = useState<any[]>([]);
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [showBannerEdit, setShowBannerEdit] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [showAddMenu, setShowAddMenu] = useState<string | null>(null); // Block ID to show menu after
+  const [activeTab, setActiveTab] = useState<'tldr' | 'details'>('tldr'); // Tab state
+
+  // Metadata fields - separate from page builder blocks
+  const [projectTitle, setProjectTitle] = useState('');
+  const [featuredImageUrl, setFeaturedImageUrl] = useState('');
+  const [projectUrl, setProjectUrl] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
+  const [projectTools, setProjectTools] = useState<number[]>([]);
+  const [isUploadingFeatured, setIsUploadingFeatured] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -74,6 +95,12 @@ export default function ProjectEditorPage() {
         }
 
         setProject(foundProject);
+        setThumbnailUrl(foundProject.thumbnailUrl || '');
+        setProjectTitle(foundProject.title || '');
+        setFeaturedImageUrl(foundProject.featuredImageUrl || '');
+        setProjectUrl(foundProject.externalUrl || '');
+        setProjectDescription(foundProject.description || '');
+        setProjectTools(foundProject.tools || []);
 
         // Initialize blocks
         const blocksWithIds = (foundProject.content.blocks || []).map((block: any) => ({
@@ -114,24 +141,25 @@ export default function ProjectEditorPage() {
     return () => clearTimeout(timer);
   }, [blocks, hasUnsavedChanges, project]);
 
-  // Mark as having unsaved changes when blocks change
+  // Mark as having unsaved changes when blocks, thumbnail, or metadata change
   useEffect(() => {
     if (project && blocks.length > 0) {
       setHasUnsavedChanges(true);
     }
-  }, [blocks]);
+  }, [blocks, thumbnailUrl, projectTitle, featuredImageUrl, projectUrl, projectDescription, projectTools]);
 
   const handleSave = async () => {
     if (!project) return;
 
     setIsSaving(true);
     try {
-      // Extract title from first heading block
-      const titleBlock = blocks.find(b => b.type === 'text' && b.style === 'heading');
-      const title = titleBlock?.content || 'Untitled Project';
-
       const updatedProject = await updateProject(project.id, {
-        title,
+        title: projectTitle || 'Untitled Project',
+        description: projectDescription,
+        thumbnailUrl,
+        featuredImageUrl,
+        externalUrl: projectUrl,
+        tools: projectTools,
         content: {
           blocks: blocks.map(({ id, ...block }) => block), // Remove IDs before saving
         },
@@ -242,6 +270,33 @@ export default function ProjectEditorPage() {
     setTimeout(() => setFocusedBlockId(newBlock.id), 100);
   };
 
+  const handleBannerUpload = async (file: File) => {
+    setIsUploadingBanner(true);
+    try {
+      const data = await uploadImage(file, 'projects', true);
+      setThumbnailUrl(data.url);
+      setShowBannerEdit(false);
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      alert(error.message || 'Failed to upload banner image');
+    } finally {
+      setIsUploadingBanner(false);
+    }
+  };
+
+  const handleFeaturedImageUpload = async (file: File) => {
+    setIsUploadingFeatured(true);
+    try {
+      const data = await uploadImage(file, 'projects', true);
+      setFeaturedImageUrl(data.url);
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      alert(error.message || 'Failed to upload featured image');
+    } finally {
+      setIsUploadingFeatured(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -289,7 +344,7 @@ export default function ProjectEditorPage() {
           </Link>
           <div>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {blocks.find(b => b.type === 'text' && b.style === 'heading')?.content || 'Untitled Project'}
+              {projectTitle || 'Untitled Project'}
             </h1>
             {isSaving ? (
               <p className="text-xs text-gray-500">Saving...</p>
@@ -305,93 +360,646 @@ export default function ProjectEditorPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Showcase Toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={project.isShowcase}
-              onChange={handleToggleShowcase}
-              disabled={isSaving}
-              className="w-4 h-4 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">Feature on Showcase</span>
-          </label>
-
           <button
             onClick={() => window.open(`/${project.username}/${project.slug}`, '_blank')}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            className="hidden sm:flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
           >
             <EyeIcon className="w-5 h-5" />
-            Preview
+            <span className="hidden md:inline">Preview</span>
           </button>
           {!project.isPublished && (
             <button
               onClick={handlePublish}
               disabled={isSaving}
-              className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg disabled:opacity-50"
+              className="hidden sm:inline-flex px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg disabled:opacity-50"
             >
               Publish
             </button>
           )}
+          <button
+            onClick={() => setShowSettingsSidebar(true)}
+            className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            title="Project settings"
+          >
+            <Bars3Icon className="w-6 h-6" />
+          </button>
         </div>
       </div>
 
+      {/* Settings Sidebar */}
+      {showSettingsSidebar && (
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setShowSettingsSidebar(false)}
+          />
+
+          {/* Sidebar */}
+          <div className="fixed top-0 right-0 h-full w-96 bg-white dark:bg-gray-800 shadow-2xl z-50 overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Project Settings</h2>
+              <button
+                onClick={() => setShowSettingsSidebar(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Tools Info Section */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Tools & Technologies</h3>
+                <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {projectTools.length > 0 ? (
+                      <span>✓ {projectTools.length} tool{projectTools.length !== 1 ? 's' : ''} selected</span>
+                    ) : (
+                      'No tools selected yet'
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Edit tools in the metadata section above
+                  </p>
+                </div>
+              </div>
+
+              {/* Visibility Options */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Visibility</h3>
+                <div className="space-y-2">
+                  {/* Top Highlighted */}
+                  <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <FaStar className="w-5 h-5 text-yellow-500" />
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">Top Highlighted</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Featured at the very top of your profile</p>
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={project.isHighlighted || false}
+                      onChange={async () => {
+                        try {
+                          const updated = await updateProject(project.id, {
+                            isHighlighted: !project.isHighlighted,
+                          });
+                          setProject(updated);
+                        } catch (error) {
+                          console.error('Failed to update:', error);
+                        }
+                      }}
+                      disabled={isSaving}
+                      className="w-5 h-5 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 disabled:opacity-50"
+                    />
+                  </label>
+
+                  {/* Showcase */}
+                  <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <FaEye className="w-5 h-5 text-primary-500" />
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">Showcase Profile</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Display in showcase section</p>
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={project.isShowcase}
+                      onChange={handleToggleShowcase}
+                      disabled={isSaving}
+                      className="w-5 h-5 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 disabled:opacity-50"
+                    />
+                  </label>
+
+                  {/* Private */}
+                  <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <FaLock className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">Private Project</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Hide from public, only visible to you</p>
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={project.isPrivate || false}
+                      onChange={async () => {
+                        try {
+                          const updated = await updateProject(project.id, {
+                            isPrivate: !project.isPrivate,
+                          });
+                          setProject(updated);
+                        } catch (error) {
+                          console.error('Failed to update:', error);
+                        }
+                      }}
+                      disabled={isSaving}
+                      className="w-5 h-5 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 disabled:opacity-50"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Preview & Publish */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Actions</h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      window.open(`/${project.username}/${project.slug}`, '_blank');
+                      setShowSettingsSidebar(false);
+                    }}
+                    className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <EyeIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                      <div className="text-left">
+                        <p className="font-medium text-gray-900 dark:text-white">Preview</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">See how it looks</p>
+                      </div>
+                    </div>
+                  </button>
+
+                  {!project.isPublished && (
+                    <button
+                      onClick={() => {
+                        handlePublish();
+                        setShowSettingsSidebar(false);
+                      }}
+                      disabled={isSaving}
+                      className="w-full flex items-center justify-between p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors disabled:opacity-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <CheckCircleIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                        <div className="text-left">
+                          <p className="font-medium text-primary-900 dark:text-primary-100">Publish Project</p>
+                          <p className="text-sm text-primary-700 dark:text-primary-300">Make it publicly visible</p>
+                        </div>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Redirects Section */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Redirects</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Add custom redirects or external links</p>
+                <div className="p-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-center">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Redirects coming soon</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Editor Canvas */}
       <div className="flex-1 overflow-y-auto">
-        <div className="py-12 px-8">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={(event) => {
-              const { active, over } = event;
-              if (!over || active.id === over.id) return;
-
-              const oldIndex = blocks.findIndex(b => b.id === active.id);
-              const newIndex = blocks.findIndex(b => b.id === over.id);
-              setBlocks(arrayMove(blocks, oldIndex, newIndex));
-            }}
-          >
-            <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-              {blocks.map((block, index) => (
-                <div key={block.id}>
-                  <BlockEditor
-                    block={block}
-                    isFocused={focusedBlockId === block.id}
-                    onFocus={() => setFocusedBlockId(block.id)}
-                    onBlur={() => setFocusedBlockId(null)}
-                    onChange={(updated) => {
-                      setBlocks(blocks.map(b => b.id === block.id ? { ...block, ...updated } : b));
-                    }}
-                    onDelete={() => {
-                      if (blocks.length === 1) {
-                        alert('Cannot delete the last block');
-                        return;
-                      }
-                      setBlocks(blocks.filter(b => b.id !== block.id));
+        {/* Banner Image Section - Full Width */}
+        <div className="mb-12">
+          <div className="relative">
+            {thumbnailUrl ? (
+                <div className="group relative w-full h-80 overflow-hidden cursor-pointer" onClick={() => setShowBannerEdit(!showBannerEdit)}>
+                  <img
+                    src={thumbnailUrl}
+                    alt="Project banner"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
                     }}
                   />
-
-                  {/* Add Block Menu */}
-                  <AddBlockMenu
-                    show={showAddMenu === block.id}
-                    onAdd={(type) => addBlock(block.id, type)}
-                    onToggle={() => setShowAddMenu(showAddMenu === block.id ? null : block.id)}
-                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="text-center">
+                      <FaCamera className="w-12 h-12 text-white mx-auto mb-3" />
+                      <p className="text-white font-medium text-lg">Change Banner</p>
+                      <p className="text-white/80 text-sm mt-1">Click to upload or change image</p>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </SortableContext>
-          </DndContext>
+              ) : (
+                <div className="w-full h-80 border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer"
+                     onClick={() => setShowBannerEdit(true)}>
+                  <div className="text-center">
+                    <PhotoIcon className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
+                    <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">Add a banner image</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-500">This appears on your project card</p>
+                  </div>
+                </div>
+              )}
 
-          {/* Add block at end */}
-          {blocks.length === 0 && (
-            <button
-              onClick={() => addBlock(null, 'text')}
-              className="w-full py-12 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-500 hover:border-primary-500 hover:text-primary-500 transition-colors"
-            >
-              Click to add your first block
-            </button>
-          )}
+              {/* Banner Edit Modal */}
+              {showBannerEdit && (
+                <div className="mt-4 mx-8 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg">
+                  <div className="space-y-4">
+                    {/* Gradient Options Section */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                        Choose a Gradient
+                      </label>
+                      <div className="grid grid-cols-5 gap-3">
+                        {[
+                          'https://images.unsplash.com/photo-1557683316-973673baf926?w=1600&h=400&fit=crop',
+                          'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1600&h=400&fit=crop',
+                          'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1600&h=400&fit=crop',
+                          'https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=1600&h=400&fit=crop',
+                          'https://images.unsplash.com/photo-1557682268-e3955ed5d83f?w=1600&h=400&fit=crop'
+                        ].map((gradientUrl, index) => (
+                          <button
+                            key={index}
+                            onClick={() => {
+                              setThumbnailUrl(gradientUrl);
+                            }}
+                            className={`relative h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                              thumbnailUrl === gradientUrl
+                                ? 'border-primary-500 ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-800'
+                                : 'border-gray-300 dark:border-gray-700 hover:border-primary-400'
+                            }`}
+                          >
+                            <img
+                              src={gradientUrl}
+                              alt={`Gradient ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            {thumbnailUrl === gradientUrl && (
+                              <div className="absolute inset-0 bg-primary-500/20 flex items-center justify-center">
+                                <CheckCircleIcon className="w-8 h-8 text-white drop-shadow-lg" />
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">OR</span>
+                      <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                    </div>
+
+                    {/* Upload Section */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Upload Banner Image
+                      </label>
+                      <div className="flex gap-2">
+                        <label className="flex-1 cursor-pointer">
+                          <div className="px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-center">
+                            {isUploadingBanner ? (
+                              <span className="text-gray-600 dark:text-gray-400">Uploading...</span>
+                            ) : (
+                              <span className="text-gray-600 dark:text-gray-400">Click to upload or drag & drop</span>
+                            )}
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleBannerUpload(file);
+                            }}
+                            className="hidden"
+                            disabled={isUploadingBanner}
+                          />
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Recommended size: 1600x400px (4:1 ratio). Max 5MB.
+                      </p>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">OR</span>
+                      <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                    </div>
+
+                    {/* URL Section */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Banner Image URL
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          value={thumbnailUrl}
+                          onChange={(e) => setThumbnailUrl(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') setShowBannerEdit(false);
+                          }}
+                          className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          placeholder="https://example.com/banner.jpg"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setThumbnailUrl('');
+                          setShowBannerEdit(false);
+                        }}
+                        className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      >
+                        Remove
+                      </button>
+                      <button
+                        onClick={() => setShowBannerEdit(false)}
+                        className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+          </div>
         </div>
+
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="max-w-5xl mx-auto px-8">
+            <nav className="flex gap-8" aria-label="Tabs">
+              <button
+                onClick={() => setActiveTab('tldr')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'tldr'
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                TL;DR
+              </button>
+              <button
+                onClick={() => setActiveTab('details')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'details'
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                Project Details
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* TL;DR Tab Content */}
+        {activeTab === 'tldr' && (
+          <div className="max-w-5xl mx-auto px-8 py-8">
+            <div className="space-y-6">
+            {/* Page Title */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                Page Title
+              </label>
+              <input
+                type="text"
+                value={projectTitle}
+                onChange={(e) => setProjectTitle(e.target.value)}
+                placeholder="Enter your project title"
+                disabled={isSaving}
+                className="w-full px-4 py-3 text-lg border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+              />
+            </div>
+
+            {/* Featured Image */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                Featured Image
+              </label>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Upload or provide a URL for your project's featured image
+              </p>
+
+              {/* Image Preview or Upload Area */}
+              {featuredImageUrl ? (
+                <div className="relative group">
+                  <img
+                    src={featuredImageUrl}
+                    alt="Featured"
+                    className="w-full h-48 object-cover rounded-lg border-2 border-gray-300 dark:border-gray-700"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-3">
+                    <label className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFeaturedImageUpload(file);
+                        }}
+                        className="hidden"
+                        disabled={isUploadingFeatured}
+                      />
+                      {isUploadingFeatured ? 'Uploading...' : 'Change'}
+                    </label>
+                    <button
+                      onClick={() => setFeaturedImageUrl('')}
+                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label
+                  className="block w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/10');
+                  }}
+                  onDragLeave={(e) => {
+                    e.currentTarget.classList.remove('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/10');
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/10');
+                    const file = e.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                      handleFeaturedImageUpload(file);
+                    }
+                  }}
+                >
+                  <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                    <PhotoIcon className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-3" />
+                    <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
+                      {isUploadingFeatured ? 'Uploading...' : 'Drop an image here or click to upload'}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Recommended: 1200x630px (1.91:1 ratio)
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFeaturedImageUpload(file);
+                    }}
+                    className="hidden"
+                    disabled={isUploadingFeatured}
+                  />
+                </label>
+              )}
+
+              {/* Or provide URL */}
+              <div className="mt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                  <span className="text-xs text-gray-500 dark:text-gray-400">OR</span>
+                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                </div>
+                <input
+                  type="url"
+                  value={featuredImageUrl}
+                  onChange={(e) => setFeaturedImageUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  disabled={isSaving}
+                  className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+                />
+              </div>
+            </div>
+
+            {/* Project URL */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                Project URL
+              </label>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Link to live demo, GitHub repo, or external project page
+              </p>
+              <input
+                type="url"
+                value={projectUrl}
+                onChange={(e) => setProjectUrl(e.target.value)}
+                placeholder="https://example.com/my-project"
+                disabled={isSaving}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+              />
+            </div>
+
+            {/* Tools Used */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                Tools Used
+              </label>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Select the technologies and tools used in this project
+              </p>
+              <ToolSelector
+                selectedToolIds={projectTools}
+                onChange={setProjectTools}
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* Why it's cool - Description */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                Why It's Cool
+              </label>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Share what makes this project interesting (max 200 characters)
+              </p>
+              <textarea
+                value={projectDescription}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value.length <= 200) {
+                    setProjectDescription(value);
+                  }
+                }}
+                placeholder="What makes this project special? What did you learn or accomplish?"
+                disabled={isSaving}
+                maxLength={200}
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 resize-none"
+              />
+              <div className="flex justify-end mt-1">
+                <span className={`text-xs ${
+                  projectDescription.length >= 200
+                    ? 'text-red-500 dark:text-red-400 font-medium'
+                    : 'text-gray-500 dark:text-gray-400'
+                }`}>
+                  {projectDescription.length}/200
+                </span>
+              </div>
+            </div>
+          </div>
+          </div>
+        )}
+
+        {/* Project Details Tab Content */}
+        {activeTab === 'details' && (
+          <div className="py-8 px-8">
+            <div className="max-w-5xl mx-auto">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event) => {
+                const { active, over } = event;
+                if (!over || active.id === over.id) return;
+
+                const oldIndex = blocks.findIndex(b => b.id === active.id);
+                const newIndex = blocks.findIndex(b => b.id === over.id);
+                setBlocks(arrayMove(blocks, oldIndex, newIndex));
+              }}
+            >
+              <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                {blocks.map((block, index) => (
+                  <div key={block.id}>
+                    <BlockEditor
+                      block={block}
+                      isFocused={focusedBlockId === block.id}
+                      onFocus={() => setFocusedBlockId(block.id)}
+                      onBlur={() => setFocusedBlockId(null)}
+                      onChange={(updated) => {
+                        setBlocks(blocks.map(b => b.id === block.id ? { ...block, ...updated } : b));
+                      }}
+                      onDelete={() => {
+                        if (blocks.length === 1) {
+                          alert('Cannot delete the last block');
+                          return;
+                        }
+                        setBlocks(blocks.filter(b => b.id !== block.id));
+                      }}
+                    />
+
+                    {/* Add Block Menu */}
+                    <AddBlockMenu
+                      show={showAddMenu === block.id}
+                      onAdd={(type) => addBlock(block.id, type)}
+                      onToggle={() => setShowAddMenu(showAddMenu === block.id ? null : block.id)}
+                    />
+                  </div>
+                ))}
+              </SortableContext>
+            </DndContext>
+
+            {/* Add block at end */}
+            {blocks.length === 0 && (
+              <button
+                onClick={() => addBlock(null, 'text')}
+                className="w-full py-12 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-500 hover:border-primary-500 hover:text-primary-500 transition-colors"
+              >
+                Click to add your first block
+              </button>
+            )}
+          </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -531,12 +1139,12 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
       onFocus={onFocus}
       onBlur={onBlur}
     >
-      {/* Hover Toolbar */}
-      <div className="absolute -left-12 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
-        <button {...attributes} {...listeners} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded cursor-grab active:cursor-grabbing">
-          <Bars3Icon className="w-4 h-4 text-gray-400" />
+      {/* Hover Toolbar - Top Right Corner */}
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
+        <button {...attributes} {...listeners} className="p-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded shadow-md cursor-grab active:cursor-grabbing border border-gray-200 dark:border-gray-700" title="Drag to reorder">
+          <Bars3Icon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
         </button>
-        <button onClick={onDelete} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 rounded">
+        <button onClick={onDelete} className="p-2 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 rounded shadow-md border border-gray-200 dark:border-gray-700" title="Delete block">
           <TrashIcon className="w-4 h-4" />
         </button>
       </div>
@@ -546,7 +1154,7 @@ function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: 
         {block.type === 'columns' ? (
           <div>
             {/* Column controls */}
-            <div className="flex gap-2 mb-4 justify-between">
+            <div className="flex gap-2 mb-4 justify-between pr-20">
               {/* Container width toggle */}
               <button
                 onClick={toggleContainerWidth}

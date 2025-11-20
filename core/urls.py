@@ -30,6 +30,7 @@ from .integrations.github.views import (
     github_sync_status,
     github_sync_trigger,
 )
+from .projects.comment_views import ProjectCommentViewSet
 from .projects.views import ProjectViewSet, public_user_projects
 from .quizzes.views import QuizAttemptViewSet, QuizViewSet
 from .referrals.views import ReferralCodeViewSet, ReferralViewSet, validate_referral_code
@@ -79,6 +80,22 @@ urlpatterns = [
     # Public user endpoints
     path('users/<str:username>/', username_profile_view, name='public_user_profile'),
     path('users/<str:username>/projects/', public_user_projects, name='public_user_projects'),
+    # Project comment endpoints
+    path(
+        'projects/<int:project_pk>/comments/',
+        ProjectCommentViewSet.as_view({'get': 'list', 'post': 'create'}),
+        name='project_comments',
+    ),
+    path(
+        'projects/<int:project_pk>/comments/<int:pk>/',
+        ProjectCommentViewSet.as_view({'get': 'retrieve', 'delete': 'destroy'}),
+        name='project_comment_detail',
+    ),
+    path(
+        'projects/<int:project_pk>/comments/<int:pk>/vote/',
+        ProjectCommentViewSet.as_view({'post': 'vote'}),
+        name='project_comment_vote',
+    ),
     # Quiz endpoints (public/general)
     path('', include(main_router.urls)),
     # Authentication endpoints

@@ -208,6 +208,10 @@ class BattleService:
             battle=battle, sender=challenger, recipient=opponent, message=message, status=InvitationStatus.PENDING
         )
 
+        # Auto-accept invitations for bot users
+        if opponent.is_bot:
+            invitation.accept()
+
         return invitation
 
     def accept_invitation(self, invitation_id: int, user: User) -> PromptBattle:

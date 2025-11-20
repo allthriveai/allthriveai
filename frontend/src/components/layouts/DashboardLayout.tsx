@@ -10,7 +10,7 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
@@ -65,7 +65,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-brand-dark overflow-hidden">
+    <div className="flex h-screen bg-gray-50 dark:bg-brand-dark">
       {/* Mobile toggle button - shows when sidebar is closed on mobile */}
       {!sidebarOpen && (
         <button
@@ -85,7 +85,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       />
 
       {/* Main Content Area */}
-      <div className={`flex-1 overflow-hidden transition-all duration-300 ${
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${
         sidebarOpen ? 'ml-64' : 'ml-20 max-md:ml-0'
       }`}>
         {typeof children === 'function' ? children({ openChat: handleMenuClick }) : children}

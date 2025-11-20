@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
 
+from core.tools.models import Tool
+
 
 class ProjectQuerySet(models.QuerySet):
     """Custom QuerySet for Project with security and performance methods."""
@@ -47,12 +49,28 @@ class Project(models.Model):
         choices=ProjectType.choices,
         default=ProjectType.OTHER,
     )
-    is_showcase = models.BooleanField(default=False)
+    is_showcase = models.BooleanField(default=False, help_text='Display in showcase section')
+    is_highlighted = models.BooleanField(
+        default=False, db_index=True, help_text='Featured at top of profile (only one per user)'
+    )
+    is_private = models.BooleanField(default=False, help_text='Hidden from public, only visible to owner')
     is_archived = models.BooleanField(default=False)
     is_published = models.BooleanField(default=False, help_text='Whether project is publicly visible')
     published_at = models.DateTimeField(null=True, blank=True, help_text='When project was first published')
     # CharField supports both full URLs and relative paths (e.g., /path/to/image)
-    thumbnail_url = models.CharField(max_length=500, blank=True, default='')
+    thumbnail_url = models.CharField(max_length=500, blank=True, default='', help_text='Banner image URL')
+    # Featured image for cards and social sharing
+    featured_image_url = models.CharField(
+        max_length=500, blank=True, default='', help_text='Featured image for project cards'
+    )
+    # External project URL (e.g., live demo, GitHub repo)
+    external_url = models.URLField(
+        max_length=500, blank=True, default='', help_text='External URL for this project (e.g., live demo, GitHub repo)'
+    )
+    # Tools used in this project
+    tools = models.ManyToManyField(
+        Tool, blank=True, related_name='projects', help_text='Tools/technologies used in this project'
+    )
     # Structured layout blocks for the project page (cover, tags, text/image blocks)
     content = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -75,6 +93,11 @@ class Project(models.Model):
 
     def __str__(self):
         return f'{self.title} ({self.user.username}/{self.slug})'
+
+    @property
+    def heart_count(self):
+        """Get the number of hearts/likes for this project."""
+        return self.likes.count()
 
     def ensure_unique_slug(self):
         """Ensure `slug` is set and unique for this user.
@@ -100,4 +123,116 @@ class Project(models.Model):
         # migration contexts).
         if self.user_id:
             self.ensure_unique_slug()
+
+            # Ensure only one highlighted project per user
+            if self.is_highlighted:
+                # Un-highlight any other projects for this user
+                Project.objects.filter(user=self.user, is_highlighted=True).exclude(pk=self.pk).update(
+                    is_highlighted=False
+                )
+
         super().save(*args, **kwargs)
+
+
+class ProjectLike(models.Model):
+    """Track user likes/hearts on projects."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='project_likes')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='likes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'project'],
+                name='unique_project_like_per_user',
+            )
+        ]
+        indexes = [
+            models.Index(fields=['project', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.username} likes {self.project.title}'
+
+
+class ProjectComment(models.Model):
+    """User comments/feedback on projects with AI moderation."""
+
+    class ModerationStatus(models.TextChoices):
+        PENDING = 'pending', 'Pending Review'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+        FLAGGED = 'flagged', 'Flagged for Manual Review'
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='project_comments')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='comments')
+    content = models.TextField(help_text='Comment content')
+
+    # Moderation fields
+    moderation_status = models.CharField(
+        max_length=20, choices=ModerationStatus.choices, default=ModerationStatus.PENDING, db_index=True
+    )
+    moderation_reason = models.TextField(blank=True, default='', help_text='Reason for moderation decision')
+    moderation_data = models.JSONField(default=dict, blank=True, help_text='Full moderation API response data')
+    moderated_at = models.DateTimeField(null=True, blank=True, help_text='When moderation was performed')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['project', 'moderation_status', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['moderation_status', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} on {self.project.title}: {self.content[:50]}'
+
+    @property
+    def upvote_count(self):
+        """Get number of upvotes."""
+        return self.votes.filter(vote_type='up').count()
+
+    @property
+    def downvote_count(self):
+        """Get number of downvotes."""
+        return self.votes.filter(vote_type='down').count()
+
+    @property
+    def score(self):
+        """Get net score (upvotes - downvotes)."""
+        return self.upvote_count - self.downvote_count
+
+
+class CommentVote(models.Model):
+    """Track user votes (upvote/downvote) on comments."""
+
+    class VoteType(models.TextChoices):
+        UP = 'up', 'Upvote'
+        DOWN = 'down', 'Downvote'
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comment_votes')
+    comment = models.ForeignKey(ProjectComment, on_delete=models.CASCADE, related_name='votes')
+    vote_type = models.CharField(max_length=4, choices=VoteType.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'comment'],
+                name='unique_comment_vote_per_user',
+            )
+        ]
+        indexes = [
+            models.Index(fields=['comment', 'vote_type']),
+            models.Index(fields=['user', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} {self.vote_type}votes comment #{self.comment.id}'

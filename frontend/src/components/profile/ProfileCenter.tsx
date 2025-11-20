@@ -7,6 +7,7 @@ import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProfileSidebar } from './ProfileSidebar';
 import { ActivityFeed } from './ActivityFeed';
 import { PlusIcon, TrashIcon, CheckIcon, BoltIcon } from '@heroicons/react/24/outline';
+import { API_ENDPOINTS } from '@/config/api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faRocket,
@@ -1139,10 +1140,43 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
               e.preventDefault();
               setBattleError('');
 
+              // Check if user is authenticated
+              if (!isAuthenticated || !user) {
+                setBattleError('You must be logged in to send a challenge.');
+                return;
+              }
+
               try {
-                const response = await fetch('/api/v1/me/battle-invitations/create_invitation/', {
+                console.log('API Endpoint URL:', API_ENDPOINTS.battleInvitations.create);
+                console.log('Sending battle invitation:', {
+                  opponent_username: displayUser.username,
+                  battle_type: battleType,
+                  duration_minutes: battleDuration,
+                  message: battleMessage,
+                });
+
+                // Get CSRF token from cookie
+                const getCookie = (name: string): string | null => {
+                  const cookies = document.cookie ? document.cookie.split('; ') : [];
+                  for (const cookie of cookies) {
+                    if (cookie.startsWith(name + '=')) {
+                      return decodeURIComponent(cookie.substring(name.length + 1));
+                    }
+                  }
+                  return null;
+                };
+
+                const csrfToken = getCookie('csrftoken');
+                const headers: Record<string, string> = {
+                  'Content-Type': 'application/json',
+                };
+                if (csrfToken) {
+                  headers['X-CSRFToken'] = csrfToken;
+                }
+
+                const response = await fetch(API_ENDPOINTS.battleInvitations.create, {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers,
                   credentials: 'include',
                   body: JSON.stringify({
                     opponent_username: displayUser.username,
@@ -1152,16 +1186,58 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                   }),
                 });
 
+                console.log('Response status:', response.status, response.statusText);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                console.log('Response URL:', response.url);
+
                 if (response.ok) {
+                  const data = await response.json();
+                  console.log('Invitation response data:', data);
+
                   setShowBattleModal(false);
                   setBattleMessage('');
-                  alert('Battle invitation sent successfully!');
+
+                  // Check if battle was auto-accepted (for bots)
+                  // Handle both snake_case (battle_data) and camelCase (battleData)
+                  const battleData = data.battle_data || data.battleData;
+                  console.log('Battle data:', battleData);
+                  console.log('Battle status:', battleData?.status);
+                  console.log('Battle ID:', battleData?.id);
+
+                  if (battleData && battleData.status === 'active') {
+                    // Battle started immediately - navigate to battle page
+                    console.log('Navigating to battle:', `/play/prompt-battle/${battleData.id}`);
+                    navigate(`/play/prompt-battle/${battleData.id}`);
+                  } else {
+                    // Invitation pending - show success message
+                    alert('Battle invitation sent successfully!');
+                  }
                 } else {
-                  const data = await response.json();
-                  setBattleError(data.error || 'Failed to send invitation');
+                  // Try to parse error response
+                  let errorMessage = `Failed to send invitation (${response.status})`;
+                  try {
+                    const text = await response.text();
+                    console.log('Response text:', text.substring(0, 500)); // Log first 500 chars
+                    if (text) {
+                      try {
+                        const data = JSON.parse(text);
+                        errorMessage = data.error || data.detail || errorMessage;
+                      } catch {
+                        // If it's HTML, try to extract the error message
+                        const match = text.match(/<h1>(.*?)<\/h1>/);
+                        if (match) {
+                          errorMessage = match[1];
+                        }
+                      }
+                    }
+                  } catch (parseError) {
+                    console.error('Error parsing response:', parseError);
+                  }
+                  setBattleError(errorMessage);
                 }
               } catch (err) {
-                setBattleError('Network error');
+                console.error('Battle invitation error:', err);
+                setBattleError(`Network error: ${err instanceof Error ? err.message : 'Unable to connect to server'}`);
               }
             }}>
               <div className="mb-4">

@@ -3,10 +3,11 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from core.taxonomy.models import UserInteraction
 from core.users.models import User
 
 from .constants import MIN_RESPONSE_TIME_SECONDS
-from .models import Project
+from .models import Project, ProjectLike
 from .serializers import ProjectSerializer
 
 
@@ -28,6 +29,50 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # Bind project to the authenticated user and let the model handle slug
         # generation / uniqueness on save.
         serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['post'], url_path='toggle-like')
+    def toggle_like(self, request, pk=None):
+        """Toggle like/heart on a project.
+
+        If the user has already liked the project, remove the like.
+        If the user hasn't liked it, add a like.
+        Also tracks the interaction in the user's activity feed.
+        """
+        project = self.get_object()
+        user = request.user
+
+        # Check if user has already liked this project
+        existing_like = ProjectLike.objects.filter(user=user, project=project).first()
+
+        if existing_like:
+            # Unlike - remove the like
+            existing_like.delete()
+            liked = False
+        else:
+            # Like - create new like
+            ProjectLike.objects.create(user=user, project=project)
+            liked = True
+
+            # Track interaction in activity feed
+            UserInteraction.objects.create(
+                user=user,
+                interaction_type='project_view',  # Using existing type since project_like doesn't exist yet
+                metadata={
+                    'action': 'like',
+                    'project_id': project.id,
+                    'project_title': project.title,
+                    'project_slug': project.slug,
+                    'project_owner': project.user.username,
+                },
+            )
+
+        return Response(
+            {
+                'liked': liked,
+                'heart_count': project.heart_count,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=['post'], url_path='bulk-delete')
     def bulk_delete(self, request):

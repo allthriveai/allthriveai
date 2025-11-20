@@ -93,10 +93,18 @@ export interface Project {
   description: string;
   type: ProjectType;
   isShowcase: boolean;
+  isHighlighted: boolean;
+  isPrivate: boolean;
   isArchived: boolean;
   isPublished: boolean;
   publishedAt?: string;
   thumbnailUrl?: string;
+  featuredImageUrl?: string;
+  externalUrl?: string;
+  tools: number[]; // Tool IDs
+  toolsDetails?: Tool[]; // Full tool objects with details
+  heartCount: number;
+  isLikedByUser: boolean;
   content: ProjectContent;
   createdAt: string;
   updatedAt: string;
@@ -119,13 +127,19 @@ export type ProjectBlock =
 
 // Project creation/update payload
 export interface ProjectPayload {
-  title: string;
+  title?: string;
   slug?: string;
   description?: string;
   type?: ProjectType;
   isShowcase?: boolean;
+  isHighlighted?: boolean;
+  isPrivate?: boolean;
   isArchived?: boolean;
+  isPublished?: boolean;
   thumbnailUrl?: string;
+  featuredImageUrl?: string;
+  externalUrl?: string;
+  tools?: number[];
   content?: ProjectContent;
 }
 

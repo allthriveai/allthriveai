@@ -16,10 +16,18 @@ function transformProject(data: any): Project {
     description: data.description || '',
     type: data.type,
     isShowcase: data.isShowcase,
+    isHighlighted: data.isHighlighted ?? false,
+    isPrivate: data.isPrivate ?? false,
     isArchived: data.isArchived,
     isPublished: data.isPublished ?? false,
     publishedAt: data.publishedAt,
     thumbnailUrl: data.thumbnailUrl,
+    featuredImageUrl: data.featuredImageUrl || '',
+    externalUrl: data.externalUrl || '',
+    tools: data.tools || [],
+    toolsDetails: data.toolsDetails || [],
+    heartCount: data.heartCount || 0,
+    isLikedByUser: data.isLikedByUser || false,
     content: data.content || {},
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
@@ -119,5 +127,16 @@ export async function getUserProjects(username: string): Promise<{
   return {
     showcase: response.data.showcase.map(transformProject),
     playground: response.data.playground.map(transformProject),
+  };
+}
+
+/**
+ * Toggle like/heart on a project
+ */
+export async function toggleProjectLike(projectId: number): Promise<{ liked: boolean; heartCount: number }> {
+  const response = await api.post<{ liked: boolean; heart_count: number }>(`/me/projects/${projectId}/toggle-like/`);
+  return {
+    liked: response.data.liked,
+    heartCount: response.data.heart_count,
   };
 }

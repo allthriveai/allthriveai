@@ -13,7 +13,6 @@ from .models import (
     PromptBattle,
     SubmissionType,
 )
-from .views import BattleInvitationViewSet, PromptBattleViewSet, battle_leaderboard, battle_stats, expire_battles
 
 __all__ = [
     # Models
@@ -24,10 +23,4 @@ __all__ = [
     'BattleType',
     'SubmissionType',
     'InvitationStatus',
-    # Views
-    'PromptBattleViewSet',
-    'BattleInvitationViewSet',
-    'battle_stats',
-    'battle_leaderboard',
-    'expire_battles',
 ]

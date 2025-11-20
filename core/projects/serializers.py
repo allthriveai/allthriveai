@@ -2,6 +2,8 @@
 
 from rest_framework import serializers
 
+from core.tools.serializers import ToolListSerializer
+
 from .constants import DEFAULT_BANNER_IMAGE, MAX_CONTENT_SIZE, MAX_PROJECT_TAGS, MAX_TAG_LENGTH
 from .models import Project
 
@@ -19,6 +21,9 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     username = serializers.ReadOnlyField(source='user.username')
     slug = serializers.SlugField(required=False, allow_blank=True)
+    heart_count = serializers.ReadOnlyField()
+    is_liked_by_user = serializers.SerializerMethodField()
+    tools_details = ToolListSerializer(source='tools', many=True, read_only=True)
 
     class Meta:
         model = Project
@@ -30,15 +35,31 @@ class ProjectSerializer(serializers.ModelSerializer):
             'description',
             'type',
             'is_showcase',
+            'is_highlighted',
+            'is_private',
             'is_archived',
             'is_published',
             'published_at',
             'thumbnail_url',
+            'featured_image_url',
+            'external_url',
+            'tools',
+            'tools_details',
+            'heart_count',
+            'is_liked_by_user',
             'content',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'username', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id',
+            'username',
+            'heart_count',
+            'is_liked_by_user',
+            'tools_details',
+            'created_at',
+            'updated_at',
+        ]
 
     def validate_content(self, value):
         """Validate content JSON structure, sanitize HTML, and enforce size limits."""
@@ -128,6 +149,13 @@ class ProjectSerializer(serializers.ModelSerializer):
                     'Invalid thumbnail URL. Must be a valid URL or relative path starting with /.'
                 ) from e
         return value
+
+    def get_is_liked_by_user(self, obj):
+        """Check if the current user has liked this project."""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.likes.filter(user=request.user).exists()
+        return False
 
     def create(self, validated_data):
         """Create a new project with default banner image if not provided."""
