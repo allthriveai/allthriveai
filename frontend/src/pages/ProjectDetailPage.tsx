@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { RightToolPanel } from '@/components/tools/RightToolPanel';
 import { getProjectBySlug, updateProject, deleteProject, toggleProjectLike } from '@/services/projects';
+import { getProjectComments, createProjectComment, voteOnComment, type Comment } from '@/services/comments';
 import { useAuth } from '@/hooks/useAuth';
 import type { Project } from '@/types/models';
 import { FaFire } from 'react-icons/fa';
@@ -54,8 +54,6 @@ export default function ProjectDetailPage() {
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const [selectedToolSlug, setSelectedToolSlug] = useState<string | null>(null);
-  const [isToolPanelOpen, setIsToolPanelOpen] = useState(false);
 
   // React Rewards for comment submission celebration
   const { reward: rewardComment } = useReward('commentReward', 'emoji', {
@@ -79,39 +77,9 @@ export default function ProjectDetailPage() {
     lifetime: 200,
   });
 
-  // Mock comments data - replace with API call
-  const [comments, setComments] = useState([
-    {
-      id: 1,
-      author: 'johndoe',
-      avatarUrl: null,
-      content: 'This project is amazing! The design is so clean and the functionality is exactly what I needed.',
-      createdAt: '2025-11-18T10:30:00Z',
-      upvotes: 12,
-      downvotes: 2,
-      userVote: null, // null, 'up', or 'down'
-    },
-    {
-      id: 2,
-      author: 'sarahsmith',
-      avatarUrl: null,
-      content: 'Great work! Would love to see more features like this in the future.',
-      createdAt: '2025-11-19T14:15:00Z',
-      upvotes: 8,
-      downvotes: 0,
-      userVote: null,
-    },
-    {
-      id: 3,
-      author: 'alexchen',
-      avatarUrl: null,
-      content: 'Really impressive implementation. The attention to detail is outstanding!',
-      createdAt: '2025-11-20T09:00:00Z',
-      upvotes: 15,
-      downvotes: 1,
-      userVote: null,
-    },
-  ]);
+  // Comments state
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
 
   useEffect(() => {
     async function loadProject() {
@@ -137,6 +105,25 @@ export default function ProjectDetailPage() {
 
     loadProject();
   }, [username, projectSlug]);
+
+  // Load comments when project is loaded
+  useEffect(() => {
+    async function loadComments() {
+      if (!project) return;
+
+      setIsLoadingComments(true);
+      try {
+        const data = await getProjectComments(project.id);
+        setComments(data);
+      } catch (err) {
+        console.error('Failed to load comments:', err);
+      } finally {
+        setIsLoadingComments(false);
+      }
+    }
+
+    loadComments();
+  }, [project]);
 
   const isOwner = isAuthenticated && user && project && user.username.toLowerCase() === project.username.toLowerCase();
 
@@ -195,40 +182,16 @@ export default function ProjectDetailPage() {
   };
 
   const handleSubmitFeedback = async () => {
-    if (!feedbackText.trim() || !isAuthenticated || !user) return;
+    if (!feedbackText.trim() || !isAuthenticated || !user || !project) return;
 
     setIsSubmittingFeedback(true);
     try {
-      // TODO: Implement API call to submit feedback/comment with auto-moderation
-      // This should:
-      // 1. Submit the feedback/comment
-      // 2. Award points to the user (e.g., 10 points for feedback)
-      // 3. Create a UserInteraction record for activity tracking
-      // Example:
-      // const response = await submitProjectFeedback(project.id, {
-      //   content: feedbackText,
-      //   awardPoints: true,
-      //   pointsAmount: 10
-      // });
-
-      console.log('Submitting feedback:', feedbackText);
-      console.log('Awarding 10 points to user:', user.username);
-      console.log('Creating activity feed entry...');
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Add new comment to list (in real app, this would come from API response)
-      const newComment = {
-        id: Date.now(),
-        author: user.username,
-        avatarUrl: user.avatarUrl || null,
+      // Submit comment with AI moderation
+      const newComment = await createProjectComment(project.id, {
         content: feedbackText,
-        createdAt: new Date().toISOString(),
-        upvotes: 0,
-        downvotes: 0,
-        userVote: null,
-      };
+      });
+
+      // Add new comment to list
       setComments([newComment, ...comments]);
 
       // Clear form
@@ -238,68 +201,34 @@ export default function ProjectDetailPage() {
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 5000);
 
-      // Trigger blue heart emoji celebration
+      // Trigger star emoji celebration
       rewardComment();
-
-      // TODO: In production, refresh user data to show updated points
-      // await refreshUserData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to submit feedback:', error);
-      alert('Failed to submit feedback. Please try again.');
+      const errorMessage = error.response?.data?.content?.[0] || 'Failed to submit feedback. Please try again.';
+      alert(errorMessage);
     } finally {
       setIsSubmittingFeedback(false);
     }
   };
 
-  const handleVote = (commentId: number, voteType: 'up' | 'down') => {
-    if (!isAuthenticated) {
+  const handleVote = async (commentId: number, voteType: 'up' | 'down') => {
+    if (!isAuthenticated || !project) {
       alert('Please sign in to vote on comments');
       return;
     }
 
-    setComments(comments.map(comment => {
-      if (comment.id !== commentId) return comment;
+    try {
+      const result = await voteOnComment(project.id, commentId, voteType);
 
-      const wasUpvoted = comment.userVote === 'up';
-      const wasDownvoted = comment.userVote === 'down';
-      let newUpvotes = comment.upvotes;
-      let newDownvotes = comment.downvotes;
-      let newUserVote = comment.userVote;
-
-      if (voteType === 'up') {
-        if (wasUpvoted) {
-          // Remove upvote
-          newUpvotes -= 1;
-          newUserVote = null;
-        } else {
-          // Add upvote (and remove downvote if present)
-          newUpvotes += 1;
-          if (wasDownvoted) newDownvotes -= 1;
-          newUserVote = 'up';
-        }
-      } else {
-        if (wasDownvoted) {
-          // Remove downvote
-          newDownvotes -= 1;
-          newUserVote = null;
-        } else {
-          // Add downvote (and remove upvote if present)
-          newDownvotes += 1;
-          if (wasUpvoted) newUpvotes -= 1;
-          newUserVote = 'down';
-        }
-      }
-
-      return {
-        ...comment,
-        upvotes: newUpvotes,
-        downvotes: newDownvotes,
-        userVote: newUserVote,
-      };
-    }));
-
-    // TODO: Send vote to API
-    // await voteOnComment(commentId, voteType);
+      // Update comment in list with new data from API
+      setComments(comments.map(comment =>
+        comment.id === commentId ? result.comment : comment
+      ));
+    } catch (error) {
+      console.error('Failed to vote on comment:', error);
+      alert('Failed to vote. Please try again.');
+    }
   };
 
   if (isLoading) {
@@ -464,10 +393,7 @@ export default function ProjectDetailPage() {
                       {project.toolsDetails.map((tool) => (
                         <button
                           key={tool.id}
-                          onClick={() => {
-                            setSelectedToolSlug(tool.slug);
-                            setIsToolPanelOpen(true);
-                          }}
+                          onClick={() => navigate(`/tools/${tool.slug}`)}
                           className="group flex items-center gap-2.5 px-4 py-2 bg-white/5 hover:bg-white/15 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/30 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                         >
                           {tool.logoUrl ? (
@@ -967,14 +893,14 @@ export default function ProjectDetailPage() {
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-primary-600 dark:text-primary-400 font-semibold text-sm">
-                                  {comment.author.charAt(0).toUpperCase()}
+                                  {comment.username.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
                                   <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                    {comment.author}
+                                    {comment.username}
                                   </p>
                                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {new Date(comment.createdAt).toLocaleDateString('en-US', {
+                                    {new Date(comment.created_at).toLocaleDateString('en-US', {
                                       month: 'short',
                                       day: 'numeric',
                                       year: 'numeric'
@@ -995,7 +921,7 @@ export default function ProjectDetailPage() {
                                 onClick={() => handleVote(comment.id, 'up')}
                                 disabled={!isAuthenticated}
                                 className={`p-1.5 rounded transition-all ${
-                                  comment.userVote === 'up'
+                                  comment.user_vote === 'up'
                                     ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                                     : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
                                 } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -1004,13 +930,13 @@ export default function ProjectDetailPage() {
                                 <ArrowUpIcon className="w-4 h-4" />
                               </button>
                               <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[2rem] text-center">
-                                {comment.upvotes - comment.downvotes}
+                                {comment.score}
                               </span>
                               <button
                                 onClick={() => handleVote(comment.id, 'down')}
                                 disabled={!isAuthenticated}
                                 className={`p-1.5 rounded transition-all ${
-                                  comment.userVote === 'down'
+                                  comment.user_vote === 'down'
                                     ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                                     : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
                                 } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -1030,16 +956,6 @@ export default function ProjectDetailPage() {
           </>
         )}
       </div>
-
-      {/* Right Tool Panel */}
-      <RightToolPanel
-        toolSlug={selectedToolSlug}
-        isOpen={isToolPanelOpen}
-        onClose={() => {
-          setIsToolPanelOpen(false);
-          setSelectedToolSlug(null);
-        }}
-      />
     </DashboardLayout>
   );
 }

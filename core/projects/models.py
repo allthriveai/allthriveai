@@ -193,20 +193,26 @@ class ProjectComment(models.Model):
     def __str__(self):
         return f'{self.user.username} on {self.project.title}: {self.content[:50]}'
 
-    @property
     def upvote_count(self):
-        """Get number of upvotes."""
+        """Get number of upvotes. Use annotation when querying lists."""
+        # Check if value was annotated in queryset
+        if hasattr(self, '_upvote_count'):
+            return self._upvote_count
         return self.votes.filter(vote_type='up').count()
 
-    @property
     def downvote_count(self):
-        """Get number of downvotes."""
+        """Get number of downvotes. Use annotation when querying lists."""
+        # Check if value was annotated in queryset
+        if hasattr(self, '_downvote_count'):
+            return self._downvote_count
         return self.votes.filter(vote_type='down').count()
 
-    @property
     def score(self):
-        """Get net score (upvotes - downvotes)."""
-        return self.upvote_count - self.downvote_count
+        """Get net score (upvotes - downvotes). Use annotation when querying lists."""
+        # Check if value was annotated in queryset
+        if hasattr(self, '_score'):
+            return self._score
+        return self.upvote_count() - self.downvote_count()
 
 
 class CommentVote(models.Model):

@@ -23,9 +23,9 @@ class ProjectCommentSerializer(serializers.ModelSerializer):
 
     username = serializers.CharField(source='user.username', read_only=True)
     avatar_url = serializers.SerializerMethodField()
-    upvotes = serializers.IntegerField(source='upvote_count', read_only=True)
-    downvotes = serializers.IntegerField(source='downvote_count', read_only=True)
-    score = serializers.IntegerField(read_only=True)
+    upvotes = serializers.SerializerMethodField()
+    downvotes = serializers.SerializerMethodField()
+    score = serializers.SerializerMethodField()
     user_vote = serializers.SerializerMethodField()
 
     class Meta:
@@ -59,6 +59,18 @@ class ProjectCommentSerializer(serializers.ModelSerializer):
     def get_avatar_url(self, obj):
         """Get user's avatar URL."""
         return getattr(obj.user, 'avatar_url', None)
+
+    def get_upvotes(self, obj):
+        """Get upvote count (from annotation or direct query)."""
+        return obj.upvote_count()
+
+    def get_downvotes(self, obj):
+        """Get downvote count (from annotation or direct query)."""
+        return obj.downvote_count()
+
+    def get_score(self, obj):
+        """Get score (from annotation or direct query)."""
+        return obj.score()
 
     def get_user_vote(self, obj):
         """Get the current user's vote on this comment."""
@@ -113,7 +125,12 @@ class CommentCreateSerializer(serializers.ModelSerializer):
         if not value or not value.strip():
             raise serializers.ValidationError('Comment cannot be empty')
 
-        if len(value) > 5000:
+        cleaned_content = value.strip()
+
+        if len(cleaned_content) < 3:
+            raise serializers.ValidationError('Comment is too short (min 3 characters)')
+
+        if len(cleaned_content) > 5000:
             raise serializers.ValidationError('Comment is too long (max 5000 characters)')
 
-        return value.strip()
+        return cleaned_content

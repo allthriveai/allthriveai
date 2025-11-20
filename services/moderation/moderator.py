@@ -6,7 +6,8 @@ import logging
 from typing import Any
 
 from django.conf import settings
-from openai import OpenAI
+from openai import APIConnectionError, APIError, APITimeoutError, OpenAI, RateLimitError
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,18 @@ class ContentModerator:
     """
 
     def __init__(self):
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        self.client = OpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            timeout=10.0,  # 10 second timeout
+            max_retries=0,  # We handle retries ourselves
+        )
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type((APIConnectionError, APITimeoutError, RateLimitError)),
+        reraise=True,
+    )
     def moderate(self, content: str, context: str = '') -> dict[str, Any]:
         """
         Moderate content using OpenAI's Moderation API.
@@ -62,6 +73,13 @@ class ContentModerator:
             # Calculate average confidence from flagged categories
             confidence = sum(categories_flagged.values()) / len(categories_flagged) if categories_flagged else 0.0
 
+            # Log moderation result
+            if is_flagged:
+                logger.warning(
+                    f'Content flagged by moderation: context={context}, '
+                    f'categories={list(categories_flagged.keys())}, confidence={confidence:.2f}'
+                )
+
             return {
                 'approved': approved,
                 'flagged': is_flagged,
@@ -71,8 +89,26 @@ class ContentModerator:
                 'moderation_data': result.model_dump(),
             }
 
+        except (APIConnectionError, APITimeoutError, RateLimitError) as e:
+            # These will be retried by the decorator
+            logger.warning(f'Retryable moderation error: {type(e).__name__}: {e}')
+            raise
+
+        except APIError as e:
+            # OpenAI API error (non-retryable)
+            logger.error(f'OpenAI API error in moderation: {e}', exc_info=True)
+            return {
+                'approved': False,
+                'flagged': True,
+                'reason': 'Content moderation service temporarily unavailable. Please try again.',
+                'categories': {'api_error': 1.0},
+                'confidence': 1.0,
+                'error': str(e),
+            }
+
         except Exception as e:
-            logger.error(f'Error in content moderation: {e}', exc_info=True)
+            # Unexpected error
+            logger.error(f'Unexpected error in content moderation: {e}', exc_info=True)
             # Fail closed - reject content if moderation fails
             return {
                 'approved': False,

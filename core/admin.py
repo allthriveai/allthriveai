@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .agents.models import Conversation, Message
+from .projects.models import CommentVote, ProjectComment
 from .quizzes.models import Quiz, QuizAttempt, QuizQuestion
 from .referrals.models import Referral, ReferralCode
 from .taxonomy.models import Taxonomy, UserInteraction, UserTag
@@ -304,3 +305,67 @@ class ToolBookmarkAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at']
     ordering = ['-created_at']
     raw_id_fields = ['user', 'tool']
+
+
+@admin.register(ProjectComment)
+class ProjectCommentAdmin(admin.ModelAdmin):
+    list_display = [
+        'id',
+        'user',
+        'project',
+        'content_preview',
+        'moderation_status',
+        'created_at',
+    ]
+    list_filter = ['moderation_status', 'created_at', 'moderated_at']
+    search_fields = ['user__username', 'project__title', 'content']
+    readonly_fields = ['created_at', 'updated_at', 'moderated_at', 'moderation_data']
+    ordering = ['-created_at']
+    raw_id_fields = ['user', 'project']
+
+    fieldsets = (
+        ('Comment', {'fields': ('user', 'project', 'content')}),
+        (
+            'Moderation',
+            {
+                'fields': (
+                    'moderation_status',
+                    'moderation_reason',
+                    'moderation_data',
+                    'moderated_at',
+                ),
+            },
+        ),
+        ('Timestamps', {'fields': ('created_at', 'updated_at')}),
+    )
+
+    actions = ['approve_comments', 'reject_comments', 'flag_comments']
+
+    @admin.display(description='Content')
+    def content_preview(self, obj):
+        return obj.content[:80] + '...' if len(obj.content) > 80 else obj.content
+
+    @admin.action(description='Approve selected comments')
+    def approve_comments(self, request, queryset):
+        updated = queryset.update(moderation_status=ProjectComment.ModerationStatus.APPROVED)
+        self.message_user(request, f'{updated} comments approved.')
+
+    @admin.action(description='Reject selected comments')
+    def reject_comments(self, request, queryset):
+        updated = queryset.update(moderation_status=ProjectComment.ModerationStatus.REJECTED)
+        self.message_user(request, f'{updated} comments rejected.')
+
+    @admin.action(description='Flag selected comments for review')
+    def flag_comments(self, request, queryset):
+        updated = queryset.update(moderation_status=ProjectComment.ModerationStatus.FLAGGED)
+        self.message_user(request, f'{updated} comments flagged for review.')
+
+
+@admin.register(CommentVote)
+class CommentVoteAdmin(admin.ModelAdmin):
+    list_display = ['user', 'comment', 'vote_type', 'created_at']
+    list_filter = ['vote_type', 'created_at']
+    search_fields = ['user__username', 'comment__content']
+    readonly_fields = ['created_at', 'updated_at']
+    ordering = ['-created_at']
+    raw_id_fields = ['user', 'comment']
