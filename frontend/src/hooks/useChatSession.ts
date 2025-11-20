@@ -34,9 +34,13 @@ export function useChatSession({
     config: agent.config,
   });
 
-  // Add initial message on mount
+  // Add initial message when agent changes
   useEffect(() => {
-    if (!initialMessageAddedRef.current && agent.getInitialMessage) {
+    // Reset session when agent changes
+    sessionIdRef.current = generateId();
+    initialMessageAddedRef.current = false;
+
+    if (agent.getInitialMessage) {
       const initialMessage: ChatMessage = {
         id: generateId(),
         sender: 'agent',
@@ -44,20 +48,42 @@ export function useChatSession({
         timestamp: new Date(),
         messageType: 'text',
       };
-      setState((prev) => ({
-        ...prev,
+      setState({
         messages: [initialMessage],
+        isLoading: false,
+        error: undefined,
         context: {
-          ...prev.context,
+          userId,
+          sessionId: sessionIdRef.current,
           conversationHistory: [initialMessage],
+          agentId: agent.config.agentId,
+          metadata: {},
         },
-      }));
+        config: agent.config,
+      });
       initialMessageAddedRef.current = true;
+    } else {
+      // Reset to empty state if no initial message
+      setState({
+        messages: [],
+        isLoading: false,
+        error: undefined,
+        context: {
+          userId,
+          sessionId: sessionIdRef.current,
+          conversationHistory: [],
+          agentId: agent.config.agentId,
+          metadata: {},
+        },
+        config: agent.config,
+      });
     }
-  }, [agent]);
+  }, [agent, userId]);
 
   const sendMessage = useCallback(
     async (userInput: string) => {
+      console.log('useChatSession.sendMessage called with:', userInput);
+
       if (agent.validateInput && !agent.validateInput(userInput)) {
         const error = new Error('Invalid input for this agent');
         onError?.(error);

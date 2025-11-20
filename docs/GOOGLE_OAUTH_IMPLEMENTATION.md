@@ -66,7 +66,7 @@ Visit: https://console.cloud.google.com/
 Update `/Users/allierays/Sites/allthriveai/.env`:
 
 ```bash
-# OAuth 
+# OAuth
 GOOGLE_CLIENT_ID=961421468702-1tva2usqfgetj0d7uafd3m63hnsio2ig.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=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
 ```

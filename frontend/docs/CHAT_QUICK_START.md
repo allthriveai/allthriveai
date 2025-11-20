@@ -29,7 +29,7 @@ export class MyAwesomeAgent extends BaseAgent {
       method: 'POST',
       body: JSON.stringify({ message: userMessage }),
     });
-    
+
     return response.json().then(r => r.response);
   }
 }
@@ -135,7 +135,7 @@ function ChatPage() {
       <header className="p-4 border-b">
         <h1>{agent.config.agentName}</h1>
       </header>
-      
+
       <ChatInterface
         isOpen={true}
         onClose={() => {}} // Show always
@@ -185,15 +185,15 @@ async handleMessage(userMessage: string, context?: ChatContext) {
   // Log user behavior
   console.log('User ID:', context?.userId);
   console.log('Session ID:', context?.sessionId);
-  
+
   // Access conversation history
   const lastMessages = context?.conversationHistory.slice(-5);
-  
+
   // Make decision based on history
   if (lastMessages?.some(m => m.content.includes('help'))) {
     return "I can help with that!";
   }
-  
+
   // Default behavior
   return "Tell me more...";
 }
@@ -207,12 +207,12 @@ validateInput(input: string): boolean {
   if (!input.includes('?') && !input.includes('how')) {
     return false;
   }
-  
+
   // Limit length
   if (input.length > 500) {
     return false;
   }
-  
+
   return true;
 }
 ```
@@ -238,7 +238,7 @@ const chatSession = useChatSession({
   onError: (error) => {
     // Show error toast
     toast.error(`Chat error: ${error.message}`);
-    
+
     // Log for analytics
     analytics.track('chat_error', {
       agent: agent.config.agentId,
@@ -329,13 +329,13 @@ class DebugAgent extends BaseAgent {
   async handleMessage(userMessage: string, context?: ChatContext) {
     console.log('User message:', userMessage);
     console.log('Context:', context);
-    
+
     const response = await this.getResponse(userMessage);
-    
+
     console.log('Agent response:', response);
     return response;
   }
-  
+
   private async getResponse(message: string) {
     // Your logic
   }
@@ -351,7 +351,7 @@ function MyComponent() {
   return (
     <div>
       <ChatInterface {...props} />
-      
+
       {/* Debug panel */}
       <details>
         <summary>Debug</summary>

@@ -28,7 +28,7 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
-  
+
   const [formData, setFormData] = useState<SignupFormData>({
     email: '',
     username: '',
@@ -38,7 +38,7 @@ export default function SignupPage() {
     lastName: '',
     role: 'explorer',
   });
-  
+
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -89,7 +89,7 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -99,7 +99,7 @@ export default function SignupPage() {
 
     try {
       const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-      
+
       await axios.post(`${apiUrl}/auth/signup/`, {
         email: formData.email,
         username: formData.username,
@@ -110,8 +110,8 @@ export default function SignupPage() {
       });
 
       // Redirect to login page with success message
-      navigate('/login', { 
-        state: { message: 'Account created successfully! Please log in.' } 
+      navigate('/login', {
+        state: { message: 'Account created successfully! Please log in.' }
       });
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data) {
@@ -120,8 +120,8 @@ export default function SignupPage() {
           email: Array.isArray(apiErrors.email) ? String(apiErrors.email[0]) : undefined,
           username: Array.isArray(apiErrors.username) ? String(apiErrors.username[0]) : undefined,
           password: Array.isArray(apiErrors.password) ? String(apiErrors.password[0]) : undefined,
-          form: (apiErrors.detail as string) || 
-                (Array.isArray(apiErrors.non_field_errors) ? String(apiErrors.non_field_errors[0]) : undefined) || 
+          form: (apiErrors.detail as string) ||
+                (Array.isArray(apiErrors.non_field_errors) ? String(apiErrors.non_field_errors[0]) : undefined) ||
                 'Signup failed. Please try again.',
         });
       } else {

@@ -1,0 +1,26 @@
+<svg width="800" height="600" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient - AllThrive teal -->
+  <rect width="800" height="600" fill="url(#gradient)"/>
+
+  <!-- Gradient definition -->
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00A4BD;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00BDA5;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Decorative pattern overlay -->
+  <pattern id="pattern" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1" fill="white" opacity="0.1"/>
+  </pattern>
+  <rect width="800" height="600" fill="url(#pattern)"/>
+
+  <!-- AllThrive logo/text -->
+  <text x="400" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="white" text-anchor="middle">
+    AllThrive
+  </text>
+  <text x="400" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="400" fill="white" fill-opacity="0.8" text-anchor="middle">
+    AI Playground & Community
+  </text>
+</svg>

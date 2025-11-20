@@ -12,7 +12,7 @@ export default function StyleGuidePage() {
         {/* 1. FOUNDATION - Colors */}
         <section className="mb-16">
           <h2 className="mb-8">Foundation</h2>
-          
+
           <h3 className="mb-4">Core Brand Colors</h3>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
             <div className="text-center">
@@ -44,7 +44,7 @@ export default function StyleGuidePage() {
 
           <h3 className="mb-4">Glassmorphism</h3>
           <p className="text-sm text-muted mb-6">Frosted glass effect with backdrop blur and transparency - the defining visual style of the site</p>
-          
+
           <div className="space-y-6 mb-12">
             <div>
               <h4 className="text-sm font-semibold mb-3">Light Mode</h4>

@@ -61,13 +61,13 @@ export class MyCustomAgent extends BaseAgent {
   async handleMessage(userMessage: string, context?: ChatContext): Promise<string> {
     // Your agent logic here
     // Call APIs, process data, generate responses
-    
+
     // Example: Call your backend
     const response = await fetch('/api/agents/my-agent', {
       method: 'POST',
       body: JSON.stringify({ message: userMessage, context }),
     });
-    
+
     return response.json().then(r => r.response);
   }
 
@@ -140,13 +140,13 @@ Access conversation context in your agent:
 async handleMessage(userMessage: string, context?: ChatContext) {
   // Access user ID
   console.log(context?.userId);
-  
+
   // Access session ID
   console.log(context?.sessionId);
-  
+
   // Access conversation history
   console.log(context?.conversationHistory);
-  
+
   // Access custom metadata
   console.log(context?.metadata);
 }
@@ -184,19 +184,19 @@ async handleMessage(userMessage: string, context?: ChatContext): Promise<string>
     method: 'POST',
     body: JSON.stringify({ message: userMessage }),
   });
-  
+
   const reader = response.body?.getReader();
   let fullContent = '';
-  
+
   while (true) {
     const { done, value } = await reader!.read();
     if (done) break;
-    
+
     const chunk = new TextDecoder().decode(value);
     fullContent += chunk;
     // Optionally process chunks in real-time
   }
-  
+
   return fullContent;
 }
 ```

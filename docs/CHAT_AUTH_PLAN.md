@@ -238,7 +238,7 @@ ai = AIProvider()
 def welcome_node(state: AuthState):
     system_msg = "You are a playful, friendly AI helping users sign up. Use emojis!"
     prompt = "Welcome the user to AllThrive"
-    
+
     # Stream response
     for chunk in ai.stream_complete(
         prompt=prompt,
@@ -401,7 +401,7 @@ interface AuthPageState {
 
 **Key States**:
 ```typescript
-type ChatState = 
+type ChatState =
   | 'welcome'
   | 'ask-email'
   | 'check-email'
@@ -469,7 +469,7 @@ signup-processing / login-processing
 ```typescript
 - Display: "Welcome to AllThrive! 👋"
 - Show: [Continue with Google]
-- Show: [Continue with GitHub]  
+- Show: [Continue with GitHub]
 - Show: [Continue with Email]
 ```
 
@@ -593,7 +593,7 @@ useEffect(() => {
 
 **Email Already Exists** (during signup):
 ```
-[AI] "Hmm, looks like that email is already registered. 
+[AI] "Hmm, looks like that email is already registered.
       Would you like to log in instead?"
 [Button: Yes, log me in]
 ```
@@ -605,7 +605,7 @@ useEffect(() => {
 
 **Invalid Password** (during login):
 ```
-[AI] "That password doesn't match. Try again or 
+[AI] "That password doesn't match. Try again or
       reset your password."
 [Link: Forgot password?]
 ```

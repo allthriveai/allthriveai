@@ -216,7 +216,7 @@ export function ThemeToggle() {
       <a href="/explore" className="nav-link">Explore</a>
     </div>
   </nav>
-  
+
   {/* Main Content */}
   <main className="ml-72 content-container">
     <h1 className="text-4xl font-bold mb-8">Dashboard</h1>
@@ -226,7 +226,7 @@ export function ThemeToggle() {
       </div>
     </div>
   </main>
-  
+
   {/* Right Chat Tray */}
   <aside className="context-tray p-6">
     <h3 className="text-xl font-semibold mb-4">AI Assistant</h3>
@@ -338,6 +338,6 @@ When adding new components:
 
 ---
 
-**Built with**: Tailwind CSS, TypeScript, React  
-**Inspired by**: Devin.ai, Synapse AI, Linear, Cursor  
+**Built with**: Tailwind CSS, TypeScript, React
+**Inspired by**: Devin.ai, Synapse AI, Linear, Cursor
 **Version**: 1.0

@@ -16,11 +16,12 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
-from services import AIProvider  # noqa: E402
 from django.conf import settings  # noqa: E402
+
+from services import AIProvider  # noqa: E402
 
 print("=" * 70)
 print("AZURE OPENAI CONFIGURATION TEST")

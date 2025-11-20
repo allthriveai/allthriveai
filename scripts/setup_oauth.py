@@ -7,8 +7,8 @@ from django.contrib.sites.models import Site
 
 # Get or update site
 site = Site.objects.get(id=1)
-site.domain = 'localhost:8000'
-site.name = 'AllThrive AI Local'
+site.domain = "localhost:8000"
+site.name = "AllThrive AI Local"
 site.save()
 
 print(f"✅ Site configured: {site.domain}")

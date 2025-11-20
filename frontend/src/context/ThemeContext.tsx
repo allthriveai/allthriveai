@@ -14,24 +14,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Check localStorage first
     const stored = localStorage.getItem('theme') as Theme | null;
     if (stored) return stored;
-    
+
     // Then check system preference
     if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
       return 'dark';
     }
-    
+
     return 'light';
   });
 
   useEffect(() => {
     const root = window.document.documentElement;
-    
+
     // Remove both classes
     root.classList.remove('light', 'dark');
-    
+
     // Add current theme
     root.classList.add(theme);
-    
+
     // Store preference
     localStorage.setItem('theme', theme);
   }, [theme]);

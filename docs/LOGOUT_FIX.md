@@ -30,11 +30,11 @@ Forbidden: /api/v1/auth/logout/
 def logout_view(request):
     """Logout user and clear cookies."""
     response = Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
-    
+
     # Get cookie domain from settings
     cookie_domain = settings.COOKIE_DOMAIN
     cookie_samesite = settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE']
-    
+
     # Delete cookies with domain (how they were set in oauth_callback)
     response.delete_cookie(
         key=settings.SIMPLE_JWT['AUTH_COOKIE'],
@@ -43,7 +43,7 @@ def logout_view(request):
         samesite=cookie_samesite,
     )
     # ... (repeat for refresh_token and csrftoken)
-    
+
     # Also delete without domain as fallback
     response.delete_cookie(
         key=settings.SIMPLE_JWT['AUTH_COOKIE'],
@@ -51,7 +51,7 @@ def logout_view(request):
         samesite=cookie_samesite,
     )
     # ... (repeat for other cookies)
-    
+
     return response
 ```
 

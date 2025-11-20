@@ -57,7 +57,7 @@
 - `requirements.txt` - Added bleach, django-ratelimit, django-csp
 
 ### Database Changes
-- New migration: `core/migrations/0003_*` 
+- New migration: `core/migrations/0003_*`
   - Created `UserAuditLog` table
   - Added indexes to `Project` model
   - Applied JWT token blacklist migrations
@@ -116,14 +116,14 @@ docker-compose exec web python manage.py check
 
 ## What's Protected
 
-✅ User profiles - Input sanitization, field-level permissions  
-✅ Bio field - XSS protection via bleach  
-✅ Avatar URLs - Domain whitelist  
-✅ Role escalation - Prevented via permissions and read-only fields  
-✅ JWT tokens - Short-lived, blacklisted on logout  
-✅ Projects - Owner-only edit, public read for showcase  
-✅ Database - Optimized with indexes  
-✅ Audit trail - All security events logged  
+✅ User profiles - Input sanitization, field-level permissions
+✅ Bio field - XSS protection via bleach
+✅ Avatar URLs - Domain whitelist
+✅ Role escalation - Prevented via permissions and read-only fields
+✅ JWT tokens - Short-lived, blacklisted on logout
+✅ Projects - Owner-only edit, public read for showcase
+✅ Database - Optimized with indexes
+✅ Audit trail - All security events logged
 
 ## What to Do Before Production
 

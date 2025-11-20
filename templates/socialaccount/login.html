@@ -21,14 +21,14 @@
 
         <form method="post">
             {% csrf_token %}
-            
+
             {% if process == "connect" %}
                 <input type="hidden" name="process" value="connect">
             {% else %}
                 <input type="hidden" name="process" value="login">
             {% endif %}
 
-            <button 
+            <button
                 type="submit"
                 class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
             >

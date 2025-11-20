@@ -102,7 +102,7 @@ import { useTheme } from '@/context/ThemeContext';
 
 function MyComponent() {
   const { theme, toggleTheme } = useTheme();
-  
+
   return (
     <div className="bg-white dark:bg-gray-800">
       <button onClick={toggleTheme}>

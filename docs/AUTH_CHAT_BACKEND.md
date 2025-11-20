@@ -140,8 +140,8 @@ START
   ↓
 welcome → ask_email → check_email
                          ├─ [user exists] → ask_password (login) → complete_login
-                         └─ [new user] → ask_name → ask_password → ask_interests 
-                                         → show_values → ask_agreement 
+                         └─ [new user] → ask_name → ask_password → ask_interests
+                                         → show_values → ask_agreement
                                          → complete_signup
 
 Both complete_* nodes create/auth user and redirect to dashboard
@@ -345,11 +345,11 @@ Redis (State Persistence)
 
 ## Security
 
-✅ Passwords hashed with PBKDF2  
-✅ Emails normalized (lowercase, trimmed)  
-✅ Session TTL enforced (30 min)  
-✅ CSRF handled appropriately  
-✅ Validation on all inputs  
+✅ Passwords hashed with PBKDF2
+✅ Emails normalized (lowercase, trimmed)
+✅ Session TTL enforced (30 min)
+✅ CSRF handled appropriately
+✅ Validation on all inputs
 ✅ No password logging
 
 ---

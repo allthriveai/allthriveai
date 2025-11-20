@@ -85,7 +85,7 @@ export function HeroSection({
           </>
         )}
       </div>
-      
+
       <div className={`relative z-20 w-full mx-auto px-12`}>
         {rightContent ? (
           <div className="max-w-7xl mx-auto">

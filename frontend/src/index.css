@@ -83,7 +83,7 @@
 @layer components {
 
   /* ===== GLASS EFFECTS ===== */
-  
+
   /* Level 1: Subtle Glass - Background trays, Navigation */
   .glass-subtle {
     @apply bg-white/50 backdrop-blur-glass-sm;

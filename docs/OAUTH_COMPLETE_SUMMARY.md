@@ -11,7 +11,7 @@
 - ✅ Added OAuth environment variables to `docker-compose.yml`
 
 ### 2. Fixed MultipleObjectsReturned Error
-**Problem:** OAuth credentials were in both settings.py and database  
+**Problem:** OAuth credentials were in both settings.py and database
 **Solution:** Removed duplicate config from settings.py, kept credentials in database only
 
 **Changes:**
@@ -20,7 +20,7 @@
 - Settings.py only contains scope and auth parameter configurations
 
 ### 3. Fixed Logout Functionality
-**Problem:** Logout failing with 403 Forbidden (CSRF token missing)  
+**Problem:** Logout failing with 403 Forbidden (CSRF token missing)
 **Solution:** Ensured CSRF token is fetched before logout
 
 **Changes:**

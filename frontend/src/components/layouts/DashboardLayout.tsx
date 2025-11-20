@@ -1,25 +1,67 @@
-import { useState, ReactNode } from 'react';
+import { useState, ReactNode, useEffect } from 'react';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 import { LeftSidebar } from '@/components/navigation/LeftSidebar';
 import { RightChatPanel } from '@/components/chat/RightChatPanel';
+import { RightAboutPanel } from '@/components/about';
 
 interface DashboardLayoutProps {
-  children: ReactNode;
+  children: ReactNode | ((props: { openChat: (menuItem: string) => void }) => ReactNode);
+  openAboutPanel?: boolean;
 }
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [chatOpen, setChatOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
 
+  // Auto-open about panel when prop is true
+  useEffect(() => {
+    if (openAboutPanel) {
+      setAboutOpen(true);
+      setChatOpen(false);
+      setSelectedMenuItem(null);
+    }
+  }, [openAboutPanel]);
+
   const handleMenuClick = (menuItem: string) => {
-    setSelectedMenuItem(menuItem);
-    setChatOpen(true);
+    if (menuItem === 'About Us') {
+      const wasOpen = aboutOpen;
+      setAboutOpen(true);
+      setChatOpen(false);
+      setSelectedMenuItem(null);
+      // Scroll to About Us section
+      setTimeout(() => {
+        const element = document.getElementById('about-us');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, wasOpen ? 50 : 150); // Shorter delay if already open
+    } else if (menuItem === 'Our Values') {
+      setAboutOpen(true);
+      setChatOpen(false);
+      setSelectedMenuItem(null);
+      // Wait for panel to open and then scroll to the element
+      setTimeout(() => {
+        const element = document.getElementById('our-values');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    } else {
+      setSelectedMenuItem(menuItem);
+      setChatOpen(true);
+      setAboutOpen(false);
+    }
   };
 
   const handleCloseChat = () => {
     setChatOpen(false);
     setSelectedMenuItem(null);
+  };
+
+  const handleCloseAbout = () => {
+    setAboutOpen(false);
   };
 
   return (
@@ -46,7 +88,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className={`flex-1 overflow-hidden transition-all duration-300 ${
         sidebarOpen ? 'ml-64' : 'ml-20 max-md:ml-0'
       }`}>
-        {children}
+        {typeof children === 'function' ? children({ openChat: handleMenuClick }) : children}
       </div>
 
       {/* Right Chat Panel */}
@@ -56,11 +98,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         selectedMenuItem={selectedMenuItem}
       />
 
+      {/* Right About Panel */}
+      <RightAboutPanel
+        isOpen={aboutOpen}
+        onClose={handleCloseAbout}
+      />
+
       {/* Overlay when chat is open */}
       {chatOpen && (
         <div
           className="fixed inset-0 bg-black/20 z-30 md:hidden"
           onClick={handleCloseChat}
+        />
+      )}
+
+      {/* Overlay when about is open */}
+      {aboutOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-30 md:hidden"
+          onClick={handleCloseAbout}
         />
       )}
     </div>

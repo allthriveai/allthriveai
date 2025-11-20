@@ -41,12 +41,12 @@
 // Hardcoded, inflexible
 export function RightChatPanel({ isOpen, onClose, selectedMenuItem }) {
   const [messages, setMessages] = useState([...]);
-  
+
   const handleSendMessage = () => {
     // Hardcoded logic for one scenario
     // Can't be reused for other agents
   };
-  
+
   return <div>... hardcoded UI ...</div>;
 }
 ```
@@ -57,7 +57,7 @@ export function RightChatPanel({ isOpen, onClose, selectedMenuItem }) {
 export function RightChatPanel({ isOpen, onClose, selectedMenuItem }) {
   const agent = createAgent(selectedMenuItem);
   const chatSession = useChatSession({ agent, userId });
-  
+
   return (
     <ChatInterface
       config={agent.config}
@@ -188,7 +188,7 @@ function MultiAgentChat() {
         <option value="network">Network</option>
         <option value="learning">Learning</option>
       </select>
-      
+
       <ChatInterface
         config={agent.config}
         messages={chatSession.messages}
@@ -242,11 +242,11 @@ describe('useChatSession', () => {
   it('should add messages to history', async () => {
     const agent = new MockAgent();
     const { result } = renderHook(() => useChatSession({ agent, userId: '123' }));
-    
+
     await act(async () => {
       await result.current.sendMessage('Hello');
     });
-    
+
     expect(result.current.messages).toHaveLength(2); // initial + response
   });
 });
@@ -256,7 +256,7 @@ describe('ChatInterface', () => {
   it('should render messages', () => {
     const config = { agentId: 'test', agentName: 'Test' };
     const messages = [{ id: '1', sender: 'agent', content: 'Hi' }];
-    
+
     render(<ChatInterface config={config} messages={messages} ... />);
     expect(screen.getByText('Hi')).toBeInTheDocument();
   });

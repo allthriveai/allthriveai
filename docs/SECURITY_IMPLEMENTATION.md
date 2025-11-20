@@ -213,7 +213,7 @@ from core.permissions import IsOwnerOrReadOnly
 
 class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
-    
+
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 ```

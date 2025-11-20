@@ -141,7 +141,7 @@ To test if cookies are being set correctly:
 
 **Problem**: Browser blocks requests from frontend to backend
 
-**Solution**: 
+**Solution**:
 1. Add frontend URL to `CORS_ALLOWED_ORIGINS`
 2. Add frontend URL to `CSRF_TRUSTED_ORIGINS`
 3. Ensure `CORS_ALLOW_CREDENTIALS=True` (already set)

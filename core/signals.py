@@ -1,9 +1,12 @@
 """Signal handlers for user authentication and OAuth."""
-from django.db.models.signals import pre_save
-from django.dispatch import receiver
-from allauth.socialaccount.signals import pre_social_login
 from allauth.account.signals import user_signed_up
-from .models import User
+from allauth.socialaccount.signals import pre_social_login
+from django.core.cache import cache
+from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
+
+from .projects.models import Project
+from .users.models import User
 
 
 @receiver(pre_social_login)
@@ -14,23 +17,23 @@ def populate_user_from_social(sender, request, sociallogin, **kwargs):
     """
     # Get the user instance (may not be saved yet)
     user = sociallogin.user
-    
+
     # If user already exists, skip
     if user.pk:
         return
-    
+
     # Set username to email (before @ symbol, or full email if needed)
     if user.email and not user.username:
         # Use email as username
-        username = user.email.split('@')[0].lower()
-        
+        username = user.email.split("@")[0].lower()
+
         # Ensure username is unique by appending number if needed
         base_username = username
         counter = 1
         while User.objects.filter(username=username).exists():
             username = f"{base_username}{counter}"
             counter += 1
-        
+
         user.username = username
 
 
@@ -42,21 +45,45 @@ def set_username_to_email_on_signup(sender, request, user, sociallogin=None, **k
     """
     if sociallogin:
         # This is a social login signup
-        if user.email and (not user.username or '@' in user.username):
+        if user.email and (not user.username or "@" in user.username):
             # Set username to email (full email or part before @)
             # For simplicity and uniqueness, we'll use the full email
             desired_username = user.email.lower()
-            
+
             # Check if we need to make it unique
             if User.objects.filter(username=desired_username).exclude(pk=user.pk).exists():
                 # Username already taken, try email prefix with numbers
-                base_username = user.email.split('@')[0].lower()
+                base_username = user.email.split("@")[0].lower()
                 username = base_username
                 counter = 1
                 while User.objects.filter(username=username).exclude(pk=user.pk).exists():
                     username = f"{base_username}{counter}"
                     counter += 1
                 desired_username = username
-            
+
             user.username = desired_username
-            user.save(update_fields=['username'])
+            user.save(update_fields=["username"])
+
+
+@receiver([post_save, post_delete], sender=Project)
+def invalidate_project_cache(sender, instance, **kwargs):
+    """Invalidate cached project data when a project is created, updated, or deleted.
+
+    This ensures users see up-to-date project information.
+    """
+    if instance.user:
+        username = instance.user.username.lower()
+        # Invalidate both public and own profile caches
+        cache.delete(f"projects:{username}:public")
+        cache.delete(f"projects:{username}:own")
+
+
+@receiver([post_save, post_delete], sender=User)
+def invalidate_user_cache(sender, instance, **kwargs):
+    """Invalidate cached user profile when user is updated or deleted."""
+    if instance.username:
+        username = instance.username.lower()
+        cache.delete(f"profile:{username}")
+        # Also invalidate project caches since user data is included
+        cache.delete(f"projects:{username}:public")
+        cache.delete(f"projects:{username}:own")

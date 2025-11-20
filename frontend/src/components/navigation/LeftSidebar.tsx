@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -13,16 +13,11 @@ import {
   ChevronRightIcon,
   SunIcon,
   MoonIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faCompass,
-  faGamepad,
-  faGraduationCap,
-  faCrown,
-  faUser,
-  faLifeRing,
-} from '@fortawesome/free-solid-svg-icons';
+import { getMenuSections, ROUTE_PATTERNS, TIMING, type MenuItem } from './menuData';
+import { useMenuState } from './useMenuState';
 
 interface LeftSidebarProps {
   onMenuClick: (menuItem: string) => void;
@@ -30,141 +25,111 @@ interface LeftSidebarProps {
   onToggle: () => void;
 }
 
-interface MenuItem {
-  label: string;
-  href?: string;
-  onClick?: () => void;
-  subItems?: MenuItem[];
-}
-
-interface MenuSection {
-  title: string;
-  icon: typeof import('@fortawesome/free-solid-svg-icons').IconDefinition;
-  items: MenuItem[];
-}
-
 export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps) {
   const { user, logout, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const [openSections, setOpenSections] = useState<string[]>(['EXPLORE']);
-  const [openSubItems, setOpenSubItems] = useState<string[]>([]);
+  const location = useLocation();
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const toggleSection = (title: string) => {
-    setOpenSections(prev =>
-      prev.includes(title)
-        ? prev.filter(s => s !== title)
-        : [...prev, title]
-    );
-  };
+  // Memoized menu sections
+  const menuSections = useMemo(
+    () => getMenuSections(onMenuClick, user?.username),
+    [onMenuClick, user?.username]
+  );
 
-  const toggleSubItem = (label: string) => {
-    setOpenSubItems(prev =>
-      prev.includes(label)
-        ? prev.filter(s => s !== label)
-        : [...prev, label]
-    );
-  };
+  // Helper function to check if a menu item is active
+  const isMenuItemActive = useCallback(
+    (item: MenuItem): boolean => {
+      const currentPath = location.pathname;
+      const currentSearch = location.search;
 
-  const handleLogout = async () => {
+      // Check if item has a direct path match (not # placeholders or external)
+      if (item.path && item.path !== '#' && !item.external) {
+        // Exact match for paths without query params
+        if (!item.path.includes('?')) {
+          return currentPath === item.path;
+        }
+        // For paths with query params, match both path and search
+        const [itemPath, itemSearch] = item.path.split('?');
+        return currentPath === itemPath && currentSearch.includes(itemSearch);
+      }
+
+      // Check for specific route patterns
+      const pattern = ROUTE_PATTERNS[item.label];
+      if (pattern) {
+        return pattern(currentPath, currentSearch, user?.username);
+      }
+
+      return false;
+    },
+    [location.pathname, location.search, user?.username]
+  );
+
+  // Use custom hook for menu state management
+  const {
+    openSections,
+    openSubItems,
+    filteredMenuSections,
+    toggleSection,
+    toggleSubItem,
+  } = useMenuState({
+    menuSections,
+    isMenuItemActive,
+    searchQuery,
+    pathname: location.pathname,
+    search: location.search,
+    username: user?.username,
+  });
+
+  // Handle logout with error notification
+  const handleLogout = useCallback(async () => {
     try {
       await logout();
       navigate('/login');
     } catch (error) {
       console.error('Logout failed:', error);
+      // TODO: Show toast notification to user
+      alert('Failed to log out. Please try again.');
     }
-  };
+  }, [logout, navigate]);
 
-  const handleComingSoon = () => {
+  // Handle coming soon notification
+  const handleComingSoon = useCallback(() => {
     setShowComingSoon(true);
-  };
+  }, []);
 
+  // Auto-hide coming soon toast
   useEffect(() => {
     if (showComingSoon) {
       const timer = setTimeout(() => {
         setShowComingSoon(false);
-      }, 3000);
+      }, TIMING.COMING_SOON_DURATION);
       return () => clearTimeout(timer);
     }
   }, [showComingSoon]);
 
-  const menuSections: MenuSection[] = [
-    {
-      title: 'EXPLORE',
-      icon: faCompass,
-      items: [
-        { label: 'For You', href: '#' },
-        { label: 'Trending', href: '#' },
-        { label: 'By Topics', href: '#' },
-        { label: 'By Tools', href: '#' },
-        { label: 'Top Profiles', href: '#' },
-      ],
+  // Shared click handler for menu items
+  const handleMenuItemClick = useCallback(
+    (e: React.MouseEvent, item: MenuItem) => {
+      // Don't prevent default for external links
+      if (item.external && item.path?.startsWith('http')) {
+        return;
+      }
+
+      e.preventDefault();
+
+      if (item.onClick) {
+        item.onClick();
+      } else if (item.path === '#') {
+        handleComingSoon();
+      } else if (item.path && !item.external) {
+        navigate(item.path);
+      }
     },
-    {
-      title: 'PLAY',
-      icon: faGamepad,
-      items: [
-        { label: 'Leaderboards', href: '#' },
-        { label: 'Vote', href: '#' },
-        { label: "This Week's Challenge", href: '#' },
-        { label: 'Side Quests', href: '#' },
-      ],
-    },
-    {
-      title: 'LEARN',
-      icon: faGraduationCap,
-      items: [
-        { label: 'Learning Paths', href: '#' },
-        { label: 'Quick Quizzes', href: '#' },
-        { label: 'Mentorship Program', href: '#' },
-      ],
-    },
-    {
-      title: 'MEMBERSHIP',
-      icon: faCrown,
-      items: [
-        { label: 'Perks', href: '#' },
-        { label: 'Events Calendar', href: '#' },
-      ],
-    },
-    {
-      title: 'SUPPORT',
-      icon: faLifeRing,
-      items: [
-        { label: 'Report an Issue', href: '#' },
-        { label: 'Chat', onClick: () => onMenuClick('Chat') },
-        { label: 'Whats New', href: '#' },
-        { 
-          label: 'About All Thrive',
-          subItems: [
-            { label: 'About Us', href: '#' },
-            { label: 'Our Values', href: '#' },
-          ]
-        },
-        { label: 'Pricing', href: '#' },
-      ],
-    },
-    {
-      title: 'ACCOUNT',
-      icon: faUser,
-      items: [
-        { 
-          label: 'My Profile', 
-          href: '#',
-          onClick: () => {
-            if (user && user.username) {
-              navigate(`/${user.username}`);
-            }
-          }
-        },
-        { label: 'My Projects', href: '#' },
-        { label: 'My Account', onClick: () => navigate('/account/settings') },
-        { label: 'Chrome Extension', href: '#' },
-        { label: 'My Referral Codes', href: '#' },
-      ],
-    },
-  ];
+    [navigate, handleComingSoon]
+  );
 
   return (
     <>
@@ -233,146 +198,183 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
           )}
         </div>
 
-      {/* Menu Sections */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {menuSections.map((section) => (
-          <div key={section.title} className="mb-2">
-            {/* Section Header */}
-            <button
-              onClick={() => toggleSection(section.title)}
-              className={`w-full flex items-center px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:text-slate-700 dark:hover:text-slate-300 transition-colors ${
-                isOpen ? 'justify-between' : 'justify-center'
-              }`}
-              title={!isOpen ? section.title : undefined}
-            >
-              <div className={`flex items-center gap-3 ${
-                isOpen ? '' : 'justify-center'
-              }`}>
-                <FontAwesomeIcon icon={section.icon} className="w-4 h-4" />
-                {isOpen && <span>{section.title}</span>}
-              </div>
-              {isOpen && (
-                openSections.includes(section.title) ? (
-                  <ChevronUpIcon className="w-4 h-4" />
-                ) : (
-                  <ChevronDownIcon className="w-4 h-4" />
-                )
+        {/* Search Bar */}
+        {isOpen && (
+          <div className="px-4 pt-4 pb-2">
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search menu..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/20 rounded-lg text-slate-700 dark:text-slate-300 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 dark:hover:bg-white/5 rounded transition-colors"
+                  aria-label="Clear search"
+                >
+                  <XMarkIcon className="w-3 h-3 text-slate-400" />
+                </button>
               )}
-            </button>
-
-            {/* Section Items */}
-            {isOpen && openSections.includes(section.title) && (
-              <div className="mt-1 space-y-1">
-                {section.items.map((item) => (
-                  <div key={item.label}>
-                    {item.subItems ? (
-                      // Item with submenu
-                      <>
-                        <button
-                          onClick={() => toggleSubItem(item.label)}
-                          className="w-full flex items-center justify-between px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-white/10 dark:hover:bg-white/5 rounded-md transition-colors"
-                        >
-                          <span>{item.label}</span>
-                          {openSubItems.includes(item.label) ? (
-                            <ChevronUpIcon className="w-3 h-3" />
-                          ) : (
-                            <ChevronDownIcon className="w-3 h-3" />
-                          )}
-                        </button>
-                        {openSubItems.includes(item.label) && (
-                          <div className="ml-4 mt-1 space-y-1">
-                            {item.subItems.map((subItem) => (
-                              <a
-                                key={subItem.label}
-                                href={subItem.href}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  if (subItem.onClick) {
-                                    subItem.onClick();
-                                  } else if (subItem.href === '#') {
-                                    handleComingSoon();
-                                  }
-                                }}
-                                className="block px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-white/10 dark:hover:bg-white/5 rounded-md transition-colors"
-                              >
-                                {subItem.label}
-                              </a>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      // Regular item
-                      <a
-                        href={item.href}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (item.onClick) {
-                            item.onClick();
-                          } else if (item.href === '#') {
-                            handleComingSoon();
-                          }
-                        }}
-                        className="block px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-white/10 dark:hover:bg-white/5 rounded-md transition-colors"
-                      >
-                        {item.label}
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            </div>
           </div>
-        ))}
-      </nav>
-
-      {/* Theme Toggle & Auth Button */}
-      <div className="p-4 border-t border-white/10 space-y-2">
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className={`w-full flex items-center gap-3 px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors ${
-            isOpen ? '' : 'justify-center px-0'
-          }`}
-          title={!isOpen ? (theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode') : undefined}
-        >
-          {theme === 'light' ? (
-            <MoonIcon className="w-5 h-5" />
-          ) : (
-            <SunIcon className="w-5 h-5" />
-          )}
-          {isOpen && (
-            <span className="font-medium">
-              {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-            </span>
-          )}
-        </button>
-
-        {/* Auth Button */}
-        {isAuthenticated ? (
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-red-500 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/10 rounded-lg transition-colors ${
-              isOpen ? '' : 'justify-center px-0'
-            }`}
-            title={!isOpen ? 'Log Out' : undefined}
-          >
-            <ArrowRightOnRectangleIcon className="w-5 h-5" />
-            {isOpen && <span className="font-medium">Log Out</span>}
-          </button>
-        ) : (
-          <button
-            onClick={() => navigate('/login')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-500 dark:text-primary-400 hover:bg-primary-500/10 dark:hover:bg-primary-500/10 rounded-lg transition-colors ${
-              isOpen ? '' : 'justify-center px-0'
-            }`}
-            title={!isOpen ? 'Log In' : undefined}
-          >
-            <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-            {isOpen && <span className="font-medium">Log In</span>}
-          </button>
         )}
-      </div>
+
+        {/* Menu Sections */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {filteredMenuSections.length > 0 ? (
+            filteredMenuSections.map((section) => (
+              <div key={section.title} className="mb-2">
+                {/* Section Header */}
+                <button
+                  onClick={() => toggleSection(section.title, isOpen, onToggle)}
+                  className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
+                    isOpen ? 'justify-between' : 'justify-center'
+                  } ${
+                    openSections.includes(section.title)
+                      ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'
+                  }`}
+                  title={!isOpen ? section.title : undefined}
+                >
+                  <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
+                    <FontAwesomeIcon icon={section.icon} className="w-4 h-4" />
+                    {isOpen && <span>{section.title}</span>}
+                  </div>
+                  {isOpen && (
+                    openSections.includes(section.title) ? (
+                      <ChevronUpIcon className="w-4 h-4" />
+                    ) : (
+                      <ChevronDownIcon className="w-4 h-4" />
+                    )
+                  )}
+                </button>
+
+                {/* Section Items */}
+                {isOpen && openSections.includes(section.title) && (
+                  <div className="mt-1 space-y-1">
+                    {section.items.map((item) => (
+                      <div key={item.label}>
+                        {item.subItems ? (
+                          // Item with submenu
+                          <>
+                            <button
+                              onClick={() => toggleSubItem(item.label)}
+                              className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all ${
+                                openSubItems.includes(item.label)
+                                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30 font-medium'
+                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100'
+                              }`}
+                            >
+                              <span>{item.label}</span>
+                              {openSubItems.includes(item.label) ? (
+                                <ChevronUpIcon className="w-3 h-3" />
+                              ) : (
+                                <ChevronDownIcon className="w-3 h-3" />
+                              )}
+                            </button>
+                            {openSubItems.includes(item.label) && (
+                              <div className="ml-4 mt-1 space-y-1">
+                                {item.subItems.map((subItem) => (
+                                  <a
+                                    key={subItem.label}
+                                    href={subItem.path || '#'}
+                                    onClick={(e) => handleMenuItemClick(e, subItem)}
+                                    target={subItem.external ? '_blank' : undefined}
+                                    rel={subItem.external ? 'noopener noreferrer' : undefined}
+                                    className={`block px-3 py-2 text-sm rounded-lg transition-all cursor-pointer ${
+                                      isMenuItemActive(subItem)
+                                        ? 'bg-primary-100 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 font-semibold'
+                                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal'
+                                    }`}
+                                  >
+                                    {subItem.label}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          // Regular item
+                          <a
+                            href={item.path || '#'}
+                            onClick={(e) => handleMenuItemClick(e, item)}
+                            target={item.external ? '_blank' : undefined}
+                            rel={item.external ? 'noopener noreferrer' : undefined}
+                            className={`block px-3 py-2 text-sm rounded-lg transition-all cursor-pointer ${
+                              isMenuItemActive(item)
+                                ? 'bg-primary-100 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 font-semibold'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal hover:font-medium'
+                            }`}
+                          >
+                            {item.label}
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="px-3 py-8 text-center">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                No results found for "{searchQuery}"
+              </p>
+            </div>
+          )}
+        </nav>
+
+        {/* Theme Toggle & Auth Button */}
+        <div className="p-4 border-t border-white/10 space-y-2">
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors ${
+              isOpen ? '' : 'justify-center px-0'
+            }`}
+            title={!isOpen ? (theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode') : undefined}
+          >
+            {theme === 'light' ? (
+              <MoonIcon className="w-5 h-5" />
+            ) : (
+              <SunIcon className="w-5 h-5" />
+            )}
+            {isOpen && (
+              <span className="font-medium">
+                {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+              </span>
+            )}
+          </button>
+
+          {/* Auth Button */}
+          {isAuthenticated ? (
+            <button
+              onClick={handleLogout}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-red-500 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/10 rounded-lg transition-colors ${
+                isOpen ? '' : 'justify-center px-0'
+              }`}
+              title={!isOpen ? 'Log Out' : undefined}
+            >
+              <ArrowRightOnRectangleIcon className="w-5 h-5" />
+              {isOpen && <span className="font-medium">Log Out</span>}
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/login')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-primary-500 dark:text-primary-400 hover:bg-primary-500/10 dark:hover:bg-primary-500/10 rounded-lg transition-colors ${
+                isOpen ? '' : 'justify-center px-0'
+              }`}
+              title={!isOpen ? 'Log In' : undefined}
+            >
+              <ArrowLeftOnRectangleIcon className="w-5 h-5" />
+              {isOpen && <span className="font-medium">Log In</span>}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Coming Soon Toast */}
