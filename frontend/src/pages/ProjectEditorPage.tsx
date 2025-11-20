@@ -319,11 +319,11 @@ export default function ProjectEditorPage() {
               {error || 'Project Not Found'}
             </h1>
             <Link
-              to={`/${username}`}
+              to={`/${username}/${projectSlug}`}
               className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
             >
               <ArrowLeftIcon className="w-5 h-5" />
-              Back to Profile
+              Back to Project
             </Link>
           </div>
         </div>
@@ -337,8 +337,9 @@ export default function ProjectEditorPage() {
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            to={`/${username}`}
+            to={`/${username}/${projectSlug}`}
             className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+            title="Back to project"
           >
             <ArrowLeftIcon className="w-5 h-5" />
           </Link>
@@ -410,23 +411,6 @@ export default function ProjectEditorPage() {
 
             {/* Content */}
             <div className="p-6 space-y-6">
-              {/* Tools Info Section */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Tools & Technologies</h3>
-                <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {projectTools.length > 0 ? (
-                      <span>✓ {projectTools.length} tool{projectTools.length !== 1 ? 's' : ''} selected</span>
-                    ) : (
-                      'No tools selected yet'
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    Edit tools in the metadata section above
-                  </p>
-                </div>
-              </div>
-
               {/* Visibility Options */}
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Visibility</h3>
@@ -786,7 +770,7 @@ export default function ProjectEditorPage() {
                   <img
                     src={featuredImageUrl}
                     alt="Featured"
-                    className="w-full h-48 object-cover rounded-lg border-2 border-gray-300 dark:border-gray-700"
+                    className="w-full max-h-96 object-contain rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
                     }}
