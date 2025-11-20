@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 
-from .constants import MAX_CONTENT_SIZE, MAX_PROJECT_TAGS, MAX_TAG_LENGTH
+from .constants import DEFAULT_BANNER_IMAGE, MAX_CONTENT_SIZE, MAX_PROJECT_TAGS, MAX_TAG_LENGTH
 from .models import Project
 
 
@@ -128,3 +128,10 @@ class ProjectSerializer(serializers.ModelSerializer):
                     'Invalid thumbnail URL. Must be a valid URL or relative path starting with /.'
                 ) from e
         return value
+
+    def create(self, validated_data):
+        """Create a new project with default banner image if not provided."""
+        # Set default banner image if thumbnail_url is not provided or empty
+        if not validated_data.get('thumbnail_url'):
+            validated_data['thumbnail_url'] = DEFAULT_BANNER_IMAGE
+        return super().create(validated_data)

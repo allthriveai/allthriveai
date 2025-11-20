@@ -203,13 +203,17 @@ export default function ProjectDetailPage() {
           )}
         </div>
 
-        {/* Cover Image */}
-        {project.content?.coverImage?.url ? (
-          <div className="w-full h-64 md:h-96 bg-gradient-to-br from-primary-500/20 to-secondary-500/20 overflow-hidden">
+        {/* Banner Image */}
+        {project.thumbnailUrl ? (
+          <div className="w-full h-64 md:h-96 overflow-hidden">
             <img
-              src={project.content.coverImage.url}
-              alt={project.content.coverImage.alt || project.title}
+              src={project.thumbnailUrl}
+              alt={project.title}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).parentElement!.classList.add('bg-gradient-to-br', 'from-primary-500/20', 'to-secondary-500/20', 'flex', 'items-center', 'justify-center');
+              }}
             />
           </div>
         ) : (

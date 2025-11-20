@@ -26,6 +26,7 @@ export default function ProjectEditPage() {
   // Editor state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [blocks, setBlocks] = useState<ProjectBlock[]>([]);
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -77,6 +78,7 @@ export default function ProjectEditPage() {
     if (project) {
       setTitle(project.title);
       setDescription(project.description);
+      setThumbnailUrl(project.thumbnailUrl || '');
       // Add IDs to blocks if they don't have them
       const blocksWithIds = (project.content.blocks || []).map((block: any) => ({
         ...block,
@@ -96,6 +98,7 @@ export default function ProjectEditPage() {
       const updatedProject = await updateProject(project.id, {
         title,
         description,
+        thumbnailUrl,
         content: {
           coverImage: coverImageUrl ? { url: coverImageUrl } : undefined,
           blocks,
@@ -241,6 +244,47 @@ export default function ProjectEditPage() {
         {/* Editor Content */}
         <div className="flex-1 overflow-y-auto p-8">
           <div className="max-w-4xl mx-auto space-y-8">
+            {/* Banner Image */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Banner Image
+              </label>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                This image appears on your project card and at the top of your project page
+              </p>
+              <input
+                type="url"
+                value={thumbnailUrl}
+                onChange={(e) => setThumbnailUrl(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="https://example.com/banner.jpg"
+              />
+              {thumbnailUrl && (
+                <div className="mt-4 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700">
+                  <img
+                    src={thumbnailUrl}
+                    alt="Banner preview"
+                    className="w-full h-48 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
+                    }}
+                  />
+                </div>
+              )}
+              {!thumbnailUrl && (
+                <div className="mt-4 rounded-lg overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="w-full h-48 flex items-center justify-center">
+                    <div className="text-center">
+                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">No banner image yet</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

@@ -42,6 +42,11 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<number>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showBattleModal, setShowBattleModal] = useState(false);
+  const [battleType, setBattleType] = useState('text_prompt');
+  const [battleDuration, setBattleDuration] = useState(10);
+  const [battleMessage, setBattleMessage] = useState('');
+  const [battleError, setBattleError] = useState('');
   const [form, setForm] = useState<{
     title: string;
     description: string;
@@ -339,14 +344,13 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
               {/* Challenge to Battle Button - Only for Pip (Bot) */}
               {displayUser?.role === 'bot' && (
                 <div className="mb-6">
-                  <Link
-                    to="/play/prompt-battle"
-                    state={{ opponentUsername: displayUser.username }}
-                    className="btn-primary"
+                  <button
+                    onClick={() => setShowBattleModal(true)}
+                    className="btn-primary flex items-center gap-2"
                   >
                     <BoltIcon className="w-5 h-5" />
                     Challenge to Prompt Battle
-                  </Link>
+                  </button>
                 </div>
               )}
 
@@ -1121,6 +1125,110 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
             </form>
           </div>
         </div>
+      )}
+
+      {/* Battle Invitation Modal */}
+      {showBattleModal && displayUser && (
+        <>
+          <div className="backdrop" onClick={() => { setShowBattleModal(false); setBattleError(''); }} />
+          <div className="modal max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+              Challenge {displayUser.firstName || displayUser.username}
+            </h2>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setBattleError('');
+
+              try {
+                const response = await fetch('/api/v1/me/battle-invitations/create_invitation/', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    opponent_username: displayUser.username,
+                    battle_type: battleType,
+                    duration_minutes: battleDuration,
+                    message: battleMessage,
+                  }),
+                });
+
+                if (response.ok) {
+                  setShowBattleModal(false);
+                  setBattleMessage('');
+                  alert('Battle invitation sent successfully!');
+                } else {
+                  const data = await response.json();
+                  setBattleError(data.error || 'Failed to send invitation');
+                }
+              } catch (err) {
+                setBattleError('Network error');
+              }
+            }}>
+              <div className="mb-4">
+                <label className="label">
+                  Battle Type
+                </label>
+                <select
+                  value={battleType}
+                  onChange={(e) => setBattleType(e.target.value)}
+                  className="input"
+                >
+                  <option value="text_prompt">Text Prompt</option>
+                  <option value="image_prompt">Image Prompt</option>
+                  <option value="mixed">Mixed</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="label">
+                  Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  value={battleDuration}
+                  onChange={(e) => setBattleDuration(parseInt(e.target.value))}
+                  min="1"
+                  max="60"
+                  className="input"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="label">
+                  Message (optional)
+                </label>
+                <textarea
+                  value={battleMessage}
+                  onChange={(e) => setBattleMessage(e.target.value)}
+                  className="textarea"
+                  rows={3}
+                  placeholder="Add a personal message..."
+                />
+              </div>
+              {battleError && (
+                <div className="mb-6 p-4 glass-subtle border border-error-200 dark:border-error-800 bg-error-50 dark:bg-error-900/20 rounded-lg">
+                  <p className="text-error-600 dark:text-error-400">{battleError}</p>
+                </div>
+              )}
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBattleModal(false);
+                    setBattleError('');
+                  }}
+                  className="btn-ghost"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  Send Challenge
+                </button>
+              </div>
+            </form>
+          </div>
+        </>
       )}
     </div>
   );

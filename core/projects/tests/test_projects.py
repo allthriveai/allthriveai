@@ -5,6 +5,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from core.projects.constants import DEFAULT_BANNER_IMAGE
 from core.projects.models import Project
 
 User = get_user_model()
@@ -282,3 +283,37 @@ class ProjectAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # username should be from auth user, not the provided value
         self.assertEqual(response.data['username'], 'user1')
+
+    def test_default_banner_image_on_create(self):
+        """Test that projects get a default banner image when created without one."""
+        self.client.force_authenticate(user=self.user1)
+        data = {
+            'title': 'Project Without Banner',
+            'description': 'This project should get a default banner',
+            'type': 'other',
+        }
+        response = self.client.post('/api/v1/me/projects/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # Should have the default banner image
+        self.assertEqual(response.data['thumbnail_url'], DEFAULT_BANNER_IMAGE)
+        # Verify in database
+        project = Project.objects.get(id=response.data['id'])
+        self.assertEqual(project.thumbnail_url, DEFAULT_BANNER_IMAGE)
+
+    def test_custom_banner_preserved_on_create(self):
+        """Test that custom banner images are preserved when provided."""
+        self.client.force_authenticate(user=self.user1)
+        custom_url = 'https://example.com/custom-banner.jpg'
+        data = {
+            'title': 'Project With Custom Banner',
+            'description': 'This project has a custom banner',
+            'type': 'other',
+            'thumbnail_url': custom_url,
+        }
+        response = self.client.post('/api/v1/me/projects/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # Should preserve the custom banner
+        self.assertEqual(response.data['thumbnail_url'], custom_url)
+        # Verify in database
+        project = Project.objects.get(id=response.data['id'])
+        self.assertEqual(project.thumbnail_url, custom_url)
