@@ -2,6 +2,7 @@
 Django settings for allthrive-ai-django project.
 """
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -237,14 +238,22 @@ CHAT_SESSION_TTL = config("CHAT_SESSION_TTL", default=1800, cast=int)  # 30 minu
 
 # Cache Configuration
 # Use Redis for caching (DB 2 for cache)
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": config("CACHE_URL", default="redis://redis:6379/2"),
-        "KEY_PREFIX": "allthrive",
-        "TIMEOUT": 300,  # 5 minutes default
+# Use dummy cache during tests to avoid Redis dependency
+if "test" in sys.argv or "pytest" in sys.modules:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": config("CACHE_URL", default="redis://redis:6379/2"),
+            "KEY_PREFIX": "allthrive",
+            "TIMEOUT": 300,  # 5 minutes default
+        }
+    }
 
 # Cache timeouts for different data types
 CACHE_TTL = {

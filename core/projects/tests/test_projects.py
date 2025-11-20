@@ -4,7 +4,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from core.models import Project
+from core.projects.models import Project
 
 User = get_user_model()
 
@@ -126,7 +126,7 @@ class ProjectAPITest(APITestCase):
         """Test that authenticated user can create a project."""
         self.client.force_authenticate(user=self.user1)
         data = {"title": "My API Project", "description": "Created via API", "type": "github_repo"}
-        response = self.client.post("/api/v1/projects/", data)
+        response = self.client.post("/api/v1/me/projects/", data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["title"], "My API Project")
         self.assertEqual(response.data["slug"], "my-api-project")
@@ -135,7 +135,7 @@ class ProjectAPITest(APITestCase):
     def test_create_project_unauthenticated(self):
         """Test that unauthenticated requests are rejected."""
         data = {"title": "Test"}
-        response = self.client.post("/api/v1/projects/", data)
+        response = self.client.post("/api/v1/me/projects/", data)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_cannot_set_user_id(self):
@@ -146,7 +146,7 @@ class ProjectAPITest(APITestCase):
             "user": self.user2.id,  # Attempt to set different user
             "user_id": self.user2.id,
         }
-        response = self.client.post("/api/v1/projects/", data)
+        response = self.client.post("/api/v1/me/projects/", data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # Should be created for user1, not user2
         project = Project.objects.get(id=response.data["id"])
@@ -161,7 +161,7 @@ class ProjectAPITest(APITestCase):
 
         # Login as user1
         self.client.force_authenticate(user=self.user1)
-        response = self.client.get("/api/v1/projects/")
+        response = self.client.get("/api/v1/me/projects/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Handle paginated response
         results = response.data.get("results", response.data)
@@ -177,7 +177,7 @@ class ProjectAPITest(APITestCase):
 
         # Login as user1 and try to access user2's project
         self.client.force_authenticate(user=self.user1)
-        response = self.client.get(f"/api/v1/projects/{project.id}/")
+        response = self.client.get(f"/api/v1/me/projects/{project.id}/")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_cannot_update_other_user_project(self):
@@ -186,7 +186,7 @@ class ProjectAPITest(APITestCase):
 
         self.client.force_authenticate(user=self.user1)
         data = {"title": "Hacked Title"}
-        response = self.client.patch(f"/api/v1/projects/{project.id}/", data)
+        response = self.client.patch(f"/api/v1/me/projects/{project.id}/", data)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         # Verify project wasn't modified
@@ -198,7 +198,7 @@ class ProjectAPITest(APITestCase):
         project = Project.objects.create(user=self.user2, title="User2 Project")
 
         self.client.force_authenticate(user=self.user1)
-        response = self.client.delete(f"/api/v1/projects/{project.id}/")
+        response = self.client.delete(f"/api/v1/me/projects/{project.id}/")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         # Verify project still exists
@@ -210,7 +210,7 @@ class ProjectAPITest(APITestCase):
 
         self.client.force_authenticate(user=self.user1)
         data = {"title": "Updated Title", "description": "New description", "is_showcase": True}
-        response = self.client.patch(f"/api/v1/projects/{project.id}/", data)
+        response = self.client.patch(f"/api/v1/me/projects/{project.id}/", data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["title"], "Updated Title")
         self.assertEqual(response.data["description"], "New description")
@@ -221,7 +221,7 @@ class ProjectAPITest(APITestCase):
         project = Project.objects.create(user=self.user1, title="To Delete")
 
         self.client.force_authenticate(user=self.user1)
-        response = self.client.delete(f"/api/v1/projects/{project.id}/")
+        response = self.client.delete(f"/api/v1/me/projects/{project.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Project.objects.filter(id=project.id).exists())
 
@@ -229,7 +229,7 @@ class ProjectAPITest(APITestCase):
         """Test that content must be a JSON object."""
         self.client.force_authenticate(user=self.user1)
         data = {"title": "Test", "content": "not a dict"}
-        response = self.client.post("/api/v1/projects/", data, format="json")
+        response = self.client.post("/api/v1/me/projects/", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("content", response.data)
 
@@ -239,7 +239,7 @@ class ProjectAPITest(APITestCase):
         # Create content larger than 100KB
         large_content = {"blocks": [{"type": "text", "content": "x" * 101000}]}
         data = {"title": "Large Project", "content": large_content}
-        response = self.client.post("/api/v1/projects/", data, format="json")
+        response = self.client.post("/api/v1/me/projects/", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("content", response.data)
 
@@ -247,7 +247,7 @@ class ProjectAPITest(APITestCase):
         """Test that invalid thumbnail URLs are rejected."""
         self.client.force_authenticate(user=self.user1)
         data = {"title": "Test", "thumbnail_url": "not-a-valid-url"}
-        response = self.client.post("/api/v1/projects/", data, format="json")
+        response = self.client.post("/api/v1/me/projects/", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("thumbnail_url", response.data)
 
@@ -260,7 +260,7 @@ class ProjectAPITest(APITestCase):
         p2 = Project.objects.create(user=self.user1, title="Second")
         p3 = Project.objects.create(user=self.user1, title="Third")
 
-        response = self.client.get("/api/v1/projects/")
+        response = self.client.get("/api/v1/me/projects/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Handle paginated response
@@ -277,7 +277,7 @@ class ProjectAPITest(APITestCase):
             "username": "hacker",  # Readonly field
             "created_at": "2020-01-01T00:00:00Z",  # Readonly field
         }
-        response = self.client.post("/api/v1/projects/", data, format="json")
+        response = self.client.post("/api/v1/me/projects/", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # username should be from auth user, not the provided value
         self.assertEqual(response.data["username"], "user1")

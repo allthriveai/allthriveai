@@ -52,7 +52,7 @@ class Project(models.Model):
     is_published = models.BooleanField(default=False, help_text="Whether project is publicly visible")
     published_at = models.DateTimeField(null=True, blank=True, help_text="When project was first published")
     # CharField supports both full URLs and relative paths (e.g., /path/to/image)
-    thumbnail_url = models.CharField(max_length=500, blank=True)
+    thumbnail_url = models.CharField(max_length=500, blank=True, default="")
     # Structured layout blocks for the project page (cover, tags, text/image blocks)
     content = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

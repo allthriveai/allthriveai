@@ -12,6 +12,8 @@ class CompleteReferralFlowTestCase(TestCase):
     def setUp(self):
         """Set up test client."""
         self.client = APIClient()
+        # Clear any existing referrals to ensure test isolation
+        Referral.objects.all().delete()
 
     def test_complete_referral_workflow(self):
         """Test complete workflow: create user, get code, share, validate, track."""
@@ -60,8 +62,10 @@ class CompleteReferralFlowTestCase(TestCase):
         # Step 7: Referrer views their referrals
         response = self.client.get("/api/v1/me/referrals/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["status"], ReferralStatus.PENDING)
+        # Handle paginated response
+        results = response.data.get("results", response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["status"], ReferralStatus.PENDING)
 
         # Step 8: System marks referral as completed
         referral.mark_completed()
@@ -92,6 +96,8 @@ class MultipleReferralsTestCase(TestCase):
     def setUp(self):
         """Set up test users and client."""
         self.client = APIClient()
+        # Clear any existing referrals to ensure test isolation
+        Referral.objects.all().delete()
         self.referrer = User.objects.create_user(
             username="referrer", email="referrer@example.com", password="testpass123"
         )
@@ -124,7 +130,9 @@ class MultipleReferralsTestCase(TestCase):
         # Check referrals list
         response = self.client.get("/api/v1/me/referrals/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 3)
+        # Handle paginated response
+        results = response.data.get("results", response.data)
+        self.assertEqual(len(results), 3)
 
     def test_referral_with_max_uses_limit(self):
         """Test that codes respect max_uses limit."""
