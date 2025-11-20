@@ -24,9 +24,14 @@ export default function ToolDetailPage() {
   const [similarTools, setSimilarTools] = useState<Tool[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
 
   const handleClose = useCallback(() => {
-    navigate(-1);
+    setIsClosing(true);
+    // Wait for animation to complete before navigating
+    setTimeout(() => {
+      navigate(-1);
+    }, 300);
   }, [navigate]);
 
   useEffect(() => {
@@ -75,11 +80,15 @@ export default function ToolDetailPage() {
     return (
       <>
         <div
-          className="fixed inset-0 bg-black/40 z-40 animate-[fade-in_0.2s_ease-out]"
+          className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-200 ${
+            isClosing ? 'opacity-0' : 'animate-[fade-in_0.2s_ease-out]'
+          }`}
           onClick={handleClose}
           aria-hidden="true"
         />
-        <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] glass-strong border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col animate-[slide-in-right_0.3s_ease-out]">
+        <aside className={`fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] glass-strong border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ${
+          isClosing ? 'translate-x-full' : 'animate-[slide-in-right_0.3s_ease-out]'
+        }`}>
           <div className="p-6 animate-pulse">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-4 flex-1">
@@ -109,11 +118,15 @@ export default function ToolDetailPage() {
     return (
       <>
         <div
-          className="fixed inset-0 bg-black/40 z-40 animate-[fade-in_0.2s_ease-out]"
+          className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-200 ${
+            isClosing ? 'opacity-0' : 'animate-[fade-in_0.2s_ease-out]'
+          }`}
           onClick={handleClose}
           aria-hidden="true"
         />
-        <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] glass-strong border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col animate-[slide-in-right_0.3s_ease-out]">
+        <aside className={`fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] glass-strong border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ${
+          isClosing ? 'translate-x-full' : 'animate-[slide-in-right_0.3s_ease-out]'
+        }`}>
           <div className="p-6">
             <div className="flex items-start justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Tool Not Found</h2>
@@ -144,13 +157,17 @@ export default function ToolDetailPage() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/40 z-40 animate-[fade-in_0.2s_ease-out]"
+        className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-200 ${
+          isClosing ? 'opacity-0' : 'animate-[fade-in_0.2s_ease-out]'
+        }`}
         onClick={handleClose}
         aria-hidden="true"
       />
 
       {/* Right Sidebar Drawer */}
-      <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] glass-strong border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col animate-[slide-in-right_0.3s_ease-out]">
+      <aside className={`fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] glass-strong border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ${
+        isClosing ? 'translate-x-full' : 'animate-[slide-in-right_0.3s_ease-out]'
+      }`}>
         {/* Header - Fixed */}
         <div className="flex-shrink-0 p-6 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-start justify-between mb-4">
