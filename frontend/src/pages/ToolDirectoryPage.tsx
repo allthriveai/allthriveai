@@ -140,7 +140,7 @@ export default function ToolDirectoryPage() {
                       <div key={letter} id={letter}>
                         {/* Letter Header */}
                         <div className="flex items-center gap-4 mb-6">
-                          <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-primary-500 to-secondary-500 text-white rounded-xl font-bold text-2xl shadow-lg">
+                          <div className="flex items-center justify-center w-12 h-12 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-bold text-2xl shadow-sm">
                             {letter}
                           </div>
                           <div className="flex-1 h-px bg-gradient-to-r from-gray-300 dark:from-gray-700 to-transparent" />
@@ -155,7 +155,7 @@ export default function ToolDirectoryPage() {
                               className="block text-left glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800 hover:border-primary-300 dark:hover:border-primary-700 transition-all hover:shadow-lg"
                             >
                               <div className="flex items-start gap-4">
-                                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-primary-100 to-secondary-100 dark:from-primary-900/30 dark:to-secondary-900/30 rounded-lg flex items-center justify-center overflow-hidden">
+                                <div className="flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                                   {tool.logoUrl ? (
                                     <img src={tool.logoUrl} alt={`${tool.name} logo`} className="w-10 h-10 object-contain" />
                                   ) : (

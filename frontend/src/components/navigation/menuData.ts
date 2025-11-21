@@ -2,9 +2,10 @@ import {
   faCompass,
   faGamepad,
   faGraduationCap,
-  faCrown,
+  faUsers,
   faUser,
   faLifeRing,
+  faWrench,
 } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
@@ -44,6 +45,7 @@ export const getMenuSections = (
       { label: "This Week's Challenge", path: '#' },
       { label: 'Side Quests', path: '#' },
       { label: 'Prompt Battle', path: '/play/prompt-battle' },
+      { label: 'Your Thrive Circle', path: '#' },
     ],
   },
   {
@@ -57,7 +59,7 @@ export const getMenuSections = (
   },
   {
     title: 'MEMBERSHIP',
-    icon: faCrown,
+    icon: faUsers,
     items: [
       { label: 'Perks', path: '#' },
       { label: 'Events Calendar', onClick: () => onMenuClick('Events Calendar') },
@@ -110,6 +112,7 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
     username ? path === `/${username}` && (search.includes('tab=showcase') || !search.includes('tab=')) : false,
   'My Projects': (path, search, username) =>
     username ? path === `/${username}` && search.includes('tab=playground') : false,
+  'AI Tool Directory': (path) => path === '/tools',
 };
 
 // Timing constants
@@ -118,3 +121,6 @@ export const TIMING = {
   SCROLL_DELAY_ALREADY_OPEN: 50,
   COMING_SOON_DURATION: 3000,
 } as const;
+
+// Export tools icon for use in LeftSidebar
+export const TOOLS_ICON = faWrench;

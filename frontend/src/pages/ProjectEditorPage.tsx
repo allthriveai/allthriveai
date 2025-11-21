@@ -823,7 +823,7 @@ export default function ProjectEditorPage() {
                   }`}
                 >
                   <FaQuoteLeft className="w-5 h-5" />
-                  <span className="font-medium">Quote</span>
+                  <span className="font-medium">Prompt</span>
                 </button>
               </div>
 
@@ -1149,10 +1149,6 @@ export default function ProjectEditorPage() {
                         setBlocks(blocks.map(b => b.id === block.id ? { ...block, ...updated } : b));
                       }}
                       onDelete={() => {
-                        if (blocks.length === 1) {
-                          alert('Cannot delete the last block');
-                          return;
-                        }
                         setBlocks(blocks.filter(b => b.id !== block.id));
                       }}
                     />

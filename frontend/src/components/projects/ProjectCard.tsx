@@ -78,7 +78,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const getHeroElement = () => {
     const heroMode = project.content?.heroDisplayMode;
 
-    // If hero mode is specified, use that
+    // If hero mode is specified, use that (regardless of variant)
     if (heroMode === 'image' && project.featuredImageUrl) {
       return { type: 'image' as const, url: project.featuredImageUrl };
     }
@@ -92,7 +92,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       return { type: 'quote' as const, text: project.content.heroQuote };
     }
 
-    // Fallback: use featuredImageUrl > cover > thumbnailUrl > placeholder
+    // Fallback: use featuredImageUrl > thumbnailUrl > placeholder
     if (project.featuredImageUrl) {
       return { type: 'image' as const, url: project.featuredImageUrl };
     }
@@ -111,16 +111,23 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     ? { onClick: handleClick, style: { cursor: 'pointer' } }
     : { to: projectUrl };
 
-  // Masonry variant - TikTok-inspired with larger cards showing more info
+  // Masonry variant - Flexible height for text, portrait for media
   if (variant === 'masonry') {
     const heroElement = getHeroElement();
+    // Treat quote cards as media cards for styling purposes (dark mode overlay style)
+    const isMediaCard = ['image', 'video', 'slideshow', 'quote'].includes(heroElement.type) || (heroElement.type === 'image' && project.type !== 'github_repo');
+    const isQuote = heroElement.type === 'quote';
+
+    // Get gradient colors for quote cards
+    const gradientFrom = project.content?.heroGradientFrom || 'rgb(124, 58, 237)'; // violet-600
+    const gradientTo = project.content?.heroGradientTo || 'rgb(79, 70, 229)'; // indigo-600
 
     return (
       <CardWrapper
         {...(cardProps as React.ComponentProps<typeof Link>)}
         className={`block relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 group ${
           isSelected ? 'ring-4 ring-primary-500' : ''
-        }`}
+        } ${isQuote ? 'min-h-[400px]' : (isMediaCard ? 'aspect-[3/4]' : 'h-auto')}`}
       >
         {/* Selection checkbox */}
         {selectionMode && (
@@ -135,22 +142,17 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
           </div>
         )}
 
-        {/* Hero Element Display */}
-        <div className="relative w-full aspect-[3/4] overflow-hidden bg-gray-900">
-          {heroElement.type === 'image' && (
-            <>
+        {/* BACKGROUND LAYER */}
+        <div className="absolute inset-0 bg-gray-900">
+            {heroElement.type === 'image' && (
               <img
                 src={heroElement.url}
                 alt={project.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
-              {/* Gradient overlay for text readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-            </>
-          )}
+            )}
 
-          {heroElement.type === 'video' && (
-            <>
+            {heroElement.type === 'video' && (
               <video
                 src={heroElement.url}
                 className="w-full h-full object-cover"
@@ -159,118 +161,75 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                 muted
                 playsInline
               />
-              {/* Gradient overlay for text readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-            </>
-          )}
+            )}
 
-          {heroElement.type === 'slideshow' && (
-            <>
+            {heroElement.type === 'slideshow' && (
               <img
                 src={heroElement.images[0]}
                 alt={project.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
-              {/* Gradient overlay for text readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              {/* Slideshow counter */}
-              <div className="absolute top-3 left-3 px-2.5 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-xs font-medium">
-                1/{heroElement.images.length}
-              </div>
-            </>
-          )}
+            )}
 
-          {heroElement.type === 'quote' && (
-            <div className="w-full h-full bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center p-8">
-              <blockquote className="text-white text-center max-w-lg">
-                <p className="text-xl md:text-2xl font-medium italic leading-relaxed">
-                  "{heroElement.text}"
-                </p>
-              </blockquote>
-            </div>
-          )}
-
-          {/* Top action buttons */}
-          <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
-            {/* Menu button for owner */}
-            {isOwner && !selectionMode && (
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setShowMenu(!showMenu);
-                  }}
-                  className="p-2.5 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/60 text-white shadow-lg transition-all hover:scale-110"
-                  title="Options"
-                >
-                  <EllipsisVerticalIcon className="w-5 h-5" />
-                </button>
-
-                {/* Dropdown menu */}
-                {showMenu && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setShowMenu(false);
-                        navigate(`/${project.username}/${project.slug}/edit`);
-                      }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                    >
-                      <PencilIcon className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setShowMenu(false);
-                        if (onToggleShowcase) onToggleShowcase(project.id);
-                      }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                    >
-                      {project.isShowcase ? (
-                        <>
-                          <EyeSlashIcon className="w-4 h-4" />
-                          Remove from Showcase
-                        </>
-                      ) : (
-                        <>
-                          <EyeIcon className="w-4 h-4" />
-                          Add to Showcase
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setShowMenu(false);
-                        if (onDelete) onDelete(project.id);
-                      }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 border-t border-gray-200 dark:border-gray-700"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                      Delete
-                    </button>
-                  </div>
-                )}
+            {isQuote && (
+              <div
+                className="absolute inset-0 group-hover:scale-105 transition-transform duration-700"
+                style={{
+                  background: `linear-gradient(to bottom right, ${gradientFrom}, ${gradientTo})`
+                }}
+              >
+                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay pointer-events-none" />
               </div>
             )}
-          </div>
+        </div>
 
-          {/* Bottom content - always visible */}
-          <div className="absolute bottom-0 left-0 right-0 p-5 z-20">
-            {/* Title */}
-            <h3 className="text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
+        {/* CONTENT LAYER */}
+        {/* Quote Content - Positioned to avoid footer overlap */}
+        {isQuote && (
+          <div className="absolute top-0 left-0 right-0 bottom-40 px-6 flex items-center justify-center z-10 pointer-events-none overflow-hidden">
+             <p className="text-lg md:text-xl font-medium leading-relaxed tracking-normal drop-shadow-sm font-sans line-clamp-[8] text-white/95 text-center">
+               {heroElement.text}
+             </p>
+          </div>
+        )}
+
+        {/* Repo Content (Flex Flow for non-media) */}
+        {!isMediaCard && (
+          <div className="relative w-full h-full flex flex-col min-h-[320px] bg-slate-900">
+            {project.type === 'github_repo' && (
+              <div className="absolute inset-0 opacity-50 pointer-events-none">
+                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
+              </div>
+            )}
+            <div className="flex-1 p-8 flex flex-col items-center justify-center relative z-10">
+               {project.type === 'github_repo' && (
+                 <div className="w-full flex flex-col items-center gap-4 opacity-80">
+                    <CodeBracketIcon className="w-16 h-16 text-slate-400" />
+                    <div className="w-full space-y-2 opacity-50">
+                      <div className="h-2 w-3/4 bg-slate-600 rounded mx-auto" />
+                      <div className="h-2 w-1/2 bg-slate-600 rounded mx-auto" />
+                      <div className="h-2 w-5/6 bg-slate-600 rounded mx-auto" />
+                    </div>
+                 </div>
+               )}
+            </div>
+            <div className="h-4 shrink-0" />
+          </div>
+        )}
+
+        {/* GRADIENT OVERLAY & FOOTER */}
+        {/* Always render footer absolute at bottom for seamless look */}
+        <div className="absolute bottom-0 left-0 right-0 z-20">
+          {/* Gradient Background for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent -top-12" />
+
+          <div className="relative p-5 pt-2">
+            <h3 className="text-xl font-bold mb-1 line-clamp-2 leading-tight text-white drop-shadow-md">
               {project.title}
             </h3>
 
-            {/* Description */}
             {project.description && (
-              <p className="text-sm text-white/90 mb-3 line-clamp-2 leading-relaxed">
+              <p className="text-sm mb-3 line-clamp-2 leading-relaxed font-medium text-white/90 drop-shadow-sm">
                 {project.description}
               </p>
             )}
@@ -281,40 +240,32 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                 {project.content.tags.slice(0, 3).map((tag, index) => (
                   <span
                     key={index}
-                    className="px-2.5 py-1 text-xs font-medium rounded-full bg-white/20 text-white backdrop-blur-sm border border-white/20"
+                    className="px-2.5 py-1 text-xs font-semibold rounded-full bg-white/10 text-white backdrop-blur-md border border-white/10"
                   >
                     #{tag}
                   </span>
                 ))}
-                {project.content.tags.length > 3 && (
-                  <span className="px-2.5 py-1 text-xs font-medium text-white/70">
-                    +{project.content.tags.length - 3}
-                  </span>
-                )}
               </div>
             )}
 
-            {/* Footer with heart and tool */}
-            <div className="flex items-center justify-between">
-              {/* Heart button */}
+            <div className="flex items-center justify-between pt-1">
               <button
                 onClick={handleLike}
                 disabled={isLiking}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/60 transition-all hover:scale-105 disabled:opacity-50 group/heart"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all hover:scale-105 disabled:opacity-50 group/heart bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
               >
                 {isLiked ? (
-                  <HeartIconSolid className="w-5 h-5 text-red-500 group-hover/heart:scale-110 transition-transform" />
+                  <HeartIconSolid className="w-5 h-5 text-red-500 group-hover/heart:scale-110 transition-transform drop-shadow-sm" />
                 ) : (
-                  <HeartIcon className="w-5 h-5 text-white group-hover/heart:scale-110 transition-transform" />
+                  <HeartIcon className="w-5 h-5 text-white group-hover/heart:scale-110 transition-transform drop-shadow-sm" />
                 )}
-                <span className="text-sm font-semibold text-white">
+                <span className="text-sm font-bold text-white">
                   {heartCount > 0 ? heartCount : ''}
                 </span>
               </button>
 
-              {/* Top tool used */}
               {project.toolsDetails && project.toolsDetails.length > 0 ? (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/20">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20">
                   {project.toolsDetails[0].logoUrl && (
                     <img
                       src={project.toolsDetails[0].logoUrl}
@@ -322,7 +273,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                       className="w-4 h-4 rounded object-contain"
                     />
                   )}
-                  <span className="text-xs font-medium text-white">
+                  <span className="text-xs font-bold text-white">
                     {project.toolsDetails[0].name}
                   </span>
                 </div>

@@ -16,8 +16,10 @@ import {
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { getMenuSections, ROUTE_PATTERNS, TIMING, type MenuItem } from './menuData';
+import { getMenuSections, ROUTE_PATTERNS, TIMING, TOOLS_ICON, type MenuItem } from './menuData';
 import { useMenuState } from './useMenuState';
+import { getTools } from '@/services/tools';
+import type { Tool } from '@/types/models';
 
 interface LeftSidebarProps {
   onMenuClick: (menuItem: string) => void;
@@ -32,12 +34,47 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
   const location = useLocation();
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [tools, setTools] = useState<Tool[]>([]);
 
-  // Memoized menu sections
+  // Load tools on mount
+  useEffect(() => {
+    async function loadTools() {
+      try {
+        const response = await getTools({ ordering: 'name' });
+        setTools(response.results);
+      } catch (err) {
+        console.error('Failed to load tools for sidebar:', err);
+        // Fail silently - sidebar will work without tools
+      }
+    }
+    loadTools();
+  }, []);
+
+  // Memoized menu sections (base sections without tools)
   const menuSections = useMemo(
     () => getMenuSections(onMenuClick, user?.username),
     [onMenuClick, user?.username]
   );
+
+  // Memoized menu sections WITH tools (only used when searching)
+  const menuSectionsWithTools = useMemo(() => {
+    if (!searchQuery.trim() || tools.length === 0) {
+      return menuSections;
+    }
+
+    // When searching, add tools as a searchable section
+    const sections = [...menuSections];
+    sections.push({
+      title: 'TOOLS',
+      icon: TOOLS_ICON,
+      items: tools.map(tool => ({
+        label: tool.name,
+        path: `/tools/${tool.slug}`,
+      })),
+    });
+
+    return sections;
+  }, [menuSections, tools, searchQuery]);
 
   // Helper function to check if a menu item is active
   const isMenuItemActive = useCallback(
@@ -75,7 +112,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
     toggleSection,
     toggleSubItem,
   } = useMenuState({
-    menuSections,
+    menuSections: menuSectionsWithTools,
     isMenuItemActive,
     searchQuery,
     pathname: location.pathname,

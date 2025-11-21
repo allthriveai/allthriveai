@@ -123,6 +123,9 @@ export interface ProjectContent {
   heroQuote?: string;
   heroVideoUrl?: string;
   heroSlideshowImages?: string[];
+  // Gradient colors for quote cards (Tailwind color names)
+  heroGradientFrom?: string;  // e.g., 'violet-600'
+  heroGradientTo?: string;    // e.g., 'indigo-600'
 }
 
 export type ProjectBlock =

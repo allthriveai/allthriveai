@@ -1,27 +1,29 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { getToolBySlug, getSimilarTools } from '@/services/tools';
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { getToolBySlug } from '@/services/tools';
 import type { Tool } from '@/types/models';
 import {
   ArrowTopRightOnSquareIcon,
   CheckCircleIcon,
-  CodeBracketIcon,
   CurrencyDollarIcon,
   DocumentTextIcon,
-  LightBulbIcon,
-  RocketLaunchIcon,
   SparklesIcon,
-  StarIcon,
-  ExclamationTriangleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faTags,
+  faAlignLeft,
+  faLink,
+  faListCheck,
+  faBolt,
+  faFolderOpen,
+} from '@fortawesome/free-solid-svg-icons';
 
 export default function ToolDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [tool, setTool] = useState<Tool | null>(null);
-  const [similarTools, setSimilarTools] = useState<Tool[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
@@ -38,7 +40,6 @@ export default function ToolDetailPage() {
     if (slug) {
       // Clear previous tool data immediately to prevent stale data flash
       setTool(null);
-      setSimilarTools([]);
       setError(null);
       setIsLoading(true);
       loadTool(slug);
@@ -59,14 +60,6 @@ export default function ToolDetailPage() {
       setIsLoading(true);
       const toolData = await getToolBySlug(toolSlug);
       setTool(toolData);
-
-      // Load similar tools
-      try {
-        const similar = await getSimilarTools(toolSlug);
-        setSimilarTools(similar);
-      } catch (err) {
-        console.error('Failed to load similar tools:', err);
-      }
     } catch (err: any) {
       console.error('Failed to load tool:', err);
       setError(err?.error || 'Tool not found');
@@ -169,308 +162,192 @@ export default function ToolDetailPage() {
         isClosing ? 'translate-x-full' : 'animate-[slide-in-right_0.3s_ease-out]'
       }`}>
         {/* Header - Fixed */}
-        <div className="flex-shrink-0 p-6 border-b border-gray-200 dark:border-gray-800">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-4">
+        <div className="flex-shrink-0 px-5 py-3 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               {/* Logo */}
-              <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-primary-100 to-secondary-100 dark:from-primary-900/30 dark:to-secondary-900/30 rounded-xl flex items-center justify-center overflow-hidden shadow-lg">
+              <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-md">
                 {tool.logoUrl ? (
-                  <img src={tool.logoUrl} alt={`${tool.name} logo`} className="w-14 h-14 object-contain" />
+                  <img src={tool.logoUrl} alt={`${tool.name} logo`} className="w-10 h-10 object-contain" />
                 ) : (
-                  <SparklesIcon className="w-8 h-8 text-primary-600 dark:text-primary-400" />
+                  <SparklesIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
                 )}
               </div>
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{tool.name}</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{tool.tagline}</p>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white truncate">{tool.name}</h1>
+                <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                  {tool.tagline}
+                </p>
+                {/* Badges, Category & Website */}
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <span className="px-2 py-0.5 text-[10px] font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-full">
+                    {tool.categoryDisplay}
+                  </span>
+                  {tool.isFeatured && (
+                    <span className="px-2 py-0.5 text-[10px] font-semibold text-primary-700 dark:text-primary-300 bg-primary-100 dark:bg-primary-900/30 rounded-full">
+                      Featured
+                    </span>
+                  )}
+                  {tool.isVerified && (
+                    <span className="px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center gap-1">
+                      <CheckCircleIcon className="w-3 h-3" />
+                      Verified
+                    </span>
+                  )}
+                  {tool.websiteUrl && (
+                    <a
+                      href={tool.websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-1 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
+                      aria-label="Open tool website"
+                    >
+                      <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
-            <button
-              onClick={handleClose}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-              aria-label="Close"
-            >
-              <XMarkIcon className="w-6 h-6" />
-            </button>
-          </div>
-
-          {/* Badges & Category */}
-          <div className="flex items-center gap-2 mb-4">
-            <span className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-full">
-              {tool.categoryDisplay}
-            </span>
-            {tool.isFeatured && (
-              <span className="px-2 py-1 text-xs font-semibold text-primary-700 dark:text-primary-300 bg-primary-100 dark:bg-primary-900/30 rounded-full">
-                Featured
-              </span>
-            )}
-            {tool.isVerified && (
-              <span className="px-2 py-1 text-xs font-semibold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center gap-1">
-                <CheckCircleIcon className="w-3 h-3" />
-                Verified
-              </span>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <a
-              href={tool.websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-lg"
-            >
-              Visit Website <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-            </a>
-            {tool.documentationUrl && (
-              <a
-                href={tool.documentationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors"
+            <div className="flex items-start">
+              <button
+                onClick={handleClose}
+                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label="Close"
               >
-                <DocumentTextIcon className="w-4 h-4" />
-                Docs
-              </a>
-            )}
-            {tool.pricingUrl && (
-              <a
-                href={tool.pricingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors"
-              >
-                <CurrencyDollarIcon className="w-4 h-4" />
-                Pricing
-              </a>
-            )}
+                <XMarkIcon className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Content - Scrollable */}
+      {/* Content - Scrollable */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
-            {/* Description */}
-            <section className="glass-subtle rounded-xl p-4 border border-gray-200 dark:border-gray-800">
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+            {/* Taxonomy Categories */}
+            {tool.tags.length > 0 && (
+              <section>
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wide mb-2 flex items-center gap-2">
+                  <FontAwesomeIcon icon={faTags} className="w-3.5 h-3.5" />
+                  Categories
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {tool.tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="px-3 py-1 text-sm font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/20 rounded-full border border-primary-200 dark:border-primary-800"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Brief Description */}
+            <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+              <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-2 flex items-center gap-2">
+                <FontAwesomeIcon icon={faAlignLeft} className="w-3.5 h-3.5" />
+                Description
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">
                 {tool.overview || tool.description}
               </p>
             </section>
 
-            {/* Key Features */}
-            {tool.keyFeatures.length > 0 && (
-              <section className="glass-subtle rounded-xl p-4 border border-gray-200 dark:border-gray-800">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <RocketLaunchIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                  Key Features
+            {/* Link Section (only extra links, header has main CTA) */}
+            {(tool.documentationUrl || tool.pricingUrl) && (
+              <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-2 flex items-center gap-2">
+                  <FontAwesomeIcon icon={faLink} className="w-3.5 h-3.5" />
+                  More links
                 </h2>
-                <div className="grid grid-cols-1 gap-3">
-                  {tool.keyFeatures.map((feature, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 bg-primary-50 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-800 rounded-lg"
+                <div className="flex flex-col gap-2 text-sm">
+                  {tool.documentationUrl && (
+                    <a
+                      href={tool.documentationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors"
                     >
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">{feature.title}</h3>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">{feature.description}</p>
-                    </div>
-                  ))}
+                      <DocumentTextIcon className="w-4 h-4" />
+                      Documentation
+                    </a>
+                  )}
+                  {tool.pricingUrl && (
+                    <a
+                      href={tool.pricingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors"
+                    >
+                      <CurrencyDollarIcon className="w-4 h-4" />
+                      Pricing
+                    </a>
+                  )}
                 </div>
               </section>
             )}
 
             {/* Use Cases */}
             {tool.useCases.length > 0 && (
-              <section className="glass-subtle rounded-xl p-4 border border-gray-200 dark:border-gray-800">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <LightBulbIcon className="w-5 h-5 text-secondary-600 dark:text-secondary-400" />
-                  Use Cases
+              <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-2 flex items-center gap-2">
+                  <FontAwesomeIcon icon={faListCheck} className="w-3.5 h-3.5" />
+                  Use cases
                 </h2>
-                <div className="space-y-3">
-                  {tool.useCases.map((useCase, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 bg-secondary-50 dark:bg-secondary-900/10 border border-secondary-200 dark:border-secondary-800 rounded-lg"
-                    >
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm">{useCase.title}</h3>
-                      <p className="text-gray-700 dark:text-gray-300 text-xs mb-2">{useCase.description}</p>
-                      {useCase.example && (
-                        <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded-md">
-                          <p className="text-xs text-gray-600 dark:text-gray-400 italic">Example: {useCase.example}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Best Practices */}
-            {tool.bestPractices.length > 0 && (
-              <section className="glass-subtle rounded-xl p-4 border border-gray-200 dark:border-gray-800">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
-                  Best Practices
-                </h2>
-                <ul className="space-y-2">
-                  {tool.bestPractices.map((practice, idx) => (
+                <ul className="space-y-1 text-sm">
+                  {tool.useCases.slice(0, 3).map((useCase, idx) => (
                     <li key={idx} className="flex items-start gap-2">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 flex items-center justify-center text-xs font-bold mt-0.5">
-                        {idx + 1}
+                      <span className="mt-1 inline-block w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
+                        <span className="text-gray-700 dark:text-gray-300">
+                        <span className="font-semibold">{useCase.title}:</span>
+                        {useCase.description && <> {useCase.description}</>}
                       </span>
-                      <span className="flex-1 text-gray-700 dark:text-gray-300 text-sm">{practice}</span>
                     </li>
                   ))}
                 </ul>
               </section>
             )}
 
-            {/* Usage Tips */}
-            {tool.usageTips.length > 0 && (
-              <section className="glass-subtle rounded-xl p-4 border border-gray-200 dark:border-gray-800">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <SparklesIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                  Pro Tips
+            {/* Latest updates and why they matter */}
+            {tool.bestPractices.length > 0 && (
+              <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-1 flex items-center gap-2">
+                  <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5" />
+                  What's new & why it matters
                 </h2>
-                <ul className="space-y-2">
-                  {tool.usageTips.map((tip, idx) => (
+                {(tool.lastVerifiedAt || tool.updatedAt) && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+                    Last updated:{' '}
+                    {new Date(tool.lastVerifiedAt || tool.updatedAt).toLocaleDateString()}
+                  </p>
+                )}
+                <ul className="space-y-1 text-sm">
+                  {tool.bestPractices.slice(0, 3).map((practice, idx) => (
                     <li key={idx} className="flex items-start gap-2">
-                      <SparklesIcon className="flex-shrink-0 w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5" />
-                      <span className="flex-1 text-gray-700 dark:text-gray-300 text-sm">{tip}</span>
+                      <span className="mt-1 inline-block w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
+                      <span className="text-gray-700 dark:text-gray-300">{practice}</span>
                     </li>
                   ))}
                 </ul>
               </section>
             )}
 
-            {/* Limitations */}
-            {tool.limitations.length > 0 && (
-              <section className="glass-subtle rounded-xl p-4 border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/10">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <ExclamationTriangleIcon className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                  Limitations
-                </h2>
-                <ul className="space-y-2">
-                  {tool.limitations.map((limitation, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <ExclamationTriangleIcon className="flex-shrink-0 w-4 h-4 text-orange-600 dark:text-orange-400 mt-0.5" />
-                      <span className="flex-1 text-gray-700 dark:text-gray-300 text-sm">{limitation}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {/* Technical Details */}
-            <section className="glass-subtle rounded-xl p-4 border border-gray-200 dark:border-gray-800">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                <CodeBracketIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                Technical Details
-              </h3>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <div className="text-gray-500 dark:text-gray-400 mb-1 text-xs">API Available</div>
-                  <div className="font-medium text-gray-900 dark:text-white text-sm">
-                    {tool.apiAvailable ? 'Yes' : 'No'}
-                  </div>
-                </div>
-                {tool.requiresApiKey && (
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400 mb-1 text-xs">Requires API Key</div>
-                    <div className="font-medium text-gray-900 dark:text-white text-sm">Yes</div>
-                  </div>
-                )}
-                {tool.requiresWaitlist && (
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400 mb-1 text-xs">Access</div>
-                    <div className="font-medium text-orange-600 dark:text-orange-400 text-sm">Waitlist Required</div>
-                  </div>
-                )}
-                {tool.integrations.length > 0 && (
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400 mb-2 text-xs">Integrations</div>
-                    <div className="flex flex-wrap gap-1">
-                      {tool.integrations.map((integration, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded"
-                        >
-                          {integration}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            {/* AllThrive Projects Using This Tool */}
+            <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+              <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-2 flex items-center gap-2">
+                <FontAwesomeIcon icon={faFolderOpen} className="w-3.5 h-3.5" />
+                All Thrive projects using this tool
+              </h2>
+              <div className="text-center py-6 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-dashed border-gray-200 dark:border-gray-700">
+                <p className="text-gray-500 dark:text-gray-400 text-sm italic">
+                  Project showcase coming soon...
+                </p>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                  (Lazy loading of project tease cards - TODO)
+                </p>
               </div>
             </section>
-
-            {/* Links */}
-            {(tool.githubUrl || tool.twitterHandle || tool.discordUrl) && (
-              <section className="glass-subtle rounded-xl p-4 border border-gray-200 dark:border-gray-800">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Links</h3>
-                <div className="space-y-2 text-sm">
-                  {tool.githubUrl && (
-                    <a
-                      href={tool.githubUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                    >
-                      <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                      GitHub
-                    </a>
-                  )}
-                  {tool.twitterHandle && (
-                    <a
-                      href={`https://twitter.com/${tool.twitterHandle}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                    >
-                      <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                      Twitter
-                    </a>
-                  )}
-                  {tool.discordUrl && (
-                    <a
-                      href={tool.discordUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                    >
-                      <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                      Discord
-                    </a>
-                  )}
-                </div>
-              </section>
-            )}
-
-            {/* Similar Tools */}
-            {similarTools.length > 0 && (
-              <section className="glass-subtle rounded-xl p-4 border border-gray-200 dark:border-gray-800">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Similar Tools</h3>
-                <div className="space-y-2">
-                  {similarTools.map((similarTool) => (
-                    <Link
-                      key={similarTool.id}
-                      to={`/tools/${similarTool.slug}`}
-                      className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                    >
-                      <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-primary-100 to-secondary-100 dark:from-primary-900/30 dark:to-secondary-900/30 rounded-lg flex items-center justify-center overflow-hidden">
-                        {similarTool.logoUrl ? (
-                          <img src={similarTool.logoUrl} alt={similarTool.name} className="w-6 h-6 object-contain" />
-                        ) : (
-                          <SparklesIcon className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 dark:text-white truncate text-sm">{similarTool.name}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{similarTool.tagline}</div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
           </div>
         </div>
       </aside>

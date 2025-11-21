@@ -496,15 +496,30 @@ export default function ProjectDetailPage() {
 
                   // QUOTE MODE
                   if (heroMode === 'quote' && heroQuote) {
+                    // Calculate font size based on text length for better fit
+                    const textLength = heroQuote.trim().length;
+                    let fontSize;
+                    if (textLength < 100) {
+                      fontSize = 'clamp(1.5rem, 3vw, 3rem)'; // Short text - large
+                    } else if (textLength < 200) {
+                      fontSize = 'clamp(1.25rem, 2.5vw, 2.25rem)'; // Medium-short text
+                    } else if (textLength < 400) {
+                      fontSize = 'clamp(1rem, 2vw, 1.75rem)'; // Medium text
+                    } else if (textLength < 700) {
+                      fontSize = 'clamp(0.875rem, 1.5vw, 1.25rem)'; // Long text
+                    } else {
+                      fontSize = 'clamp(0.75rem, 1.25vw, 1rem)'; // Very long text
+                    }
+
                     return (
-                      <div className="w-full max-w-2xl">
+                      <div className="w-full max-w-4xl">
                         <div className="relative group">
                           {/* Glowing backdrop */}
                           <div className="absolute -inset-2 md:-inset-4 bg-gradient-to-r from-primary-500/20 to-secondary-500/20 rounded-2xl md:rounded-3xl blur-xl md:blur-2xl opacity-50 group-hover:opacity-70 transition duration-500" />
 
                           {/* Quote container */}
-                          <div className="relative p-6 md:p-8 lg:p-12 bg-white/5 backdrop-blur-md rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl">
-                            <p className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-light text-white/90 leading-relaxed text-center relative z-10">
+                          <div className="relative p-6 md:p-8 lg:p-10 bg-white/5 backdrop-blur-md rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl max-h-[80vh] overflow-y-auto">
+                            <p className="font-light text-white leading-relaxed text-center relative z-10" style={{ fontSize, lineHeight: '1.45' }}>
                               {heroQuote.trim()}
                             </p>
                           </div>
@@ -625,26 +640,39 @@ export default function ProjectDetailPage() {
 
         </div>
 
-        {/* Project Details Section (Below the fold) */}
-        <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 md:py-24">
-          <div className="flex items-center gap-4 mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Project Details</h2>
-            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
-          </div>
+        {/* Project Details Section (Below the fold) - Only show if there are blocks */}
+        {(() => {
+          // Filter out blocks that shouldn't be shown
+          const visibleBlocks = project.content?.blocks?.filter((block, index) => {
+            const isFirstHeadingMatchingTitle = index === 0 &&
+              block.type === 'text' &&
+              block.style === 'heading' &&
+              block.content?.replace(/<[^>]*>/g, '').trim() === project.title;
+            return !isFirstHeadingMatchingTitle;
+          }) || [];
 
-          {/* Content Blocks */}
-          {project.content?.blocks && project.content.blocks.length > 0 ? (
-            <div className="space-y-8">
-              {project.content.blocks.map((block, index) => {
-                // Skip the first block if it's a heading that matches the project title
-                const isFirstHeadingMatchingTitle = index === 0 &&
-                  block.type === 'text' &&
-                  block.style === 'heading' &&
-                  block.content?.replace(/<[^>]*>/g, '').trim() === project.title;
+          // Only show section if there are visible blocks
+          if (visibleBlocks.length === 0) return null;
 
-                if (isFirstHeadingMatchingTitle) {
-                  return null;
-                }
+          return (
+            <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 md:py-24">
+              <div className="flex items-center gap-4 mb-12">
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Project Details</h2>
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+              </div>
+
+              {/* Content Blocks */}
+              <div className="space-y-8">
+                {project.content.blocks.map((block, index) => {
+                  // Skip the first block if it's a heading that matches the project title
+                  const isFirstHeadingMatchingTitle = index === 0 &&
+                    block.type === 'text' &&
+                    block.style === 'heading' &&
+                    block.content?.replace(/<[^>]*>/g, '').trim() === project.title;
+
+                  if (isFirstHeadingMatchingTitle) {
+                    return null;
+                  }
 
                 return (
                 <div key={index}>
@@ -825,16 +853,11 @@ export default function ProjectDetailPage() {
                   )}
                 </div>
                 );
-              })}
+                })}
+              </div>
             </div>
-          ) : (
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-12 text-center">
-              <p className="text-gray-500 dark:text-gray-400">
-                No additional content for this project yet.
-              </p>
-            </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* Success Toast Notification */}
         {showSuccessToast && (
