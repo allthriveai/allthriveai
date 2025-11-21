@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { listProjects, updateProject } from '@/services/projects';
@@ -36,6 +36,8 @@ import {
   FaLock,
   FaEye,
   FaCamera,
+  FaQuoteLeft,
+  FaImages,
 } from 'react-icons/fa';
 
 export default function ProjectEditorPage() {
@@ -66,6 +68,12 @@ export default function ProjectEditorPage() {
   const [projectDescription, setProjectDescription] = useState('');
   const [projectTools, setProjectTools] = useState<number[]>([]);
   const [isUploadingFeatured, setIsUploadingFeatured] = useState(false);
+
+  // Hero display state
+  const [heroDisplayMode, setHeroDisplayMode] = useState<'image' | 'video' | 'slideshow' | 'quote'>('image');
+  const [heroQuote, setHeroQuote] = useState('');
+  const [heroVideoUrl, setHeroVideoUrl] = useState('');
+  const [heroSlideshowImages, setHeroSlideshowImages] = useState<string[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -102,8 +110,14 @@ export default function ProjectEditorPage() {
         setProjectDescription(foundProject.description || '');
         setProjectTools(foundProject.tools || []);
 
+        // Load hero display fields from content
+        setHeroDisplayMode(foundProject.content?.heroDisplayMode || 'image');
+        setHeroQuote(foundProject.content?.heroQuote || '');
+        setHeroVideoUrl(foundProject.content?.heroVideoUrl || '');
+        setHeroSlideshowImages(foundProject.content?.heroSlideshowImages || []);
+
         // Initialize blocks
-        const blocksWithIds = (foundProject.content.blocks || []).map((block: any) => ({
+        const blocksWithIds = (foundProject.content?.blocks || []).map((block: any) => ({
           ...block,
           id: block.id || crypto.randomUUID(),
         }));
@@ -130,6 +144,63 @@ export default function ProjectEditorPage() {
     loadProject();
   }, [projectSlug, username]);
 
+  // Mark as having unsaved changes when blocks, thumbnail, or metadata change
+  useEffect(() => {
+    if (project && blocks.length > 0) {
+      setHasUnsavedChanges(true);
+    }
+  }, [blocks, thumbnailUrl, projectTitle, featuredImageUrl, projectUrl, projectDescription, projectTools, heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages]);
+
+  const handleSave = useCallback(async () => {
+    if (!project) return;
+
+    setIsSaving(true);
+    console.log('🔄 Autosave starting...');
+    console.log('Hero data:', { heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages });
+
+    try {
+      const payload = {
+        title: projectTitle || 'Untitled Project',
+        description: projectDescription,
+        thumbnailUrl,
+        featuredImageUrl,
+        externalUrl: projectUrl,
+        tools: projectTools,
+        content: {
+          blocks: blocks.map(({ id, ...block }) => block), // Remove IDs before saving
+          heroDisplayMode,
+          heroQuote,
+          heroVideoUrl,
+          heroSlideshowImages,
+        },
+      };
+
+      console.log('📤 Sending payload:', JSON.stringify(payload.content, null, 2));
+
+      const updatedProject = await updateProject(project.id, payload);
+
+      console.log('✅ Save successful!');
+      console.log('📥 Received content:', updatedProject.content);
+
+      setProject(updatedProject);
+      setLastSaved(new Date());
+      setHasUnsavedChanges(false);
+    } catch (err: any) {
+      console.error('❌ AUTOSAVE FAILED');
+      console.error('Full error object:', err);
+      console.error('Error details:', err?.details);
+      console.error('Error message:', err?.error);
+      console.error('Status code:', err?.statusCode);
+
+      // Show user-visible error for debugging
+      if (err?.details) {
+        console.warn('⚠️ Backend validation error:', JSON.stringify(err.details, null, 2));
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }, [project, projectTitle, projectDescription, thumbnailUrl, featuredImageUrl, projectUrl, projectTools, blocks, heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages]);
+
   // Autosave effect - save 2 seconds after last change
   useEffect(() => {
     if (!hasUnsavedChanges || !project) return;
@@ -139,41 +210,7 @@ export default function ProjectEditorPage() {
     }, 2000); // 2 second debounce
 
     return () => clearTimeout(timer);
-  }, [blocks, hasUnsavedChanges, project]);
-
-  // Mark as having unsaved changes when blocks, thumbnail, or metadata change
-  useEffect(() => {
-    if (project && blocks.length > 0) {
-      setHasUnsavedChanges(true);
-    }
-  }, [blocks, thumbnailUrl, projectTitle, featuredImageUrl, projectUrl, projectDescription, projectTools]);
-
-  const handleSave = async () => {
-    if (!project) return;
-
-    setIsSaving(true);
-    try {
-      const updatedProject = await updateProject(project.id, {
-        title: projectTitle || 'Untitled Project',
-        description: projectDescription,
-        thumbnailUrl,
-        featuredImageUrl,
-        externalUrl: projectUrl,
-        tools: projectTools,
-        content: {
-          blocks: blocks.map(({ id, ...block }) => block), // Remove IDs before saving
-        },
-      });
-      setProject(updatedProject);
-      setLastSaved(new Date());
-      setHasUnsavedChanges(false);
-    } catch (err) {
-      console.error('Failed to save:', err);
-      // Don't show alert for autosave failures
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  }, [hasUnsavedChanges, project, handleSave]);
 
   const handleToggleShowcase = async () => {
     if (!project) return;
@@ -187,31 +224,6 @@ export default function ProjectEditorPage() {
     } catch (err) {
       console.error('Failed to update showcase setting:', err);
       alert('Failed to update showcase setting');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handlePublish = async () => {
-    if (!project) return;
-
-    if (!window.confirm('Publish this project? It will be visible to everyone.')) {
-      return;
-    }
-
-    await handleSave(); // Save first
-
-    setIsSaving(true);
-    try {
-      const updatedProject = await updateProject(project.id, {
-        isPublished: true,
-      });
-      setProject(updatedProject);
-      alert('Project published successfully!');
-      navigate(`/${project.username}/${project.slug}`);
-    } catch (err) {
-      console.error('Failed to publish:', err);
-      alert('Failed to publish project');
     } finally {
       setIsSaving(false);
     }
@@ -353,11 +365,6 @@ export default function ProjectEditorPage() {
               <p className="text-xs text-gray-500">Saved {lastSaved.toLocaleTimeString()}</p>
             ) : null}
           </div>
-          {!project.isPublished && (
-            <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-              Draft
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -368,15 +375,6 @@ export default function ProjectEditorPage() {
             <EyeIcon className="w-5 h-5" />
             <span className="hidden md:inline">Preview</span>
           </button>
-          {!project.isPublished && (
-            <button
-              onClick={handlePublish}
-              disabled={isSaving}
-              className="hidden sm:inline-flex px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg disabled:opacity-50"
-            >
-              Publish
-            </button>
-          )}
           <button
             onClick={() => setShowSettingsSidebar(true)}
             className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
@@ -509,24 +507,6 @@ export default function ProjectEditorPage() {
                     </div>
                   </button>
 
-                  {!project.isPublished && (
-                    <button
-                      onClick={() => {
-                        handlePublish();
-                        setShowSettingsSidebar(false);
-                      }}
-                      disabled={isSaving}
-                      className="w-full flex items-center justify-between p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors disabled:opacity-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <CheckCircleIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                        <div className="text-left">
-                          <p className="font-medium text-primary-900 dark:text-primary-100">Publish Project</p>
-                          <p className="text-sm text-primary-700 dark:text-primary-300">Make it publicly visible</p>
-                        </div>
-                      </div>
-                    </button>
-                  )}
                 </div>
               </div>
 
@@ -755,105 +735,225 @@ export default function ProjectEditorPage() {
               />
             </div>
 
-            {/* Featured Image */}
+            {/* Hero Display */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                Featured Image
+                Hero Display
               </label>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Upload or provide a URL for your project's featured image
+                Choose how to showcase your project (select one option)
               </p>
 
-              {/* Image Preview or Upload Area */}
-              {featuredImageUrl ? (
-                <div className="relative group">
-                  <img
-                    src={featuredImageUrl}
-                    alt="Featured"
-                    className="w-full max-h-96 object-contain rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-3">
-                    <label className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFeaturedImageUpload(file);
-                        }}
-                        className="hidden"
-                        disabled={isUploadingFeatured}
-                      />
-                      {isUploadingFeatured ? 'Uploading...' : 'Change'}
-                    </label>
-                    <button
-                      onClick={() => setFeaturedImageUrl('')}
-                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <label
-                  className="block w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer"
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.classList.add('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/10');
-                  }}
-                  onDragLeave={(e) => {
-                    e.currentTarget.classList.remove('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/10');
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.classList.remove('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/10');
-                    const file = e.dataTransfer.files[0];
-                    if (file && file.type.startsWith('image/')) {
-                      handleFeaturedImageUpload(file);
+              {/* Tab Navigation for Hero Display */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!heroQuote && !heroVideoUrl && heroSlideshowImages.length === 0) {
+                      setHeroDisplayMode('image');
                     }
                   }}
+                  disabled={heroQuote || heroVideoUrl || heroSlideshowImages.length > 0}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                    heroDisplayMode === 'image'
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                      : heroQuote || heroVideoUrl || heroSlideshowImages.length > 0
+                      ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                      : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300'
+                  }`}
                 >
-                  <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                    <PhotoIcon className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-3" />
-                    <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
-                      {isUploadingFeatured ? 'Uploading...' : 'Drop an image here or click to upload'}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Recommended: 1200x630px (1.91:1 ratio)
-                    </p>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFeaturedImageUpload(file);
-                    }}
-                    className="hidden"
-                    disabled={isUploadingFeatured}
-                  />
-                </label>
+                  <FaImage className="w-5 h-5" />
+                  <span className="font-medium">Image</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!featuredImageUrl && !heroQuote && heroSlideshowImages.length === 0) {
+                      setHeroDisplayMode('video');
+                    }
+                  }}
+                  disabled={featuredImageUrl || heroQuote || heroSlideshowImages.length > 0}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                    heroDisplayMode === 'video'
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                      : featuredImageUrl || heroQuote || heroSlideshowImages.length > 0
+                      ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                      : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <FaVideo className="w-5 h-5" />
+                  <span className="font-medium">Video</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!featuredImageUrl && !heroVideoUrl && !heroQuote) {
+                      setHeroDisplayMode('slideshow');
+                    }
+                  }}
+                  disabled={featuredImageUrl || heroVideoUrl || heroQuote}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                    heroDisplayMode === 'slideshow'
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                      : featuredImageUrl || heroVideoUrl || heroQuote
+                      ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                      : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <FaImages className="w-5 h-5" />
+                  <span className="font-medium">Slideshow</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!featuredImageUrl && !heroVideoUrl && heroSlideshowImages.length === 0) {
+                      setHeroDisplayMode('quote');
+                    }
+                  }}
+                  disabled={featuredImageUrl || heroVideoUrl || heroSlideshowImages.length > 0}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                    heroDisplayMode === 'quote'
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                      : featuredImageUrl || heroVideoUrl || heroSlideshowImages.length > 0
+                      ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                      : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <FaQuoteLeft className="w-5 h-5" />
+                  <span className="font-medium">Quote</span>
+                </button>
+              </div>
+
+              {/* Image Tab Content */}
+              {heroDisplayMode === 'image' && (
+                <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg">
+                  {featuredImageUrl ? (
+                    <div className="relative group">
+                      <img
+                        src={featuredImageUrl}
+                        alt="Hero"
+                        className="w-full max-h-96 object-contain rounded-lg"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-3">
+                        <label className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFeaturedImageUpload(file);
+                            }}
+                            className="hidden"
+                            disabled={isUploadingFeatured}
+                          />
+                          {isUploadingFeatured ? 'Uploading...' : 'Change'}
+                        </label>
+                        <button
+                          onClick={() => setFeaturedImageUrl('')}
+                          className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer">
+                        <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                          <PhotoIcon className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-3" />
+                          <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
+                            {isUploadingFeatured ? 'Uploading...' : 'Drop an image here or click to upload'}
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Recommended: 1200x630px (1.91:1 ratio)
+                          </p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFeaturedImageUpload(file);
+                          }}
+                          className="hidden"
+                          disabled={isUploadingFeatured}
+                        />
+                      </label>
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                          <span className="text-xs text-gray-500 dark:text-gray-400">OR</span>
+                          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                        </div>
+                        <input
+                          type="url"
+                          value={featuredImageUrl}
+                          onChange={(e) => setFeaturedImageUrl(e.target.value)}
+                          placeholder="https://example.com/image.jpg"
+                          disabled={isSaving}
+                          className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
-              {/* Or provide URL */}
-              <div className="mt-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                  <span className="text-xs text-gray-500 dark:text-gray-400">OR</span>
-                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+              {/* Video Tab Content */}
+              {heroDisplayMode === 'video' && (
+                <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Video URL
+                  </label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Paste a YouTube, Vimeo, or Loom video URL
+                  </p>
+                  <input
+                    type="url"
+                    value={heroVideoUrl}
+                    onChange={(e) => setHeroVideoUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    disabled={isSaving}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+                  />
                 </div>
-                <input
-                  type="url"
-                  value={featuredImageUrl}
-                  onChange={(e) => setFeaturedImageUrl(e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                  disabled={isSaving}
-                  className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
-                />
-              </div>
+              )}
+
+              {/* Slideshow Tab Content */}
+              {heroDisplayMode === 'slideshow' && (
+                <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Add multiple images for a slideshow (coming soon)
+                  </p>
+                  <div className="p-12 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+                    <FaImages className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+                    <p className="text-gray-500 dark:text-gray-400">Slideshow feature coming soon</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Quote Tab Content */}
+              {heroDisplayMode === 'quote' && (
+                <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Your Quote
+                  </label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Share an inspiring quote or key message about your project
+                  </p>
+                  <textarea
+                    value={heroQuote}
+                    onChange={(e) => setHeroQuote(e.target.value)}
+                    placeholder="Enter your quote here..."
+                    disabled={isSaving}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 resize-none"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Project URL */}

@@ -1,4 +1,5 @@
 import { api } from './api';
+import { handleError, logError, validators } from '@/utils/errorHandler';
 
 export interface Comment {
   id: number;
@@ -26,10 +27,34 @@ export interface CommentVoteData {
  * Get all comments for a project
  */
 export async function getProjectComments(projectId: number): Promise<Comment[]> {
-  const response = await api.get(`/projects/${projectId}/comments/`);
-  console.log('Comments API response:', response.data);
-  console.log('Is array?', Array.isArray(response.data));
-  return response.data;
+  try {
+    const response = await api.get(`/projects/${projectId}/comments/`);
+
+    // Handle paginated response from Django REST Framework
+    if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+      return response.data.results;
+    }
+
+    // Handle direct array response
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+
+    // Unexpected format - log and throw
+    logError(
+      'CommentService.getProjectComments',
+      new Error('Unexpected response format'),
+      { projectId, responseType: typeof response.data }
+    );
+
+    throw new Error('Unexpected response format from server');
+  } catch (error) {
+    handleError('CommentService.getProjectComments', error, {
+      metadata: { projectId },
+      showAlert: false, // Let UI component handle display
+    });
+    throw error; // Re-throw for component to handle
+  }
 }
 
 /**
@@ -39,8 +64,28 @@ export async function createProjectComment(
   projectId: number,
   data: CommentCreateData
 ): Promise<Comment> {
-  const response = await api.post(`/projects/${projectId}/comments/`, data);
-  return response.data;
+  // Pre-validate content
+  const validation = validators.commentContent(data.content);
+  if (!validation.valid) {
+    const error = new Error(validation.error);
+    logError('CommentService.createProjectComment', error, {
+      projectId,
+      contentLength: data.content.length,
+      validationError: validation.error,
+    });
+    throw error;
+  }
+
+  try {
+    const response = await api.post(`/projects/${projectId}/comments/`, data);
+    return response.data;
+  } catch (error) {
+    handleError('CommentService.createProjectComment', error, {
+      metadata: { projectId, contentLength: data.content.length },
+      showAlert: false, // Let component handle user feedback
+    });
+    throw error;
+  }
 }
 
 /**
@@ -51,11 +96,30 @@ export async function voteOnComment(
   commentId: number,
   voteType: 'up' | 'down'
 ): Promise<{ action: string; comment: Comment }> {
-  const response = await api.post(
-    `/projects/${projectId}/comments/${commentId}/vote/`,
-    { vote_type: voteType }
-  );
-  return response.data;
+  // Validate vote type
+  if (voteType !== 'up' && voteType !== 'down') {
+    const error = new Error(`Invalid vote type: ${voteType}`);
+    logError('CommentService.voteOnComment', error, {
+      projectId,
+      commentId,
+      voteType,
+    });
+    throw error;
+  }
+
+  try {
+    const response = await api.post(
+      `/projects/${projectId}/comments/${commentId}/vote/`,
+      { vote_type: voteType }
+    );
+    return response.data;
+  } catch (error) {
+    handleError('CommentService.voteOnComment', error, {
+      metadata: { projectId, commentId, voteType },
+      showAlert: false,
+    });
+    throw error;
+  }
 }
 
 /**
@@ -65,5 +129,13 @@ export async function deleteComment(
   projectId: number,
   commentId: number
 ): Promise<void> {
-  await api.delete(`/projects/${projectId}/comments/${commentId}/`);
+  try {
+    await api.delete(`/projects/${projectId}/comments/${commentId}/`);
+  } catch (error) {
+    handleError('CommentService.deleteComment', error, {
+      metadata: { projectId, commentId },
+      showAlert: false,
+    });
+    throw error;
+  }
 }

@@ -1,8 +1,14 @@
 """Event models for calendar functionality."""
 
+import logging
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator, URLValidator
 from django.db import models
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 
 class Event(models.Model):
@@ -18,9 +24,24 @@ class Event(models.Model):
     color = models.CharField(
         max_length=7,
         default='#3b82f6',
+        validators=[
+            RegexValidator(
+                regex=r'^#[0-9A-Fa-f]{6}$',
+                message='Color must be a valid hex code (e.g., #3b82f6)',
+            )
+        ],
         help_text='Hex color code for calendar display (e.g., #3b82f6)',
     )
-    thumbnail = models.URLField(blank=True, help_text='URL to event thumbnail image')
+    thumbnail = models.URLField(
+        blank=True,
+        validators=[URLValidator(schemes=['https'])],
+        help_text='URL to event thumbnail image (must be https)',
+    )
+    timezone_name = models.CharField(
+        max_length=63,
+        default='UTC',
+        help_text='Timezone for event (e.g., America/New_York, UTC)',
+    )
 
     # Metadata
     created_by = models.ForeignKey(
@@ -29,6 +50,13 @@ class Event(models.Model):
         null=True,
         related_name='created_events',
         help_text='Admin user who created this event',
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='updated_events',
+        help_text='Last admin user who updated this event',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -63,8 +91,17 @@ class Event(models.Model):
         return self.start_date <= now <= self.end_date
 
     def clean(self):
-        """Validate that end_date is after start_date."""
-        from django.core.exceptions import ValidationError
+        """Validate event data."""
+        super().clean()
 
+        # Validate dates
         if self.end_date and self.start_date and self.end_date < self.start_date:
             raise ValidationError('End date must be after start date.')
+
+        # Validate event_url if provided
+        if self.event_url and not self.event_url.startswith('https://'):
+            raise ValidationError('Event URL must use HTTPS protocol.')
+
+        # Log validation for audit
+        if self.pk:
+            logger.info(f'Event {self.pk} ({self.title}) validated successfully')

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, Outlet } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { getProjectBySlug, updateProject, deleteProject, toggleProjectLike } from '@/services/projects';
+import { getProjectBySlug, deleteProject, updateProject, toggleProjectLike } from '@/services/projects';
 import { getProjectComments, createProjectComment, voteOnComment, type Comment } from '@/services/comments';
-import { useAuth } from '@/hooks/useAuth';
 import type { Project } from '@/types/models';
-import { FaStar } from 'react-icons/fa';
+import { useAuth } from '@/hooks/useAuth';
 import { useReward } from 'react-rewards';
+import { FaStar } from 'react-icons/fa';
+import { parseApiError } from '@/utils/errorHandler';
+import { sanitizeHtml } from '@/utils/sanitize';
 import {
   ArrowLeftIcon,
   CodeBracketIcon,
@@ -80,6 +82,7 @@ export default function ProjectDetailPage() {
   // Comments state
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
 
   useEffect(() => {
     async function loadProject() {
@@ -106,31 +109,29 @@ export default function ProjectDetailPage() {
     loadProject();
   }, [username, projectSlug]);
 
-  // Load comments when project is loaded
+  // Lazy load comments when feedback sidebar is opened
   useEffect(() => {
     async function loadComments() {
-      if (!project) return;
+      if (!project || !isFeedbackSidebarOpen || commentsLoaded) return;
 
       setIsLoadingComments(true);
       try {
         const data = await getProjectComments(project.id);
-        // Ensure data is an array
-        if (Array.isArray(data)) {
-          setComments(data);
-        } else {
-          console.error('Comments data is not an array:', data);
-          setComments([]);
-        }
-      } catch (err) {
-        console.error('Failed to load comments:', err);
+        setComments(data);
+        setCommentsLoaded(true);
+      } catch (error) {
+        // Error already logged in service, just show user-friendly message
+        const errorInfo = parseApiError(error);
+        console.error('Failed to load comments:', errorInfo.message);
         setComments([]);
+        // Optionally show a toast notification instead of alert
       } finally {
         setIsLoadingComments(false);
       }
     }
 
     loadComments();
-  }, [project]);
+  }, [project, isFeedbackSidebarOpen, commentsLoaded]);
 
   const isOwner = isAuthenticated && user && project && user.username.toLowerCase() === project.username.toLowerCase();
 
@@ -200,6 +201,7 @@ export default function ProjectDetailPage() {
 
       // Add new comment to list
       setComments([newComment, ...comments]);
+      setCommentsLoaded(true);
 
       // Clear form
       setFeedbackText('');
@@ -210,10 +212,10 @@ export default function ProjectDetailPage() {
 
       // Trigger star emoji celebration
       rewardComment();
-    } catch (error: any) {
-      console.error('Failed to submit feedback:', error);
-      const errorMessage = error.response?.data?.content?.[0] || 'Failed to submit feedback. Please try again.';
-      alert(errorMessage);
+    } catch (error) {
+      // Error already logged in service, extract user-friendly message
+      const errorInfo = parseApiError(error);
+      alert(errorInfo.message);
     } finally {
       setIsSubmittingFeedback(false);
     }
@@ -233,8 +235,9 @@ export default function ProjectDetailPage() {
         comment.id === commentId ? result.comment : comment
       ));
     } catch (error) {
-      console.error('Failed to vote on comment:', error);
-      alert('Failed to vote. Please try again.');
+      // Error already logged in service
+      const errorInfo = parseApiError(error);
+      alert(errorInfo.message);
     }
   };
 
@@ -545,7 +548,7 @@ export default function ProjectDetailPage() {
                         block.style === 'quote' ? 'border-l-4 border-primary-500 pl-6 italic' :
                         ''
                       }`}
-                      dangerouslySetInnerHTML={{ __html: block.content }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }}
                     />
                   )}
 
@@ -608,7 +611,7 @@ export default function ProjectDetailPage() {
                                       nestedBlock.style === 'quote' ? 'border-l-4 border-primary-500 pl-4 italic' :
                                       ''
                                     }`}
-                                    dangerouslySetInnerHTML={{ __html: nestedBlock.content }}
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(nestedBlock.content) }}
                                   />
                                 )}
                                 {nestedBlock.type === 'image' && nestedBlock.url && (
@@ -883,7 +886,11 @@ export default function ProjectDetailPage() {
                       Comments ({comments.length})
                     </h4>
 
-                    {!Array.isArray(comments) || comments.length === 0 ? (
+                    {isLoadingComments ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : !Array.isArray(comments) || comments.length === 0 ? (
                       <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
                         No comments yet. Be the first to share your thoughts!
                       </p>

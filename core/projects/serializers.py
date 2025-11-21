@@ -71,7 +71,16 @@ class ProjectSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Content must be a JSON object.')
 
         # Define allowed structure - only accept known keys
-        allowed_keys = {'blocks', 'cover', 'tags', 'metadata'}
+        allowed_keys = {
+            'blocks',
+            'cover',
+            'tags',
+            'metadata',
+            'heroDisplayMode',
+            'heroQuote',
+            'heroVideoUrl',
+            'heroSlideshowImages',
+        }
         provided_keys = set(value.keys())
 
         if not provided_keys.issubset(allowed_keys):

@@ -16,7 +16,7 @@ export function RightChatPanel({ isOpen, onClose, selectedMenuItem }: RightChatP
   // Memoize agent creation to prevent infinite loop
   const agent = useMemo(() => {
     console.log('Creating agent for:', selectedMenuItem);
-    return selectedMenuItem ? createAgent(selectedMenuItem) : createAgent('discovery');
+    return selectedMenuItem ? createAgent(selectedMenuItem) : createAgent('discover');
   }, [selectedMenuItem]);
 
   const chatSession = useChatSession({

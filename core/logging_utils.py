@@ -319,7 +319,7 @@ class StructuredLogger:
             if duration_ms:
                 details.append(f'{duration_ms:.2f}ms')
             if details:
-                message += f' ({', '.join(details)})'
+                message += f" ({', '.join(details)})"
             log.info(message, extra=context)
         else:
             error_msg = f': {type(error).__name__}: {str(error)}' if error else ' failed'
@@ -381,7 +381,7 @@ class StructuredLogger:
             if duration_ms:
                 details.append(f'{duration_ms:.2f}ms')
             if details:
-                message += f' ({', '.join(details)})'
+                message += f" ({', '.join(details)})"
             log.info(message, extra=context)
         else:
             level = 'warning' if status_code and 400 <= status_code < 500 else 'error'
@@ -448,7 +448,7 @@ class StructuredLogger:
             if safe_metadata:
                 details.append(str(safe_metadata))
             if details:
-                message += f' - {' '.join(details)}'
+                message += f" - {' '.join(details)}"
             log.info(message, extra=context)
         else:
             error_msg = f': {type(error).__name__}: {str(error)}' if error else ' failed'

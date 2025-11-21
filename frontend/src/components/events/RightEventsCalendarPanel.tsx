@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { EventsCalendar } from './EventsCalendar';
 import { EventsList } from './EventsList';
@@ -6,6 +6,7 @@ import { EventForm } from './EventForm';
 import { eventsService } from '@/services/eventsService';
 import type { Event, CreateEventData } from '@/services/eventsService';
 import { useAuth } from '@/hooks/useAuth';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 interface RightEventsCalendarPanelProps {
   isOpen: boolean;
@@ -19,8 +20,24 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; eventId: number | null }>({
+    isOpen: false,
+    eventId: null,
+  });
+  const [deleting, setDeleting] = useState(false);
 
   const isAdmin = user?.is_staff || user?.is_superuser;
+
+  // Memoized filtered lists for performance
+  const upcomingEvents = useMemo(
+    () => events.filter((e) => e.is_upcoming),
+    [events]
+  );
+
+  const displayedEvents = useMemo(
+    () => (view === 'calendar' ? upcomingEvents.slice(0, 3) : events),
+    [view, upcomingEvents, events]
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -53,17 +70,23 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
     }
   };
 
-  const handleDeleteEvent = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this event?')) {
-      return;
-    }
+  const handleDeleteClick = (id: number) => {
+    setDeleteConfirm({ isOpen: true, eventId: id });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.eventId) return;
 
     try {
-      await eventsService.deleteEvent(id);
+      setDeleting(true);
+      await eventsService.deleteEvent(deleteConfirm.eventId);
       await loadEvents();
+      setDeleteConfirm({ isOpen: false, eventId: null });
     } catch (err) {
       console.error('Failed to delete event:', err);
-      alert('Failed to delete event');
+      setError('Failed to delete event. Please try again.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -179,13 +202,11 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
                         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
                           Upcoming Events
                         </h3>
-                        <EventsList
-                          events={events.filter((e) => e.is_upcoming).slice(0, 3)}
-                        />
+                        <EventsList events={displayedEvents} />
                       </div>
                     </div>
                   ) : (
-                    <EventsList events={events} />
+                    <EventsList events={displayedEvents} />
                   )}
                 </>
               )}
@@ -193,6 +214,18 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, eventId: null })}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Event"
+        message="Are you sure you want to delete this event? This action cannot be undone."
+        confirmLabel={deleting ? 'Deleting...' : 'Delete'}
+        cancelLabel="Cancel"
+        variant="danger"
+      />
     </>
   );
 }

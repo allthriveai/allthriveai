@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+
 export default function BattleDetailPage() {
   const { battleId } = useParams<{ battleId: string }>();
   const { user } = useAuth();
@@ -18,11 +20,12 @@ export default function BattleDetailPage() {
     fetchBattle();
     const interval = setInterval(fetchBattle, 5000); // Refresh every 5 seconds
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battleId]);
 
   const fetchBattle = async () => {
     try {
-      const url = `/api/v1/me/battles/${battleId}/`;
+      const url = `${API_BASE_URL}/me/battles/${battleId}/`;
       console.log('Fetching battle from:', url);
 
       const response = await fetch(url, {
@@ -75,7 +78,7 @@ export default function BattleDetailPage() {
         headers['X-CSRFToken'] = csrfToken;
       }
 
-      const response = await fetch(`/api/v1/me/battles/${battleId}/submit/`, {
+      const response = await fetch(`${API_BASE_URL}/me/battles/${battleId}/submit/`, {
         method: 'POST',
         headers,
         credentials: 'include',

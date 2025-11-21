@@ -61,12 +61,12 @@ export async function getProject(id: number): Promise<Project> {
 
 /**
  * Get a project by username and slug
+ * Uses the public user projects endpoint which is optimized and cached
  */
 export async function getProjectBySlug(username: string, slug: string): Promise<Project> {
-  // For now, we'll list all projects and filter
-  // TODO: Add dedicated backend endpoint for /{username}/{slug}
-  const projects = await listProjects();
-  const project = projects.find(p => p.username === username && p.slug === slug);
+  const { showcase, playground } = await getUserProjects(username);
+  const allProjects = [...showcase, ...playground];
+  const project = allProjects.find(p => p.slug === slug);
   if (!project) {
     throw new Error('Project not found');
   }

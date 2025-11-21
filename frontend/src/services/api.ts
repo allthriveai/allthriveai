@@ -39,8 +39,9 @@ api.interceptors.request.use(
 
     // Transform request data from camelCase to snake_case
     // Skip transformation for FormData (used for file uploads)
+    // Skip transformation inside 'content' field (backend expects camelCase there)
     if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
-      config.data = keysToSnake(config.data);
+      config.data = keysToSnake(config.data, ['content']);
     }
 
     return config;
@@ -61,10 +62,11 @@ api.interceptors.response.use(
   },
   (error: AxiosError) => {
     if (error.response) {
+      // Preserve the full response for debugging
       const apiError: ApiError = {
         success: false,
         error: error.response.data?.error || error.message || 'An error occurred',
-        details: error.response.data?.details,
+        details: error.response.data?.details || error.response.data, // Include full response data
         statusCode: error.response.status,
       };
 

@@ -41,21 +41,27 @@ export function keysToCamel<T = any>(obj: any): T {
 
 /**
  * Transform all keys in an object from camelCase to snake_case
+ * @param skipKeys - Array of keys to skip transformation (keeps original structure)
  */
-export function keysToSnake<T = any>(obj: any): T {
+export function keysToSnake<T = any>(obj: any, skipKeys: string[] = []): T {
   if (obj === null || obj === undefined || typeof obj !== 'object') {
     return obj;
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(item => keysToSnake(item)) as any;
+    return obj.map(item => keysToSnake(item, skipKeys)) as any;
   }
 
   const result: any = {};
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const snakeKey = camelToSnake(key);
-      result[snakeKey] = keysToSnake(obj[key]);
+      // Skip transformation for specified keys - preserve original structure
+      if (skipKeys.includes(key)) {
+        result[snakeKey] = obj[key];
+      } else {
+        result[snakeKey] = keysToSnake(obj[key], skipKeys);
+      }
     }
   }
   return result;
