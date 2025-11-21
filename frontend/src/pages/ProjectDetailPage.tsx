@@ -56,6 +56,7 @@ export default function ProjectDetailPage() {
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
   // React Rewards for comment submission celebration
   const { reward: rewardComment } = useReward('commentReward', 'confetti', {
@@ -557,35 +558,14 @@ export default function ProjectDetailPage() {
                     }
                   }
 
-                  // SLIDESHOW MODE (TODO: Implement carousel)
+                  // SLIDESHOW MODE - Full Carousel
                   if (heroMode === 'slideshow' && heroSlideshowImages.length > 0) {
-                    // For now, show first image - full carousel implementation coming next
                     return (
-                      <div className="w-full">
-                        <div className="relative group">
-                          <div className="absolute -inset-4 bg-white/5 rounded-3xl blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
-                          <div className="relative p-2 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 shadow-2xl">
-                            <img
-                              src={heroSlideshowImages[0]}
-                              alt="Project slideshow"
-                              className="relative w-full max-h-[600px] object-cover rounded-2xl shadow-inner"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
-                              }}
-                            />
-                            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-                              {heroSlideshowImages.map((_: any, idx: number) => (
-                                <div
-                                  key={idx}
-                                  className={`w-2 h-2 rounded-full ${
-                                    idx === 0 ? 'bg-white' : 'bg-white/30'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <SlideshowCarousel
+                        images={heroSlideshowImages}
+                        currentIndex={currentSlideIndex}
+                        onIndexChange={setCurrentSlideIndex}
+                      />
                     );
                   }
 
@@ -1105,5 +1085,95 @@ export default function ProjectDetailPage() {
       {/* Nested route outlet for tool detail overlay */}
       <Outlet />
     </DashboardLayout>
+  );
+}
+
+// Slideshow Carousel Component
+function SlideshowCarousel({ images, currentIndex, onIndexChange }: { images: string[]; currentIndex: number; onIndexChange: (index: number) => void }) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Auto-advance slideshow every 5 seconds (pause on hover)
+  useEffect(() => {
+    if (isHovered || images.length <= 1) return;
+
+    const interval = setInterval(() => {
+      onIndexChange((currentIndex + 1) % images.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [currentIndex, images.length, isHovered, onIndexChange]);
+
+  const goToPrevious = () => {
+    onIndexChange(currentIndex === 0 ? images.length - 1 : currentIndex - 1);
+  };
+
+  const goToNext = () => {
+    onIndexChange((currentIndex + 1) % images.length);
+  };
+
+  return (
+    <div
+      className="w-full"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="relative group">
+        <div className="absolute -inset-4 bg-white/5 rounded-3xl blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
+        <div className="relative p-2 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 shadow-2xl">
+          {/* Image */}
+          <img
+            src={images[currentIndex]}
+            alt={`Slide ${currentIndex + 1} of ${images.length}`}
+            className="relative w-full max-h-[600px] object-cover rounded-2xl shadow-inner transition-opacity duration-500"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
+            }}
+          />
+
+          {/* Navigation Arrows (show only if more than 1 image) */}
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={goToPrevious}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white rounded-full transition-all opacity-0 group-hover:opacity-100"
+                aria-label="Previous slide"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={goToNext}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white rounded-full transition-all opacity-0 group-hover:opacity-100"
+                aria-label="Next slide"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </>
+          )}
+
+          {/* Indicator Dots */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+            {images.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => onIndexChange(idx)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  idx === currentIndex ? 'bg-white w-8' : 'bg-white/30 hover:bg-white/50'
+                }`}
+                aria-label={`Go to slide ${idx + 1}`}
+              />
+            ))}
+          </div>
+
+          {/* Image Counter */}
+          <div className="absolute top-4 right-4 px-3 py-1.5 bg-black/50 backdrop-blur-sm text-white text-sm font-medium rounded-full">
+            {currentIndex + 1} / {images.length}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
