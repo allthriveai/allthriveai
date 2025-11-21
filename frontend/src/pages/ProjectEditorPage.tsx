@@ -930,41 +930,46 @@ export default function ProjectEditorPage() {
                       Slideshow Images
                     </label>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      Upload multiple images for your slideshow (recommended: 3-5 images)
+                      Upload multiple images for your slideshow. Drag to reorder.
                     </p>
                   </div>
 
-                  {/* Image Grid */}
+                  {/* Image Grid with Drag-and-Drop */}
                   {heroSlideshowImages.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                      {heroSlideshowImages.map((imageUrl, index) => (
-                        <div key={index} className="relative group aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
-                          <img
-                            src={imageUrl}
-                            alt={`Slideshow image ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => {
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event: DragEndEvent) => {
+                        const { active, over } = event;
+                        if (!over || active.id === over.id) return;
+
+                        const oldIndex = heroSlideshowImages.findIndex((_, idx) => `slideshow-${idx}` === active.id);
+                        const newIndex = heroSlideshowImages.findIndex((_, idx) => `slideshow-${idx}` === over.id);
+
+                        setHeroSlideshowImages(arrayMove(heroSlideshowImages, oldIndex, newIndex));
+                      }}
+                    >
+                      <SortableContext
+                        items={heroSlideshowImages.map((_, idx) => `slideshow-${idx}`)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                          {heroSlideshowImages.map((imageUrl, index) => (
+                            <SlideshowImageItem
+                              key={`slideshow-${index}`}
+                              id={`slideshow-${index}`}
+                              imageUrl={imageUrl}
+                              index={index}
+                              onRemove={() => {
                                 const newImages = [...heroSlideshowImages];
                                 newImages.splice(index, 1);
                                 setHeroSlideshowImages(newImages);
                               }}
-                              className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                          <div className="absolute top-2 left-2 bg-black/70 text-white text-xs font-medium px-2 py-1 rounded">
-                            {index + 1}
-                          </div>
+                            />
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
 
                   {/* Upload Area */}
@@ -1676,6 +1681,64 @@ function ColumnBlockEditor({ block, onChange, onDelete, onUpload, dragHandleProp
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Slideshow Image Item with Drag-and-Drop
+function SlideshowImageItem({ id, imageUrl, index, onRemove }: { id: string; imageUrl: string; index: number; onRemove: () => void }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="relative group aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden"
+    >
+      {/* Drag handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute top-2 right-2 z-10 p-2 bg-white/90 dark:bg-gray-800/90 rounded-lg cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+        title="Drag to reorder"
+      >
+        <Bars3Icon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+      </div>
+
+      <img
+        src={imageUrl}
+        alt={`Slideshow image ${index + 1}`}
+        className="w-full h-full object-cover"
+        onError={(e) => {
+          (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
+        }}
+      />
+
+      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+        <button
+          onClick={onRemove}
+          className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
+        >
+          Remove
+        </button>
+      </div>
+
+      <div className="absolute top-2 left-2 bg-black/70 text-white text-xs font-medium px-2 py-1 rounded">
+        {index + 1}
+      </div>
     </div>
   );
 }
