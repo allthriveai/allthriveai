@@ -317,3 +317,22 @@ class ProjectAPITest(APITestCase):
         # Verify in database
         project = Project.objects.get(id=response.data['id'])
         self.assertEqual(project.thumbnail_url, custom_url)
+
+    def test_hero_display_fields_in_content(self):
+        """Test that hero display fields are accepted in content."""
+        self.client.force_authenticate(user=self.user1)
+        content = {
+            'blocks': [{'type': 'text', 'content': 'Test content'}],
+            'heroDisplayMode': 'quote',
+            'heroQuote': 'This is a test quote',
+            'heroVideoUrl': '',
+            'heroSlideshowImages': [],
+        }
+        data = {'title': 'Hero Test Project', 'content': content}
+        response = self.client.post('/api/v1/me/projects/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # Verify hero fields are preserved
+        self.assertEqual(response.data['content']['heroDisplayMode'], 'quote')
+        self.assertEqual(response.data['content']['heroQuote'], 'This is a test quote')
+        self.assertEqual(response.data['content']['heroVideoUrl'], '')
+        self.assertEqual(response.data['content']['heroSlideshowImages'], [])
