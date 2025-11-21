@@ -24,6 +24,7 @@ from .battles.views import (
     battle_stats,
     expire_battles,
 )
+from .events.views import EventViewSet
 from .integrations.github.views import (
     github_repos_list,
     github_sync_single_repo,
@@ -74,6 +75,10 @@ tool_router.register(r'tool-reviews', ToolReviewViewSet, basename='tool-review')
 tool_router.register(r'tool-comparisons', ToolComparisonViewSet, basename='tool-comparison')
 tool_router.register(r'tool-bookmarks', ToolBookmarkViewSet, basename='tool-bookmark')
 
+# Events router (read for all auth users, write for admins)
+events_router = DefaultRouter()
+events_router.register(r'events', EventViewSet, basename='event')
+
 urlpatterns = [
     path('db/health/', db_health, name='db-health'),
     path('csp-report/', csp_report, name='csp_report'),  # CSP violation reporting
@@ -123,6 +128,8 @@ urlpatterns = [
     path('', include(taxonomy_router.urls)),
     # Tool endpoints
     path('', include(tool_router.urls)),
+    # Events endpoints
+    path('', include(events_router.urls)),
     # Upload endpoints
     path('upload/image/', upload_image, name='upload_image'),
     path('upload/file/', upload_file, name='upload_file'),

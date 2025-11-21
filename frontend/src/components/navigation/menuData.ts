@@ -62,7 +62,7 @@ export const getMenuSections = (
     icon: faCrown,
     items: [
       { label: 'Perks', path: '#' },
-      { label: 'Events Calendar', path: '#' },
+      { label: 'Events Calendar', onClick: () => onMenuClick('Events Calendar') },
     ],
   },
   {

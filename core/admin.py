@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .agents.models import Conversation, Message
+from .events.models import Event
 from .projects.models import CommentVote, ProjectComment
 from .quizzes.models import Quiz, QuizAttempt, QuizQuestion
 from .referrals.models import Referral, ReferralCode
@@ -369,3 +370,34 @@ class CommentVoteAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at']
     ordering = ['-created_at']
     raw_id_fields = ['user', 'comment']
+
+
+@admin.register(Event)
+class EventAdmin(admin.ModelAdmin):
+    list_display = [
+        'title',
+        'start_date',
+        'end_date',
+        'location',
+        'is_all_day',
+        'is_published',
+        'created_by',
+        'created_at',
+    ]
+    list_filter = ['is_published', 'is_all_day', 'start_date', 'created_at']
+    search_fields = ['title', 'description', 'location']
+    readonly_fields = ['created_at', 'updated_at', 'created_by']
+    ordering = ['-start_date']
+    raw_id_fields = ['created_by']
+
+    fieldsets = (
+        ('Event Information', {'fields': ('title', 'description', 'start_date', 'end_date', 'is_all_day')}),
+        ('Location & Links', {'fields': ('location', 'event_url')}),
+        ('Display', {'fields': ('color', 'thumbnail', 'is_published')}),
+        ('Metadata', {'fields': ('created_by', 'created_at', 'updated_at'), 'classes': ('collapse',)}),
+    )
+
+    def save_model(self, request, obj, form, change):
+        if not change:  # If creating new event
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)

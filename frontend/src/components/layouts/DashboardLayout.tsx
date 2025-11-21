@@ -3,6 +3,7 @@ import { Bars3Icon } from '@heroicons/react/24/outline';
 import { LeftSidebar } from '@/components/navigation/LeftSidebar';
 import { RightChatPanel } from '@/components/chat/RightChatPanel';
 import { RightAboutPanel } from '@/components/about';
+import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalendarPanel';
 
 interface DashboardLayoutProps {
   children: ReactNode | ((props: { openChat: (menuItem: string) => void }) => ReactNode);
@@ -13,6 +14,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
+  const [eventsOpen, setEventsOpen] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
 
   // Auto-open about panel when prop is true
@@ -29,6 +31,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       const wasOpen = aboutOpen;
       setAboutOpen(true);
       setChatOpen(false);
+      setEventsOpen(false);
       setSelectedMenuItem(null);
       // Scroll to About Us section
       setTimeout(() => {
@@ -40,6 +43,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     } else if (menuItem === 'Our Values') {
       setAboutOpen(true);
       setChatOpen(false);
+      setEventsOpen(false);
       setSelectedMenuItem(null);
       // Wait for panel to open and then scroll to the element
       setTimeout(() => {
@@ -48,10 +52,16 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }, 100);
+    } else if (menuItem === 'Events Calendar') {
+      setEventsOpen(true);
+      setChatOpen(false);
+      setAboutOpen(false);
+      setSelectedMenuItem(null);
     } else {
       setSelectedMenuItem(menuItem);
       setChatOpen(true);
       setAboutOpen(false);
+      setEventsOpen(false);
     }
   };
 
@@ -62,6 +72,10 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
 
   const handleCloseAbout = () => {
     setAboutOpen(false);
+  };
+
+  const handleCloseEvents = () => {
+    setEventsOpen(false);
   };
 
   return (
@@ -104,6 +118,12 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         onClose={handleCloseAbout}
       />
 
+      {/* Right Events Calendar Panel */}
+      <RightEventsCalendarPanel
+        isOpen={eventsOpen}
+        onClose={handleCloseEvents}
+      />
+
       {/* Overlay when chat is open */}
       {chatOpen && (
         <div
@@ -117,6 +137,14 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         <div
           className="fixed inset-0 bg-black/20 z-30 md:hidden"
           onClick={handleCloseAbout}
+        />
+      )}
+
+      {/* Overlay when events is open */}
+      {eventsOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-30 md:hidden"
+          onClick={handleCloseEvents}
         />
       )}
     </div>
