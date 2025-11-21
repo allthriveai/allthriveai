@@ -943,21 +943,20 @@ export default function ProjectEditorPage() {
                         const { active, over } = event;
                         if (!over || active.id === over.id) return;
 
-                        const oldIndex = heroSlideshowImages.findIndex((_, idx) => `slideshow-${idx}` === active.id);
-                        const newIndex = heroSlideshowImages.findIndex((_, idx) => `slideshow-${idx}` === over.id);
+                        const oldIndex = heroSlideshowImages.indexOf(active.id as string);
+                        const newIndex = heroSlideshowImages.indexOf(over.id as string);
 
-                        setHeroSlideshowImages(arrayMove(heroSlideshowImages, oldIndex, newIndex));
+                        if (oldIndex !== -1 && newIndex !== -1) {
+                          setHeroSlideshowImages(arrayMove(heroSlideshowImages, oldIndex, newIndex));
+                        }
                       }}
                     >
-                      <SortableContext
-                        items={heroSlideshowImages.map((_, idx) => `slideshow-${idx}`)}
-                        strategy={verticalListSortingStrategy}
-                      >
+                      <SortableContext items={heroSlideshowImages}>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                           {heroSlideshowImages.map((imageUrl, index) => (
                             <SlideshowImageItem
-                              key={`slideshow-${index}`}
-                              id={`slideshow-${index}`}
+                              key={imageUrl}
+                              id={imageUrl}
                               imageUrl={imageUrl}
                               index={index}
                               onRemove={() => {
