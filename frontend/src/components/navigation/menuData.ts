@@ -41,8 +41,6 @@ export const getMenuSections = (
     title: 'PLAY',
     icon: faGamepad,
     items: [
-      { label: 'Leaderboards', path: '#' },
-      { label: 'Vote', path: '#' },
       { label: "This Week's Challenge", path: '#' },
       { label: 'Side Quests', path: '#' },
       { label: 'Prompt Battle', path: '/play/prompt-battle' },

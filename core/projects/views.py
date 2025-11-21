@@ -109,9 +109,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def public_user_projects(request, username):
-    """Get public showcase projects for a user by username.
+    """Get projects for a user by username.
 
-    Returns only published showcase projects that are not archived.
+    For public/other users: Returns only showcase projects (is_showcase=True, not archived)
+    For the user viewing their own profile: Returns showcase + all projects in playground
+
     This endpoint is accessible to everyone, including logged-out users.
 
     Security:
@@ -142,7 +144,8 @@ def public_user_projects(request, username):
     # Check cache for public projects
     is_own_profile = request.user.is_authenticated and request.user.username.lower() == username.lower()
     # Include version in cache key to prevent stale data after schema changes
-    cache_key = f'projects:v1:{username.lower()}:{"own" if is_own_profile else "public"}'
+    # v2: playground now includes all projects, not just non-showcase ones
+    cache_key = f'projects:v2:{username.lower()}:{"own" if is_own_profile else "public"}'
 
     cached_data = cache.get(cache_key)
     if cached_data:
@@ -171,12 +174,10 @@ def public_user_projects(request, username):
     )
 
     # If the requesting user is authenticated and viewing their own profile,
-    # also include playground projects (non-showcase projects)
+    # include all projects (both showcase and non-showcase) in playground
     if is_own_profile:
         playground_projects = (
-            Project.objects.select_related('user')
-            .filter(user=user, is_showcase=False, is_archived=False)
-            .order_by('-created_at')
+            Project.objects.select_related('user').filter(user=user, is_archived=False).order_by('-created_at')
         )
 
         response_data = {

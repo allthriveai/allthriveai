@@ -538,6 +538,9 @@ export default function ProjectEditorPage() {
                       (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
                     }}
                   />
+                  {/* Gradient overlay matching published page */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-gray-900 via-gray-900/80 to-gray-900/40 backdrop-blur-[1px]" />
+                  {/* Hover overlay */}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <div className="text-center">
                       <FaCamera className="w-12 h-12 text-white mx-auto mb-3" />

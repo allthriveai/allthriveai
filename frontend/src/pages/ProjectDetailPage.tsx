@@ -359,9 +359,9 @@ export default function ProjectDetailPage() {
               </div>
             )}
 
-            <div className="grid lg:grid-cols-2 gap-12 items-center pt-12">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center pt-12">
               {/* Left Column: Text Content */}
-              <div className="space-y-10">
+              <div className="space-y-6 lg:space-y-10">
                 <div className="space-y-6 relative">
                   {/* Author Badge */}
                   <div className="flex items-center gap-4">
@@ -462,7 +462,7 @@ export default function ProjectDetailPage() {
               </div>
 
               {/* Right Column: Hero Display */}
-              <div className="hidden lg:flex items-center justify-center perspective-1000">
+              <div className="flex items-center justify-center perspective-1000">
                 {(() => {
                   const heroMode = project.content?.heroDisplayMode || 'image';
                   const heroQuote = project.content?.heroQuote;
@@ -500,19 +500,13 @@ export default function ProjectDetailPage() {
                       <div className="w-full max-w-2xl">
                         <div className="relative group">
                           {/* Glowing backdrop */}
-                          <div className="absolute -inset-4 bg-gradient-to-r from-primary-500/20 to-secondary-500/20 rounded-3xl blur-2xl opacity-50 group-hover:opacity-70 transition duration-500" />
+                          <div className="absolute -inset-2 md:-inset-4 bg-gradient-to-r from-primary-500/20 to-secondary-500/20 rounded-2xl md:rounded-3xl blur-xl md:blur-2xl opacity-50 group-hover:opacity-70 transition duration-500" />
 
                           {/* Quote container */}
-                          <div className="relative p-12 bg-white/5 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl">
-                            <svg className="absolute top-8 left-8 w-12 h-12 text-white/10" fill="currentColor" viewBox="0 0 32 32">
-                              <path d="M10 8c-3.3 0-6 2.7-6 6v10h10V14H8c0-1.1.9-2 2-2V8zm12 0c-3.3 0-6 2.7-6 6v10h10V14h-6c0-1.1.9-2 2-2V8z" />
-                            </svg>
-                            <p className="text-2xl md:text-3xl lg:text-4xl font-light text-white/90 leading-relaxed text-center italic relative z-10">
-                              "{heroQuote.trim()}"
+                          <div className="relative p-6 md:p-8 lg:p-12 bg-white/5 backdrop-blur-md rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl">
+                            <p className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-light text-white/90 leading-relaxed text-center relative z-10">
+                              {heroQuote.trim()}
                             </p>
-                            <svg className="absolute bottom-8 right-8 w-12 h-12 text-white/10 rotate-180" fill="currentColor" viewBox="0 0 32 32">
-                              <path d="M10 8c-3.3 0-6 2.7-6 6v10h10V14H8c0-1.1.9-2 2-2V8zm12 0c-3.3 0-6 2.7-6 6v10h10V14h-6c0-1.1.9-2 2-2V8z" />
-                            </svg>
                           </div>
                         </div>
                       </div>
@@ -538,11 +532,11 @@ export default function ProjectDetailPage() {
                         <div className="w-full">
                           <div className="relative group">
                             {/* Glowing backdrop */}
-                            <div className="absolute -inset-4 bg-white/5 rounded-3xl blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
+                            <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
 
                             {/* Video container */}
-                            <div className="relative p-2 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 shadow-2xl overflow-hidden">
-                              <div className="relative aspect-video rounded-2xl overflow-hidden bg-black">
+                            <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl overflow-hidden">
+                              <div className="relative aspect-video rounded-xl md:rounded-2xl overflow-hidden bg-black">
                                 <iframe
                                   src={embedUrl}
                                   title="Project video"
@@ -578,12 +572,12 @@ export default function ProjectDetailPage() {
                           onClick={() => setIsImageModalOpen(true)}
                         >
                           {/* Glassy Card Container for Image */}
-                          <div className="absolute -inset-4 bg-white/5 rounded-3xl blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
-                          <div className="relative p-2 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 shadow-2xl">
+                          <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
+                          <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl">
                             <img
                               src={project.featuredImageUrl}
                               alt={`${project.title} featured`}
-                              className="relative w-full max-h-[600px] object-cover rounded-2xl shadow-inner"
+                              className="relative w-full max-h-[400px] md:max-h-[600px] object-cover rounded-xl md:rounded-2xl shadow-inner"
                             />
                           </div>
                         </div>
@@ -616,11 +610,11 @@ export default function ProjectDetailPage() {
 
                   // Fallback visual when no hero content
                   return (
-                    <div className="w-full aspect-video rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center p-12 text-center shadow-2xl relative overflow-hidden group">
+                    <div className="w-full aspect-video rounded-2xl md:rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center p-6 md:p-12 text-center shadow-2xl relative overflow-hidden group">
                       <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       <div className="relative z-10">
-                        <Icon className="w-24 h-24 text-white/20 mx-auto mb-6" />
-                        <p className="text-white/40 text-lg font-light">No featured image provided</p>
+                        <Icon className="w-16 h-16 md:w-24 md:h-24 text-white/20 mx-auto mb-4 md:mb-6" />
+                        <p className="text-white/40 text-base md:text-lg font-light">No featured image provided</p>
                       </div>
                     </div>
                   );
@@ -899,25 +893,6 @@ export default function ProjectDetailPage() {
                       Leave feedback, endorsement, or comments about this project. Your input helps the creator improve!
                     </p>
 
-                    {/* Points Incentive Banner */}
-                    {isAuthenticated && (
-                      <div className="mb-4 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg">
-                            <FaStar className="text-white text-lg" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                              +10 Points • Share Your Perspective
-                            </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">
-                              Help others, get rewarded
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
                     {!isAuthenticated && (
                       <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                         <p className="text-sm text-yellow-800 dark:text-yellow-200">
@@ -935,7 +910,7 @@ export default function ProjectDetailPage() {
                       value={feedbackText}
                       onChange={(e) => setFeedbackText(e.target.value)}
                       disabled={!isAuthenticated || isSubmittingFeedback}
-                      placeholder="What did you think about this project? Any suggestions or praise?"
+                      placeholder="What did you think about this project? Any suggestions or praise? Help others and get rewarded with +10 points!"
                       rows={8}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed"
                     />
@@ -1116,15 +1091,16 @@ function SlideshowCarousel({ images, currentIndex, onIndexChange }: { images: st
       className="w-full"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={() => setIsHovered(true)}
     >
       <div className="relative group">
-        <div className="absolute -inset-4 bg-white/5 rounded-3xl blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
-        <div className="relative p-2 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 shadow-2xl">
+        <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
+        <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl">
           {/* Image */}
           <img
             src={images[currentIndex]}
             alt={`Slide ${currentIndex + 1} of ${images.length}`}
-            className="relative w-full max-h-[600px] object-cover rounded-2xl shadow-inner transition-opacity duration-500"
+            className="relative w-full max-h-[400px] md:max-h-[600px] object-cover rounded-xl md:rounded-2xl shadow-inner transition-opacity duration-500"
             onError={(e) => {
               (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
             }}
@@ -1135,19 +1111,19 @@ function SlideshowCarousel({ images, currentIndex, onIndexChange }: { images: st
             <>
               <button
                 onClick={goToPrevious}
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white rounded-full transition-all opacity-0 group-hover:opacity-100"
+                className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 p-2 md:p-3 bg-black/50 hover:bg-black/70 active:bg-black/80 backdrop-blur-sm text-white rounded-full transition-all md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
                 aria-label="Previous slide"
               >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
               <button
                 onClick={goToNext}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white rounded-full transition-all opacity-0 group-hover:opacity-100"
+                className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 p-2 md:p-3 bg-black/50 hover:bg-black/70 active:bg-black/80 backdrop-blur-sm text-white rounded-full transition-all md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
                 aria-label="Next slide"
               >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -1155,13 +1131,13 @@ function SlideshowCarousel({ images, currentIndex, onIndexChange }: { images: st
           )}
 
           {/* Indicator Dots */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+          <div className="absolute bottom-3 md:bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1.5 md:gap-2">
             {images.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => onIndexChange(idx)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  idx === currentIndex ? 'bg-white w-8' : 'bg-white/30 hover:bg-white/50'
+                className={`h-2 md:h-2.5 rounded-full transition-all touch-manipulation ${
+                  idx === currentIndex ? 'bg-white w-6 md:w-8' : 'bg-white/30 hover:bg-white/50 active:bg-white/60 w-2 md:w-2.5'
                 }`}
                 aria-label={`Go to slide ${idx + 1}`}
               />
@@ -1169,7 +1145,7 @@ function SlideshowCarousel({ images, currentIndex, onIndexChange }: { images: st
           </div>
 
           {/* Image Counter */}
-          <div className="absolute top-4 right-4 px-3 py-1.5 bg-black/50 backdrop-blur-sm text-white text-sm font-medium rounded-full">
+          <div className="absolute top-3 md:top-4 right-3 md:right-4 px-2.5 md:px-3 py-1 md:py-1.5 bg-black/50 backdrop-blur-sm text-white text-xs md:text-sm font-medium rounded-full">
             {currentIndex + 1} / {images.length}
           </div>
         </div>

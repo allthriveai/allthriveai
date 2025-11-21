@@ -732,19 +732,19 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                 </div>
 
                 {isLoading ? (
-                  <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
+                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                       <div
                         key={i}
-                        className="break-inside-avoid mb-4 rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse"
-                        style={{ height: `${200 + (i % 4) * 80}px` }}
+                        className="break-inside-avoid mb-6 rounded-2xl overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse"
+                        style={{ height: `${300 + (i % 3) * 120}px` }}
                       />
                     ))}
                   </div>
                 ) : projects.playground.length > 0 ? (
-                  <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
+                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
                     {projects.playground.map((project) => (
-                      <div key={project.id} className="break-inside-avoid mb-4">
+                      <div key={project.id} className="break-inside-avoid mb-6">
                         <ProjectCard
                           project={project}
                           selectionMode={selectionMode}
