@@ -1032,10 +1032,10 @@ export default function ProjectEditorPage() {
               {heroDisplayMode === 'quote' && (
                 <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Your Quote
+                    Prompt
                   </label>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Share an inspiring quote or key message about your project
+                    Share your prompt or project details
                   </p>
                   <textarea
                     value={heroQuote}
