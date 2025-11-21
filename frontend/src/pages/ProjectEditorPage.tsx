@@ -924,14 +924,103 @@ export default function ProjectEditorPage() {
 
               {/* Slideshow Tab Content */}
               {heroDisplayMode === 'slideshow' && (
-                <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Add multiple images for a slideshow (coming soon)
-                  </p>
-                  <div className="p-12 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-                    <FaImages className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-                    <p className="text-gray-500 dark:text-gray-400">Slideshow feature coming soon</p>
+                <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Slideshow Images
+                    </label>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      Upload multiple images for your slideshow (recommended: 3-5 images)
+                    </p>
                   </div>
+
+                  {/* Image Grid */}
+                  {heroSlideshowImages.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                      {heroSlideshowImages.map((imageUrl, index) => (
+                        <div key={index} className="relative group aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+                          <img
+                            src={imageUrl}
+                            alt={`Slideshow image ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => {
+                                const newImages = [...heroSlideshowImages];
+                                newImages.splice(index, 1);
+                                setHeroSlideshowImages(newImages);
+                              }}
+                              className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                          <div className="absolute top-2 left-2 bg-black/70 text-white text-xs font-medium px-2 py-1 rounded">
+                            {index + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Upload Area */}
+                  <label className="block w-full cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (files.length === 0) return;
+
+                        setIsUploadingFeatured(true);
+                        try {
+                          const uploadedUrls: string[] = [];
+                          for (const file of files) {
+                            const data = await uploadImage(file, 'projects', true);
+                            uploadedUrls.push(data.url);
+                          }
+                          setHeroSlideshowImages([...heroSlideshowImages, ...uploadedUrls]);
+                        } catch (error: any) {
+                          console.error('Upload error:', error);
+                          alert(error.message || 'Failed to upload images');
+                        } finally {
+                          setIsUploadingFeatured(false);
+                        }
+                        e.target.value = ''; // Reset input
+                      }}
+                      disabled={isUploadingFeatured || isSaving}
+                      className="hidden"
+                    />
+                    <div className="p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+                      {isUploadingFeatured ? (
+                        <>
+                          <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                          <p className="text-gray-600 dark:text-gray-400">Uploading images...</p>
+                        </>
+                      ) : (
+                        <>
+                          <FaImages className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+                          <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
+                            Click to upload images
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Select multiple images at once
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </label>
+
+                  {heroSlideshowImages.length > 0 && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {heroSlideshowImages.length} image{heroSlideshowImages.length !== 1 ? 's' : ''} added
+                    </p>
+                  )}
                 </div>
               )}
 
