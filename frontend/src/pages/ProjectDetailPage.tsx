@@ -460,58 +460,191 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
 
-              {/* Right Column: Featured Image */}
+              {/* Right Column: Hero Display */}
               <div className="hidden lg:flex items-center justify-center perspective-1000">
-                {project.featuredImageUrl ? (
-                  <>
-                    <div
-                      className="relative group transform hover:scale-[1.02] transition-all duration-500 ease-out hover:rotate-1 cursor-zoom-in"
-                      onClick={() => setIsImageModalOpen(true)}
-                    >
-                      {/* Glassy Card Container for Image */}
-                      <div className="absolute -inset-4 bg-white/5 rounded-3xl blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
-                      <div className="relative p-2 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 shadow-2xl">
-                          <img
-                          src={project.featuredImageUrl}
-                          alt={`${project.title} featured`}
-                          className="relative w-full max-h-[600px] object-cover rounded-2xl shadow-inner"
-                          />
-                      </div>
-                    </div>
+                {(() => {
+                  const heroMode = project.content?.heroDisplayMode || 'image';
+                  const heroQuote = project.content?.heroQuote;
+                  const heroVideoUrl = project.content?.heroVideoUrl;
+                  const heroSlideshowImages = project.content?.heroSlideshowImages || [];
 
-                    {/* Full Screen Image Modal */}
-                    {isImageModalOpen && (
-                      <div
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 md:p-8"
-                        onClick={() => setIsImageModalOpen(false)}
-                      >
-                        <button
-                          className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
-                          onClick={() => setIsImageModalOpen(false)}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                        <img
-                          src={project.featuredImageUrl}
-                          alt={`${project.title} full view`}
-                          className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-[scale-in_0.2s_ease-out]"
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                  // Helper function to extract video ID and platform
+                  const parseVideoUrl = (url: string) => {
+                    if (!url) return null;
+
+                    // YouTube patterns
+                    const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
+                    if (youtubeMatch) {
+                      return { platform: 'youtube', id: youtubeMatch[1] };
+                    }
+
+                    // Vimeo patterns
+                    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+                    if (vimeoMatch) {
+                      return { platform: 'vimeo', id: vimeoMatch[1] };
+                    }
+
+                    // Loom patterns
+                    const loomMatch = url.match(/loom\.com\/(?:share|embed)\/(\w+)/);
+                    if (loomMatch) {
+                      return { platform: 'loom', id: loomMatch[1] };
+                    }
+
+                    return null;
+                  };
+
+                  // QUOTE MODE
+                  if (heroMode === 'quote' && heroQuote) {
+                    return (
+                      <div className="w-full max-w-2xl">
+                        <div className="relative group">
+                          {/* Glowing backdrop */}
+                          <div className="absolute -inset-4 bg-gradient-to-r from-primary-500/20 to-secondary-500/20 rounded-3xl blur-2xl opacity-50 group-hover:opacity-70 transition duration-500" />
+
+                          {/* Quote container */}
+                          <div className="relative p-12 bg-white/5 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl">
+                            <svg className="absolute top-8 left-8 w-12 h-12 text-white/10" fill="currentColor" viewBox="0 0 32 32">
+                              <path d="M10 8c-3.3 0-6 2.7-6 6v10h10V14H8c0-1.1.9-2 2-2V8zm12 0c-3.3 0-6 2.7-6 6v10h10V14h-6c0-1.1.9-2 2-2V8z" />
+                            </svg>
+                            <p className="text-2xl md:text-3xl lg:text-4xl font-light text-white/90 leading-relaxed text-center italic relative z-10">
+                              "{heroQuote.trim()}"
+                            </p>
+                            <svg className="absolute bottom-8 right-8 w-12 h-12 text-white/10 rotate-180" fill="currentColor" viewBox="0 0 32 32">
+                              <path d="M10 8c-3.3 0-6 2.7-6 6v10h10V14H8c0-1.1.9-2 2-2V8zm12 0c-3.3 0-6 2.7-6 6v10h10V14h-6c0-1.1.9-2 2-2V8z" />
+                            </svg>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </>
-                ) : (
-                  // Fallback visual
-                  <div className="w-full aspect-video rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center p-12 text-center shadow-2xl relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="relative z-10">
-                      <Icon className="w-24 h-24 text-white/20 mx-auto mb-6" />
-                      <p className="text-white/40 text-lg font-light">No featured image provided</p>
+                    );
+                  }
+
+                  // VIDEO MODE
+                  if (heroMode === 'video' && heroVideoUrl) {
+                    const videoInfo = parseVideoUrl(heroVideoUrl);
+
+                    if (videoInfo) {
+                      let embedUrl = '';
+
+                      if (videoInfo.platform === 'youtube') {
+                        embedUrl = `https://www.youtube.com/embed/${videoInfo.id}?rel=0`;
+                      } else if (videoInfo.platform === 'vimeo') {
+                        embedUrl = `https://player.vimeo.com/video/${videoInfo.id}`;
+                      } else if (videoInfo.platform === 'loom') {
+                        embedUrl = `https://www.loom.com/embed/${videoInfo.id}`;
+                      }
+
+                      return (
+                        <div className="w-full">
+                          <div className="relative group">
+                            {/* Glowing backdrop */}
+                            <div className="absolute -inset-4 bg-white/5 rounded-3xl blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
+
+                            {/* Video container */}
+                            <div className="relative p-2 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 shadow-2xl overflow-hidden">
+                              <div className="relative aspect-video rounded-2xl overflow-hidden bg-black">
+                                <iframe
+                                  src={embedUrl}
+                                  title="Project video"
+                                  className="absolute inset-0 w-full h-full"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                  }
+
+                  // SLIDESHOW MODE (TODO: Implement carousel)
+                  if (heroMode === 'slideshow' && heroSlideshowImages.length > 0) {
+                    // For now, show first image - full carousel implementation coming next
+                    return (
+                      <div className="w-full">
+                        <div className="relative group">
+                          <div className="absolute -inset-4 bg-white/5 rounded-3xl blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
+                          <div className="relative p-2 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 shadow-2xl">
+                            <img
+                              src={heroSlideshowImages[0]}
+                              alt="Project slideshow"
+                              className="relative w-full max-h-[600px] object-cover rounded-2xl shadow-inner"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
+                              }}
+                            />
+                            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                              {heroSlideshowImages.map((_: any, idx: number) => (
+                                <div
+                                  key={idx}
+                                  className={`w-2 h-2 rounded-full ${
+                                    idx === 0 ? 'bg-white' : 'bg-white/30'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // IMAGE MODE (default) - Show featured image
+                  if (project.featuredImageUrl) {
+                    return (
+                      <>
+                        <div
+                          className="relative group transform hover:scale-[1.02] transition-all duration-500 ease-out hover:rotate-1 cursor-zoom-in"
+                          onClick={() => setIsImageModalOpen(true)}
+                        >
+                          {/* Glassy Card Container for Image */}
+                          <div className="absolute -inset-4 bg-white/5 rounded-3xl blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
+                          <div className="relative p-2 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 shadow-2xl">
+                            <img
+                              src={project.featuredImageUrl}
+                              alt={`${project.title} featured`}
+                              className="relative w-full max-h-[600px] object-cover rounded-2xl shadow-inner"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Full Screen Image Modal */}
+                        {isImageModalOpen && (
+                          <div
+                            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 md:p-8"
+                            onClick={() => setIsImageModalOpen(false)}
+                          >
+                            <button
+                              className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
+                              onClick={() => setIsImageModalOpen(false)}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                            <img
+                              src={project.featuredImageUrl}
+                              alt={`${project.title} full view`}
+                              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-[scale-in_0.2s_ease-out]"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+
+                  // Fallback visual when no hero content
+                  return (
+                    <div className="w-full aspect-video rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center p-12 text-center shadow-2xl relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className="relative z-10">
+                        <Icon className="w-24 h-24 text-white/20 mx-auto mb-6" />
+                        <p className="text-white/40 text-lg font-light">No featured image provided</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
           </div>

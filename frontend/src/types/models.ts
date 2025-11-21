@@ -118,6 +118,11 @@ export interface ProjectContent {
   };
   tags?: string[];
   blocks?: ProjectBlock[];
+  // Hero display fields
+  heroDisplayMode?: 'image' | 'video' | 'slideshow' | 'quote';
+  heroQuote?: string;
+  heroVideoUrl?: string;
+  heroSlideshowImages?: string[];
 }
 
 export type ProjectBlock =
