@@ -741,7 +741,7 @@ export default function ProjectEditorPage() {
                 Hero Display
               </label>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Choose how to showcase your project (select one option)
+                Choose how to showcase your project (select one option). To use a different feature, remove content from your current selection.
               </p>
 
               {/* Tab Navigation for Hero Display */}
