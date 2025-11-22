@@ -11,7 +11,9 @@ import {
   TrashIcon,
   EyeSlashIcon,
   EyeIcon,
-  HeartIcon
+  HeartIcon,
+  ChevronUpIcon,
+  ChatBubbleLeftIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { toggleProjectLike } from '@/services/projects';
@@ -231,14 +233,6 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
           </div>
         )}
 
-        {/* Slideup Element2 Preview - Show if it's text */}
-        {isSlideup && heroElement.element2?.type === 'text' && (
-          <div className="absolute top-0 left-0 right-0 bottom-40 px-6 flex items-center justify-center z-10 pointer-events-none overflow-hidden">
-             <p className="text-lg md:text-xl font-medium leading-relaxed tracking-normal drop-shadow-lg font-sans line-clamp-[6] text-white/95 text-center">
-               {heroElement.element2.content}
-             </p>
-          </div>
-        )}
 
         {/* Repo Content (Flex Flow for non-media) */}
         {!isMediaCard && (
@@ -296,23 +290,54 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
             )}
 
             <div className="flex items-center justify-between pt-1">
-              <button
-                onClick={handleLike}
-                disabled={isLiking}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all hover:scale-105 disabled:opacity-50 group/heart bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
-              >
-                {isLiked ? (
-                  <HeartIconSolid className="w-5 h-5 text-red-500 group-hover/heart:scale-110 transition-transform drop-shadow-sm" />
-                ) : (
-                  <HeartIcon className="w-5 h-5 text-white group-hover/heart:scale-110 transition-transform drop-shadow-sm" />
-                )}
-                <span className="text-sm font-bold text-white">
-                  {heartCount > 0 ? heartCount : ''}
-                </span>
-              </button>
+              {/* Left side - Action buttons */}
+              <div className="flex items-center gap-2">
+                {/* Heart/Like Button */}
+                <button
+                  onClick={handleLike}
+                  disabled={isLiking}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 disabled:opacity-50 group/heart bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
+                >
+                  {isLiked ? (
+                    <HeartIconSolid className="w-4 h-4 text-red-500 group-hover/heart:scale-110 transition-transform drop-shadow-sm" />
+                  ) : (
+                    <HeartIcon className="w-4 h-4 text-white group-hover/heart:scale-110 transition-transform drop-shadow-sm" />
+                  )}
+                  {heartCount > 0 && (
+                    <span className="text-xs font-bold text-white">
+                      {heartCount}
+                    </span>
+                  )}
+                </button>
 
-              {project.toolsDetails && project.toolsDetails.length > 0 ? (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20">
+                {/* Comment Button */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  className="p-1.5 rounded-full transition-all hover:scale-105 group/comment bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
+                  aria-label="Comment"
+                >
+                  <ChatBubbleLeftIcon className="w-4 h-4 text-white group-hover/comment:scale-110 transition-transform drop-shadow-sm" />
+                </button>
+
+                {/* Up Arrow - More Info */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  className="p-1.5 rounded-full transition-all hover:scale-105 group/more bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
+                  aria-label="More info"
+                >
+                  <ChevronUpIcon className="w-4 h-4 text-white group-hover/more:scale-110 transition-transform drop-shadow-sm" />
+                </button>
+              </div>
+
+              {/* Right side - Tools */}
+              {project.toolsDetails && project.toolsDetails.length > 0 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20">
                   {project.toolsDetails[0].logoUrl && (
                     <img
                       src={project.toolsDetails[0].logoUrl}
@@ -324,7 +349,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                     {project.toolsDetails[0].name}
                   </span>
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
         </div>
