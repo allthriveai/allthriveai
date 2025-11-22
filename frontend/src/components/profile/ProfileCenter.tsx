@@ -674,6 +674,7 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                         isOwner={isOwnProfile}
                         onDelete={handleDeleteProject}
                         onToggleShowcase={handleToggleShowcase}
+                        userAvatarUrl={displayUser?.avatarUrl}
                       />
                     ))}
                   </div>
@@ -754,6 +755,7 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                           variant="masonry"
                           onDelete={handleDeleteProject}
                           onToggleShowcase={handleToggleShowcase}
+                          userAvatarUrl={displayUser?.avatarUrl}
                         />
                       </div>
                     ))}
