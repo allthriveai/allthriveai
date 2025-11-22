@@ -332,7 +332,6 @@ export function SlideUpHero({
                           aria-label="Comment"
                         >
                           <ChatBubbleLeftIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                          <span className="font-medium">Comment</span>
                         </button>
 
                         {/* Divider */}
