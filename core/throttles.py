@@ -40,3 +40,14 @@ class AuthenticatedProjectsThrottle(UserRateThrottle):
 
     rate = '500/hour'
     scope = 'authenticated_projects'
+
+
+class ProjectLikeThrottle(UserRateThrottle):
+    """Rate limit for project like/unlike actions.
+
+    Prevents spam and abuse of the like system.
+    Limit: 60 likes per hour (1 per minute average).
+    """
+
+    rate = '60/hour'
+    scope = 'project_like'

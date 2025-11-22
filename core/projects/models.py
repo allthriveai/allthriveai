@@ -104,19 +104,38 @@ class Project(models.Model):
 
         If slug is empty, generate from title. If there is a collision for this
         user, append a numeric suffix (-2, -3, ...) until unique.
+        Optimized to use a single database query.
         """
         base = self.slug or self.title or 'project'
         slug = slugify(base) or 'project'
+
+        # Check if base slug is available
         existing = Project.objects.filter(user=self.user, slug=slug).exclude(pk=self.pk)
+        if not existing.exists():
+            self.slug = slug
+            return
+
+        # Find all similar slugs in a single query (e.g., 'my-project', 'my-project-2', 'my-project-3')
+        similar_slugs = (
+            Project.objects.filter(user=self.user, slug__startswith=f'{slug}-')
+            .exclude(pk=self.pk)
+            .values_list('slug', flat=True)
+        )
+
+        # Extract numeric suffixes and find the next available number
+        used_numbers = set()
+        for existing_slug in similar_slugs:
+            # Extract suffix after last dash
+            suffix = existing_slug[len(slug) + 1 :]  # +1 for the dash
+            if suffix.isdigit():
+                used_numbers.add(int(suffix))
+
+        # Find first available number starting from 2
         counter = 2
-        while existing.exists():
-            candidate = f'{slug}-{counter}'
-            existing = Project.objects.filter(user=self.user, slug=candidate).exclude(pk=self.pk)
-            if not existing.exists():
-                slug = candidate
-                break
+        while counter in used_numbers:
             counter += 1
-        self.slug = slug
+
+        self.slug = f'{slug}-{counter}'
 
     def save(self, *args, **kwargs):
         # Only attempt slug handling if we have a user (may not be set in some

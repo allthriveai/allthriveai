@@ -1,6 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import type { Project } from '@/types/models';
+import {
+  QUOTE_CARD_SIZE,
+  MAX_VISIBLE_TAGS,
+  GRADIENT_OVERLAY,
+  PROJECT_TYPE_LABELS,
+} from './constants';
 import {
   CodeBracketIcon,
   PhotoIcon,
@@ -43,12 +49,7 @@ const typeIcons = {
   other: DocumentTextIcon,
 };
 
-const typeLabels = {
-  github_repo: 'GitHub Repo',
-  image_collection: 'Image Collection',
-  prompt: 'Prompt',
-  other: 'Project',
-};
+const typeLabels = PROJECT_TYPE_LABELS;
 
 export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl }: ProjectCardProps) {
   const navigate = useNavigate();
@@ -60,6 +61,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const [showModal, setShowModal] = useState(false);
   const [showCommentTray, setShowCommentTray] = useState(false);
   const [showToolTray, setShowToolTray] = useState(false);
+  const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
   const [slideUpExpanded, setSlideUpExpanded] = useState(false);
   const Icon = typeIcons[project.type];
   const projectUrl = `/${project.username}/${project.slug}`;
@@ -177,17 +179,17 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     const isSlideup = heroElement.type === 'slideup';
 
     // Get gradient colors for quote cards
-    const gradientFrom = project.content?.heroGradientFrom || 'rgb(124, 58, 237)'; // violet-600
-    const gradientTo = project.content?.heroGradientTo || 'rgb(79, 70, 229)'; // indigo-600
+    const gradientFrom = project.content?.heroGradientFrom || GRADIENT_OVERLAY.DEFAULT_FROM;
+    const gradientTo = project.content?.heroGradientTo || GRADIENT_OVERLAY.DEFAULT_TO;
 
     // Determine dynamic size based on hero element type and content
     const getDynamicSizeClass = () => {
       // Quote cards - vary based on text length (keep fixed heights for text content)
       if (isQuote && heroElement.type === 'quote') {
         const textLength = heroElement.text?.length || 0;
-        if (textLength < 100) return { height: 'min-h-[300px]', width: '' }; // Short quote
-        if (textLength < 250) return { height: 'min-h-[400px]', width: '' }; // Medium quote
-        return { height: 'min-h-[500px]', width: '' }; // Long quote
+        if (textLength < QUOTE_CARD_SIZE.SHORT) return { height: QUOTE_CARD_SIZE.HEIGHT_SHORT, width: '' };
+        if (textLength < QUOTE_CARD_SIZE.MEDIUM) return { height: QUOTE_CARD_SIZE.HEIGHT_MEDIUM, width: '' };
+        return { height: QUOTE_CARD_SIZE.HEIGHT_LONG, width: '' };
       }
 
       // SlideUp cards - natural height
@@ -361,7 +363,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
             {/* Tags */}
             {project.content?.tags && project.content.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-3">
-                {project.content.tags.slice(0, 3).map((tag, index) => (
+                {project.content.tags.slice(0, MAX_VISIBLE_TAGS).map((tag, index) => (
                   <span
                     key={index}
                     className="px-2.5 py-1 text-xs font-semibold rounded-full bg-white/10 text-white backdrop-blur-md border border-white/10"
@@ -510,7 +512,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         <ToolTray
           isOpen={showToolTray}
           onClose={() => setShowToolTray(false)}
-          toolSlug={project.toolsDetails[0].slug}
+          toolSlug={selectedToolSlug || project.toolsDetails[0].slug}
         />
       )}
     </>
@@ -634,7 +636,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         {/* Tags */}
         {project.content?.tags && project.content.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {project.content.tags.slice(0, 3).map((tag, index) => (
+            {project.content.tags.slice(0, MAX_VISIBLE_TAGS).map((tag, index) => (
               <span
                 key={index}
                 className="px-2 py-1 text-xs rounded-md bg-white/50 dark:bg-white/5 text-slate-600 dark:text-slate-400"
@@ -642,9 +644,9 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                 {tag}
               </span>
             ))}
-            {project.content.tags.length > 3 && (
+            {project.content.tags.length > MAX_VISIBLE_TAGS && (
               <span className="px-2 py-1 text-xs text-slate-500 dark:text-slate-500">
-                +{project.content.tags.length - 3} more
+                +{project.content.tags.length - MAX_VISIBLE_TAGS} more
               </span>
             )}
           </div>

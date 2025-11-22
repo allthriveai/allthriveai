@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { listProjects, updateProject, deleteProjectRedirect } from '@/services/projects';
@@ -7,6 +7,7 @@ import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { ToolSelector } from '@/components/projects/ToolSelector';
 import type { Project, ProjectBlock } from '@/types/models';
 import { generateSlug } from '@/utils/slug';
+import { AUTOSAVE_DEBOUNCE_MS } from '@/components/projects/constants';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -53,8 +54,13 @@ export default function ProjectEditorPage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Track if initial load is complete to avoid triggering autosave on mount
+  const isInitialLoadRef = useRef(true);
+  // Track save version to prevent race conditions
+  const saveVersionRef = useRef(0);
+
   // Editor state - stored directly as we edit
-  const [blocks, setBlocks] = useState<any[]>([]);
+  const [blocks, setBlocks] = useState<ProjectBlock[]>([]);
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [showBannerEdit, setShowBannerEdit] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
@@ -155,6 +161,11 @@ export default function ProjectEditorPage() {
         }
 
         setBlocks(blocksWithIds);
+
+        // Mark initial load as complete after a short delay
+        setTimeout(() => {
+          isInitialLoadRef.current = false;
+        }, 100);
       } catch (err) {
         console.error('Failed to load project:', err);
         setError('Failed to load project');
@@ -176,19 +187,65 @@ export default function ProjectEditorPage() {
     }
   }, [projectTitle, customSlugSet, editableSlug]);
 
-  // Mark as having unsaved changes when blocks, thumbnail, or metadata change
+  // Memoize form data to prevent unnecessary re-renders
+  const formData = useMemo(
+    () => ({
+      blocks,
+      thumbnailUrl,
+      projectTitle,
+      editableSlug,
+      featuredImageUrl,
+      projectUrl,
+      projectDescription,
+      projectTools,
+      heroDisplayMode,
+      heroQuote,
+      heroVideoUrl,
+      heroSlideshowImages,
+      slideUpElement1Type,
+      slideUpElement1Content,
+      slideUpElement1Caption,
+      slideUpElement2Type,
+      slideUpElement2Content,
+      slideUpElement2Caption,
+    }),
+    [
+      blocks,
+      thumbnailUrl,
+      projectTitle,
+      editableSlug,
+      featuredImageUrl,
+      projectUrl,
+      projectDescription,
+      projectTools,
+      heroDisplayMode,
+      heroQuote,
+      heroVideoUrl,
+      heroSlideshowImages,
+      slideUpElement1Type,
+      slideUpElement1Content,
+      slideUpElement1Caption,
+      slideUpElement2Type,
+      slideUpElement2Content,
+      slideUpElement2Caption,
+    ]
+  );
+
+  // Mark as having unsaved changes when form data changes (skip initial load)
   useEffect(() => {
-    if (project && blocks.length > 0) {
+    if (project && blocks.length > 0 && !isInitialLoadRef.current) {
       setHasUnsavedChanges(true);
     }
-  }, [blocks, thumbnailUrl, projectTitle, editableSlug, featuredImageUrl, projectUrl, projectDescription, projectTools, heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages, slideUpElement1Type, slideUpElement1Content, slideUpElement1Caption, slideUpElement2Type, slideUpElement2Content, slideUpElement2Caption]);
+  }, [project, blocks.length, formData]);
 
   const handleSave = useCallback(async () => {
     if (!project) return;
 
+    // Increment save version to track this save operation
+    const currentSaveVersion = ++saveVersionRef.current;
+
     setIsSaving(true);
-    console.log('🔄 Autosave starting...');
-    console.log('Hero data:', { heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages });
+    console.log('🔄 Autosave starting (version', currentSaveVersion, ')...');
 
     try {
       const payload = {
@@ -222,17 +279,21 @@ export default function ProjectEditorPage() {
 
       const updatedProject = await updateProject(project.id, payload);
 
-      console.log('✅ Save successful!');
-      console.log('📥 Received content:', updatedProject.content);
+      // Only update state if this is still the latest save operation (prevent race conditions)
+      if (currentSaveVersion === saveVersionRef.current) {
+        console.log('✅ Save successful (version', currentSaveVersion, ')!');
 
-      setProject(updatedProject);
-      setLastSaved(new Date());
-      setHasUnsavedChanges(false);
+        setProject(updatedProject);
+        setLastSaved(new Date());
+        setHasUnsavedChanges(false);
 
-      // Navigate to new URL if slug changed
-      if (updatedProject.slug !== editableSlug && username) {
-        navigate(`/${username}/${updatedProject.slug}/edit`, { replace: true });
-        setEditableSlug(updatedProject.slug);
+        // Navigate to new URL if slug changed
+        if (updatedProject.slug !== editableSlug && username) {
+          navigate(`/${username}/${updatedProject.slug}/edit`, { replace: true });
+          setEditableSlug(updatedProject.slug);
+        }
+      } else {
+        console.log('⚠️ Skipping stale save result (version', currentSaveVersion, 'vs current', saveVersionRef.current, ')');
       }
     } catch (err: any) {
       console.error('❌ AUTOSAVE FAILED');
@@ -246,17 +307,20 @@ export default function ProjectEditorPage() {
         console.warn('⚠️ Backend validation error:', JSON.stringify(err.details, null, 2));
       }
     } finally {
-      setIsSaving(false);
+      // Only clear saving state if this is still the latest operation
+      if (currentSaveVersion === saveVersionRef.current) {
+        setIsSaving(false);
+      }
     }
-  }, [project, projectTitle, projectDescription, thumbnailUrl, featuredImageUrl, projectUrl, projectTools, blocks, heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages, slideUpElement1Type, slideUpElement1Content, slideUpElement1Caption, slideUpElement2Type, slideUpElement2Content, slideUpElement2Caption]);
+  }, [project, formData, username, navigate, editableSlug]);
 
-  // Autosave effect - save 2 seconds after last change
+  // Autosave effect - debounced save after changes
   useEffect(() => {
     if (!hasUnsavedChanges || !project) return;
 
     const timer = setTimeout(() => {
       handleSave();
-    }, 2000); // 2 second debounce
+    }, AUTOSAVE_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
   }, [hasUnsavedChanges, project, handleSave]);

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import ProjectEditorPage from './ProjectEditorPage';
@@ -9,6 +9,7 @@ import type { Project } from '@/types/models';
 vi.mock('@/services/projects', () => ({
   listProjects: vi.fn(),
   updateProject: vi.fn(),
+  deleteProjectRedirect: vi.fn(),
 }));
 
 // Mock react-router-dom hooks
@@ -40,6 +41,24 @@ vi.mock('@/components/editor/RichTextEditor', () => ({
 // Mock upload service
 vi.mock('@/services/upload', () => ({
   uploadImage: vi.fn(),
+  uploadFile: vi.fn(),
+}));
+
+// Mock useAuth hook
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+    user: { id: 1, username: 'testuser' },
+  }),
+}));
+
+// Mock ToolSelector component
+vi.mock('@/components/projects/ToolSelector', () => ({
+  ToolSelector: ({ value, onChange }: any) => (
+    <div data-testid="tool-selector">
+      <button onClick={() => onChange([1, 2])}>Select Tools</button>
+    </div>
+  ),
 }));
 
 const mockProject: Project = {
@@ -348,5 +367,266 @@ describe('ProjectEditorPage - Autosave', () => {
         })
       );
     });
+  });
+});
+
+describe('ProjectEditorPage - Redirect Management', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockProjectWithRedirects: Project = {
+    ...mockProject,
+    redirects: [
+      {
+        id: 1,
+        oldSlug: 'old-test-project',
+        createdAt: '2025-01-01T00:00:00Z',
+      },
+      {
+        id: 2,
+        oldSlug: 'another-old-slug',
+        createdAt: '2025-01-02T00:00:00Z',
+      },
+    ],
+  };
+
+  const renderEditor = () => {
+    return render(
+      <BrowserRouter>
+        <ProjectEditorPage />
+      </BrowserRouter>
+    );
+  };
+
+  it('should display active redirects when present', async () => {
+    vi.mocked(projectsService.listProjects).mockResolvedValue([mockProjectWithRedirects]);
+    vi.mocked(projectsService.updateProject).mockResolvedValue(mockProjectWithRedirects);
+
+    renderEditor();
+
+    // Wait for project to load
+    await waitFor(() => {
+      expect(projectsService.listProjects).toHaveBeenCalled();
+    });
+
+    // Open settings sidebar
+    const settingsButton = screen.getByTitle('Project settings');
+    fireEvent.click(settingsButton);
+
+    // Wait for sidebar to open and check for redirects section
+    await waitFor(() => {
+      expect(screen.getByText('Active Redirects')).toBeInTheDocument();
+    });
+
+    // Verify redirects are displayed
+    expect(screen.getByText('/testuser/old-test-project')).toBeInTheDocument();
+    expect(screen.getByText('/testuser/another-old-slug')).toBeInTheDocument();
+  });
+
+  it('should call deleteProjectRedirect when delete button is clicked for a redirect', async () => {
+    vi.mocked(projectsService.listProjects).mockResolvedValue([mockProjectWithRedirects]);
+    vi.mocked(projectsService.updateProject).mockResolvedValue(mockProjectWithRedirects);
+    vi.mocked(projectsService.deleteProjectRedirect).mockResolvedValue();
+
+    // Mock window.confirm to auto-accept
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderEditor();
+
+    // Wait for project to load
+    await waitFor(() => {
+      expect(projectsService.listProjects).toHaveBeenCalled();
+    });
+
+    // Open settings sidebar
+    const settingsButton = screen.getByTitle('Project settings');
+    fireEvent.click(settingsButton);
+
+    // Wait for redirects to be visible
+    await waitFor(() => {
+      expect(screen.getByText('Active Redirects')).toBeInTheDocument();
+    });
+
+    // Find and click the delete button for the first redirect
+    const deleteButtons = screen.getAllByLabelText('Delete redirect');
+    expect(deleteButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(deleteButtons[0]);
+
+    // Verify confirmation dialog was shown
+    expect(confirmSpy).toHaveBeenCalled();
+
+    // Verify deleteProjectRedirect was called with correct arguments
+    await waitFor(() => {
+      expect(projectsService.deleteProjectRedirect).toHaveBeenCalledWith(
+        mockProjectWithRedirects.id,
+        mockProjectWithRedirects.redirects![0].id
+      );
+    });
+
+    confirmSpy.mockRestore();
+  });
+
+  it('should refresh project data after successful redirect deletion', async () => {
+    const projectWithoutRedirect: Project = {
+      ...mockProjectWithRedirects,
+      redirects: [
+        {
+          id: 2,
+          oldSlug: 'another-old-slug',
+          createdAt: '2025-01-02T00:00:00Z',
+        },
+      ],
+    };
+
+    vi.mocked(projectsService.listProjects)
+      .mockResolvedValueOnce([mockProjectWithRedirects])
+      .mockResolvedValueOnce([projectWithoutRedirect]);
+    vi.mocked(projectsService.updateProject).mockResolvedValue(mockProjectWithRedirects);
+    vi.mocked(projectsService.deleteProjectRedirect).mockResolvedValue();
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderEditor();
+
+    // Wait for initial load
+    await waitFor(() => {
+      expect(projectsService.listProjects).toHaveBeenCalledTimes(1);
+    });
+
+    // Open settings sidebar
+    const settingsButton = screen.getByTitle('Project settings');
+    fireEvent.click(settingsButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active Redirects')).toBeInTheDocument();
+    });
+
+    // Verify both redirects are initially shown
+    expect(screen.getByText('/testuser/old-test-project')).toBeInTheDocument();
+    expect(screen.getByText('/testuser/another-old-slug')).toBeInTheDocument();
+
+    // Delete the first redirect
+    const deleteButtons = screen.getAllByLabelText('Delete redirect');
+    fireEvent.click(deleteButtons[0]);
+
+    // Wait for deletion to complete and project to refresh
+    await waitFor(() => {
+      expect(projectsService.deleteProjectRedirect).toHaveBeenCalled();
+      expect(projectsService.listProjects).toHaveBeenCalledTimes(2);
+    });
+
+    // Verify the deleted redirect is no longer shown
+    await waitFor(() => {
+      expect(screen.queryByText('/testuser/old-test-project')).not.toBeInTheDocument();
+      expect(screen.getByText('/testuser/another-old-slug')).toBeInTheDocument();
+    });
+
+    confirmSpy.mockRestore();
+  });
+
+  it('should not delete redirect when user cancels confirmation', async () => {
+    vi.mocked(projectsService.listProjects).mockResolvedValue([mockProjectWithRedirects]);
+    vi.mocked(projectsService.updateProject).mockResolvedValue(mockProjectWithRedirects);
+    vi.mocked(projectsService.deleteProjectRedirect).mockResolvedValue();
+
+    // Mock window.confirm to return false (cancel)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    renderEditor();
+
+    await waitFor(() => {
+      expect(projectsService.listProjects).toHaveBeenCalled();
+    });
+
+    // Open settings sidebar
+    const settingsButton = screen.getByTitle('Project settings');
+    fireEvent.click(settingsButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active Redirects')).toBeInTheDocument();
+    });
+
+    // Click delete button
+    const deleteButtons = screen.getAllByLabelText('Delete redirect');
+    fireEvent.click(deleteButtons[0]);
+
+    // Verify confirmation was shown but delete was not called
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(projectsService.deleteProjectRedirect).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  it('should handle redirect deletion error gracefully', async () => {
+    vi.mocked(projectsService.listProjects).mockResolvedValue([mockProjectWithRedirects]);
+    vi.mocked(projectsService.updateProject).mockResolvedValue(mockProjectWithRedirects);
+    vi.mocked(projectsService.deleteProjectRedirect).mockRejectedValue(
+      new Error('Network error')
+    );
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    renderEditor();
+
+    await waitFor(() => {
+      expect(projectsService.listProjects).toHaveBeenCalled();
+    });
+
+    // Open settings sidebar
+    const settingsButton = screen.getByTitle('Project settings');
+    fireEvent.click(settingsButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active Redirects')).toBeInTheDocument();
+    });
+
+    // Click delete button
+    const deleteButtons = screen.getAllByLabelText('Delete redirect');
+    fireEvent.click(deleteButtons[0]);
+
+    // Wait for error handling
+    await waitFor(() => {
+      expect(projectsService.deleteProjectRedirect).toHaveBeenCalled();
+    });
+
+    // Verify error was logged and alert was shown
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to delete redirect:',
+        expect.any(Error)
+      );
+      expect(alertSpy).toHaveBeenCalledWith('Failed to delete redirect. Please try again.');
+    });
+
+    confirmSpy.mockRestore();
+    alertSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should not display redirects section when project has no redirects', async () => {
+    vi.mocked(projectsService.listProjects).mockResolvedValue([mockProject]);
+    vi.mocked(projectsService.updateProject).mockResolvedValue(mockProject);
+
+    renderEditor();
+
+    await waitFor(() => {
+      expect(projectsService.listProjects).toHaveBeenCalled();
+    });
+
+    // Open settings sidebar
+    const settingsButton = screen.getByTitle('Project settings');
+    fireEvent.click(settingsButton);
+
+    // Wait for sidebar to open
+    await waitFor(() => {
+      expect(screen.getByText('Project Settings')).toBeInTheDocument();
+    });
+
+    // Verify redirects section is not shown
+    expect(screen.queryByText('Active Redirects')).not.toBeInTheDocument();
   });
 });

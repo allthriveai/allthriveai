@@ -1,14 +1,24 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.taxonomy.models import UserInteraction
+from core.throttles import ProjectLikeThrottle
 from core.users.models import User
 
 from .constants import MIN_RESPONSE_TIME_SECONDS
 from .models import Project, ProjectLike
 from .serializers import ProjectSerializer
+
+
+class ProjectPagination(PageNumberPagination):
+    """Pagination for project lists."""
+
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -20,23 +30,32 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = ProjectPagination
 
     def get_queryset(self):
         # Only return projects for the current user
-        return Project.objects.filter(user=self.request.user)
+        # Optimize with select_related for user and prefetch_related for tools to prevent N+1 queries
+        return (
+            Project.objects.filter(user=self.request.user)
+            .select_related('user')
+            .prefetch_related('tools', 'likes')
+            .order_by('-created_at')
+        )
 
     def perform_create(self, serializer):
         # Bind project to the authenticated user and let the model handle slug
         # generation / uniqueness on save.
         serializer.save(user=self.request.user)
 
-    @action(detail=True, methods=['post'], url_path='toggle-like')
+    @action(detail=True, methods=['post'], url_path='toggle-like', throttle_classes=[ProjectLikeThrottle])
     def toggle_like(self, request, pk=None):
         """Toggle like/heart on a project.
 
         If the user has already liked the project, remove the like.
         If the user hasn't liked it, add a like.
         Also tracks the interaction in the user's activity feed.
+
+        Rate limited to prevent abuse (60 requests/hour).
         """
         project = self.get_object()
         user = request.user
