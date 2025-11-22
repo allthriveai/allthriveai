@@ -609,7 +609,12 @@ export default function ProjectDetailPage() {
                         element1={project.content?.heroSlideUpElement1}
                         element2={project.content?.heroSlideUpElement2}
                         tools={project.toolsDetails}
-                        onToolClick={(slug) => navigate(`tools/${slug}`)}
+                        onToolClick={(slug) => navigate(`/tools/${slug}`)}
+                        isLiked={project.isLikedByUser}
+                        heartCount={project.heartCount || 0}
+                        onLikeToggle={handleToggleLike}
+                        onCommentClick={() => setIsFeedbackSidebarOpen(true)}
+                        isAuthenticated={isAuthenticated}
                       />
                     );
                   }

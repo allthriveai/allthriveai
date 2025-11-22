@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ChevronUpIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { ChevronUpIcon, ClipboardDocumentIcon, CheckIcon, HeartIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
+import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 
 interface SlideUpElement {
   type: 'image' | 'video' | 'text';
@@ -12,6 +13,13 @@ interface SlideUpHeroProps {
   element2?: SlideUpElement;
   tools?: Array<{ id: number; name: string; slug: string; logoUrl?: string }>;
   onToolClick?: (toolSlug: string) => void;
+  // Heart/Like functionality
+  isLiked?: boolean;
+  heartCount?: number;
+  onLikeToggle?: () => void;
+  // Comment functionality
+  onCommentClick?: () => void;
+  isAuthenticated?: boolean;
 }
 
 function TextWithCopy({ content, caption, fontSize }: { content: string; caption?: string; fontSize: string }) {
@@ -178,7 +186,17 @@ function renderElement(element: SlideUpElement | undefined) {
   }
 }
 
-export function SlideUpHero({ element1, element2, tools, onToolClick }: SlideUpHeroProps) {
+export function SlideUpHero({
+  element1,
+  element2,
+  tools,
+  onToolClick,
+  isLiked = false,
+  heartCount = 0,
+  onLikeToggle,
+  onCommentClick,
+  isAuthenticated = false,
+}: SlideUpHeroProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -289,30 +307,58 @@ export function SlideUpHero({ element1, element2, tools, onToolClick }: SlideUpH
                   <div className="h-full overflow-y-auto pt-12 pb-6 px-4 md:px-6">
                     {renderElement(element2)}
 
-                    {/* Tools pills at bottom */}
-                    {tools && tools.length > 0 && (
-                      <div className="mt-8 pt-6 border-t border-white/30">
-                        <h3 className="text-sm font-medium text-white/80 mb-3">Tools Used</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {tools.map((tool) => (
-                            <button
-                              key={tool.id}
-                              onClick={() => onToolClick?.(tool.slug)}
-                              className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-md text-white rounded-full text-sm border border-white/30 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
-                            >
-                              {tool.logoUrl && (
-                                <img
-                                  src={tool.logoUrl}
-                                  alt={tool.name}
-                                  className="w-4 h-4 object-contain"
-                                />
-                              )}
-                              <span>{tool.name}</span>
-                            </button>
-                          ))}
-                        </div>
+                    {/* Actions and Tools - Single Row */}
+                    <div className="mt-6 pt-6 border-t border-white/30">
+                      <div className="flex flex-wrap items-center gap-3">
+                        {/* Heart/Like Button */}
+                        <button
+                          onClick={onLikeToggle}
+                          disabled={!isAuthenticated}
+                          className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-full text-sm border border-white/30 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg group"
+                          aria-label={isLiked ? 'Unlike' : 'Like'}
+                        >
+                          {isLiked ? (
+                            <HeartIconSolid className="w-5 h-5 text-red-400 group-hover:scale-110 transition-transform" />
+                          ) : (
+                            <HeartIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                          )}
+                          <span className="font-medium">{heartCount}</span>
+                        </button>
+
+                        {/* Comment Button */}
+                        <button
+                          onClick={onCommentClick}
+                          className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-full text-sm border border-white/30 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 shadow-lg group"
+                          aria-label="Comment"
+                        >
+                          <ChatBubbleLeftIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                          <span className="font-medium">Comment</span>
+                        </button>
+
+                        {/* Divider */}
+                        {tools && tools.length > 0 && (
+                          <div className="h-6 w-px bg-white/30 mx-1" />
+                        )}
+
+                        {/* Tools pills */}
+                        {tools && tools.length > 0 && tools.map((tool) => (
+                          <button
+                            key={tool.id}
+                            onClick={() => onToolClick?.(tool.slug)}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-md text-white rounded-full text-sm border border-white/30 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
+                          >
+                            {tool.logoUrl && (
+                              <img
+                                src={tool.logoUrl}
+                                alt={tool.name}
+                                className="w-4 h-4 object-contain"
+                              />
+                            )}
+                            <span>{tool.name}</span>
+                          </button>
+                        ))}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
