@@ -95,6 +95,7 @@ export interface ProjectRedirect {
 export interface Project {
   id: number;
   username: string; // Owner's username for URL construction
+  userAvatarUrl?: string; // Owner's avatar URL
   title: string;
   slug: string;
   description: string;

@@ -41,13 +41,14 @@ export function ProjectsGrid({
   }
 
   return (
-    <div
-      className="columns-1 sm:columns-2 lg:columns-3 gap-2"
-      style={{ columnFill: 'balance' }}
-    >
+    <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
       {projects.map((project) => (
         <div key={project.id} className="break-inside-avoid mb-2">
-          <ProjectCard project={project} />
+          <ProjectCard
+            project={project}
+            variant="masonry"
+            userAvatarUrl={project.userAvatarUrl}
+          />
         </div>
       ))}
     </div>

@@ -236,6 +236,7 @@ def explore_projects(request):
     from django.db.models import Count, Q
 
     # Get query parameters
+    tab = request.GET.get('tab', 'all')
     search_query = request.GET.get('search', '')
     tools_param = request.GET.get('tools', '')
     topics_param = request.GET.get('topics', '')
@@ -266,8 +267,52 @@ def explore_projects(request):
     if topics_param:
         pass  # Topics will be implemented when topic tagging is added
 
-    # Apply sorting
-    if sort == 'trending':
+    # Apply sorting or personalization
+    if tab == 'for-you' and request.user.is_authenticated:
+        # Personalized feed based on user's auto-detected preferences
+        from core.taxonomy.models import UserTag
+
+        # Get user's tool preferences
+        user_tool_tags = UserTag.objects.filter(user=request.user, taxonomy__category='tool').select_related('taxonomy')
+
+        if user_tool_tags.exists():
+            # Score each project based on tool matches
+            scored_projects = []
+            for project in queryset:
+                score = 0
+                project_tools = set(project.tools.values_list('id', flat=True))
+
+                # Calculate match score (40% weight for tools)
+                for tag in user_tool_tags:
+                    if tag.taxonomy and hasattr(tag.taxonomy, 'tool_entity'):
+                        tool = tag.taxonomy.tool_entity
+                        if tool and tool.id in project_tools:
+                            # Weighted by confidence score
+                            score += tag.confidence_score * 0.40
+
+                # Diversity bonus for newer projects (10% weight)
+                from django.utils import timezone
+
+                days_old = (timezone.now() - project.created_at).days
+                if days_old < 7:
+                    score += 0.10
+                elif days_old < 30:
+                    score += 0.05
+
+                # Popularity bonus (small weight to avoid echo chamber)
+                like_count = project.likes.count() if hasattr(project, 'likes') else 0
+                if like_count > 10:
+                    score += 0.05
+
+                scored_projects.append((project, score))
+
+            # Sort by score descending
+            scored_projects.sort(key=lambda x: x[1], reverse=True)
+            queryset = [p[0] for p in scored_projects]
+        else:
+            # No preferences yet, fall back to newest
+            queryset = queryset.order_by('-created_at')
+    elif sort == 'trending':
         # Trending: most likes in the last 7 days
         queryset = queryset.annotate(recent_likes=Count('likes')).order_by('-recent_likes', '-created_at')
     elif sort == 'popular':

@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils.text import slugify
 
 from core.tools.models import Tool
@@ -55,7 +57,7 @@ class Project(models.Model):
     )
     is_private = models.BooleanField(default=False, help_text='Hidden from public, only visible to owner')
     is_archived = models.BooleanField(default=False)
-    is_published = models.BooleanField(default=False, help_text='Whether project is publicly visible')
+    is_published = models.BooleanField(default=True, help_text='Whether project is publicly visible')
     published_at = models.DateTimeField(null=True, blank=True, help_text='When project was first published')
     # CharField supports both full URLs and relative paths (e.g., /path/to/image)
     thumbnail_url = models.CharField(max_length=500, blank=True, default='', help_text='Banner image URL')
@@ -149,6 +151,12 @@ class Project(models.Model):
                 Project.objects.filter(user=self.user, is_highlighted=True).exclude(pk=self.pk).update(
                     is_highlighted=False
                 )
+
+        # Set published_at timestamp when first published
+        if self.is_published and not self.published_at:
+            from django.utils import timezone
+
+            self.published_at = timezone.now()
 
         super().save(*args, **kwargs)
 
@@ -261,3 +269,35 @@ class CommentVote(models.Model):
 
     def __str__(self):
         return f'{self.user.username} {self.vote_type}votes comment #{self.comment.id}'
+
+
+# Django signals for automatic personalization
+
+
+@receiver(post_save, sender=Project)
+def auto_tag_project_on_save(sender, instance, created, **kwargs):
+    """
+    Automatically detect user preferences when a project is created or updated.
+
+    This signal triggers the personalization system to:
+    1. Extract tools mentioned in the project
+    2. Create/update UserTags with confidence scores
+    3. Link detected tools to the project
+
+    Only runs when the project has a user (not during migrations).
+    """
+    # Only auto-tag if project has a user
+    if not instance.user:
+        return
+
+    # Import here to avoid circular imports
+    from core.taxonomy.services import auto_tag_project
+
+    try:
+        auto_tag_project(instance)
+    except Exception as e:
+        # Log error but don't fail the save operation
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error auto-tagging project '{instance.title}': {e}", exc_info=True)
