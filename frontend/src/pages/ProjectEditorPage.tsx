@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { listProjects, updateProject } from '@/services/projects';
-import { uploadImage } from '@/services/upload';
+import { uploadImage, uploadFile } from '@/services/upload';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { ToolSelector } from '@/components/projects/ToolSelector';
 import type { Project, ProjectBlock } from '@/types/models';
@@ -38,6 +38,7 @@ import {
   FaCamera,
   FaQuoteLeft,
   FaImages,
+  FaArrowUp,
 } from 'react-icons/fa';
 
 export default function ProjectEditorPage() {
@@ -60,6 +61,7 @@ export default function ProjectEditorPage() {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [showAddMenu, setShowAddMenu] = useState<string | null>(null); // Block ID to show menu after
   const [activeTab, setActiveTab] = useState<'tldr' | 'details'>('tldr'); // Tab state
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
 
   // Metadata fields - separate from page builder blocks
   const [projectTitle, setProjectTitle] = useState('');
@@ -70,10 +72,19 @@ export default function ProjectEditorPage() {
   const [isUploadingFeatured, setIsUploadingFeatured] = useState(false);
 
   // Hero display state
-  const [heroDisplayMode, setHeroDisplayMode] = useState<'image' | 'video' | 'slideshow' | 'quote'>('image');
+  const [heroDisplayMode, setHeroDisplayMode] = useState<'image' | 'video' | 'slideshow' | 'quote' | 'slideup'>('image');
   const [heroQuote, setHeroQuote] = useState('');
   const [heroVideoUrl, setHeroVideoUrl] = useState('');
   const [heroSlideshowImages, setHeroSlideshowImages] = useState<string[]>([]);
+  // Slide-up hero state
+  const [slideUpElement1Type, setSlideUpElement1Type] = useState<'image' | 'video' | 'text'>('image');
+  const [slideUpElement1Content, setSlideUpElement1Content] = useState('');
+  const [slideUpElement1Caption, setSlideUpElement1Caption] = useState('');
+  const [slideUpElement2Type, setSlideUpElement2Type] = useState<'image' | 'video' | 'text'>('text');
+  const [slideUpElement2Content, setSlideUpElement2Content] = useState('');
+  const [slideUpElement2Caption, setSlideUpElement2Caption] = useState('');
+  const [isUploadingSlideUp1, setIsUploadingSlideUp1] = useState(false);
+  const [isUploadingSlideUp2, setIsUploadingSlideUp2] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -115,6 +126,13 @@ export default function ProjectEditorPage() {
         setHeroQuote(foundProject.content?.heroQuote || '');
         setHeroVideoUrl(foundProject.content?.heroVideoUrl || '');
         setHeroSlideshowImages(foundProject.content?.heroSlideshowImages || []);
+        // Load slideup elements
+        setSlideUpElement1Type(foundProject.content?.heroSlideUpElement1?.type || 'image');
+        setSlideUpElement1Content(foundProject.content?.heroSlideUpElement1?.content || '');
+        setSlideUpElement1Caption(foundProject.content?.heroSlideUpElement1?.caption || '');
+        setSlideUpElement2Type(foundProject.content?.heroSlideUpElement2?.type || 'text');
+        setSlideUpElement2Content(foundProject.content?.heroSlideUpElement2?.content || '');
+        setSlideUpElement2Caption(foundProject.content?.heroSlideUpElement2?.caption || '');
 
         // Initialize blocks
         const blocksWithIds = (foundProject.content?.blocks || []).map((block: any) => ({
@@ -149,7 +167,7 @@ export default function ProjectEditorPage() {
     if (project && blocks.length > 0) {
       setHasUnsavedChanges(true);
     }
-  }, [blocks, thumbnailUrl, projectTitle, featuredImageUrl, projectUrl, projectDescription, projectTools, heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages]);
+  }, [blocks, thumbnailUrl, projectTitle, featuredImageUrl, projectUrl, projectDescription, projectTools, heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages, slideUpElement1Type, slideUpElement1Content, slideUpElement1Caption, slideUpElement2Type, slideUpElement2Content, slideUpElement2Caption]);
 
   const handleSave = useCallback(async () => {
     if (!project) return;
@@ -172,6 +190,16 @@ export default function ProjectEditorPage() {
           heroQuote,
           heroVideoUrl,
           heroSlideshowImages,
+          heroSlideUpElement1: slideUpElement1Content ? {
+            type: slideUpElement1Type,
+            content: slideUpElement1Content,
+            caption: slideUpElement1Caption,
+          } : undefined,
+          heroSlideUpElement2: slideUpElement2Content ? {
+            type: slideUpElement2Type,
+            content: slideUpElement2Content,
+            caption: slideUpElement2Caption,
+          } : undefined,
         },
       };
 
@@ -199,7 +227,7 @@ export default function ProjectEditorPage() {
     } finally {
       setIsSaving(false);
     }
-  }, [project, projectTitle, projectDescription, thumbnailUrl, featuredImageUrl, projectUrl, projectTools, blocks, heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages]);
+  }, [project, projectTitle, projectDescription, thumbnailUrl, featuredImageUrl, projectUrl, projectTools, blocks, heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages, slideUpElement1Type, slideUpElement1Content, slideUpElement1Caption, slideUpElement2Type, slideUpElement2Content, slideUpElement2Caption]);
 
   // Autosave effect - save 2 seconds after last change
   useEffect(() => {
@@ -306,6 +334,55 @@ export default function ProjectEditorPage() {
       alert(error.message || 'Failed to upload featured image');
     } finally {
       setIsUploadingFeatured(false);
+    }
+  };
+
+  const handleVideoUpload = async (file: File) => {
+    setIsUploadingVideo(true);
+    try {
+      const data = await uploadFile(file, 'projects/videos', true);
+      setHeroVideoUrl(data.url);
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      alert(error.message || 'Failed to upload video');
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
+  const handleSlideUpElement1Upload = async (file: File, type: 'image' | 'video') => {
+    setIsUploadingSlideUp1(true);
+    try {
+      if (type === 'image') {
+        const data = await uploadImage(file, 'projects', true);
+        setSlideUpElement1Content(data.url);
+      } else if (type === 'video') {
+        const data = await uploadFile(file, 'projects/videos', true);
+        setSlideUpElement1Content(data.url);
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      alert(error.message || `Failed to upload ${type}`);
+    } finally {
+      setIsUploadingSlideUp1(false);
+    }
+  };
+
+  const handleSlideUpElement2Upload = async (file: File, type: 'image' | 'video') => {
+    setIsUploadingSlideUp2(true);
+    try {
+      if (type === 'image') {
+        const data = await uploadImage(file, 'projects', true);
+        setSlideUpElement2Content(data.url);
+      } else if (type === 'video') {
+        const data = await uploadFile(file, 'projects/videos', true);
+        setSlideUpElement2Content(data.url);
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      alert(error.message || `Failed to upload ${type}`);
+    } finally {
+      setIsUploadingSlideUp2(false);
     }
   };
 
@@ -825,6 +902,25 @@ export default function ProjectEditorPage() {
                   <FaQuoteLeft className="w-5 h-5" />
                   <span className="font-medium">Prompt</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!featuredImageUrl && !heroVideoUrl && heroSlideshowImages.length === 0 && !heroQuote) {
+                      setHeroDisplayMode('slideup');
+                    }
+                  }}
+                  disabled={featuredImageUrl || heroVideoUrl || heroSlideshowImages.length > 0 || heroQuote}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                    heroDisplayMode === 'slideup'
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                      : featuredImageUrl || heroVideoUrl || heroSlideshowImages.length > 0 || heroQuote
+                      ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                      : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <FaArrowUp className="w-5 h-5" />
+                  <span className="font-medium">Slide Up</span>
+                </button>
               </div>
 
               {/* Image Tab Content */}
@@ -907,21 +1003,82 @@ export default function ProjectEditorPage() {
 
               {/* Video Tab Content */}
               {heroDisplayMode === 'video' && (
-                <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Video URL
-                  </label>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Paste a YouTube, Vimeo, or Loom video URL
-                  </p>
-                  <input
-                    type="url"
-                    value={heroVideoUrl}
-                    onChange={(e) => setHeroVideoUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    disabled={isSaving}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
-                  />
+                <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg space-y-4">
+                  {heroVideoUrl && (heroVideoUrl.endsWith('.mp4') || heroVideoUrl.endsWith('.webm') || heroVideoUrl.endsWith('.ogg') || heroVideoUrl.includes('/projects/videos/')) ? (
+                    <div className="relative group">
+                      <video
+                        src={heroVideoUrl}
+                        controls
+                        className="w-full max-h-96 rounded-lg"
+                        onError={(e) => {
+                          console.error('Video load error');
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-3">
+                        <label className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                          <input
+                            type="file"
+                            accept="video/mp4,video/webm,video/ogg"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleVideoUpload(file);
+                            }}
+                            className="hidden"
+                            disabled={isUploadingVideo}
+                          />
+                          {isUploadingVideo ? 'Uploading...' : 'Change Video'}
+                        </label>
+                        <button
+                          onClick={() => setHeroVideoUrl('')}
+                          className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer">
+                        <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                          <FaVideo className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-3" />
+                          <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
+                            {isUploadingVideo ? 'Uploading video...' : 'Drop an MP4 video here or click to upload'}
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Supports MP4, WebM, OGG formats
+                          </p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="video/mp4,video/webm,video/ogg"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleVideoUpload(file);
+                          }}
+                          className="hidden"
+                          disabled={isUploadingVideo}
+                        />
+                      </label>
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                          <span className="text-xs text-gray-500 dark:text-gray-400">OR</span>
+                          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                        </div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Video URL (YouTube, Vimeo, Loom)
+                        </label>
+                        <input
+                          type="url"
+                          value={heroVideoUrl}
+                          onChange={(e) => setHeroVideoUrl(e.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=..."
+                          disabled={isSaving || isUploadingVideo}
+                          className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1048,6 +1205,303 @@ export default function ProjectEditorPage() {
                     rows={4}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 resize-none"
                   />
+                </div>
+              )}
+
+              {/* Slide-up Tab Content */}
+              {heroDisplayMode === 'slideup' && (
+                <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg space-y-6">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Create a two-part display where the second element slides up on click (desktop) or automatically on mobile.
+                    </p>
+                  </div>
+
+                  {/* Element 1 */}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Element 1 (Always Visible)
+                    </h4>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Type
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSlideUpElement1Type('image')}
+                          className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
+                            slideUpElement1Type === 'image'
+                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                              : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          <FaImage className="w-4 h-4 mx-auto" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSlideUpElement1Type('video')}
+                          className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
+                            slideUpElement1Type === 'video'
+                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                              : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          <FaVideo className="w-4 h-4 mx-auto" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSlideUpElement1Type('text')}
+                          className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
+                            slideUpElement1Type === 'text'
+                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                              : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          <FaFont className="w-4 h-4 mx-auto" />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {slideUpElement1Type === 'image' ? 'Image' : slideUpElement1Type === 'video' ? 'Video' : 'Text Content'}
+                      </label>
+                      {slideUpElement1Type === 'text' ? (
+                        <textarea
+                          value={slideUpElement1Content}
+                          onChange={(e) => setSlideUpElement1Content(e.target.value)}
+                          placeholder="Enter text content..."
+                          rows={4}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                        />
+                      ) : slideUpElement1Type === 'image' ? (
+                        <div className="space-y-2">
+                          <label className="block w-full cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleSlideUpElement1Upload(file, 'image');
+                              }}
+                              disabled={isUploadingSlideUp1}
+                              className="hidden"
+                            />
+                            <div className="px-4 py-3 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+                              {isUploadingSlideUp1 ? (
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Uploading...</p>
+                              ) : (
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload image</p>
+                              )}
+                            </div>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                            <span className="text-xs text-gray-500 dark:text-gray-400">OR</span>
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                          </div>
+                          <input
+                            type="url"
+                            value={slideUpElement1Content}
+                            onChange={(e) => setSlideUpElement1Content(e.target.value)}
+                            placeholder="https://example.com/image.jpg"
+                            disabled={isUploadingSlideUp1}
+                            className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <label className="block w-full cursor-pointer">
+                            <input
+                              type="file"
+                              accept="video/mp4,video/webm,video/ogg"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleSlideUpElement1Upload(file, 'video');
+                              }}
+                              disabled={isUploadingSlideUp1}
+                              className="hidden"
+                            />
+                            <div className="px-4 py-3 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+                              {isUploadingSlideUp1 ? (
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Uploading video...</p>
+                              ) : (
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload MP4 video</p>
+                              )}
+                            </div>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                            <span className="text-xs text-gray-500 dark:text-gray-400">OR</span>
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                          </div>
+                          <input
+                            type="url"
+                            value={slideUpElement1Content}
+                            onChange={(e) => setSlideUpElement1Content(e.target.value)}
+                            placeholder="https://youtube.com/watch?v=... or Vimeo/Loom URL"
+                            disabled={isUploadingSlideUp1}
+                            className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Caption (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={slideUpElement1Caption}
+                        onChange={(e) => setSlideUpElement1Caption(e.target.value)}
+                        placeholder="Add a caption..."
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Element 2 */}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Element 2 (Slides Up)
+                    </h4>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Type
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSlideUpElement2Type('image')}
+                          className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
+                            slideUpElement2Type === 'image'
+                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                              : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          <FaImage className="w-4 h-4 mx-auto" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSlideUpElement2Type('video')}
+                          className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
+                            slideUpElement2Type === 'video'
+                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                              : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          <FaVideo className="w-4 h-4 mx-auto" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSlideUpElement2Type('text')}
+                          className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
+                            slideUpElement2Type === 'text'
+                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                              : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          <FaFont className="w-4 h-4 mx-auto" />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {slideUpElement2Type === 'image' ? 'Image' : slideUpElement2Type === 'video' ? 'Video' : 'Text Content'}
+                      </label>
+                      {slideUpElement2Type === 'text' ? (
+                        <textarea
+                          value={slideUpElement2Content}
+                          onChange={(e) => setSlideUpElement2Content(e.target.value)}
+                          placeholder="Enter text content..."
+                          rows={4}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-2 focus:ring-primary-500"
+                        />
+                      ) : slideUpElement2Type === 'image' ? (
+                        <div className="space-y-2">
+                          <label className="block w-full cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleSlideUpElement2Upload(file, 'image');
+                              }}
+                              disabled={isUploadingSlideUp2}
+                              className="hidden"
+                            />
+                            <div className="px-4 py-3 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+                              {isUploadingSlideUp2 ? (
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Uploading...</p>
+                              ) : (
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload image</p>
+                              )}
+                            </div>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                            <span className="text-xs text-gray-500 dark:text-gray-400">OR</span>
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                          </div>
+                          <input
+                            type="url"
+                            value={slideUpElement2Content}
+                            onChange={(e) => setSlideUpElement2Content(e.target.value)}
+                            placeholder="https://example.com/image.jpg"
+                            disabled={isUploadingSlideUp2}
+                            className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <label className="block w-full cursor-pointer">
+                            <input
+                              type="file"
+                              accept="video/mp4,video/webm,video/ogg"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleSlideUpElement2Upload(file, 'video');
+                              }}
+                              disabled={isUploadingSlideUp2}
+                              className="hidden"
+                            />
+                            <div className="px-4 py-3 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+                              {isUploadingSlideUp2 ? (
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Uploading video...</p>
+                              ) : (
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload MP4 video</p>
+                              )}
+                            </div>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                            <span className="text-xs text-gray-500 dark:text-gray-400">OR</span>
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                          </div>
+                          <input
+                            type="url"
+                            value={slideUpElement2Content}
+                            onChange={(e) => setSlideUpElement2Content(e.target.value)}
+                            placeholder="https://youtube.com/watch?v=... or Vimeo/Loom URL"
+                            disabled={isUploadingSlideUp2}
+                            className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Caption (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={slideUpElement2Caption}
+                        onChange={(e) => setSlideUpElement2Caption(e.target.value)}
+                        placeholder="Add a caption..."
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1612,6 +2066,19 @@ function ColumnBlockEditor({ block, onChange, onDelete, onUpload, dragHandleProp
     }
   };
 
+  const handleVideoUpload = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const data = await uploadFile(file, 'projects/videos', true);
+      onChange({ url: data.url });
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      alert(error.message || 'Failed to upload video');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="group/col relative bg-gray-50 dark:bg-gray-900/50 rounded p-2">
       {/* Drag handle */}
@@ -1638,7 +2105,47 @@ function ColumnBlockEditor({ block, onChange, onDelete, onUpload, dragHandleProp
           placeholder="Start writing..."
           className="text-sm"
         />
-      ) : (
+      ) : block.type === 'video' ? (
+        <div>
+          {block.url ? (
+            <div>
+              <video src={block.url} controls className="w-full rounded mb-1" />
+              <input
+                type="text"
+                value={block.caption || ''}
+                onChange={(e) => onChange({ caption: e.target.value })}
+                className="w-full text-xs text-center bg-transparent border-none outline-none text-gray-600 dark:text-gray-400"
+                placeholder="Caption..."
+              />
+            </div>
+          ) : (
+            <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded flex flex-col items-center justify-center">
+              {isUploading ? (
+                <div className="text-xs text-gray-500">Uploading...</div>
+              ) : (
+                <>
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm,video/ogg"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleVideoUpload(file);
+                    }}
+                    className="hidden"
+                    id={`col-upload-${block.id}`}
+                  />
+                  <label
+                    htmlFor={`col-upload-${block.id}`}
+                    className="px-2 py-1 bg-primary-500 hover:bg-primary-600 text-white rounded text-xs cursor-pointer"
+                  >
+                    Upload Video
+                  </label>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      ) : block.type === 'image' ? (
         <div>
           {block.url ? (
             <div>
@@ -1671,12 +2178,16 @@ function ColumnBlockEditor({ block, onChange, onDelete, onUpload, dragHandleProp
                     htmlFor={`col-upload-${block.id}`}
                     className="px-2 py-1 bg-primary-500 hover:bg-primary-600 text-white rounded text-xs cursor-pointer"
                   >
-                    Upload
+                    Upload Image
                   </label>
                 </>
               )}
             </div>
           )}
+        </div>
+      ) : (
+        <div className="text-xs text-gray-500 p-2">
+          Block type "{block.type}" not supported in columns yet
         </div>
       )}
     </div>

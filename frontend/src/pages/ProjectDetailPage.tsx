@@ -9,6 +9,7 @@ import { useReward } from 'react-rewards';
 import { FaStar } from 'react-icons/fa';
 import { parseApiError } from '@/utils/errorHandler';
 import { sanitizeHtml } from '@/utils/sanitize';
+import { SlideUpHero } from '@/components/projects/SlideUpHero';
 import {
   ArrowLeftIcon,
   CodeBracketIcon,
@@ -57,6 +58,7 @@ export default function ProjectDetailPage() {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [loadKey, setLoadKey] = useState(0); // Used to force reload
 
   // React Rewards for comment submission celebration
   const { reward: rewardComment } = useReward('commentReward', 'confetti', {
@@ -97,6 +99,7 @@ export default function ProjectDetailPage() {
       setError(null);
 
       try {
+        // Add timestamp to prevent caching
         const data = await getProjectBySlug(username, projectSlug);
         setProject(data);
       } catch (err) {
@@ -108,7 +111,28 @@ export default function ProjectDetailPage() {
     }
 
     loadProject();
-  }, [username, projectSlug]);
+
+    // Reload when window regains focus or becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !isLoading) {
+        loadProject();
+      }
+    };
+
+    const handleFocus = () => {
+      if (!isLoading) {
+        loadProject();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [username, projectSlug, loadKey]);
 
   // Lazy load comments when feedback sidebar is opened
   useEffect(() => {
@@ -578,6 +602,16 @@ export default function ProjectDetailPage() {
                     );
                   }
 
+                  // SLIDE-UP MODE
+                  if (heroMode === 'slideup') {
+                    return (
+                      <SlideUpHero
+                        element1={project.content?.heroSlideUpElement1}
+                        element2={project.content?.heroSlideUpElement2}
+                      />
+                    );
+                  }
+
                   // IMAGE MODE (default) - Show featured image
                   if (project.featuredImageUrl) {
                     return (
@@ -768,6 +802,10 @@ export default function ProjectDetailPage() {
                                     <video
                                       src={nestedBlock.url}
                                       controls
+                                      autoPlay
+                                      loop
+                                      muted
+                                      playsInline
                                       className="w-full rounded-lg"
                                     />
                                     {nestedBlock.caption && (
@@ -812,6 +850,10 @@ export default function ProjectDetailPage() {
                       <video
                         src={block.url}
                         controls
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
                         className="w-full rounded-xl"
                       />
                       {block.caption && (

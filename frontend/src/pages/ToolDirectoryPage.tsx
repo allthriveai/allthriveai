@@ -163,15 +163,10 @@ export default function ToolDirectoryPage() {
                                   )}
                                 </div>
                                 <div className="flex-1">
-                                  <div className="flex items-start justify-between gap-4 mb-2">
+                                  <div className="mb-2">
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                                       {tool.name}
                                     </h3>
-                                    {tool.isFeatured && (
-                                      <span className="flex-shrink-0 px-2 py-1 text-xs font-semibold text-primary-700 dark:text-primary-300 bg-primary-100 dark:bg-primary-900/30 rounded-full">
-                                        Featured
-                                      </span>
-                                    )}
                                   </div>
                                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                                     {tool.tagline}

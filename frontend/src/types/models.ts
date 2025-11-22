@@ -119,13 +119,24 @@ export interface ProjectContent {
   tags?: string[];
   blocks?: ProjectBlock[];
   // Hero display fields
-  heroDisplayMode?: 'image' | 'video' | 'slideshow' | 'quote';
+  heroDisplayMode?: 'image' | 'video' | 'slideshow' | 'quote' | 'slideup';
   heroQuote?: string;
   heroVideoUrl?: string;
   heroSlideshowImages?: string[];
   // Gradient colors for quote cards (Tailwind color names)
   heroGradientFrom?: string;  // e.g., 'violet-600'
   heroGradientTo?: string;    // e.g., 'indigo-600'
+  // Slide-up hero fields (two-element display)
+  heroSlideUpElement1?: {
+    type: 'image' | 'video' | 'text';
+    content: string; // URL for image/video, text content for text
+    caption?: string;
+  };
+  heroSlideUpElement2?: {
+    type: 'image' | 'video' | 'text';
+    content: string; // URL for image/video, text content for text
+    caption?: string;
+  };
 }
 
 export type ProjectBlock =

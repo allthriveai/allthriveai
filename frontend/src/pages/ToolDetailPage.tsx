@@ -9,6 +9,7 @@ import {
   DocumentTextIcon,
   SparklesIcon,
   XMarkIcon,
+  EllipsisVerticalIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -27,6 +28,7 @@ export default function ToolDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [showLinksDropdown, setShowLinksDropdown] = useState(false);
 
   const handleClose = useCallback(() => {
     setIsClosing(true);
@@ -180,31 +182,67 @@ export default function ToolDetailPage() {
                 </p>
                 {/* Badges, Category & Website */}
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  {/* More Links Dropdown */}
+                  {(tool.websiteUrl || tool.documentationUrl || tool.pricingUrl) && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowLinksDropdown(!showLinksDropdown)}
+                        className="px-3 py-1 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg shadow-sm transition-colors"
+                        aria-label="More links"
+                      >
+                        Links
+                      </button>
+                      {showLinksDropdown && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setShowLinksDropdown(false)}
+                          />
+                          <div className="absolute left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
+                            {tool.websiteUrl && (
+                              <a
+                                href={tool.websiteUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                onClick={() => setShowLinksDropdown(false)}
+                              >
+                                <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                                Website
+                              </a>
+                            )}
+                            {tool.documentationUrl && (
+                              <a
+                                href={tool.documentationUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                onClick={() => setShowLinksDropdown(false)}
+                              >
+                                <DocumentTextIcon className="w-4 h-4" />
+                                Documentation
+                              </a>
+                            )}
+                            {tool.pricingUrl && (
+                              <a
+                                href={tool.pricingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                onClick={() => setShowLinksDropdown(false)}
+                              >
+                                <CurrencyDollarIcon className="w-4 h-4" />
+                                Pricing
+                              </a>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                   <span className="px-2 py-0.5 text-[10px] font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-full">
                     {tool.categoryDisplay}
                   </span>
-                  {tool.isFeatured && (
-                    <span className="px-2 py-0.5 text-[10px] font-semibold text-primary-700 dark:text-primary-300 bg-primary-100 dark:bg-primary-900/30 rounded-full">
-                      Featured
-                    </span>
-                  )}
-                  {tool.isVerified && (
-                    <span className="px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center gap-1">
-                      <CheckCircleIcon className="w-3 h-3" />
-                      Verified
-                    </span>
-                  )}
-                  {tool.websiteUrl && (
-                    <a
-                      href={tool.websiteUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-1 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
-                      aria-label="Open tool website"
-                    >
-                      <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
-                    </a>
-                  )}
                 </div>
               </div>
             </div>
@@ -253,40 +291,6 @@ export default function ToolDetailPage() {
                 {tool.overview || tool.description}
               </p>
             </section>
-
-            {/* Link Section (only extra links, header has main CTA) */}
-            {(tool.documentationUrl || tool.pricingUrl) && (
-              <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-2 flex items-center gap-2">
-                  <FontAwesomeIcon icon={faLink} className="w-3.5 h-3.5" />
-                  More links
-                </h2>
-                <div className="flex flex-col gap-2 text-sm">
-                  {tool.documentationUrl && (
-                    <a
-                      href={tool.documentationUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors"
-                    >
-                      <DocumentTextIcon className="w-4 h-4" />
-                      Documentation
-                    </a>
-                  )}
-                  {tool.pricingUrl && (
-                    <a
-                      href={tool.pricingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors"
-                    >
-                      <CurrencyDollarIcon className="w-4 h-4" />
-                      Pricing
-                    </a>
-                  )}
-                </div>
-              </section>
-            )}
 
             {/* Use Cases */}
             {tool.useCases.length > 0 && (
