@@ -17,6 +17,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { toggleProjectLike } from '@/services/projects';
+import { ProjectModal } from './ProjectModal';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ProjectCardProps {
   project: Project;
@@ -46,10 +48,13 @@ const typeLabels = {
 
 export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl }: ProjectCardProps) {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
   const [isLiked, setIsLiked] = useState(project.isLikedByUser);
   const [heartCount, setHeartCount] = useState(project.heartCount);
   const [isLiking, setIsLiking] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [showCommentsInModal, setShowCommentsInModal] = useState(false);
   const Icon = typeIcons[project.type];
   const projectUrl = `/${project.username}/${project.slug}`;
 
@@ -60,9 +65,11 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     }
   };
 
-  const handleLike = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleLike = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (isLiking) return;
 
     setIsLiking(true);
@@ -74,6 +81,28 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       console.error('Failed to toggle like:', error);
     } finally {
       setIsLiking(false);
+    }
+  };
+
+  const handleCommentClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowCommentsInModal(true);
+    setShowModal(true);
+  };
+
+  const handleMoreInfoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowCommentsInModal(false);
+    setShowModal(true);
+  };
+
+  const handleToolClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (project.toolsDetails && project.toolsDetails.length > 0) {
+      navigate(`/tools/${project.toolsDetails[0].slug}`);
     }
   };
 
@@ -140,33 +169,6 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
           isSelected ? 'ring-4 ring-primary-500' : ''
         } ${(isQuote || isSlideup) ? 'min-h-[400px]' : (isMediaCard ? 'aspect-[3/4]' : 'h-auto')}`}
       >
-        {/* User Avatar - Top Left - Always show in masonry variant unless in selection mode */}
-        {!selectionMode && (
-          <div className="absolute top-4 left-4 z-30">
-            <div className="w-10 h-10 rounded-full border-2 border-white/80 shadow-lg overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-              {userAvatarUrl ? (
-                <img
-                  src={userAvatarUrl}
-                  alt={project.username}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    // Show user initials on error
-                    const target = e.target as HTMLImageElement;
-                    const parent = target.parentElement;
-                    if (parent) {
-                      const initial = project.username?.[0]?.toUpperCase() || 'U';
-                      parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-white font-bold text-lg">${initial}</div>`;
-                    }
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg">
-                  {project.username?.[0]?.toUpperCase() || 'U'}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Selection checkbox */}
         {selectionMode && (
@@ -319,8 +321,34 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
             )}
 
             <div className="flex items-center justify-between pt-1">
-              {/* Left side - Action buttons */}
+              {/* Left side - Avatar and Action buttons */}
               <div className="flex items-center gap-2">
+                {/* User Avatar */}
+                {!selectionMode && (
+                  <div className="w-9 h-9 rounded-full border-2 border-white/80 shadow-lg overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0">
+                    {userAvatarUrl ? (
+                      <img
+                        src={userAvatarUrl}
+                        alt={project.username}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Show user initials on error
+                          const target = e.target as HTMLImageElement;
+                          const parent = target.parentElement;
+                          if (parent) {
+                            const initial = project.username?.[0]?.toUpperCase() || 'U';
+                            parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-white font-bold text-sm">${initial}</div>`;
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">
+                        {project.username?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Heart/Like Button */}
                 <button
                   onClick={handleLike}
@@ -341,10 +369,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
 
                 {/* Comment Button */}
                 <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
+                  onClick={handleCommentClick}
                   className="p-1.5 rounded-full transition-all hover:scale-105 group/comment bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
                   aria-label="Comment"
                 >
@@ -353,10 +378,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
 
                 {/* Up Arrow - More Info */}
                 <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
+                  onClick={handleMoreInfoClick}
                   className="p-1.5 rounded-full transition-all hover:scale-105 group/more bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
                   aria-label="More info"
                 >
@@ -366,7 +388,10 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
 
               {/* Right side - Tools */}
               {project.toolsDetails && project.toolsDetails.length > 0 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20">
+                <button
+                  onClick={handleToolClick}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-all hover:scale-105 bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 cursor-pointer"
+                >
                   {project.toolsDetails[0].logoUrl && (
                     <img
                       src={project.toolsDetails[0].logoUrl}
@@ -377,11 +402,23 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                   <span className="text-xs font-bold text-white">
                     {project.toolsDetails[0].name}
                   </span>
-                </div>
+                </button>
               )}
             </div>
           </div>
         </div>
+
+        {/* Project Modal for slide-up and comments */}
+        <ProjectModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          project={project}
+          isAuthenticated={isAuthenticated}
+          isLiked={isLiked}
+          heartCount={heartCount}
+          onLikeToggle={() => handleLike()}
+          showComments={showCommentsInModal}
+        />
       </CardWrapper>
     );
   }
