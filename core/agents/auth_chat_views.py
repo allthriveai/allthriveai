@@ -5,7 +5,6 @@ Auth chat views with streaming support
 import json
 import uuid
 
-from django.conf import settings
 from django.contrib.auth import authenticate
 from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -14,7 +13,6 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.users.models import User
 from services.auth_agent.graph import auth_graph
@@ -80,9 +78,11 @@ def auth_chat_stream(request):
                         'step': 'welcome',
                         'mode': 'signup',
                         'email': None,
+                        'username': None,
+                        'suggested_username': None,
                         'first_name': None,
                         'last_name': None,
-                        'password': None,
+                        'password_validated': False,
                         'interests': [],
                         'agreed_to_values': False,
                         'user_exists': False,
@@ -248,25 +248,35 @@ def auth_chat_stream(request):
                     new_msg = {'role': 'user', 'content': '••••••••'}
                     messages = state_values.get('messages', [])
 
+                    # SECURITY: Store password ONLY in cache with TTL, never in LangGraph state
+                    # Use cache with 5-minute expiry to prevent stale passwords and race conditions
+                    from django.core.cache import cache
+
+                    cache.set(f'auth_password_{session_id}', password, timeout=300)  # 5 min TTL
+
                     # Check if login or signup
                     mode = state_values.get('mode')
                     if mode == 'login':
-                        # Attempt login
+                        # Attempt login validation (don't actually authenticate yet)
                         email = state_values.get('email')
                         user = authenticate(request, username=email, password=password)
 
                         if user is None:
+                            # Clear password from cache on failure
+                            from django.core.cache import cache
+
+                            cache.delete(f'auth_password_{session_id}')
                             yield f'data: {json.dumps({"type": "error", "message": "Invalid password"})}\n\n'
                             return
 
-                        # Login successful (cookies will be issued via finalize endpoint)
+                        # Password validated (cookies will be issued via finalize endpoint)
                         first_name = user.first_name
                         response_text = f"Welcome back, {first_name}! You're all set."
 
                         auth_graph.update_state(
                             config,
                             {
-                                'password': password,
+                                'password_validated': True,
                                 'step': 'complete',
                                 'messages': messages + [new_msg, {'role': 'assistant', 'content': response_text}],
                             },
@@ -280,7 +290,7 @@ def auth_chat_stream(request):
                         auth_graph.update_state(
                             config,
                             {
-                                'password': password,
+                                'password_validated': True,
                                 'step': 'interests',
                                 'messages': messages + [new_msg, {'role': 'assistant', 'content': response_text}],
                             },
@@ -330,34 +340,18 @@ Do you agree to these values?"""
                     new_msg = {'role': 'user', 'content': 'Yes, I agree'}
                     messages = state_values.get('messages', [])
 
-                    # Create user account if signup
-                    mode = state_values.get('mode')
-                    if mode == 'signup':
-                        state = state_values
+                    # Update state (user creation happens in finalize endpoint)
+                    first_name = state_values.get('first_name', '')
+                    response_text = f'Welcome to All Thrive, {first_name}! Your account is ready.'
 
-                        # Create user
-                        user = User.objects.create_user(
-                            username=state.get('username', state['email']),  # Use email as username
-                            email=state['email'],
-                            password=state['password'],
-                            first_name=state['first_name'],
-                            last_name=state['last_name'],
-                            role='explorer',  # Default role
-                        )
-
-                        # Login cookies will be issued via finalize endpoint
-
-                        first_name = state['first_name']
-                        response_text = f'Welcome to All Thrive, {first_name}! Your account is ready.'
-
-                        auth_graph.update_state(
-                            config,
-                            {
-                                'agreed_to_values': True,
-                                'step': 'complete',
-                                'messages': messages + [new_msg, {'role': 'assistant', 'content': response_text}],
-                            },
-                        )
+                    auth_graph.update_state(
+                        config,
+                        {
+                            'agreed_to_values': True,
+                            'step': 'complete',
+                            'messages': messages + [new_msg, {'role': 'assistant', 'content': response_text}],
+                        },
+                    )
 
                 # Get final state
                 final_state = auth_graph.get_state(config)
@@ -390,6 +384,10 @@ Do you agree to these values?"""
                 yield f'data: {json.dumps(completion_data)}\n\n'
 
             except Exception as e:
+                # Clean up any cached password on error
+                from django.core.cache import cache
+
+                cache.delete(f'auth_password_{session_id}')
                 yield f'data: {json.dumps({"type": "error", "message": str(e)})}\n\n'
 
         response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
@@ -449,66 +447,63 @@ def auth_chat_finalize(request):
     Body:
         {"session_id": "uuid"}
     """
+    from services.auth import (
+        AuthenticationFailed,
+        AuthValidationError,
+        SessionError,
+        UserCreationError,
+        set_auth_cookies,
+    )
+    from services.auth.chat import ChatAuthService
+
     try:
         body = json.loads(request.body)
         session_id = body.get('session_id')
         if not session_id:
             return Response({'error': 'session_id required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        config = {'configurable': {'thread_id': session_id}}
-        current_state = auth_graph.get_state(config)
-        state_values = _get_state_values(current_state)
+        # Retrieve password from cache (never stored in LangGraph state)
+        from django.core.cache import cache
 
-        mode = state_values.get('mode')
-        email = state_values.get('email')
-        password = state_values.get('password')
+        password = cache.get(f'auth_password_{session_id}')
+        if not password:
+            return Response(
+                {'error': 'Password expired or session invalid. Please try again.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # Resolve user depending on mode
-        user = None
-        if mode == 'login':
-            if not email or not password:
-                return Response({'error': 'Missing credentials'}, status=status.HTTP_400_BAD_REQUEST)
-            user = authenticate(request, username=email, password=password)
-            if user is None:
-                return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            if not email:
-                return Response({'error': 'Missing email'}, status=status.HTTP_400_BAD_REQUEST)
-            try:
-                user = User.objects.get(email=email)
-            except User.DoesNotExist:
-                return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
+        # Use service to finalize authentication
+        user = ChatAuthService.finalize_session(session_id, password)
 
-        # Issue JWT cookies
-        refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
-        refresh_token_str = str(refresh)
+        # Clear password from cache after successful use
+        cache.delete(f'auth_password_{session_id}')
 
-        cookie_domain = settings.COOKIE_DOMAIN
-        cookie_samesite = settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE']
-        secure_flag = settings.SIMPLE_JWT['AUTH_COOKIE_SECURE']
-        http_only = settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY']
+        # Set JWT cookies using centralized service
+        response = Response({'success': True, 'username': user.username})
+        return set_auth_cookies(response, user)
 
-        response = Response({'success': True})
-        response.set_cookie(
-            key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-            value=access_token,
-            domain=cookie_domain,
-            httponly=http_only,
-            secure=secure_flag,
-            samesite=cookie_samesite,
-            path='/',
-        )
-        response.set_cookie(
-            key='refresh_token',
-            value=refresh_token_str,
-            domain=cookie_domain,
-            httponly=True,
-            secure=secure_flag,
-            samesite=cookie_samesite,
-            path='/',
-        )
-        return response
-
+    except AuthValidationError as e:
+        # Invalid input data (e.g., email format, password strength)
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except UserCreationError as e:
+        # User creation failed (e.g., username conflicts, database errors)
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except SessionError as e:
+        # Session state issues (e.g., incomplete data, invalid state)
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except AuthenticationFailed as e:
+        # Authentication failed (wrong password, disabled account)
+        return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    except json.JSONDecodeError:
+        # Malformed request body
+        return Response({'error': 'Invalid request format'}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Unexpected errors - log and return generic message
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.error(f'Unexpected error in auth_chat_finalize: {e}', exc_info=True)
+        return Response(
+            {'error': 'Authentication failed. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

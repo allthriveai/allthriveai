@@ -215,3 +215,112 @@ def public_user_projects(request, username):
         cache.set(cache_key, response_data, settings.CACHE_TTL.get('PUBLIC_PROJECTS', 180))
 
     return Response(response_data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def explore_projects(request):
+    """Explore projects with filtering, search, and pagination.
+
+    Query parameters:
+    - tab: 'for-you' | 'trending' | 'all' (default: 'all')
+    - search: text search query
+    - tools: comma-separated tool IDs
+    - topics: comma-separated topic slugs
+    - sort: 'newest' | 'trending' | 'popular' | 'random' (default: 'newest')
+    - page: page number (default: 1)
+    - page_size: results per page (default: 30, max: 100)
+
+    Returns paginated list of showcase projects visible to all users.
+    """
+    from django.db.models import Count, Q
+
+    # Get query parameters
+    search_query = request.GET.get('search', '')
+    tools_param = request.GET.get('tools', '')
+    topics_param = request.GET.get('topics', '')
+    sort = request.GET.get('sort', 'newest')
+
+    # Build base queryset - all published, public projects
+    queryset = (
+        Project.objects.filter(is_published=True, is_private=False, is_archived=False)
+        .select_related('user')
+        .prefetch_related('tools', 'likes')
+    )
+
+    # Apply search filter
+    if search_query:
+        queryset = queryset.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
+
+    # Apply tools filter
+    if tools_param:
+        try:
+            tool_ids = [int(tid) for tid in tools_param.split(',') if tid.strip()]
+            if tool_ids:
+                queryset = queryset.filter(tools__id__in=tool_ids).distinct()
+        except ValueError:
+            pass  # Invalid tool IDs, ignore
+
+    # Apply topics filter (assuming topics are stored in a related field - placeholder for now)
+    # TODO: Implement topic filtering when topic model is ready
+    if topics_param:
+        pass  # Topics will be implemented when topic tagging is added
+
+    # Apply sorting
+    if sort == 'trending':
+        # Trending: most likes in the last 7 days
+        queryset = queryset.annotate(recent_likes=Count('likes')).order_by('-recent_likes', '-created_at')
+    elif sort == 'popular':
+        # Popular: most likes all-time
+        queryset = queryset.annotate(total_likes=Count('likes')).order_by('-total_likes', '-created_at')
+    elif sort == 'random':
+        queryset = queryset.order_by('?')
+    else:  # newest (default)
+        queryset = queryset.order_by('-created_at')
+
+    # Apply pagination
+    paginator = ProjectPagination()
+    paginator.page_size = min(int(request.GET.get('page_size', 30)), 100)
+    page = paginator.paginate_queryset(queryset, request)
+
+    serializer = ProjectSerializer(page, many=True)
+
+    return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def semantic_search(request):
+    """Semantic search for projects using Weaviate (AI-powered).
+
+    Request body:
+    {
+        "query": "search query text",
+        "filters": {optional filters}
+    }
+
+    Returns list of projects matching the semantic query.
+
+    TODO: Integrate with Weaviate vector database for true semantic search.
+    For now, falls back to basic text search as a placeholder.
+    """
+    from django.db.models import Q
+
+    query = request.data.get('query', '')
+
+    if not query:
+        return Response({'results': []})
+
+    # TODO: Replace this with Weaviate semantic search
+    # For now, use basic text search as fallback
+    queryset = (
+        Project.objects.filter(is_published=True, is_private=False, is_archived=False)
+        .filter(Q(title__icontains=query) | Q(description__icontains=query))
+        .select_related('user')
+        .prefetch_related('tools', 'likes')
+        .order_by('-created_at')[:30]
+    )
+
+    serializer = ProjectSerializer(queryset, many=True)
+
+    return Response({'results': serializer.data})

@@ -28,12 +28,13 @@ export interface User {
  */
 export async function exploreProjects(params: ExploreParams): Promise<PaginatedResponse<Project>> {
   const response = await api.get<PaginatedResponse<any>>('/api/v1/projects/explore/', { params });
-  // Transform projects if needed (camelCase conversion handled by API interceptor)
   return response.data;
 }
 
 /**
  * Semantic search with Weaviate
+ *
+ * Note: Currently uses basic text search. Will be upgraded to Weaviate vector search.
  */
 export async function semanticSearch(query: string, filters?: any): Promise<Project[]> {
   const response = await api.post<{ results: any[] }>('/api/v1/search/semantic/', {

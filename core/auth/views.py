@@ -2,10 +2,7 @@ import time
 from urllib.parse import urlencode
 
 from allauth.socialaccount.models import SocialApp
-from allauth.socialaccount.providers.github.views import GitHubOAuth2Adapter
-from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from csp.decorators import csp_exempt
-from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
@@ -14,78 +11,15 @@ from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.audits.models import UserAuditLog
 from core.users.models import User
 
 from .serializers import UserSerializer, UserUpdateSerializer
 
-
-class GoogleLogin(SocialLoginView):
-    """Handle Google OAuth login."""
-
-    adapter_class = GoogleOAuth2Adapter
-
-    def post(self, request, *args, **kwargs):
-        """Override to set JWT tokens in cookies."""
-        response = super().post(request, *args, **kwargs)
-
-        if response.status_code == 200 and request.user and request.user.is_authenticated:
-            user = request.user
-            refresh = RefreshToken.for_user(user)
-
-            # Set tokens in HTTP-only cookies
-            response.set_cookie(
-                key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-                value=str(refresh.access_token),
-                httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
-                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-            )
-
-            response.set_cookie(
-                key='refresh_token',
-                value=str(refresh),
-                httponly=True,
-                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-            )
-
-        return response
-
-
-class GitHubLogin(SocialLoginView):
-    """Handle GitHub OAuth login."""
-
-    adapter_class = GitHubOAuth2Adapter
-
-    def post(self, request, *args, **kwargs):
-        """Override to set JWT tokens in cookies."""
-        response = super().post(request, *args, **kwargs)
-
-        if response.status_code == 200 and request.user and request.user.is_authenticated:
-            user = request.user
-            refresh = RefreshToken.for_user(user)
-
-            # Set tokens in HTTP-only cookies
-            response.set_cookie(
-                key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-                value=str(refresh.access_token),
-                httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
-                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-            )
-
-            response.set_cookie(
-                key='refresh_token',
-                value=str(refresh),
-                httponly=True,
-                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-            )
-
-        return response
+# OAuth login is now handled by django-allauth with custom adapter
+# See: core/auth/adapter.py and core/auth/oauth_middleware.py
+# The JWT tokens are set automatically via the OAuthJWTMiddleware
 
 
 @api_view(['GET'])
@@ -101,50 +35,10 @@ def current_user(request):
 @csrf_exempt
 def logout_view(request):
     """Logout user and clear cookies."""
+    from services.auth import clear_auth_cookies
+
     response = Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
-
-    # Get cookie domain from settings
-    cookie_domain = settings.COOKIE_DOMAIN
-    cookie_samesite = settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE']
-
-    # Delete cookies with domain (how they were set in oauth_callback)
-    response.delete_cookie(
-        key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-        domain=cookie_domain,
-        path='/',
-        samesite=cookie_samesite,
-    )
-    response.delete_cookie(
-        key='refresh_token',
-        domain=cookie_domain,
-        path='/',
-        samesite=cookie_samesite,
-    )
-    response.delete_cookie(
-        key='csrftoken',
-        domain=cookie_domain,
-        path='/',
-        samesite=cookie_samesite,
-    )
-
-    # Also delete without domain as fallback
-    response.delete_cookie(
-        key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-        path='/',
-        samesite=cookie_samesite,
-    )
-    response.delete_cookie(
-        key='refresh_token',
-        path='/',
-        samesite=cookie_samesite,
-    )
-    response.delete_cookie(
-        key='csrftoken',
-        path='/',
-        samesite=cookie_samesite,
-    )
-
-    return response
+    return clear_auth_cookies(response)
 
 
 @ratelimit(key='ip', rate='5/h', method='POST', block=True)
@@ -346,40 +240,16 @@ def oauth_callback(request):
     Handle OAuth callback and close popup after setting authentication cookies.
     This is called after successful OAuth authentication.
     """
-    if request.user.is_authenticated:
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(request.user)
-        access_token = str(refresh.access_token)
-        refresh_token_str = str(refresh)
+    from services.auth import set_auth_cookies
 
+    if request.user.is_authenticated:
         # Redirect to user profile with cookies set
         username = request.user.username
         redirect_url = f'{settings.FRONTEND_URL}/{username}'
         response = redirect(redirect_url)
 
-        # Set JWT tokens in HTTP-only cookies with shared domain
-        cookie_domain = settings.COOKIE_DOMAIN
-        response.set_cookie(
-            key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-            value=access_token,
-            domain=cookie_domain,
-            httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
-            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-            path='/',
-        )
-
-        response.set_cookie(
-            key='refresh_token',
-            value=refresh_token_str,
-            domain=cookie_domain,
-            httponly=True,
-            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
-            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
-            path='/',
-        )
-
-        return response
+        # Set JWT tokens using centralized service
+        return set_auth_cookies(response, request.user)
     else:
         # OAuth failed, redirect to login with error
         return redirect(f'{settings.FRONTEND_URL}/login?error=oauth_failed')

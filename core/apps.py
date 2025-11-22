@@ -8,3 +8,4 @@ class CoreConfig(AppConfig):
     def ready(self):
         """Import signal handlers when app is ready."""
         import core.signals  # noqa
+        import core.auth.oauth_middleware  # noqa - Register OAuth JWT signals

@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'core.middleware.CookieJWTAuthenticationMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.auth.oauth_middleware.OAuthJWTMiddleware',  # Set JWT cookies after OAuth login
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
@@ -436,17 +437,21 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
+# Custom allauth adapters for JWT token handling
+ACCOUNT_ADAPTER = 'core.auth.adapter.CustomAccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'core.auth.adapter.CustomSocialAccountAdapter'
+
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory'  # Changed from 'optional' to 'mandatory'
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Optional for OAuth (they verify with provider)
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_LOGIN_ON_GET = True  # Skip intermediate page and go directly to provider
 SOCIALACCOUNT_STORE_TOKENS = False  # Don't store OAuth tokens in DB
 
-# Redirect after OAuth login
-LOGIN_REDIRECT_URL = '/api/v1/auth/callback/'
+# Redirect after OAuth login - handled by CustomAccountAdapter
+LOGIN_REDIRECT_URL = None  # Adapter will handle redirect
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 
 # OAuth Provider Settings

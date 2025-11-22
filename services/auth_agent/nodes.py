@@ -11,7 +11,11 @@ from . import prompts
 
 
 class AuthState(TypedDict):
-    """State for auth chat conversation."""
+    """State for auth chat conversation.
+
+    SECURITY NOTE: Password is NOT stored in state to prevent logging/exposure.
+    Password validation is tracked via password_validated flag only.
+    """
 
     messages: list[dict]
     step: Literal[
@@ -32,7 +36,7 @@ class AuthState(TypedDict):
     suggested_username: str | None
     first_name: str | None
     last_name: str | None
-    password: str | None
+    password_validated: bool  # Track if password was validated, don't store password itself
     interests: list[str]
     agreed_to_values: bool
     user_exists: bool

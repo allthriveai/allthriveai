@@ -14,11 +14,13 @@ import {
   SunIcon,
   MoonIcon,
   MagnifyingGlassIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getMenuSections, ROUTE_PATTERNS, TIMING, TOOLS_ICON, type MenuItem } from './menuData';
 import { useMenuState } from './useMenuState';
 import { getTools } from '@/services/tools';
+import { createProject } from '@/services/projects';
 import type { Tool } from '@/types/models';
 
 interface LeftSidebarProps {
@@ -239,7 +241,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                 placeholder="Search menu..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/20 rounded-lg text-slate-700 dark:text-slate-300 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
+                className="w-full pl-9 pr-3 py-2 text-sm bg-white/10 dark:bg-white/5 border border-slate-300 dark:border-white/20 rounded-lg text-slate-700 dark:text-slate-300 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
               />
               {searchQuery && (
                 <button
@@ -251,6 +253,33 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Add Project Button */}
+        {isOpen && isAuthenticated && user?.username && (
+          <div className="px-4 pb-2 flex-shrink-0">
+            <button
+              onClick={async () => {
+                try {
+                  const newProject = await createProject({
+                    title: 'Untitled Project',
+                    description: '',
+                    type: 'other',
+                    isShowcase: false,
+                    content: { blocks: [] },
+                  });
+                  navigate(`/${user.username}/${newProject.slug}/edit`);
+                } catch (error) {
+                  console.error('Failed to create project:', error);
+                  alert('Failed to create project. Please try again.');
+                }
+              }}
+              className="w-full flex items-center gap-2 px-4 py-2.5 bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/10 rounded-lg transition-colors font-medium text-sm"
+            >
+              <PlusIcon className="w-4 h-4" />
+              <span>Add Project</span>
+            </button>
           </div>
         )}
 

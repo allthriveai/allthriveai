@@ -31,11 +31,11 @@ export const getMenuSections = (
     title: 'EXPLORE',
     icon: faCompass,
     items: [
-      { label: 'For You', path: '#' },
-      { label: 'Trending', path: '#' },
-      { label: 'By Topics', path: '#' },
-      { label: 'By Tools', path: '#' },
-      { label: 'Top Profiles', path: '#' },
+      { label: 'For You', path: '/explore' },
+      { label: 'Trending', path: '/explore?tab=trending' },
+      { label: 'By Topics', path: '/explore?tab=topics' },
+      { label: 'By Tools', path: '/explore?tab=tools' },
+      { label: 'Top Profiles', path: '/explore?tab=profiles' },
     ],
   },
   {
@@ -103,6 +103,11 @@ export const getMenuSections = (
 
 // Route patterns for active state detection
 export const ROUTE_PATTERNS: Record<string, (path: string, search: string, username?: string) => boolean> = {
+  'For You': (path, search) => path === '/explore' && (!search || search.includes('tab=for-you')),
+  'Trending': (path, search) => path === '/explore' && search.includes('tab=trending'),
+  'By Topics': (path, search) => path === '/explore' && search.includes('tab=topics'),
+  'By Tools': (path, search) => path === '/explore' && search.includes('tab=tools'),
+  'Top Profiles': (path, search) => path === '/explore' && search.includes('tab=profiles'),
   'Quick Quizzes': (path) => path === '/quick-quizzes',
   'Prompt Battle': (path) => path === '/play/prompt-battle',
   'Chat': (_, search) => search.includes('chat='),

@@ -5,8 +5,6 @@ from .agents.auth_chat_views import auth_chat_finalize, auth_chat_state, auth_ch
 from .agents.project_chat_views import project_chat_stream_v2
 from .agents.views import ConversationViewSet, MessageViewSet
 from .auth.views import (
-    GitHubLogin,
-    GoogleLogin,
     UserProfileView,
     csrf_token,
     current_user,
@@ -32,7 +30,7 @@ from .integrations.github.views import (
     github_sync_trigger,
 )
 from .projects.comment_views import ProjectCommentViewSet
-from .projects.views import ProjectViewSet, public_user_projects
+from .projects.views import ProjectViewSet, explore_projects, public_user_projects, semantic_search
 from .quizzes.views import QuizAttemptViewSet, QuizViewSet
 from .referrals.views import ReferralCodeViewSet, ReferralViewSet, validate_referral_code
 from .social.views import (
@@ -46,6 +44,7 @@ from .social.views import oauth_callback as social_oauth_callback
 from .taxonomy.views import TaxonomyViewSet, UserTagViewSet, track_interaction, user_personalization_overview
 from .tools.views import ToolBookmarkViewSet, ToolComparisonViewSet, ToolReviewViewSet, ToolViewSet
 from .uploads.views import upload_file, upload_image
+from .users.views import explore_users
 from .views import csp_report, db_health
 
 # Main router for public/general endpoints
@@ -82,6 +81,10 @@ events_router.register(r'events', EventViewSet, basename='event')
 urlpatterns = [
     path('db/health/', db_health, name='db-health'),
     path('csp-report/', csp_report, name='csp_report'),  # CSP violation reporting
+    # Explore endpoints (public)
+    path('projects/explore/', explore_projects, name='explore_projects'),
+    path('search/semantic/', semantic_search, name='semantic_search'),
+    path('users/explore/', explore_users, name='explore_users'),
     # Public user endpoints
     path('users/<str:username>/', username_profile_view, name='public_user_profile'),
     path('users/<str:username>/projects/', public_user_projects, name='public_user_projects'),
@@ -104,14 +107,14 @@ urlpatterns = [
     # Quiz endpoints (public/general)
     path('', include(main_router.urls)),
     # Authentication endpoints
+    # Note: OAuth login URLs are at /accounts/google/login/ and /accounts/github/login/
+    # These are handled by django-allauth (see config/urls.py)
     path('auth/csrf/', csrf_token, name='csrf_token'),
     path('auth/signup/', signup, name='signup'),
-    path('auth/google/', GoogleLogin.as_view(), name='google_login'),
-    path('auth/github/', GitHubLogin.as_view(), name='github_login'),
     path('auth/me/', current_user, name='current_user'),
     path('auth/logout/', logout_view, name='logout'),
     path('auth/urls/', oauth_urls, name='oauth_urls'),
-    path('auth/callback/', oauth_callback, name='oauth_callback'),
+    path('auth/callback/', oauth_callback, name='oauth_callback'),  # Fallback redirect
     # Auth chat endpoints
     path('auth/chat/stream/', auth_chat_stream, name='auth_chat_stream'),
     path('auth/chat/state/', auth_chat_state, name='auth_chat_state'),

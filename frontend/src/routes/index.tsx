@@ -21,6 +21,7 @@ import QuizListPage from '@/pages/quizzes/QuizListPage';
 import QuizPage from '@/pages/quizzes/QuizPage';
 import ToolDirectoryPage from '@/pages/ToolDirectoryPage';
 import ToolDetailPage from '@/pages/ToolDetailPage';
+import { ExplorePage } from '@/pages/ExplorePage';
 import PromptBattlePage from '@/pages/play/PromptBattlePage';
 import BattleDetailPage from '@/pages/play/BattleDetailPage';
 
@@ -41,6 +42,9 @@ export function AppRoutes() {
       <Route path="/tools" element={<ToolDirectoryPage />}>
         <Route path=":slug" element={<ToolDetailPage />} />
       </Route>
+
+      {/* Explore - public route */}
+      <Route path="/explore" element={<ExplorePage />} />
 
       {/* Play routes - protected */}
       <Route

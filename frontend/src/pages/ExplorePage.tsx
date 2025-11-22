@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SemanticSearchBar } from '@/components/explore/SemanticSearchBar';
 import { TabNavigation, type ExploreTab } from '@/components/explore/TabNavigation';
 import { FilterPanel } from '@/components/explore/FilterPanel';
@@ -125,123 +126,127 @@ export function ExplorePage() {
   const showFilters = activeTab === 'topics' || activeTab === 'tools';
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Explore
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Discover amazing projects and creators
-          </p>
-        </div>
+    <DashboardLayout>
+      {() => (
+        <div className="h-full overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Header */}
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                Explore
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Discover amazing projects and creators
+              </p>
+            </div>
 
-        {/* Search Bar */}
-        <SemanticSearchBar
-          onSearch={handleSearch}
-          placeholder="Search projects with AI..."
-          initialValue={searchQuery}
-        />
-
-        {/* Tab Navigation */}
-        <TabNavigation activeTab={activeTab} onChange={handleTabChange} />
-
-        {/* Filters */}
-        {showFilters && filterOptions && (
-          <div className="mb-6">
-            <FilterPanel
-              topics={filterOptions.topics}
-              tools={filterOptions.tools}
-              selectedTopics={selectedTopics}
-              selectedTools={selectedTools}
-              onTopicsChange={handleTopicsChange}
-              onToolsChange={handleToolsChange}
-              onClear={handleClearFilters}
+            {/* Search Bar */}
+            <SemanticSearchBar
+              onSearch={handleSearch}
+              placeholder="Search projects with AI..."
+              initialValue={searchQuery}
             />
-          </div>
-        )}
 
-        {/* Content */}
-        {activeTab === 'profiles' ? (
-          // Profiles Grid
-          <div>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400"></div>
-                  <p className="mt-4 text-gray-600 dark:text-gray-400">Loading profiles...</p>
-                </div>
+            {/* Tab Navigation */}
+            <TabNavigation activeTab={activeTab} onChange={handleTabChange} />
+
+            {/* Filters */}
+            {showFilters && filterOptions && (
+              <div className="mb-6">
+                <FilterPanel
+                  topics={filterOptions.topics}
+                  tools={filterOptions.tools}
+                  selectedTopics={selectedTopics}
+                  selectedTools={selectedTools}
+                  onTopicsChange={handleTopicsChange}
+                  onToolsChange={handleToolsChange}
+                  onClear={handleClearFilters}
+                />
+              </div>
+            )}
+
+            {/* Content */}
+            {activeTab === 'profiles' ? (
+              // Profiles Grid
+              <div>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400"></div>
+                      <p className="mt-4 text-gray-600 dark:text-gray-400">Loading profiles...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {profilesData?.results.map((user) => (
+                      <UserProfileCard key={user.id} user={user} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Pagination for profiles */}
+                {profilesData && profilesData.count > 30 && (
+                  <div className="mt-8 flex items-center justify-center gap-4">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Page {page} of {Math.ceil(profilesData.count / 30)}
+                    </span>
+                    <button
+                      onClick={() => setPage(p => p + 1)}
+                      disabled={!profilesData.next}
+                      className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {profilesData?.results.map((user) => (
-                  <UserProfileCard key={user.id} user={user} />
-                ))}
-              </div>
-            )}
+              // Projects Grid
+              <>
+                <ProjectsGrid
+                  projects={displayProjects}
+                  isLoading={isLoading}
+                  emptyMessage={
+                    searchQuery
+                      ? `No projects found for "${searchQuery}"`
+                      : 'No projects found'
+                  }
+                />
 
-            {/* Pagination for profiles */}
-            {profilesData && profilesData.count > 30 && (
-              <div className="mt-8 flex items-center justify-center gap-4">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Previous
-                </button>
-                <span className="text-gray-600 dark:text-gray-400">
-                  Page {page} of {Math.ceil(profilesData.count / 30)}
-                </span>
-                <button
-                  onClick={() => setPage(p => p + 1)}
-                  disabled={!profilesData.next}
-                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Next
-                </button>
-              </div>
+                {/* Pagination for projects */}
+                {projectsData && projectsData.count > 30 && !searchQuery && (
+                  <div className="mt-8 flex items-center justify-center gap-4">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Page {page} of {Math.ceil(projectsData.count / 30)}
+                    </span>
+                    <button
+                      onClick={() => setPage(p => p + 1)}
+                      disabled={!projectsData.next}
+                      className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
-        ) : (
-          // Projects Grid
-          <>
-            <ProjectsGrid
-              projects={displayProjects}
-              isLoading={isLoading}
-              emptyMessage={
-                searchQuery
-                  ? `No projects found for "${searchQuery}"`
-                  : 'No projects found'
-              }
-            />
-
-            {/* Pagination for projects */}
-            {projectsData && projectsData.count > 30 && !searchQuery && (
-              <div className="mt-8 flex items-center justify-center gap-4">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Previous
-                </button>
-                <span className="text-gray-600 dark:text-gray-400">
-                  Page {page} of {Math.ceil(projectsData.count / 30)}
-                </span>
-                <button
-                  onClick={() => setPage(p => p + 1)}
-                  disabled={!projectsData.next}
-                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </DashboardLayout>
   );
 }
