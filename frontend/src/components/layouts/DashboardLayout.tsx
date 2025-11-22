@@ -8,10 +8,11 @@ import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalenda
 interface DashboardLayoutProps {
   children: ReactNode | ((props: { openChat: (menuItem: string) => void }) => ReactNode);
   openAboutPanel?: boolean;
+  autoCollapseSidebar?: boolean;
 }
 
-export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export function DashboardLayout({ children, openAboutPanel = false, autoCollapseSidebar = false }: DashboardLayoutProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(!autoCollapseSidebar);
   const [chatOpen, setChatOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
@@ -80,27 +81,29 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-brand-dark">
-      {/* Mobile toggle button - shows when sidebar is closed on mobile */}
+      {/* Hamburger button - shows when sidebar is closed */}
       {!sidebarOpen && (
         <button
           onClick={() => setSidebarOpen(true)}
           aria-label="Show sidebar"
-          className="fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-900 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 md:hidden"
+          className="fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-900 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700"
         >
           <Bars3Icon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
         </button>
       )}
 
-      {/* Left Sidebar */}
-      <LeftSidebar
-        onMenuClick={handleMenuClick}
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
+      {/* Left Sidebar - only render when open if autoCollapseSidebar is true */}
+      {(!autoCollapseSidebar || sidebarOpen) && (
+        <LeftSidebar
+          onMenuClick={handleMenuClick}
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+        />
+      )}
 
       {/* Main Content Area */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ${
-        sidebarOpen ? 'ml-64' : 'ml-20 max-md:ml-0'
+        sidebarOpen ? 'ml-64' : autoCollapseSidebar ? 'ml-0' : 'ml-20 max-md:ml-0'
       }`}>
         {typeof children === 'function' ? children({ openChat: handleMenuClick }) : children}
       </div>

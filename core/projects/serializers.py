@@ -80,6 +80,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             'heroQuote',
             'heroVideoUrl',
             'heroSlideshowImages',
+            'heroSlideUpElement1',
+            'heroSlideUpElement2',
         }
         provided_keys = set(value.keys())
 

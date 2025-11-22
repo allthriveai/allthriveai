@@ -268,7 +268,7 @@ export default function ProjectDetailPage() {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout autoCollapseSidebar>
         <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -281,7 +281,7 @@ export default function ProjectDetailPage() {
 
   if (error || !project) {
     return (
-      <DashboardLayout>
+      <DashboardLayout autoCollapseSidebar>
         <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900 p-8">
           <div className="text-center max-w-md">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
@@ -306,10 +306,10 @@ export default function ProjectDetailPage() {
   const Icon = typeIcons[project.type];
 
   return (
-    <DashboardLayout>
+    <DashboardLayout autoCollapseSidebar>
       <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto">
         {/* Full Height Hero Section */}
-        <div className="relative min-h-[95vh] w-full flex items-center overflow-hidden bg-gray-900">
+        <div className="relative min-h-screen w-full flex items-center overflow-hidden bg-gray-900">
           {/* Background Layer */}
           <div className="absolute inset-0 z-0">
             {project.thumbnailUrl ? (
@@ -330,7 +330,7 @@ export default function ProjectDetailPage() {
           </div>
 
           {/* Content Container */}
-          <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-8 py-12 md:py-16">
+          <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-8 py-6 md:py-8">
 
             {/* Options Menu (Owner Only) - Absolute positioned to top-right of content container */}
             {isOwner && (
@@ -383,7 +383,7 @@ export default function ProjectDetailPage() {
               </div>
             )}
 
-            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center pt-12">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center pt-6">
               {/* Left Column: Text Content */}
               <div className="space-y-6 lg:space-y-10">
                 <div className="space-y-6 relative">
@@ -608,6 +608,8 @@ export default function ProjectDetailPage() {
                       <SlideUpHero
                         element1={project.content?.heroSlideUpElement1}
                         element2={project.content?.heroSlideUpElement2}
+                        tools={project.toolsDetails}
+                        onToolClick={(slug) => navigate(`tools/${slug}`)}
                       />
                     );
                   }

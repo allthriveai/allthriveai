@@ -35,6 +35,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [tools, setTools] = useState<Tool[]>([]);
+  const [isHovered, setIsHovered] = useState(false);
 
   // Load tools on mount
   useEffect(() => {
@@ -180,13 +181,15 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
 
       {/* Sidebar */}
       <div
+        onMouseEnter={() => !isOpen && setIsHovered(true)}
+        onMouseLeave={() => !isOpen && setIsHovered(false)}
         className={`fixed h-screen glass-strong flex flex-col overflow-y-auto z-50 transition-all duration-300 ${
-          isOpen ? 'w-64 translate-x-0' : 'w-20 translate-x-0 max-md:-translate-x-full'
+          isOpen ? 'w-64 translate-x-0' : isHovered ? 'w-64 translate-x-0' : 'w-20 translate-x-0 max-md:-translate-x-full'
         }`}
       >
         {/* Header with close/collapse buttons */}
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
-          {isOpen ? (
+          {(isOpen || isHovered) ? (
             <>
               <button
                 onClick={() => navigate('/')}
@@ -197,14 +200,16 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
               </button>
 
               <div className="flex items-center gap-2">
-                {/* Collapse button (desktop only) */}
-                <button
-                  onClick={onToggle}
-                  className="hidden md:block p-2 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors"
-                  aria-label="Collapse sidebar"
-                >
-                  <ChevronLeftIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                </button>
+                {/* Collapse button (desktop only) - only show when permanently open */}
+                {isOpen && (
+                  <button
+                    onClick={onToggle}
+                    className="hidden md:block p-2 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors"
+                    aria-label="Collapse sidebar"
+                  >
+                    <ChevronLeftIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  </button>
+                )}
 
                 {/* Close button (mobile only) */}
                 <button
@@ -236,7 +241,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         </div>
 
         {/* Search Bar */}
-        {isOpen && (
+        {(isOpen || isHovered) && (
           <div className="px-4 pt-4 pb-2">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -267,21 +272,21 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
               <div key={section.title} className="mb-2">
                 {/* Section Header */}
                 <button
-                  onClick={() => toggleSection(section.title, isOpen, onToggle)}
+                  onClick={() => toggleSection(section.title, isOpen || isHovered, onToggle)}
                   className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
-                    isOpen ? 'justify-between' : 'justify-center'
+                    (isOpen || isHovered) ? 'justify-between' : 'justify-center'
                   } ${
                     openSections.includes(section.title)
                       ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'
                   }`}
-                  title={!isOpen ? section.title : undefined}
+                  title={!(isOpen || isHovered) ? section.title : undefined}
                 >
-                  <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
+                  <div className={`flex items-center gap-3 ${(isOpen || isHovered) ? '' : 'justify-center'}`}>
                     <FontAwesomeIcon icon={section.icon} className="w-4 h-4" />
-                    {isOpen && <span>{section.title}</span>}
+                    {(isOpen || isHovered) && <span>{section.title}</span>}
                   </div>
-                  {isOpen && (
+                  {(isOpen || isHovered) && (
                     openSections.includes(section.title) ? (
                       <ChevronUpIcon className="w-4 h-4" />
                     ) : (
@@ -291,7 +296,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                 </button>
 
                 {/* Section Items */}
-                {isOpen && openSections.includes(section.title) && (
+                {(isOpen || isHovered) && openSections.includes(section.title) && (
                   <div className="mt-1 space-y-1">
                     {section.items.map((item) => (
                       <div key={item.label}>
@@ -371,16 +376,16 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
           <button
             onClick={toggleTheme}
             className={`w-full flex items-center gap-3 px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors ${
-              isOpen ? '' : 'justify-center px-0'
+              (isOpen || isHovered) ? '' : 'justify-center px-0'
             }`}
-            title={!isOpen ? (theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode') : undefined}
+            title={!(isOpen || isHovered) ? (theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode') : undefined}
           >
             {theme === 'light' ? (
               <MoonIcon className="w-5 h-5" />
             ) : (
               <SunIcon className="w-5 h-5" />
             )}
-            {isOpen && (
+            {(isOpen || isHovered) && (
               <span className="font-medium">
                 {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
               </span>
@@ -392,23 +397,23 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
             <button
               onClick={handleLogout}
               className={`w-full flex items-center gap-3 px-4 py-3 text-red-500 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/10 rounded-lg transition-colors ${
-                isOpen ? '' : 'justify-center px-0'
+                (isOpen || isHovered) ? '' : 'justify-center px-0'
               }`}
-              title={!isOpen ? 'Log Out' : undefined}
+              title={!(isOpen || isHovered) ? 'Log Out' : undefined}
             >
               <ArrowRightOnRectangleIcon className="w-5 h-5" />
-              {isOpen && <span className="font-medium">Log Out</span>}
+              {(isOpen || isHovered) && <span className="font-medium">Log Out</span>}
             </button>
           ) : (
             <button
               onClick={() => navigate('/login')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-primary-500 dark:text-primary-400 hover:bg-primary-500/10 dark:hover:bg-primary-500/10 rounded-lg transition-colors ${
-                isOpen ? '' : 'justify-center px-0'
+                (isOpen || isHovered) ? '' : 'justify-center px-0'
               }`}
-              title={!isOpen ? 'Log In' : undefined}
+              title={!(isOpen || isHovered) ? 'Log In' : undefined}
             >
               <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-              {isOpen && <span className="font-medium">Log In</span>}
+              {(isOpen || isHovered) && <span className="font-medium">Log In</span>}
             </button>
           )}
         </div>

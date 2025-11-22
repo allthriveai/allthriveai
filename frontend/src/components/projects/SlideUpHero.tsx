@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronUpIcon } from '@heroicons/react/24/outline';
+import { ChevronUpIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 interface SlideUpElement {
   type: 'image' | 'video' | 'text';
@@ -10,6 +10,28 @@ interface SlideUpElement {
 interface SlideUpHeroProps {
   element1?: SlideUpElement;
   element2?: SlideUpElement;
+  tools?: Array<{ id: number; name: string; slug: string; logoUrl?: string }>;
+  onToolClick?: (toolSlug: string) => void;
+}
+
+function TextWithCopy({ content, caption, fontSize }: { content: string; caption?: string; fontSize: string }) {
+  return (
+    <div className="w-full h-full flex items-center justify-center p-6 md:p-8">
+      <div className="max-w-3xl w-full">
+        <p
+          className="text-white leading-relaxed drop-shadow-lg"
+          style={{ fontSize, lineHeight: '1.5' }}
+        >
+          {content}
+        </p>
+        {caption && (
+          <p className="mt-4 text-sm text-center text-white/80 italic drop-shadow-md">
+            {caption}
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function renderElement(element: SlideUpElement | undefined) {
@@ -43,7 +65,7 @@ function renderElement(element: SlideUpElement | undefined) {
   };
 
   switch (element.type) {
-    case 'image':
+    case 'image': {
       return (
         <div className="w-full h-full flex flex-col">
           <img
@@ -61,8 +83,9 @@ function renderElement(element: SlideUpElement | undefined) {
           )}
         </div>
       );
+    }
 
-    case 'video':
+    case 'video': {
       const videoInfo = parseVideoUrl(element.content);
 
       // Check if it's an MP4 video file (direct video URL)
@@ -80,14 +103,11 @@ function renderElement(element: SlideUpElement | undefined) {
         // Render native video player for MP4/WebM/OGG
         return (
           <div className="w-full h-full flex flex-col">
-            <div className="relative aspect-video rounded-lg overflow-hidden bg-black">
+            <div className="relative w-full rounded-lg overflow-hidden bg-black">
               <video
                 src={element.content}
                 controls
-                className="w-full h-full"
-                onError={(e) => {
-                  console.error('Video load error');
-                }}
+                className="w-full h-auto"
               >
                 Your browser does not support the video tag.
               </video>
@@ -113,7 +133,7 @@ function renderElement(element: SlideUpElement | undefined) {
 
       return (
         <div className="w-full h-full flex flex-col">
-          <div className="relative aspect-video rounded-lg overflow-hidden bg-black">
+          <div className="relative w-full rounded-lg overflow-hidden bg-black" style={{ aspectRatio: '9/16' }}>
             <iframe
               src={embedUrl}
               title={element.caption || 'Video'}
@@ -129,8 +149,9 @@ function renderElement(element: SlideUpElement | undefined) {
           )}
         </div>
       );
+    }
 
-    case 'text':
+    case 'text': {
       const textLength = element.content.trim().length;
       let fontSize;
       if (textLength < 100) {
@@ -144,31 +165,23 @@ function renderElement(element: SlideUpElement | undefined) {
       }
 
       return (
-        <div className="w-full h-full flex items-center justify-center p-6 md:p-8">
-          <div className="max-w-3xl">
-            <p
-              className="text-gray-900 dark:text-white leading-relaxed"
-              style={{ fontSize, lineHeight: '1.5' }}
-            >
-              {element.content}
-            </p>
-            {element.caption && (
-              <p className="mt-4 text-sm text-center text-gray-600 dark:text-gray-400 italic">
-                {element.caption}
-              </p>
-            )}
-          </div>
-        </div>
+        <TextWithCopy
+          content={element.content}
+          caption={element.caption}
+          fontSize={fontSize}
+        />
       );
+    }
 
     default:
       return null;
   }
 }
 
-export function SlideUpHero({ element1, element2 }: SlideUpHeroProps) {
+export function SlideUpHero({ element1, element2, tools, onToolClick }: SlideUpHeroProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Detect mobile viewport
   useEffect(() => {
@@ -194,8 +207,18 @@ export function SlideUpHero({ element1, element2 }: SlideUpHeroProps) {
   }, [isMobile, element2]);
 
   const handleToggle = () => {
-    if (!isMobile) {
-      setIsExpanded(!isExpanded);
+    setIsExpanded(!isExpanded);
+  };
+
+  const handleCopy = async () => {
+    if (element2?.type === 'text' && element2.content) {
+      try {
+        await navigator.clipboard.writeText(element2.content);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy text:', err);
+      }
     }
   };
 
@@ -205,42 +228,117 @@ export function SlideUpHero({ element1, element2 }: SlideUpHeroProps) {
         {/* Glowing backdrop */}
         <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
 
-        {/* Container */}
+        {/* Main Container */}
         <div className="relative bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl overflow-hidden">
-          {/* Element 1 - Always visible */}
-          <div className="relative min-h-[300px] md:min-h-[400px] p-4 md:p-6">
+          {/* Element 1 - Always visible (background) */}
+          <div className="relative p-4 md:p-6">
             {renderElement(element1)}
           </div>
 
-          {/* Element 2 - Slides up */}
+          {/* Element 2 - Slides up as overlay */}
           {element2 && (
             <>
+              {/* Backdrop overlay when expanded */}
               <div
-                className={`transition-all duration-500 ease-in-out overflow-hidden ${
-                  isExpanded ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+                className={`absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-500 ${
+                  isExpanded ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                 }`}
+                onClick={handleToggle}
+              />
+
+              {/* Slide-up panel */}
+              <div
+                className={`absolute inset-x-0 bottom-0 transition-transform duration-700 ease-out ${
+                  isExpanded ? 'translate-y-0' : 'translate-y-full'
+                }`}
+                style={{
+                  maxHeight: '85%',
+                }}
               >
-                <div className="border-t border-white/20 p-4 md:p-6 min-h-[300px] md:min-h-[400px] bg-white/5">
-                  {renderElement(element2)}
+                <div className="relative h-full bg-white/30 dark:bg-gray-900/40 backdrop-blur-3xl rounded-t-3xl shadow-2xl border-t border-white/40 dark:border-white/20">
+                  {/* Extra glass layer for depth */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent dark:from-white/10 rounded-t-3xl pointer-events-none" />
+                  {/* Handle bar */}
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/50 dark:bg-white/30 rounded-full backdrop-blur-sm" />
+
+                  {/* Copy button - only show for text content */}
+                  {element2?.type === 'text' && (
+                    <button
+                      onClick={handleCopy}
+                      className="absolute top-4 right-16 p-2 rounded-full bg-white/30 dark:bg-white/10 backdrop-blur-xl hover:bg-white/50 dark:hover:bg-white/20 border border-white/40 dark:border-white/20 transition-all hover:scale-105 active:scale-95 shadow-lg"
+                      aria-label="Copy text"
+                    >
+                      {copied ? (
+                        <CheckIcon className="w-5 h-5 text-green-400" />
+                      ) : (
+                        <ClipboardDocumentIcon className="w-5 h-5 text-white" />
+                      )}
+                    </button>
+                  )}
+
+                  {/* Close button */}
+                  <button
+                    onClick={handleToggle}
+                    className="absolute top-4 right-4 p-2 rounded-full bg-white/30 dark:bg-white/10 backdrop-blur-xl hover:bg-white/50 dark:hover:bg-white/20 border border-white/40 dark:border-white/20 transition-all hover:scale-105 active:scale-95 shadow-lg"
+                    aria-label="Close"
+                  >
+                    <ChevronUpIcon className="w-5 h-5 text-white rotate-180" />
+                  </button>
+
+                  {/* Content */}
+                  <div className="h-full overflow-y-auto pt-12 pb-6 px-4 md:px-6">
+                    {renderElement(element2)}
+
+                    {/* Tools pills at bottom */}
+                    {tools && tools.length > 0 && (
+                      <div className="mt-8 pt-6 border-t border-white/30">
+                        <h3 className="text-sm font-medium text-white/80 mb-3">Tools Used</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {tools.map((tool) => (
+                            <button
+                              key={tool.id}
+                              onClick={() => onToolClick?.(tool.slug)}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-md text-white rounded-full text-sm border border-white/30 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
+                            >
+                              {tool.logoUrl && (
+                                <img
+                                  src={tool.logoUrl}
+                                  alt={tool.name}
+                                  className="w-4 h-4 object-contain"
+                                />
+                              )}
+                              <span>{tool.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Toggle button - visible on desktop, hidden on mobile after auto-expand */}
-              {(!isMobile || !isExpanded) && (
-                <button
-                  onClick={handleToggle}
-                  className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full border border-white/30 transition-all hover:scale-105 active:scale-95 shadow-lg z-10"
-                  aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                >
-                  <span className="text-sm font-medium hidden md:inline">
-                    {isExpanded ? 'Show Less' : 'Show More'}
-                  </span>
-                  <ChevronUpIcon
-                    className={`w-5 h-5 transition-transform duration-300 ${
-                      isExpanded ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
+              {/* Subtle bottom indicator - tap/click to expand */}
+              {!isExpanded && (
+                <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
+                  {/* Gradient fade to indicate more content */}
+                  <div className="h-20 bg-gradient-to-t from-black/30 to-transparent" />
+
+                  {/* Interactive indicator */}
+                  <button
+                    onClick={handleToggle}
+                    className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center gap-1 group"
+                    aria-label="Show More"
+                  >
+                    {/* Animated chevron */}
+                    <div className="animate-bounce">
+                      <ChevronUpIcon className="w-6 h-6 text-white drop-shadow-lg group-hover:scale-110 transition-transform" />
+                    </div>
+                    {/* Optional text hint */}
+                    <span className="text-xs font-medium text-white/80 group-hover:text-white drop-shadow-md transition-colors">
+                      Tap for more
+                    </span>
+                  </button>
+                </div>
               )}
             </>
           )}

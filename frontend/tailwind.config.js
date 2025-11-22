@@ -157,6 +157,7 @@ export default {
         'glass': '12px',
         'glass-lg': '16px',
         'glass-xl': '24px',
+        '3xl': '32px',
       },
       transitionDuration: {
         '150': '150ms',
