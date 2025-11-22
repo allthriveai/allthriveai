@@ -18,6 +18,7 @@ import {
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { toggleProjectLike } from '@/services/projects';
 import { ProjectModal } from './ProjectModal';
+import { CommentTray } from './CommentTray';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ProjectCardProps {
@@ -54,7 +55,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const [heartCount, setHeartCount] = useState(project.heartCount);
   const [isLiking, setIsLiking] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [showCommentsInModal, setShowCommentsInModal] = useState(false);
+  const [showCommentTray, setShowCommentTray] = useState(false);
   const Icon = typeIcons[project.type];
   const projectUrl = `/${project.username}/${project.slug}`;
 
@@ -87,14 +88,12 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const handleCommentClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setShowCommentsInModal(true);
-    setShowModal(true);
+    setShowCommentTray(true);
   };
 
   const handleMoreInfoClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setShowCommentsInModal(false);
     setShowModal(true);
   };
 
@@ -408,7 +407,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
           </div>
         </div>
 
-        {/* Project Modal for slide-up and comments */}
+        {/* Project Modal for slide-up hero */}
         <ProjectModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
@@ -417,7 +416,15 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
           isLiked={isLiked}
           heartCount={heartCount}
           onLikeToggle={() => handleLike()}
-          showComments={showCommentsInModal}
+          showComments={false}
+        />
+
+        {/* Comment Tray */}
+        <CommentTray
+          isOpen={showCommentTray}
+          onClose={() => setShowCommentTray(false)}
+          project={project}
+          isAuthenticated={isAuthenticated}
         />
       </CardWrapper>
     );
