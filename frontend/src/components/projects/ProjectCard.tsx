@@ -27,6 +27,7 @@ interface ProjectCardProps {
   variant?: 'default' | 'masonry';  // Layout variant
   onDelete?: (projectId: number) => void;
   onToggleShowcase?: (projectId: number) => void;
+  userAvatarUrl?: string;  // Owner's avatar URL
 }
 
 const typeIcons = {
@@ -43,7 +44,7 @@ const typeLabels = {
   other: 'Project',
 };
 
-export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase }: ProjectCardProps) {
+export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl }: ProjectCardProps) {
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
   const [isLiked, setIsLiked] = useState(project.isLikedByUser);
@@ -139,6 +140,22 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
           isSelected ? 'ring-4 ring-primary-500' : ''
         } ${(isQuote || isSlideup) ? 'min-h-[400px]' : (isMediaCard ? 'aspect-[3/4]' : 'h-auto')}`}
       >
+        {/* User Avatar - Top Left */}
+        {userAvatarUrl && !selectionMode && (
+          <div className="absolute top-4 left-4 z-30">
+            <div className="w-10 h-10 rounded-full border-2 border-white/80 shadow-lg overflow-hidden bg-white/10 backdrop-blur-sm">
+              <img
+                src={userAvatarUrl}
+                alt={project.username}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Selection checkbox */}
         {selectionMode && (
           <div className="absolute top-4 left-4 z-30">
