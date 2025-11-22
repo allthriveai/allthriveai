@@ -7,6 +7,9 @@ import { TabNavigation, type ExploreTab } from '@/components/explore/TabNavigati
 import { FilterPanel } from '@/components/explore/FilterPanel';
 import { ProjectsGrid } from '@/components/explore/ProjectsGrid';
 import { UserProfileCard } from '@/components/explore/UserProfileCard';
+import { QuizPreviewCard } from '@/components/quiz/QuizPreviewCard';
+import { QuizOverlay } from '@/components/quiz/QuizOverlay';
+import { ProjectCard } from '@/components/projects/ProjectCard';
 import {
   exploreProjects,
   semanticSearch,
@@ -14,6 +17,7 @@ import {
   getFilterOptions,
   type ExploreParams,
 } from '@/services/explore';
+import { getQuizzes } from '@/services/quiz';
 
 export function ExplorePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,6 +34,10 @@ export function ExplorePage() {
     searchParams.get('tools')?.split(',').map(Number).filter(Boolean) || []
   );
   const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
+
+  // Quiz overlay state
+  const [quizOverlayOpen, setQuizOverlayOpen] = useState(false);
+  const [selectedQuizSlug, setSelectedQuizSlug] = useState<string>('');
 
   // Sync state to URL
   useEffect(() => {
@@ -89,9 +97,20 @@ export function ExplorePage() {
     enabled: activeTab === 'profiles',
   });
 
+  // Fetch quizzes
+  const {
+    data: quizzesData,
+    isLoading: isLoadingQuizzes,
+  } = useQuery({
+    queryKey: ['exploreQuizzes', searchQuery],
+    queryFn: () => getQuizzes({ search: searchQuery || undefined }),
+    enabled: activeTab !== 'profiles',
+  });
+
   // Determine which data to display
   const displayProjects = searchQuery && semanticResults ? semanticResults : projectsData?.results || [];
-  const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles;
+  const displayQuizzes = quizzesData?.results || [];
+  const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes;
 
   // Handle tab change
   const handleTabChange = (tab: ExploreTab) => {
@@ -122,10 +141,21 @@ export function ExplorePage() {
     setPage(1);
   };
 
+  const handleOpenQuiz = (quizSlug: string) => {
+    setSelectedQuizSlug(quizSlug);
+    setQuizOverlayOpen(true);
+  };
+
+  const handleCloseQuiz = () => {
+    setQuizOverlayOpen(false);
+    setSelectedQuizSlug('');
+  };
+
   // Show filters only for certain tabs
   const showFilters = activeTab === 'topics' || activeTab === 'tools';
 
   return (
+    <>
     <DashboardLayout>
       {() => (
         <div className="h-full overflow-y-auto">
@@ -208,17 +238,58 @@ export function ExplorePage() {
                 )}
               </div>
             ) : (
-              // Projects Grid
+              // Mixed Projects and Quizzes Grid
               <>
-                <ProjectsGrid
-                  projects={displayProjects}
-                  isLoading={isLoading}
-                  emptyMessage={
-                    searchQuery
-                      ? `No projects found for "${searchQuery}"`
-                      : 'No projects found'
-                  }
-                />
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400"></div>
+                      <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+                    </div>
+                  </div>
+                ) : displayProjects.length === 0 && displayQuizzes.length === 0 ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <p className="text-lg text-gray-600 dark:text-gray-400">
+                        {searchQuery ? `No results found for "${searchQuery}"` : 'No content found'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+                        Try adjusting your filters or search query
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
+                    {/* Interleave quizzes and projects */}
+                    {(() => {
+                      const items: Array<{ type: 'quiz' | 'project'; data: any }> = [
+                        ...displayQuizzes.map(quiz => ({ type: 'quiz' as const, data: quiz })),
+                        ...displayProjects.map(project => ({ type: 'project' as const, data: project })),
+                      ];
+
+                      // Simple shuffle to mix quizzes and projects
+                      const mixed = items.sort(() => Math.random() - 0.5);
+
+                      return mixed.map((item, index) => (
+                        <div key={`${item.type}-${item.data.id || item.data.slug}-${index}`} className="break-inside-avoid mb-2">
+                          {item.type === 'quiz' ? (
+                            <QuizPreviewCard
+                              quiz={item.data}
+                              variant="compact"
+                              onOpen={() => handleOpenQuiz(item.data.slug)}
+                            />
+                          ) : (
+                            <ProjectCard
+                              project={item.data}
+                              variant="masonry"
+                              userAvatarUrl={item.data.userAvatarUrl}
+                            />
+                          )}
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                )}
 
                 {/* Pagination for projects */}
                 {projectsData && projectsData.count > 30 && !searchQuery && (
@@ -248,5 +319,15 @@ export function ExplorePage() {
         </div>
       )}
     </DashboardLayout>
+
+    {/* Quiz Overlay */}
+    {quizOverlayOpen && selectedQuizSlug && (
+      <QuizOverlay
+        isOpen={quizOverlayOpen}
+        onClose={handleCloseQuiz}
+        quizSlug={selectedQuizSlug}
+      />
+    )}
+    </>
   );
 }

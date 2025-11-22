@@ -50,12 +50,12 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
             {/* Problem & Solution */}
             <div className="space-y-4 text-gray-700 dark:text-gray-300 leading-relaxed">
               <p className="text-base">
-                Hundreds of AI tools now let you create, prototype, and launch new ideas, yet you still lack a single
-                place to consolidate, showcase, and get feedback on every project regardless of the tool.
+                AI gives you hundreds of tools to create, prototype, and launch new ideas, but there&apos;s still no single
+                place to consolidate, showcase, and get feedback on all your projects, no matter which tools you used.
               </p>
               <p className="text-base">
-                You scatter your projects across platforms, face overwhelming choices about where to start, and encounter spaces
-                that assume you need senior engineering skills to share something worthwhile.
+                You juggle projects across platforms, struggle to decide where to start, and keep running into spaces
+                that act like you need to be a senior engineer before your work is worth sharing.
               </p>
             </div>
 

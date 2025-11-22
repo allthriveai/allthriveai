@@ -12,7 +12,7 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, openAboutPanel = false, autoCollapseSidebar = false }: DashboardLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(!autoCollapseSidebar);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);

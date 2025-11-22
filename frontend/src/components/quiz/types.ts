@@ -9,17 +9,17 @@ export interface Quiz {
   description: string;
   topic: string;
   difficulty: QuizDifficulty;
-  estimatedTime: number; // minutes
-  questionCount: number;
-  thumbnailUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-  isPublished: boolean;
-  userHasAttempted: boolean;
-  userBestScore: number | null;
-  userAttemptCount: number;
-  userCompleted: boolean;
-  userLatestScore: number | null;
+  estimated_time: number; // minutes
+  question_count: number;
+  thumbnail_url?: string;
+  created_at: string;
+  updated_at: string;
+  is_published: boolean;
+  user_has_attempted: boolean;
+  user_best_score: number | null;
+  user_attempt_count: number;
+  user_completed: boolean;
+  user_latest_score: number | null;
 }
 
 export interface QuizQuestion {

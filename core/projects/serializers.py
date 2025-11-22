@@ -20,6 +20,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     """
 
     username = serializers.ReadOnlyField(source='user.username')
+    user_avatar_url = serializers.ReadOnlyField(source='user.avatar_url')
     slug = serializers.SlugField(required=False, allow_blank=True)
     heart_count = serializers.ReadOnlyField()
     is_liked_by_user = serializers.SerializerMethodField()
@@ -30,6 +31,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'username',
+            'user_avatar_url',
             'title',
             'slug',
             'description',
@@ -54,6 +56,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'username',
+            'user_avatar_url',
             'heart_count',
             'is_liked_by_user',
             'tools_details',

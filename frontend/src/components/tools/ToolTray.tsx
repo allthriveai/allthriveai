@@ -35,18 +35,6 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     }
   }, [isOpen, toolSlug]);
 
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
-
   async function loadTool(slug: string) {
     try {
       setIsLoading(true);
@@ -68,10 +56,10 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     return (
       <>
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity"
+          className="fixed inset-0 z-40 transition-opacity duration-300 ease-in-out pointer-events-none"
           onClick={onClose}
         />
-        <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col">
+        <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out translate-x-0">
           <div className="p-6 animate-pulse">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-4 flex-1">
@@ -101,10 +89,10 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     return (
       <>
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity"
+          className="fixed inset-0 z-40 transition-opacity duration-300 ease-in-out pointer-events-none"
           onClick={onClose}
         />
-        <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col">
+        <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out translate-x-0">
           <div className="p-6">
             <div className="flex items-start justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Tool Not Found</h2>
@@ -133,14 +121,14 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - Non-blocking, no blur, allows scrolling and full visibility */}
       <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity"
+        className="fixed inset-0 z-40 transition-opacity duration-300 ease-in-out pointer-events-none"
         onClick={onClose}
       />
 
-      {/* Right Sidebar Drawer */}
-      <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col">
+      {/* Right Sidebar Drawer - Smooth slide-in animation */}
+      <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out animate-slide-in-right">
         {/* Header - Fixed */}
         <div className="flex-shrink-0 px-5 py-3 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between gap-3">

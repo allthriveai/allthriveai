@@ -151,7 +151,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       };
     }
 
-    // Fallback: use featuredImageUrl > thumbnailUrl > placeholder
+    // Fallback: use featuredImageUrl > thumbnailUrl > Unsplash random image
     if (project.featuredImageUrl) {
       return { type: 'image' as const, url: project.featuredImageUrl };
     }
@@ -162,7 +162,14 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     if (project.thumbnailUrl) {
       return { type: 'image' as const, url: project.thumbnailUrl };
     }
-    return { type: 'image' as const, url: '/allthrive-placeholder.svg' };
+
+    // Generate Unsplash image based on project title/type
+    const searchQuery = project.title || 'technology';
+    const encodedQuery = encodeURIComponent(searchQuery);
+    return {
+      type: 'image' as const,
+      url: `https://source.unsplash.com/800x600/?${encodedQuery},technology,ai`
+    };
   };
 
   const CardWrapper = selectionMode ? 'div' : Link;
@@ -207,19 +214,19 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         return { height: '', width: '' };
       }
 
-      // Image cards - no min-height (images define their own height)
+      // Image cards - add min-height for consistency
       if (heroElement.type === 'image') {
-        // For GitHub repos
+        // For GitHub repos - smaller minimum
         if (project.type === 'github_repo') {
-          return { height: '', width: '' };
+          return { height: 'min-h-[200px]', width: '' };
         }
 
-        // For regular images, height is natural
-        return { height: '', width: '' };
+        // For regular images, use minimum height for consistency
+        return { height: 'min-h-[280px]', width: '' };
       }
 
-      // Default
-      return { height: '', width: '' };
+      // Default - add minimum height
+      return { height: 'min-h-[280px]', width: '' };
     };
 
     const { height: dynamicHeightClass, width: dynamicWidthClass } = getDynamicSizeClass();
@@ -247,25 +254,64 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         )}
 
         {/* BACKGROUND LAYER */}
-        <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'}`}>
+        <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''}`}>
             {heroElement.type === 'image' && (
               <img
                 src={heroElement.url}
                 alt={project.title}
-                className="w-full h-auto block"
+                className="w-full h-full object-cover"
+                loading="lazy"
               />
             )}
 
-            {heroElement.type === 'video' && (
-              <video
-                src={heroElement.url}
-                className="w-full h-auto block"
-                autoPlay
-                loop
-                muted
-                playsInline
-              />
-            )}
+            {heroElement.type === 'video' && (() => {
+              // Parse video URL to get embed URL
+              const parseVideoUrl = (url: string) => {
+                // YouTube patterns
+                const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
+                if (youtubeMatch) {
+                  return `https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=1&mute=1&loop=1&controls=0`;
+                }
+
+                // Vimeo patterns
+                const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+                if (vimeoMatch) {
+                  return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&muted=1&loop=1&background=1`;
+                }
+
+                // Loom patterns
+                const loomMatch = url.match(/loom\.com\/(?:share|embed)\/([\w-]+)/);
+                if (loomMatch) {
+                  return `https://www.loom.com/embed/${loomMatch[1]}?hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true`;
+                }
+
+                // Direct video file
+                return url;
+              };
+
+              const embedUrl = parseVideoUrl(heroElement.url);
+              const isEmbedUrl = embedUrl !== heroElement.url;
+
+              return isEmbedUrl ? (
+                <div className="relative w-full aspect-video bg-black">
+                  <iframe
+                    src={embedUrl}
+                    className="absolute inset-0 w-full h-full"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              ) : (
+                <video
+                  src={heroElement.url}
+                  className="w-full h-auto block"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                />
+              );
+            })()}
 
             {heroElement.type === 'slideshow' && (
               <img
@@ -345,7 +391,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
 
         {/* GRADIENT OVERLAY & FOOTER */}
         {/* Always render footer absolute at bottom for seamless overlay look */}
-        <div className="absolute bottom-0 left-0 right-0 z-20">
+        <div className="absolute bottom-0 left-0 right-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           {/* Gradient Background for smooth overlay fade */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent -top-40" />
 

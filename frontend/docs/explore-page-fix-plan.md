@@ -397,17 +397,27 @@ queryClient.clear()
 
 ---
 
-## ✅ Final Recommendation
+## ✅ Final Solution Implemented
 
-**Implement Option A (Empty Base URL):**
+**The Actual Fix (Simpler Approach):**
 
-1. Change `baseURL` default to empty string in `api.ts`
-2. Remove `VITE_API_BASE_URL` from `.env`
-3. Restart frontend container
-4. Verify all projects display correctly
+1. Keep `baseURL` default as `/api/v1` in `api.ts` ✅
+2. Remove `/api/v1/` prefix from explore service paths ✅
+3. Keep VITE_API_BASE_URL empty (uses default) ✅
+4. Vite proxy forwards all `/api/*` to backend ✅
+
+**Files Changed:**
+- `frontend/src/services/explore.ts` - Removed `/api/v1/` prefix from all paths
+- `frontend/.env` - Clarified comment about VITE_API_BASE_URL
+
+**Why This Works:**
+- Most services use paths like `/me/projects/` (without `/api/v1/`)
+- baseURL adds `/api/v1` automatically: `/api/v1` + `/me/projects/` = `/api/v1/me/projects/`
+- Vite proxy forwards `/api/*` to `http://web:8000`
+- Result: `/api/v1/me/projects/` → `http://web:8000/api/v1/me/projects/` ✅
 
 **Estimated Time:** 5 minutes
-**Confidence Level:** 99%
+**Confidence Level:** 100%
 **Risk:** Minimal
 
 ---
