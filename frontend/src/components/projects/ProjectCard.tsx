@@ -91,6 +91,13 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     if (heroMode === 'quote' && project.content?.heroQuote) {
       return { type: 'quote' as const, text: project.content.heroQuote };
     }
+    if (heroMode === 'slideup' && project.content?.heroSlideUpElement1) {
+      return {
+        type: 'slideup' as const,
+        element1: project.content.heroSlideUpElement1,
+        element2: project.content.heroSlideUpElement2
+      };
+    }
 
     // Fallback: use featuredImageUrl > thumbnailUrl > placeholder
     if (project.featuredImageUrl) {
@@ -114,9 +121,10 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   // Masonry variant - Flexible height for text, portrait for media
   if (variant === 'masonry') {
     const heroElement = getHeroElement();
-    // Treat quote cards as media cards for styling purposes (dark mode overlay style)
-    const isMediaCard = ['image', 'video', 'slideshow', 'quote'].includes(heroElement.type) || (heroElement.type === 'image' && project.type !== 'github_repo');
+    // Treat quote and slideup cards as media cards for styling purposes (dark mode overlay style)
+    const isMediaCard = ['image', 'video', 'slideshow', 'quote', 'slideup'].includes(heroElement.type) || (heroElement.type === 'image' && project.type !== 'github_repo');
     const isQuote = heroElement.type === 'quote';
+    const isSlideup = heroElement.type === 'slideup';
 
     // Get gradient colors for quote cards
     const gradientFrom = project.content?.heroGradientFrom || 'rgb(124, 58, 237)'; // violet-600
@@ -127,7 +135,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         {...(cardProps as React.ComponentProps<typeof Link>)}
         className={`block relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 group ${
           isSelected ? 'ring-4 ring-primary-500' : ''
-        } ${isQuote ? 'min-h-[400px]' : (isMediaCard ? 'aspect-[3/4]' : 'h-auto')}`}
+        } ${(isQuote || isSlideup) ? 'min-h-[400px]' : (isMediaCard ? 'aspect-[3/4]' : 'h-auto')}`}
       >
         {/* Selection checkbox */}
         {selectionMode && (
@@ -181,6 +189,36 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                 <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay pointer-events-none" />
               </div>
             )}
+
+            {isSlideup && heroElement.element1 && (
+              <>
+                {/* Show element1 as background */}
+                {heroElement.element1.type === 'image' && (
+                  <img
+                    src={heroElement.element1.content}
+                    alt={project.title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                )}
+                {heroElement.element1.type === 'video' && (
+                  <video
+                    src={heroElement.element1.content}
+                    className="w-full h-full object-cover"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                  />
+                )}
+                {heroElement.element1.type === 'text' && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center p-6">
+                    <p className="text-white text-lg md:text-xl font-medium leading-relaxed line-clamp-6 text-center">
+                      {heroElement.element1.content}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
         </div>
 
         {/* CONTENT LAYER */}
@@ -189,6 +227,15 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
           <div className="absolute top-0 left-0 right-0 bottom-40 px-6 flex items-center justify-center z-10 pointer-events-none overflow-hidden">
              <p className="text-lg md:text-xl font-medium leading-relaxed tracking-normal drop-shadow-sm font-sans line-clamp-[8] text-white/95 text-center">
                {heroElement.text}
+             </p>
+          </div>
+        )}
+
+        {/* Slideup Element2 Preview - Show if it's text */}
+        {isSlideup && heroElement.element2?.type === 'text' && (
+          <div className="absolute top-0 left-0 right-0 bottom-40 px-6 flex items-center justify-center z-10 pointer-events-none overflow-hidden">
+             <p className="text-lg md:text-xl font-medium leading-relaxed tracking-normal drop-shadow-lg font-sans line-clamp-[6] text-white/95 text-center">
+               {heroElement.element2.content}
              </p>
           </div>
         )}
