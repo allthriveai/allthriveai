@@ -140,3 +140,10 @@ export async function toggleProjectLike(projectId: number): Promise<{ liked: boo
     heartCount: response.data.heart_count,
   };
 }
+
+/**
+ * Delete a redirect for a project
+ */
+export async function deleteProjectRedirect(projectId: number, redirectId: number): Promise<void> {
+  await api.delete(`/me/projects/${projectId}/redirects/${redirectId}/`);
+}

@@ -377,7 +377,15 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
               <div className="flex items-center gap-2">
                 {/* User Avatar */}
                 {!selectionMode && (
-                  <div className="w-9 h-9 rounded-full border-2 border-white/80 shadow-lg overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigate(`/${project.username}`);
+                    }}
+                    className="w-9 h-9 rounded-full border-2 border-white/80 shadow-lg overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0 hover:border-white hover:scale-105 transition-all cursor-pointer"
+                    aria-label={`View ${project.username}'s profile`}
+                  >
                     {userAvatarUrl ? (
                       <img
                         src={userAvatarUrl}
@@ -398,7 +406,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                         {project.username?.[0]?.toUpperCase() || 'U'}
                       </div>
                     )}
-                  </div>
+                  </button>
                 )}
 
                 {/* Heart/Like Button */}

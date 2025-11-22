@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { listProjects, updateProject } from '@/services/projects';
+import { listProjects, updateProject, deleteProjectRedirect } from '@/services/projects';
 import { uploadImage, uploadFile } from '@/services/upload';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { ToolSelector } from '@/components/projects/ToolSelector';
@@ -662,6 +662,55 @@ export default function ProjectEditorPage() {
                     <strong>Note:</strong> When you change the URL, the old URL will automatically redirect to the new one, so existing links won't break.
                   </p>
                 </div>
+
+                {/* Active Redirects */}
+                {project.redirects && project.redirects.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Active Redirects</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                      These old URLs redirect to your current project URL
+                    </p>
+                    <div className="space-y-2">
+                      {project.redirects.map((redirect) => (
+                        <div
+                          key={redirect.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-mono text-gray-900 dark:text-white truncate">
+                              /{project.username}/{redirect.oldSlug}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Created {new Date(redirect.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Delete redirect from "/${redirect.oldSlug}"?\n\nThis URL will no longer work and cannot be undone.`)) {
+                                try {
+                                  await deleteProjectRedirect(project.id, redirect.id);
+                                  // Refresh project data
+                                  const projects = await listProjects();
+                                  const updatedProject = projects.find(p => p.id === project.id);
+                                  if (updatedProject) {
+                                    setProject(updatedProject);
+                                  }
+                                } catch (error) {
+                                  console.error('Failed to delete redirect:', error);
+                                  alert('Failed to delete redirect. Please try again.');
+                                }
+                              }
+                            }}
+                            className="ml-2 p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                            aria-label="Delete redirect"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

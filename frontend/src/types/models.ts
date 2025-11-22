@@ -84,6 +84,13 @@ export const StorageKeys = {
 // Project types
 export type ProjectType = 'github_repo' | 'image_collection' | 'prompt' | 'other';
 
+// Project redirect
+export interface ProjectRedirect {
+  id: number;
+  oldSlug: string;
+  createdAt: string;
+}
+
 // Project model
 export interface Project {
   id: number;
@@ -106,6 +113,7 @@ export interface Project {
   heartCount: number;
   isLikedByUser: boolean;
   content: ProjectContent;
+  redirects?: ProjectRedirect[]; // Old slugs that redirect to this project
   createdAt: string;
   updatedAt: string;
 }
