@@ -66,6 +66,12 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
   const displayUsername = username || user?.username;
   const displayUser = isOwnProfile ? user : profileUser;
 
+  // Debug avatar URL
+  useEffect(() => {
+    console.log('ProfileCenter - displayUser:', displayUser);
+    console.log('ProfileCenter - avatarUrl:', displayUser?.avatarUrl);
+  }, [displayUser]);
+
   // Fetch profile user data if viewing someone else's profile
   useEffect(() => {
     // If viewing own profile, use current user

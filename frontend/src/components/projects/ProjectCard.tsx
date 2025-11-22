@@ -143,13 +143,19 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         {/* User Avatar - Top Left */}
         {userAvatarUrl && !selectionMode && (
           <div className="absolute top-4 left-4 z-30">
-            <div className="w-10 h-10 rounded-full border-2 border-white/80 shadow-lg overflow-hidden bg-white/10 backdrop-blur-sm">
+            <div className="w-10 h-10 rounded-full border-2 border-white/80 shadow-lg overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600">
               <img
                 src={userAvatarUrl}
                 alt={project.username}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
+                  // Show user initials on error
+                  const target = e.target as HTMLImageElement;
+                  const parent = target.parentElement;
+                  if (parent) {
+                    const initial = project.username?.[0]?.toUpperCase() || 'U';
+                    parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-white font-bold text-lg">${initial}</div>`;
+                  }
                 }}
               />
             </div>
