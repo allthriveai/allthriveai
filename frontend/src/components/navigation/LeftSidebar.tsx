@@ -35,7 +35,6 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [tools, setTools] = useState<Tool[]>([]);
-  const [isHovered, setIsHovered] = useState(false);
 
   // Load tools on mount
   useEffect(() => {
@@ -181,43 +180,33 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
 
       {/* Sidebar */}
       <div
-        onMouseEnter={() => !isOpen && setIsHovered(true)}
-        onMouseLeave={() => !isOpen && setIsHovered(false)}
-        className={`fixed h-screen glass-strong flex flex-col overflow-y-auto z-50 transition-all duration-300 ${
-          isOpen ? 'w-64 translate-x-0' : isHovered ? 'w-64 translate-x-0' : 'w-20 translate-x-0 max-md:-translate-x-full'
-        }`}
+        className={`fixed h-screen glass-strong flex flex-col z-50 transition-all duration-300 ${
+          isOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full md:translate-x-0'
+        } overflow-hidden`}
       >
         {/* Header with close/collapse buttons */}
-        <div className="p-6 border-b border-white/10 flex items-center justify-between">
-          {(isOpen || isHovered) ? (
+        <div className="p-6 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+          {isOpen ? (
             <>
               <button
                 onClick={() => navigate('/')}
                 className="flex items-center gap-2 text-slate-900 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
               >
-                <HomeIcon className="w-5 h-5" />
-                <span className="font-semibold">All Thrive</span>
+                <HomeIcon className="w-5 h-5 flex-shrink-0" />
+                <span className="font-semibold whitespace-nowrap transition-opacity duration-300">
+                  All Thrive
+                </span>
               </button>
 
               <div className="flex items-center gap-2">
-                {/* Collapse button (desktop only) - only show when permanently open */}
-                {isOpen && (
-                  <button
-                    onClick={onToggle}
-                    className="hidden md:block p-2 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors"
-                    aria-label="Collapse sidebar"
-                  >
-                    <ChevronLeftIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                  </button>
-                )}
-
-                {/* Close button (mobile only) */}
+                {/* Close/Collapse button */}
                 <button
                   onClick={onToggle}
-                  className="md:hidden p-2 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors"
+                  className="p-2 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors"
                   aria-label="Close sidebar"
                 >
-                  <XMarkIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  <XMarkIcon className="w-5 h-5 text-slate-600 dark:text-slate-400 md:hidden" />
+                  <ChevronLeftIcon className="w-5 h-5 text-slate-600 dark:text-slate-400 hidden md:block" />
                 </button>
               </div>
             </>
@@ -241,8 +230,8 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         </div>
 
         {/* Search Bar */}
-        {(isOpen || isHovered) && (
-          <div className="px-4 pt-4 pb-2">
+        {isOpen && (
+          <div className="px-4 pt-4 pb-2 flex-shrink-0">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
@@ -266,27 +255,31 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         )}
 
         {/* Menu Sections */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden">
           {filteredMenuSections.length > 0 ? (
             filteredMenuSections.map((section) => (
               <div key={section.title} className="mb-2">
                 {/* Section Header */}
                 <button
-                  onClick={() => toggleSection(section.title, isOpen || isHovered, onToggle)}
+                  onClick={() => toggleSection(section.title, isOpen, onToggle)}
                   className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
-                    (isOpen || isHovered) ? 'justify-between' : 'justify-center'
+                    isOpen ? 'justify-between' : 'justify-center'
                   } ${
                     openSections.includes(section.title)
                       ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10'
                   }`}
-                  title={!(isOpen || isHovered) ? section.title : undefined}
+                  title={!isOpen ? section.title : undefined}
                 >
-                  <div className={`flex items-center gap-3 ${(isOpen || isHovered) ? '' : 'justify-center'}`}>
-                    <FontAwesomeIcon icon={section.icon} className="w-4 h-4" />
-                    {(isOpen || isHovered) && <span>{section.title}</span>}
+                  <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
+                    <FontAwesomeIcon icon={section.icon} className="w-4 h-4 flex-shrink-0" />
+                    {isOpen && (
+                      <span className="whitespace-nowrap transition-opacity duration-300">
+                        {section.title}
+                      </span>
+                    )}
                   </div>
-                  {(isOpen || isHovered) && (
+                  {isOpen && (
                     openSections.includes(section.title) ? (
                       <ChevronUpIcon className="w-4 h-4" />
                     ) : (
@@ -296,7 +289,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                 </button>
 
                 {/* Section Items */}
-                {(isOpen || isHovered) && openSections.includes(section.title) && (
+                {isOpen && openSections.includes(section.title) && (
                   <div className="mt-1 space-y-1">
                     {section.items.map((item) => (
                       <div key={item.label}>
@@ -307,11 +300,11 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                               onClick={() => toggleSubItem(item.label)}
                               className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all ${
                                 openSubItems.includes(item.label)
-                                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30 font-medium'
-                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100'
+                                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30 font-semibold'
+                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal'
                               }`}
                             >
-                              <span>{item.label}</span>
+                              <span className="whitespace-nowrap">{item.label}</span>
                               {openSubItems.includes(item.label) ? (
                                 <ChevronUpIcon className="w-3 h-3" />
                               ) : (
@@ -333,7 +326,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal'
                                     }`}
                                   >
-                                    {subItem.label}
+                                    <span className="whitespace-nowrap">{subItem.label}</span>
                                   </a>
                                 ))}
                               </div>
@@ -349,10 +342,10 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                             className={`block px-3 py-2 text-sm rounded-lg transition-all cursor-pointer ${
                               isMenuItemActive(item)
                                 ? 'bg-primary-100 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 font-semibold'
-                                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal hover:font-medium'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal'
                             }`}
                           >
-                            {item.label}
+                            <span className="whitespace-nowrap">{item.label}</span>
                           </a>
                         )}
                       </div>
@@ -371,22 +364,22 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         </nav>
 
         {/* Theme Toggle & Auth Button */}
-        <div className="p-4 border-t border-white/10 space-y-2">
+        <div className="p-4 border-t border-white/10 space-y-2 flex-shrink-0">
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
             className={`w-full flex items-center gap-3 px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors ${
-              (isOpen || isHovered) ? '' : 'justify-center px-0'
+              isOpen ? '' : 'justify-center px-0'
             }`}
-            title={!(isOpen || isHovered) ? (theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode') : undefined}
+            title={!isOpen ? (theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode') : undefined}
           >
             {theme === 'light' ? (
               <MoonIcon className="w-5 h-5" />
             ) : (
               <SunIcon className="w-5 h-5" />
             )}
-            {(isOpen || isHovered) && (
-              <span className="font-medium">
+            {isOpen && (
+              <span className="font-medium whitespace-nowrap transition-opacity duration-300">
                 {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
               </span>
             )}
@@ -397,23 +390,31 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
             <button
               onClick={handleLogout}
               className={`w-full flex items-center gap-3 px-4 py-3 text-red-500 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/10 rounded-lg transition-colors ${
-                (isOpen || isHovered) ? '' : 'justify-center px-0'
+                isOpen ? '' : 'justify-center px-0'
               }`}
-              title={!(isOpen || isHovered) ? 'Log Out' : undefined}
+              title={!isOpen ? 'Log Out' : undefined}
             >
-              <ArrowRightOnRectangleIcon className="w-5 h-5" />
-              {(isOpen || isHovered) && <span className="font-medium">Log Out</span>}
+              <ArrowRightOnRectangleIcon className="w-5 h-5 flex-shrink-0" />
+              {isOpen && (
+                <span className="font-medium whitespace-nowrap transition-opacity duration-300">
+                  Log Out
+                </span>
+              )}
             </button>
           ) : (
             <button
               onClick={() => navigate('/login')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-primary-500 dark:text-primary-400 hover:bg-primary-500/10 dark:hover:bg-primary-500/10 rounded-lg transition-colors ${
-                (isOpen || isHovered) ? '' : 'justify-center px-0'
+                isOpen ? '' : 'justify-center px-0'
               }`}
-              title={!(isOpen || isHovered) ? 'Log In' : undefined}
+              title={!isOpen ? 'Log In' : undefined}
             >
-              <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-              {(isOpen || isHovered) && <span className="font-medium">Log In</span>}
+              <ArrowLeftOnRectangleIcon className="w-5 h-5 flex-shrink-0" />
+              {isOpen && (
+                <span className="font-medium whitespace-nowrap transition-opacity duration-300">
+                  Log In
+                </span>
+              )}
             </button>
           )}
         </div>

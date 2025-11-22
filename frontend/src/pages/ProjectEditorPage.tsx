@@ -6,6 +6,7 @@ import { uploadImage, uploadFile } from '@/services/upload';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { ToolSelector } from '@/components/projects/ToolSelector';
 import type { Project, ProjectBlock } from '@/types/models';
+import { generateSlug } from '@/utils/slug';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -65,6 +66,8 @@ export default function ProjectEditorPage() {
 
   // Metadata fields - separate from page builder blocks
   const [projectTitle, setProjectTitle] = useState('');
+  const [editableSlug, setEditableSlug] = useState('');
+  const [customSlugSet, setCustomSlugSet] = useState(false); // Track if user manually set slug
   const [featuredImageUrl, setFeaturedImageUrl] = useState('');
   const [projectUrl, setProjectUrl] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
@@ -116,6 +119,7 @@ export default function ProjectEditorPage() {
         setProject(foundProject);
         setThumbnailUrl(foundProject.thumbnailUrl || '');
         setProjectTitle(foundProject.title || '');
+        setEditableSlug(foundProject.slug || '');
         setFeaturedImageUrl(foundProject.featuredImageUrl || '');
         setProjectUrl(foundProject.externalUrl || '');
         setProjectDescription(foundProject.description || '');
@@ -162,12 +166,22 @@ export default function ProjectEditorPage() {
     loadProject();
   }, [projectSlug, username]);
 
+  // Auto-generate slug from title (unless manually customized)
+  useEffect(() => {
+    if (projectTitle && !customSlugSet) {
+      const newSlug = generateSlug(projectTitle);
+      if (newSlug !== editableSlug) {
+        setEditableSlug(newSlug);
+      }
+    }
+  }, [projectTitle, customSlugSet, editableSlug]);
+
   // Mark as having unsaved changes when blocks, thumbnail, or metadata change
   useEffect(() => {
     if (project && blocks.length > 0) {
       setHasUnsavedChanges(true);
     }
-  }, [blocks, thumbnailUrl, projectTitle, featuredImageUrl, projectUrl, projectDescription, projectTools, heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages, slideUpElement1Type, slideUpElement1Content, slideUpElement1Caption, slideUpElement2Type, slideUpElement2Content, slideUpElement2Caption]);
+  }, [blocks, thumbnailUrl, projectTitle, editableSlug, featuredImageUrl, projectUrl, projectDescription, projectTools, heroDisplayMode, heroQuote, heroVideoUrl, heroSlideshowImages, slideUpElement1Type, slideUpElement1Content, slideUpElement1Caption, slideUpElement2Type, slideUpElement2Content, slideUpElement2Caption]);
 
   const handleSave = useCallback(async () => {
     if (!project) return;
@@ -179,6 +193,7 @@ export default function ProjectEditorPage() {
     try {
       const payload = {
         title: projectTitle || 'Untitled Project',
+        slug: editableSlug,
         description: projectDescription,
         thumbnailUrl,
         featuredImageUrl,
@@ -213,6 +228,12 @@ export default function ProjectEditorPage() {
       setProject(updatedProject);
       setLastSaved(new Date());
       setHasUnsavedChanges(false);
+
+      // Navigate to new URL if slug changed
+      if (updatedProject.slug !== editableSlug && username) {
+        navigate(`/${username}/${updatedProject.slug}/edit`, { replace: true });
+        setEditableSlug(updatedProject.slug);
+      }
     } catch (err: any) {
       console.error('❌ AUTOSAVE FAILED');
       console.error('Full error object:', err);
@@ -587,12 +608,59 @@ export default function ProjectEditorPage() {
                 </div>
               </div>
 
-              {/* Redirects Section */}
+              {/* Project URL Section */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Redirects</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Add custom redirects or external links</p>
-                <div className="p-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-center">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Redirects coming soon</p>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Project URL</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                  Customize your project's URL. Changes will automatically create a redirect from the old URL.
+                </p>
+
+                {/* Current URL Display */}
+                <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Current URL</p>
+                  <p className="text-sm font-mono text-gray-900 dark:text-white break-all">
+                    {window.location.origin}/{project.username}/{editableSlug || 'untitled'}
+                  </p>
+                </div>
+
+                {/* Slug Editor */}
+                <div className="space-y-2">
+                  <label className="block">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">URL Slug</span>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">/{project.username}/</span>
+                      <input
+                        type="text"
+                        value={editableSlug}
+                        onChange={(e) => {
+                          setEditableSlug(e.target.value);
+                          setCustomSlugSet(true);
+                        }}
+                        placeholder="project-slug"
+                        className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+                  </label>
+
+                  {customSlugSet && (
+                    <button
+                      onClick={() => {
+                        setCustomSlugSet(false);
+                        const newSlug = generateSlug(projectTitle);
+                        setEditableSlug(newSlug);
+                      }}
+                      className="text-xs text-primary-600 dark:text-primary-400 hover:underline"
+                    >
+                      Reset to auto-generate from title
+                    </button>
+                  )}
+                </div>
+
+                {/* Info Note */}
+                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    <strong>Note:</strong> When you change the URL, the old URL will automatically redirect to the new one, so existing links won't break.
+                  </p>
                 </div>
               </div>
             </div>

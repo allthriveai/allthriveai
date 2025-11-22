@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { SlideUpHero } from './SlideUpHero';
+import { ToolTray } from '@/components/tools/ToolTray';
 import type { Project } from '@/types/models';
 
 interface ProjectModalProps {
@@ -25,8 +25,9 @@ export function ProjectModal({
   onLikeToggle,
   showComments = false,
 }: ProjectModalProps) {
-  const navigate = useNavigate();
   const [showCommentSection, setShowCommentSection] = useState(showComments);
+  const [showToolTray, setShowToolTray] = useState(false);
+  const [selectedToolSlug, setSelectedToolSlug] = useState<string | null>(null);
 
   useEffect(() => {
     setShowCommentSection(showComments);
@@ -51,7 +52,8 @@ export function ProjectModal({
   }, [isOpen, onClose]);
 
   const handleToolClick = (toolSlug: string) => {
-    navigate(`/tools/${toolSlug}`);
+    setSelectedToolSlug(toolSlug);
+    setShowToolTray(true);
   };
 
   const handleCommentClick = () => {
@@ -136,6 +138,18 @@ export function ProjectModal({
           </div>
         )}
       </div>
+
+      {/* Tool Tray */}
+      {selectedToolSlug && (
+        <ToolTray
+          isOpen={showToolTray}
+          onClose={() => {
+            setShowToolTray(false);
+            setSelectedToolSlug(null);
+          }}
+          toolSlug={selectedToolSlug}
+        />
+      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { FaStar } from 'react-icons/fa';
 import { parseApiError } from '@/utils/errorHandler';
 import { sanitizeHtml } from '@/utils/sanitize';
 import { SlideUpHero } from '@/components/projects/SlideUpHero';
+import { ToolTray } from '@/components/tools/ToolTray';
 import {
   ArrowLeftIcon,
   CodeBracketIcon,
@@ -59,6 +60,8 @@ export default function ProjectDetailPage() {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [loadKey, setLoadKey] = useState(0); // Used to force reload
+  const [showToolTray, setShowToolTray] = useState(false);
+  const [selectedToolSlug, setSelectedToolSlug] = useState<string | null>(null);
 
   // React Rewards for comment submission celebration
   const { reward: rewardComment } = useReward('commentReward', 'confetti', {
@@ -428,7 +431,10 @@ export default function ProjectDetailPage() {
                       {project.toolsDetails.map((tool) => (
                         <button
                           key={tool.id}
-                          onClick={() => navigate(`tools/${tool.slug}`)}
+                          onClick={() => {
+                            setSelectedToolSlug(tool.slug);
+                            setShowToolTray(true);
+                          }}
                           className="group flex items-center gap-2.5 px-4 py-2 bg-white/5 hover:bg-white/15 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/30 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                         >
                           {tool.logoUrl ? (
@@ -609,7 +615,10 @@ export default function ProjectDetailPage() {
                         element1={project.content?.heroSlideUpElement1}
                         element2={project.content?.heroSlideUpElement2}
                         tools={project.toolsDetails}
-                        onToolClick={(slug) => navigate(`/tools/${slug}`)}
+                        onToolClick={(slug) => {
+                          setSelectedToolSlug(slug);
+                          setShowToolTray(true);
+                        }}
                         isLiked={project.isLikedByUser}
                         heartCount={project.heartCount || 0}
                         onLikeToggle={handleToggleLike}
@@ -1128,6 +1137,18 @@ export default function ProjectDetailPage() {
           </>
         )}
       </div>
+
+      {/* Tool Tray */}
+      {selectedToolSlug && (
+        <ToolTray
+          isOpen={showToolTray}
+          onClose={() => {
+            setShowToolTray(false);
+            setSelectedToolSlug(null);
+          }}
+          toolSlug={selectedToolSlug}
+        />
+      )}
 
       {/* Nested route outlet for tool detail overlay */}
       <Outlet />

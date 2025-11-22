@@ -37,7 +37,7 @@ export default function ProfilePage() {
   return (
     <DashboardLayout>
       {({ openChat }) => (
-        <div className="flex h-full overflow-hidden">
+        <div className="flex h-full">
           {/* Center Profile */}
           <ProfileCenter
             username={username}

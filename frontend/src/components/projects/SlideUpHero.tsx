@@ -20,6 +20,9 @@ interface SlideUpHeroProps {
   // Comment functionality
   onCommentClick?: () => void;
   isAuthenticated?: boolean;
+  // Controlled expansion state (optional)
+  isExpanded?: boolean;
+  onToggleExpanded?: () => void;
 }
 
 function TextWithCopy({ content, caption, fontSize }: { content: string; caption?: string; fontSize: string }) {
@@ -79,13 +82,13 @@ function renderElement(element: SlideUpElement | undefined) {
           <img
             src={element.content}
             alt={element.caption || 'Hero image'}
-            className="w-full h-full object-cover rounded-lg"
+            className="w-full h-full object-cover"
             onError={(e) => {
               (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
             }}
           />
           {element.caption && (
-            <p className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
+            <p className="mt-2 text-sm text-center text-white/80 drop-shadow-md">
               {element.caption}
             </p>
           )}
@@ -111,17 +114,20 @@ function renderElement(element: SlideUpElement | undefined) {
         // Render native video player for MP4/WebM/OGG
         return (
           <div className="w-full h-full flex flex-col">
-            <div className="relative w-full rounded-lg overflow-hidden bg-black">
+            <div className="relative w-full overflow-hidden">
               <video
                 src={element.content}
-                controls
-                className="w-full h-auto"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-auto block"
               >
                 Your browser does not support the video tag.
               </video>
             </div>
             {element.caption && (
-              <p className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
+              <p className="mt-2 text-sm text-center text-white/80 drop-shadow-md">
                 {element.caption}
               </p>
             )}
@@ -141,7 +147,7 @@ function renderElement(element: SlideUpElement | undefined) {
 
       return (
         <div className="w-full h-full flex flex-col">
-          <div className="relative w-full rounded-lg overflow-hidden bg-black" style={{ aspectRatio: '9/16' }}>
+          <div className="relative w-full overflow-hidden bg-black" style={{ aspectRatio: '9/16' }}>
             <iframe
               src={embedUrl}
               title={element.caption || 'Video'}
@@ -151,7 +157,7 @@ function renderElement(element: SlideUpElement | undefined) {
             />
           </div>
           {element.caption && (
-            <p className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
+            <p className="mt-2 text-sm text-center text-white/80 drop-shadow-md">
               {element.caption}
             </p>
           )}
@@ -196,10 +202,23 @@ export function SlideUpHero({
   onLikeToggle,
   onCommentClick,
   isAuthenticated = false,
+  isExpanded: controlledIsExpanded,
+  onToggleExpanded,
 }: SlideUpHeroProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Use controlled state if provided, otherwise use internal state
+  const isExpanded = controlledIsExpanded !== undefined ? controlledIsExpanded : internalIsExpanded;
+
+  const toggleExpanded = () => {
+    if (onToggleExpanded) {
+      onToggleExpanded();
+    } else {
+      setInternalIsExpanded(!internalIsExpanded);
+    }
+  };
 
   // Detect mobile viewport
   useEffect(() => {
@@ -215,17 +234,18 @@ export function SlideUpHero({
 
   // Auto-expand on mobile after a delay
   useEffect(() => {
-    if (isMobile && element2) {
+    if (isMobile && element2 && !onToggleExpanded) {
+      // Only auto-expand if we're using internal state (not controlled)
       const timer = setTimeout(() => {
-        setIsExpanded(true);
+        setInternalIsExpanded(true);
       }, 2000); // Show element2 after 2 seconds on mobile
 
       return () => clearTimeout(timer);
     }
-  }, [isMobile, element2]);
+  }, [isMobile, element2, onToggleExpanded]);
 
   const handleToggle = () => {
-    setIsExpanded(!isExpanded);
+    toggleExpanded();
   };
 
   const handleCopy = async () => {
@@ -243,13 +263,10 @@ export function SlideUpHero({
   return (
     <div className="w-full max-w-4xl mx-auto">
       <div className="relative group">
-        {/* Glowing backdrop */}
-        <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
-
         {/* Main Container */}
-        <div className="relative bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl overflow-hidden">
+        <div className="relative overflow-hidden">
           {/* Element 1 - Always visible (background) */}
-          <div className="relative p-4 md:p-6">
+          <div className="relative">
             {renderElement(element1)}
           </div>
 

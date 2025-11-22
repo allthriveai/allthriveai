@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   server: {
+    port: 3000,
     // No proxy needed - frontend makes requests directly to backend from browser
     // Both services expose ports to host, so browser can access both
   },

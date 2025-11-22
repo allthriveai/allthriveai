@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { Project } from '@/types/models';
 import {
   CodeBracketIcon,
@@ -19,7 +19,10 @@ import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { toggleProjectLike } from '@/services/projects';
 import { ProjectModal } from './ProjectModal';
 import { CommentTray } from './CommentTray';
+import { ToolTray } from '@/components/tools/ToolTray';
+import { SlideUpHero } from './SlideUpHero';
 import { useAuth } from '@/hooks/useAuth';
+import { useReward } from 'react-rewards';
 
 interface ProjectCardProps {
   project: Project;
@@ -56,8 +59,21 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const [isLiking, setIsLiking] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showCommentTray, setShowCommentTray] = useState(false);
+  const [showToolTray, setShowToolTray] = useState(false);
+  const [slideUpExpanded, setSlideUpExpanded] = useState(false);
   const Icon = typeIcons[project.type];
   const projectUrl = `/${project.username}/${project.slug}`;
+
+  // React Rewards for project likes
+  const { reward: rewardLike } = useReward(`likeReward-${project.id}`, 'emoji', {
+    emoji: ['💗'],
+    angle: 90,
+    decay: 0.91,
+    spread: 100,
+    startVelocity: 25,
+    elementCount: 50,
+    lifetime: 200,
+  });
 
   const handleClick = (e: React.MouseEvent) => {
     if (selectionMode && onSelect) {
@@ -78,6 +94,11 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       const result = await toggleProjectLike(project.id);
       setIsLiked(result.liked);
       setHeartCount(result.heartCount);
+
+      // Trigger pink heart celebration when liked
+      if (result.liked) {
+        rewardLike();
+      }
     } catch (error) {
       console.error('Failed to toggle like:', error);
     } finally {
@@ -100,9 +121,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const handleToolClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (project.toolsDetails && project.toolsDetails.length > 0) {
-      navigate(`/tools/${project.toolsDetails[0].slug}`);
-    }
+    setShowToolTray(true);
   };
 
   // Get hero element to display
@@ -161,12 +180,55 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     const gradientFrom = project.content?.heroGradientFrom || 'rgb(124, 58, 237)'; // violet-600
     const gradientTo = project.content?.heroGradientTo || 'rgb(79, 70, 229)'; // indigo-600
 
+    // Determine dynamic size based on hero element type and content
+    const getDynamicSizeClass = () => {
+      // Quote cards - vary based on text length (keep fixed heights for text content)
+      if (isQuote && heroElement.type === 'quote') {
+        const textLength = heroElement.text?.length || 0;
+        if (textLength < 100) return { height: 'min-h-[300px]', width: '' }; // Short quote
+        if (textLength < 250) return { height: 'min-h-[400px]', width: '' }; // Medium quote
+        return { height: 'min-h-[500px]', width: '' }; // Long quote
+      }
+
+      // SlideUp cards - natural height
+      if (isSlideup) {
+        return { height: '', width: '' };
+      }
+
+      // Video cards - no min-height, let video determine size
+      if (heroElement.type === 'video') {
+        return { height: '', width: '' };
+      }
+
+      // Slideshow - no min-height, let images determine size
+      if (heroElement.type === 'slideshow') {
+        return { height: '', width: '' };
+      }
+
+      // Image cards - no min-height (images define their own height)
+      if (heroElement.type === 'image') {
+        // For GitHub repos
+        if (project.type === 'github_repo') {
+          return { height: '', width: '' };
+        }
+
+        // For regular images, height is natural
+        return { height: '', width: '' };
+      }
+
+      // Default
+      return { height: '', width: '' };
+    };
+
+    const { height: dynamicHeightClass, width: dynamicWidthClass } = getDynamicSizeClass();
+
     return (
+      <>
       <CardWrapper
         {...(cardProps as React.ComponentProps<typeof Link>)}
-        className={`block relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 group ${
+        className={`block relative rounded overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 group ${
           isSelected ? 'ring-4 ring-primary-500' : ''
-        } ${(isQuote || isSlideup) ? 'min-h-[400px]' : (isMediaCard ? 'aspect-[3/4]' : 'h-auto')}`}
+        } ${dynamicHeightClass} ${dynamicWidthClass}`}
       >
 
         {/* Selection checkbox */}
@@ -183,19 +245,19 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         )}
 
         {/* BACKGROUND LAYER */}
-        <div className="absolute inset-0 bg-gray-900">
+        <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'}`}>
             {heroElement.type === 'image' && (
               <img
                 src={heroElement.url}
                 alt={project.title}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-auto block"
               />
             )}
 
             {heroElement.type === 'video' && (
               <video
                 src={heroElement.url}
-                className="w-full h-full object-cover"
+                className="w-full h-auto block"
                 autoPlay
                 loop
                 muted
@@ -207,7 +269,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
               <img
                 src={heroElement.images[0]}
                 alt={project.title}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-auto block"
               />
             )}
 
@@ -222,34 +284,25 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
               </div>
             )}
 
-            {isSlideup && heroElement.element1 && (
-              <>
-                {/* Show element1 as background */}
-                {heroElement.element1.type === 'image' && (
-                  <img
-                    src={heroElement.element1.content}
-                    alt={project.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                )}
-                {heroElement.element1.type === 'video' && (
-                  <video
-                    src={heroElement.element1.content}
-                    className="w-full h-full object-cover"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                  />
-                )}
-                {heroElement.element1.type === 'text' && (
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center p-6">
-                    <p className="text-white text-lg md:text-xl font-medium leading-relaxed line-clamp-6 text-center">
-                      {heroElement.element1.content}
-                    </p>
-                  </div>
-                )}
-              </>
+            {isSlideup && heroElement.element1 && heroElement.element2 && (
+              <div onClick={(e) => e.preventDefault()}>
+                <SlideUpHero
+                  element1={heroElement.element1}
+                  element2={heroElement.element2}
+                  tools={project.toolsDetails}
+                  onToolClick={(slug) => {
+                    setSelectedToolSlug(slug);
+                    setShowToolTray(true);
+                  }}
+                  isLiked={isLiked}
+                  heartCount={heartCount}
+                  onLikeToggle={handleLike}
+                  onCommentClick={handleCommentClick}
+                  isAuthenticated={isAuthenticated}
+                  isExpanded={slideUpExpanded}
+                  onToggleExpanded={() => setSlideUpExpanded(!slideUpExpanded)}
+                />
+              </div>
             )}
         </div>
 
@@ -289,10 +342,10 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         )}
 
         {/* GRADIENT OVERLAY & FOOTER */}
-        {/* Always render footer absolute at bottom for seamless look */}
+        {/* Always render footer absolute at bottom for seamless overlay look */}
         <div className="absolute bottom-0 left-0 right-0 z-20">
-          {/* Gradient Background for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent -top-12" />
+          {/* Gradient Background for smooth overlay fade */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent -top-40" />
 
           <div className="relative p-5 pt-2">
             <h3 className="text-xl font-bold mb-1 line-clamp-2 leading-tight text-white drop-shadow-md">
@@ -350,6 +403,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
 
                 {/* Heart/Like Button */}
                 <button
+                  id={`likeReward-${project.id}`}
                   onClick={handleLike}
                   disabled={isLiking}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 disabled:opacity-50 group/heart bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
@@ -375,58 +429,83 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                   <ChatBubbleLeftIcon className="w-4 h-4 text-white group-hover/comment:scale-110 transition-transform drop-shadow-sm" />
                 </button>
 
-                {/* Up Arrow - More Info */}
-                <button
-                  onClick={handleMoreInfoClick}
-                  className="p-1.5 rounded-full transition-all hover:scale-105 group/more bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
-                  aria-label="More info"
-                >
-                  <ChevronUpIcon className="w-4 h-4 text-white group-hover/more:scale-110 transition-transform drop-shadow-sm" />
-                </button>
+                {/* Up Arrow - More Info or Slide Up */}
+                {isSlideup && project.content?.heroSlideUpElement1 && project.content?.heroSlideUpElement2 ? (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSlideUpExpanded(!slideUpExpanded);
+                    }}
+                    className="p-1.5 rounded-full transition-all hover:scale-105 group/more bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
+                    aria-label="Toggle slide up"
+                  >
+                    <ChevronUpIcon className="w-4 h-4 text-white group-hover/more:scale-110 transition-transform drop-shadow-sm" />
+                  </button>
+                ) : project.content?.heroSlideUpElement1 && project.content?.heroSlideUpElement2 && (
+                  <button
+                    onClick={handleMoreInfoClick}
+                    className="p-1.5 rounded-full transition-all hover:scale-105 group/more bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
+                    aria-label="More info"
+                  >
+                    <ChevronUpIcon className="w-4 h-4 text-white group-hover/more:scale-110 transition-transform drop-shadow-sm" />
+                  </button>
+                )}
               </div>
 
               {/* Right side - Tools */}
               {project.toolsDetails && project.toolsDetails.length > 0 && (
                 <button
                   onClick={handleToolClick}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-all hover:scale-105 bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 cursor-pointer"
+                  className="p-2 rounded-full transition-all hover:scale-110 bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 cursor-pointer"
+                  title={project.toolsDetails[0].name}
                 >
-                  {project.toolsDetails[0].logoUrl && (
+                  {project.toolsDetails[0].logoUrl ? (
                     <img
                       src={project.toolsDetails[0].logoUrl}
                       alt={project.toolsDetails[0].name}
-                      className="w-4 h-4 rounded object-contain"
+                      className="w-5 h-5 rounded object-contain"
                     />
+                  ) : (
+                    <CodeBracketIcon className="w-5 h-5 text-white" />
                   )}
-                  <span className="text-xs font-bold text-white">
-                    {project.toolsDetails[0].name}
-                  </span>
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Project Modal for slide-up hero */}
-        <ProjectModal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          project={project}
-          isAuthenticated={isAuthenticated}
-          isLiked={isLiked}
-          heartCount={heartCount}
-          onLikeToggle={() => handleLike()}
-          showComments={false}
-        />
-
-        {/* Comment Tray */}
-        <CommentTray
-          isOpen={showCommentTray}
-          onClose={() => setShowCommentTray(false)}
-          project={project}
-          isAuthenticated={isAuthenticated}
-        />
       </CardWrapper>
+
+      {/* Project Modal for slide-up hero */}
+      <ProjectModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        project={project}
+        isAuthenticated={isAuthenticated}
+        isLiked={isLiked}
+        heartCount={heartCount}
+        onLikeToggle={() => handleLike()}
+        showComments={false}
+      />
+
+      {/* Comment Tray */}
+      <CommentTray
+        isOpen={showCommentTray}
+        onClose={() => setShowCommentTray(false)}
+        project={project}
+        isAuthenticated={isAuthenticated}
+      />
+
+      {/* Tool Tray */}
+      {project.toolsDetails && project.toolsDetails.length > 0 && (
+        <ToolTray
+          isOpen={showToolTray}
+          onClose={() => setShowToolTray(false)}
+          toolSlug={project.toolsDetails[0].slug}
+        />
+      )}
+    </>
     );
   }
 

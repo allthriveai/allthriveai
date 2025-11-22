@@ -167,7 +167,9 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
   };
 
   const toggleSelectAll = () => {
-    const currentProjects = activeTab === 'showcase' ? projects.showcase : projects.playground;
+    const currentProjects = activeTab === 'showcase'
+      ? projects.showcase.filter(p => p.isShowcase)
+      : projects.playground;
     if (selectedProjectIds.size === currentProjects.length) {
       setSelectedProjectIds(new Set());
     } else {
@@ -262,7 +264,7 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
       ] as const;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
+    <div className="flex-1 min-h-0 overflow-y-auto bg-white dark:bg-gray-900">
       {/* Profile Header with Banner */}
       <div className="relative">
         {/* Banner Image */}
@@ -659,29 +661,31 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
           {activeTab === 'showcase' && (
             <div>
               {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="glass-subtle rounded-xl p-4 animate-pulse">
-                        <div className="aspect-video bg-gray-300 dark:bg-gray-700 rounded-lg mb-4" />
-                        <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-2" />
-                        <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-full" />
-                      </div>
+                <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <div
+                        key={i}
+                        className="break-inside-avoid mb-2 rounded overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse"
+                        style={{ height: `${300 + (i % 3) * 120}px` }}
+                      />
                     ))}
                   </div>
-              ) : projects.showcase.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {projects.showcase.map((project) => (
-                      <ProjectCard
-                        key={project.id}
-                        project={project}
-                        selectionMode={selectionMode}
-                        isSelected={selectedProjectIds.has(project.id)}
-                        onSelect={toggleSelection}
-                        isOwner={isOwnProfile}
-                        onDelete={handleDeleteProject}
-                        onToggleShowcase={handleToggleShowcase}
-                        userAvatarUrl={displayUser?.avatarUrl}
-                      />
+              ) : projects.showcase.filter(p => p.isShowcase).length > 0 ? (
+                <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
+                    {projects.showcase.filter(p => p.isShowcase).map((project) => (
+                      <div key={project.id} className="break-inside-avoid mb-2">
+                        <ProjectCard
+                          project={project}
+                          selectionMode={selectionMode}
+                          isSelected={selectedProjectIds.has(project.id)}
+                          onSelect={toggleSelection}
+                          isOwner={isOwnProfile}
+                          variant="masonry"
+                          onDelete={handleDeleteProject}
+                          onToggleShowcase={handleToggleShowcase}
+                          userAvatarUrl={displayUser?.avatarUrl}
+                        />
+                      </div>
                     ))}
                   </div>
               ) : (
@@ -739,19 +743,19 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                 </div>
 
                 {isLoading ? (
-                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                       <div
                         key={i}
-                        className="break-inside-avoid mb-6 rounded-2xl overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse"
+                        className="break-inside-avoid mb-2 rounded overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse"
                         style={{ height: `${300 + (i % 3) * 120}px` }}
                       />
                     ))}
                   </div>
                 ) : projects.playground.length > 0 ? (
-                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
                     {projects.playground.map((project) => (
-                      <div key={project.id} className="break-inside-avoid mb-6">
+                      <div key={project.id} className="break-inside-avoid mb-2">
                         <ProjectCard
                           project={project}
                           selectionMode={selectionMode}
