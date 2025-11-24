@@ -184,8 +184,8 @@ export function ExplorePage() {
             {showFilters && filterOptions && (
               <div className="mb-6">
                 <FilterPanel
-                  topics={filterOptions.topics}
-                  tools={filterOptions.tools}
+                  topics={activeTab === 'topics' ? filterOptions.topics : []}
+                  tools={activeTab === 'tools' ? filterOptions.tools : []}
                   selectedTopics={selectedTopics}
                   selectedTools={selectedTools}
                   onTopicsChange={handleTopicsChange}

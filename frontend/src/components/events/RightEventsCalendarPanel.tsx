@@ -52,8 +52,9 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
       const data = await eventsService.getEvents();
       setEvents(data);
     } catch (err) {
-      setError('Failed to load events');
-      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load events';
+      setError(errorMessage);
+      console.error('Error loading events:', err);
     } finally {
       setLoading(false);
     }

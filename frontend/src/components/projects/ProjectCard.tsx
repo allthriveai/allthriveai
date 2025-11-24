@@ -163,12 +163,22 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       return { type: 'image' as const, url: project.thumbnailUrl };
     }
 
-    // Generate Unsplash image based on project title/type
-    const searchQuery = project.title || 'technology';
-    const encodedQuery = encodeURIComponent(searchQuery);
+    // Create a gradient placeholder with project title
+    const gradients = [
+      'from-blue-500 to-purple-600',
+      'from-green-500 to-teal-600',
+      'from-orange-500 to-red-600',
+      'from-pink-500 to-rose-600',
+      'from-indigo-500 to-blue-600',
+      'from-yellow-500 to-orange-600',
+    ];
+    const gradientIndex = project.id ? project.id % gradients.length : 0;
+
+    // Return a special type to render gradient instead of image
     return {
-      type: 'image' as const,
-      url: `https://source.unsplash.com/800x600/?${encodedQuery},technology,ai`
+      type: 'gradient' as const,
+      gradient: gradients[gradientIndex],
+      title: project.title
     };
   };
 
@@ -181,9 +191,10 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   if (variant === 'masonry') {
     const heroElement = getHeroElement();
     // Treat quote and slideup cards as media cards for styling purposes (dark mode overlay style)
-    const isMediaCard = ['image', 'video', 'slideshow', 'quote', 'slideup'].includes(heroElement.type) || (heroElement.type === 'image' && project.type !== 'github_repo');
+    const isMediaCard = ['image', 'video', 'slideshow', 'quote', 'slideup', 'gradient'].includes(heroElement.type) || (heroElement.type === 'image' && project.type !== 'github_repo');
     const isQuote = heroElement.type === 'quote';
     const isSlideup = heroElement.type === 'slideup';
+    const isGradient = heroElement.type === 'gradient';
 
     // Get gradient colors for quote cards
     const gradientFrom = project.content?.heroGradientFrom || GRADIENT_OVERLAY.DEFAULT_FROM;
@@ -254,14 +265,24 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         )}
 
         {/* BACKGROUND LAYER */}
-        <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''}`}>
+        <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900 min-h-[280px]' : ''} ${isGradient ? 'min-h-[280px]' : ''}`}>
             {heroElement.type === 'image' && (
               <img
                 src={heroElement.url}
                 alt={project.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full min-h-[280px] object-cover"
                 loading="lazy"
               />
+            )}
+
+            {isGradient && heroElement.type === 'gradient' && (
+              <div className={`w-full min-h-[280px] bg-gradient-to-br ${heroElement.gradient} flex items-center justify-center p-8`}>
+                <div className="text-center">
+                  <h3 className="text-3xl font-bold text-white drop-shadow-lg">
+                    {heroElement.title}
+                  </h3>
+                </div>
+              </div>
             )}
 
             {heroElement.type === 'video' && (() => {
@@ -359,7 +380,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         {isQuote && (
           <div className="absolute top-0 left-0 right-0 bottom-40 px-6 flex items-center justify-center z-10 pointer-events-none overflow-hidden">
              <p className="text-lg md:text-xl font-medium leading-relaxed tracking-normal drop-shadow-sm font-sans line-clamp-[8] text-white/95 text-center">
-               {heroElement.text}
+               “{heroElement.text}”
              </p>
           </div>
         )}

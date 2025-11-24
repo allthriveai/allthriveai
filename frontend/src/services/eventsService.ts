@@ -34,18 +34,31 @@ export interface CreateEventData {
   is_published?: boolean;
 }
 
-const EVENTS_API_URL = `${API_BASE_URL}/events/`;
+const EVENTS_API_URL = `${API_BASE_URL}/api/v1/events/`;
 
 export const eventsService = {
   // Get all events
   async getEvents(): Promise<Event[]> {
-    const response = await apiFetch(EVENTS_API_URL);
-    if (!response.ok) {
-      throw new Error('Failed to fetch events');
+    try {
+      const response = await apiFetch(EVENTS_API_URL);
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Please log in to view events');
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Server error: ${response.status}`);
+      }
+      const data = await response.json();
+      // Handle both array and paginated response formats
+      return Array.isArray(data) ? data : (data.results || []);
+    } catch (error) {
+      // Network error or other fetch failure
+      if (error instanceof Error && error.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please check your connection.');
+      }
+      // Re-throw if it's already our custom error
+      throw error;
     }
-    const data = await response.json();
-    // Handle both array and paginated response formats
-    return Array.isArray(data) ? data : (data.results || []);
   },
 
   // Get a single event

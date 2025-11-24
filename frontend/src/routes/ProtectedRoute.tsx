@@ -21,7 +21,7 @@ export function ProtectedRoute({ children, redirectIfAuthenticated = false }: Pr
 
   // Redirect authenticated users away from login page
   if (redirectIfAuthenticated && isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/explore" replace />;
   }
 
   // Redirect unauthenticated users to login

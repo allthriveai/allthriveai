@@ -550,7 +550,7 @@ export default function ProjectDetailPage() {
                           {/* Quote container */}
                           <div className="relative p-6 md:p-8 lg:p-10 bg-white/5 backdrop-blur-md rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl max-h-[80vh] overflow-y-auto">
                             <p className="font-light text-white leading-relaxed text-center relative z-10" style={{ fontSize, lineHeight: '1.45' }}>
-                              {heroQuote.trim()}
+                              “{heroQuote.trim()}”
                             </p>
                           </div>
                         </div>
@@ -690,14 +690,25 @@ export default function ProjectDetailPage() {
 
         </div>
 
-        {/* Project Details Section (Below the fold) - Only show if there are blocks */}
+        {/* Project Details Section (Below the fold) - Only show if there are real details */}
         {(() => {
-          // Filter out blocks that shouldn't be shown
+          // Helper to strip HTML and normalize text
+          const normalizeText = (text: string | undefined | null) =>
+            (text || '').replace(/<[^>]*>/g, '').trim().toLowerCase();
+
+          // Filter out placeholder/empty blocks that shouldn't be shown
           const visibleBlocks = project.content?.blocks?.filter((block, index) => {
-            const isFirstHeadingMatchingTitle = index === 0 &&
-              block.type === 'text' &&
-              block.style === 'heading' &&
-              block.content?.replace(/<[^>]*>/g, '').trim() === project.title;
+            const isHeading = block.type === 'text' && block.style === 'heading';
+            const normalizedContent = normalizeText(block.content);
+
+            const isPlaceholderHeading =
+              isHeading &&
+              (normalizedContent === normalizeText(project.title) ||
+                normalizedContent === 'untitled project');
+
+            const isFirstHeadingMatchingTitle = index === 0 && isPlaceholderHeading;
+
+            // Hide placeholder heading-only content
             return !isFirstHeadingMatchingTitle;
           }) || [];
 
@@ -714,11 +725,16 @@ export default function ProjectDetailPage() {
               {/* Content Blocks */}
               <div className="space-y-8">
                 {project.content.blocks.map((block, index) => {
-                  // Skip the first block if it's a heading that matches the project title
-                  const isFirstHeadingMatchingTitle = index === 0 &&
-                    block.type === 'text' &&
-                    block.style === 'heading' &&
-                    block.content?.replace(/<[^>]*>/g, '').trim() === project.title;
+                  // Skip the first block if it's a placeholder heading matching the title or default text
+                  const isHeading = block.type === 'text' && block.style === 'heading';
+                  const normalizedContent = normalizeText(block.content);
+
+                  const isPlaceholderHeading =
+                    isHeading &&
+                    (normalizedContent === normalizeText(project.title) ||
+                      normalizedContent === 'untitled project');
+
+                  const isFirstHeadingMatchingTitle = index === 0 && isPlaceholderHeading;
 
                   if (isFirstHeadingMatchingTitle) {
                     return null;

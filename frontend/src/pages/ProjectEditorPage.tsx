@@ -144,21 +144,11 @@ export default function ProjectEditorPage() {
         setSlideUpElement2Content(foundProject.content?.heroSlideUpElement2?.content || '');
         setSlideUpElement2Caption(foundProject.content?.heroSlideUpElement2?.caption || '');
 
-        // Initialize blocks
+        // Initialize blocks (empty by default until user adds Project Details)
         const blocksWithIds = (foundProject.content?.blocks || []).map((block: any) => ({
           ...block,
           id: block.id || crypto.randomUUID(),
         }));
-
-        // If no blocks, start with a title block
-        if (blocksWithIds.length === 0) {
-          blocksWithIds.push({
-            id: crypto.randomUUID(),
-            type: 'text',
-            content: foundProject.title || 'Untitled Project',
-            style: 'heading',
-          });
-        }
 
         setBlocks(blocksWithIds);
 
