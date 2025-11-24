@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { TOPICS } from '@/config/topics';
+import type { TopicSlug } from '@/config/topics';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SemanticSearchBar } from '@/components/explore/SemanticSearchBar';
 import { TabNavigation, type ExploreTab } from '@/components/explore/TabNavigation';
@@ -27,8 +29,8 @@ export function ExplorePage() {
     (searchParams.get('tab') as ExploreTab) || 'for-you'
   );
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-  const [selectedTopics, setSelectedTopics] = useState<string[]>(
-    searchParams.get('topics')?.split(',').filter(Boolean) || []
+  const [selectedTopics, setSelectedTopics] = useState<TopicSlug[]>(
+    (searchParams.get('topics')?.split(',').filter(Boolean) as TopicSlug[]) || []
   );
   const [selectedTools, setSelectedTools] = useState<number[]>(
     searchParams.get('tools')?.split(',').map(Number).filter(Boolean) || []
@@ -125,7 +127,7 @@ export function ExplorePage() {
   };
 
   // Handle filter changes
-  const handleTopicsChange = (topics: string[]) => {
+  const handleTopicsChange = (topics: TopicSlug[]) => {
     setSelectedTopics(topics);
     setPage(1);
   };
@@ -181,11 +183,11 @@ export function ExplorePage() {
             <TabNavigation activeTab={activeTab} onChange={handleTabChange} />
 
             {/* Filters */}
-            {showFilters && filterOptions && (
+            {showFilters && (
               <div className="mb-6">
                 <FilterPanel
-                  topics={activeTab === 'topics' ? filterOptions.topics : []}
-                  tools={activeTab === 'tools' ? filterOptions.tools : []}
+                  topics={activeTab === 'topics' ? TOPICS : []}
+                  tools={activeTab === 'tools' ? (filterOptions?.tools ?? []) : []}
                   selectedTopics={selectedTopics}
                   selectedTools={selectedTools}
                   onTopicsChange={handleTopicsChange}

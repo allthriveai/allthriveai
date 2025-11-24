@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUserActivity } from '@/services/auth';
+import { useThriveCircle } from '@/hooks/useThriveCircle';
 import type { UserActivity, UserStatistics, QuizScore, PointsHistory } from '@/services/auth';
 import {
   ClockIcon,
@@ -13,10 +14,12 @@ import {
   AcademicCapIcon,
   SparklesIcon,
   PlusCircleIcon,
+  FireIcon,
 } from '@heroicons/react/24/outline';
 
 export function ActivityFeed() {
   const navigate = useNavigate();
+  const { tierStatus, allActivities: xpActivities, isLoadingActivities } = useThriveCircle();
   const [activities, setActivities] = useState<UserActivity[]>([]);
   const [statistics, setStatistics] = useState<UserStatistics | null>(null);
   const [pointsFeed, setPointsFeed] = useState<PointsHistory[]>([]);
@@ -281,64 +284,71 @@ export function ActivityFeed() {
         )}
       </div>
 
-      {/* Points Tracker Section */}
+      {/* XP Activity Feed */}
       <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-              <SparklesIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+            <div className="p-2 bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-lg">
+              <FireIcon className="w-5 h-5 text-orange-600 dark:text-orange-400" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Points Tracker</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">XP Activity</h3>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-              {statistics?.totalPoints || 0}
-            </span>
-            <span className="text-sm text-gray-500 dark:text-gray-400">pts</span>
-          </div>
+          {tierStatus && (
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 dark:from-orange-400 dark:to-amber-400 bg-clip-text text-transparent">
+                {tierStatus.totalXp}
+              </span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">XP</span>
+            </div>
+          )}
         </div>
 
-        {pointsFeed && pointsFeed.length > 0 ? (
+        {!isLoadingActivities && xpActivities && xpActivities.length > 0 ? (
           <div className="space-y-3">
-            {pointsFeed.map((point: PointsHistory) => (
+            {xpActivities.map((activity) => (
               <div
-                key={point.id}
+                key={activity.id}
                 className="flex items-center justify-between p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-semibold text-gray-900 dark:text-white">
-                      {point.activityDisplay}
+                      {activity.activityTypeDisplay}
                     </h4>
+                    <span className="px-2 py-0.5 bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-700 dark:text-orange-300 rounded text-xs font-medium">
+                      {activity.tierAtTime}
+                    </span>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                    {point.description}
-                  </p>
+                  {activity.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      {activity.description}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                    {formatDate(point.createdAt)}
+                    {formatDate(activity.createdAt)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
-                  <div className={`text-2xl font-bold ${
-                    point.pointsAwarded > 0
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-red-600 dark:text-red-400'
-                  }`}>
-                    {point.pointsAwarded > 0 ? '+' : ''}{point.pointsAwarded}
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    +{activity.amount}
                   </div>
-                  {point.pointsAwarded > 0 && (
-                    <PlusCircleIcon className="w-6 h-6 text-green-500 flex-shrink-0" />
-                  )}
+                  <FireIcon className="w-6 h-6 text-orange-500 flex-shrink-0" />
                 </div>
               </div>
             ))}
           </div>
+        ) : isLoadingActivities ? (
+          <div className="space-y-3 animate-pulse">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-20 bg-gray-300 dark:bg-gray-700 rounded-lg" />
+            ))}
+          </div>
         ) : (
           <div className="text-center py-8">
-            <SparklesIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-500 dark:text-gray-400 mb-2">No points earned yet</p>
+            <FireIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-500 dark:text-gray-400 mb-2">No XP earned yet</p>
             <p className="text-sm text-gray-400 dark:text-gray-500">
-              Complete quizzes, create projects, and engage with the community to earn points!
+              Complete quizzes, create projects, and engage with the community to earn XP and level up your tier!
             </p>
           </div>
         )}

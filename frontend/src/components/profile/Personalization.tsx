@@ -5,6 +5,8 @@ import {
   deleteUserTag,
 } from '@/services/personalization';
 import type { Taxonomy, UserTag, TaxonomyCategory } from '@/types/models';
+import { TOPICS } from '@/config/topics';
+import type { TopicSlug } from '@/config/topics';
 import {
   SparklesIcon,
   TagIcon,
@@ -13,44 +15,42 @@ import {
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 
+const COLOR_CLASSES: Record<string, string> = {
+  blue: 'bg-blue-500',
+  teal: 'bg-teal-500',
+  purple: 'bg-purple-500',
+  orange: 'bg-orange-500',
+  amber: 'bg-amber-500',
+  pink: 'bg-pink-500',
+  indigo: 'bg-indigo-500',
+  emerald: 'bg-emerald-500',
+  cyan: 'bg-cyan-500',
+  lime: 'bg-lime-500',
+  violet: 'bg-violet-500',
+  yellow: 'bg-yellow-500',
+  red: 'bg-red-500',
+  slate: 'bg-slate-500',
+  fuchsia: 'bg-fuchsia-500',
+};
+
 export function Personalization() {
   const [manualTags, setManualTags] = useState<UserTag[]>([]);
   const [autoTags, setAutoTags] = useState<UserTag[]>([]);
   const [taxonomies, setTaxonomies] = useState<Taxonomy[]>([]);
   const [selectedTaxonomies, setSelectedTaxonomies] = useState<Set<number>>(new Set());
+  const [selectedTopics, setSelectedTopics] = useState<TopicSlug[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingTopics, setIsSavingTopics] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<TaxonomyCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadPersonalization();
+    loadUserTopics();
   }, []);
 
-  async function loadPersonalization() {
-    try {
-      setIsLoading(true);
-      const data = await getUserPersonalization();
-      console.log('Personalization data:', data);
-      setManualTags(data.manual_tags || []);
-      setAutoTags(data.auto_generated_tags || []);
-      setTaxonomies(data.available_taxonomies || []);
-
-      // Pre-select existing manual tags
-      const existingTaxonomyIds = new Set(
-        (data.manual_tags || [])
-          .filter(tag => tag.taxonomy)
-          .map(tag => tag.taxonomy!)
-      );
-      setSelectedTaxonomies(existingTaxonomyIds);
-    } catch (err: any) {
-      console.error('Failed to load personalization:', err);
-      setError(err?.error || 'Failed to load personalization data');
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   async function handleSaveTaxonomies() {
     try {
@@ -109,6 +109,45 @@ export function Personalization() {
     }
   }
 
+  async function loadUserTopics() {
+    // TODO: Load user's selected topics from backend
+    // For now, load from localStorage as placeholder
+    const saved = localStorage.getItem('userTopics');
+    if (saved) {
+      try {
+        setSelectedTopics(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse saved topics:', e);
+      }
+    }
+  }
+
+  async function handleSaveTopics() {
+    try {
+      setIsSavingTopics(true);
+      setError(null);
+      // TODO: Save to backend via API
+      // For now, save to localStorage as placeholder
+      localStorage.setItem('userTopics', JSON.stringify(selectedTopics));
+      console.log('Topics saved:', selectedTopics);
+    } catch (err: any) {
+      console.error('Failed to save topics:', err);
+      setError(err?.error || 'Failed to save topics');
+    } finally {
+      setIsSavingTopics(false);
+    }
+  }
+
+  function toggleTopic(slug: TopicSlug) {
+    setSelectedTopics(prev => {
+      if (prev.includes(slug)) {
+        return prev.filter(s => s !== slug);
+      } else {
+        return [...prev, slug];
+      }
+    });
+  }
+
   const categories = [
     { id: 'all' as const, label: 'All', icon: TagIcon },
     { id: 'interest' as const, label: 'Interests', icon: SparklesIcon },
@@ -132,19 +171,33 @@ export function Personalization() {
       );
     });
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="glass-subtle rounded-xl p-6">
-          <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-1/4 mb-4" />
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-12 bg-gray-300 dark:bg-gray-700 rounded" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+  async function loadPersonalization() {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await getUserPersonalization();
+      console.log('Personalization data:', data);
+      setManualTags(data.manual_tags || []);
+      setAutoTags(data.auto_generated_tags || []);
+      setTaxonomies(data.available_taxonomies || []);
+
+      // Pre-select existing manual tags
+      const existingTaxonomyIds = new Set(
+        (data.manual_tags || [])
+          .filter(tag => tag.taxonomy)
+          .map(tag => tag.taxonomy!)
+      );
+      setSelectedTaxonomies(existingTaxonomyIds);
+    } catch (err: any) {
+      console.error('Failed to load personalization:', err);
+      // Don't block the page for personalization errors - just show warning
+      console.warn('Personalization data unavailable, continuing with topics only');
+      setAutoTags([]);
+      setManualTags([]);
+      setTaxonomies([]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -166,19 +219,24 @@ export function Personalization() {
         </div>
       )}
 
-      {/* Your Selections */}
+      {/* Topics Section */}
       <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <TagIcon className="w-5 h-5" />
-            Your Selections
-          </h3>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <TagIcon className="w-5 h-5" />
+              Topics
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Select topics you're interested in to personalize your Explore feed.
+            </p>
+          </div>
           <button
-            onClick={handleSaveTaxonomies}
-            disabled={isSaving}
+            onClick={handleSaveTopics}
+            disabled={isSavingTopics}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white rounded-lg transition-colors text-sm font-medium"
           >
-            {isSaving ? (
+            {isSavingTopics ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
                 Saving...
@@ -186,113 +244,65 @@ export function Personalization() {
             ) : (
               <>
                 <CheckIcon className="w-4 h-4" />
-                Save Changes
+                Save Topics
               </>
             )}
           </button>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-4">
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search taxonomies..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                aria-label="Clear search"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-          {searchQuery && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Found {filteredTaxonomies.length} taxonom{filteredTaxonomies.length === 1 ? 'y' : 'ies'}
-            </p>
-          )}
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
+          {TOPICS.map((topic) => {
+            const isSelected = selectedTopics.includes(topic.slug);
+            const colorClass = COLOR_CLASSES[topic.color] || 'bg-gray-500';
 
-        {/* Category Filter */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {categories.map((cat) => {
-            const Icon = cat.icon;
             return (
               <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  activeCategory === cat.id
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                key={topic.slug}
+                onClick={() => toggleTopic(topic.slug)}
+                className={`text-left p-4 rounded-lg border-2 transition-all ${
+                  isSelected
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                {cat.label}
+                <div className="flex items-start gap-3">
+                  <div className={`w-4 h-4 rounded-full mt-0.5 flex-shrink-0 ${colorClass}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-semibold text-sm text-gray-900 dark:text-white">
+                        {topic.label}
+                      </h4>
+                      {isSelected && (
+                        <CheckIcon className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                      {topic.description}
+                    </p>
+                  </div>
+                </div>
               </button>
             );
           })}
         </div>
 
-        {/* Taxonomy Selection Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredTaxonomies.map((taxonomy) => (
-            <button
-              key={taxonomy.id}
-              onClick={() => toggleTaxonomy(taxonomy.id)}
-              className={`text-left p-4 rounded-lg border-2 transition-all ${
-                selectedTaxonomies.has(taxonomy.id)
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-gray-900 dark:text-white">
-                      {taxonomy.name}
-                    </h4>
-                    {selectedTaxonomies.has(taxonomy.id) && (
-                      <CheckIcon className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                    {taxonomy.categoryDisplay}
-                  </p>
-                  {taxonomy.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {taxonomy.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {filteredTaxonomies.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-gray-500 dark:text-gray-400">
-              {searchQuery
-                ? `No taxonomies found matching "${searchQuery}"`
-                : 'No taxonomies available in this category'}
+        {selectedTopics.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              You've selected {selectedTopics.length} topic{selectedTopics.length !== 1 ? 's' : ''}.
+              These will be used to personalize your Explore feed.
             </p>
           </div>
         )}
       </div>
 
+
       {/* How We're Personalizing For You */}
       {(() => {
         const toolTags = autoTags.filter(tag => tag.taxonomyCategory === 'tool');
+        const hasPreferences = toolTags.length > 0 || selectedTopics.length > 0;
 
-        if (toolTags.length === 0) {
+        if (!hasPreferences) {
           return (
             <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
               <div className="flex items-center gap-2 mb-4">
@@ -303,15 +313,20 @@ export function Personalization() {
               </div>
               <div className="text-center py-6">
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  We haven't detected any tool preferences yet. Create your first project mentioning AI tools you use, and we'll automatically personalize your explore feed!
+                  Select some topics above and create projects to personalize your Explore feed!
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  For example: "Built an app with <strong>ChatGPT</strong>" or "Created art using <strong>Midjourney</strong>"
+                  We'll show you more projects matching your selected topics and the tools you use.
                 </p>
               </div>
             </div>
           );
         }
+
+        // Get topic labels
+        const selectedTopicLabels = selectedTopics
+          .map(slug => TOPICS.find(t => t.slug === slug)?.label)
+          .filter(Boolean);
 
         // Build personalized message
         const toolNames = toolTags.map(t => t.name);
@@ -321,8 +336,13 @@ export function Personalization() {
           ? `${toolNames[0]} and ${toolNames[1]}`
           : `${toolNames.slice(0, -1).join(', ')}, and ${toolNames[toolNames.length - 1]}`;
 
-        const highestConfidence = Math.max(...toolTags.map(t => t.confidenceScore || 0));
-        const confidenceLevel = highestConfidence >= 0.7 ? 'highly confident' : highestConfidence >= 0.5 ? 'fairly confident' : 'building confidence';
+        const topicList = selectedTopicLabels.length === 1
+          ? selectedTopicLabels[0]
+          : selectedTopicLabels.length === 2
+          ? `${selectedTopicLabels[0]} and ${selectedTopicLabels[1]}`
+          : selectedTopicLabels.length > 2
+          ? `${selectedTopicLabels.slice(0, -1).join(', ')}, and ${selectedTopicLabels[selectedTopicLabels.length - 1]}`
+          : null;
 
         return (
           <div className="glass-subtle rounded-xl p-6 border border-primary-200 dark:border-primary-800 bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-primary-900/20 dark:to-secondary-900/20">
@@ -334,26 +354,55 @@ export function Personalization() {
             </div>
 
             <div className="space-y-4">
-              <div className="p-4 bg-white/70 dark:bg-gray-800/70 rounded-lg border border-primary-200 dark:border-primary-700">
-                <p className="text-lg text-gray-900 dark:text-white mb-1">
-                  We noticed you uploaded projects with <span className="font-bold text-primary-700 dark:text-primary-300">{toolList}</span>
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  ({toolTags.reduce((sum, t) => sum + (t.interactionCount || 0), 0)} {toolTags.reduce((sum, t) => sum + (t.interactionCount || 0), 0) === 1 ? 'mention' : 'mentions'} across your projects)
-                </p>
-              </div>
+              {/* Topics */}
+              {selectedTopics.length > 0 && (
+                <div className="p-4 bg-white/70 dark:bg-gray-800/70 rounded-lg border border-primary-200 dark:border-primary-700">
+                  <p className="text-lg text-gray-900 dark:text-white mb-1">
+                    You're interested in <span className="font-bold text-primary-700 dark:text-primary-300">{topicList}</span>
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    ({selectedTopics.length} {selectedTopics.length === 1 ? 'topic' : 'topics'} selected)
+                  </p>
+                </div>
+              )}
+
+              {/* Tools */}
+              {toolTags.length > 0 && (
+                <div className="p-4 bg-white/70 dark:bg-gray-800/70 rounded-lg border border-primary-200 dark:border-primary-700">
+                  <p className="text-lg text-gray-900 dark:text-white mb-1">
+                    We noticed you uploaded projects with <span className="font-bold text-primary-700 dark:text-primary-300">{toolList}</span>
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    ({toolTags.reduce((sum, t) => sum + (t.interactionCount || 0), 0)} {toolTags.reduce((sum, t) => sum + (t.interactionCount || 0), 0) === 1 ? 'mention' : 'mentions'} across your projects)
+                  </p>
+                </div>
+              )}
 
               <div className="grid gap-3">
-                <div className="flex items-start gap-3 p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                    ✓
+                {(selectedTopics.length > 0 || toolTags.length > 0) && (
+                  <div className="flex items-start gap-3 p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                    <div className="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
+                        So we're showing you more projects about{' '}
+                        {selectedTopics.length > 0 && toolTags.length > 0 ? (
+                          <>
+                            <span className="font-semibold">{topicList}</span> using <span className="font-semibold">{toolList}</span>
+                          </>
+                        ) : selectedTopics.length > 0 ? (
+                          <span className="font-semibold">{topicList}</span>
+                        ) : (
+                          <>
+                            <span className="font-semibold">{toolList}</span>
+                          </>
+                        )}{' '}
+                        in your "For You" feed
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      So we're showing you more <span className="font-semibold">{toolList}</span> projects in your "For You" feed
-                    </p>
-                  </div>
-                </div>
+                )}
 
                 <div className="flex items-start gap-3 p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
                   <div className="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
@@ -361,7 +410,13 @@ export function Personalization() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-700 dark:text-gray-300">
-                      Keep creating projects with these tools and we'll get even better at personalizing for you
+                      {selectedTopics.length > 0 && toolTags.length > 0 ? (
+                        'Select more topics and keep creating projects to improve your personalized feed'
+                      ) : selectedTopics.length > 0 ? (
+                        'Create projects and mention tools you use to get even better recommendations'
+                      ) : (
+                        'Select topics above and keep creating projects to get even better recommendations'
+                      )}
                     </p>
                   </div>
                 </div>

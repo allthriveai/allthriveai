@@ -2,10 +2,13 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { listProjects, updateProject, deleteProjectRedirect } from '@/services/projects';
+import { getTools } from '@/services/tools';
 import { uploadImage, uploadFile } from '@/services/upload';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { ToolSelector } from '@/components/projects/ToolSelector';
+import { TopicDropdown } from '@/components/projects/TopicDropdown';
 import type { Project, ProjectBlock } from '@/types/models';
+import type { TopicSlug } from '@/config/topics';
 import { generateSlug } from '@/utils/slug';
 import { AUTOSAVE_DEBOUNCE_MS } from '@/components/projects/constants';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -78,6 +81,8 @@ export default function ProjectEditorPage() {
   const [projectUrl, setProjectUrl] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
   const [projectTools, setProjectTools] = useState<number[]>([]);
+  const [allTools, setAllTools] = useState<any[]>([]); // Store all tools for topic suggestions
+  const [projectTopics, setProjectTopics] = useState<TopicSlug[]>([]);
   const [isUploadingFeatured, setIsUploadingFeatured] = useState(false);
 
   // Hero display state
@@ -130,6 +135,12 @@ export default function ProjectEditorPage() {
         setProjectUrl(foundProject.externalUrl || '');
         setProjectDescription(foundProject.description || '');
         setProjectTools(foundProject.tools || []);
+        // Combine primary and secondary topics into one array
+        const topics = [
+          ...(foundProject.primaryTopic ? [foundProject.primaryTopic] : []),
+          ...(foundProject.secondaryTopics || [])
+        ];
+        setProjectTopics(topics);
 
         // Load hero display fields from content
         setHeroDisplayMode(foundProject.content?.heroDisplayMode || 'image');
@@ -167,6 +178,50 @@ export default function ProjectEditorPage() {
     loadProject();
   }, [projectSlug, username]);
 
+  // Load all tools for topic suggestions
+  useEffect(() => {
+    async function loadTools() {
+      try {
+        const response = await getTools({ ordering: 'name' });
+        setAllTools(response.results);
+      } catch (error) {
+        console.error('Failed to load tools:', error);
+      }
+    }
+    loadTools();
+  }, []);
+
+  // Auto-suggest topics when tools change
+  useEffect(() => {
+    if (allTools.length === 0 || isInitialLoadRef.current) return;
+
+    // Get suggested topics from selected tools
+    const suggestedTopics: TopicSlug[] = [];
+    projectTools.forEach(toolId => {
+      const tool = allTools.find(t => t.id === toolId);
+      if (tool?.suggestedTopics) {
+        tool.suggestedTopics.forEach((topic: TopicSlug) => {
+          if (!suggestedTopics.includes(topic) && !projectTopics.includes(topic)) {
+            suggestedTopics.push(topic);
+          }
+        });
+      }
+    });
+
+    // Auto-add suggested topics
+    if (suggestedTopics.length > 0) {
+      setProjectTopics(prev => {
+        const newTopics = [...prev];
+        suggestedTopics.forEach(topic => {
+          if (!newTopics.includes(topic)) {
+            newTopics.push(topic);
+          }
+        });
+        return newTopics;
+      });
+    }
+  }, [projectTools, allTools, projectTopics]);
+
   // Auto-generate slug from title (unless manually customized)
   useEffect(() => {
     if (projectTitle && !customSlugSet) {
@@ -188,6 +243,7 @@ export default function ProjectEditorPage() {
       projectUrl,
       projectDescription,
       projectTools,
+      projectTopics,
       heroDisplayMode,
       heroQuote,
       heroVideoUrl,
@@ -208,6 +264,7 @@ export default function ProjectEditorPage() {
       projectUrl,
       projectDescription,
       projectTools,
+      projectTopics,
       heroDisplayMode,
       heroQuote,
       heroVideoUrl,
@@ -246,6 +303,8 @@ export default function ProjectEditorPage() {
         featuredImageUrl,
         externalUrl: projectUrl,
         tools: projectTools,
+        primaryTopic: projectTopics[0], // First topic is primary
+        secondaryTopics: projectTopics.slice(1), // Rest are secondary
         content: {
           blocks: blocks.map(({ id, ...block }) => block), // Remove IDs before saving
           heroDisplayMode,
@@ -1706,6 +1765,21 @@ export default function ProjectEditorPage() {
               <ToolSelector
                 selectedToolIds={projectTools}
                 onChange={setProjectTools}
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* Topics */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                Topics
+              </label>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Select one or more topics. The first topic selected will be your primary topic in Explore.
+              </p>
+              <TopicDropdown
+                selectedTopics={projectTopics}
+                onChange={setProjectTopics}
                 disabled={isSaving}
               />
             </div>

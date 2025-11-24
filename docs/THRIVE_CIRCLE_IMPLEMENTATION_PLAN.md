@@ -9,14 +9,16 @@ Build an inclusive, participation-focused progression system that rewards engage
 1. **Participation Over Skill**: Everyone earns XP for showing up and engaging, not just for being "the best"
 2. **Always Progress**: Tiers never decrease - you always move forward
 3. **No Hierarchy**: Tier names celebrate growth, not rank - an Ember can start a revolution!
-4. **Community Building**: Meet people at your level, learn together, celebrate wins
-5. **Habit Formation**: Daily streaks and weekly goals encourage consistent engagement
+4. **Community Over Competition**: Thrive Circle is about **shared learning and inspiration**, NOT rankings or leaderboards
+5. **Inclusive Discovery**: See what like-minded individuals are learning and celebrate everyone's journey
+6. **Habit Formation**: Daily streaks and weekly goals encourage consistent engagement
 
 ### Why This Approach?
 - **Simple to understand**: One clear progression path
 - **Inclusive**: No "bottom tier" shame - every tier is valuable
-- **Sustainable**: Focus on long-term growth, not weekly stress
-- **Expandable**: Can add competitive features later if users want them
+- **Sustainable**: Focus on long-term growth, not weekly stress or competitive pressure
+- **Community-Focused**: Inspiration through shared progress, not comparison through rankings
+- **Non-Competitive**: NO leaderboards, NO ranks, NO percentiles - celebrate everyone's unique journey
 
 ## System Architecture
 
@@ -45,33 +47,37 @@ Phoenix → 10,000+ XP     (🐦 Reborn stronger, inspiring transformation)
 - Displayed on profile and throughout app
 - Celebration animations when leveling up
 
-### Weekly Leaderboard (Simple Competition)
+### Community Circle (Inclusive Discovery)
 
-Within each tier, users can see weekly top performers:
+Users can discover and be inspired by what like-minded people are learning:
 
-**Weekly Stats:**
-- Top 10 earners in your tier this week
-- Your rank within your tier
-- Total XP earned this week
-- Streak status
+**Community Features:**
+- See what activities peers are working on (NO XP amounts shown, NO rankings)
+- Aggregate community stats ("Community earned 12,500 XP together this week!")
+- Discover users by tier or learning topics
+- Your personal journey panel (progress without rank/percentile)
+- Activity privacy settings (choose what you share)
 
 **Why This Works:**
-- Competition without complexity
-- Fresh start every Monday
-- Compare with similar-level users
-- Optional - you can ignore it and just progress
+- Inspiration through shared learning, not competition
+- Celebrate everyone's unique journey and progress
+- Find peers with similar interests or learning goals
+- Community achievements foster belonging
+- No stress, no comparison, no "bottom of the list" shame
 
 **Example Display:**
 ```
-🔥 Blaze Tier - This Week's Top Earners
+🌟 Community Activity
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#1  Sarah Chen        +487 XP  🔥
-#2  Marcus Rodriguez  +423 XP  🔥
-#3  Aisha Patel       +401 XP  🔥
+Sarah Chen completed "Advanced React Patterns"
+Marcus Rodriguez created a new project
+Aisha Patel earned Spark tier! 🎉
 ...
-#23 You              +156 XP  ⚡
-...
-#48 Last             +12 XP
+
+💫 Together This Week
+Community earned 12,500 XP together
+48 tier upgrades celebrated
+156 people learning actively
 ```
 
 ### Points & XP System
@@ -187,9 +193,10 @@ class UserTier(models.Model):
     longest_streak_days = models.IntegerField(default=0)
     last_activity_date = models.DateField(null=True, blank=True)
 
-    # Weekly stats (resets every Monday)
-    weekly_xp = models.IntegerField(default=0)
-    week_start = models.DateField(null=True, blank=True)
+    # Privacy settings for community features
+    share_activities = models.BooleanField(default=True)  # Share what you're learning
+    share_tier_upgrades = models.BooleanField(default=True)  # Share tier celebrations
+    share_profile = models.BooleanField(default=True)  # Appear in discovery
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -199,7 +206,7 @@ class UserTier(models.Model):
         indexes = [
             models.Index(fields=['tier', '-total_xp']),
             models.Index(fields=['-total_xp']),
-            models.Index(fields=['tier', '-weekly_xp']),
+            models.Index(fields=['created_at']),  # For community activity feed
         ]
 
     def update_tier(self):
@@ -233,21 +240,11 @@ class UserTier(models.Model):
         """Add XP and create activity record"""
         self.total_xp += amount
 
-        # Update weekly XP
-        today = timezone.now().date()
-        week_start = get_week_start()
-
-        if self.week_start != week_start:
-            # New week, reset weekly XP
-            self.weekly_xp = 0
-            self.week_start = week_start
-
-        self.weekly_xp += amount
-
         # Update tier if threshold crossed
         self.update_tier()
 
         # Update daily streak
+        today = timezone.now().date()
         if self.last_activity_date == today - timezone.timedelta(days=1):
             self.current_streak_days += 1
         elif self.last_activity_date != today:
@@ -259,7 +256,7 @@ class UserTier(models.Model):
         self.last_activity_date = today
         self.save()
 
-        # Create XP activity record
+        # Create XP activity record (respects privacy settings)
         XPActivity.objects.create(
             user=self.user,
             amount=amount,
@@ -471,20 +468,12 @@ class ThriveCircleViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def my_status(self, request):
-        """Get current user's tier and stats"""
+        """Get current user's tier and stats (NO ranks, NO percentiles)"""
         user = request.user
         tier_status, created = UserTier.objects.get_or_create(user=user)
 
-        # Get weekly rank within tier
-        week_start = get_week_start()
-        tier_users = UserTier.objects.filter(
-            tier=tier_status.tier,
-            week_start=week_start
-        ).order_by('-weekly_xp')
-
-        user_rank = list(tier_users.values_list('user_id', flat=True)).index(user.id) + 1 if user.id in tier_users.values_list('user_id', flat=True) else None
-
         # Get weekly goals
+        week_start = get_week_start()
         weekly_goals = WeeklyGoal.objects.filter(
             user=user,
             week_start=week_start
@@ -497,11 +486,6 @@ class ThriveCircleViewSet(viewsets.ViewSet):
                 'next_tier_xp': get_next_tier_xp(tier_status.tier),
                 'progress_to_next': calculate_tier_progress(tier_status),
             },
-            'weekly': {
-                'xp': tier_status.weekly_xp,
-                'rank': user_rank,
-                'total_in_tier': tier_users.count(),
-            },
             'streak': {
                 'current': tier_status.current_streak_days,
                 'longest': tier_status.longest_streak_days,
@@ -511,65 +495,99 @@ class ThriveCircleViewSet(viewsets.ViewSet):
                 'lifetime_quizzes': tier_status.lifetime_quizzes_completed,
                 'lifetime_projects': tier_status.lifetime_projects_created,
                 'lifetime_quests': tier_status.lifetime_side_quests_completed,
+            },
+            'privacy': {
+                'share_activities': tier_status.share_activities,
+                'share_tier_upgrades': tier_status.share_tier_upgrades,
+                'share_profile': tier_status.share_profile,
             }
         })
 
     @action(detail=False, methods=['get'])
-    def leaderboard(self, request):
-        """Get weekly leaderboard for user's tier"""
-        user = request.user
-        tier_status = user.tier_status
-        week_start = get_week_start()
-
-        # Get top earners in this tier this week
-        top_earners = UserTier.objects.filter(
-            tier=tier_status.tier,
-            week_start=week_start
-        ).select_related('user').order_by('-weekly_xp')[:50]
-
-        # Find user's rank
-        user_rank = None
-        for idx, ts in enumerate(top_earners, 1):
-            if ts.user_id == user.id:
-                user_rank = idx
-                break
-
-        return Response({
-            'tier': tier_status.tier,
-            'week_start': week_start,
-            'user_rank': user_rank,
-            'user_weekly_xp': tier_status.weekly_xp,
-            'top_earners': [
-                {
-                    'rank': idx,
-                    'user': {
-                        'id': ts.user.id,
-                        'username': ts.user.username,
-                        'display_name': getattr(ts.user, 'display_name', ts.user.username),
-                        'avatar_url': getattr(ts.user, 'avatar_url', None),
-                    },
-                    'weekly_xp': ts.weekly_xp,
-                    'streak': ts.current_streak_days,
-                }
-                for idx, ts in enumerate(top_earners, 1)
-            ],
-        })
-
-    @action(detail=False, methods=['get'])
-    def activity_feed(self, request):
-        """Get recent activity from connections"""
-        user = request.user
-
-        # Get user's connections
-        following = user.circle_following.values_list('following_id', flat=True)
-
-        # Get recent activities from connections (last 7 days)
+    def community_activity(self, request):
+        """Get recent community activity (NO rankings, respects privacy)"""
+        # Get recent activities from all users who share publicly
         activities = XPActivity.objects.filter(
-            user_id__in=following,
+            user__tier_status__share_activities=True,
             created_at__gte=timezone.now() - timezone.timedelta(days=7)
         ).select_related('user').order_by('-created_at')[:50]
 
-        return Response(XPActivitySerializer(activities, many=True).data)
+        # Return activities WITHOUT showing XP amounts to avoid comparison
+        return Response([
+            {
+                'id': activity.id,
+                'user': {
+                    'username': activity.user.username,
+                    'display_name': getattr(activity.user, 'display_name', activity.user.username),
+                    'avatar_url': getattr(activity.user, 'avatar_url', None),
+                },
+                'activity_type': activity.get_activity_type_display(),
+                'description': activity.description,
+                'created_at': activity.created_at,
+                'tier': activity.tier_at_time,
+            }
+            for activity in activities
+        ])
+
+    @action(detail=False, methods=['get'])
+    def community_stats(self, request):
+        """Get aggregate community stats (collective achievements, NO individual comparison)"""
+        week_start = get_week_start()
+
+        # Aggregate stats - celebrating what we've accomplished together
+        weekly_activities = XPActivity.objects.filter(
+            created_at__gte=week_start
+        )
+
+        total_xp_this_week = weekly_activities.aggregate(Sum('amount'))['amount__sum'] or 0
+
+        tier_upgrades_this_week = XPActivity.objects.filter(
+            created_at__gte=week_start,
+            activity_type='tier_upgrade',
+            user__tier_status__share_tier_upgrades=True
+        ).count()
+
+        active_learners = UserTier.objects.filter(
+            last_activity_date__gte=week_start
+        ).count()
+
+        return Response({
+            'community_xp_this_week': total_xp_this_week,
+            'tier_upgrades_this_week': tier_upgrades_this_week,
+            'active_learners_this_week': active_learners,
+            'message': f'Together we earned {total_xp_this_week:,} XP this week! 🎉',
+        })
+
+    @action(detail=False, methods=['get'])
+    def discover(self, request):
+        """Discover users by tier or learning topic (NO rankings)"""
+        tier_filter = request.query_params.get('tier')
+        limit = int(request.query_params.get('limit', 20))
+
+        # Only show users who opted in to discovery
+        queryset = UserTier.objects.filter(
+            share_profile=True
+        ).select_related('user')
+
+        if tier_filter:
+            queryset = queryset.filter(tier=tier_filter)
+
+        # Randomize order to avoid "top users" mentality
+        users = queryset.order_by('?')[:limit]
+
+        return Response([
+            {
+                'user': {
+                    'id': ts.user.id,
+                    'username': ts.user.username,
+                    'display_name': getattr(ts.user, 'display_name', ts.user.username),
+                    'avatar_url': getattr(ts.user, 'avatar_url', None),
+                },
+                'tier': ts.tier,
+                'streak': ts.current_streak_days,
+            }
+            for ts in users
+        ])
 
     @action(detail=False, methods=['post'])
     def award_xp(self, request):
@@ -586,28 +604,11 @@ class ThriveCircleViewSet(viewsets.ViewSet):
             'success': True,
             'new_total_xp': new_total,
             'tier': tier_status.tier,
-            'weekly_xp': tier_status.weekly_xp,
         })
 
     @action(detail=False, methods=['get'])
-    def global_leaderboard(self, request):
-        """Get top users across all tiers"""
-        timeframe = request.query_params.get('timeframe', 'all_time')
-        limit = int(request.query_params.get('limit', 100))
-
-        if timeframe == 'weekly':
-            week_start = get_week_start()
-            queryset = UserTier.objects.filter(
-                week_start=week_start
-            ).order_by('-weekly_xp')[:limit]
-        else:
-            queryset = UserTier.objects.order_by('-total_xp')[:limit]
-
-        return Response(UserTierSerializer(queryset, many=True).data)
-
-    @action(detail=False, methods=['get'])
-    def xp_history(self, request):
-        """Get user's XP earning history"""
+    def my_journey(self, request):
+        """Get user's personal XP journey (NO rank/percentile, just personal progress)"""
         user = request.user
         days = int(request.query_params.get('days', 30))
 
@@ -616,21 +617,25 @@ class ThriveCircleViewSet(viewsets.ViewSet):
             created_at__gte=timezone.now() - timezone.timedelta(days=days)
         ).order_by('-created_at')
 
-        return Response(XPActivitySerializer(activities, many=True).data)
+        return Response({
+            'activities': XPActivitySerializer(activities, many=True).data,
+            'message': 'Your personal learning journey - every step forward counts! 🌟',
+        })
 ```
 
-#### Endpoint Structure
+#### Endpoint Structure (Inclusive, NO leaderboards/ranks)
 ```
-GET    /api/v1/thrive-circle/my-status/           # User's tier, weekly rank, stats
-GET    /api/v1/thrive-circle/leaderboard/         # Weekly top earners in user's tier
-GET    /api/v1/thrive-circle/activity-feed/       # Recent activity from connections
+GET    /api/v1/thrive-circle/my-status/           # User's tier, streak, stats (NO rank/percentile)
+GET    /api/v1/thrive-circle/community-activity/  # Recent community learning (NO XP amounts, respects privacy)
+GET    /api/v1/thrive-circle/community-stats/     # Aggregate stats (collective achievements)
+GET    /api/v1/thrive-circle/discover/            # Discover users by tier/topic (randomized, NO rankings)
+GET    /api/v1/thrive-circle/my-journey/          # Personal XP journey (NO comparison to others)
 POST   /api/v1/thrive-circle/award-xp/            # Award XP (internal)
-GET    /api/v1/thrive-circle/global-leaderboard/  # Top users globally (all tiers or weekly)
 GET    /api/v1/thrive-circle/weekly-goals/        # User's weekly goals
-GET    /api/v1/thrive-circle/xp-history/          # XP activity history
 POST   /api/v1/thrive-circle/connections/follow/  # Follow a user
 DELETE /api/v1/thrive-circle/connections/unfollow/ # Unfollow a user
 GET    /api/v1/thrive-circle/connections/         # User's connections
+POST   /api/v1/thrive-circle/privacy-settings/    # Update privacy settings
 ```
 
 ### 1.4 Background Tasks
@@ -641,20 +646,6 @@ Create `core/thrive_circle/tasks.py`:
 from celery import shared_task
 from django.utils import timezone
 from datetime import timedelta
-
-
-@shared_task
-def reset_weekly_stats():
-    """
-    Run every Monday at 00:00 to reset weekly XP counters
-    """
-    week_start = get_week_start()
-
-    # Reset all weekly XP
-    UserTier.objects.all().update(
-        weekly_xp=0,
-        week_start=week_start
-    )
 
 
 @shared_task
@@ -734,12 +725,6 @@ export interface TierStatus {
   progress_to_next: number;
 }
 
-export interface WeeklyStatus {
-  xp: number;
-  rank: number | null;
-  total_in_tier: number;
-}
-
 export interface StreakInfo {
   current: number;
   longest: number;
@@ -754,9 +739,14 @@ export interface WeeklyGoal {
   xp_reward: number;
 }
 
+export interface PrivacySettings {
+  share_activities: boolean;
+  share_tier_upgrades: boolean;
+  share_profile: boolean;
+}
+
 export interface UserCircleStatus {
   tier: TierStatus;
-  weekly: WeeklyStatus;
   streak: StreakInfo;
   weekly_goals: WeeklyGoal[];
   stats: {
@@ -764,17 +754,37 @@ export interface UserCircleStatus {
     lifetime_projects: number;
     lifetime_quests: number;
   };
+  privacy: PrivacySettings;
 }
 
-export interface LeaderboardEntry {
-  rank: number;
+export interface CommunityActivity {
+  id: number;
+  user: {
+    username: string;
+    display_name: string;
+    avatar_url?: string;
+  };
+  activity_type: string;
+  description: string;
+  created_at: string;
+  tier: string;
+}
+
+export interface CommunityStats {
+  community_xp_this_week: number;
+  tier_upgrades_this_week: number;
+  active_learners_this_week: number;
+  message: string;
+}
+
+export interface DiscoverUser {
   user: {
     id: number;
     username: string;
     display_name: string;
     avatar_url?: string;
   };
-  weekly_xp: number;
+  tier: string;
   streak: number;
 }
 
@@ -797,26 +807,43 @@ Create `frontend/src/services/thriveCircle.ts`:
 
 ```typescript
 import { api } from './api';
-import type { UserCircleStatus, LeaderboardEntry, XPActivity } from '@/types/thriveCircle';
+import type {
+  UserCircleStatus,
+  CommunityActivity,
+  CommunityStats,
+  DiscoverUser,
+  XPActivity
+} from '@/types/thriveCircle';
 
 export async function getMyStatus(): Promise<UserCircleStatus> {
   const response = await api.get<UserCircleStatus>('/thrive-circle/my-status/');
   return response.data;
 }
 
-export async function getLeaderboard(): Promise<{
-  tier: string;
-  week_start: string;
-  user_rank: number | null;
-  user_weekly_xp: number;
-  top_earners: LeaderboardEntry[];
-}> {
-  const response = await api.get('/thrive-circle/leaderboard/');
+export async function getCommunityActivity(): Promise<CommunityActivity[]> {
+  const response = await api.get<CommunityActivity[]>('/thrive-circle/community-activity/');
   return response.data;
 }
 
-export async function getActivityFeed(): Promise<XPActivity[]> {
-  const response = await api.get<XPActivity[]>('/thrive-circle/activity-feed/');
+export async function getCommunityStats(): Promise<CommunityStats> {
+  const response = await api.get<CommunityStats>('/thrive-circle/community-stats/');
+  return response.data;
+}
+
+export async function discoverUsers(tier?: string, limit?: number): Promise<DiscoverUser[]> {
+  const params = new URLSearchParams();
+  if (tier) params.append('tier', tier);
+  if (limit) params.append('limit', limit.toString());
+
+  const response = await api.get<DiscoverUser[]>(`/thrive-circle/discover/?${params}`);
+  return response.data;
+}
+
+export async function getMyJourney(days?: number): Promise<{ activities: XPActivity[]; message: string }> {
+  const params = new URLSearchParams();
+  if (days) params.append('days', days.toString());
+
+  const response = await api.get(`/thrive-circle/my-journey/?${params}`);
   return response.data;
 }
 
@@ -824,7 +851,7 @@ export async function awardXP(
   amount: number,
   activityType: ActivityType,
   description?: string
-): Promise<{ success: boolean; new_total_xp: number; tier: string; weekly_xp: number }> {
+): Promise<{ success: boolean; new_total_xp: number; tier: string }> {
   const response = await api.post('/thrive-circle/award-xp/', {
     amount,
     activity_type: activityType,
@@ -842,12 +869,19 @@ Create `frontend/src/pages/ThriveCirclePage.tsx`:
 import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { TierBadge } from '@/components/thrive-circle/TierBadge';
-import { WeeklyLeaderboard } from '@/components/thrive-circle/WeeklyLeaderboard';
+import { CommunityActivityFeed } from '@/components/thrive-circle/CommunityActivityFeed';
+import { CommunityStatsPanel } from '@/components/thrive-circle/CommunityStatsPanel';
+import { YourJourneyPanel } from '@/components/thrive-circle/YourJourneyPanel';
+import { DiscoverPanel } from '@/components/thrive-circle/DiscoverPanel';
 import { WeeklyGoalsPanel } from '@/components/thrive-circle/WeeklyGoalsPanel';
-import { ActivityFeed } from '@/components/thrive-circle/ActivityFeed';
 import { StreakDisplay } from '@/components/thrive-circle/StreakDisplay';
 import { StatsPanel } from '@/components/thrive-circle/StatsPanel';
-import { getMyStatus, getLeaderboard, getActivityFeed } from '@/services/thriveCircle';
+import {
+  getMyStatus,
+  getCommunityActivity,
+  getCommunityStats,
+  discoverUsers,
+} from '@/services/thriveCircle';
 
 export function ThriveCirclePage() {
   const { data: status, isLoading: isLoadingStatus } = useQuery({
@@ -856,19 +890,25 @@ export function ThriveCirclePage() {
     refetchInterval: 30000,
   });
 
-  const { data: leaderboard, isLoading: isLoadingLeaderboard } = useQuery({
-    queryKey: ['thriveCircleLeaderboard'],
-    queryFn: getLeaderboard,
+  const { data: communityActivity, isLoading: isLoadingActivity } = useQuery({
+    queryKey: ['communityActivity'],
+    queryFn: getCommunityActivity,
     refetchInterval: 60000,
   });
 
-  const { data: activityFeed, isLoading: isLoadingFeed } = useQuery({
-    queryKey: ['thriveCircleActivityFeed'],
-    queryFn: getActivityFeed,
-    refetchInterval: 30000,
+  const { data: communityStats, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['communityStats'],
+    queryFn: getCommunityStats,
+    refetchInterval: 60000,
   });
 
-  const isLoading = isLoadingStatus || isLoadingLeaderboard || isLoadingFeed;
+  const { data: discoverList, isLoading: isLoadingDiscover } = useQuery({
+    queryKey: ['discoverUsers'],
+    queryFn: () => discoverUsers(undefined, 10),
+    refetchInterval: 120000,
+  });
+
+  const isLoading = isLoadingStatus || isLoadingActivity || isLoadingStats || isLoadingDiscover;
 
   return (
     <DashboardLayout>
@@ -881,7 +921,7 @@ export function ThriveCirclePage() {
                 Thrive Circle
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Your journey from Ember to Phoenix 🔥
+                Community learning, shared growth 🌟
               </p>
             </div>
 
@@ -891,7 +931,7 @@ export function ThriveCirclePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column - Tier Status & Streak */}
+                {/* Left Column - Your Journey */}
                 <div className="lg:col-span-1 space-y-6">
                   {status && (
                     <>
@@ -912,26 +952,25 @@ export function ThriveCirclePage() {
                   )}
                 </div>
 
-                {/* Middle Column - Leaderboard */}
-                <div className="lg:col-span-1">
-                  {leaderboard && status && (
-                    <WeeklyLeaderboard
-                      tier={leaderboard.tier}
-                      topEarners={leaderboard.top_earners}
-                      userRank={leaderboard.user_rank}
-                      userWeeklyXP={leaderboard.user_weekly_xp}
-                    />
+                {/* Middle Column - Community */}
+                <div className="lg:col-span-1 space-y-6">
+                  {communityStats && (
+                    <CommunityStatsPanel stats={communityStats} />
+                  )}
+
+                  {communityActivity && (
+                    <CommunityActivityFeed activities={communityActivity} />
                   )}
                 </div>
 
-                {/* Right Column - Goals & Activity */}
+                {/* Right Column - Goals & Discovery */}
                 <div className="lg:col-span-1 space-y-6">
                   {status && (
                     <WeeklyGoalsPanel goals={status.weekly_goals} />
                   )}
 
-                  {activityFeed && (
-                    <ActivityFeed activities={activityFeed} />
+                  {discoverList && (
+                    <DiscoverPanel users={discoverList} />
                   )}
                 </div>
               </div>
@@ -996,93 +1035,157 @@ export function TierBadge({ tier, totalXP, nextTierXP, progress }: {
 }
 ```
 
-#### WeeklyLeaderboard Component
+#### CommunityStatsPanel Component
 ```typescript
-// frontend/src/components/thrive-circle/WeeklyLeaderboard.tsx
-import type { LeaderboardEntry } from '@/types/thriveCircle';
+// frontend/src/components/thrive-circle/CommunityStatsPanel.tsx
+import type { CommunityStats } from '@/types/thriveCircle';
 
-export function WeeklyLeaderboard({ tier, topEarners, userRank, userWeeklyXP }: {
-  tier: string;
-  topEarners: LeaderboardEntry[];
-  userRank: number | null;
-  userWeeklyXP: number;
-}) {
-  const tierConfig = {
-    ember: { emoji: '🔥', gradient: 'from-orange-500 to-red-500' },
-    spark: { emoji: '⚡', gradient: 'from-yellow-500 to-amber-500' },
-    blaze: { emoji: '🔥', gradient: 'from-red-500 to-pink-500' },
-    beacon: { emoji: '💡', gradient: 'from-blue-500 to-cyan-500' },
-    phoenix: { emoji: '🐦', gradient: 'from-purple-500 to-pink-500' },
-  };
-
-  const config = tierConfig[tier as keyof typeof tierConfig];
-
+export function CommunityStatsPanel({ stats }: { stats: CommunityStats }) {
   return (
-    <div className="glass-card rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className={`p-6 bg-gradient-to-r ${config.gradient} text-white`}>
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-3xl">{config.emoji}</span>
-          <h2 className="text-2xl font-bold capitalize">{tier} Tier</h2>
-        </div>
-        <p className="text-sm opacity-90">This Week's Top Earners</p>
-        {userRank && (
-          <div className="mt-4 flex items-center justify-between bg-white/20 rounded-lg px-4 py-2">
-            <span>Your Rank: #{userRank}</span>
-            <span>{userWeeklyXP} XP</span>
-          </div>
-        )}
+    <div className="glass-card rounded-2xl p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-3xl">💫</span>
+        <h2 className="text-2xl font-bold">Community This Week</h2>
       </div>
 
-      {/* Leaderboard List */}
-      <div className="p-6 space-y-2 max-h-[600px] overflow-y-auto">
-        {topEarners.map((entry) => {
-          const isUser = userRank === entry.rank;
+      <div className="space-y-4">
+        <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-4">
+          <div className="text-sm opacity-90 mb-1">Together we earned</div>
+          <div className="text-3xl font-bold">
+            {stats.community_xp_this_week.toLocaleString()} XP
+          </div>
+        </div>
 
-          return (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+            <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+              {stats.tier_upgrades_this_week}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Tier Upgrades 🎉
+            </div>
+          </div>
+
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+            <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+              {stats.active_learners_this_week}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Active Learners
+            </div>
+          </div>
+        </div>
+
+        <p className="text-sm text-gray-600 dark:text-gray-400 italic text-center">
+          {stats.message}
+        </p>
+      </div>
+    </div>
+  );
+}
+```
+
+#### CommunityActivityFeed Component
+```typescript
+// frontend/src/components/thrive-circle/CommunityActivityFeed.tsx
+import type { CommunityActivity } from '@/types/thriveCircle';
+import { formatDistanceToNow } from 'date-fns';
+
+export function CommunityActivityFeed({ activities }: { activities: CommunityActivity[] }) {
+  return (
+    <div className="glass-card rounded-2xl p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-2xl">🌟</span>
+        <h2 className="text-xl font-bold">Community Activity</h2>
+      </div>
+
+      <div className="space-y-3 max-h-[500px] overflow-y-auto">
+        {activities.length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+            No recent activity yet. Be the first to start learning!
+          </p>
+        ) : (
+          activities.map((activity) => (
             <div
-              key={entry.user.id}
-              className={`
-                flex items-center gap-4 p-3 rounded-lg transition-colors
-                ${isUser ? 'bg-primary-100 dark:bg-primary-900/30 ring-2 ring-primary-500' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}
-              `}
+              key={activity.id}
+              className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              {/* Rank Badge */}
-              <div className={`
-                w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm
-                ${entry.rank <= 3
-                  ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}
-              `}>
-                {entry.rank}
-              </div>
-
-              {/* Avatar */}
               <img
-                src={entry.user.avatar_url || `/default-avatar.png`}
-                alt={entry.user.display_name}
-                className="w-10 h-10 rounded-full"
+                src={activity.user.avatar_url || '/default-avatar.png'}
+                alt={activity.user.display_name}
+                className="w-10 h-10 rounded-full flex-shrink-0"
               />
 
-              {/* Name & Streak */}
               <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{entry.user.display_name}</div>
-                {entry.streak > 0 && (
-                  <div className="text-xs text-gray-500 flex items-center gap-1">
-                    🔥 {entry.streak} day streak
-                  </div>
-                )}
+                <p className="text-sm">
+                  <span className="font-medium">{activity.user.display_name}</span>
+                  {' '}
+                  <span className="text-gray-600 dark:text-gray-400">
+                    {activity.description || activity.activity_type}
+                  </span>
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                </p>
               </div>
 
-              {/* XP */}
-              <div className="text-right">
-                <div className="font-bold text-primary-600 dark:text-primary-400">
-                  {entry.weekly_xp} XP
-                </div>
+              <span className="text-xs px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0">
+                {activity.tier}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+#### DiscoverPanel Component
+```typescript
+// frontend/src/components/thrive-circle/DiscoverPanel.tsx
+import type { DiscoverUser } from '@/types/thriveCircle';
+
+export function DiscoverPanel({ users }: { users: DiscoverUser[] }) {
+  return (
+    <div className="glass-card rounded-2xl p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-2xl">🔍</span>
+        <h2 className="text-xl font-bold">Discover Learners</h2>
+      </div>
+
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        Find peers on similar learning journeys
+      </p>
+
+      <div className="space-y-2 max-h-[400px] overflow-y-auto">
+        {users.map((discoveredUser) => (
+          <div
+            key={discoveredUser.user.id}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+          >
+            <img
+              src={discoveredUser.user.avatar_url || '/default-avatar.png'}
+              alt={discoveredUser.user.display_name}
+              className="w-10 h-10 rounded-full"
+            />
+
+            <div className="flex-1 min-w-0">
+              <div className="font-medium truncate">
+                {discoveredUser.user.display_name}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span className="capitalize">{discoveredUser.tier} tier</span>
+                {discoveredUser.streak > 0 && (
+                  <>
+                    <span>•</span>
+                    <span>🔥 {discoveredUser.streak} day streak</span>
+                  </>
+                )}
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -210,75 +210,110 @@ def test_weekly_goal_completion():
 
 ---
 
-## Phase 3: Weekly Leaderboard & Social
+## Phase 3: Community Circle & Discovery
 **Duration**: 3-4 days
 **Team**: 1 backend dev + 1 frontend dev
-**Goal**: Competitive features work
+**Goal**: Inclusive community features (NOT competitive)
+
+**Philosophy**: Thrive Circle is about **community & shared learning**, NOT competition.
+We celebrate everyone's journey, show what peers are learning, and inspire through shared progress.
 
 ### Backend Tasks
-- [ ] Add fields to `UserTier`: `weekly_xp`, `week_start`
-- [ ] Update `add_xp()` to track weekly XP (reset on Monday)
-- [ ] Create Celery task: `reset_weekly_stats()` (runs Monday 00:00)
-- [ ] Create model: `ThriveCircleConnection` (follow system)
+- [ ] Create model: `ThriveCircleConnection` (follow system for finding learning buddies)
 - [ ] Add to ViewSet:
-  - `GET /leaderboard/` (top earners in user's tier this week)
-  - `GET /activity-feed/` (recent activity from connections)
-  - `POST /connections/follow/`
-- [ ] Implement weekly ranking logic
+  - `GET /community-activity/` (recent XP activities from all users, NO rankings)
+  - `GET /community-stats/` (aggregate community stats: total XP earned together, tier upgrades this week)
+  - `GET /discover/` (find users by tier or topic they're learning)
+  - `GET /following-activity/` (activity feed from people you follow)
+  - `POST /follow/{username}/` (follow another user)
+  - `DELETE /unfollow/{username}/` (unfollow)
+- [ ] Create Celery task: `aggregate_weekly_community_stats()` (runs daily)
+- [ ] Add privacy settings: users can make their activity public/private
 
 ### Frontend Tasks
-- [ ] Create component: `components/thrive-circle/WeeklyLeaderboard.tsx`
-- [ ] Create component: `components/thrive-circle/ActivityFeed.tsx`
-- [ ] Create component: `components/thrive-circle/StatsPanel.tsx`
-- [ ] Update `ThriveCirclePage` with 3-column layout
+- [ ] Create component: `components/thrive-circle/CommunityActivityFeed.tsx`
+  - Shows recent community activities (what people are learning/building)
+  - NO XP amounts, NO rankings, NO comparisons
+- [ ] Create component: `components/thrive-circle/CommunityStatsPanel.tsx`
+  - Aggregate stats: "Community earned 12,500 XP together this week!"
+  - "15 people upgraded their tier! 🎉"
+  - "Most popular topic: Prompt Engineering"
+- [ ] Create component: `components/thrive-circle/YourJourneyPanel.tsx`
+  - Personal progress (tier, XP, progress to next tier)
+  - NO rank, NO percentile, NO position
+- [ ] Create component: `components/thrive-circle/DiscoverPanel.tsx`
+  - Browse users by tier: "See what other Embers are working on"
+  - Browse by topic: "Who else is learning about LangChain?"
+- [ ] Create page: `pages/ThriveCirclePage.tsx` with 3-column layout:
+  - Left: Your Journey + Weekly Community Highlights
+  - Center: Community Activity Feed
+  - Right: Discover Peers
 - [ ] Add follow/unfollow buttons on user profiles
 
 ### Testing Criteria
 ```python
 # Backend test
-def test_weekly_leaderboard():
-    # Create 3 users in same tier
+def test_community_activity_feed():
+    """Test that community feed shows all activities (no filtering by rank)"""
     users = [User.objects.create(username=f'user{i}') for i in range(3)]
-    tiers = [UserTier.objects.create(user=u, tier='spark') for u in users]
 
-    # Award different weekly XP
-    tiers[0].weekly_xp = 100
-    tiers[1].weekly_xp = 200
-    tiers[2].weekly_xp = 50
-    for t in tiers: t.save()
+    # All users do activities
+    for user in users:
+        tier = UserTier.objects.create(user=user)
+        tier.add_xp(50, 'quiz_complete', f'{user.username} completed quiz')
 
-    # Get leaderboard for tier 'spark'
-    leaderboard = UserTier.objects.filter(tier='spark').order_by('-weekly_xp')
+    # Get community feed
+    activities = XPActivity.objects.order_by('-created_at')[:10]
 
-    assert leaderboard[0].user == users[1]  # user1 (200 XP) is #1
-    assert leaderboard[1].user == users[0]  # user0 (100 XP) is #2
+    # Should show all 3 activities (not just "top" users)
+    assert activities.count() == 3
 
-def test_weekly_reset():
-    tier = UserTier.objects.create(
-        user=User.objects.create(username='test'),
-        weekly_xp=500,
-        week_start=get_week_start() - timedelta(days=7)  # Last week
-    )
+def test_community_stats_aggregate():
+    """Test weekly aggregate stats (collective, not competitive)"""
+    users = [User.objects.create(username=f'user{i}') for i in range(3)]
 
-    # Run reset task
-    reset_weekly_stats()
+    week_ago = timezone.now() - timedelta(days=3)
+    for user in users:
+        tier = UserTier.objects.create(user=user)
+        tier.add_xp(100, 'quiz_complete')
 
-    tier.refresh_from_db()
-    assert tier.weekly_xp == 0
-    assert tier.week_start == get_week_start()  # This week
+    # Get aggregate stats
+    total_xp = XPActivity.objects.filter(
+        created_at__gte=week_ago
+    ).aggregate(Sum('amount'))['amount__sum']
+
+    assert total_xp == 300  # Collective achievement!
+
+def test_discover_by_tier():
+    """Test finding peers at same tier level"""
+    ember_users = [
+        User.objects.create(username=f'ember{i}')
+        for i in range(3)
+    ]
+    spark_user = User.objects.create(username='spark1')
+
+    # Create tiers
+    for user in ember_users:
+        UserTier.objects.create(user=user, tier='ember')
+    UserTier.objects.create(user=spark_user, tier='spark', total_xp=600)
+
+    # Discover other Embers
+    ember_tiers = UserTier.objects.filter(tier='ember')
+    assert ember_tiers.count() == 3
 ```
 
 **Success Criteria:**
-- ✅ Leaderboard shows correct ranking by weekly XP
-- ✅ Only shows users in same tier
-- ✅ Weekly XP resets every Monday
-- ✅ User can follow others
-- ✅ Activity feed shows connections' recent actions
-- ✅ User's rank is highlighted on leaderboard
+- ✅ Community activity feed shows what people are learning (no rankings)
+- ✅ Community stats show collective achievements
+- ✅ Users can discover peers by tier or topic
+- ✅ Follow system helps find learning buddies
+- ✅ NO leaderboards, NO ranks, NO percentiles
+- ✅ Focus on inspiration, not competition
+- ✅ Celebration of everyone's progress
 
-**Risks**: Medium - Weekly reset timing is critical
+**Risks**: Low - simpler than competitive features
 
-**Deployment**: Deploy to staging, test Monday reset
+**Deployment**: Deploy to staging, gather user feedback on community feel
 
 ---
 

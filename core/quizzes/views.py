@@ -227,6 +227,42 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
                 logger = logging.getLogger(__name__)
                 logger.error(f'Failed to award points for quiz completion: {e}', exc_info=True)
 
+            # Award XP for completing the quiz (Thrive Circle)
+            from core.thrive_circle.models import UserTier
+            from core.thrive_circle.services import XPService
+
+            try:
+                # Get or create user tier
+                user_tier, created = UserTier.objects.get_or_create(
+                    user=request.user, defaults={'tier': 'ember', 'total_xp': 0}
+                )
+
+                # Calculate XP using service layer
+                xp_amount = XPService.calculate_quiz_xp(attempt.percentage_score)
+
+                # Award the XP
+                user_tier.add_xp(
+                    amount=xp_amount,
+                    activity_type='quiz_complete',
+                    description=f"Completed '{attempt.quiz.title}' ({attempt.percentage_score}% score)",
+                )
+
+                logger.info(
+                    f'Awarded {xp_amount} XP for quiz completion',
+                    extra={
+                        'user_id': request.user.id,
+                        'quiz_id': str(attempt.quiz.id),
+                        'score': attempt.percentage_score,
+                    },
+                )
+            except Exception as e:
+                # Log error but don't fail the quiz completion
+                logger.error(
+                    f'Failed to award XP for quiz completion: {e}',
+                    exc_info=True,
+                    extra={'user_id': request.user.id, 'quiz_attempt_id': str(attempt.id)},
+                )
+
         # Calculate total points earned for this quiz attempt
         total_points_earned = (
             PointsHistory.objects.filter(user=request.user, metadata__quiz_attempt_id=str(attempt.id)).aggregate(

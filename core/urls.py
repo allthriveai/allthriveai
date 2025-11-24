@@ -42,6 +42,7 @@ from .social.views import (
 )
 from .social.views import oauth_callback as social_oauth_callback
 from .taxonomy.views import TaxonomyViewSet, UserTagViewSet, track_interaction, user_personalization_overview
+from .thrive_circle.views import ThriveCircleViewSet, XPActivityViewSet
 from .tools.views import ToolBookmarkViewSet, ToolComparisonViewSet, ToolReviewViewSet, ToolViewSet
 from .uploads.views import upload_file, upload_image
 from .users.views import explore_users
@@ -62,6 +63,8 @@ me_router.register(r'referrals', ReferralViewSet, basename='me-referrals')
 me_router.register(r'tags', UserTagViewSet, basename='me-tags')
 me_router.register(r'battles', PromptBattleViewSet, basename='me-battles')
 me_router.register(r'battle-invitations', BattleInvitationViewSet, basename='me-battle-invitations')
+me_router.register(r'thrive-circle', ThriveCircleViewSet, basename='me-thrive-circle')
+me_router.register(r'xp-activities', XPActivityViewSet, basename='me-xp-activities')
 
 # Taxonomy router (public but auth-required)
 taxonomy_router = DefaultRouter()

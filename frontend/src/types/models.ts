@@ -1,5 +1,10 @@
+import type { TopicSlug } from '@/config/topics';
+
 // User roles
 export type UserRole = 'explorer' | 'expert' | 'mentor' | 'patron' | 'admin';
+
+// Thrive Circle tier names
+export type TierName = 'ember' | 'spark' | 'blaze' | 'beacon' | 'phoenix';
 
 // User model
 export interface User {
@@ -29,6 +34,10 @@ export interface User {
   totalPoints?: number;
   level?: number;
   currentStreak?: number;
+  // Thrive Circle fields
+  tier?: TierName;
+  tierDisplay?: string;
+  totalXp?: number;
 }
 
 // Authentication state
@@ -111,6 +120,8 @@ export interface Project {
   externalUrl?: string;
   tools: number[]; // Tool IDs
   toolsDetails?: Tool[]; // Full tool objects with details
+  primaryTopic?: TopicSlug;
+  secondaryTopics?: TopicSlug[];
   heartCount: number;
   isLikedByUser: boolean;
   content: ProjectContent;
@@ -168,6 +179,8 @@ export interface ProjectPayload {
   featuredImageUrl?: string;
   externalUrl?: string;
   tools?: number[];
+  primaryTopic?: TopicSlug;
+  secondaryTopics?: TopicSlug[];
   content?: ProjectContent;
 }
 
@@ -313,6 +326,9 @@ export interface Tool {
   // Taxonomy Link
   taxonomy?: number;
 
+  // Topic suggestions
+  suggestedTopics?: TopicSlug[];
+
   // Timestamps
   createdAt: string;
   updatedAt: string;
@@ -335,4 +351,61 @@ export interface ToolReview {
   helpfulCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+// Thrive Circle Types
+export type XPActivityType =
+  | 'quiz_complete'
+  | 'project_create'
+  | 'project_update'
+  | 'comment'
+  | 'reaction'
+  | 'daily_login'
+  | 'streak_bonus'
+  | 'weekly_goal'
+  | 'side_quest'
+  | 'special_event'
+  | 'referral';
+
+export interface XPActivity {
+  id: string;
+  user: number;
+  username: string;
+  amount: number;
+  activityType: XPActivityType;
+  activityTypeDisplay: string;
+  description: string;
+  tierAtTime: TierName;
+  createdAt: string;
+}
+
+export interface UserTier {
+  id: string;
+  user: number;
+  username: string;
+  tier: TierName;
+  tierDisplay: string;
+  totalXp: number;
+  createdAt: string;
+  updatedAt: string;
+  recentActivities?: XPActivity[];
+}
+
+export interface ThriveCircleStatus {
+  tierStatus: UserTier;
+  recentActivities: XPActivity[];
+}
+
+export interface AwardXPRequest {
+  amount: number;
+  activityType: XPActivityType;
+  description?: string;
+}
+
+export interface AwardXPResponse {
+  tierStatus: UserTier;
+  xpActivity: XPActivity;
+  tierUpgraded: boolean;
+  oldTier: TierName | null;
+  newTier: TierName | null;
 }

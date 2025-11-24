@@ -1,11 +1,12 @@
 import { api } from './api';
 import type { Project, PaginatedResponse } from '@/types/models';
+import type { TopicSlug } from '@/config/topics';
 
 export interface ExploreParams {
   tab?: 'for-you' | 'trending' | 'all';
   search?: string;
   tools?: number[];
-  topics?: string[];
+  topics?: TopicSlug[];
   sort?: 'newest' | 'trending' | 'popular' | 'random';
   page?: number;
   page_size?: number;
@@ -58,7 +59,7 @@ export async function exploreProfiles(page: number = 1, page_size: number = 20):
  * Get available filter options (topics, tools)
  */
 export async function getFilterOptions(): Promise<{
-  topics: string[];
+  topics: TopicSlug[];
   tools: Array<{ id: number; name: string }>;
 }> {
   // This could be a separate endpoint or derived from the projects

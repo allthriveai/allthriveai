@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'core',
     'core.achievements',
     'core.points',
+    'core.thrive_circle',
 ]
 
 MIDDLEWARE = [

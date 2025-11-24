@@ -6,6 +6,7 @@ import { getUserByUsername } from '@/services/auth';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProfileSidebar } from './ProfileSidebar';
 import { ActivityFeed } from './ActivityFeed';
+import { useThriveCircle } from '@/hooks/useThriveCircle';
 import { PlusIcon, TrashIcon, CheckIcon, BoltIcon } from '@heroicons/react/24/outline';
 import { API_ENDPOINTS } from '@/config/api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -30,6 +31,7 @@ interface ProfileCenterProps {
 
 export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, activeTab, onTabChange, onOpenChat }: ProfileCenterProps) {
   const navigate = useNavigate();
+  const { tierStatus, isLoading: isTierLoading } = useThriveCircle();
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<{ showcase: Project[]; playground: Project[] }>({
     showcase: [],
@@ -444,15 +446,22 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                 <div className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
                   <span className="font-bold">{projects.showcase.length + projects.playground.length}</span> Projects
                 </div>
-                <div className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium">
-                  <span className="font-bold">1,250</span> Points
-                </div>
-                <div className="px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-sm font-medium">
-                  Level <span className="font-bold">8</span>
-                </div>
-                <div className="px-3 py-1.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-full text-sm font-medium">
-                  <span className="font-bold">12 🔥</span> Day Streak
-                </div>
+                {isOwnProfile && tierStatus && (
+                  <>
+                    <div className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium">
+                      <span className="font-bold">{tierStatus.totalXp}</span> XP
+                    </div>
+                    <div className="px-3 py-1.5 bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-700 dark:text-orange-300 rounded-full text-sm font-medium">
+                      {tierStatus.tierDisplay} Tier
+                    </div>
+                  </>
+                )}
+                {isOwnProfile && !tierStatus && !isTierLoading && (
+                  <div className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium">
+                    <span className="font-bold">0</span> XP
+                  </div>
+                )}
+                {/* TODO: Add streak in Phase 2 */}
               </div>
 
               {/* Achievements */}
