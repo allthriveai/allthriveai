@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 
-from .models import UserTier, XPActivity
+from .models import UserTier, WeeklyGoal, XPActivity
 from .services import XPConfig
 
 
@@ -44,6 +44,16 @@ class UserTierSerializer(serializers.ModelSerializer):
             'tier',
             'tier_display',
             'total_xp',
+            # Streak fields (Phase 2)
+            'current_streak_days',
+            'longest_streak_days',
+            'last_activity_date',
+            # Lifetime stats (Phase 2)
+            'lifetime_quizzes_completed',
+            'lifetime_projects_created',
+            'lifetime_side_quests_completed',
+            'lifetime_comments_posted',
+            # Metadata
             'created_at',
             'updated_at',
             'recent_activities',
@@ -89,3 +99,32 @@ class AwardXPSerializer(serializers.Serializer):
         if value in self.INTERNAL_ONLY_ACTIVITIES:
             raise serializers.ValidationError(f"Activity type '{value}' can only be awarded by the system, not via API")
         return value
+
+
+class WeeklyGoalSerializer(serializers.ModelSerializer):
+    """Serializer for weekly goals."""
+
+    goal_type_display = serializers.CharField(source='get_goal_type_display', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    progress_percentage = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = WeeklyGoal
+        fields = [
+            'id',
+            'user',
+            'username',
+            'goal_type',
+            'goal_type_display',
+            'week_start',
+            'week_end',
+            'current_progress',
+            'target_progress',
+            'progress_percentage',
+            'is_completed',
+            'completed_at',
+            'xp_reward',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'is_completed', 'completed_at']

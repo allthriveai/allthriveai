@@ -30,6 +30,99 @@ def current_user(request):
     return Response({'success': True, 'data': serializer.data})
 
 
+@ratelimit(key='ip', rate='10/m', method='POST', block=True)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+    """Login user with email/password.
+
+    Rate limits:
+    - 10 attempts per minute per IP address
+
+    Security:
+    - Consistent response time to prevent user enumeration
+    - Rate limiting to prevent brute-force attacks
+    """
+    from django.contrib.auth import login
+
+    from services.auth import set_auth_cookies
+
+    start_time = time.time()
+
+    email = request.data.get('email')
+    password = request.data.get('password')
+
+    if not email or not password:
+        elapsed = time.time() - start_time
+        if elapsed < 0.1:
+            time.sleep(0.1 - elapsed)
+        return Response({'error': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Try to find user by email
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        # Ensure minimum response time to prevent timing attacks
+        elapsed = time.time() - start_time
+        if elapsed < 0.1:
+            time.sleep(0.1 - elapsed)
+        return Response({'error': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Check password
+    if not user.check_password(password):
+        elapsed = time.time() - start_time
+        if elapsed < 0.1:
+            time.sleep(0.1 - elapsed)
+
+        # Log failed login attempt
+        UserAuditLog.log_action(
+            user=user,
+            action=UserAuditLog.Action.FAILED_LOGIN,
+            request=request,
+            details={'reason': 'invalid_password', 'email': email},
+            success=False,
+        )
+
+        return Response({'error': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Check if user is active
+    if not user.is_active:
+        elapsed = time.time() - start_time
+        if elapsed < 0.1:
+            time.sleep(0.1 - elapsed)
+        return Response({'error': 'Account is inactive'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Log the user in
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+
+    # Log successful login
+    UserAuditLog.log_action(
+        user=user,
+        action=UserAuditLog.Action.LOGIN,
+        request=request,
+        details={'email': email, 'method': 'email_password'},
+        success=True,
+    )
+
+    # Ensure minimum response time
+    elapsed = time.time() - start_time
+    if elapsed < 0.1:
+        time.sleep(0.1 - elapsed)
+
+    serializer = UserSerializer(user, context={'request': request})
+    response = Response(
+        {
+            'success': True,
+            'message': 'Login successful',
+            'data': serializer.data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+    # Set authentication cookies
+    return set_auth_cookies(response, user)
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow anyone to logout
 @csrf_exempt

@@ -1214,7 +1214,8 @@ export function useThriveCircle() {
     onSuccess: (data) => {
       // Invalidate queries to refresh UI
       queryClient.invalidateQueries({ queryKey: ['thriveCircleStatus'] });
-      queryClient.invalidateQueries({ queryKey: ['thriveCircleLeaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['communityActivity'] });
+      queryClient.invalidateQueries({ queryKey: ['communityStats'] });
 
       // Show XP toast
       toast.success(`+${amount} XP!`, {
@@ -1311,20 +1312,22 @@ Welcome experience for new users:
 - [ ] Create migrations and run
 - [ ] Build serializers
 - [ ] Implement ViewSets and endpoints
-- [ ] Create Celery tasks (weekly reset, goals, streaks)
+- [ ] Create Celery tasks (weekly goals, streaks)
 - [ ] Set up weekly cron jobs
 - [ ] Write XP award integration points
 - [ ] Migration script for existing users
 - [ ] Add tests
 
-### Frontend
-- [ ] Create TypeScript types
-- [ ] Build API service layer
-- [ ] Create ThriveCirclePage
+### Frontend (Inclusive, NO Leaderboards)
+- [ ] Create TypeScript types (with CommunityActivity, CommunityStats, DiscoverUser)
+- [ ] Build API service layer (community-focused endpoints)
+- [ ] Create ThriveCirclePage (community layout)
 - [ ] Build TierBadge component
-- [ ] Build WeeklyLeaderboard component
+- [ ] Build CommunityStatsPanel component (collective achievements)
+- [ ] Build CommunityActivityFeed component (NO XP amounts shown)
+- [ ] Build DiscoverPanel component (randomized, NO rankings)
+- [ ] Build YourJourneyPanel component (personal progress, NO comparison)
 - [ ] Build WeeklyGoalsPanel component
-- [ ] Build ActivityFeed component
 - [ ] Build StreakDisplay component
 - [ ] Build StatsPanel component
 - [ ] Create useThriveCircle hook
@@ -1344,18 +1347,21 @@ Welcome experience for new users:
 - [ ] Performance optimization
 - [ ] Security audit
 
-## Success Metrics
+## Success Metrics (Inclusive Community)
 
-- ✅ Users see their tier on first visit
+- ✅ Users see their tier on first visit (NO rank/percentile shown)
 - ✅ XP awarded correctly for all activities
-- ✅ Weekly stats reset every Monday
-- ✅ Leaderboard shows accurate rankings
+- ✅ Community stats show collective achievements
+- ✅ Community activity feed respects privacy settings
+- ✅ Discover panel shows randomized users (NO rankings)
 - ✅ Weekly goals track progress correctly
 - ✅ Streaks maintain across days
-- ✅ Activity feed shows connection actions
+- ✅ Your Journey panel shows personal progress WITHOUT comparison
+- ✅ NO leaderboards, NO ranks, NO percentiles anywhere
 - ✅ Tier-up animations trigger correctly
 - ✅ Mobile responsive design
 - ✅ < 2s page load time
+- ✅ Focus on inspiration, not competition
 
 ## Next Steps: Side Quests Integration
 
@@ -1364,13 +1370,14 @@ Once Thrive Circle is live, Side Quests will integrate naturally:
 1. **Quest XP Awards**: Side quests become major XP sources (50-200 XP)
 2. **Tier-Based Access**: Advanced quests unlock at higher tiers
 3. **Weekly Challenges**: Bonus XP for completing featured quests
-4. **Social Competition**: See what your circle is doing
+4. **Community Inspiration**: See what learning activities your peers are exploring
 5. **Quest Recommendations**: Personalized based on tier and interests
 
-**Full System:**
+**Full System (Inclusive Community Philosophy):**
 - **Permanent Tiers**: Ember → Spark → Blaze → Beacon → Phoenix
 - **Activities**: Side Quests, Quizzes, Projects, Community Engagement
-- **Rewards**: XP, Unlocks, Achievements, Social Recognition
+- **Rewards**: XP, Unlocks, Achievements, Shared Celebrations
 - **Habits**: Daily logins, Weekly goals, Streaks
+- **Community**: Inspiration over competition, shared growth, peer discovery
 
-The foundation is ready for the full gamified learning experience! 🔥
+The foundation is ready for an inclusive, community-focused gamified learning experience! 🌟

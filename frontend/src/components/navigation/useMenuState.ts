@@ -19,7 +19,7 @@ export function useMenuState({
   username,
 }: UseMenuStateProps) {
   // All useState hooks must be at the top
-  const [openSections, setOpenSections] = useState<string[]>(['EXPLORE']);
+  const [openSections, setOpenSections] = useState<string[]>([]);
   const [openSubItems, setOpenSubItems] = useState<string[]>([]);
   const [wasSearching, setWasSearching] = useState(false);
 
@@ -98,7 +98,7 @@ export function useMenuState({
     } else if (wasSearching) {
       // Only reset when search is actively cleared (not on initial mount)
       setWasSearching(false);
-      setOpenSections(['EXPLORE']);
+      setOpenSections([]);
       setOpenSubItems([]);
     }
   }, [searchQuery, filteredMenuSections, menuSections, wasSearching]);

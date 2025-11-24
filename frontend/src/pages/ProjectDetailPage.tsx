@@ -11,6 +11,7 @@ import { parseApiError } from '@/utils/errorHandler';
 import { sanitizeHtml } from '@/utils/sanitize';
 import { SlideUpHero } from '@/components/projects/SlideUpHero';
 import { ToolTray } from '@/components/tools/ToolTray';
+import { ProjectEditTray } from '@/components/projects/ProjectEditTray';
 import {
   ArrowLeftIcon,
   CodeBracketIcon,
@@ -62,6 +63,7 @@ export default function ProjectDetailPage() {
   const [loadKey, setLoadKey] = useState(0); // Used to force reload
   const [showToolTray, setShowToolTray] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string | null>(null);
+  const [showEditTray, setShowEditTray] = useState(false);
 
   // React Rewards for comment submission celebration
   const { reward: rewardComment } = useReward('commentReward', 'confetti', {
@@ -162,6 +164,27 @@ export default function ProjectDetailPage() {
   }, [project, isFeedbackSidebarOpen, commentsLoaded]);
 
   const isOwner = isAuthenticated && user && project && user.username.toLowerCase() === project.username.toLowerCase();
+
+  // Keyboard shortcut: Press 'E' to open edit tray (owner only)
+  useEffect(() => {
+    if (!isOwner) return;
+
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Only trigger if not typing in an input/textarea
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextArea) {
+        return;
+      }
+
+      // Press 'E' key to toggle edit tray
+      if (event.key === 'e' || event.key === 'E') {
+        event.preventDefault();
+        setShowEditTray(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isOwner]);
 
   const handleDeleteProject = async () => {
     if (!project) return;
@@ -350,12 +373,15 @@ export default function ProjectDetailPage() {
                       <button
                         onClick={() => {
                           setShowMenu(false);
-                          navigate(`/${project.username}/${project.slug}/edit`);
+                          setShowEditTray(true);
                         }}
-                        className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 flex items-center gap-3 transition-colors"
+                        className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 flex items-center justify-between gap-3 transition-colors"
                       >
-                        <PencilIcon className="w-4 h-4" />
-                        Edit
+                        <div className="flex items-center gap-3">
+                          <PencilIcon className="w-4 h-4" />
+                          Quick Edit
+                        </div>
+                        <kbd className="px-2 py-0.5 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">E</kbd>
                       </button>
                       <button
                         onClick={handleToggleShowcase}
@@ -965,7 +991,7 @@ export default function ProjectDetailPage() {
           <>
             {/* Overlay */}
             <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 animate-[fade-in_0.2s_ease-out]"
+              className="fixed inset-0 bg-black/20 z-40 animate-[fade-in_0.2s_ease-out]"
               onClick={() => setIsFeedbackSidebarOpen(false)}
             />
 
@@ -1165,6 +1191,17 @@ export default function ProjectDetailPage() {
           toolSlug={selectedToolSlug}
         />
       )}
+
+      {/* Edit Tray */}
+      <ProjectEditTray
+        isOpen={showEditTray}
+        onClose={() => setShowEditTray(false)}
+        project={project}
+        onProjectUpdate={(updatedProject) => {
+          // Update project state immediately without full reload
+          setProject(updatedProject);
+        }}
+      />
 
       {/* Nested route outlet for tool detail overlay */}
       <Outlet />

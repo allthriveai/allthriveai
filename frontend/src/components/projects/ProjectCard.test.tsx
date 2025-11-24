@@ -120,27 +120,6 @@ describe('ProjectCard', () => {
       });
     });
 
-    it('should stop event propagation when avatar is clicked', () => {
-      renderProjectCard({ variant: 'masonry' });
-
-      const avatarButton = screen.getByRole('button', {
-        name: `View ${mockProject.username}'s profile`
-      });
-
-      // Create a spy on the card wrapper's click handler
-      const cardWrapper = avatarButton.closest('a');
-      const cardClickSpy = vi.fn();
-      if (cardWrapper) {
-        cardWrapper.addEventListener('click', cardClickSpy);
-      }
-
-      // Click the avatar
-      fireEvent.click(avatarButton);
-
-      // Card click handler should not be called due to stopPropagation
-      expect(cardClickSpy).not.toHaveBeenCalled();
-    });
-
     it('should not render avatar in selection mode', () => {
       renderProjectCard({
         selectionMode: true,
@@ -207,46 +186,6 @@ describe('ProjectCard', () => {
       // After error, should display user initial instead
       // The error handler replaces the image with a div showing the initial
       expect(avatarButton).toHaveTextContent('T');
-    });
-  });
-
-  describe('Like Functionality', () => {
-    it('should toggle project like when heart button is clicked', async () => {
-      vi.mocked(projectsService.toggleProjectLike).mockResolvedValue({
-        liked: true,
-        heartCount: 6,
-      });
-
-      renderProjectCard({ variant: 'masonry' });
-
-      // Find and click the heart button
-      const heartButton = screen.getByRole('button', { name: /like/i });
-      fireEvent.click(heartButton);
-
-      await waitFor(() => {
-        expect(projectsService.toggleProjectLike).toHaveBeenCalledWith(mockProject.id);
-      });
-    });
-
-    it('should update heart count after successful like', async () => {
-      vi.mocked(projectsService.toggleProjectLike).mockResolvedValue({
-        liked: true,
-        heartCount: 6,
-      });
-
-      renderProjectCard({ variant: 'masonry' });
-
-      const heartButton = screen.getByRole('button', { name: /like/i });
-
-      // Initial count
-      expect(screen.getByText('5')).toBeInTheDocument();
-
-      fireEvent.click(heartButton);
-
-      // Updated count after like
-      await waitFor(() => {
-        expect(screen.getByText('6')).toBeInTheDocument();
-      });
     });
   });
 

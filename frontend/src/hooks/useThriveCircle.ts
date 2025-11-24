@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMyThriveCircleStatus, awardXP, getMyXPActivities } from '@/services/thriveCircle';
+import { getMyThriveCircleStatus, awardXP, getMyXPActivities, getMyWeeklyGoals, getCircleProjects } from '@/services/thriveCircle';
 import type { AwardXPRequest } from '@/types/models';
 import { useAuth } from './useAuth';
 
@@ -38,13 +38,38 @@ export function useThriveCircle() {
     retry: 1,
   });
 
+  // Fetch weekly goals (Phase 2)
+  const {
+    data: weeklyGoals,
+    isLoading: isLoadingWeeklyGoals,
+  } = useQuery({
+    queryKey: ['weekly-goals'],
+    queryFn: getMyWeeklyGoals,
+    enabled: isAuthenticated, // Only fetch when authenticated
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+  });
+
+  // Fetch circle projects (projects from same tier members)
+  const {
+    data: circleProjects,
+    isLoading: isLoadingCircleProjects,
+  } = useQuery({
+    queryKey: ['circle-projects'],
+    queryFn: () => getCircleProjects(10),
+    enabled: isAuthenticated, // Only fetch when authenticated
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+  });
+
   // Award XP mutation
   const awardXPMutation = useMutation({
     mutationFn: (request: AwardXPRequest) => awardXP(request),
     onSuccess: (data) => {
-      // Invalidate and refetch tier status
+      // Invalidate and refetch tier status, activities, and weekly goals
       queryClient.invalidateQueries({ queryKey: ['thrive-circle', 'my-status'] });
       queryClient.invalidateQueries({ queryKey: ['xp-activities'] });
+      queryClient.invalidateQueries({ queryKey: ['weekly-goals'] });
 
       // Show tier upgrade notification if applicable
       if (data.tierUpgraded && data.newTier) {
@@ -67,10 +92,14 @@ export function useThriveCircle() {
     tierStatus: thriveCircleStatus?.tierStatus,
     recentActivities: thriveCircleStatus?.recentActivities || [],
     allActivities: allActivities || [],
+    weeklyGoals: weeklyGoals || [],
+    circleProjects: circleProjects || [],
 
     // Loading states
     isLoading,
     isLoadingActivities,
+    isLoadingWeeklyGoals,
+    isLoadingCircleProjects,
 
     // Error
     error,

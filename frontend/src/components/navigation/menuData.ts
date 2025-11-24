@@ -31,11 +31,7 @@ export const getMenuSections = (
     title: 'EXPLORE',
     icon: faCompass,
     items: [
-      { label: 'For You', path: '/explore' },
-      { label: 'Trending', path: '/explore?tab=trending' },
-      { label: 'By Topics', path: '/explore?tab=topics' },
-      { label: 'By Tools', path: '/explore?tab=tools' },
-      { label: 'Top Profiles', path: '/explore?tab=profiles' },
+      { label: 'Explore', path: '/explore' },
     ],
   },
   {
@@ -45,7 +41,6 @@ export const getMenuSections = (
       { label: "This Week's Challenge", path: '#' },
       { label: 'Side Quests', path: '#' },
       { label: 'Prompt Battle', path: '/play/prompt-battle' },
-      { label: 'Your Thrive Circle', path: '#' },
     ],
   },
   {
@@ -61,6 +56,7 @@ export const getMenuSections = (
     title: 'MEMBERSHIP',
     icon: faUsers,
     items: [
+      { label: 'Your Thrive Circle', path: '/thrive-circle' },
       { label: 'Perks', path: '#' },
       { label: 'Events Calendar', onClick: () => onMenuClick('Events Calendar') },
     ],
@@ -103,11 +99,7 @@ export const getMenuSections = (
 
 // Route patterns for active state detection
 export const ROUTE_PATTERNS: Record<string, (path: string, search: string, username?: string) => boolean> = {
-  'For You': (path, search) => path === '/explore' && (!search || search.includes('tab=for-you')),
-  'Trending': (path, search) => path === '/explore' && search.includes('tab=trending'),
-  'By Topics': (path, search) => path === '/explore' && search.includes('tab=topics'),
-  'By Tools': (path, search) => path === '/explore' && search.includes('tab=tools'),
-  'Top Profiles': (path, search) => path === '/explore' && search.includes('tab=profiles'),
+  'Explore': (path) => path === '/explore',
   'Quick Quizzes': (path) => path === '/quick-quizzes',
   'Prompt Battle': (path) => path === '/play/prompt-battle',
   'Chat': (_, search) => search.includes('chat='),
@@ -117,6 +109,7 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
     username ? path === `/${username}` && (search.includes('tab=showcase') || !search.includes('tab=')) : false,
   'My Projects': (path, search, username) =>
     username ? path === `/${username}` && search.includes('tab=playground') : false,
+  'Your Thrive Circle': (path) => path === '/thrive-circle',
   'AI Tool Directory': (path) => path === '/tools',
 };
 

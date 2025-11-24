@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
@@ -8,6 +9,7 @@ from .auth.views import (
     UserProfileView,
     csrf_token,
     current_user,
+    login_view,
     logout_view,
     oauth_callback,
     oauth_urls,
@@ -113,6 +115,7 @@ urlpatterns = [
     # Note: OAuth login URLs are at /accounts/google/login/ and /accounts/github/login/
     # These are handled by django-allauth (see config/urls.py)
     path('auth/csrf/', csrf_token, name='csrf_token'),
+    path('auth/login/', login_view, name='login'),
     path('auth/signup/', signup, name='signup'),
     path('auth/me/', current_user, name='current_user'),
     path('auth/logout/', logout_view, name='logout'),
@@ -158,3 +161,11 @@ urlpatterns = [
     path('battles/leaderboard/', battle_leaderboard, name='battle_leaderboard'),
     path('battles/expire/', expire_battles, name='expire_battles'),
 ]
+
+# Test-only endpoints (only available in DEBUG mode)
+if settings.DEBUG:
+    from .auth.test_views import test_login
+
+    urlpatterns += [
+        path('auth/test-login/', test_login, name='test_login'),
+    ]

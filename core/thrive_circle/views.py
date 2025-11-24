@@ -9,9 +9,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
-from .models import UserTier, XPActivity
-from .serializers import AwardXPSerializer, UserTierSerializer, XPActivitySerializer
+from .models import UserTier, WeeklyGoal, XPActivity
+from .serializers import AwardXPSerializer, UserTierSerializer, WeeklyGoalSerializer, XPActivitySerializer
 from .services import XPService
+from .utils import get_week_start
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +174,96 @@ class ThriveCircleViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(
                 {'error': 'Failed to award XP. Please try again later.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=False, methods=['get'])
+    def weekly_goals(self, request):
+        """
+        Get the authenticated user's weekly goals for the current week.
+
+        Returns a list of weekly goals with progress information.
+
+        Returns:
+            [
+                {
+                    "id": "...",
+                    "goal_type": "activities_3",
+                    "goal_type_display": "Complete 3 Activities",
+                    "current_progress": 1,
+                    "target_progress": 3,
+                    "progress_percentage": 33,
+                    "is_completed": false,
+                    "xp_reward": 30,
+                    ...
+                },
+                ...
+            ]
+        """
+        user = request.user
+        week_start = get_week_start()
+
+        # Get this week's goals for the user
+        goals = WeeklyGoal.objects.filter(user=user, week_start=week_start).order_by('goal_type')
+
+        return Response(WeeklyGoalSerializer(goals, many=True).data)
+
+    @action(detail=False, methods=['get'], url_path='circle-projects')
+    def circle_projects(self, request):
+        """
+        Get recent projects from members in the same tier circle.
+
+        Returns a list of recent projects created by users in the same tier,
+        excluding the current user's own projects.
+
+        Query params:
+            - limit: Number of projects to return (default: 10, max: 50)
+
+        Returns:
+            [
+                {
+                    "id": 1,
+                    "username": "...",
+                    "user_avatar_url": "...",
+                    "title": "...",
+                    "slug": "...",
+                    "description": "...",
+                    "thumbnail_url": "...",
+                    ...
+                },
+                ...
+            ]
+        """
+        from core.projects.models import Project
+        from core.projects.serializers import ProjectSerializer
+
+        user = request.user
+        limit = min(int(request.query_params.get('limit', 10)), 50)
+
+        # Get or create user tier
+        tier_status, _ = UserTier.objects.get_or_create(
+            user=user,
+            defaults={'tier': 'ember', 'total_xp': 0},
+        )
+
+        # Get users in the same tier (excluding current user)
+        same_tier_users = (
+            UserTier.objects.filter(tier=tier_status.tier)
+            .exclude(user=user)
+            .select_related('user')
+            .values_list('user_id', flat=True)
+        )
+
+        # Get recent published projects from same-tier users
+        projects = (
+            Project.objects.filter(
+                user_id__in=same_tier_users,
+                is_published=True,
+                is_archived=False,
+            )
+            .select_related('user')
+            .order_by('-published_at')[:limit]
+        )
+
+        return Response(ProjectSerializer(projects, many=True).data)
 
 
 class XPActivityViewSet(viewsets.ReadOnlyModelViewSet):

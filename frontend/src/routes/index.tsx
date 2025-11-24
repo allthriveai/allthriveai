@@ -3,6 +3,8 @@ import { ProtectedRoute } from './ProtectedRoute';
 import HomePage from '@/pages/HomePage';
 import AboutPage from '@/pages/AboutPage';
 import AuthPage from '@/pages/AuthPage';
+import LoginPage from '@/pages/LoginPage';
+import SignupPage from '@/pages/SignupPage';
 import ProfilePage from '@/pages/ProfilePage';
 import ProjectDetailPage from '@/pages/ProjectDetailPage';
 import ProjectEditorPage from '@/pages/ProjectEditorPage';
@@ -24,6 +26,7 @@ import ToolDetailPage from '@/pages/ToolDetailPage';
 import { ExplorePage } from '@/pages/ExplorePage';
 import PromptBattlePage from '@/pages/play/PromptBattlePage';
 import BattleDetailPage from '@/pages/play/BattleDetailPage';
+import ThriveCirclePage from '@/pages/ThriveCirclePage';
 
 export function AppRoutes() {
   return (
@@ -64,19 +67,37 @@ export function AppRoutes() {
         }
       />
 
-      {/* Auth routes - unified chat-based auth */}
+      {/* Thrive Circle - protected */}
       <Route
-        path="/login"
+        path="/thrive-circle"
         element={
-          <ProtectedRoute redirectIfAuthenticated>
-            <AuthPage />
+          <ProtectedRoute>
+            <ThriveCirclePage />
           </ProtectedRoute>
         }
       />
 
-      {/* Redirect old routes to new unified auth */}
+      {/* Auth routes */}
+      <Route
+        path="/login"
+        element={
+          <ProtectedRoute redirectIfAuthenticated>
+            <LoginPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/signup"
+        element={
+          <ProtectedRoute redirectIfAuthenticated>
+            <SignupPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Redirect old auth page route */}
       <Route path="/auth" element={<Navigate to="/login" replace />} />
-      <Route path="/signup" element={<Navigate to="/login" replace />} />
 
       {/* Protected routes - Settings */}
       <Route

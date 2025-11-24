@@ -386,6 +386,16 @@ export interface UserTier {
   tier: TierName;
   tierDisplay: string;
   totalXp: number;
+  // Phase 2: Streak fields
+  currentStreakDays: number;
+  longestStreakDays: number;
+  lastActivityDate: string | null;
+  // Phase 2: Lifetime stats
+  lifetimeQuizzesCompleted: number;
+  lifetimeProjectsCreated: number;
+  lifetimeSideQuestsCompleted: number;
+  lifetimeCommentsPosted: number;
+  // Metadata
   createdAt: string;
   updatedAt: string;
   recentActivities?: XPActivity[];
@@ -408,4 +418,25 @@ export interface AwardXPResponse {
   tierUpgraded: boolean;
   oldTier: TierName | null;
   newTier: TierName | null;
+}
+
+// Phase 2: Weekly Goals
+export type WeeklyGoalType = 'activities_3' | 'streak_7' | 'help_5' | 'topics_2';
+
+export interface WeeklyGoal {
+  id: string;
+  user: number;
+  username: string;
+  goalType: WeeklyGoalType;
+  goalTypeDisplay: string;
+  weekStart: string;
+  weekEnd: string;
+  currentProgress: number;
+  targetProgress: number;
+  progressPercentage: number;
+  isCompleted: boolean;
+  completedAt: string | null;
+  xpReward: number;
+  createdAt: string;
+  updatedAt: string;
 }
