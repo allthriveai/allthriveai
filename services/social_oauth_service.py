@@ -1,5 +1,6 @@
 """Service layer for handling OAuth flows for social connections."""
 
+import logging
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -8,6 +9,8 @@ from django.conf import settings
 from django.utils import timezone
 
 from core.social.models import SocialConnection, SocialProvider
+
+logger = logging.getLogger(__name__)
 
 
 class OAuthProviderConfig:
@@ -19,8 +22,8 @@ class OAuthProviderConfig:
             'token_url': 'https://github.com/login/oauth/access_token',
             'user_info_url': 'https://api.github.com/user',
             'scopes': ['read:user', 'user:email'],
-            'client_id_setting': 'GITHUB_OAUTH_CLIENT_ID',
-            'client_secret_setting': 'GITHUB_OAUTH_CLIENT_SECRET',
+            'client_id_setting': 'GITHUB_CLIENT_ID',
+            'client_secret_setting': 'GITHUB_CLIENT_SECRET',
         },
         SocialProvider.GITLAB: {
             'authorize_url': 'https://gitlab.com/oauth/authorize',
@@ -91,11 +94,15 @@ class SocialOAuthService:
         self.provider = provider
         self.config = OAuthProviderConfig.get_config(provider)
         if not self.config:
+            logger.error(f'Unsupported OAuth provider requested: {provider}')
             raise ValueError(f'Unsupported provider: {provider}')
 
         self.client_id, self.client_secret = OAuthProviderConfig.get_client_credentials(provider)
         if not self.client_id or not self.client_secret:
+            logger.error(f'OAuth credentials not configured for provider: {provider}')
             raise ValueError(f'OAuth credentials not configured for {provider}')
+
+        logger.info(f'SocialOAuthService initialized for provider: {provider}')
 
     def get_authorization_url(self, redirect_uri: str, state: str) -> str:
         """Generate OAuth authorization URL."""
@@ -107,10 +114,14 @@ class SocialOAuthService:
             'state': state,
         }
 
-        return f'{self.config["authorize_url"]}?{urlencode(params)}'
+        auth_url = f'{self.config["authorize_url"]}?{urlencode(params)}'
+        logger.info(f'Generated OAuth authorization URL for {self.provider} with redirect_uri: {redirect_uri}')
+        return auth_url
 
     def exchange_code_for_token(self, code: str, redirect_uri: str) -> dict:
         """Exchange authorization code for access token."""
+        logger.info(f'Exchanging authorization code for {self.provider} access token')
+
         data = {
             'client_id': self.client_id,
             'client_secret': self.client_secret,
@@ -123,22 +134,33 @@ class SocialOAuthService:
             'Accept': 'application/json',
         }
 
-        response = requests.post(self.config['token_url'], data=data, headers=headers, timeout=10)
-        response.raise_for_status()
-
-        return response.json()
+        try:
+            response = requests.post(self.config['token_url'], data=data, headers=headers, timeout=10)
+            response.raise_for_status()
+            logger.info(f'Successfully obtained access token for {self.provider}')
+            return response.json()
+        except requests.RequestException as e:
+            logger.error(f'Failed to exchange code for token ({self.provider}): {e}')
+            raise
 
     def get_user_info(self, access_token: str) -> dict:
         """Fetch user information from provider."""
+        logger.info(f'Fetching user info from {self.provider}')
+
         headers = {
             'Authorization': f'Bearer {access_token}',
             'Accept': 'application/json',
         }
 
-        response = requests.get(self.config['user_info_url'], headers=headers, timeout=10)
-        response.raise_for_status()
-
-        return response.json()
+        try:
+            response = requests.get(self.config['user_info_url'], headers=headers, timeout=10)
+            response.raise_for_status()
+            user_data = response.json()
+            logger.info(f'Successfully fetched user info from {self.provider}')
+            return user_data
+        except requests.RequestException as e:
+            logger.error(f'Failed to fetch user info from {self.provider}: {e}')
+            raise
 
     def parse_user_data(self, user_info: dict) -> dict:
         """Parse user data from provider-specific format to common format."""
@@ -225,6 +247,8 @@ class SocialOAuthService:
         scope: str | None = None,
     ) -> SocialConnection:
         """Create or update a social connection for a user."""
+        logger.info(f'Creating/updating {self.provider} connection for user {user.username} (id={user.id})')
+
         # Get user info from provider
         user_info = self.get_user_info(access_token)
         parsed_data = self.parse_user_data(user_info)
@@ -233,6 +257,7 @@ class SocialOAuthService:
         token_expires_at = None
         if expires_in:
             token_expires_at = timezone.now() + timedelta(seconds=expires_in)
+            logger.info(f'Token expires at: {token_expires_at}')
 
         # Create or update connection
         connection, created = SocialConnection.objects.update_or_create(
@@ -257,5 +282,11 @@ class SocialOAuthService:
             connection.refresh_token = refresh_token
 
         connection.save()
+
+        action = 'Created' if created else 'Updated'
+        logger.info(
+            f"{action} {self.provider} connection for user {user.username} "
+            f"(provider_user={parsed_data['provider_username']})"
+        )
 
         return connection

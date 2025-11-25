@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { UserIcon, FolderIcon, UserGroupIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { FolderIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import type { User } from '@/services/explore';
 
 interface UserProfileCardProps {
@@ -45,11 +45,13 @@ export function UserProfileCard({ user }: UserProfileCardProps) {
             @{user.username}
           </p>
 
-          {/* Level Badge */}
-          <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-medium">
-            <SparklesIcon className="w-3 h-3" />
-            <span>Level {user.level}</span>
-          </div>
+          {/* Thrive Circle Badge */}
+          {user.tierDisplay && (
+            <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-700 dark:text-orange-300 text-xs font-medium">
+              <SparklesIcon className="w-3 h-3" />
+              <span>{user.tierDisplay} Circle</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -73,12 +75,12 @@ export function UserProfileCard({ user }: UserProfileCardProps) {
         </div>
 
         <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-          <UserGroupIcon className="w-4 h-4" />
+          <SparklesIcon className="w-4 h-4" />
           <span className="font-medium text-gray-900 dark:text-white">
-            {user.followers}
+            {(user.totalPoints ?? 0).toLocaleString()}
           </span>
           <span className="hidden sm:inline">
-            {user.followers === 1 ? 'Follower' : 'Followers'}
+            {(user.totalPoints ?? 0) === 1 ? 'Point' : 'Points'}
           </span>
         </div>
       </div>

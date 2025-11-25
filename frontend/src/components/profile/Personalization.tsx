@@ -166,14 +166,14 @@ export function Personalization() {
 
   // Filter by category and search query
   const filteredTaxonomies = taxonomies
-    .filter(t => activeCategory === 'all' || t.category === activeCategory)
+    .filter(t => activeCategory === 'all' || t.taxonomyType === activeCategory)
     .filter(t => {
       if (!searchQuery.trim()) return true;
       const query = searchQuery.toLowerCase();
       return (
         t.name.toLowerCase().includes(query) ||
         t.description.toLowerCase().includes(query) ||
-        t.category.toLowerCase().includes(query)
+        t.taxonomyType.toLowerCase().includes(query)
       );
     });
 

@@ -6,17 +6,18 @@ from .models import Taxonomy, UserInteraction, UserTag
 class TaxonomySerializer(serializers.ModelSerializer):
     """Serializer for predefined taxonomies."""
 
-    category_display = serializers.ReadOnlyField(source='get_category_display')
+    taxonomy_type_display = serializers.ReadOnlyField(source='get_taxonomy_type_display')
 
     class Meta:
         model = Taxonomy
         fields = [
             'id',
             'name',
-            'category',
-            'category_display',
+            'taxonomy_type',
+            'taxonomy_type_display',
             'description',
             'is_active',
+            'color',
             'website_url',
             'logo_url',
             'usage_tips',
@@ -30,7 +31,7 @@ class UserTagSerializer(serializers.ModelSerializer):
 
     source_display = serializers.ReadOnlyField(source='get_source_display')
     taxonomy_name = serializers.ReadOnlyField(source='taxonomy.name')
-    taxonomy_category = serializers.ReadOnlyField(source='taxonomy.category')
+    taxonomy_type = serializers.ReadOnlyField(source='taxonomy.taxonomy_type')
 
     class Meta:
         model = UserTag
@@ -39,7 +40,7 @@ class UserTagSerializer(serializers.ModelSerializer):
             'name',
             'taxonomy',
             'taxonomy_name',
-            'taxonomy_category',
+            'taxonomy_type',
             'source',
             'source_display',
             'confidence_score',

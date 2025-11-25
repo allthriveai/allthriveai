@@ -1,9 +1,11 @@
+import logging
 import time
 from urllib.parse import urlencode
 
 from allauth.socialaccount.models import SocialApp
 from csp.decorators import csp_exempt
 from django.conf import settings
+from django.core.cache import cache
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
 from django_ratelimit.decorators import ratelimit
@@ -13,9 +15,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.audits.models import UserAuditLog
+from core.throttles import AuthenticatedProfileThrottle, PublicProfileThrottle
 from core.users.models import User
 
 from .serializers import UserSerializer, UserUpdateSerializer
+
+logger = logging.getLogger(__name__)
 
 # OAuth login is now handled by django-allauth with custom adapter
 # See: core/auth/adapter.py and core/auth/oauth_middleware.py
@@ -246,13 +251,6 @@ def username_profile_view(request, username):
     Security: Uses consistent response time to prevent user enumeration.
     Rate limited to prevent brute-force username discovery.
     """
-    import time
-
-    from django.conf import settings
-    from django.core.cache import cache
-
-    from core.throttles import AuthenticatedProfileThrottle, PublicProfileThrottle
-
     # Check throttle manually based on authentication status
     throttle_class = AuthenticatedProfileThrottle if request.user.is_authenticated else PublicProfileThrottle
     throttle = throttle_class()

@@ -26,6 +26,8 @@ from .battles.views import (
 )
 from .events.views import EventViewSet
 from .integrations.github.views import (
+    github_import_confirm,
+    github_import_preview,
     github_repos_list,
     github_sync_single_repo,
     github_sync_status,
@@ -158,6 +160,9 @@ urlpatterns = [
     path('github/sync/trigger/', github_sync_trigger, name='github_sync_trigger'),
     path('github/repos/', github_repos_list, name='github_repos_list'),
     path('github/sync/repo/', github_sync_single_repo, name='github_sync_single_repo'),
+    # GitHub import endpoints (new UI flow)
+    path('github/import/preview/', github_import_preview, name='github_import_preview'),
+    path('github/import/confirm/', github_import_confirm, name='github_import_confirm'),
     # Battle endpoints
     path('battles/stats/', battle_stats, name='battle_stats'),
     path('battles/leaderboard/', battle_leaderboard, name='battle_leaderboard'),

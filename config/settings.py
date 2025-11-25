@@ -224,8 +224,8 @@ GITHUB_API_TOKEN = config('GITHUB_API_TOKEN', default='')  # Optional, increases
 
 # Social OAuth Provider Credentials
 # These are for account linking (separate from authentication OAuth)
-GITHUB_OAUTH_CLIENT_ID = config('GITHUB_OAUTH_CLIENT_ID', default='')
-GITHUB_OAUTH_CLIENT_SECRET = config('GITHUB_OAUTH_CLIENT_SECRET', default='')
+GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')
+GITHUB_CLIENT_SECRET = config('GITHUB_CLIENT_SECRET', default='')
 
 GITLAB_OAUTH_CLIENT_ID = config('GITLAB_OAUTH_CLIENT_ID', default='')
 GITLAB_OAUTH_CLIENT_SECRET = config('GITLAB_OAUTH_CLIENT_SECRET', default='')
@@ -313,6 +313,23 @@ POINTS_CONFIG = {
     # Validation limits
     'MAX_POINTS_PER_AWARD': 10000,
     'MIN_POINTS_PER_AWARD': -1000,
+}
+
+# GitHub API Rate Limiting Configuration
+GITHUB_RATE_LIMIT = {
+    # Authenticated requests: 5000 per hour (GitHub limit)
+    # Conservative limits to avoid hitting GitHub's limits
+    'MAX_REQUESTS_PER_HOUR': config('GITHUB_MAX_REQUESTS_PER_HOUR', default=4500, cast=int),
+    'MAX_REQUESTS_PER_MINUTE': config('GITHUB_MAX_REQUESTS_PER_MINUTE', default=60, cast=int),
+    # User-specific limits (per user per hour)
+    'USER_MAX_REPO_FETCHES_PER_HOUR': config('GITHUB_USER_REPO_FETCHES_PER_HOUR', default=10, cast=int),
+    'USER_MAX_IMPORTS_PER_HOUR': config('GITHUB_USER_IMPORTS_PER_HOUR', default=5, cast=int),
+    # Cache durations (in seconds)
+    'REPO_LIST_CACHE_DURATION': 300,  # 5 minutes
+    'REPO_PREVIEW_CACHE_DURATION': 600,  # 10 minutes
+    # Retry configuration
+    'MAX_RETRIES': 3,
+    'RETRY_BACKOFF': 2,  # Exponential backoff multiplier
 }
 
 # Logging Configuration
@@ -448,7 +465,7 @@ ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Optional for OAuth (they verify with 
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_LOGIN_ON_GET = True  # Skip intermediate page and go directly to provider
-SOCIALACCOUNT_STORE_TOKENS = False  # Don't store OAuth tokens in DB
+SOCIALACCOUNT_STORE_TOKENS = True  # Store OAuth tokens for API access (GitHub import, etc.)
 
 # Redirect after OAuth login - handled by CustomAccountAdapter
 LOGIN_REDIRECT_URL = None  # Adapter will handle redirect

@@ -19,8 +19,10 @@ export interface User {
   bio?: string;
   tagline?: string;
   projectCount: number;
-  followers: number;
+  totalPoints: number;
   level: number;
+  tier: string;
+  tierDisplay: string;
 }
 
 /**

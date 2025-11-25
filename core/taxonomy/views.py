@@ -36,16 +36,16 @@ class TaxonomyViewSet(viewsets.ReadOnlyModelViewSet):
         return Taxonomy.objects.filter(is_active=True)
 
     @action(detail=False, methods=['get'])
-    def by_category(self, request):
-        """Get taxonomies grouped by category."""
+    def by_type(self, request):
+        """Get taxonomies grouped by type (tool/topic)."""
         taxonomies = self.get_queryset()
 
         grouped = {}
         for taxonomy in taxonomies:
-            category = taxonomy.category
-            if category not in grouped:
-                grouped[category] = []
-            grouped[category].append(TaxonomySerializer(taxonomy).data)
+            taxonomy_type = taxonomy.taxonomy_type
+            if taxonomy_type not in grouped:
+                grouped[taxonomy_type] = []
+            grouped[taxonomy_type].append(TaxonomySerializer(taxonomy).data)
 
         return Response(grouped)
 

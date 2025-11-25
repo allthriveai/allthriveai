@@ -1,13 +1,17 @@
 """Signal handlers for user authentication and OAuth."""
 
+import logging
+
 from allauth.account.signals import user_signed_up
-from allauth.socialaccount.signals import pre_social_login
+from allauth.socialaccount.signals import pre_social_login, social_account_added
 from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from .projects.models import Project
 from .users.models import User
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(pre_social_login)
@@ -88,3 +92,32 @@ def invalidate_user_cache(sender, instance, **kwargs):
         # Also invalidate project caches since user data is included
         cache.delete(f'projects:{username}:public')
         cache.delete(f'projects:{username}:own')
+
+
+@receiver(social_account_added)
+def sync_github_to_integrations(sender, request, sociallogin, **kwargs):
+    """
+    Automatically make GitHub OAuth login available in integrations.
+
+    When a user signs up or connects via GitHub OAuth, this ensures
+    they can immediately use GitHub features (like repo import) without
+    needing a separate connection flow.
+    """
+    # Only handle GitHub provider
+    if sociallogin.account.provider != 'github':
+        return
+
+    user = sociallogin.user
+
+    # Check if user already has this logged elsewhere
+    logger.info(
+        f'GitHub OAuth connected for user {user.username} (id={user.id}). ' f'User can now access GitHub integrations.'
+    )
+
+    # Note: We don't create a SocialConnection because:
+    # 1. GitHubSyncService now checks both SocialAccount and SocialConnection
+    # 2. Tokens are stored in django-allauth's SocialToken table
+    # 3. This avoids duplicate storage and potential sync issues
+
+    # Invalidate any cached connection status
+    cache.delete(f'github_connection_status:{user.id}')

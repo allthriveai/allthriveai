@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faGitlab, faFigma } from '@fortawesome/free-brands-svg-icons';
@@ -5,6 +6,7 @@ import { faRocket, faCommentDots, faBolt, faTable } from '@fortawesome/free-soli
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { createProject } from '@/services/projects';
+import { ImportGitHubModal } from './ImportGitHubModal';
 
 interface RightAddProjectChatProps {
   isOpen: boolean;
@@ -14,10 +16,10 @@ interface RightAddProjectChatProps {
 export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const handleImport = () => {
-    onClose();
-    navigate('/account/settings/integrations');
+    setShowImportModal(true);
   };
 
   const handleDescribe = () => {
@@ -178,6 +180,12 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
           onClick={onClose}
         />
       )}
+
+      {/* GitHub Import Modal */}
+      <ImportGitHubModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+      />
     </>
   );
 }

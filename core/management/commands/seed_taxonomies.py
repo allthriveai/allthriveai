@@ -153,7 +153,7 @@ class Command(BaseCommand):
             taxonomy, created = Taxonomy.objects.get_or_create(
                 name=data['name'],
                 defaults={
-                    'category': data['category'],
+                    'taxonomy_type': data['category'],  # 'category' key maps to taxonomy_type field
                     'description': data['description'],
                     'is_active': True,
                 },
@@ -164,7 +164,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f'Created taxonomy: {taxonomy.name}'))
             else:
                 # Update existing taxonomy
-                taxonomy.category = data['category']
+                taxonomy.taxonomy_type = data['category']  # 'category' key maps to taxonomy_type field
                 taxonomy.description = data['description']
                 taxonomy.is_active = True
                 taxonomy.save()

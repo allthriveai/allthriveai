@@ -3,6 +3,7 @@ Auth chat views with streaming support
 """
 
 import json
+import logging
 import uuid
 
 from django.contrib.auth import authenticate
@@ -23,6 +24,8 @@ from services.auth_agent.validators import (
     validate_password,
     validate_username,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _get_state_values(state_snapshot):
@@ -499,9 +502,6 @@ def auth_chat_finalize(request):
         return Response({'error': 'Invalid request format'}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         # Unexpected errors - log and return generic message
-        import logging
-
-        logger = logging.getLogger(__name__)
         logger.error(f'Unexpected error in auth_chat_finalize: {e}', exc_info=True)
         return Response(
             {'error': 'Authentication failed. Please try again.'},

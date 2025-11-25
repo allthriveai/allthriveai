@@ -65,8 +65,10 @@ def explore_users(request):
                 'bio': user.bio or '',
                 'tagline': user.tagline or '',
                 'project_count': user.project_count,
-                'followers': 0,  # TODO: Implement followers when social features are added
-                'level': 1,  # TODO: Implement user levels when gamification is ready
+                'total_points': user.total_points,
+                'level': user.level,
+                'tier': user.tier,
+                'tier_display': user.get_tier_display(),
             }
         )
 

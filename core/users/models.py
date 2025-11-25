@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 from urllib.parse import urlparse
 
@@ -7,6 +8,8 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import F
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 
 class UserRole(models.TextChoices):
@@ -236,10 +239,6 @@ class User(AbstractUser):
         Example:
             user.add_points(25, 'project_create', 'Created: My First Project')
         """
-        import logging
-
-        logger = logging.getLogger(__name__)
-
         if amount <= 0:
             raise ValueError(f'Points amount must be positive, got {amount}')
 

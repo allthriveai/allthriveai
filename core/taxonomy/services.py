@@ -13,7 +13,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from core.taxonomy.models import Taxonomy, UserTag
+from core.taxonomy.models import UserTag
 from core.tools.models import Tool
 
 logger = logging.getLogger(__name__)
@@ -289,9 +289,7 @@ def get_user_tool_preferences(user, min_confidence: float = 0.3) -> list[UserTag
         List of UserTag instances for tools
     """
     return (
-        UserTag.objects.filter(
-            user=user, taxonomy__category=Taxonomy.Category.TOOL, confidence_score__gte=min_confidence
-        )
+        UserTag.objects.filter(user=user, taxonomy__taxonomy_type='tool', confidence_score__gte=min_confidence)
         .select_related('taxonomy')
         .order_by('-confidence_score', '-interaction_count')
     )
@@ -311,9 +309,9 @@ def get_user_preferences_summary(user) -> dict:
 
     for tag in all_tags:
         if tag.taxonomy:
-            category = tag.taxonomy.category.lower()
-            if category in summary:
-                summary[category].append(tag)
+            taxonomy_type = tag.taxonomy.taxonomy_type.lower()
+            if taxonomy_type in summary:
+                summary[taxonomy_type].append(tag)
         else:
             summary['custom'].append(tag)
 

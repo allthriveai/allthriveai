@@ -1,5 +1,6 @@
 """Views for managing social OAuth connections."""
 
+import logging
 import secrets
 
 from django.conf import settings
@@ -13,6 +14,8 @@ from rest_framework.response import Response
 from services.social_oauth_service import SocialOAuthService
 
 from .models import SocialConnection, SocialProvider
+
+logger = logging.getLogger(__name__)
 
 
 @api_view(['GET'])
@@ -77,12 +80,16 @@ def available_providers(request):
 @permission_classes([IsAuthenticated])
 def connect_provider(request, provider):
     """Initiate OAuth flow to connect a provider."""
+    logger.info(f'OAuth connection initiated for {provider} by user {request.user.username} (id={request.user.id})')
+
     # Validate provider
     if provider not in dict(SocialProvider.choices):
+        logger.warning(f'Invalid provider requested: {provider} by user {request.user.username}')
         return Response({'success': False, 'error': 'Invalid provider'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Check if Midjourney (not yet available)
     if provider == SocialProvider.MIDJOURNEY:
+        logger.warning(f'Midjourney OAuth requested (not available) by user {request.user.username}')
         return Response(
             {'success': False, 'error': 'Midjourney OAuth is not yet available'}, status=status.HTTP_400_BAD_REQUEST
         )
@@ -90,6 +97,7 @@ def connect_provider(request, provider):
     try:
         oauth_service = SocialOAuthService(provider)
     except ValueError as e:
+        logger.error(f'Failed to create OAuth service for {provider}: {str(e)}', extra={'user_id': request.user.id})
         return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     # Generate state token for CSRF protection
@@ -106,8 +114,8 @@ def connect_provider(request, provider):
         timeout=600,
     )
 
-    # Build redirect URI
-    redirect_uri = request.build_absolute_uri(f'/api/v1/social/callback/{provider}/')
+    # Build redirect URI using configured backend URL
+    redirect_uri = f'{settings.BACKEND_URL}/api/v1/social/callback/{provider}/'
 
     # Get authorization URL
     auth_url = oauth_service.get_authorization_url(redirect_uri, state)
@@ -158,7 +166,7 @@ def oauth_callback(request, provider):
         oauth_service = SocialOAuthService(provider)
 
         # Exchange code for token
-        redirect_uri = request.build_absolute_uri(f'/api/v1/social/callback/{provider}/')
+        redirect_uri = f'{settings.BACKEND_URL}/api/v1/social/callback/{provider}/'
         token_data = oauth_service.exchange_code_for_token(code, redirect_uri)
 
         # Create or update connection
@@ -175,10 +183,11 @@ def oauth_callback(request, provider):
 
     except Exception as e:
         # Log error and redirect with error message
-        import logging
-
-        logger = logging.getLogger(__name__)
-        logger.error(f'OAuth callback error for {provider}: {str(e)}')
+        logger.error(
+            f'OAuth callback error for {provider} for user {request.user.username}: {str(e)}',
+            exc_info=True,
+            extra={'user_id': request.user.id, 'provider': provider},
+        )
 
         return redirect(f'{settings.FRONTEND_URL}/account/settings/social?error=connection_failed')
 
@@ -187,6 +196,8 @@ def oauth_callback(request, provider):
 @permission_classes([IsAuthenticated])
 def disconnect_provider(request, provider):
     """Disconnect a social provider."""
+    logger.info(f'Disconnect {provider} requested by user {request.user.username} (id={request.user.id})')
+
     try:
         connection = SocialConnection.objects.get(user=request.user, provider=provider, is_active=True)
 
@@ -194,9 +205,15 @@ def disconnect_provider(request, provider):
         connection.is_active = False
         connection.save()
 
+        logger.info(
+            f'Successfully disconnected {provider} for user {request.user.username}: '
+            f'provider_username={connection.provider_username}'
+        )
+
         return Response({'success': True, 'message': f'{connection.get_provider_display()} disconnected successfully'})
 
     except SocialConnection.DoesNotExist:
+        logger.warning(f'Disconnect failed for {provider}: connection not found for user {request.user.username}')
         return Response({'success': False, 'error': 'Connection not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
@@ -204,6 +221,30 @@ def disconnect_provider(request, provider):
 @permission_classes([IsAuthenticated])
 def connection_status(request, provider):
     """Get connection status for a specific provider."""
+    from allauth.socialaccount.models import SocialAccount
+
+    # Check django-allauth first
+    try:
+        social_account = SocialAccount.objects.get(user=request.user, provider=provider)
+        return Response(
+            {
+                'success': True,
+                'data': {
+                    'connected': True,
+                    'provider': provider,
+                    'providerDisplay': provider.capitalize(),
+                    'providerUsername': social_account.extra_data.get('login') or social_account.uid,
+                    'profileUrl': social_account.extra_data.get('html_url', ''),
+                    'avatarUrl': social_account.extra_data.get('avatar_url', ''),
+                    'isExpired': False,  # allauth handles token refresh
+                    'connectedAt': social_account.date_joined.isoformat(),
+                },
+            }
+        )
+    except SocialAccount.DoesNotExist:
+        pass
+
+    # Fall back to SocialConnection
     try:
         connection = SocialConnection.objects.get(user=request.user, provider=provider, is_active=True)
 

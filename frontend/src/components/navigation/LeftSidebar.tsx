@@ -297,33 +297,46 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle, onAddProject }: Lef
                 {/* Section Header */}
                 {isExpandableSection ? (
                   // Expandable section with items (dropdown)
-                  <button
-                    onClick={() => toggleSection(section.title, isOpen, onToggle)}
-                    className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
-                      isOpen ? 'justify-between' : 'justify-center'
-                    } ${
-                      isSectionActive
-                        ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10'
-                    }`}
-                    title={!isOpen ? section.title : undefined}
-                  >
-                    <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
-                      <FontAwesomeIcon icon={section.icon} className="w-4 h-4 flex-shrink-0" />
-                      {isOpen && (
-                        <span className="whitespace-nowrap transition-opacity duration-300">
-                          {section.title}
-                        </span>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        if (section.path) {
+                          navigate(section.path);
+                        }
+                      }}
+                      className={`flex-1 flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
+                        isSectionActive
+                          ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10'
+                      }`}
+                      title={!isOpen ? section.title : undefined}
+                    >
+                      <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
+                        <FontAwesomeIcon icon={section.icon} className="w-4 h-4 flex-shrink-0" />
+                        {isOpen && (
+                          <span className="whitespace-nowrap transition-opacity duration-300">
+                            {section.title}
+                          </span>
+                        )}
+                      </div>
+                    </button>
                     {isOpen && (
-                      openSections.includes(section.title) ? (
-                        <ChevronUpIcon className="w-4 h-4" />
-                      ) : (
-                        <ChevronDownIcon className="w-4 h-4" />
-                      )
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSection(section.title, isOpen, onToggle);
+                        }}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                        aria-label="Toggle submenu"
+                      >
+                        {openSections.includes(section.title) ? (
+                          <ChevronUpIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                        ) : (
+                          <ChevronDownIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                        )}
+                      </button>
                     )}
-                  </button>
+                  </div>
                 ) : section.onClick ? (
                   // Section with onClick handler and no items
                   <button

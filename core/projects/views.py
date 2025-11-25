@@ -1,3 +1,8 @@
+import logging
+import time
+
+from django.conf import settings
+from django.core.cache import cache
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
@@ -5,12 +10,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.taxonomy.models import UserInteraction
-from core.throttles import ProjectLikeThrottle
+from core.throttles import AuthenticatedProjectsThrottle, ProjectLikeThrottle, PublicProjectsThrottle
 from core.users.models import User
 
 from .constants import MIN_RESPONSE_TIME_SECONDS
 from .models import Project, ProjectLike
 from .serializers import ProjectSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectPagination(PageNumberPagination):
@@ -140,16 +147,6 @@ def public_user_projects(request, username):
     - Uses select_related to prevent N+1 queries
     - Consistent response time to prevent user enumeration
     """
-    import logging
-    import time
-
-    from django.conf import settings
-    from django.core.cache import cache
-
-    from core.throttles import AuthenticatedProjectsThrottle, PublicProjectsThrottle
-
-    logger = logging.getLogger(__name__)
-
     # Apply throttling based on authentication status
     throttle_class = AuthenticatedProjectsThrottle if request.user.is_authenticated else PublicProjectsThrottle
     throttle = throttle_class()
@@ -229,13 +226,6 @@ def user_liked_projects(request, username):
     - Rate limited similarly to other public project endpoints
     - Uses select_related/prefetch_related to avoid N+1 queries
     """
-    import logging
-    import time
-
-    from core.throttles import AuthenticatedProjectsThrottle, PublicProjectsThrottle
-
-    logger = logging.getLogger(__name__)
-
     # Apply throttling based on authentication status
     throttle_class = AuthenticatedProjectsThrottle if request.user.is_authenticated else PublicProjectsThrottle
     throttle = throttle_class()
@@ -310,7 +300,7 @@ def explore_projects(request):
     queryset = (
         Project.objects.filter(is_published=True, is_private=False, is_archived=False)
         .select_related('user')
-        .prefetch_related('tools', 'likes')
+        .prefetch_related('tools', 'likes', 'topics')
     )
 
     # Apply search filter
@@ -326,10 +316,14 @@ def explore_projects(request):
         except ValueError:
             pass  # Invalid tool IDs, ignore
 
-    # Apply topics filter (assuming topics are stored in a related field - placeholder for now)
-    # TODO: Implement topic filtering when topic model is ready
+    # Apply topics filter
     if topics_param:
-        pass  # Topics will be implemented when topic tagging is added
+        try:
+            topic_ids = [int(tid) for tid in topics_param.split(',') if tid.strip()]
+            if topic_ids:
+                queryset = queryset.filter(topics__id__in=topic_ids).distinct()
+        except ValueError:
+            pass  # Invalid topic IDs, ignore
 
     # Apply sorting or personalization
     if tab == 'for-you' and request.user.is_authenticated:
@@ -337,7 +331,9 @@ def explore_projects(request):
         from core.taxonomy.models import UserTag
 
         # Get user's tool preferences
-        user_tool_tags = UserTag.objects.filter(user=request.user, taxonomy__category='tool').select_related('taxonomy')
+        user_tool_tags = UserTag.objects.filter(user=request.user, taxonomy__taxonomy_type='tool').select_related(
+            'taxonomy'
+        )
 
         if user_tool_tags.exists():
             # Score each project based on tool matches

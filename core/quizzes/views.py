@@ -1,3 +1,5 @@
+import logging
+
 import bleach
 from django.db import transaction
 from django.db.models import Avg, F, Q
@@ -6,6 +8,9 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
+
+from core.thrive_circle.models import PointActivity
+from core.thrive_circle.services import PointsService
 
 from .models import Quiz, QuizAttempt, QuizQuestion
 from .serializers import (
@@ -16,6 +21,8 @@ from .serializers import (
     SubmitAnswerSerializer,
 )
 from .throttles import QuizAnswerThrottle, QuizStartThrottle
+
+logger = logging.getLogger(__name__)
 
 
 class QuizViewSet(viewsets.ReadOnlyModelViewSet):
@@ -183,13 +190,6 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
         attempt.save()
 
         # Award points for completing the quiz (with idempotency check)
-        import logging
-
-        from core.thrive_circle.models import PointActivity
-        from core.thrive_circle.services import PointsService
-
-        logger = logging.getLogger(__name__)
-
         # Check if points already awarded for this quiz attempt (idempotency)
         already_awarded = PointActivity.objects.filter(
             user=request.user, activity_type='quiz_complete', description__contains=f'quiz_attempt:{attempt.id}'

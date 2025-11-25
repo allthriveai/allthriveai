@@ -1465,4 +1465,3 @@ export default function ProjectEditorPage() {
     </ProjectEditor>
   );
 }
-}
