@@ -30,6 +30,18 @@ export function DashboardLayout({ children, openAboutPanel = false, autoCollapse
     }
   }, [openAboutPanel]);
 
+  // Check for GitHub OAuth return and auto-open Add Project panel
+  useEffect(() => {
+    const oauthReturn = localStorage.getItem('github_oauth_return');
+    console.log('🔍 DashboardLayout checking OAuth return:', { oauthReturn });
+
+    if (oauthReturn === 'add_project_chat') {
+      console.log('✅ Opening Add Project panel after OAuth return');
+      // Open the Add Project panel automatically
+      handleOpenAddProject();
+    }
+  }, []);
+
   const handleMenuClick = (menuItem: string) => {
     if (menuItem === 'About Us') {
       const wasOpen = aboutOpen;

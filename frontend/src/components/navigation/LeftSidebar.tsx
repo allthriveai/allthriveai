@@ -300,7 +300,9 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle, onAddProject }: Lef
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => {
-                        if (section.path) {
+                        if (section.onClick) {
+                          section.onClick();
+                        } else if (section.path) {
                           navigate(section.path);
                         }
                       }}

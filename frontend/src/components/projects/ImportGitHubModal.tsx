@@ -93,16 +93,17 @@ export function ImportGitHubModal({ isOpen, onClose }: ImportGitHubModalProps) {
 
   const handleConnectGitHub = async () => {
     try {
-      const authUrl = await getGitHubConnectUrl();
-      if (!authUrl) {
-        setError('Failed to get GitHub authorization URL');
-        return;
-      }
-      window.location.href = authUrl;
+      // Redirect to django-allauth GitHub login with return URL
+      // After authentication, user will be redirected back to the frontend
+      const frontendUrl = window.location.origin;
+      const returnPath = window.location.pathname + window.location.search;
+      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+      // Redirect to backend allauth URL, which will redirect back to frontend after auth
+      window.location.href = `${backendUrl}/accounts/github/login/?next=${encodeURIComponent(frontendUrl + returnPath)}`;
     } catch (err: any) {
-      console.error('Failed to get GitHub connect URL:', err);
-      const errorMsg = err?.response?.data?.error || err?.message || 'Failed to initiate GitHub connection';
-      setError(errorMsg);
+      console.error('Failed to initiate GitHub connection:', err);
+      setError('Failed to initiate GitHub connection');
     }
   };
 
