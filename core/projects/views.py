@@ -219,6 +219,70 @@ def public_user_projects(request, username):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+def user_liked_projects(request, username):
+    """Get the list of projects liked by a given user.
+
+    This powers the Collection tab on profile pages.
+
+    Security:
+    - Only returns projects that are public (is_published=True, is_private=False, not archived)
+    - Rate limited similarly to other public project endpoints
+    - Uses select_related/prefetch_related to avoid N+1 queries
+    """
+    import logging
+    import time
+
+    from core.throttles import AuthenticatedProjectsThrottle, PublicProjectsThrottle
+
+    logger = logging.getLogger(__name__)
+
+    # Apply throttling based on authentication status
+    throttle_class = AuthenticatedProjectsThrottle if request.user.is_authenticated else PublicProjectsThrottle
+    throttle = throttle_class()
+    if not throttle.allow_request(request, None):
+        from rest_framework.exceptions import Throttled
+
+        raise Throttled(wait=throttle.wait())
+
+    start_time = time.time()
+
+    try:
+        profile_user = User.objects.get(username=username.lower())
+    except User.DoesNotExist:
+        # Log suspicious activity - repeated requests for non-existent users
+        logger.warning(
+            f'Liked projects access attempt for non-existent user: {username} '
+            f'from IP: {request.META.get("REMOTE_ADDR")}'
+        )
+        # Return 404 but maintain consistent response time (prevent timing attacks)
+        elapsed = time.time() - start_time
+        if elapsed < MIN_RESPONSE_TIME_SECONDS:
+            time.sleep(MIN_RESPONSE_TIME_SECONDS - elapsed)
+        return Response({'error': 'User not found', 'results': []}, status=404)
+
+    # Only include projects that are publicly visible to avoid leaking private/archived content
+    # Hard-limit to a reasonable maximum to avoid unbounded payloads; lazy loading on the client
+    # ensures we only hit this when the Collection tab is opened.
+    MAX_LIKED_PROJECTS = 500
+    queryset = (
+        Project.objects.filter(
+            likes__user=profile_user,
+            is_published=True,
+            is_private=False,
+            is_archived=False,
+        )
+        .select_related('user')
+        .prefetch_related('tools', 'likes')
+        .order_by('-likes__created_at')
+        .distinct()[:MAX_LIKED_PROJECTS]
+    )
+
+    serializer = ProjectSerializer(queryset, many=True, context={'request': request})
+    return Response({'results': serializer.data})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def explore_projects(request):
     """Explore projects with filtering, search, and pagination.
 

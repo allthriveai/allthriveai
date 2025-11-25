@@ -108,10 +108,11 @@ export function useMenuState({
       onToggle();
       setOpenSections([title]);
     } else {
+      // Accordion behavior: only one section open at a time
       setOpenSections(prev =>
         prev.includes(title)
-          ? prev.filter(s => s !== title)
-          : [title]
+          ? [] // Close current section
+          : [title] // Open new section and close others
       );
     }
   }, []);

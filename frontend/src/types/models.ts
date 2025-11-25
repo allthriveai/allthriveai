@@ -37,7 +37,7 @@ export interface User {
   // Thrive Circle fields
   tier?: TierName;
   tierDisplay?: string;
-  totalXp?: number;
+  totalPoints?: number;
 }
 
 // Authentication state
@@ -120,8 +120,8 @@ export interface Project {
   externalUrl?: string;
   tools: number[]; // Tool IDs
   toolsDetails?: Tool[]; // Full tool objects with details
-  primaryTopic?: TopicSlug;
-  secondaryTopics?: TopicSlug[];
+  topics?: number[]; // Topic taxonomy IDs
+  topicsDetails?: Taxonomy[]; // Full topic taxonomy objects
   heartCount: number;
   isLikedByUser: boolean;
   content: ProjectContent;
@@ -159,10 +159,27 @@ export interface ProjectContent {
   };
 }
 
-export type ProjectBlock =
+// Base block interface
+interface BaseBlock {
+  id?: string; // UUID for client-side tracking (not persisted)
+}
+
+// Column block structure
+export interface ColumnBlock {
+  id: string;
+  blocks: ProjectBlock[];
+}
+
+export type ProjectBlock = BaseBlock & (
   | { type: 'text'; style: 'body' | 'heading' | 'quote'; content: string }
   | { type: 'image'; url: string; caption?: string }
-  | { type: 'imageGrid'; images: Array<{ url: string; caption?: string }>; caption?: string };
+  | { type: 'video'; url: string; embedUrl?: string; caption?: string }
+  | { type: 'file'; url: string; filename: string; fileType: string; fileSize: number; label: string; icon: string }
+  | { type: 'button'; text: string; url: string; icon: string; style: 'primary' | 'secondary' | 'outline'; size: 'small' | 'medium' | 'large' }
+  | { type: 'divider'; style: 'line' | 'dotted' | 'dashed' | 'space' }
+  | { type: 'columns'; columnCount: 1 | 2 | 3; containerWidth: 'full' | 'boxed'; columns: ColumnBlock[] }
+  | { type: 'imageGrid'; images: Array<{ url: string; caption?: string }>; caption?: string }
+);
 
 // Project creation/update payload
 export interface ProjectPayload {
@@ -179,8 +196,7 @@ export interface ProjectPayload {
   featuredImageUrl?: string;
   externalUrl?: string;
   tools?: number[];
-  primaryTopic?: TopicSlug;
-  secondaryTopics?: TopicSlug[];
+  topics?: number[]; // Topic taxonomy IDs
   content?: ProjectContent;
 }
 
@@ -193,19 +209,21 @@ export interface PaginatedResponse<T> {
 }
 
 // Taxonomy types
+export type TaxonomyType = 'tool' | 'topic';
 export type TaxonomyCategory = 'interest' | 'skill' | 'goal' | 'topic' | 'industry' | 'tool';
 
 export interface Taxonomy {
   id: number;
   name: string;
-  category: TaxonomyCategory;
-  categoryDisplay: string;
+  taxonomyType: TaxonomyType;
+  taxonomyTypeDisplay: string;
   description: string;
+  color?: string; // For topics
   isActive: boolean;
-  website_url?: string;
-  logo_url?: string;
-  usage_tips?: string[];
-  best_for?: string[];
+  websiteUrl?: string;
+  logoUrl?: string;
+  usageTips?: string[];
+  bestFor?: string[];
 }
 
 // User tag types
@@ -214,9 +232,7 @@ export type TagSource = 'manual' | 'auto_project' | 'auto_conversation' | 'auto_
 export interface UserTag {
   id: number;
   name: string;
-  taxonomy: number | null;
-  taxonomyName?: string;
-  taxonomyCategory?: TaxonomyCategory;
+  taxonomy?: Taxonomy | null;
   source: TagSource;
   sourceDisplay: string;
   confidenceScore: number;
@@ -230,6 +246,8 @@ export interface UserPersonalization {
   manual_tags: UserTag[];
   auto_generated_tags: UserTag[];
   available_taxonomies: Taxonomy[];
+  available_topics: Taxonomy[];
+  selected_topics: Taxonomy[];
   total_interactions: number;
 }
 
@@ -354,7 +372,7 @@ export interface ToolReview {
 }
 
 // Thrive Circle Types
-export type XPActivityType =
+export type PointActivityType =
   | 'quiz_complete'
   | 'project_create'
   | 'project_update'
@@ -367,12 +385,12 @@ export type XPActivityType =
   | 'special_event'
   | 'referral';
 
-export interface XPActivity {
+export interface PointActivity {
   id: string;
   user: number;
   username: string;
   amount: number;
-  activityType: XPActivityType;
+  activityType: PointActivityType;
   activityTypeDisplay: string;
   description: string;
   tierAtTime: TierName;
@@ -385,7 +403,8 @@ export interface UserTier {
   username: string;
   tier: TierName;
   tierDisplay: string;
-  totalXp: number;
+  totalPoints: number;
+  level: number;
   // Phase 2: Streak fields
   currentStreakDays: number;
   longestStreakDays: number;
@@ -398,23 +417,23 @@ export interface UserTier {
   // Metadata
   createdAt: string;
   updatedAt: string;
-  recentActivities?: XPActivity[];
+  recentActivities?: PointActivity[];
 }
 
 export interface ThriveCircleStatus {
   tierStatus: UserTier;
-  recentActivities: XPActivity[];
+  recentActivities: PointActivity[];
 }
 
-export interface AwardXPRequest {
+export interface AwardPointsRequest {
   amount: number;
-  activityType: XPActivityType;
+  activityType: PointActivityType;
   description?: string;
 }
 
-export interface AwardXPResponse {
+export interface AwardPointsResponse {
   tierStatus: UserTier;
-  xpActivity: XPActivity;
+  pointActivity: PointActivity;
   tierUpgraded: boolean;
   oldTier: TierName | null;
   newTier: TierName | null;
@@ -436,7 +455,67 @@ export interface WeeklyGoal {
   progressPercentage: number;
   isCompleted: boolean;
   completedAt: string | null;
-  xpReward: number;
+  pointsReward: number;
   createdAt: string;
+  updatedAt: string;
+}
+
+// Side Quests
+export type SideQuestType =
+  | 'quiz_mastery'
+  | 'project_showcase'
+  | 'community_helper'
+  | 'learning_streak'
+  | 'topic_explorer'
+  | 'tool_master'
+  | 'early_bird'
+  | 'night_owl'
+  | 'social_butterfly'
+  | 'content_creator';
+
+export type SideQuestDifficulty = 'easy' | 'medium' | 'hard' | 'epic';
+
+export type SideQuestSkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'master';
+
+export type UserSideQuestStatus = 'not_started' | 'in_progress' | 'completed' | 'expired';
+
+export interface SideQuest {
+  id: string;
+  title: string;
+  description: string;
+  questType: SideQuestType;
+  questTypeDisplay: string;
+  difficulty: SideQuestDifficulty;
+  difficultyDisplay: string;
+  topic: TopicSlug | null;
+  topicDisplay: string | null;
+  skillLevel: SideQuestSkillLevel | null;
+  skillLevelDisplay: string | null;
+  requirements: Record<string, any>;
+  pointsReward: number;
+  isActive: boolean;
+  isAvailable: boolean;
+  startsAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserSideQuest {
+  id: string;
+  user: number;
+  username: string;
+  sideQuest: SideQuest;
+  sideQuestId?: string;
+  status: UserSideQuestStatus;
+  statusDisplay: string;
+  currentProgress: number;
+  targetProgress: number;
+  progressPercentage: number;
+  progressData: Record<string, any>;
+  isCompleted: boolean;
+  completedAt: string | null;
+  pointsAwarded: number;
+  startedAt: string;
   updatedAt: string;
 }

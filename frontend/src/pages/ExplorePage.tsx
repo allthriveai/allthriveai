@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { TOPICS } from '@/config/topics';
-import type { TopicSlug } from '@/config/topics';
+import type { Taxonomy } from '@/types/models';
+import { api } from '@/services/api';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SemanticSearchBar } from '@/components/explore/SemanticSearchBar';
 import { TabNavigation, type ExploreTab } from '@/components/explore/TabNavigation';
@@ -29,8 +29,8 @@ export function ExplorePage() {
     (searchParams.get('tab') as ExploreTab) || 'for-you'
   );
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-  const [selectedTopics, setSelectedTopics] = useState<TopicSlug[]>(
-    (searchParams.get('topics')?.split(',').filter(Boolean) as TopicSlug[]) || []
+  const [selectedTopics, setSelectedTopics] = useState<number[]>(
+    searchParams.get('topics')?.split(',').map(Number).filter(Boolean) || []
   );
   const [selectedTools, setSelectedTools] = useState<number[]>(
     searchParams.get('tools')?.split(',').map(Number).filter(Boolean) || []
@@ -52,10 +52,20 @@ export function ExplorePage() {
     setSearchParams(params, { replace: true });
   }, [activeTab, searchQuery, selectedTopics, selectedTools, page, setSearchParams]);
 
-  // Fetch filter options
+  // Fetch filter options (tools)
   const { data: filterOptions } = useQuery({
     queryKey: ['filterOptions'],
     queryFn: getFilterOptions,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Fetch taxonomy topics
+  const { data: taxonomyTopics } = useQuery({
+    queryKey: ['taxonomyTopics'],
+    queryFn: async () => {
+      const response = await api.get('/taxonomies/?taxonomy_type=topic');
+      return response.data.results as Taxonomy[];
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -127,7 +137,7 @@ export function ExplorePage() {
   };
 
   // Handle filter changes
-  const handleTopicsChange = (topics: TopicSlug[]) => {
+  const handleTopicsChange = (topics: number[]) => {
     setSelectedTopics(topics);
     setPage(1);
   };
@@ -186,7 +196,7 @@ export function ExplorePage() {
             {showFilters && (
               <div className="mb-6">
                 <FilterPanel
-                  topics={activeTab === 'topics' ? TOPICS : []}
+                  topics={activeTab === 'topics' ? (taxonomyTopics ?? []) : []}
                   tools={activeTab === 'tools' ? (filterOptions?.tools ?? []) : []}
                   selectedTopics={selectedTopics}
                   selectedTools={selectedTools}

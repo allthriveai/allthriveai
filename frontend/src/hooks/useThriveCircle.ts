@@ -1,11 +1,11 @@
 /**
  * useThriveCircle Hook
- * Manages Thrive Circle tier status, XP activities, and XP awards
+ * Manages Thrive Circle tier status, point activities, and point awards
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMyThriveCircleStatus, awardXP, getMyXPActivities, getMyWeeklyGoals, getCircleProjects } from '@/services/thriveCircle';
-import type { AwardXPRequest } from '@/types/models';
+import { getMyThriveCircleStatus, awardPoints, getMyPointActivities, getMyWeeklyGoals, getCircleProjects } from '@/services/thriveCircle';
+import type { AwardPointsRequest } from '@/types/models';
 import { useAuth } from './useAuth';
 
 export function useThriveCircle() {
@@ -26,13 +26,13 @@ export function useThriveCircle() {
     retry: 1,
   });
 
-  // Fetch all XP activities
+  // Fetch all point activities
   const {
     data: allActivities,
     isLoading: isLoadingActivities,
   } = useQuery({
-    queryKey: ['xp-activities'],
-    queryFn: getMyXPActivities,
+    queryKey: ['point-activities'],
+    queryFn: getMyPointActivities,
     enabled: isAuthenticated, // Only fetch when authenticated
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
@@ -62,13 +62,13 @@ export function useThriveCircle() {
     retry: 1,
   });
 
-  // Award XP mutation
-  const awardXPMutation = useMutation({
-    mutationFn: (request: AwardXPRequest) => awardXP(request),
+  // Award points mutation
+  const awardPointsMutation = useMutation({
+    mutationFn: (request: AwardPointsRequest) => awardPoints(request),
     onSuccess: (data) => {
       // Invalidate and refetch tier status, activities, and weekly goals
       queryClient.invalidateQueries({ queryKey: ['thrive-circle', 'my-status'] });
-      queryClient.invalidateQueries({ queryKey: ['xp-activities'] });
+      queryClient.invalidateQueries({ queryKey: ['point-activities'] });
       queryClient.invalidateQueries({ queryKey: ['weekly-goals'] });
 
       // Show tier upgrade notification if applicable
@@ -79,7 +79,7 @@ export function useThriveCircle() {
             detail: {
               oldTier: data.oldTier,
               newTier: data.newTier,
-              totalXp: data.tierStatus.totalXp,
+              totalPoints: data.tierStatus.totalPoints,
             },
           })
         );
@@ -105,8 +105,8 @@ export function useThriveCircle() {
     error,
 
     // Actions
-    awardXP: awardXPMutation.mutate,
-    isAwardingXP: awardXPMutation.isPending,
+    awardPoints: awardPointsMutation.mutate,
+    isAwardingPoints: awardPointsMutation.isPending,
     refetch,
   };
 }

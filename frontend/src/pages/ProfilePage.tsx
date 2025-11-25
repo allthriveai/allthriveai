@@ -36,7 +36,7 @@ export default function ProfilePage() {
 
   return (
     <DashboardLayout>
-      {({ openChat }) => (
+      {({ openChat, openAddProject }) => (
         <div className="flex h-full">
           {/* Center Profile */}
           <ProfileCenter
@@ -47,6 +47,7 @@ export default function ProfilePage() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             onOpenChat={openChat}
+            openAddProject={openAddProject}
           />
         </div>
       )}

@@ -8,9 +8,11 @@ import logging
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.http import HttpResponseRedirect
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 class CustomAccountAdapter(DefaultAccountAdapter):
@@ -26,12 +28,45 @@ class CustomAccountAdapter(DefaultAccountAdapter):
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     """Custom social account adapter for OAuth authentication.
 
-    This adapter sets JWT tokens in cookies after successful OAuth login.
+    This adapter sets JWT tokens in cookies after successful OAuth login and
+    ensures social logins are linked to existing users by email when possible.
     """
 
     def pre_social_login(self, request, sociallogin):
-        """Called after successful OAuth authentication, before user is logged in."""
-        pass
+        """Link social login to existing user by email instead of creating duplicates.
+
+        This runs after the provider has authenticated the user but before the
+        user is actually logged in. If a user with the same email already
+        exists, we attach this social account to that user so that one person
+        can log in via email/password, Google, or GitHub and still end up with
+        a single `User` record.
+        """
+        # If this social account is already linked to a user, nothing to do.
+        if sociallogin.is_existing:
+            return
+
+        # allauth should have populated sociallogin.user with data from the
+        # provider. We rely on email as the canonical identity anchor.
+        email = (sociallogin.user.email or '').strip().lower()
+        if not email:
+            # Some providers may not return email; in that case fall back to
+            # default behaviour and let allauth handle it.
+            return
+
+        try:
+            existing_user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            # No existing user with this email -> this will become a new user.
+            return
+
+        # Attach this social login to the existing user instead of creating a
+        # brand new user with the same email.
+        logger.info(
+            "Linking social login for provider '%s' to existing user '%s' (by email)",
+            getattr(sociallogin.account, 'provider', 'unknown'),
+            existing_user.username,
+        )
+        sociallogin.connect(request, existing_user)
 
     def get_connect_redirect_url(self, request, socialaccount):
         """Redirect after connecting a social account."""

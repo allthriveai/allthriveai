@@ -21,6 +21,8 @@ export interface MenuSection {
   title: string;
   icon: IconDefinition;
   items: MenuItem[];
+  path?: string; // Optional direct path for section header
+  onClick?: () => void; // Optional click handler for section header
 }
 
 export const getMenuSections = (
@@ -30,22 +32,23 @@ export const getMenuSections = (
   {
     title: 'EXPLORE',
     icon: faCompass,
-    items: [
-      { label: 'Explore', path: '/explore' },
-    ],
+    path: '/explore',
+    items: [],
   },
   {
     title: 'PLAY',
     icon: faGamepad,
+    path: '/play/side-quests',
     items: [
       { label: "This Week's Challenge", path: '#' },
-      { label: 'Side Quests', path: '#' },
+      { label: 'Side Quests', path: '/play/side-quests' },
       { label: 'Prompt Battle', path: '/play/prompt-battle' },
     ],
   },
   {
     title: 'LEARN',
     icon: faGraduationCap,
+    path: '/learn',
     items: [
       { label: 'Learning Paths', path: '#' },
       { label: 'Quick Quizzes', path: '/quick-quizzes' },
@@ -55,6 +58,7 @@ export const getMenuSections = (
   {
     title: 'MEMBERSHIP',
     icon: faUsers,
+    path: '/thrive-circle',
     items: [
       { label: 'Your Thrive Circle', path: '/thrive-circle' },
       { label: 'Perks', path: '#' },
@@ -64,6 +68,7 @@ export const getMenuSections = (
   {
     title: 'SUPPORT',
     icon: faLifeRing,
+    onClick: () => onMenuClick('Chat'),
     items: [
       { label: 'Report an Issue', path: 'https://github.com/allthriveai/allthriveai/issues', external: true },
       { label: 'Chat', onClick: () => onMenuClick('Chat') },
@@ -81,6 +86,7 @@ export const getMenuSections = (
   {
     title: 'ACCOUNT',
     icon: faUser,
+    path: username ? `/${username}?tab=showcase` : '#',
     items: [
       {
         label: 'My Profile',
@@ -99,8 +105,10 @@ export const getMenuSections = (
 
 // Route patterns for active state detection
 export const ROUTE_PATTERNS: Record<string, (path: string, search: string, username?: string) => boolean> = {
-  'Explore': (path) => path === '/explore',
+  'EXPLORE': (path) => path === '/explore',
+  'LEARN': (path) => path === '/learn',
   'Quick Quizzes': (path) => path === '/quick-quizzes',
+  'Side Quests': (path) => path === '/play/side-quests',
   'Prompt Battle': (path) => path === '/play/prompt-battle',
   'Chat': (_, search) => search.includes('chat='),
   'My Account': (path, search) => path === '/account/settings' && !search,

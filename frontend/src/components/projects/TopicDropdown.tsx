@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { TOPICS, getTopicBySlug } from '@/config/topics';
-import type { TopicSlug } from '@/config/topics';
+import type { Taxonomy } from '@/types/models';
 import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 interface TopicDropdownProps {
-  selectedTopics: TopicSlug[];
-  onChange: (topics: TopicSlug[]) => void;
+  selectedTopics: number[]; // Taxonomy IDs
+  availableTopics: Taxonomy[]; // All available topic taxonomies
+  onChange: (topics: number[]) => void;
   disabled?: boolean;
 }
 
@@ -27,7 +27,7 @@ const COLOR_CLASSES: Record<string, string> = {
   fuchsia: 'bg-fuchsia-500',
 };
 
-export function TopicDropdown({ selectedTopics, onChange, disabled }: TopicDropdownProps) {
+export function TopicDropdown({ selectedTopics, availableTopics, onChange, disabled }: TopicDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -42,16 +42,16 @@ export function TopicDropdown({ selectedTopics, onChange, disabled }: TopicDropd
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleToggleTopic = (topicSlug: TopicSlug) => {
-    if (selectedTopics.includes(topicSlug)) {
-      onChange(selectedTopics.filter(t => t !== topicSlug));
+  const handleToggleTopic = (topicId: number) => {
+    if (selectedTopics.includes(topicId)) {
+      onChange(selectedTopics.filter(t => t !== topicId));
     } else {
-      onChange([...selectedTopics, topicSlug]);
+      onChange([...selectedTopics, topicId]);
     }
   };
 
-  const handleRemoveTopic = (topicSlug: TopicSlug) => {
-    onChange(selectedTopics.filter(t => t !== topicSlug));
+  const handleRemoveTopic = (topicId: number) => {
+    onChange(selectedTopics.filter(t => t !== topicId));
   };
 
   return (
@@ -59,21 +59,21 @@ export function TopicDropdown({ selectedTopics, onChange, disabled }: TopicDropd
       {/* Selected Topics Display */}
       {selectedTopics.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {selectedTopics.map(topicSlug => {
-            const topic = getTopicBySlug(topicSlug);
+          {selectedTopics.map(topicId => {
+            const topic = availableTopics.find(t => t.id === topicId);
             if (!topic) return null;
-            const colorClass = COLOR_CLASSES[topic.color] || 'bg-gray-500';
+            const colorClass = COLOR_CLASSES[topic.color || ''] || 'bg-gray-500';
 
             return (
               <div
-                key={topicSlug}
+                key={topicId}
                 className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-full text-sm border border-gray-200 dark:border-gray-700"
               >
                 <div className={`w-3 h-3 rounded-full ${colorClass}`} />
-                <span className="font-medium text-gray-900 dark:text-white">{topic.label}</span>
+                <span className="font-medium text-gray-900 dark:text-white">{topic.name}</span>
                 {!disabled && (
                   <button
-                    onClick={() => handleRemoveTopic(topicSlug)}
+                    onClick={() => handleRemoveTopic(topicId)}
                     className="ml-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full p-0.5 transition-colors"
                     type="button"
                   >
@@ -104,15 +104,15 @@ export function TopicDropdown({ selectedTopics, onChange, disabled }: TopicDropd
         {isOpen && !disabled && (
           <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-96 overflow-y-auto">
             <div className="py-1">
-              {TOPICS.map(topic => {
-                const isSelected = selectedTopics.includes(topic.slug);
-                const colorClass = COLOR_CLASSES[topic.color] || 'bg-gray-500';
+              {availableTopics.map(topic => {
+                const isSelected = selectedTopics.includes(topic.id);
+                const colorClass = COLOR_CLASSES[topic.color || ''] || 'bg-gray-500';
 
                 return (
                   <button
-                    key={topic.slug}
+                    key={topic.id}
                     type="button"
-                    onClick={() => handleToggleTopic(topic.slug)}
+                    onClick={() => handleToggleTopic(topic.id)}
                     className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left ${
                       isSelected ? 'bg-gray-50 dark:bg-gray-700' : ''
                     }`}
@@ -121,7 +121,7 @@ export function TopicDropdown({ selectedTopics, onChange, disabled }: TopicDropd
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className={`font-medium text-sm ${isSelected ? 'text-primary-700 dark:text-primary-300' : 'text-gray-900 dark:text-white'}`}>
-                          {topic.label}
+                          {topic.name}
                         </span>
                         {isSelected && (
                           <span className="text-xs text-primary-600 dark:text-primary-400">✓</span>

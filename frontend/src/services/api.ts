@@ -70,11 +70,11 @@ api.interceptors.response.use(
         statusCode: error.response.status,
       };
 
-      // Handle 401 - token expired, redirect to login
+      // Handle 401 - token expired, redirect to auth
       if (error.response.status === 401) {
         const currentPath = window.location.pathname;
-        if (currentPath !== '/login' && currentPath !== '/' && currentPath !== '/about') {
-          window.location.href = `/login?returnUrl=${encodeURIComponent(currentPath)}`;
+        if (currentPath !== '/auth' && currentPath !== '/' && currentPath !== '/about') {
+          window.location.href = `/auth?returnUrl=${encodeURIComponent(currentPath)}`;
         }
       }
 

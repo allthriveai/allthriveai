@@ -4,6 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.text import slugify
 
+from core.taxonomy.models import Taxonomy
 from core.tools.models import Tool
 
 
@@ -72,6 +73,14 @@ class Project(models.Model):
     # Tools used in this project
     tools = models.ManyToManyField(
         Tool, blank=True, related_name='projects', help_text='Tools/technologies used in this project'
+    )
+    # Topics for categorization and personalization
+    topics = models.ManyToManyField(
+        Taxonomy,
+        blank=True,
+        related_name='projects',
+        limit_choices_to={'taxonomy_type': 'topic', 'is_active': True},
+        help_text='Topics that categorize this project (from Taxonomy with type=topic)',
     )
     # Structured layout blocks for the project page (cover, tags, text/image blocks)
     content = models.JSONField(default=dict, blank=True)

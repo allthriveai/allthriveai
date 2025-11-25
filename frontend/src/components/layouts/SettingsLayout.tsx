@@ -7,9 +7,9 @@ import {
   CreditCardIcon,
   ShieldCheckIcon,
   UserGroupIcon,
-  LinkIcon,
   GiftIcon,
   SparklesIcon,
+  PuzzlePieceIcon,
 } from '@heroicons/react/24/outline';
 
 interface SettingsSidebarItem {
@@ -34,9 +34,9 @@ const settingsNavItems: SettingsSidebarItem[] = [
     icon: LockClosedIcon,
   },
   {
-    label: 'Social Profiles',
-    path: '/account/settings/social',
-    icon: LinkIcon,
+    label: 'Integrations',
+    path: '/account/settings/integrations',
+    icon: PuzzlePieceIcon,
   },
   {
     label: 'Personalization',

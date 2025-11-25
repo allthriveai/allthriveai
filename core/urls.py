@@ -32,7 +32,7 @@ from .integrations.github.views import (
     github_sync_trigger,
 )
 from .projects.comment_views import ProjectCommentViewSet
-from .projects.views import ProjectViewSet, explore_projects, public_user_projects, semantic_search
+from .projects.views import ProjectViewSet, explore_projects, public_user_projects, semantic_search, user_liked_projects
 from .quizzes.views import QuizAttemptViewSet, QuizViewSet
 from .referrals.views import ReferralCodeViewSet, ReferralViewSet, validate_referral_code
 from .social.views import (
@@ -44,7 +44,7 @@ from .social.views import (
 )
 from .social.views import oauth_callback as social_oauth_callback
 from .taxonomy.views import TaxonomyViewSet, UserTagViewSet, track_interaction, user_personalization_overview
-from .thrive_circle.views import ThriveCircleViewSet, XPActivityViewSet
+from .thrive_circle.views import PointActivityViewSet, SideQuestViewSet, ThriveCircleViewSet
 from .tools.views import ToolBookmarkViewSet, ToolComparisonViewSet, ToolReviewViewSet, ToolViewSet
 from .uploads.views import upload_file, upload_image
 from .users.views import explore_users
@@ -66,7 +66,8 @@ me_router.register(r'tags', UserTagViewSet, basename='me-tags')
 me_router.register(r'battles', PromptBattleViewSet, basename='me-battles')
 me_router.register(r'battle-invitations', BattleInvitationViewSet, basename='me-battle-invitations')
 me_router.register(r'thrive-circle', ThriveCircleViewSet, basename='me-thrive-circle')
-me_router.register(r'xp-activities', XPActivityViewSet, basename='me-xp-activities')
+me_router.register(r'point-activities', PointActivityViewSet, basename='me-point-activities')
+me_router.register(r'side-quests', SideQuestViewSet, basename='me-side-quests')
 
 # Taxonomy router (public but auth-required)
 taxonomy_router = DefaultRouter()
@@ -93,6 +94,7 @@ urlpatterns = [
     # Public user endpoints
     path('users/<str:username>/', username_profile_view, name='public_user_profile'),
     path('users/<str:username>/projects/', public_user_projects, name='public_user_projects'),
+    path('users/<str:username>/liked-projects/', user_liked_projects, name='user_liked_projects'),
     # Project comment endpoints
     path(
         'projects/<int:project_pk>/comments/',

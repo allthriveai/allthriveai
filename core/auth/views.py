@@ -44,29 +44,30 @@ def login_view(request):
     - Rate limiting to prevent brute-force attacks
     """
     from django.contrib.auth import login
+    from django.db.models import Q
 
     from services.auth import set_auth_cookies
 
     start_time = time.time()
 
-    email = request.data.get('email')
+    email = request.data.get('email')  # Can be email or username
     password = request.data.get('password')
 
     if not email or not password:
         elapsed = time.time() - start_time
         if elapsed < 0.1:
             time.sleep(0.1 - elapsed)
-        return Response({'error': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Email/username and password are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Try to find user by email
+    # Try to find user by email or username
     try:
-        user = User.objects.get(email=email)
+        user = User.objects.get(Q(email__iexact=email) | Q(username__iexact=email))
     except User.DoesNotExist:
         # Ensure minimum response time to prevent timing attacks
         elapsed = time.time() - start_time
         if elapsed < 0.1:
             time.sleep(0.1 - elapsed)
-        return Response({'error': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'error': 'Invalid email/username or password'}, status=status.HTTP_401_UNAUTHORIZED)
 
     # Check password
     if not user.check_password(password):
@@ -409,21 +410,21 @@ def user_activity(request):
     ]
 
     # Get points history (last 20 point activities)
-    from core.points.models import PointsHistory
+    from core.thrive_circle.models import PointActivity
 
-    points_history = PointsHistory.objects.filter(user=user).order_by('-created_at')[:20]
+    points_activities = PointActivity.objects.filter(user=user).order_by('-created_at')[:20]
 
     points_feed = [
         {
-            'id': str(history.id),
-            'activityType': history.activity_type,
-            'activityDisplay': history.get_activity_type_display(),
-            'pointsAwarded': history.points_awarded,
-            'description': history.description,
-            'metadata': history.metadata,
-            'createdAt': history.created_at.isoformat(),
+            'id': str(activity.id),
+            'activityType': activity.activity_type,
+            'activityDisplay': activity.get_activity_type_display(),
+            'pointsAwarded': activity.amount,
+            'description': activity.description,
+            'metadata': {},  # PointActivity doesn't have metadata field
+            'createdAt': activity.created_at.isoformat(),
         }
-        for history in points_history
+        for activity in points_activities
     ]
 
     return Response(
@@ -445,7 +446,7 @@ def user_activity(request):
                     'projectCount': user.projects.count(),
                     'totalPoints': user.total_points,
                     'level': user.level,
-                    'currentStreak': user.current_streak,
+                    'currentStreak': user.current_streak_days,
                 },
                 'pointsFeed': points_feed,
             },

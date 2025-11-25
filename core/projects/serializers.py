@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from core.taxonomy.serializers import TaxonomySerializer
 from core.tools.serializers import ToolListSerializer
 
 from .constants import DEFAULT_BANNER_IMAGE, MAX_CONTENT_SIZE, MAX_PROJECT_TAGS, MAX_TAG_LENGTH
@@ -25,6 +26,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     heart_count = serializers.ReadOnlyField()
     is_liked_by_user = serializers.SerializerMethodField()
     tools_details = ToolListSerializer(source='tools', many=True, read_only=True)
+    topics_details = TaxonomySerializer(source='topics', many=True, read_only=True)
 
     class Meta:
         model = Project
@@ -47,6 +49,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             'external_url',
             'tools',
             'tools_details',
+            'topics',
+            'topics_details',
             'heart_count',
             'is_liked_by_user',
             'content',
@@ -60,6 +64,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'heart_count',
             'is_liked_by_user',
             'tools_details',
+            'topics_details',
             'created_at',
             'updated_at',
         ]

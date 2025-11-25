@@ -1,12 +1,14 @@
 import { useState, ReactNode, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 import { LeftSidebar } from '@/components/navigation/LeftSidebar';
 import { RightChatPanel } from '@/components/chat/RightChatPanel';
 import { RightAboutPanel } from '@/components/about';
 import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalendarPanel';
+import { RightAddProjectChat } from '@/components/projects/RightAddProjectChat';
 
 interface DashboardLayoutProps {
-  children: ReactNode | ((props: { openChat: (menuItem: string) => void }) => ReactNode);
+  children: ReactNode | ((props: { openChat: (menuItem: string) => void; openAddProject: () => void }) => ReactNode);
   openAboutPanel?: boolean;
   autoCollapseSidebar?: boolean;
 }
@@ -16,6 +18,7 @@ export function DashboardLayout({ children, openAboutPanel = false, autoCollapse
   const [chatOpen, setChatOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
 
   // Auto-open about panel when prop is true
@@ -79,6 +82,19 @@ export function DashboardLayout({ children, openAboutPanel = false, autoCollapse
     setEventsOpen(false);
   };
 
+  const handleOpenAddProject = () => {
+    // Open Add Project panel with 4 options
+    setAddProjectOpen(true);
+    setChatOpen(false);
+    setAboutOpen(false);
+    setEventsOpen(false);
+    setSelectedMenuItem(null);
+  };
+
+  const handleCloseAddProject = () => {
+    setAddProjectOpen(false);
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-brand-dark">
       {/* Hamburger button - shows when sidebar is closed */}
@@ -98,6 +114,7 @@ export function DashboardLayout({ children, openAboutPanel = false, autoCollapse
           onMenuClick={handleMenuClick}
           isOpen={sidebarOpen}
           onToggle={() => setSidebarOpen(!sidebarOpen)}
+          onAddProject={handleOpenAddProject}
         />
       )}
 
@@ -105,7 +122,7 @@ export function DashboardLayout({ children, openAboutPanel = false, autoCollapse
       <div className={`flex-1 flex flex-col transition-all duration-300 ${
         sidebarOpen ? 'ml-64' : autoCollapseSidebar ? 'ml-0' : 'ml-20 max-md:ml-0'
       }`}>
-        {typeof children === 'function' ? children({ openChat: handleMenuClick }) : children}
+        {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject }) : children}
       </div>
 
       {/* Right Chat Panel */}
@@ -125,6 +142,12 @@ export function DashboardLayout({ children, openAboutPanel = false, autoCollapse
       <RightEventsCalendarPanel
         isOpen={eventsOpen}
         onClose={handleCloseEvents}
+      />
+
+      {/* Right Add Project Chat */}
+      <RightAddProjectChat
+        isOpen={addProjectOpen}
+        onClose={handleCloseAddProject}
       />
 
       {/* Overlay when chat is open */}
@@ -148,6 +171,14 @@ export function DashboardLayout({ children, openAboutPanel = false, autoCollapse
         <div
           className="fixed inset-0 bg-black/20 z-30 md:hidden"
           onClick={handleCloseEvents}
+        />
+      )}
+
+      {/* Overlay when add project is open */}
+      {addProjectOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-30 md:hidden"
+          onClick={handleCloseAddProject}
         />
       )}
     </div>

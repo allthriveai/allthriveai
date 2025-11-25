@@ -10,7 +10,7 @@ import ProjectDetailPage from '@/pages/ProjectDetailPage';
 import ProjectEditorPage from '@/pages/ProjectEditorPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
 import PasswordSettingsPage from '@/pages/settings/PasswordSettingsPage';
-import SocialSettingsPage from '@/pages/settings/SocialSettingsPage';
+import IntegrationsSettingsPage from '@/pages/settings/IntegrationsSettingsPage';
 import PersonalizationSettingsPage from '@/pages/settings/PersonalizationSettingsPage';
 import NotificationsSettingsPage from '@/pages/settings/NotificationsSettingsPage';
 import BillingSettingsPage from '@/pages/settings/BillingSettingsPage';
@@ -21,12 +21,14 @@ import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
 import QuizListPage from '@/pages/quizzes/QuizListPage';
 import QuizPage from '@/pages/quizzes/QuizPage';
+import LearnPage from '@/pages/LearnPage';
 import ToolDirectoryPage from '@/pages/ToolDirectoryPage';
 import ToolDetailPage from '@/pages/ToolDetailPage';
 import { ExplorePage } from '@/pages/ExplorePage';
 import PromptBattlePage from '@/pages/play/PromptBattlePage';
 import BattleDetailPage from '@/pages/play/BattleDetailPage';
 import ThriveCirclePage from '@/pages/ThriveCirclePage';
+import SideQuestsPage from '@/pages/SideQuestsPage';
 
 export function AppRoutes() {
   return (
@@ -36,6 +38,9 @@ export function AppRoutes() {
       <Route path="/about" element={<AboutPage />} />
       <Route path="/about-us" element={<AboutPage />} />
       <Route path="/styleguide" element={<StyleGuidePage />} />
+
+      {/* Learn route */}
+      <Route path="/learn" element={<LearnPage />} />
 
       {/* Quiz routes - must come before /:username routes */}
       <Route path="/quick-quizzes" element={<QuizListPage />} />
@@ -77,27 +82,30 @@ export function AppRoutes() {
         }
       />
 
+      {/* Side Quests - protected */}
+      <Route
+        path="/play/side-quests"
+        element={
+          <ProtectedRoute>
+            <SideQuestsPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Auth routes */}
+      {/* Main auth route - chat onboarding */}
       <Route
-        path="/login"
+        path="/auth"
         element={
           <ProtectedRoute redirectIfAuthenticated>
-            <LoginPage />
+            <AuthPage />
           </ProtectedRoute>
         }
       />
 
-      <Route
-        path="/signup"
-        element={
-          <ProtectedRoute redirectIfAuthenticated>
-            <SignupPage />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Redirect old auth page route */}
-      <Route path="/auth" element={<Navigate to="/login" replace />} />
+      {/* Redirect all other auth routes to /auth */}
+      <Route path="/login" element={<Navigate to="/auth" replace />} />
+      <Route path="/signup" element={<Navigate to="/auth" replace />} />
 
       {/* Protected routes - Settings */}
       <Route
@@ -117,10 +125,10 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/account/settings/social"
+        path="/account/settings/integrations"
         element={
           <ProtectedRoute>
-            <SocialSettingsPage />
+            <IntegrationsSettingsPage />
           </ProtectedRoute>
         }
       />

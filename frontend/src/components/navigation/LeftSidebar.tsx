@@ -27,9 +27,10 @@ interface LeftSidebarProps {
   onMenuClick: (menuItem: string) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onAddProject?: () => void;
 }
 
-export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps) {
+export function LeftSidebar({ onMenuClick, isOpen, onToggle, onAddProject }: LeftSidebarProps) {
   const { user, logout, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -126,7 +127,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
   const handleLogout = useCallback(async () => {
     try {
       await logout();
-      navigate('/login');
+      navigate('/auth');
     } catch (error) {
       console.error('Logout failed:', error);
       // TODO: Show toast notification to user
@@ -257,24 +258,10 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         )}
 
         {/* Add Project Button */}
-        {isOpen && isAuthenticated && user?.username && (
+        {isOpen && isAuthenticated && user?.username && onAddProject && (
           <div className="px-4 pb-2 flex-shrink-0">
             <button
-              onClick={async () => {
-                try {
-                  const newProject = await createProject({
-                    title: 'Untitled Project',
-                    description: '',
-                    type: 'other',
-                    isShowcase: false,
-                    content: { blocks: [] },
-                  });
-                  navigate(`/${user.username}/${newProject.slug}/edit`);
-                } catch (error) {
-                  console.error('Failed to create project:', error);
-                  alert('Failed to create project. Please try again.');
-                }
-              }}
+              onClick={onAddProject}
               className="w-full flex items-center gap-2 px-4 py-2.5 bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/10 rounded-lg transition-colors font-medium text-sm"
             >
               <PlusIcon className="w-4 h-4" />
@@ -286,39 +273,101 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         {/* Menu Sections */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden">
           {filteredMenuSections.length > 0 ? (
-            filteredMenuSections.map((section) => (
+            filteredMenuSections.map((section) => {
+              const hasItems = section.items.length > 0;
+              const isExpandableSection = hasItems;
+              const shouldShowItems = isOpen && hasItems && openSections.includes(section.title);
+
+              // Check if any item in this section is active
+              const hasActiveItem = hasItems && section.items.some(item => {
+                if (isMenuItemActive(item)) return true;
+                if (item.subItems) {
+                  return item.subItems.some(subItem => isMenuItemActive(subItem));
+                }
+                return false;
+              });
+
+              // Determine if section should be highlighted
+              const isSectionActive = hasActiveItem || (
+                !hasItems && section.path && location.pathname === section.path
+              );
+
+              return (
               <div key={section.title} className="mb-2">
                 {/* Section Header */}
-                <button
-                  onClick={() => toggleSection(section.title, isOpen, onToggle)}
-                  className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
-                    isOpen ? 'justify-between' : 'justify-center'
-                  } ${
-                    openSections.includes(section.title)
-                      ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10'
-                  }`}
-                  title={!isOpen ? section.title : undefined}
-                >
-                  <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
-                    <FontAwesomeIcon icon={section.icon} className="w-4 h-4 flex-shrink-0" />
+                {isExpandableSection ? (
+                  // Expandable section with items (dropdown)
+                  <button
+                    onClick={() => toggleSection(section.title, isOpen, onToggle)}
+                    className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
+                      isOpen ? 'justify-between' : 'justify-center'
+                    } ${
+                      isSectionActive
+                        ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10'
+                    }`}
+                    title={!isOpen ? section.title : undefined}
+                  >
+                    <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
+                      <FontAwesomeIcon icon={section.icon} className="w-4 h-4 flex-shrink-0" />
+                      {isOpen && (
+                        <span className="whitespace-nowrap transition-opacity duration-300">
+                          {section.title}
+                        </span>
+                      )}
+                    </div>
                     {isOpen && (
-                      <span className="whitespace-nowrap transition-opacity duration-300">
-                        {section.title}
-                      </span>
+                      openSections.includes(section.title) ? (
+                        <ChevronUpIcon className="w-4 h-4" />
+                      ) : (
+                        <ChevronDownIcon className="w-4 h-4" />
+                      )
                     )}
-                  </div>
-                  {isOpen && (
-                    openSections.includes(section.title) ? (
-                      <ChevronUpIcon className="w-4 h-4" />
-                    ) : (
-                      <ChevronDownIcon className="w-4 h-4" />
-                    )
-                  )}
-                </button>
+                  </button>
+                ) : section.onClick ? (
+                  // Section with onClick handler and no items
+                  <button
+                    onClick={section.onClick}
+                    className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
+                      isOpen ? 'justify-between' : 'justify-center'
+                    } text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10`}
+                    title={!isOpen ? section.title : undefined}
+                  >
+                    <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
+                      <FontAwesomeIcon icon={section.icon} className="w-4 h-4 flex-shrink-0" />
+                      {isOpen && (
+                        <span className="whitespace-nowrap transition-opacity duration-300">
+                          {section.title}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ) : section.path ? (
+                  // Direct link section (no dropdown, no items)
+                  <button
+                    onClick={() => navigate(section.path!)}
+                    className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
+                      isOpen ? 'justify-between' : 'justify-center'
+                    } ${
+                      isSectionActive
+                        ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10'
+                    }`}
+                    title={!isOpen ? section.title : undefined}
+                  >
+                    <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
+                      <FontAwesomeIcon icon={section.icon} className="w-4 h-4 flex-shrink-0" />
+                      {isOpen && (
+                        <span className="whitespace-nowrap transition-opacity duration-300">
+                          {section.title}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ) : null}
 
                 {/* Section Items */}
-                {isOpen && openSections.includes(section.title) && (
+                {shouldShowItems && (
                   <div className="mt-1 space-y-1">
                     {section.items.map((item) => (
                       <div key={item.label}>
@@ -382,7 +431,8 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                   </div>
                 )}
               </div>
-            ))
+              );
+            })
           ) : (
             <div className="px-3 py-8 text-center">
               <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -432,7 +482,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
             </button>
           ) : (
             <button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/auth')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-primary-500 dark:text-primary-400 hover:bg-primary-500/10 dark:hover:bg-primary-500/10 rounded-lg transition-colors ${
                 isOpen ? '' : 'justify-center px-0'
               }`}

@@ -5,8 +5,6 @@ import {
   deleteUserTag,
 } from '@/services/personalization';
 import type { Taxonomy, UserTag, TaxonomyCategory } from '@/types/models';
-import { TOPICS } from '@/config/topics';
-import type { TopicSlug } from '@/config/topics';
 import {
   SparklesIcon,
   TagIcon,
@@ -38,7 +36,8 @@ export function Personalization() {
   const [autoTags, setAutoTags] = useState<UserTag[]>([]);
   const [taxonomies, setTaxonomies] = useState<Taxonomy[]>([]);
   const [selectedTaxonomies, setSelectedTaxonomies] = useState<Set<number>>(new Set());
-  const [selectedTopics, setSelectedTopics] = useState<TopicSlug[]>([]);
+  const [availableTopics, setAvailableTopics] = useState<Taxonomy[]>([]);
+  const [selectedTopicIds, setSelectedTopicIds] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingTopics, setIsSavingTopics] = useState(false);
@@ -48,7 +47,6 @@ export function Personalization() {
 
   useEffect(() => {
     loadPersonalization();
-    loadUserTopics();
   }, []);
 
 
@@ -109,27 +107,33 @@ export function Personalization() {
     }
   }
 
-  async function loadUserTopics() {
-    // TODO: Load user's selected topics from backend
-    // For now, load from localStorage as placeholder
-    const saved = localStorage.getItem('userTopics');
-    if (saved) {
-      try {
-        setSelectedTopics(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse saved topics:', e);
-      }
-    }
-  }
-
   async function handleSaveTopics() {
     try {
       setIsSavingTopics(true);
       setError(null);
-      // TODO: Save to backend via API
-      // For now, save to localStorage as placeholder
-      localStorage.setItem('userTopics', JSON.stringify(selectedTopics));
-      console.log('Topics saved:', selectedTopics);
+
+      // Find which topics to add (newly selected)
+      const existingIds = new Set(
+        manualTags.filter(tag => tag.taxonomy?.taxonomyType === 'topic').map(tag => tag.taxonomy!.id)
+      );
+      const toAdd = Array.from(selectedTopicIds).filter(id => !existingIds.has(id));
+
+      // Find which tags to remove (unselected topics)
+      const toRemove = manualTags.filter(
+        tag => tag.taxonomy?.taxonomyType === 'topic' && !selectedTopicIds.has(tag.taxonomy.id)
+      );
+
+      // Add new topic tags
+      if (toAdd.length > 0) {
+        const newTags = await bulkCreateTags(toAdd);
+        setManualTags(prev => [...prev, ...newTags]);
+      }
+
+      // Remove unselected topic tags
+      for (const tag of toRemove) {
+        await deleteUserTag(tag.id);
+        setManualTags(prev => prev.filter(t => t.id !== tag.id));
+      }
     } catch (err: any) {
       console.error('Failed to save topics:', err);
       setError(err?.error || 'Failed to save topics');
@@ -138,13 +142,15 @@ export function Personalization() {
     }
   }
 
-  function toggleTopic(slug: TopicSlug) {
-    setSelectedTopics(prev => {
-      if (prev.includes(slug)) {
-        return prev.filter(s => s !== slug);
+  function toggleTopic(topicId: number) {
+    setSelectedTopicIds(prev => {
+      const next = new Set(prev);
+      if (next.has(topicId)) {
+        next.delete(topicId);
       } else {
-        return [...prev, slug];
+        next.add(topicId);
       }
+      return next;
     });
   }
 
@@ -180,14 +186,21 @@ export function Personalization() {
       setManualTags(data.manual_tags || []);
       setAutoTags(data.auto_generated_tags || []);
       setTaxonomies(data.available_taxonomies || []);
+      setAvailableTopics(data.available_topics || []);
 
-      // Pre-select existing manual tags
+      // Pre-select existing manual tags (non-topics)
       const existingTaxonomyIds = new Set(
         (data.manual_tags || [])
           .filter(tag => tag.taxonomy)
-          .map(tag => tag.taxonomy!)
+          .map(tag => tag.taxonomy!.id)
       );
       setSelectedTaxonomies(existingTaxonomyIds);
+
+      // Pre-select existing topics
+      const existingTopicIds = new Set(
+        (data.selected_topics || []).map((topic: Taxonomy) => topic.id)
+      );
+      setSelectedTopicIds(existingTopicIds);
     } catch (err: any) {
       console.error('Failed to load personalization:', err);
       // Don't block the page for personalization errors - just show warning
@@ -195,6 +208,7 @@ export function Personalization() {
       setAutoTags([]);
       setManualTags([]);
       setTaxonomies([]);
+      setAvailableTopics([]);
     } finally {
       setIsLoading(false);
     }
@@ -251,14 +265,14 @@ export function Personalization() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
-          {TOPICS.map((topic) => {
-            const isSelected = selectedTopics.includes(topic.slug);
+          {availableTopics.map((topic) => {
+            const isSelected = selectedTopicIds.has(topic.id);
             const colorClass = COLOR_CLASSES[topic.color] || 'bg-gray-500';
 
             return (
               <button
-                key={topic.slug}
-                onClick={() => toggleTopic(topic.slug)}
+                key={topic.id}
+                onClick={() => toggleTopic(topic.id)}
                 className={`text-left p-4 rounded-lg border-2 transition-all ${
                   isSelected
                     ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
@@ -270,7 +284,7 @@ export function Personalization() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-semibold text-sm text-gray-900 dark:text-white">
-                        {topic.label}
+                        {topic.name}
                       </h4>
                       {isSelected && (
                         <CheckIcon className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
@@ -286,10 +300,10 @@ export function Personalization() {
           })}
         </div>
 
-        {selectedTopics.length > 0 && (
+        {selectedTopicIds.size > 0 && (
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              You've selected {selectedTopics.length} topic{selectedTopics.length !== 1 ? 's' : ''}.
+              You've selected {selectedTopicIds.size} topic{selectedTopicIds.size !== 1 ? 's' : ''}.
               These will be used to personalize your Explore feed.
             </p>
           </div>
@@ -299,8 +313,8 @@ export function Personalization() {
 
       {/* How We're Personalizing For You */}
       {(() => {
-        const toolTags = autoTags.filter(tag => tag.taxonomyCategory === 'tool');
-        const hasPreferences = toolTags.length > 0 || selectedTopics.length > 0;
+        const toolTags = autoTags.filter(tag => tag.taxonomy?.taxonomyType === 'tool');
+        const hasPreferences = toolTags.length > 0 || selectedTopicIds.size > 0;
 
         if (!hasPreferences) {
           return (
@@ -324,8 +338,8 @@ export function Personalization() {
         }
 
         // Get topic labels
-        const selectedTopicLabels = selectedTopics
-          .map(slug => TOPICS.find(t => t.slug === slug)?.label)
+        const selectedTopicLabels = Array.from(selectedTopicIds)
+          .map(id => availableTopics.find(t => t.id === id)?.name)
           .filter(Boolean);
 
         // Build personalized message
@@ -355,13 +369,13 @@ export function Personalization() {
 
             <div className="space-y-4">
               {/* Topics */}
-              {selectedTopics.length > 0 && (
+              {selectedTopicIds.size > 0 && (
                 <div className="p-4 bg-white/70 dark:bg-gray-800/70 rounded-lg border border-primary-200 dark:border-primary-700">
                   <p className="text-lg text-gray-900 dark:text-white mb-1">
                     You're interested in <span className="font-bold text-primary-700 dark:text-primary-300">{topicList}</span>
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    ({selectedTopics.length} {selectedTopics.length === 1 ? 'topic' : 'topics'} selected)
+                    ({selectedTopicIds.size} {selectedTopicIds.size === 1 ? 'topic' : 'topics'} selected)
                   </p>
                 </div>
               )}
@@ -379,7 +393,7 @@ export function Personalization() {
               )}
 
               <div className="grid gap-3">
-                {(selectedTopics.length > 0 || toolTags.length > 0) && (
+                {(selectedTopicIds.size > 0 || toolTags.length > 0) && (
                   <div className="flex items-start gap-3 p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
                     <div className="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
                       ✓
@@ -387,11 +401,11 @@ export function Personalization() {
                     <div>
                       <p className="text-sm text-gray-700 dark:text-gray-300">
                         So we're showing you more projects about{' '}
-                        {selectedTopics.length > 0 && toolTags.length > 0 ? (
+                        {selectedTopicIds.size > 0 && toolTags.length > 0 ? (
                           <>
                             <span className="font-semibold">{topicList}</span> using <span className="font-semibold">{toolList}</span>
                           </>
-                        ) : selectedTopics.length > 0 ? (
+                        ) : selectedTopicIds.size > 0 ? (
                           <span className="font-semibold">{topicList}</span>
                         ) : (
                           <>
@@ -410,9 +424,9 @@ export function Personalization() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-700 dark:text-gray-300">
-                      {selectedTopics.length > 0 && toolTags.length > 0 ? (
+                      {selectedTopicIds.size > 0 && toolTags.length > 0 ? (
                         'Select more topics and keep creating projects to improve your personalized feed'
-                      ) : selectedTopics.length > 0 ? (
+                      ) : selectedTopicIds.size > 0 ? (
                         'Create projects and mention tools you use to get even better recommendations'
                       ) : (
                         'Select topics above and keep creating projects to get even better recommendations'

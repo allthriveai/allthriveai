@@ -14,6 +14,7 @@ class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     role_display = serializers.CharField(source='get_role_display', read_only=True)
     social_connections = serializers.SerializerMethodField()
+    current_streak = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -74,6 +75,14 @@ class UserSerializer(serializers.ModelSerializer):
     def get_full_name(self, obj):
         """Return user's full name."""
         return f'{obj.first_name} {obj.last_name}'.strip() or obj.username
+
+    def get_current_streak(self, obj):
+        """Expose the user's current streak (in days) as a read-only field.
+
+        Maps the model's ``current_streak_days`` to the API field ``current_streak``
+        expected by the frontend.
+        """
+        return getattr(obj, 'current_streak_days', 0)
 
     def get_social_connections(self, obj):
         """Return connected social accounts (only for own profile)."""

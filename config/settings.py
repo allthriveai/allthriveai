@@ -54,7 +54,6 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.github',
     'core',
     'core.achievements',
-    'core.points',
     'core.thrive_circle',
 ]
 
@@ -434,7 +433,7 @@ else:
 
 # Django Allauth Configuration
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
+    'core.auth.backends.EmailOrUsernameModelBackend',  # Custom backend for email or username login
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 

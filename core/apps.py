@@ -6,6 +6,7 @@ class CoreConfig(AppConfig):
     name = 'core'
 
     def ready(self):
-        """Import signal handlers when app is ready."""
+        """Import signal handlers and configure admin when app is ready."""
         import core.signals  # noqa
         import core.auth.oauth_middleware  # noqa - Register OAuth JWT signals
+        import core.admin_site  # noqa - Apply custom admin configuration

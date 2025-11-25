@@ -142,15 +142,23 @@ def user_personalization_overview(request):
     """Get a comprehensive overview of user's personalization data.
 
     Returns:
-    - Manual tags
+    - Manual tags (non-topic taxonomies)
     - Auto-generated tags
-    - Available taxonomies
+    - Available taxonomies (tools)
+    - Available topics
+    - Selected topics
     - Total interaction count
     """
     user = request.user
 
-    manual_tags = UserTag.objects.filter(user=user, source=UserTag.TagSource.MANUAL).select_related('taxonomy')
+    # Manual tags excluding topics
+    manual_tags = (
+        UserTag.objects.filter(user=user, source=UserTag.TagSource.MANUAL)
+        .exclude(taxonomy__taxonomy_type='topic')
+        .select_related('taxonomy')
+    )
 
+    # Auto-generated tags
     auto_tags = (
         UserTag.objects.filter(user=user)
         .exclude(source=UserTag.TagSource.MANUAL)
@@ -158,7 +166,18 @@ def user_personalization_overview(request):
         .order_by('-confidence_score', '-interaction_count')
     )
 
-    available_taxonomies = Taxonomy.objects.filter(is_active=True)
+    # Selected topics (user manual tags that are topics)
+    selected_topic_tags = UserTag.objects.filter(
+        user=user,
+        source=UserTag.TagSource.MANUAL,
+        taxonomy__taxonomy_type='topic',
+    ).select_related('taxonomy')
+
+    # Available taxonomies (tools only)
+    available_taxonomies = Taxonomy.objects.filter(is_active=True, taxonomy_type='tool')
+
+    # Available topics
+    available_topics = Taxonomy.objects.filter(is_active=True, taxonomy_type='topic').order_by('name')
 
     total_interactions = UserInteraction.objects.filter(user=user).count()
 
@@ -166,6 +185,8 @@ def user_personalization_overview(request):
         'manual_tags': UserTagSerializer(manual_tags, many=True).data,
         'auto_generated_tags': UserTagSerializer(auto_tags, many=True).data,
         'available_taxonomies': TaxonomySerializer(available_taxonomies, many=True).data,
+        'available_topics': TaxonomySerializer(available_topics, many=True).data,
+        'selected_topics': TaxonomySerializer([t.taxonomy for t in selected_topic_tags if t.taxonomy], many=True).data,
         'total_interactions': total_interactions,
     }
 

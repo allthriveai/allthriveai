@@ -183,93 +183,57 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
         attempt.save()
 
         # Award points for completing the quiz (with idempotency check)
-        from django.db.models import Sum
+        import logging
 
-        from core.points.models import ActivityType, PointsHistory
-        from services.points import PointsService
+        from core.thrive_circle.models import PointActivity
+        from core.thrive_circle.services import PointsService
+
+        logger = logging.getLogger(__name__)
 
         # Check if points already awarded for this quiz attempt (idempotency)
-        already_awarded = PointsHistory.objects.filter(
-            user=request.user, metadata__quiz_attempt_id=str(attempt.id)
+        already_awarded = PointActivity.objects.filter(
+            user=request.user, activity_type='quiz_complete', description__contains=f'quiz_attempt:{attempt.id}'
         ).exists()
 
+        points_earned = 0
         if not already_awarded:
-            # Base points for completing quiz
-            metadata = {
-                'quiz_attempt_id': str(attempt.id),  # For idempotency
-                'quiz_id': str(attempt.quiz.id),
-                'quiz_title': attempt.quiz.title,
-                'score': attempt.score,
-                'total_questions': attempt.total_questions,
-                'percentage_score': attempt.percentage_score,
-            }
-
             try:
-                PointsService.award_points(
-                    user=request.user,
-                    activity_type=ActivityType.QUIZ_COMPLETED,
-                    description=f"Completed '{attempt.quiz.title}' quiz with {attempt.percentage_score}% score",
-                    metadata=metadata,
+                # Calculate points using service layer
+                points_amount = PointsService.calculate_quiz_points(attempt.percentage_score)
+
+                # Award points to user (this handles tier/level upgrades automatically)
+                description = (
+                    f"Completed '{attempt.quiz.title}' ({attempt.percentage_score}% score) "
+                    f'quiz_attempt:{attempt.id}'
                 )
-
-                # Bonus points for perfect score
-                if attempt.percentage_score == 100:
-                    PointsService.award_points(
-                        user=request.user,
-                        activity_type=ActivityType.QUIZ_PERFECT_SCORE,
-                        description=f"Perfect score on '{attempt.quiz.title}'!",
-                        metadata=metadata,
-                    )
-            except Exception as e:
-                # Log error but don't fail the quiz completion
-                import logging
-
-                logger = logging.getLogger(__name__)
-                logger.error(f'Failed to award points for quiz completion: {e}', exc_info=True)
-
-            # Award XP for completing the quiz (Thrive Circle)
-            from core.thrive_circle.models import UserTier
-            from core.thrive_circle.services import XPService
-
-            try:
-                # Get or create user tier
-                user_tier, created = UserTier.objects.get_or_create(
-                    user=request.user, defaults={'tier': 'ember', 'total_xp': 0}
-                )
-
-                # Calculate XP using service layer
-                xp_amount = XPService.calculate_quiz_xp(attempt.percentage_score)
-
-                # Award the XP
-                user_tier.add_xp(
-                    amount=xp_amount,
+                request.user.add_points(
+                    amount=points_amount,
                     activity_type='quiz_complete',
-                    description=f"Completed '{attempt.quiz.title}' ({attempt.percentage_score}% score)",
+                    description=description,
                 )
+
+                # Update lifetime quiz counter
+                request.user.lifetime_quizzes_completed += 1
+                request.user.save(update_fields=['lifetime_quizzes_completed'])
+
+                points_earned = points_amount
 
                 logger.info(
-                    f'Awarded {xp_amount} XP for quiz completion',
+                    f'Awarded {points_amount} points for quiz completion',
                     extra={
                         'user_id': request.user.id,
                         'quiz_id': str(attempt.quiz.id),
                         'score': attempt.percentage_score,
+                        'points': points_amount,
                     },
                 )
             except Exception as e:
                 # Log error but don't fail the quiz completion
                 logger.error(
-                    f'Failed to award XP for quiz completion: {e}',
+                    f'Failed to award points for quiz completion: {e}',
                     exc_info=True,
                     extra={'user_id': request.user.id, 'quiz_attempt_id': str(attempt.id)},
                 )
-
-        # Calculate total points earned for this quiz attempt
-        total_points_earned = (
-            PointsHistory.objects.filter(user=request.user, metadata__quiz_attempt_id=str(attempt.id)).aggregate(
-                total=Sum('points_awarded')
-            )['total']
-            or 0
-        )
 
         serializer = self.get_serializer(attempt)
         return Response(
@@ -278,7 +242,7 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
                 'total_questions': attempt.total_questions,
                 'percentage_score': attempt.percentage_score,
                 'results': serializer.data,
-                'points_earned': total_points_earned,
+                'points_earned': points_earned,
             }
         )
 

@@ -65,17 +65,8 @@ class Command(BaseCommand):
             {'name': 'Start a Business', 'category': 'goal', 'description': 'Launch and grow a startup'},
             {'name': 'Freelance', 'category': 'goal', 'description': 'Build a freelance career'},
             {'name': 'Get Certified', 'category': 'goal', 'description': 'Earn professional certifications'},
-            # Topics
-            {
-                'name': 'Prompt Engineering',
-                'category': 'topic',
-                'description': 'Crafting effective prompts for AI agents',
-            },
-            {'name': 'DevOps', 'category': 'topic', 'description': 'Development operations and automation'},
-            {'name': 'Cybersecurity', 'category': 'topic', 'description': 'Information security and privacy'},
-            {'name': 'Blockchain', 'category': 'topic', 'description': 'Blockchain technology and cryptocurrencies'},
-            {'name': 'Mobile Development', 'category': 'topic', 'description': 'iOS and Android app development'},
-            {'name': 'Game Development', 'category': 'topic', 'description': 'Video game design and programming'},
+            # Topics - synced with frontend/src/config/topics.ts
+            # These are used on projects/tools and for personalizing the Explore page
             # Industries
             {'name': 'Technology', 'category': 'industry', 'description': 'Tech companies and software industry'},
             {'name': 'Healthcare', 'category': 'industry', 'description': 'Medical and healthcare sector'},

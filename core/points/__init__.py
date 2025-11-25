@@ -1,1 +1,0 @@
-"""Points tracking system."""

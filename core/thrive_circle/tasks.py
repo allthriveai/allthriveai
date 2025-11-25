@@ -7,7 +7,7 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import UserTier, WeeklyGoal
+from .models import WeeklyGoal
 from .utils import get_week_start
 
 User = get_user_model()
@@ -27,18 +27,18 @@ def create_weekly_goals():
     week_start = get_week_start()
     week_end = week_start + timedelta(days=6)
 
-    # Get all active users with tier status - convert to list to cache
-    active_users = list(User.objects.filter(is_active=True, tier_status__isnull=False))
+    # Get all active users - convert to list to cache
+    active_users = list(User.objects.filter(is_active=True))
     user_count = len(active_users)
 
     if user_count == 0:
-        logger.info('No active users with tier status found')
+        logger.info('No active users found')
         return {'users': 0, 'goals_created': 0}
 
     # Check existing goals for this week to avoid duplicates
     existing_goals = set(WeeklyGoal.objects.filter(week_start=week_start).values_list('user_id', 'goal_type'))
 
-    # Goal configurations: (goal_type, target_progress, xp_reward)
+    # Goal configurations: (goal_type, target_progress, points_reward)
     goal_configs = [
         ('activities_3', 3, 30),
         ('streak_7', 7, 50),
@@ -49,7 +49,7 @@ def create_weekly_goals():
     # Prepare goals for bulk creation
     goals_to_create = []
     for user in active_users:
-        for goal_type, target, xp_reward in goal_configs:
+        for goal_type, target, points_reward in goal_configs:
             # Skip if goal already exists
             if (user.id, goal_type) not in existing_goals:
                 goals_to_create.append(
@@ -59,7 +59,7 @@ def create_weekly_goals():
                         week_start=week_start,
                         week_end=week_end,
                         target_progress=target,
-                        xp_reward=xp_reward,
+                        points_reward=points_reward,
                     )
                 )
 
@@ -78,58 +78,57 @@ def check_streak_bonuses():
     """
     Award streak bonuses for users who maintained their streak today.
 
-    This task should run daily (end of day) to award streak bonus XP.
-    Note: Streak tracking happens in add_xp(), this just awards the bonus.
+    This task should run daily (end of day) to award streak bonus points.
+    Note: Streak tracking happens in add_points(), this just awards the bonus.
 
     Includes error handling to continue processing all users even if some fail.
     """
     today = timezone.now().date()
 
     # Get users who have activity today - convert to list for caching
-    active_today = list(UserTier.objects.filter(last_activity_date=today).select_related('user'))
+    active_today = list(User.objects.filter(last_activity_date=today))
     active_count = len(active_today)
 
     bonuses_awarded = 0
-    total_xp_awarded = 0
+    total_points_awarded = 0
     failed_awards = []
 
-    for tier_status in active_today:
+    for user in active_today:
         try:
-            # Award streak bonus XP based on current streak length
-            if tier_status.current_streak_days > 0:
+            # Award streak bonus points based on current streak length
+            if user.current_streak_days > 0:
                 # Cap streak bonus at 100 days to prevent abuse
-                capped_streak = min(tier_status.current_streak_days, 100)
-                bonus_xp = 5 * capped_streak
+                capped_streak = min(user.current_streak_days, 100)
+                bonus_points = 5 * capped_streak
 
-                # Use _skip_goal_check to prevent weekly goal checking for bonus awards
-                tier_status.add_xp(
-                    bonus_xp,
+                # Award points directly on user
+                user.add_points(
+                    bonus_points,
                     'streak_bonus',
-                    f'{tier_status.current_streak_days}-day streak maintained!',
-                    _skip_goal_check=True,  # Prevent recursion and unnecessary goal checks
+                    f'{user.current_streak_days}-day streak maintained!',
                 )
                 bonuses_awarded += 1
-                total_xp_awarded += bonus_xp
+                total_points_awarded += bonus_points
         except Exception as e:
             logger.error(
-                f'Failed to award streak bonus for user {tier_status.user.username} (ID: {tier_status.user.id})',
+                f'Failed to award streak bonus for user {user.username} (ID: {user.id})',
                 exc_info=True,
                 extra={
-                    'user_id': tier_status.user.id,
-                    'current_streak': tier_status.current_streak_days,
+                    'user_id': user.id,
+                    'current_streak': user.current_streak_days,
                     'error': str(e),
                 },
             )
-            failed_awards.append(tier_status.user.id)
+            failed_awards.append(user.id)
             continue  # Continue processing other users
 
     # Log results
     logger.info(
-        f'Awarded streak bonuses: {bonuses_awarded} users received {total_xp_awarded} total XP',
+        f'Awarded streak bonuses: {bonuses_awarded} users received {total_points_awarded} total points',
         extra={
             'active_users': active_count,
             'bonuses_awarded': bonuses_awarded,
-            'total_xp': total_xp_awarded,
+            'total_points': total_points_awarded,
             'failed': len(failed_awards),
         },
     )
@@ -140,7 +139,7 @@ def check_streak_bonuses():
     return {
         'active_users': active_count,
         'bonuses_awarded': bonuses_awarded,
-        'total_xp': total_xp_awarded,
+        'total_points': total_points_awarded,
         'failed': len(failed_awards),
         'failed_user_ids': failed_awards,
     }

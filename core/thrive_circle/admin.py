@@ -2,28 +2,12 @@
 
 from django.contrib import admin
 
-from .models import UserTier, XPActivity
+from .models import PointActivity
 
 
-@admin.register(UserTier)
-class UserTierAdmin(admin.ModelAdmin):
-    """Admin for UserTier model."""
-
-    list_display = ['user', 'tier', 'total_xp', 'updated_at']
-    list_filter = ['tier']
-    search_fields = ['user__username', 'user__email']
-    readonly_fields = ['created_at', 'updated_at']
-    ordering = ['-total_xp']
-
-    fieldsets = (
-        ('User Information', {'fields': ('user', 'tier', 'total_xp')}),
-        ('Timestamps', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
-    )
-
-
-@admin.register(XPActivity)
-class XPActivityAdmin(admin.ModelAdmin):
-    """Admin for XPActivity model."""
+@admin.register(PointActivity)
+class PointActivityAdmin(admin.ModelAdmin):
+    """Admin for PointActivity model."""
 
     list_display = ['user', 'amount', 'activity_type', 'tier_at_time', 'created_at']
     list_filter = ['activity_type', 'tier_at_time', 'created_at']

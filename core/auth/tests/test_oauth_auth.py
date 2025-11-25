@@ -7,7 +7,9 @@ import json
 from allauth.socialaccount.models import SocialAccount, SocialApp
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
-from django.test import Client, TestCase, override_settings
+from django.test import Client, RequestFactory, TestCase, override_settings
+
+from core.auth.adapter import CustomSocialAccountAdapter
 
 User = get_user_model()
 
@@ -316,3 +318,78 @@ class SocialAccountLinkingTestCase(TestCase):
 
         with self.assertRaises(Exception):
             SocialAccount.objects.create(user=user2, provider='github', uid='12345')  # Duplicate UID for same provider
+
+
+class SocialLoginAdapterTestCase(TestCase):
+    """Tests for CustomSocialAccountAdapter pre_social_login linking behaviour."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.adapter = CustomSocialAccountAdapter()
+        # Existing user that should be matched by email
+        self.user = User.objects.create_user(
+            username='existinguser',
+            email='existing@example.com',
+            password='testpass123',
+        )
+
+    def test_pre_social_login_links_to_existing_user_by_email(self):
+        """Social login with matching email should attach to existing user, not create a new one."""
+        request = self.factory.get('/accounts/google/login/')
+        captured = {}
+
+        class DummySocialLogin:
+            def __init__(self):
+                self.is_existing = False
+
+                class DummyUser:
+                    # Mixed-case email to verify case-insensitive match
+                    email = 'Existing@Example.com'
+
+                class DummyAccount:
+                    provider = 'google'
+
+                self.user = DummyUser()
+                self.account = DummyAccount()
+
+            def connect(self, req, user):
+                captured['request'] = req
+                captured['user'] = user
+
+        sociallogin = DummySocialLogin()
+
+        self.adapter.pre_social_login(request, sociallogin)
+
+        # Adapter should have called connect with the existing user (same DB row)
+        linked_user = captured.get('user')
+        self.assertIsNotNone(linked_user)
+        self.assertEqual(linked_user.pk, self.user.pk)
+
+    def test_pre_social_login_no_email_does_not_link(self):
+        """If provider does not supply email, adapter should not attempt to link."""
+        request = self.factory.get('/accounts/github/login/')
+        captured = {}
+
+        class DummySocialLoginNoEmail:
+            def __init__(self):
+                self.is_existing = False
+
+                class DummyUser:
+                    email = ''  # No email provided
+
+                class DummyAccount:
+                    provider = 'github'
+
+                self.user = DummyUser()
+                self.account = DummyAccount()
+
+            def connect(self, req, user):
+                captured['request'] = req
+                captured['user'] = user
+
+        sociallogin = DummySocialLoginNoEmail()
+
+        self.adapter.pre_social_login(request, sociallogin)
+
+        # Adapter should not have attempted to connect when email is missing
+        self.assertNotIn('user', captured)

@@ -3,26 +3,32 @@ from django.db import models
 
 
 class Taxonomy(models.Model):
-    """Predefined taxonomies that users can select to personalize their experience."""
+    """Unified taxonomy for the system.
 
-    class TaxonomyCategory(models.TextChoices):
-        INTEREST = 'interest', 'Interest'
-        SKILL = 'skill', 'Skill'
-        GOAL = 'goal', 'Goal'
-        TOPIC = 'topic', 'Topic'
-        INDUSTRY = 'industry', 'Industry'
+    Taxonomy supports two types:
+    - 'tool'  -> represents a Tool entry (1:1 with core.tools.Tool)
+    - 'topic' -> represents a user-facing topic used for personalization
+    """
+
+    class TaxonomyType(models.TextChoices):
         TOOL = 'tool', 'Tool'
+        TOPIC = 'topic', 'Topic'
 
-    name = models.CharField(max_length=100, unique=True)
-    category = models.CharField(
-        max_length=20,
-        choices=TaxonomyCategory.choices,
-        default=TaxonomyCategory.INTEREST,
+    taxonomy_type = models.CharField(
+        max_length=10, choices=TaxonomyType.choices, default=TaxonomyType.TOOL, db_index=True
     )
+
+    # Common fields
+    name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True, help_text='Whether this taxonomy is available for selection')
 
-    # Additional fields for tools
+    # Topic-only fields (safe to leave blank for tools)
+    color = models.CharField(
+        max_length=50, blank=True, default='', help_text="Display color for topics (e.g., 'blue', 'teal')"
+    )
+
+    # Additional fields for tools (ignored for topics)
     website_url = models.URLField(blank=True, null=True, help_text='Official website URL')
     logo_url = models.URLField(blank=True, null=True, help_text='Logo image URL')
     usage_tips = models.JSONField(default=list, blank=True, help_text='List of usage tips/bullet points')
@@ -31,14 +37,14 @@ class Taxonomy(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['category', 'name']
+        ordering = ['taxonomy_type', 'name']
         verbose_name_plural = 'Taxonomies'
         indexes = [
-            models.Index(fields=['category', 'is_active']),
+            models.Index(fields=['taxonomy_type', 'is_active']),
         ]
 
     def __str__(self):
-        return f'{self.name} ({self.get_category_display()})'
+        return f'{self.name} ({self.get_taxonomy_type_display()})'
 
 
 class UserTag(models.Model):

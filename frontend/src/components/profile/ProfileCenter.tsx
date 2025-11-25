@@ -27,9 +27,10 @@ interface ProfileCenterProps {
   activeTab: 'showcase' | 'playground' | 'activity' | 'achievements';
   onTabChange: (tab: 'showcase' | 'playground' | 'activity' | 'achievements') => void;
   onOpenChat?: (menuItem: string) => void;
+  openAddProject?: () => void;
 }
 
-export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, activeTab, onTabChange, onOpenChat }: ProfileCenterProps) {
+export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, activeTab, onTabChange, onOpenChat, openAddProject }: ProfileCenterProps) {
   const navigate = useNavigate();
   const { tierStatus, isLoading: isTierLoading } = useThriveCircle();
   const [profileUser, setProfileUser] = useState<User | null>(null);
@@ -38,6 +39,7 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
     playground: []
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [userNotFound, setUserNotFound] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -76,6 +78,9 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
 
   // Fetch profile user data if viewing someone else's profile
   useEffect(() => {
+    // Reset user not found state
+    setUserNotFound(false);
+
     // If viewing own profile, use current user
     if (isOwnProfile) {
       setProfileUser(user);
@@ -85,10 +90,17 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
     // Fetch public user profile by username for other users
     if (username) {
       getUserByUsername(username)
-        .then(setProfileUser)
+        .then((userData) => {
+          setProfileUser(userData);
+          setUserNotFound(false);
+        })
         .catch((error) => {
           console.error('Failed to load user profile:', error);
           setProfileUser(null);
+          // Check if it's a 404 error
+          if (error?.statusCode === 404) {
+            setUserNotFound(true);
+          }
         });
     } else {
       setProfileUser(user);
@@ -99,6 +111,11 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
   useEffect(() => {
     async function loadProjects() {
       if (!displayUsername) return;
+      // Don't fetch projects if user not found
+      if (userNotFound) {
+        setIsLoading(false);
+        return;
+      }
 
       setIsLoading(true);
       try {
@@ -116,7 +133,7 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
     }
 
     loadProjects();
-  }, [displayUsername, isAuthenticated]);
+  }, [displayUsername, isAuthenticated, userNotFound]);
 
   // Listen for project creation events from chat
   useEffect(() => {
@@ -265,6 +282,53 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
         { id: 'achievements', label: 'Achievements' },
       ] as const;
 
+  // Show user not found page
+  if (userNotFound) {
+    return (
+      <div className="flex-1 min-h-0 overflow-y-auto bg-white dark:bg-gray-900">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="text-center">
+            <div className="mb-8">
+              <svg
+                className="mx-auto h-24 w-24 text-gray-400 dark:text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              User Not Found
+            </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
+              The user <span className="font-semibold text-gray-900 dark:text-white">@{username}</span> does not exist.
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={() => navigate('/')}
+                className="px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors font-medium"
+              >
+                Go to Home
+              </button>
+              <button
+                onClick={() => navigate('/explore')}
+                className="px-6 py-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg transition-colors font-medium"
+              >
+                Explore Projects
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-white dark:bg-gray-900">
       {/* Profile Header with Banner */}
@@ -280,24 +344,10 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
           </div>
 
           {/* Add Project Button - Top Right */}
-          {isAuthenticated && isOwnProfile && (
+          {isAuthenticated && isOwnProfile && openAddProject && (
             <div className="absolute top-4 right-4 z-10">
               <button
-                onClick={async () => {
-                  try {
-                    const newProject = await createProject({
-                      title: 'Untitled Project',
-                      description: '',
-                      type: 'other',
-                      isShowcase: true,
-                      content: { blocks: [] },
-                    });
-                    navigate(`/${user?.username}/${newProject.slug}/edit`);
-                  } catch (error) {
-                    console.error('Failed to create project:', error);
-                    alert('Failed to create project');
-                  }
-                }}
+                onClick={openAddProject}
                 className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors shadow-lg font-medium"
               >
                 <PlusIcon className="w-5 h-5" />
@@ -702,23 +752,9 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                     <p className="text-gray-500 dark:text-gray-400 mb-4">
                       {isOwnProfile ? 'No showcase projects yet' : 'No showcase projects to display'}
                     </p>
-                    {isAuthenticated && isOwnProfile && (
+                    {isAuthenticated && isOwnProfile && openAddProject && (
                       <button
-                        onClick={async () => {
-                          try {
-                            const newProject = await createProject({
-                              title: 'Untitled Project',
-                              description: '',
-                              type: 'other',
-                              isShowcase: false,
-                              content: { blocks: [] },
-                            });
-                            navigate(`/${user?.username}/${newProject.slug}/edit`);
-                          } catch (error) {
-                            console.error('Failed to create project:', error);
-                            alert('Failed to create project');
-                          }
-                        }}
+                        onClick={openAddProject}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
                       >
                         <PlusIcon className="w-5 h-5" />
@@ -784,23 +820,9 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                     <p className="text-gray-500 dark:text-gray-400 mb-4">
                       {isOwnProfile ? 'No projects yet' : 'No projects to display'}
                     </p>
-                    {isAuthenticated && isOwnProfile && (
+                    {isAuthenticated && isOwnProfile && openAddProject && (
                       <button
-                        onClick={async () => {
-                          try {
-                            const newProject = await createProject({
-                              title: 'Untitled Project',
-                              description: '',
-                              type: 'other',
-                              isShowcase: false,
-                              content: { blocks: [] },
-                            });
-                            navigate(`/${user?.username}/${newProject.slug}/edit`);
-                          } catch (error) {
-                            console.error('Failed to create project:', error);
-                            alert('Failed to create project');
-                          }
-                        }}
+                        onClick={openAddProject}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
                       >
                         <PlusIcon className="w-5 h-5" />

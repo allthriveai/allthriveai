@@ -1,16 +1,15 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { listProjects, updateProject, deleteProjectRedirect } from '@/services/projects';
-import { getTools } from '@/services/tools';
 import { uploadImage, uploadFile } from '@/services/upload';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { ToolSelector } from '@/components/projects/ToolSelector';
 import { TopicDropdown } from '@/components/projects/TopicDropdown';
 import type { Project, ProjectBlock } from '@/types/models';
-import type { TopicSlug } from '@/config/topics';
 import { generateSlug } from '@/utils/slug';
-import { AUTOSAVE_DEBOUNCE_MS } from '@/components/projects/constants';
+import { ProjectEditor } from '@/components/projects/ProjectEditor';
+import { BlockEditor, AddBlockMenu } from '@/components/projects/BlockEditorComponents';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -50,55 +49,11 @@ export default function ProjectEditorPage() {
   const { username, projectSlug } = useParams<{ username: string; projectSlug: string }>();
   const navigate = useNavigate();
 
+  // Page-specific UI state (not in ProjectEditor)
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
-  // Track if initial load is complete to avoid triggering autosave on mount
-  const isInitialLoadRef = useRef(true);
-  // Track save version to prevent race conditions
-  const saveVersionRef = useRef(0);
-
-  // Editor state - stored directly as we edit
-  const [blocks, setBlocks] = useState<ProjectBlock[]>([]);
-  const [thumbnailUrl, setThumbnailUrl] = useState('');
-  const [showBannerEdit, setShowBannerEdit] = useState(false);
-  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
-  const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
-  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
-  const [showAddMenu, setShowAddMenu] = useState<string | null>(null); // Block ID to show menu after
-  const [activeTab, setActiveTab] = useState<'tldr' | 'details'>('tldr'); // Tab state
-  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
-
-  // Metadata fields - separate from page builder blocks
-  const [projectTitle, setProjectTitle] = useState('');
-  const [editableSlug, setEditableSlug] = useState('');
-  const [customSlugSet, setCustomSlugSet] = useState(false); // Track if user manually set slug
-  const [featuredImageUrl, setFeaturedImageUrl] = useState('');
-  const [projectUrl, setProjectUrl] = useState('');
-  const [projectDescription, setProjectDescription] = useState('');
-  const [projectTools, setProjectTools] = useState<number[]>([]);
-  const [allTools, setAllTools] = useState<any[]>([]); // Store all tools for topic suggestions
-  const [projectTopics, setProjectTopics] = useState<TopicSlug[]>([]);
-  const [isUploadingFeatured, setIsUploadingFeatured] = useState(false);
-
-  // Hero display state
-  const [heroDisplayMode, setHeroDisplayMode] = useState<'image' | 'video' | 'slideshow' | 'quote' | 'slideup'>('image');
-  const [heroQuote, setHeroQuote] = useState('');
-  const [heroVideoUrl, setHeroVideoUrl] = useState('');
-  const [heroSlideshowImages, setHeroSlideshowImages] = useState<string[]>([]);
-  // Slide-up hero state
-  const [slideUpElement1Type, setSlideUpElement1Type] = useState<'image' | 'video' | 'text'>('image');
-  const [slideUpElement1Content, setSlideUpElement1Content] = useState('');
-  const [slideUpElement1Caption, setSlideUpElement1Caption] = useState('');
-  const [slideUpElement2Type, setSlideUpElement2Type] = useState<'image' | 'video' | 'text'>('text');
-  const [slideUpElement2Content, setSlideUpElement2Content] = useState('');
-  const [slideUpElement2Caption, setSlideUpElement2Caption] = useState('');
-  const [isUploadingSlideUp1, setIsUploadingSlideUp1] = useState(false);
-  const [isUploadingSlideUp2, setIsUploadingSlideUp2] = useState(false);
+  const [activeTab, setActiveTab] = useState<'tldr' | 'details'>('tldr');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -106,7 +61,7 @@ export default function ProjectEditorPage() {
     })
   );
 
-  // Load project
+  // Simplified project loading (ProjectEditor handles field initialization)
   useEffect(() => {
     async function loadProject() {
       if (!projectSlug || !username) {
@@ -128,45 +83,6 @@ export default function ProjectEditorPage() {
         }
 
         setProject(foundProject);
-        setThumbnailUrl(foundProject.thumbnailUrl || '');
-        setProjectTitle(foundProject.title || '');
-        setEditableSlug(foundProject.slug || '');
-        setFeaturedImageUrl(foundProject.featuredImageUrl || '');
-        setProjectUrl(foundProject.externalUrl || '');
-        setProjectDescription(foundProject.description || '');
-        setProjectTools(foundProject.tools || []);
-        // Combine primary and secondary topics into one array
-        const topics = [
-          ...(foundProject.primaryTopic ? [foundProject.primaryTopic] : []),
-          ...(foundProject.secondaryTopics || [])
-        ];
-        setProjectTopics(topics);
-
-        // Load hero display fields from content
-        setHeroDisplayMode(foundProject.content?.heroDisplayMode || 'image');
-        setHeroQuote(foundProject.content?.heroQuote || '');
-        setHeroVideoUrl(foundProject.content?.heroVideoUrl || '');
-        setHeroSlideshowImages(foundProject.content?.heroSlideshowImages || []);
-        // Load slideup elements
-        setSlideUpElement1Type(foundProject.content?.heroSlideUpElement1?.type || 'image');
-        setSlideUpElement1Content(foundProject.content?.heroSlideUpElement1?.content || '');
-        setSlideUpElement1Caption(foundProject.content?.heroSlideUpElement1?.caption || '');
-        setSlideUpElement2Type(foundProject.content?.heroSlideUpElement2?.type || 'text');
-        setSlideUpElement2Content(foundProject.content?.heroSlideUpElement2?.content || '');
-        setSlideUpElement2Caption(foundProject.content?.heroSlideUpElement2?.caption || '');
-
-        // Initialize blocks (empty by default until user adds Project Details)
-        const blocksWithIds = (foundProject.content?.blocks || []).map((block: any) => ({
-          ...block,
-          id: block.id || crypto.randomUUID(),
-        }));
-
-        setBlocks(blocksWithIds);
-
-        // Mark initial load as complete after a short delay
-        setTimeout(() => {
-          isInitialLoadRef.current = false;
-        }, 100);
       } catch (err) {
         console.error('Failed to load project:', err);
         setError('Failed to load project');
@@ -178,345 +94,10 @@ export default function ProjectEditorPage() {
     loadProject();
   }, [projectSlug, username]);
 
-  // Load all tools for topic suggestions
-  useEffect(() => {
-    async function loadTools() {
-      try {
-        const response = await getTools({ ordering: 'name' });
-        setAllTools(response.results);
-      } catch (error) {
-        console.error('Failed to load tools:', error);
-      }
-    }
-    loadTools();
-  }, []);
-
-  // Auto-suggest topics when tools change
-  useEffect(() => {
-    if (allTools.length === 0 || isInitialLoadRef.current) return;
-
-    // Get suggested topics from selected tools
-    const suggestedTopics: TopicSlug[] = [];
-    projectTools.forEach(toolId => {
-      const tool = allTools.find(t => t.id === toolId);
-      if (tool?.suggestedTopics) {
-        tool.suggestedTopics.forEach((topic: TopicSlug) => {
-          if (!suggestedTopics.includes(topic) && !projectTopics.includes(topic)) {
-            suggestedTopics.push(topic);
-          }
-        });
-      }
-    });
-
-    // Auto-add suggested topics
-    if (suggestedTopics.length > 0) {
-      setProjectTopics(prev => {
-        const newTopics = [...prev];
-        suggestedTopics.forEach(topic => {
-          if (!newTopics.includes(topic)) {
-            newTopics.push(topic);
-          }
-        });
-        return newTopics;
-      });
-    }
-  }, [projectTools, allTools, projectTopics]);
-
-  // Auto-generate slug from title (unless manually customized)
-  useEffect(() => {
-    if (projectTitle && !customSlugSet) {
-      const newSlug = generateSlug(projectTitle);
-      if (newSlug !== editableSlug) {
-        setEditableSlug(newSlug);
-      }
-    }
-  }, [projectTitle, customSlugSet, editableSlug]);
-
-  // Memoize form data to prevent unnecessary re-renders
-  const formData = useMemo(
-    () => ({
-      blocks,
-      thumbnailUrl,
-      projectTitle,
-      editableSlug,
-      featuredImageUrl,
-      projectUrl,
-      projectDescription,
-      projectTools,
-      projectTopics,
-      heroDisplayMode,
-      heroQuote,
-      heroVideoUrl,
-      heroSlideshowImages,
-      slideUpElement1Type,
-      slideUpElement1Content,
-      slideUpElement1Caption,
-      slideUpElement2Type,
-      slideUpElement2Content,
-      slideUpElement2Caption,
-    }),
-    [
-      blocks,
-      thumbnailUrl,
-      projectTitle,
-      editableSlug,
-      featuredImageUrl,
-      projectUrl,
-      projectDescription,
-      projectTools,
-      projectTopics,
-      heroDisplayMode,
-      heroQuote,
-      heroVideoUrl,
-      heroSlideshowImages,
-      slideUpElement1Type,
-      slideUpElement1Content,
-      slideUpElement1Caption,
-      slideUpElement2Type,
-      slideUpElement2Content,
-      slideUpElement2Caption,
-    ]
-  );
-
-  // Mark as having unsaved changes when form data changes (skip initial load)
-  useEffect(() => {
-    if (project && blocks.length > 0 && !isInitialLoadRef.current) {
-      setHasUnsavedChanges(true);
-    }
-  }, [project, blocks.length, formData]);
-
-  const handleSave = useCallback(async () => {
-    if (!project) return;
-
-    // Increment save version to track this save operation
-    const currentSaveVersion = ++saveVersionRef.current;
-
-    setIsSaving(true);
-    console.log('🔄 Autosave starting (version', currentSaveVersion, ')...');
-
-    try {
-      const payload = {
-        title: projectTitle || 'Untitled Project',
-        slug: editableSlug,
-        description: projectDescription,
-        thumbnailUrl,
-        featuredImageUrl,
-        externalUrl: projectUrl,
-        tools: projectTools,
-        primaryTopic: projectTopics[0], // First topic is primary
-        secondaryTopics: projectTopics.slice(1), // Rest are secondary
-        content: {
-          blocks: blocks.map(({ id, ...block }) => block), // Remove IDs before saving
-          heroDisplayMode,
-          heroQuote,
-          heroVideoUrl,
-          heroSlideshowImages,
-          heroSlideUpElement1: slideUpElement1Content ? {
-            type: slideUpElement1Type,
-            content: slideUpElement1Content,
-            caption: slideUpElement1Caption,
-          } : undefined,
-          heroSlideUpElement2: slideUpElement2Content ? {
-            type: slideUpElement2Type,
-            content: slideUpElement2Content,
-            caption: slideUpElement2Caption,
-          } : undefined,
-        },
-      };
-
-      console.log('📤 Sending payload:', JSON.stringify(payload.content, null, 2));
-
-      const updatedProject = await updateProject(project.id, payload);
-
-      // Only update state if this is still the latest save operation (prevent race conditions)
-      if (currentSaveVersion === saveVersionRef.current) {
-        console.log('✅ Save successful (version', currentSaveVersion, ')!');
-
-        setProject(updatedProject);
-        setLastSaved(new Date());
-        setHasUnsavedChanges(false);
-
-        // Navigate to new URL if slug changed
-        if (updatedProject.slug !== editableSlug && username) {
-          navigate(`/${username}/${updatedProject.slug}/edit`, { replace: true });
-          setEditableSlug(updatedProject.slug);
-        }
-      } else {
-        console.log('⚠️ Skipping stale save result (version', currentSaveVersion, 'vs current', saveVersionRef.current, ')');
-      }
-    } catch (err: any) {
-      console.error('❌ AUTOSAVE FAILED');
-      console.error('Full error object:', err);
-      console.error('Error details:', err?.details);
-      console.error('Error message:', err?.error);
-      console.error('Status code:', err?.statusCode);
-
-      // Show user-visible error for debugging
-      if (err?.details) {
-        console.warn('⚠️ Backend validation error:', JSON.stringify(err.details, null, 2));
-      }
-    } finally {
-      // Only clear saving state if this is still the latest operation
-      if (currentSaveVersion === saveVersionRef.current) {
-        setIsSaving(false);
-      }
-    }
-  }, [project, formData, username, navigate, editableSlug]);
-
-  // Autosave effect - debounced save after changes
-  useEffect(() => {
-    if (!hasUnsavedChanges || !project) return;
-
-    const timer = setTimeout(() => {
-      handleSave();
-    }, AUTOSAVE_DEBOUNCE_MS);
-
-    return () => clearTimeout(timer);
-  }, [hasUnsavedChanges, project, handleSave]);
-
-  const handleToggleShowcase = async () => {
-    if (!project) return;
-
-    setIsSaving(true);
-    try {
-      const updatedProject = await updateProject(project.id, {
-        isShowcase: !project.isShowcase,
-      });
-      setProject(updatedProject);
-    } catch (err) {
-      console.error('Failed to update showcase setting:', err);
-      alert('Failed to update showcase setting');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const addBlock = (afterId: string | null, type: 'text' | 'image' | 'columns' | 'video' | 'file' | 'button' | 'divider') => {
-    const newBlock: any = {
-      id: crypto.randomUUID(),
-      type,
-    };
-
-    if (type === 'text') {
-      newBlock.content = '';
-      newBlock.style = 'body';
-    } else if (type === 'image') {
-      newBlock.url = '';
-      newBlock.caption = '';
-    } else if (type === 'columns') {
-      newBlock.columnCount = 2;
-      newBlock.containerWidth = 'full';  // full or boxed
-      newBlock.columns = [
-        { id: crypto.randomUUID(), blocks: [] },
-        { id: crypto.randomUUID(), blocks: [] },
-      ];
-    } else if (type === 'video') {
-      newBlock.url = '';
-      newBlock.embedUrl = '';  // For YouTube/Vimeo
-      newBlock.caption = '';
-    } else if (type === 'file') {
-      newBlock.url = '';
-      newBlock.filename = '';
-      newBlock.fileType = '';
-      newBlock.fileSize = 0;
-      newBlock.label = 'Download File';
-      newBlock.icon = 'FaDownload';
-    } else if (type === 'button') {
-      newBlock.text = 'Click Here';
-      newBlock.url = '';
-      newBlock.icon = 'FaArrowRight';
-      newBlock.style = 'primary';  // primary, secondary, outline
-      newBlock.size = 'medium';  // small, medium, large
-    } else if (type === 'divider') {
-      newBlock.style = 'line';  // line, dotted, dashed, space
-    }
-
-    if (afterId === null) {
-      setBlocks([...blocks, newBlock]);
-    } else {
-      const index = blocks.findIndex(b => b.id === afterId);
-      const newBlocks = [...blocks];
-      newBlocks.splice(index + 1, 0, newBlock);
-      setBlocks(newBlocks);
-    }
-
-    setShowAddMenu(null);
-    setTimeout(() => setFocusedBlockId(newBlock.id), 100);
-  };
-
-  const handleBannerUpload = async (file: File) => {
-    setIsUploadingBanner(true);
-    try {
-      const data = await uploadImage(file, 'projects', true);
-      setThumbnailUrl(data.url);
-      setShowBannerEdit(false);
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      alert(error.message || 'Failed to upload banner image');
-    } finally {
-      setIsUploadingBanner(false);
-    }
-  };
-
-  const handleFeaturedImageUpload = async (file: File) => {
-    setIsUploadingFeatured(true);
-    try {
-      const data = await uploadImage(file, 'projects', true);
-      setFeaturedImageUrl(data.url);
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      alert(error.message || 'Failed to upload featured image');
-    } finally {
-      setIsUploadingFeatured(false);
-    }
-  };
-
-  const handleVideoUpload = async (file: File) => {
-    setIsUploadingVideo(true);
-    try {
-      const data = await uploadFile(file, 'projects/videos', true);
-      setHeroVideoUrl(data.url);
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      alert(error.message || 'Failed to upload video');
-    } finally {
-      setIsUploadingVideo(false);
-    }
-  };
-
-  const handleSlideUpElement1Upload = async (file: File, type: 'image' | 'video') => {
-    setIsUploadingSlideUp1(true);
-    try {
-      if (type === 'image') {
-        const data = await uploadImage(file, 'projects', true);
-        setSlideUpElement1Content(data.url);
-      } else if (type === 'video') {
-        const data = await uploadFile(file, 'projects/videos', true);
-        setSlideUpElement1Content(data.url);
-      }
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      alert(error.message || `Failed to upload ${type}`);
-    } finally {
-      setIsUploadingSlideUp1(false);
-    }
-  };
-
-  const handleSlideUpElement2Upload = async (file: File, type: 'image' | 'video') => {
-    setIsUploadingSlideUp2(true);
-    try {
-      if (type === 'image') {
-        const data = await uploadImage(file, 'projects', true);
-        setSlideUpElement2Content(data.url);
-      } else if (type === 'video') {
-        const data = await uploadFile(file, 'projects/videos', true);
-        setSlideUpElement2Content(data.url);
-      }
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      alert(error.message || `Failed to upload ${type}`);
-    } finally {
-      setIsUploadingSlideUp2(false);
+  // Slug change handler for page navigation
+  const handleSlugChange = (newSlug: string) => {
+    if (username) {
+      navigate(`/${username}/${newSlug}/edit`, { replace: true });
     }
   };
 
@@ -555,6 +136,8 @@ export default function ProjectEditorPage() {
   }
 
   return (
+    <ProjectEditor project={project} onProjectUpdate={setProject} onSlugChange={handleSlugChange}>
+      {(editorProps) => (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       {/* Top Bar */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between">
@@ -568,12 +151,12 @@ export default function ProjectEditorPage() {
           </Link>
           <div>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {projectTitle || 'Untitled Project'}
+              {editorProps.projectTitle || 'Untitled Project'}
             </h1>
-            {isSaving ? (
+            {editorProps.isSaving ? (
               <p className="text-xs text-gray-500">Saving...</p>
-            ) : lastSaved ? (
-              <p className="text-xs text-gray-500">Saved {lastSaved.toLocaleTimeString()}</p>
+            ) : editorProps.lastSaved ? (
+              <p className="text-xs text-gray-500">Saved {editorProps.lastSaved.toLocaleTimeString()}</p>
             ) : null}
           </div>
         </div>
@@ -587,7 +170,7 @@ export default function ProjectEditorPage() {
             <span className="hidden md:inline">Preview</span>
           </button>
           <button
-            onClick={() => setShowSettingsSidebar(true)}
+            onClick={() => editorProps.setShowSettingsSidebar(true)}
             className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
             title="Project settings"
           >
@@ -597,12 +180,12 @@ export default function ProjectEditorPage() {
       </div>
 
       {/* Settings Sidebar */}
-      {showSettingsSidebar && (
+      {editorProps.showSettingsSidebar && (
         <>
           {/* Overlay */}
           <div
             className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setShowSettingsSidebar(false)}
+            onClick={() => editorProps.setShowSettingsSidebar(false)}
           />
 
           {/* Sidebar */}
@@ -611,7 +194,7 @@ export default function ProjectEditorPage() {
             <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Project Settings</h2>
               <button
-                onClick={() => setShowSettingsSidebar(false)}
+                onClick={() => editorProps.setShowSettingsSidebar(false)}
                 className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 <XMarkIcon className="w-5 h-5" />
@@ -646,7 +229,7 @@ export default function ProjectEditorPage() {
                           console.error('Failed to update:', error);
                         }
                       }}
-                      disabled={isSaving}
+                      disabled={editorProps.isSaving}
                       className="w-5 h-5 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 disabled:opacity-50"
                     />
                   </label>
@@ -664,7 +247,7 @@ export default function ProjectEditorPage() {
                       type="checkbox"
                       checked={project.isShowcase}
                       onChange={handleToggleShowcase}
-                      disabled={isSaving}
+                      disabled={editorProps.isSaving}
                       className="w-5 h-5 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 disabled:opacity-50"
                     />
                   </label>
@@ -691,7 +274,7 @@ export default function ProjectEditorPage() {
                           console.error('Failed to update:', error);
                         }
                       }}
-                      disabled={isSaving}
+                      disabled={editorProps.isSaving}
                       className="w-5 h-5 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 disabled:opacity-50"
                     />
                   </label>
@@ -1040,7 +623,7 @@ export default function ProjectEditorPage() {
                 value={projectTitle}
                 onChange={(e) => setProjectTitle(e.target.value)}
                 placeholder="Enter your project title"
-                disabled={isSaving}
+                disabled={editorProps.isSaving}
                 className="w-full px-4 py-3 text-lg border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
               />
             </div>
@@ -1222,7 +805,7 @@ export default function ProjectEditorPage() {
                           value={featuredImageUrl}
                           onChange={(e) => setFeaturedImageUrl(e.target.value)}
                           placeholder="https://example.com/image.jpg"
-                          disabled={isSaving}
+                          disabled={editorProps.isSaving}
                           className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
                         />
                       </div>
@@ -1303,7 +886,7 @@ export default function ProjectEditorPage() {
                           value={heroVideoUrl}
                           onChange={(e) => setHeroVideoUrl(e.target.value)}
                           placeholder="https://www.youtube.com/watch?v=..."
-                          disabled={isSaving || isUploadingVideo}
+                          disabled={editorProps.isSaving || isUploadingVideo}
                           className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
                         />
                       </div>
@@ -1387,7 +970,7 @@ export default function ProjectEditorPage() {
                         }
                         e.target.value = ''; // Reset input
                       }}
-                      disabled={isUploadingFeatured || isSaving}
+                      disabled={isUploadingFeatured || editorProps.isSaving}
                       className="hidden"
                     />
                     <div className="p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
@@ -1431,7 +1014,7 @@ export default function ProjectEditorPage() {
                     value={heroQuote}
                     onChange={(e) => setHeroQuote(e.target.value)}
                     placeholder="Enter your quote here..."
-                    disabled={isSaving}
+                    disabled={editorProps.isSaving}
                     rows={4}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 resize-none"
                   />
@@ -1459,9 +1042,9 @@ export default function ProjectEditorPage() {
                       <div className="flex gap-2">
                         <button
                           type="button"
-                          onClick={() => setSlideUpElement1Type('image')}
+                          onClick={() => editorProps.setSlideUpElement1Type('image')}
                           className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
-                            slideUpElement1Type === 'image'
+                            editorProps.slideUpElement1Type === 'image'
                               ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
                               : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
                           }`}
@@ -1470,9 +1053,9 @@ export default function ProjectEditorPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setSlideUpElement1Type('video')}
+                          onClick={() => editorProps.setSlideUpElement1Type('video')}
                           className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
-                            slideUpElement1Type === 'video'
+                            editorProps.slideUpElement1Type === 'video'
                               ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
                               : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
                           }`}
@@ -1481,9 +1064,9 @@ export default function ProjectEditorPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setSlideUpElement1Type('text')}
+                          onClick={() => editorProps.setSlideUpElement1Type('text')}
                           className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
-                            slideUpElement1Type === 'text'
+                            editorProps.slideUpElement1Type === 'text'
                               ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
                               : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
                           }`}
@@ -1494,17 +1077,17 @@ export default function ProjectEditorPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {slideUpElement1Type === 'image' ? 'Image' : slideUpElement1Type === 'video' ? 'Video' : 'Text Content'}
+                        {editorProps.slideUpElement1Type === 'image' ? 'Image' : editorProps.slideUpElement1Type === 'video' ? 'Video' : 'Text Content'}
                       </label>
-                      {slideUpElement1Type === 'text' ? (
+                      {editorProps.slideUpElement1Type === 'text' ? (
                         <textarea
-                          value={slideUpElement1Content}
-                          onChange={(e) => setSlideUpElement1Content(e.target.value)}
+                          value={editorProps.slideUpElement1Content}
+                          onChange={(e) => editorProps.setSlideUpElement1Content(e.target.value)}
                           placeholder="Enter text content..."
                           rows={4}
                           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                         />
-                      ) : slideUpElement1Type === 'image' ? (
+                      ) : editorProps.slideUpElement1Type === 'image' ? (
                         <div className="space-y-2">
                           <label className="block w-full cursor-pointer">
                             <input
@@ -1512,13 +1095,13 @@ export default function ProjectEditorPage() {
                               accept="image/*"
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
-                                if (file) handleSlideUpElement1Upload(file, 'image');
+                                if (file) editorProps.handleSlideUpElement1Upload(file, 'image');
                               }}
-                              disabled={isUploadingSlideUp1}
+                              disabled={editorProps.isUploadingSlideUp1}
                               className="hidden"
                             />
                             <div className="px-4 py-3 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
-                              {isUploadingSlideUp1 ? (
+                              {editorProps.isUploadingSlideUp1 ? (
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Uploading...</p>
                               ) : (
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload image</p>
@@ -1532,10 +1115,10 @@ export default function ProjectEditorPage() {
                           </div>
                           <input
                             type="url"
-                            value={slideUpElement1Content}
-                            onChange={(e) => setSlideUpElement1Content(e.target.value)}
+                            value={editorProps.slideUpElement1Content}
+                            onChange={(e) => editorProps.setSlideUpElement1Content(e.target.value)}
                             placeholder="https://example.com/image.jpg"
-                            disabled={isUploadingSlideUp1}
+                            disabled={editorProps.isUploadingSlideUp1}
                             className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                           />
                         </div>
@@ -1547,13 +1130,13 @@ export default function ProjectEditorPage() {
                               accept="video/mp4,video/webm,video/ogg"
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
-                                if (file) handleSlideUpElement1Upload(file, 'video');
+                                if (file) editorProps.handleSlideUpElement1Upload(file, 'video');
                               }}
-                              disabled={isUploadingSlideUp1}
+                              disabled={editorProps.isUploadingSlideUp1}
                               className="hidden"
                             />
                             <div className="px-4 py-3 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
-                              {isUploadingSlideUp1 ? (
+                              {editorProps.isUploadingSlideUp1 ? (
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Uploading video...</p>
                               ) : (
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload MP4 video</p>
@@ -1567,10 +1150,10 @@ export default function ProjectEditorPage() {
                           </div>
                           <input
                             type="url"
-                            value={slideUpElement1Content}
-                            onChange={(e) => setSlideUpElement1Content(e.target.value)}
+                            value={editorProps.slideUpElement1Content}
+                            onChange={(e) => editorProps.setSlideUpElement1Content(e.target.value)}
                             placeholder="https://youtube.com/watch?v=... or Vimeo/Loom URL"
-                            disabled={isUploadingSlideUp1}
+                            disabled={editorProps.isUploadingSlideUp1}
                             className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                           />
                         </div>
@@ -1582,8 +1165,8 @@ export default function ProjectEditorPage() {
                       </label>
                       <input
                         type="text"
-                        value={slideUpElement1Caption}
-                        onChange={(e) => setSlideUpElement1Caption(e.target.value)}
+                        value={editorProps.slideUpElement1Caption}
+                        onChange={(e) => editorProps.setSlideUpElement1Caption(e.target.value)}
                         placeholder="Add a caption..."
                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                       />
@@ -1602,9 +1185,9 @@ export default function ProjectEditorPage() {
                       <div className="flex gap-2">
                         <button
                           type="button"
-                          onClick={() => setSlideUpElement2Type('image')}
+                          onClick={() => editorProps.setSlideUpElement2Type('image')}
                           className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
-                            slideUpElement2Type === 'image'
+                            editorProps.slideUpElement2Type === 'image'
                               ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
                               : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
                           }`}
@@ -1613,9 +1196,9 @@ export default function ProjectEditorPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setSlideUpElement2Type('video')}
+                          onClick={() => editorProps.setSlideUpElement2Type('video')}
                           className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
-                            slideUpElement2Type === 'video'
+                            editorProps.slideUpElement2Type === 'video'
                               ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
                               : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
                           }`}
@@ -1624,9 +1207,9 @@ export default function ProjectEditorPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setSlideUpElement2Type('text')}
+                          onClick={() => editorProps.setSlideUpElement2Type('text')}
                           className={`flex-1 px-3 py-2 rounded border-2 transition-all ${
-                            slideUpElement2Type === 'text'
+                            editorProps.slideUpElement2Type === 'text'
                               ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
                               : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 text-gray-700 dark:text-gray-300'
                           }`}
@@ -1637,17 +1220,17 @@ export default function ProjectEditorPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {slideUpElement2Type === 'image' ? 'Image' : slideUpElement2Type === 'video' ? 'Video' : 'Text Content'}
+                        {editorProps.slideUpElement2Type === 'image' ? 'Image' : editorProps.slideUpElement2Type === 'video' ? 'Video' : 'Text Content'}
                       </label>
-                      {slideUpElement2Type === 'text' ? (
+                      {editorProps.slideUpElement2Type === 'text' ? (
                         <textarea
-                          value={slideUpElement2Content}
-                          onChange={(e) => setSlideUpElement2Content(e.target.value)}
+                          value={editorProps.slideUpElement2Content}
+                          onChange={(e) => editorProps.setSlideUpElement2Content(e.target.value)}
                           placeholder="Enter text content..."
                           rows={4}
                           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-2 focus:ring-primary-500"
                         />
-                      ) : slideUpElement2Type === 'image' ? (
+                      ) : editorProps.slideUpElement2Type === 'image' ? (
                         <div className="space-y-2">
                           <label className="block w-full cursor-pointer">
                             <input
@@ -1655,13 +1238,13 @@ export default function ProjectEditorPage() {
                               accept="image/*"
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
-                                if (file) handleSlideUpElement2Upload(file, 'image');
+                                if (file) editorProps.handleSlideUpElement2Upload(file, 'image');
                               }}
-                              disabled={isUploadingSlideUp2}
+                              disabled={editorProps.isUploadingSlideUp2}
                               className="hidden"
                             />
                             <div className="px-4 py-3 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
-                              {isUploadingSlideUp2 ? (
+                              {editorProps.isUploadingSlideUp2 ? (
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Uploading...</p>
                               ) : (
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload image</p>
@@ -1675,10 +1258,10 @@ export default function ProjectEditorPage() {
                           </div>
                           <input
                             type="url"
-                            value={slideUpElement2Content}
-                            onChange={(e) => setSlideUpElement2Content(e.target.value)}
+                            value={editorProps.slideUpElement2Content}
+                            onChange={(e) => editorProps.setSlideUpElement2Content(e.target.value)}
                             placeholder="https://example.com/image.jpg"
-                            disabled={isUploadingSlideUp2}
+                            disabled={editorProps.isUploadingSlideUp2}
                             className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                           />
                         </div>
@@ -1690,13 +1273,13 @@ export default function ProjectEditorPage() {
                               accept="video/mp4,video/webm,video/ogg"
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
-                                if (file) handleSlideUpElement2Upload(file, 'video');
+                                if (file) editorProps.handleSlideUpElement2Upload(file, 'video');
                               }}
-                              disabled={isUploadingSlideUp2}
+                              disabled={editorProps.isUploadingSlideUp2}
                               className="hidden"
                             />
                             <div className="px-4 py-3 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
-                              {isUploadingSlideUp2 ? (
+                              {editorProps.isUploadingSlideUp2 ? (
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Uploading video...</p>
                               ) : (
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload MP4 video</p>
@@ -1710,10 +1293,10 @@ export default function ProjectEditorPage() {
                           </div>
                           <input
                             type="url"
-                            value={slideUpElement2Content}
-                            onChange={(e) => setSlideUpElement2Content(e.target.value)}
+                            value={editorProps.slideUpElement2Content}
+                            onChange={(e) => editorProps.setSlideUpElement2Content(e.target.value)}
                             placeholder="https://youtube.com/watch?v=... or Vimeo/Loom URL"
-                            disabled={isUploadingSlideUp2}
+                            disabled={editorProps.isUploadingSlideUp2}
                             className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                           />
                         </div>
@@ -1725,8 +1308,8 @@ export default function ProjectEditorPage() {
                       </label>
                       <input
                         type="text"
-                        value={slideUpElement2Caption}
-                        onChange={(e) => setSlideUpElement2Caption(e.target.value)}
+                        value={editorProps.slideUpElement2Caption}
+                        onChange={(e) => editorProps.setSlideUpElement2Caption(e.target.value)}
                         placeholder="Add a caption..."
                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                       />
@@ -1746,10 +1329,10 @@ export default function ProjectEditorPage() {
               </p>
               <input
                 type="url"
-                value={projectUrl}
-                onChange={(e) => setProjectUrl(e.target.value)}
+                value={editorProps.projectUrl}
+                onChange={(e) => editorProps.setProjectUrl(e.target.value)}
                 placeholder="https://example.com/my-project"
-                disabled={isSaving}
+                disabled={editorProps.isSaving}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
               />
             </div>
@@ -1763,9 +1346,9 @@ export default function ProjectEditorPage() {
                 Select the technologies and tools used in this project
               </p>
               <ToolSelector
-                selectedToolIds={projectTools}
-                onChange={setProjectTools}
-                disabled={isSaving}
+                selectedToolIds={editorProps.projectTools}
+                onChange={editorProps.setProjectTools}
+                disabled={editorProps.isSaving}
               />
             </div>
 
@@ -1778,9 +1361,10 @@ export default function ProjectEditorPage() {
                 Select one or more topics. The first topic selected will be your primary topic in Explore.
               </p>
               <TopicDropdown
-                selectedTopics={projectTopics}
-                onChange={setProjectTopics}
-                disabled={isSaving}
+                selectedTopics={editorProps.projectTopics}
+                onChange={editorProps.setProjectTopics}
+                disabled={editorProps.isSaving}
+                availableTopics={editorProps.availableTopics}
               />
             </div>
 
@@ -1793,26 +1377,26 @@ export default function ProjectEditorPage() {
                 Share what makes this project interesting (max 200 characters)
               </p>
               <textarea
-                value={projectDescription}
+                value={editorProps.projectDescription}
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value.length <= 200) {
-                    setProjectDescription(value);
+                    editorProps.setProjectDescription(value);
                   }
                 }}
                 placeholder="What makes this project special? What did you learn or accomplish?"
-                disabled={isSaving}
+                disabled={editorProps.isSaving}
                 maxLength={200}
                 rows={3}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 resize-none"
               />
               <div className="flex justify-end mt-1">
                 <span className={`text-xs ${
-                  projectDescription.length >= 200
+                  editorProps.projectDescription.length >= 200
                     ? 'text-red-500 dark:text-red-400 font-medium'
                     : 'text-gray-500 dark:text-gray-400'
                 }`}>
-                  {projectDescription.length}/200
+                  {editorProps.projectDescription.length}/200
                 </span>
               </div>
             </div>
@@ -1831,32 +1415,32 @@ export default function ProjectEditorPage() {
                 const { active, over } = event;
                 if (!over || active.id === over.id) return;
 
-                const oldIndex = blocks.findIndex(b => b.id === active.id);
-                const newIndex = blocks.findIndex(b => b.id === over.id);
-                setBlocks(arrayMove(blocks, oldIndex, newIndex));
+                const oldIndex = editorProps.blocks.findIndex(b => b.id === active.id);
+                const newIndex = editorProps.blocks.findIndex(b => b.id === over.id);
+                editorProps.setBlocks(arrayMove(editorProps.blocks, oldIndex, newIndex));
               }}
             >
-              <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                {blocks.map((block, index) => (
+              <SortableContext items={editorProps.blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                {editorProps.blocks.map((block, index) => (
                   <div key={block.id}>
                     <BlockEditor
                       block={block}
-                      isFocused={focusedBlockId === block.id}
-                      onFocus={() => setFocusedBlockId(block.id)}
-                      onBlur={() => setFocusedBlockId(null)}
+                      isFocused={editorProps.focusedBlockId === block.id}
+                      onFocus={() => editorProps.setFocusedBlockId(block.id)}
+                      onBlur={() => editorProps.setFocusedBlockId(null)}
                       onChange={(updated) => {
-                        setBlocks(blocks.map(b => b.id === block.id ? { ...block, ...updated } : b));
+                        editorProps.setBlocks(editorProps.blocks.map(b => b.id === block.id ? { ...block, ...updated } : b));
                       }}
                       onDelete={() => {
-                        setBlocks(blocks.filter(b => b.id !== block.id));
+                        editorProps.setBlocks(editorProps.blocks.filter(b => b.id !== block.id));
                       }}
                     />
 
                     {/* Add Block Menu */}
                     <AddBlockMenu
-                      show={showAddMenu === block.id}
-                      onAdd={(type) => addBlock(block.id, type)}
-                      onToggle={() => setShowAddMenu(showAddMenu === block.id ? null : block.id)}
+                      show={editorProps.showAddMenu === block.id}
+                      onAdd={(type) => editorProps.addBlock(block.id, type)}
+                      onToggle={() => editorProps.setShowAddMenu(editorProps.showAddMenu === block.id ? null : block.id)}
                     />
                   </div>
                 ))}
@@ -1864,9 +1448,9 @@ export default function ProjectEditorPage() {
             </DndContext>
 
             {/* Add block at end */}
-            {blocks.length === 0 && (
+            {editorProps.blocks.length === 0 && (
               <button
-                onClick={() => addBlock(null, 'text')}
+                onClick={() => editorProps.addBlock(null, 'text')}
                 className="w-full py-12 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-500 hover:border-primary-500 hover:text-primary-500 transition-colors"
               >
                 Click to add your first block
@@ -1877,683 +1461,8 @@ export default function ProjectEditorPage() {
         )}
       </div>
     </div>
-  );
-}
-
-// Block Editor Component
-function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: any) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: block.id
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  const [isEditing, setIsEditing] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-
-  // Create sensors for nested drag and drop (column blocks)
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    })
-  );
-
-  const handleUpload = async (file: File) => {
-    setIsUploading(true);
-    try {
-      const data = await uploadImage(file, 'projects', true);
-      onChange({ url: data.url });
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      alert(error.message || 'Failed to upload image');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const addColumnBlock = (columnIndex: number, type: 'text' | 'image' | 'video' | 'file' | 'button' | 'divider') => {
-    const newBlock: any = {
-      id: crypto.randomUUID(),
-      type,
-    };
-
-    // Initialize block based on type
-    if (type === 'text') {
-      newBlock.content = '';
-      newBlock.style = 'body';
-    } else if (type === 'image') {
-      newBlock.url = '';
-      newBlock.caption = '';
-    } else if (type === 'video') {
-      newBlock.url = '';
-      newBlock.embedUrl = '';
-      newBlock.caption = '';
-    } else if (type === 'file') {
-      newBlock.url = '';
-      newBlock.filename = '';
-      newBlock.fileType = '';
-      newBlock.fileSize = 0;
-      newBlock.label = 'Download File';
-      newBlock.icon = 'FaDownload';
-    } else if (type === 'button') {
-      newBlock.text = 'Click Here';
-      newBlock.url = '';
-      newBlock.icon = 'FaArrowRight';
-      newBlock.style = 'primary';
-      newBlock.size = 'medium';
-    } else if (type === 'divider') {
-      newBlock.style = 'line';
-    }
-
-    const updatedColumns = [...block.columns];
-    updatedColumns[columnIndex] = {
-      ...updatedColumns[columnIndex],
-      blocks: [...updatedColumns[columnIndex].blocks, newBlock],
-    };
-
-    onChange({ columns: updatedColumns });
-  };
-
-  const updateColumnBlock = (columnIndex: number, blockId: string, updates: any) => {
-    const updatedColumns = [...block.columns];
-    updatedColumns[columnIndex] = {
-      ...updatedColumns[columnIndex],
-      blocks: updatedColumns[columnIndex].blocks.map((b: any) =>
-        b.id === blockId ? { ...b, ...updates } : b
-      ),
-    };
-    onChange({ columns: updatedColumns });
-  };
-
-  const deleteColumnBlock = (columnIndex: number, blockId: string) => {
-    const updatedColumns = [...block.columns];
-    updatedColumns[columnIndex] = {
-      ...updatedColumns[columnIndex],
-      blocks: updatedColumns[columnIndex].blocks.filter((b: any) => b.id !== blockId),
-    };
-    onChange({ columns: updatedColumns });
-  };
-
-  const changeColumnCount = (count: 1 | 2 | 3) => {
-    const currentColumns = block.columns || [];
-    const newColumns = [];
-
-    for (let i = 0; i < count; i++) {
-      if (currentColumns[i]) {
-        newColumns.push(currentColumns[i]);
-      } else {
-        newColumns.push({ id: crypto.randomUUID(), blocks: [] });
-      }
-    }
-
-    // If reducing columns, merge extra blocks into last column
-    if (count < currentColumns.length) {
-      const extraBlocks = currentColumns.slice(count).flatMap((col: any) => col.blocks);
-      if (extraBlocks.length > 0) {
-        newColumns[count - 1].blocks = [...newColumns[count - 1].blocks, ...extraBlocks];
-      }
-    }
-
-    onChange({ columnCount: count, columns: newColumns });
-  };
-
-  const toggleContainerWidth = () => {
-    const newWidth = block.containerWidth === 'full' ? 'boxed' : 'full';
-    onChange({ containerWidth: newWidth });
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="group relative mb-2"
-      onFocus={onFocus}
-      onBlur={onBlur}
-    >
-      {/* Hover Toolbar - Top Right Corner */}
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
-        <button {...attributes} {...listeners} className="p-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded shadow-md cursor-grab active:cursor-grabbing border border-gray-200 dark:border-gray-700" title="Drag to reorder">
-          <Bars3Icon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-        </button>
-        <button onClick={onDelete} className="p-2 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 rounded shadow-md border border-gray-200 dark:border-gray-700" title="Delete block">
-          <TrashIcon className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Block Content */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus-within:border-primary-500 transition-colors">
-        {block.type === 'columns' ? (
-          <div>
-            {/* Column controls */}
-            <div className="flex gap-2 mb-4 justify-between pr-20">
-              {/* Container width toggle */}
-              <button
-                onClick={toggleContainerWidth}
-                className="px-3 py-1 rounded text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center gap-1.5"
-                title={block.containerWidth === 'boxed' ? 'Switch to full width' : 'Switch to boxed container'}
-              >
-                {block.containerWidth === 'boxed' ? (
-                  <><FaCompress className="w-3.5 h-3.5" /> Boxed</>
-                ) : (
-                  <><FaExpand className="w-3.5 h-3.5" /> Full Width</>
-                )}
-              </button>
-
-              {/* Column count selector */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => changeColumnCount(1)}
-                  className={`px-3 py-1 rounded text-sm ${
-                    block.columnCount === 1
-                      ? 'bg-primary-500 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  1 Col
-                </button>
-                <button
-                  onClick={() => changeColumnCount(2)}
-                  className={`px-3 py-1 rounded text-sm ${
-                    block.columnCount === 2
-                      ? 'bg-primary-500 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  2 Col
-                </button>
-                <button
-                  onClick={() => changeColumnCount(3)}
-                  className={`px-3 py-1 rounded text-sm ${
-                    block.columnCount === 3
-                      ? 'bg-primary-500 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  3 Col
-                </button>
-              </div>
-            </div>
-
-            {/* Columns with Drag & Drop */}
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={(event: DragEndEvent) => {
-                const { active, over } = event;
-                if (!over) return;
-
-                // Parse IDs: format is "columnIndex-blockId"
-                const [activeColIdx, activeBlockId] = String(active.id).split('-');
-                const activeColumnIndex = parseInt(activeColIdx);
-
-                // Handle dropping on column container (empty area)
-                if (String(over.id).startsWith('column-')) {
-                  const overColumnIndex = parseInt(String(over.id).replace('column-', ''));
-
-                  if (activeColumnIndex !== overColumnIndex) {
-                    // Move to different column (append to end)
-                    const sourceBlocks = [...block.columns[activeColumnIndex].blocks];
-                    const blockIndex = sourceBlocks.findIndex((b: any) => b.id === activeBlockId);
-                    const [movedBlock] = sourceBlocks.splice(blockIndex, 1);
-
-                    const updatedColumns = [...block.columns];
-                    updatedColumns[activeColumnIndex] = {
-                      ...updatedColumns[activeColumnIndex],
-                      blocks: sourceBlocks,
-                    };
-                    updatedColumns[overColumnIndex] = {
-                      ...updatedColumns[overColumnIndex],
-                      blocks: [...block.columns[overColumnIndex].blocks, movedBlock],
-                    };
-                    onChange({ columns: updatedColumns });
-                  }
-                  return;
-                }
-
-                const [overColIdx, overBlockId] = String(over.id).split('-');
-                const overColumnIndex = parseInt(overColIdx);
-
-                if (activeColumnIndex === overColumnIndex) {
-                  // Reorder within same column
-                  const columnBlocks = block.columns[activeColumnIndex].blocks;
-                  const oldIndex = columnBlocks.findIndex((b: any) => b.id === activeBlockId);
-                  const newIndex = columnBlocks.findIndex((b: any) => b.id === overBlockId);
-
-                  if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-                    const updatedColumns = [...block.columns];
-                    updatedColumns[activeColumnIndex] = {
-                      ...updatedColumns[activeColumnIndex],
-                      blocks: arrayMove(columnBlocks, oldIndex, newIndex),
-                    };
-                    onChange({ columns: updatedColumns });
-                  }
-                } else {
-                  // Move between columns
-                  const sourceBlocks = [...block.columns[activeColumnIndex].blocks];
-                  const targetBlocks = [...block.columns[overColumnIndex].blocks];
-                  const blockIndex = sourceBlocks.findIndex((b: any) => b.id === activeBlockId);
-
-                  if (blockIndex === -1) return;
-
-                  const [movedBlock] = sourceBlocks.splice(blockIndex, 1);
-
-                  const targetIndex = targetBlocks.findIndex((b: any) => b.id === overBlockId);
-                  targetBlocks.splice(targetIndex >= 0 ? targetIndex : targetBlocks.length, 0, movedBlock);
-
-                  const updatedColumns = [...block.columns];
-                  updatedColumns[activeColumnIndex] = {
-                    ...updatedColumns[activeColumnIndex],
-                    blocks: sourceBlocks,
-                  };
-                  updatedColumns[overColumnIndex] = {
-                    ...updatedColumns[overColumnIndex],
-                    blocks: targetBlocks,
-                  };
-                  onChange({ columns: updatedColumns });
-                }
-              }}
-            >
-              <div className={block.containerWidth === 'boxed' ? 'max-w-6xl mx-auto' : ''}>
-                <div className={`grid gap-4 ${
-                  block.columnCount === 1 ? 'grid-cols-1' :
-                  block.columnCount === 2 ? 'grid-cols-1 md:grid-cols-2' :
-                  'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-                }`}>
-                {block.columns?.map((column: any, colIndex: number) => (
-                  <SortableContext key={`sortable-${colIndex}`} items={column.blocks.map((b: any) => `${colIndex}-${b.id}`)} strategy={verticalListSortingStrategy}>
-                    <div key={column.id} id={`column-${colIndex}`} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 min-h-[200px]">
-                      {column.blocks?.length === 0 ? (
-                        <div className="h-full flex flex-wrap items-center justify-center gap-1.5">
-                        <button onClick={() => addColumnBlock(colIndex, 'text')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaFont className="w-3 h-3" /> Text</button>
-                        <button onClick={() => addColumnBlock(colIndex, 'image')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaImage className="w-3 h-3" /> Image</button>
-                        <button onClick={() => addColumnBlock(colIndex, 'video')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaVideo className="w-3 h-3" /> Video</button>
-                        <button onClick={() => addColumnBlock(colIndex, 'file')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaFileAlt className="w-3 h-3" /> File</button>
-                        <button onClick={() => addColumnBlock(colIndex, 'button')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaMousePointer className="w-3 h-3" /> Button</button>
-                        <button onClick={() => addColumnBlock(colIndex, 'divider')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><FaMinus className="w-3 h-3" /> Divider</button>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {column.blocks.map((colBlock: any) => (
-                            <DraggableColumnBlock
-                              key={colBlock.id}
-                              id={`${colIndex}-${colBlock.id}`}
-                              block={colBlock}
-                              onChange={(updates: any) => updateColumnBlock(colIndex, colBlock.id, updates)}
-                              onDelete={() => deleteColumnBlock(colIndex, colBlock.id)}
-                              onUpload={handleUpload}
-                            />
-                          ))}
-                          <div className="flex flex-wrap gap-1 justify-center pt-2 border-t border-gray-200 dark:border-gray-700">
-                            <button onClick={() => addColumnBlock(colIndex, 'text')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> Text</button>
-                            <button onClick={() => addColumnBlock(colIndex, 'image')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> Image</button>
-                            <button onClick={() => addColumnBlock(colIndex, 'video')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> Video</button>
-                            <button onClick={() => addColumnBlock(colIndex, 'file')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> File</button>
-                            <button onClick={() => addColumnBlock(colIndex, 'button')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> Button</button>
-                            <button onClick={() => addColumnBlock(colIndex, 'divider')} className="flex items-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs"><PlusIcon className="w-3 h-3" /> Divider</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </SortableContext>
-                ))}
-                </div>
-              </div>
-            </DndContext>
-          </div>
-        ) : block.type === 'text' ? (
-          <div>
-            {block.style === 'heading' ? (
-              <input
-                type="text"
-                value={block.content}
-                onChange={(e) => onChange({ content: e.target.value })}
-                className="w-full text-4xl font-bold bg-transparent border-none outline-none text-gray-900 dark:text-white"
-                placeholder="Title"
-              />
-            ) : (
-              <RichTextEditor
-                content={block.content || ''}
-                onChange={(content) => onChange({ content })}
-                placeholder="Start writing..."
-              />
-            )}
-          </div>
-        ) : (
-          <div>
-            {block.url ? (
-              <div>
-                <img src={block.url} alt={block.caption} className="w-full rounded-lg mb-2" />
-                <input
-                  type="text"
-                  value={block.caption || ''}
-                  onChange={(e) => onChange({ caption: e.target.value })}
-                  className="w-full text-sm text-center bg-transparent border-none outline-none text-gray-600 dark:text-gray-400"
-                  placeholder="Add a caption..."
-                />
-              </div>
-            ) : (
-              <div>
-                <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center">
-                  {isUploading ? (
-                    <div className="text-gray-500">Uploading...</div>
-                  ) : (
-                    <>
-                      <PhotoIcon className="w-12 h-12 text-gray-400 mb-2" />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleUpload(file);
-                        }}
-                        className="hidden"
-                        id={`upload-${block.id}`}
-                      />
-                      <label
-                        htmlFor={`upload-${block.id}`}
-                        className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg cursor-pointer"
-                      >
-                        Upload Image
-                      </label>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Draggable Column Block Wrapper
-function DraggableColumnBlock({ id, block, onChange, onDelete, onUpload }: any) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      <ColumnBlockEditor
-        block={block}
-        onChange={onChange}
-        onDelete={onDelete}
-        onUpload={onUpload}
-        dragHandleProps={{ ...attributes, ...listeners }}
-      />
-    </div>
-  );
-}
-
-// Column Block Editor
-function ColumnBlockEditor({ block, onChange, onDelete, onUpload, dragHandleProps }: any) {
-  const [isUploading, setIsUploading] = useState(false);
-
-  const handleUpload = async (file: File) => {
-    setIsUploading(true);
-    try {
-      const data = await uploadImage(file, 'projects', true);
-      onChange({ url: data.url });
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      alert(error.message || 'Failed to upload image');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleVideoUpload = async (file: File) => {
-    setIsUploading(true);
-    try {
-      const data = await uploadFile(file, 'projects/videos', true);
-      onChange({ url: data.url });
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      alert(error.message || 'Failed to upload video');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  return (
-    <div className="group/col relative bg-gray-50 dark:bg-gray-900/50 rounded p-2">
-      {/* Drag handle */}
-      {dragHandleProps && (
-        <div
-          {...dragHandleProps}
-          className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/col:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1 bg-gray-300 dark:bg-gray-600 rounded"
-        >
-          <Bars3Icon className="w-3 h-3 text-gray-600 dark:text-gray-400" />
-        </div>
       )}
-
-      <button
-        onClick={onDelete}
-        className="absolute -top-1 -right-1 opacity-0 group-hover/col:opacity-100 transition-opacity p-1 bg-red-100 dark:bg-red-900/20 text-red-600 rounded-full"
-      >
-        <TrashIcon className="w-3 h-3" />
-      </button>
-
-      {block.type === 'text' ? (
-        <RichTextEditor
-          content={block.content || ''}
-          onChange={(content) => onChange({ content })}
-          placeholder="Start writing..."
-          className="text-sm"
-        />
-      ) : block.type === 'video' ? (
-        <div>
-          {block.url ? (
-            <div>
-              <video src={block.url} controls className="w-full rounded mb-1" />
-              <input
-                type="text"
-                value={block.caption || ''}
-                onChange={(e) => onChange({ caption: e.target.value })}
-                className="w-full text-xs text-center bg-transparent border-none outline-none text-gray-600 dark:text-gray-400"
-                placeholder="Caption..."
-              />
-            </div>
-          ) : (
-            <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded flex flex-col items-center justify-center">
-              {isUploading ? (
-                <div className="text-xs text-gray-500">Uploading...</div>
-              ) : (
-                <>
-                  <input
-                    type="file"
-                    accept="video/mp4,video/webm,video/ogg"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleVideoUpload(file);
-                    }}
-                    className="hidden"
-                    id={`col-upload-${block.id}`}
-                  />
-                  <label
-                    htmlFor={`col-upload-${block.id}`}
-                    className="px-2 py-1 bg-primary-500 hover:bg-primary-600 text-white rounded text-xs cursor-pointer"
-                  >
-                    Upload Video
-                  </label>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      ) : block.type === 'image' ? (
-        <div>
-          {block.url ? (
-            <div>
-              <img src={block.url} alt={block.caption} className="w-full rounded mb-1" />
-              <input
-                type="text"
-                value={block.caption || ''}
-                onChange={(e) => onChange({ caption: e.target.value })}
-                className="w-full text-xs text-center bg-transparent border-none outline-none text-gray-600 dark:text-gray-400"
-                placeholder="Caption..."
-              />
-            </div>
-          ) : (
-            <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded flex flex-col items-center justify-center">
-              {isUploading ? (
-                <div className="text-xs text-gray-500">Uploading...</div>
-              ) : (
-                <>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleUpload(file);
-                    }}
-                    className="hidden"
-                    id={`col-upload-${block.id}`}
-                  />
-                  <label
-                    htmlFor={`col-upload-${block.id}`}
-                    className="px-2 py-1 bg-primary-500 hover:bg-primary-600 text-white rounded text-xs cursor-pointer"
-                  >
-                    Upload Image
-                  </label>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-xs text-gray-500 p-2">
-          Block type "{block.type}" not supported in columns yet
-        </div>
-      )}
-    </div>
+    </ProjectEditor>
   );
 }
-
-// Slideshow Image Item with Drag-and-Drop
-function SlideshowImageItem({ id, imageUrl, index, onRemove }: { id: string; imageUrl: string; index: number; onRemove: () => void }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="relative group aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden"
-    >
-      {/* Drag handle */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute top-2 right-2 z-10 p-2 bg-white/90 dark:bg-gray-800/90 rounded-lg cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-        title="Drag to reorder"
-      >
-        <Bars3Icon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-      </div>
-
-      <img
-        src={imageUrl}
-        alt={`Slideshow image ${index + 1}`}
-        className="w-full h-full object-cover"
-        onError={(e) => {
-          (e.target as HTMLImageElement).src = '/allthrive-placeholder.svg';
-        }}
-      />
-
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-        <button
-          onClick={onRemove}
-          className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
-        >
-          Remove
-        </button>
-      </div>
-
-      <div className="absolute top-2 left-2 bg-black/70 text-white text-xs font-medium px-2 py-1 rounded">
-        {index + 1}
-      </div>
-    </div>
-  );
-}
-
-// Add Block Menu Component
-function AddBlockMenu({ show, onAdd, onToggle }: any) {
-  return (
-    <div className="relative h-12 flex items-center justify-center group">
-      <button
-        onClick={onToggle}
-        className="opacity-30 group-hover:opacity-100 transition-opacity p-2 bg-white dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-solid hover:border-primary-500"
-      >
-        <PlusIcon className="w-5 h-5 text-gray-400 group-hover:text-primary-500" />
-      </button>
-
-      {show && (
-        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 grid grid-cols-4 gap-2 z-10">
-          <button
-            onClick={() => onAdd('columns')}
-            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
-          >
-            <FaColumns className="w-3.5 h-3.5" /> Columns
-          </button>
-          <button
-            onClick={() => onAdd('text')}
-            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
-          >
-            <FaFont className="w-3.5 h-3.5" /> Text
-          </button>
-          <button
-            onClick={() => onAdd('image')}
-            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
-          >
-            <FaImage className="w-3.5 h-3.5" /> Image
-          </button>
-          <button
-            onClick={() => onAdd('video')}
-            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
-          >
-            <FaVideo className="w-3.5 h-3.5" /> Video
-          </button>
-          <button
-            onClick={() => onAdd('file')}
-            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
-          >
-            <FaFileAlt className="w-3.5 h-3.5" /> File
-          </button>
-          <button
-            onClick={() => onAdd('button')}
-            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
-          >
-            <FaMousePointer className="w-3.5 h-3.5" /> Button
-          </button>
-          <button
-            onClick={() => onAdd('divider')}
-            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm whitespace-nowrap"
-          >
-            <FaMinus className="w-3.5 h-3.5" /> Divider
-          </button>
-        </div>
-      )}
-    </div>
-  );
 }

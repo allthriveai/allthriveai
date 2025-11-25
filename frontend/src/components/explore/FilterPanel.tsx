@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { FunnelIcon, XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
-import type { Topic, TopicSlug } from '@/config/topics';
+import type { Taxonomy } from '@/types/models';
 
 interface FilterPanelProps {
-  topics: Topic[];
+  topics: Taxonomy[];
   tools: Array<{ id: number; name: string }>;
-  selectedTopics: TopicSlug[];
+  selectedTopics: number[];
   selectedTools: number[];
-  onTopicsChange: (topics: TopicSlug[]) => void;
+  onTopicsChange: (topics: number[]) => void;
   onToolsChange: (tools: number[]) => void;
   onClear: () => void;
 }
@@ -31,11 +31,11 @@ export function FilterPanel({
 
   const hasFilters = selectedTopics.length > 0 || selectedTools.length > 0;
 
-  const toggleTopic = (topicSlug: TopicSlug) => {
-    if (selectedTopics.includes(topicSlug)) {
-      onTopicsChange(selectedTopics.filter(t => t !== topicSlug));
+  const toggleTopic = (topicId: number) => {
+    if (selectedTopics.includes(topicId)) {
+      onTopicsChange(selectedTopics.filter(t => t !== topicId));
     } else {
-      onTopicsChange([...selectedTopics, topicSlug]);
+      onTopicsChange([...selectedTopics, topicId]);
     }
   };
 
@@ -98,18 +98,18 @@ export function FilterPanel({
               <div className="flex flex-wrap gap-2">
                 {visibleTopics.map((topic) => (
                   <button
-                    key={topic.slug}
-                    onClick={() => toggleTopic(topic.slug)}
+                    key={topic.id}
+                    onClick={() => toggleTopic(topic.id)}
                     className={`
                       px-3 py-1.5 rounded-lg text-sm font-medium transition-all
                       ${
-                        selectedTopics.includes(topic.slug)
+                        selectedTopics.includes(topic.id)
                           ? 'bg-primary-600 text-white'
                           : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }
                     `}
                   >
-                    {topic.label}
+                    {topic.name}
                   </button>
                 ))}
                 {topics.length > maxInitialItems && (

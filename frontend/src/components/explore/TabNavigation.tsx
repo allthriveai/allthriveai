@@ -13,7 +13,7 @@ const tabs: TabConfig[] = [
   { id: 'trending', label: 'Trending', icon: <FireIcon className="w-5 h-5" /> },
   { id: 'topics', label: 'By Topics', icon: <TagIcon className="w-5 h-5" /> },
   { id: 'tools', label: 'By Tools', icon: <WrenchScrewdriverIcon className="w-5 h-5" /> },
-  { id: 'profiles', label: 'Top Profiles', icon: <UserGroupIcon className="w-5 h-5" /> },
+  { id: 'profiles', label: 'By Profiles', icon: <UserGroupIcon className="w-5 h-5" /> },
 ];
 
 interface TabNavigationProps {

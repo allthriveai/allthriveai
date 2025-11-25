@@ -136,19 +136,20 @@ class ReferralAdmin(admin.ModelAdmin):
 
 @admin.register(Taxonomy)
 class TaxonomyAdmin(admin.ModelAdmin):
-    list_display = ['name', 'category', 'has_website', 'has_logo', 'is_active', 'created_at']
-    list_filter = ['category', 'is_active', 'created_at']
+    list_display = ['name', 'taxonomy_type', 'color', 'has_website', 'has_logo', 'is_active', 'created_at']
+    list_filter = ['taxonomy_type', 'is_active', 'created_at']
     search_fields = ['name', 'description']
-    ordering = ['category', 'name']
+    ordering = ['taxonomy_type', 'name']
+    list_per_page = 50
 
     fieldsets = (
-        ('Basic Information', {'fields': ('name', 'category', 'description', 'is_active')}),
+        ('Basic Information', {'fields': ('taxonomy_type', 'name', 'description', 'color', 'is_active')}),
         (
-            'Tool Details (for Tool category)',
+            'Tool Details',
             {
                 'fields': ('website_url', 'logo_url', 'usage_tips', 'best_for'),
                 'classes': ('collapse',),
-                'description': 'These fields are primarily for tools in the Tool Directory',
+                'description': 'Additional information for tools',
             },
         ),
     )
