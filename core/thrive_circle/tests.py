@@ -186,8 +186,8 @@ class PointActivityModelTest(TestCase):
         activity = PointActivity.objects.filter(user=self.user).first()
         self.assertEqual(activity.tier_at_time, 'ember')
 
-        # Upgrade to spark
-        self.user.add_points(200, 'project_create')
+        # Upgrade to spark (needs 500 total points)
+        self.user.add_points(400, 'project_create')
         self.user.refresh_from_db()
         self.assertEqual(self.user.tier, 'spark')
 
@@ -218,9 +218,9 @@ class ThriveCircleAPITest(APITestCase):
         self.assertEqual(response.data['tier'], 'spark')
 
     def test_award_points_endpoint_valid(self):
-        """Test POST /api/v1/me/thrive-circle/award-points/ with valid data"""
+        """Test POST /api/v1/me/thrive-circle/award_points/ with valid data"""
         response = self.client.post(
-            '/api/v1/me/thrive-circle/award-points/',
+            '/api/v1/me/thrive-circle/award_points/',
             {'amount': 50, 'activity_type': 'comment', 'description': 'Posted helpful comment'},
         )
 

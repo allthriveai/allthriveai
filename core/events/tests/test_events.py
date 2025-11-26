@@ -91,7 +91,9 @@ class EventAPITest(TestCase):
         )
         response = self.client.get('/api/v1/events/')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
+        # Response is paginated, check 'results' key
+        self.assertIn('results', response.data)
+        self.assertEqual(len(response.data['results']), 1)
 
     def test_create_event_requires_admin(self):
         """Test that only admins can create events."""
