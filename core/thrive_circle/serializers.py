@@ -33,7 +33,7 @@ class PointActivitySerializer(serializers.ModelSerializer):
 class UserPointsSerializer(serializers.ModelSerializer):
     """Serializer for user points/gamification status."""
 
-    tier_display = serializers.CharField(source='tier_display', read_only=True)
+    tier_display = serializers.CharField(read_only=True)
     recent_activities = PointActivitySerializer(source='point_activities', many=True, read_only=True)
     points_to_next_level = serializers.IntegerField(read_only=True)
     points_to_next_tier = serializers.IntegerField(read_only=True)

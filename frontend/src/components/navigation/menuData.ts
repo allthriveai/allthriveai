@@ -72,12 +72,13 @@ export const getMenuSections = (
     items: [
       { label: 'Report an Issue', path: 'https://github.com/allthriveai/allthriveai/issues', external: true },
       { label: 'Chat', onClick: () => onMenuClick('Chat') },
-      { label: 'Whats New', path: '#' },
       {
         label: 'About All Thrive',
+        onClick: () => onMenuClick('About Us'),
         subItems: [
           { label: 'About Us', onClick: () => onMenuClick('About Us') },
           { label: 'Our Values', onClick: () => onMenuClick('Our Values') },
+          { label: 'Whats New', path: '#' },
         ]
       },
       { label: 'Pricing', path: '#' },

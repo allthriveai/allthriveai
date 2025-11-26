@@ -152,13 +152,24 @@ class User(AbstractUser):
 
         # Validate avatar_url is from allowed domains (skip for bots)
         if self.avatar_url and self.role != UserRole.BOT:
+            from django.conf import settings
+
+            # Get MinIO endpoints from settings
+            minio_endpoint = getattr(settings, 'MINIO_ENDPOINT', '')
+            minio_endpoint_public = getattr(settings, 'MINIO_ENDPOINT_PUBLIC', '')
+
             allowed_domains = [
                 'githubusercontent.com',
                 'gravatar.com',
                 'googleusercontent.com',
                 'github.com',
                 'avatars.githubusercontent.com',
+                minio_endpoint,
+                minio_endpoint_public,
             ]
+            # Remove empty strings from allowed_domains
+            allowed_domains = [d for d in allowed_domains if d]
+
             try:
                 parsed = urlparse(self.avatar_url)
                 domain = parsed.netloc

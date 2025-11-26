@@ -192,7 +192,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle, onAddProject }: Lef
           {isOpen ? (
             <>
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/explore')}
                 className="flex items-center gap-2 text-slate-900 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
               >
                 <HomeIcon className="w-5 h-5 flex-shrink-0" />
@@ -216,7 +216,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle, onAddProject }: Lef
           ) : (
             <div className="w-full flex flex-col items-center gap-2">
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/explore')}
                 className="w-full flex items-center justify-center text-slate-900 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
               >
                 <HomeIcon className="w-5 h-5" />
@@ -258,14 +258,17 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle, onAddProject }: Lef
         )}
 
         {/* Add Project Button */}
-        {isOpen && isAuthenticated && user?.username && onAddProject && (
-          <div className="px-4 pb-2 flex-shrink-0">
+        {isAuthenticated && user?.username && onAddProject && (
+          <div className={`pb-2 flex-shrink-0 ${isOpen ? 'px-4' : 'px-2'}`}>
             <button
               onClick={onAddProject}
-              className="w-full flex items-center gap-2 px-4 py-2.5 bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/10 rounded-lg transition-colors font-medium text-sm"
+              className={`w-full flex items-center gap-2 bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/10 rounded-lg transition-colors font-medium text-sm ${
+                isOpen ? 'px-4 py-2.5' : 'p-3 justify-center'
+              }`}
+              title={!isOpen ? 'Add Project' : undefined}
             >
               <PlusIcon className="w-4 h-4" />
-              <span>Add Project</span>
+              {isOpen && <span>Add Project</span>}
             </button>
           </div>
         )}

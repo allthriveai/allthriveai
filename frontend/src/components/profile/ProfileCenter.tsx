@@ -381,8 +381,10 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
               </div>
 
               {/* Name and Username */}
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                {displayUser?.firstName || username} {displayUser?.lastName || ''}
+              <h1 className="text-4xl font-bold mb-4">
+                <span className="bg-gradient-to-r from-teal-600 via-blue-600 to-purple-600 dark:from-teal-400 dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                  {displayUser?.firstName || username} {displayUser?.lastName || ''}
+                </span>
                 {displayUser?.pronouns && (
                   <span className="text-xl font-normal text-gray-500 dark:text-gray-400 ml-2">
                     ({displayUser.pronouns})

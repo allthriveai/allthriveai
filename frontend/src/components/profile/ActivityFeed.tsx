@@ -44,9 +44,13 @@ export function ActivityFeed() {
     loadActivity();
   }, []);
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Never';
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString || dateString.trim() === '') return '';
     const date = new Date(dateString);
+
+    // Check for invalid date
+    if (isNaN(date.getTime())) return '';
+
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -72,6 +76,23 @@ export function ActivityFeed() {
       return <XCircleIcon className="w-5 h-5 text-red-500" />;
     }
     return <CheckCircleIcon className="w-5 h-5 text-green-500" />;
+  };
+
+  const getActivityColor = (activityType: string): string => {
+    const colors: Record<string, string> = {
+      'quiz_complete': '#10b981', // green
+      'project_create': '#3b82f6', // blue
+      'project_update': '#6366f1', // indigo
+      'comment': '#8b5cf6', // purple
+      'reaction': '#ec4899', // pink
+      'daily_login': '#f59e0b', // amber
+      'streak_bonus': '#ef4444', // red
+      'weekly_goal': '#14b8a6', // teal
+      'side_quest': '#a855f7', // purple
+      'special_event': '#f97316', // orange
+      'referral': '#06b6d4', // cyan
+    };
+    return colors[activityType] || '#6b7280'; // default gray
   };
 
   if (isLoading) {
@@ -184,9 +205,11 @@ export function ActivityFeed() {
                     <p className="font-medium text-gray-900 dark:text-white">
                       {activity.action}
                     </p>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                      {formatDate(activity.timestamp)}
-                    </span>
+                    {activity.timestamp && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        {formatDate(activity.timestamp)}
+                      </span>
+                    )}
                   </div>
                   {activity.ipAddress && (
                     <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
@@ -284,58 +307,148 @@ export function ActivityFeed() {
         )}
       </div>
 
-      {/* XP Activity Feed */}
+      {/* Points Activity Feed */}
       <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-lg">
-              <FireIcon className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+            <div className="p-2 bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 rounded-lg">
+              <SparklesIcon className="w-5 h-5 text-teal-600 dark:text-teal-400" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">XP Activity</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Points Activity</h3>
           </div>
           {tierStatus && (
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 dark:from-orange-400 dark:to-amber-400 bg-clip-text text-transparent">
-                {tierStatus.totalXp}
+              <span className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">
+                {tierStatus.totalPoints}
               </span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">XP</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Points</span>
             </div>
           )}
         </div>
 
         {!isLoadingActivities && xpActivities && xpActivities.length > 0 ? (
-          <div className="space-y-3">
-            {xpActivities.map((activity) => (
-              <div
-                key={activity.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-gray-900 dark:text-white">
-                      {activity.activityTypeDisplay}
-                    </h4>
-                    <span className="px-2 py-0.5 bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-700 dark:text-orange-300 rounded text-xs font-medium">
-                      {activity.tierAtTime}
-                    </span>
-                  </div>
-                  {activity.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                      {activity.description}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Donut Chart */}
+            <div className="lg:col-span-1">
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Points by Source</h4>
+              {(() => {
+                // Aggregate points by activity type
+                const pointsByType: Record<string, { amount: number; display: string; color: string }> = {};
+
+                xpActivities.forEach((activity) => {
+                  if (!pointsByType[activity.activityType]) {
+                    pointsByType[activity.activityType] = {
+                      amount: 0,
+                      display: activity.activityTypeDisplay,
+                      color: getActivityColor(activity.activityType),
+                    };
+                  }
+                  pointsByType[activity.activityType].amount += activity.amount;
+                });
+
+                const sortedTypes = Object.entries(pointsByType).sort((a, b) => b[1].amount - a[1].amount);
+                const totalPoints = sortedTypes.reduce((sum, [_, data]) => sum + data.amount, 0);
+
+                // Calculate angles for donut chart
+                let currentAngle = -90;
+                const segments = sortedTypes.map(([type, data]) => {
+                  const percentage = (data.amount / totalPoints) * 100;
+                  const angleSize = (percentage / 100) * 360;
+                  const startAngle = currentAngle;
+                  currentAngle += angleSize;
+                  return { type, ...data, percentage, startAngle, angleSize };
+                });
+
+                return (
+                  <>
+                    {/* SVG Donut Chart */}
+                    <div className="relative w-48 h-48 mx-auto mb-4">
+                      <svg viewBox="0 0 100 100" className="transform -rotate-90">
+                        {segments.map((segment, i) => {
+                          const radius = 35;
+                          const strokeWidth = 15;
+                          const circumference = 2 * Math.PI * radius;
+                          const offset = circumference - (segment.percentage / 100) * circumference;
+
+                          return (
+                            <circle
+                              key={segment.type}
+                              cx="50"
+                              cy="50"
+                              r={radius}
+                              fill="none"
+                              stroke={segment.color}
+                              strokeWidth={strokeWidth}
+                              strokeDasharray={`${circumference} ${circumference}`}
+                              strokeDashoffset={offset}
+                              style={{
+                                transformOrigin: '50% 50%',
+                                transform: `rotate(${segments.slice(0, i).reduce((sum, s) => sum + (s.percentage / 100) * 360, 0)}deg)`,
+                              }}
+                              className="transition-all duration-300 hover:opacity-80"
+                            />
+                          );
+                        })}
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalPoints}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Legend */}
+                    <div className="space-y-2">
+                      {segments.map((segment) => (
+                        <div key={segment.type} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }} />
+                            <span className="text-gray-700 dark:text-gray-300 truncate">{segment.display}</span>
+                          </div>
+                          <span className="font-semibold text-gray-900 dark:text-white">{segment.amount}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Activity List */}
+            <div className="lg:col-span-2 space-y-3">
+              {xpActivities.slice(0, 6).map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                        {activity.activityTypeDisplay}
+                      </h4>
+                      <span className="px-2 py-0.5 bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 text-teal-700 dark:text-teal-300 rounded text-xs font-medium">
+                        {activity.tierAtTime}
+                      </span>
+                    </div>
+                    {activity.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                        {activity.description}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                      {formatDate(activity.createdAt)}
                     </p>
-                  )}
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                    {formatDate(activity.createdAt)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    +{activity.amount}
                   </div>
-                  <FireIcon className="w-6 h-6 text-orange-500 flex-shrink-0" />
+                  <div className="flex items-center gap-2 ml-4">
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      +{activity.amount}
+                    </div>
+                    <SparklesIcon className="w-6 h-6 text-teal-500 flex-shrink-0" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         ) : isLoadingActivities ? (
           <div className="space-y-3 animate-pulse">
@@ -345,10 +458,10 @@ export function ActivityFeed() {
           </div>
         ) : (
           <div className="text-center py-8">
-            <FireIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-500 dark:text-gray-400 mb-2">No XP earned yet</p>
+            <SparklesIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-500 dark:text-gray-400 mb-2">No points earned yet</p>
             <p className="text-sm text-gray-400 dark:text-gray-500">
-              Complete quizzes, create projects, and engage with the community to earn XP and level up your tier!
+              Complete quizzes, create projects, and engage with the community to earn points and level up your tier!
             </p>
           </div>
         )}
