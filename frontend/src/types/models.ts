@@ -172,7 +172,7 @@ export interface ColumnBlock {
 }
 
 export type ProjectBlock = BaseBlock & (
-  | { type: 'text'; style: 'body' | 'heading' | 'quote'; content: string }
+  | { type: 'text'; style: 'body' | 'heading' | 'quote'; content: string; markdown?: boolean }
   | { type: 'image'; url: string; caption?: string }
   | { type: 'video'; url: string; embedUrl?: string; caption?: string }
   | { type: 'file'; url: string; filename: string; fileType: string; fileSize: number; label: string; icon: string }
@@ -180,6 +180,8 @@ export type ProjectBlock = BaseBlock & (
   | { type: 'divider'; style: 'line' | 'dotted' | 'dashed' | 'space' }
   | { type: 'columns'; columnCount: 1 | 2 | 3; containerWidth: 'full' | 'boxed'; columns: ColumnBlock[] }
   | { type: 'imageGrid'; images: Array<{ url: string; caption?: string }>; caption?: string }
+  | { type: 'mermaid'; code: string; caption?: string }
+  | { type: 'code_snippet'; code: string; language: string; filename?: string; highlightLines?: number[] }
 );
 
 // Project creation/update payload

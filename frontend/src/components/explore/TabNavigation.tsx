@@ -1,6 +1,6 @@
 import { SparklesIcon, FireIcon, TagIcon, WrenchScrewdriverIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
-export type ExploreTab = 'for-you' | 'trending' | 'topics' | 'tools' | 'profiles';
+export type ExploreTab = 'for-you' | 'trending' | 'categories' | 'tools' | 'profiles';
 
 interface TabConfig {
   id: ExploreTab;
@@ -11,7 +11,7 @@ interface TabConfig {
 const tabs: TabConfig[] = [
   { id: 'for-you', label: 'For You', icon: <SparklesIcon className="w-5 h-5" /> },
   { id: 'trending', label: 'Trending', icon: <FireIcon className="w-5 h-5" /> },
-  { id: 'topics', label: 'By Topics', icon: <TagIcon className="w-5 h-5" /> },
+  { id: 'categories', label: 'By Categories', icon: <TagIcon className="w-5 h-5" /> },
   { id: 'tools', label: 'By Tools', icon: <WrenchScrewdriverIcon className="w-5 h-5" /> },
   { id: 'profiles', label: 'By Profiles', icon: <UserGroupIcon className="w-5 h-5" /> },
 ];

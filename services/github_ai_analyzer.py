@@ -3,6 +3,7 @@
 import logging
 
 from services.ai_provider import AIProvider
+from services.readme_parser import ReadmeParser
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,12 @@ def analyze_github_repo(repo_data: dict, readme_content: str = '') -> dict:
             - categories: List of category IDs to assign
             - topics: List of topic strings
             - tools: List of tool IDs to assign
+            - readme_blocks: Structured blocks from README parsing
+            - hero_image: Suggested hero image URL
+            - hero_quote: Suggested hero quote
+            - mermaid_diagrams: List of Mermaid diagrams found
+            - demo_urls: List of demo/live site URLs
+            - generated_diagram: Auto-generated architecture diagram
     """
     name = repo_data.get('name', '')
     description = repo_data.get('description', '')
@@ -97,14 +104,64 @@ Format your response as JSON:
         topics_count = len(validated['topics'])
         categories_count = len(validated['category_ids'])
         logger.info(f'AI analysis for {name}: {topics_count} topics, ' f'{categories_count} categories')
+
+        # Parse README if provided
+        if readme_content:
+            readme_parsed = ReadmeParser.parse(readme_content, repo_data)
+            validated.update(
+                {
+                    'readme_blocks': readme_parsed.get('blocks', []),
+                    'hero_image': readme_parsed.get('hero_image'),
+                    'hero_quote': readme_parsed.get('hero_quote'),
+                    'mermaid_diagrams': readme_parsed.get('mermaid_diagrams', []),
+                    'demo_urls': readme_parsed.get('demo_urls', []),
+                }
+            )
+
+            # Generate architecture diagram if none found in README
+            if not readme_parsed.get('mermaid_diagrams'):
+                generated_diagram = ReadmeParser.generate_architecture_diagram(repo_data)
+                if generated_diagram:
+                    validated['generated_diagram'] = generated_diagram
+                    logger.info(f'Generated architecture diagram for {name}')
+
         return validated
 
     except Exception as e:
         logger.warning(f'AI analysis failed for {name}: {e}, using fallback metadata')
         # Fallback to basic metadata
-        return {
+        fallback = {
             'description': description or f'A {language} project' if language else 'A software project',
             'category_ids': [9] if language else [],  # Default to Developer & Coding
             'topics': [t.lower() for t in github_topics[:8]] if github_topics else [],
             'tool_names': [],
+            'readme_blocks': [],
+            'hero_image': None,
+            'hero_quote': None,
+            'mermaid_diagrams': [],
+            'demo_urls': [],
         }
+
+        # Still try to parse README even if AI fails
+        if readme_content:
+            try:
+                readme_parsed = ReadmeParser.parse(readme_content, repo_data)
+                fallback.update(
+                    {
+                        'readme_blocks': readme_parsed.get('blocks', []),
+                        'hero_image': readme_parsed.get('hero_image'),
+                        'hero_quote': readme_parsed.get('hero_quote'),
+                        'mermaid_diagrams': readme_parsed.get('mermaid_diagrams', []),
+                        'demo_urls': readme_parsed.get('demo_urls', []),
+                    }
+                )
+
+                # Generate diagram
+                if not readme_parsed.get('mermaid_diagrams'):
+                    generated_diagram = ReadmeParser.generate_architecture_diagram(repo_data)
+                    if generated_diagram:
+                        fallback['generated_diagram'] = generated_diagram
+            except Exception as parse_error:
+                logger.warning(f'README parsing also failed for {name}: {parse_error}')
+
+        return fallback

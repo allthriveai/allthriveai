@@ -116,23 +116,58 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
         setStep('github_repos');
         addMessage('agent', 'Loading your GitHub repositories...');
 
-        const fetchedRepos = await fetchGitHubRepos();
-        setRepos(fetchedRepos);
+        try {
+          const fetchedRepos = await fetchGitHubRepos();
+          setRepos(fetchedRepos);
 
-        addMessage(
-          'agent',
-          <>
-            <p className="mb-2">Found {fetchedRepos.length} repositories!</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Select a repository to import:
-            </p>
-          </>
-        );
+          addMessage(
+            'agent',
+            <>
+              <p className="mb-2">Found {fetchedRepos.length} repositories!</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Select a repository to import:
+              </p>
+            </>
+          );
+        } catch (repoError: any) {
+          console.error('Failed to fetch GitHub repos:', repoError);
+
+          // Handle rate limit errors with specific message
+          if (repoError?.message?.includes('rate limit') || repoError?.message?.includes('Rate limit')) {
+            addMessage(
+              'agent',
+              <>
+                <p className="mb-2">⏱️ You've reached the rate limit for repository fetches.</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {repoError.message}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  Please wait a few minutes and try again.
+                </p>
+              </>
+            );
+          } else {
+            addMessage(
+              'agent',
+              <>
+                <p className="mb-2">Failed to load your repositories.</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Please try reconnecting your GitHub account.
+                </p>
+              </>
+            );
+          }
+          setStep('welcome');
+          throw repoError; // Re-throw to outer catch
+        }
       }
     } catch (error) {
-      console.error('Failed to check GitHub connection:', error);
-      addMessage('agent', 'Failed to check GitHub connection. Please try again.');
-      setStep('welcome');
+      console.error('GitHub import error:', error);
+      // Don't show generic error if we already showed a specific one
+      if (step !== 'github_connect') {
+        addMessage('agent', 'Something went wrong. Please try again.');
+        setStep('welcome');
+      }
     }
   };
 
@@ -333,7 +368,7 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
                           Describe Your Project
                         </div>
                         <div className="text-xs text-slate-600 dark:text-slate-400">
-                          AI creates your page
+                          All Thrive will create your project portfolio page from your description
                         </div>
                       </div>
                     </div>

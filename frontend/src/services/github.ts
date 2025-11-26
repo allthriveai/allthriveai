@@ -46,7 +46,15 @@ export interface GitHubImportPreview {
 export async function checkGitHubConnection(): Promise<boolean> {
   try {
     const response = await api.get<ApiResponse<{ connected: boolean }>>('/social/status/github/');
-    return response.data.data?.connected ?? false;
+    console.log('GitHub status response:', response.data);
+
+    // API returns { success: true, data: { connected: true, ... } }
+    // OR direct { connected: true, ... } depending on response format
+    const data = response.data.data || response.data;
+    console.log('Parsed data:', data);
+    console.log('Connected status:', data?.connected);
+
+    return data?.connected ?? false;
   } catch (error) {
     console.error('Failed to check GitHub connection:', error);
     return false;
@@ -57,14 +65,29 @@ export async function checkGitHubConnection(): Promise<boolean> {
  * Fetch user's GitHub repositories
  */
 export async function fetchGitHubRepos(includePrivate: boolean = false): Promise<GitHubRepository[]> {
-  const response = await api.get<ApiResponse<{ repositories: any[]; count: number }>>(
-    '/github/repos/',
-    {
-      params: { include_private: includePrivate },
-    }
-  );
+  try {
+    const response = await api.get<ApiResponse<{ repositories: any[]; count: number }>>(
+      '/github/repos/',
+      {
+        params: { include_private: includePrivate },
+      }
+    );
 
-  return response.data.data?.repositories || [];
+    console.log('GitHub repos response:', response.data);
+    const repos = response.data.data?.repositories || response.data.repositories || [];
+    console.log('Parsed repos:', repos);
+    return repos;
+  } catch (error: any) {
+    console.error('Failed to fetch GitHub repos:', error);
+
+    // Handle rate limit errors specifically
+    if (error.response?.status === 429) {
+      const errorMessage = error.response?.data?.detail || 'Rate limit exceeded. Please try again later.';
+      throw new Error(errorMessage);
+    }
+
+    throw error;
+  }
 }
 
 /**

@@ -54,6 +54,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # generation / uniqueness on save.
         serializer.save(user=self.request.user)
 
+        # Invalidate user projects cache
+        self._invalidate_user_cache(self.request.user)
+
     @action(detail=True, methods=['post'], url_path='toggle-like', throttle_classes=[ProjectLikeThrottle])
     def toggle_like(self, request, pk=None):
         """Toggle like/heart on a project.
@@ -100,6 +103,26 @@ class ProjectViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    def perform_update(self, serializer):
+        """Called when updating a project."""
+        serializer.save()
+        # Invalidate cache after update
+        self._invalidate_user_cache(self.request.user)
+
+    def perform_destroy(self, instance):
+        """Called when deleting a project."""
+        user = instance.user
+        instance.delete()
+        # Invalidate cache after delete
+        self._invalidate_user_cache(user)
+
+    def _invalidate_user_cache(self, user):
+        """Invalidate cached project lists for a user."""
+        username_lower = user.username.lower()
+        cache.delete(f'projects:v2:{username_lower}:own')
+        cache.delete(f'projects:v2:{username_lower}:public')
+        logger.debug(f'Invalidated project cache for user {user.username}')
+
     @action(detail=False, methods=['post'], url_path='bulk-delete')
     def bulk_delete(self, request):
         """Bulk delete projects for the authenticated user.
@@ -126,10 +149,49 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # Only delete projects owned by the authenticated user
         deleted_count, _ = Project.objects.filter(id__in=project_ids, user=request.user).delete()
 
+        # Invalidate cache after bulk delete
+        if deleted_count > 0:
+            self._invalidate_user_cache(request.user)
+
         return Response(
             {'deleted_count': deleted_count, 'message': f'Successfully deleted {deleted_count} project(s)'},
             status=status.HTTP_200_OK,
         )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_project_by_slug(request, username, slug):
+    """Get a single project by username and slug.
+
+    Security:
+    - Public for published showcase projects
+    - Private projects only visible to owner
+    - Archived projects only visible to owner
+    """
+    try:
+        user = User.objects.get(username__iexact=username)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Try to find the project
+    try:
+        project = Project.objects.select_related('user').prefetch_related('tools', 'likes').get(user=user, slug=slug)
+    except Project.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Check visibility permissions
+    is_owner = request.user.is_authenticated and request.user == project.user
+
+    # Allow access if:
+    # 1. User is the owner
+    # 2. Project is published and not private and not archived
+    if not is_owner:
+        if project.is_private or project.is_archived or not project.is_published:
+            return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = ProjectSerializer(project, context={'request': request})
+    return Response(serializer.data)
 
 
 @api_view(['GET'])

@@ -36,7 +36,14 @@ from .integrations.github.views import (
 )
 from .projects.comment_views import ProjectCommentViewSet
 from .projects.topic_suggestions import get_topic_suggestions
-from .projects.views import ProjectViewSet, explore_projects, public_user_projects, semantic_search, user_liked_projects
+from .projects.views import (
+    ProjectViewSet,
+    explore_projects,
+    get_project_by_slug,
+    public_user_projects,
+    semantic_search,
+    user_liked_projects,
+)
 from .quizzes.views import QuizAttemptViewSet, QuizViewSet
 from .referrals.views import ReferralCodeViewSet, ReferralViewSet, validate_referral_code
 from .social.views import (
@@ -106,6 +113,7 @@ urlpatterns = [
     # Public user endpoints
     path('users/<str:username>/', username_profile_view, name='public_user_profile'),
     path('users/<str:username>/projects/', public_user_projects, name='public_user_projects'),
+    path('users/<str:username>/projects/<str:slug>/', get_project_by_slug, name='get_project_by_slug'),
     path('users/<str:username>/liked-projects/', user_liked_projects, name='user_liked_projects'),
     # Project comment endpoints
     path(

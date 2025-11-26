@@ -334,8 +334,9 @@ GITHUB_RATE_LIMIT = {
     'MAX_REQUESTS_PER_HOUR': config('GITHUB_MAX_REQUESTS_PER_HOUR', default=4500, cast=int),
     'MAX_REQUESTS_PER_MINUTE': config('GITHUB_MAX_REQUESTS_PER_MINUTE', default=60, cast=int),
     # User-specific limits (per user per hour)
-    'USER_MAX_REPO_FETCHES_PER_HOUR': config('GITHUB_USER_REPO_FETCHES_PER_HOUR', default=10, cast=int),
-    'USER_MAX_IMPORTS_PER_HOUR': config('GITHUB_USER_IMPORTS_PER_HOUR', default=5, cast=int),
+    # Increased for development: 50 fetches/hour, 20 imports/hour
+    'USER_MAX_REPO_FETCHES_PER_HOUR': config('GITHUB_USER_REPO_FETCHES_PER_HOUR', default=50, cast=int),
+    'USER_MAX_IMPORTS_PER_HOUR': config('GITHUB_USER_IMPORTS_PER_HOUR', default=20, cast=int),
     # Cache durations (in seconds)
     'REPO_LIST_CACHE_DURATION': 300,  # 5 minutes
     'REPO_PREVIEW_CACHE_DURATION': 600,  # 10 minutes

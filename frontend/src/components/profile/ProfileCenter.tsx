@@ -582,7 +582,7 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
 
             {/* Right Column - Hero Featured Project */}
             {!isLoading && projects.showcase.length > 0 && (
-              <div className="lg:col-span-4">
+              <div className="lg:col-span-4 -mt-16">
               <div className="relative group cursor-pointer" onClick={() => {
                 const heroProject = projects.showcase[0];
                 navigate(`/${heroProject.username}/${heroProject.slug}`);
@@ -632,10 +632,10 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
       </div>
 
       {/* Content Area - Single column, centered */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div>
-          {/* Tabs - Centered */}
-          <div className="flex justify-center border-b border-gray-200 dark:border-gray-800 mb-8">
+          {/* Tabs - Centered with tight spacing */}
+          <div className="flex justify-center border-b border-gray-200 dark:border-gray-800 mb-6">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -645,10 +645,10 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                     exitSelectionMode();
                   }
                 }}
-                className={`px-8 py-4 font-semibold transition-colors border-b-2 ${
+                className={`px-6 py-2.5 text-sm font-medium transition-all border-b-2 -mb-[2px] ${
                   activeTab === tab.id
                     ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
                 {tab.label}
@@ -658,7 +658,7 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
 
           {/* Tab Actions (Select Mode) */}
           {isAuthenticated && isOwnProfile && (activeTab === 'showcase' || activeTab === 'playground') && (
-            <div className="flex items-center justify-end gap-2 mb-8">
+            <div className="flex items-center justify-end gap-2 mb-6">
                 {selectionMode ? (
                   <>
                     <button

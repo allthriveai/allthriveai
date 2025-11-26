@@ -216,7 +216,7 @@ class ProjectAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Updated Title')
         self.assertEqual(response.data['description'], 'New description')
-        self.assertTrue(response.data['is_showcase'])
+        self.assertTrue(response.data['isShowcase'])  # camelCase in response
 
     def test_delete_own_project(self):
         """Test that user can delete their own project."""
@@ -245,13 +245,13 @@ class ProjectAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('content', response.data)
 
-    def test_thumbnail_url_validation(self):
-        """Test that invalid thumbnail URLs are rejected."""
+    def test_banner_url_validation(self):
+        """Test that invalid banner URLs are rejected."""
         self.client.force_authenticate(user=self.user1)
-        data = {'title': 'Test', 'thumbnail_url': 'not-a-valid-url'}
+        data = {'title': 'Test', 'banner_url': 'not-a-valid-url'}
         response = self.client.post('/api/v1/me/projects/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('thumbnail_url', response.data)
+        self.assertIn('banner_url', response.data)
 
     def test_project_ordering(self):
         """Test that projects are ordered by creation date (newest first)."""
@@ -294,11 +294,11 @@ class ProjectAPITest(APITestCase):
         }
         response = self.client.post('/api/v1/me/projects/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        # Should have the default banner image
-        self.assertEqual(response.data['thumbnail_url'], DEFAULT_BANNER_IMAGE)
+        # Should have the default banner image (camelCase in response)
+        self.assertEqual(response.data['bannerUrl'], DEFAULT_BANNER_IMAGE)
         # Verify in database
         project = Project.objects.get(id=response.data['id'])
-        self.assertEqual(project.thumbnail_url, DEFAULT_BANNER_IMAGE)
+        self.assertEqual(project.banner_url, DEFAULT_BANNER_IMAGE)
 
     def test_custom_banner_preserved_on_create(self):
         """Test that custom banner images are preserved when provided."""
@@ -308,15 +308,15 @@ class ProjectAPITest(APITestCase):
             'title': 'Project With Custom Banner',
             'description': 'This project has a custom banner',
             'type': 'other',
-            'thumbnail_url': custom_url,
+            'banner_url': custom_url,
         }
         response = self.client.post('/api/v1/me/projects/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        # Should preserve the custom banner
-        self.assertEqual(response.data['thumbnail_url'], custom_url)
+        # Should preserve the custom banner (camelCase in response)
+        self.assertEqual(response.data['bannerUrl'], custom_url)
         # Verify in database
         project = Project.objects.get(id=response.data['id'])
-        self.assertEqual(project.thumbnail_url, custom_url)
+        self.assertEqual(project.banner_url, custom_url)
 
     def test_hero_display_fields_in_content(self):
         """Test that hero display fields are accepted in content."""

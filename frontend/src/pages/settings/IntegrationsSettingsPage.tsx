@@ -25,7 +25,7 @@ export default function IntegrationsSettingsPage() {
       description: 'Automatically sync your GitHub repositories as projects',
       icon: faGithub,
       isConnected: false,
-      isAvailable: false, // Coming soon
+      isAvailable: true, // GitHub is available
     },
     {
       id: 'gitlab',
@@ -68,16 +68,65 @@ export default function IntegrationsSettingsPage() {
       isAvailable: false, // Coming soon
     },
   ]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Fetch GitHub connection status on mount
+  useEffect(() => {
+    async function fetchConnectionStatus() {
+      try {
+        const response = await api.get('/social/status/github/');
+
+        // Response structure: { success: true, data: { connected: true, ... } }
+        const statusData = response.data.data || response.data;
+
+        if (statusData.connected) {
+          setIntegrations(prev =>
+            prev.map(integration =>
+              integration.id === 'github'
+                ? {
+                    ...integration,
+                    isConnected: true,
+                    username: statusData.providerUsername || 'GitHub User',
+                    connectedAt: statusData.connectedAt,
+                  }
+                : integration
+            )
+          );
+        }
+      } catch (error) {
+        console.error('Failed to fetch GitHub connection status:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchConnectionStatus();
+  }, []);
 
   const handleConnect = async (integrationId: string) => {
     setErrorMessage('');
     setSuccessMessage('');
 
-    // Placeholder for future integration
-    setErrorMessage(`${integrationId} integration is coming soon!`);
+    if (integrationId === 'github') {
+      // Redirect to GitHub OAuth flow
+      try {
+        const response = await api.get('/auth/urls/');
+        const githubUrl = response.data.github_login_url;
+        if (githubUrl) {
+          window.location.href = githubUrl;
+        } else {
+          setErrorMessage('GitHub login URL not available');
+        }
+      } catch (error) {
+        console.error('Failed to get GitHub OAuth URL:', error);
+        setErrorMessage('Failed to connect to GitHub. Please try again.');
+      }
+    } else {
+      // Placeholder for future integrations
+      setErrorMessage(`${integrationId} integration is coming soon!`);
+    }
   };
 
   const handleDisconnect = async (integrationId: string, integrationName: string) => {
@@ -88,8 +137,33 @@ export default function IntegrationsSettingsPage() {
     setErrorMessage('');
     setSuccessMessage('');
 
-    // Placeholder for future integration
-    setSuccessMessage(`${integrationName} disconnected successfully`);
+    if (integrationId === 'github') {
+      try {
+        await api.post('/social/disconnect/github/');
+
+        // Update state
+        setIntegrations(prev =>
+          prev.map(integration =>
+            integration.id === 'github'
+              ? {
+                  ...integration,
+                  isConnected: false,
+                  username: undefined,
+                  connectedAt: undefined,
+                }
+              : integration
+          )
+        );
+
+        setSuccessMessage(`${integrationName} disconnected successfully`);
+      } catch (error) {
+        console.error('Failed to disconnect GitHub:', error);
+        setErrorMessage('Failed to disconnect GitHub. Please try again.');
+      }
+    } else {
+      // Placeholder for future integrations
+      setSuccessMessage(`${integrationName} disconnected successfully`);
+    }
   };
 
   const handleToggleSync = async (integrationId: string) => {
@@ -156,8 +230,14 @@ export default function IntegrationsSettingsPage() {
               </div>
             </div>
 
-            {/* Integrations Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Loading State */}
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+              </div>
+            ) : (
+              /* Integrations Grid */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {integrations.map((integration) => (
                 <div
                   key={integration.id}
@@ -257,7 +337,8 @@ export default function IntegrationsSettingsPage() {
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
 
             {/* Additional Info */}
             <div className="mt-8 p-6 glass-strong rounded-xl border border-white/20">

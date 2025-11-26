@@ -30,6 +30,10 @@ class GitHubRateLimiter:
             return f'github_ratelimit:user:{self.user_id}:{action}:{window}'
         return f'github_ratelimit:global:{action}:{window}'
 
+    def _get_expiry_cache_key(self, action: str, window: str) -> str:
+        """Generate cache key for storing expiry timestamp."""
+        return f'{self._get_cache_key(action, window)}:expiry'
+
     def check_rate_limit(self, action: str, max_requests: int, window_seconds: int) -> tuple[bool, int]:
         """
         Check if request is within rate limit.
@@ -42,20 +46,34 @@ class GitHubRateLimiter:
         Returns:
             Tuple of (allowed: bool, requests_remaining: int)
         """
-        cache_key = self._get_cache_key(action, f'{window_seconds}s')
+        import time
 
-        # Get current count
+        cache_key = self._get_cache_key(action, f'{window_seconds}s')
+        expiry_key = self._get_expiry_cache_key(action, f'{window_seconds}s')
+
+        # Get current count and expiry timestamp
         current_count = cache.get(cache_key, 0)
+        expiry_timestamp = cache.get(expiry_key)
 
         if current_count >= max_requests:
-            ttl = cache.ttl(cache_key) or window_seconds
+            # Calculate retry_after from expiry timestamp
+            if expiry_timestamp:
+                retry_after = max(0, int(expiry_timestamp - time.time()))
+            else:
+                retry_after = window_seconds
+
             logger.warning(
                 f'Rate limit exceeded for {action}: '
                 f'user_id={self.user_id}, '
                 f'count={current_count}/{max_requests}, '
-                f'retry_after={ttl}s'
+                f'retry_after={retry_after}s'
             )
             return False, 0
+
+        # Set expiry timestamp on first request in window
+        if current_count == 0:
+            expiry_timestamp = time.time() + window_seconds
+            cache.set(expiry_key, expiry_timestamp, window_seconds)
 
         # Increment counter
         cache.set(cache_key, current_count + 1, window_seconds)
@@ -98,9 +116,15 @@ class GitHubRateLimiter:
 
     def get_retry_after(self, action: str, window_seconds: int) -> int:
         """Get seconds until rate limit resets."""
-        cache_key = self._get_cache_key(action, f'{window_seconds}s')
-        ttl = cache.ttl(cache_key)
-        return ttl if ttl and ttl > 0 else 0
+        import time
+
+        expiry_key = self._get_expiry_cache_key(action, f'{window_seconds}s')
+        expiry_timestamp = cache.get(expiry_key)
+
+        if expiry_timestamp:
+            retry_after = max(0, int(expiry_timestamp - time.time()))
+            return retry_after
+        return 0
 
     def reset_limits(self, action: str = None):
         """

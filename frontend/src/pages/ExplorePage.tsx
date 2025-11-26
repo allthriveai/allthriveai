@@ -29,8 +29,8 @@ export function ExplorePage() {
     (searchParams.get('tab') as ExploreTab) || 'for-you'
   );
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-  const [selectedTopics, setSelectedTopics] = useState<number[]>(
-    searchParams.getAll('topics').map(Number).filter(Boolean)
+  const [selectedCategories, setSelectedCategories] = useState<number[]>(
+    searchParams.getAll('categories').map(Number).filter(Boolean)
   );
   const [selectedToolSlugs, setSelectedToolSlugs] = useState<string[]>(
     searchParams.getAll('tools').filter(Boolean)
@@ -46,11 +46,11 @@ export function ExplorePage() {
     const params = new URLSearchParams();
     if (activeTab !== 'for-you') params.set('tab', activeTab);
     if (searchQuery) params.set('q', searchQuery);
-    selectedTopics.forEach(topic => params.append('topics', String(topic)));
+    selectedCategories.forEach(category => params.append('categories', String(category)));
     selectedToolSlugs.forEach(slug => params.append('tools', slug));
     if (page > 1) params.set('page', String(page));
     setSearchParams(params, { replace: true });
-  }, [activeTab, searchQuery, selectedTopics, selectedToolSlugs, page, setSearchParams]);
+  }, [activeTab, searchQuery, selectedCategories, selectedToolSlugs, page, setSearchParams]);
 
   // Fetch filter options (tools)
   const { data: filterOptions } = useQuery({
@@ -59,11 +59,11 @@ export function ExplorePage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Fetch taxonomy topics
-  const { data: taxonomyTopics } = useQuery({
-    queryKey: ['taxonomyTopics'],
+  // Fetch taxonomy categories
+  const { data: taxonomyCategories } = useQuery({
+    queryKey: ['taxonomyCategories'],
     queryFn: async () => {
-      const response = await api.get('/taxonomies/?taxonomy_type=topic');
+      const response = await api.get('/taxonomies/?taxonomy_type=category');
       return response.data.results as Taxonomy[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -78,7 +78,7 @@ export function ExplorePage() {
   const exploreParams: ExploreParams = {
     tab: activeTab === 'for-you' ? 'for-you' : activeTab === 'trending' ? 'trending' : 'all',
     search: searchQuery || undefined,
-    topics: selectedTopics.length > 0 ? selectedTopics : undefined,
+    topics: selectedCategories.length > 0 ? selectedCategories : undefined,
     tools: selectedToolIds.length > 0 ? selectedToolIds : undefined,
     page,
     page_size: 30,
@@ -142,8 +142,8 @@ export function ExplorePage() {
   };
 
   // Handle filter changes
-  const handleTopicsChange = (topics: number[]) => {
-    setSelectedTopics(topics);
+  const handleCategoriesChange = (categories: number[]) => {
+    setSelectedCategories(categories);
     setPage(1);
   };
 
@@ -153,7 +153,7 @@ export function ExplorePage() {
   };
 
   const handleClearFilters = () => {
-    setSelectedTopics([]);
+    setSelectedCategories([]);
     setSelectedToolSlugs([]);
     setPage(1);
   };
@@ -169,7 +169,7 @@ export function ExplorePage() {
   };
 
   // Show filters only for certain tabs
-  const showFilters = activeTab === 'topics' || activeTab === 'tools';
+  const showFilters = activeTab === 'categories' || activeTab === 'tools';
 
   return (
     <>
@@ -201,11 +201,11 @@ export function ExplorePage() {
             {showFilters && (
               <div className="mb-6">
                 <FilterPanel
-                  topics={activeTab === 'topics' ? (taxonomyTopics ?? []) : []}
+                  topics={activeTab === 'categories' ? (taxonomyCategories ?? []) : []}
                   tools={activeTab === 'tools' ? (filterOptions?.tools ?? []) : []}
-                  selectedTopics={selectedTopics}
+                  selectedTopics={selectedCategories}
                   selectedToolSlugs={selectedToolSlugs}
-                  onTopicsChange={handleTopicsChange}
+                  onTopicsChange={handleCategoriesChange}
                   onToolsChange={handleToolsChange}
                   onClear={handleClearFilters}
                 />

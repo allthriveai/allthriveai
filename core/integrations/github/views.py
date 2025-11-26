@@ -352,6 +352,14 @@ def github_import_confirm(request):
             project.save(update_fields=['content'])
             logger.debug(f'Stored README content for project {project.slug}')
 
+        # Invalidate user projects cache so new project appears immediately
+        from django.core.cache import cache
+
+        username_lower = request.user.username.lower()
+        cache.delete(f'projects:v2:{username_lower}:own')
+        cache.delete(f'projects:v2:{username_lower}:public')
+        logger.debug(f'Invalidated project cache for user {request.user.username}')
+
         # Award points for project creation (using unified points system)
         if was_created:
             try:

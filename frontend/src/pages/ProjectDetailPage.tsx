@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link, Outlet } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { getProjectBySlug, deleteProject, updateProject, toggleProjectLike } from '@/services/projects';
@@ -12,6 +12,8 @@ import { sanitizeHtml } from '@/utils/sanitize';
 import { SlideUpHero } from '@/components/projects/SlideUpHero';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ProjectEditTray } from '@/components/projects/ProjectEditTray';
+import mermaid from 'mermaid';
+import { marked } from 'marked';
 import {
   ArrowLeftIcon,
   CodeBracketIcon,
@@ -44,6 +46,58 @@ const typeLabels = {
   prompt: 'Prompt',
   other: 'Project',
 };
+
+// Initialize Mermaid
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'default',
+  securityLevel: 'loose',
+});
+
+// Configure marked for inline parsing
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
+
+// Mermaid Diagram Component
+function MermaidDiagram({ code }: { code: string }) {
+  const diagramRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [diagramId] = useState(`mermaid-${Math.random().toString(36).substr(2, 9)}`);
+
+  useEffect(() => {
+    if (!diagramRef.current || !code) return;
+
+    async function renderDiagram() {
+      try {
+        setError(null);
+        if (diagramRef.current) {
+          diagramRef.current.innerHTML = '';
+          const { svg } = await mermaid.render(diagramId, code);
+          if (diagramRef.current) {
+            diagramRef.current.innerHTML = svg;
+          }
+        }
+      } catch (err) {
+        console.error('Mermaid rendering error:', err);
+        setError('Failed to render diagram');
+      }
+    }
+
+    renderDiagram();
+  }, [code, diagramId]);
+
+  if (error) {
+    return (
+      <div className="text-red-600 dark:text-red-400 text-sm p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+        {error}
+      </div>
+    );
+  }
+
+  return <div ref={diagramRef} className="flex justify-center" />;
+}
 
 export default function ProjectDetailPage() {
   const { username, projectSlug } = useParams<{ username: string; projectSlug: string }>();
@@ -588,7 +642,36 @@ export default function ProjectDetailPage() {
                   if (heroMode === 'video' && heroVideoUrl) {
                     const videoInfo = parseVideoUrl(heroVideoUrl);
 
-                    if (videoInfo) {
+                    // Check if it's a direct video file (MP4, WebM, OGG) or uploaded video
+                    const isDirectVideo = heroVideoUrl.endsWith('.mp4') ||
+                                         heroVideoUrl.endsWith('.webm') ||
+                                         heroVideoUrl.endsWith('.ogg') ||
+                                         heroVideoUrl.includes('/projects/videos/');
+
+                    if (isDirectVideo) {
+                      // Render direct video file
+                      return (
+                        <div className="w-full flex justify-center">
+                          <div className="relative group inline-block">
+                            {/* Glowing backdrop */}
+                            <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
+
+                            {/* Video container */}
+                            <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl">
+                              <video
+                                src={heroVideoUrl}
+                                controls
+                                className="rounded-xl md:rounded-2xl max-h-[80vh] max-w-full"
+                                onError={(e) => {
+                                  console.error('Video load error');
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    } else if (videoInfo) {
+                      // Render embedded video (YouTube, Vimeo, Loom)
                       let embedUrl = '';
 
                       if (videoInfo.platform === 'youtube') {
@@ -775,7 +858,13 @@ export default function ProjectDetailPage() {
                         block.style === 'quote' ? 'border-l-4 border-primary-500 pl-6 italic' :
                         ''
                       }`}
-                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }}
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeHtml(
+                          block.markdown !== false
+                            ? marked.parse(block.content) as string
+                            : block.content
+                        )
+                      }}
                     />
                   )}
 
@@ -784,7 +873,7 @@ export default function ProjectDetailPage() {
                       <img
                         src={block.url}
                         alt={block.caption || ''}
-                        className="w-full rounded-xl"
+                        className="w-full max-w-3xl mx-auto rounded-xl shadow-lg"
                       />
                       {block.caption && (
                         <figcaption className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
@@ -792,6 +881,36 @@ export default function ProjectDetailPage() {
                         </figcaption>
                       )}
                     </figure>
+                  )}
+
+                  {block.type === 'mermaid' && (
+                    <div className="my-8">
+                      <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg overflow-x-auto">
+                        <MermaidDiagram code={block.code} />
+                      </div>
+                      {block.caption && (
+                        <p className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
+                          {block.caption}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {block.type === 'code_snippet' && (
+                    <div className="my-6">
+                      {block.filename && (
+                        <div className="bg-gray-800 text-gray-300 px-4 py-2 rounded-t-lg text-sm font-mono">
+                          {block.filename}
+                        </div>
+                      )}
+                      <pre className={`bg-gray-900 text-gray-100 p-4 overflow-x-auto ${
+                        block.filename ? 'rounded-b-lg' : 'rounded-lg'
+                      }`}>
+                        <code className={`language-${block.language} text-sm`}>
+                          {block.code}
+                        </code>
+                      </pre>
+                    </div>
                   )}
 
                   {block.type === 'imageGrid' && (
@@ -838,7 +957,13 @@ export default function ProjectDetailPage() {
                                       nestedBlock.style === 'quote' ? 'border-l-4 border-primary-500 pl-4 italic' :
                                       ''
                                     }`}
-                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(nestedBlock.content) }}
+                                    dangerouslySetInnerHTML={{
+                                      __html: sanitizeHtml(
+                                        nestedBlock.markdown !== false
+                                          ? marked.parse(nestedBlock.content) as string
+                                          : nestedBlock.content
+                                      )
+                                    }}
                                   />
                                 )}
                                 {nestedBlock.type === 'image' && nestedBlock.url && (

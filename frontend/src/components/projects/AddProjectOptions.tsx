@@ -55,7 +55,7 @@ export function AddProjectOptions({ onImport, onDescribe, onBuild, onManual }: A
                 Describe Your Project
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                AI creates your project page for you
+                All Thrive will create your project portfolio page from your description
               </p>
             </div>
           </div>

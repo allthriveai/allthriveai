@@ -509,7 +509,8 @@ class GitHubSyncService:
         owner = repo.get('owner', {})
         readme_content = repo.get('readme_content', '')
 
-        # Build content structure
+        # Build content structure with README blocks
+        # Note: blocks will be populated after AI analysis
         content = {
             'github': {
                 'url': html_url,
@@ -559,6 +560,11 @@ class GitHubSyncService:
             'category_ids': [],
             'topics': [],
             'tool_names': [],
+            'readme_blocks': [],
+            'hero_image': None,
+            'hero_quote': None,
+            'mermaid_diagrams': [],
+            'demo_urls': [],
         }
         try:
             logger.info(f'Attempting AI analysis for {name}')
@@ -582,6 +588,54 @@ class GitHubSyncService:
                 description = truncated[:last_space].rstrip()
             else:
                 description = truncated.rstrip()
+
+        # Add README blocks to content if available
+        readme_blocks = ai_metadata.get('readme_blocks', [])
+        if readme_blocks:
+            content['blocks'] = readme_blocks
+            logger.info(f'Added {len(readme_blocks)} blocks from README for project {name}')
+
+        # Add Mermaid diagrams if found or generated
+        mermaid_diagrams = ai_metadata.get('mermaid_diagrams', [])
+        if mermaid_diagrams:
+            content['mermaid_diagrams'] = mermaid_diagrams
+            logger.info(f'Added {len(mermaid_diagrams)} Mermaid diagrams for project {name}')
+
+        # Add generated diagram if no diagrams found in README
+        if not mermaid_diagrams and ai_metadata.get('generated_diagram'):
+            content['mermaid_diagrams'] = [ai_metadata['generated_diagram']]
+            logger.info(f'Added auto-generated architecture diagram for project {name}')
+
+        # Add demo URLs if found
+        demo_urls = ai_metadata.get('demo_urls', [])
+        if demo_urls:
+            content['demo_urls'] = demo_urls
+            logger.info(f'Added {len(demo_urls)} demo URLs for project {name}')
+
+        # Use hero image from README if available and better than current
+        readme_hero_image = ai_metadata.get('hero_image')
+        if readme_hero_image and not featured_image_url:
+            featured_image_url = readme_hero_image
+            logger.info(f'Using README hero image from parser: {readme_hero_image[:100]}')
+
+        # Use hero quote if available and it's meaningful (not just empty links)
+        hero_quote = ai_metadata.get('hero_quote')
+        if hero_quote and len(hero_quote.strip()) > 20:
+            # Check if quote is meaningful (not just markdown links)
+            # Skip quotes that are mostly markdown link syntax like [](url)
+            link_content = hero_quote.replace('[', '').replace(']', '').replace('(', '').replace(')', '')
+            if link_content.strip():
+                content['heroQuote'] = hero_quote
+                # Only use quote mode if we don't have a good featured image
+                if not featured_image_url or 'opengraph.githubassets.com' in featured_image_url:
+                    content['heroDisplayMode'] = 'quote'
+                else:
+                    content['heroDisplayMode'] = 'image'
+                logger.info(f'Added hero quote: {hero_quote[:50]}...')
+
+        # Default to image mode if we have a featured image and no hero mode set
+        if featured_image_url and 'heroDisplayMode' not in content:
+            content['heroDisplayMode'] = 'image'
 
         # Create project with auto-populated fields
         project = Project.objects.create(
