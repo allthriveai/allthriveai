@@ -636,83 +636,81 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
       {/* Content Area - Single column, centered */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div>
-          {/* Tabs - Centered with tight spacing */}
+          {/* Tabs - Centered with Select button next to tabs */}
           <div className="flex justify-center border-b border-gray-200 dark:border-gray-800 mb-6">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  onTabChange(tab.id);
-                  if (selectionMode) {
-                    exitSelectionMode();
-                  }
-                }}
-                className={`px-6 py-2.5 text-sm font-medium transition-all border-b-2 -mb-[2px] ${
-                  activeTab === tab.id
-                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Tab Actions (Select Mode) */}
-          {isAuthenticated && isOwnProfile && (activeTab === 'showcase' || activeTab === 'playground') && (
-            <div className="flex items-center justify-end gap-2 mb-6">
-                {selectionMode ? (
-                  <>
-                    <button
-                      onClick={exitSelectionMode}
-                      className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    {selectedProjectIds.size > 0 && (
+            <div className="flex items-end">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    onTabChange(tab.id);
+                    if (selectionMode) {
+                      exitSelectionMode();
+                    }
+                  }}
+                  className={`px-6 py-2.5 text-sm font-medium transition-all border-b-2 -mb-[2px] ${
+                    activeTab === tab.id
+                      ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+              {isAuthenticated && isOwnProfile && (activeTab === 'showcase' || activeTab === 'playground') && (
+                <div className="flex items-center ml-4 mb-2">
+                  {selectionMode ? (
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setShowDeleteConfirm(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-sm"
+                        onClick={exitSelectionMode}
+                        className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 transition-colors"
                       >
-                        <TrashIcon className="w-5 h-5" />
-                        Delete ({selectedProjectIds.size})
+                        Cancel
                       </button>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {((activeTab === 'showcase' && projects.showcase.length > 0) ||
-                      (activeTab === 'playground' && projects.playground.length > 0)) && (
+                      {selectedProjectIds.size > 0 && (
+                        <button
+                          onClick={() => setShowDeleteConfirm(true)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-sm"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                          Delete ({selectedProjectIds.size})
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    ((activeTab === 'showcase' && projects.showcase.length > 0) ||
+                     (activeTab === 'playground' && projects.playground.length > 0)) && (
                       <button
                         onClick={() => setSelectionMode(true)}
-                        className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg transition-colors"
                       >
-                        <CheckIcon className="w-5 h-5" />
+                        <CheckIcon className="w-4 h-4" />
                         Select
                       </button>
-                    )}
-                  </>
-                )}
+                    )
+                  )}
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Tab Content */}
           {activeTab === 'showcase' && (
             <div>
               {isLoading ? (
-                <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
+                <div className="columns-1 sm:columns-2 lg:columns-3 gap-4" style={{ columnFill: 'auto' }}>
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                       <div
                         key={i}
-                        className="break-inside-avoid mb-2 rounded overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse"
+                        className="break-inside-avoid mb-4 rounded overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse inline-block w-full"
                         style={{ height: `${300 + (i % 3) * 120}px` }}
                       />
                     ))}
                   </div>
               ) : projects.showcase.filter(p => p.isShowcase).length > 0 ? (
-                <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
+                <div className="columns-1 sm:columns-2 lg:columns-3 gap-4" style={{ columnFill: 'auto' }}>
                     {projects.showcase.filter(p => p.isShowcase).map((project) => (
-                      <div key={project.id} className="break-inside-avoid mb-2">
+                      <div key={project.id} className="break-inside-avoid mb-4 inline-block w-full">
                         <ProjectCard
                           project={project}
                           selectionMode={selectionMode}
@@ -768,19 +766,19 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                 </div>
 
                 {isLoading ? (
-                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
+                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-4" style={{ columnFill: 'auto' }}>
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                       <div
                         key={i}
-                        className="break-inside-avoid mb-2 rounded overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse"
+                        className="break-inside-avoid mb-4 rounded overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse inline-block w-full"
                         style={{ height: `${300 + (i % 3) * 120}px` }}
                       />
                     ))}
                   </div>
                 ) : projects.playground.length > 0 ? (
-                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
+                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-4" style={{ columnFill: 'auto' }}>
                     {projects.playground.map((project) => (
-                      <div key={project.id} className="break-inside-avoid mb-2">
+                      <div key={project.id} className="break-inside-avoid mb-4 inline-block w-full">
                         <ProjectCard
                           project={project}
                           selectionMode={selectionMode}

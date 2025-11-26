@@ -115,7 +115,14 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
                 // Item with submenu
                 <>
                   <button
-                    onClick={() => toggleSubItem(item.label)}
+                    onClick={() => {
+                      // Execute the parent item's onClick if it exists
+                      if (item.onClick) {
+                        item.onClick();
+                      }
+                      // Toggle submenu
+                      toggleSubItem(item.label);
+                    }}
                     className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 hover:bg-white/[0.15] dark:hover:bg-white/[0.1] rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl"
                   >
                     <span>{item.label}</span>

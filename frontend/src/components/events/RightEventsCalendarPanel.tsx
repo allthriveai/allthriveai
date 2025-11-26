@@ -103,7 +103,7 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
 
       {/* Panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-full md:w-96 lg:w-[32rem] bg-white dark:bg-gray-900 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
+        className={`fixed top-16 right-0 h-[calc(100vh-4rem)] w-full md:w-96 lg:w-[32rem] bg-white dark:bg-gray-900 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

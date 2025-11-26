@@ -76,7 +76,7 @@ export function ChatInterface({
     <>
       {/* Sliding Panel */}
       <div
-        className={`fixed right-0 top-0 w-full md:w-[480px] h-screen bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col shadow-lg transition-transform duration-300 z-40 ${
+        className={`fixed right-0 top-16 w-full md:w-[480px] h-[calc(100vh-4rem)] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col shadow-lg transition-transform duration-300 z-40 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
