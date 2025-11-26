@@ -1,1 +1,0 @@
-export { RightChatPanel } from './RightChatPanel';
