@@ -639,3 +639,572 @@ describe('ProfilePage - Project Selection State Management', () => {
     });
   });
 });
+
+describe('ProfilePage - Sidebar Toggle State', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    });
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [],
+      playground: [],
+    });
+  });
+
+  it('should toggle sidebar open/closed state when toggle buttons are clicked', async () => {
+    render(
+      <MemoryRouter initialEntries={['/testuser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
+    });
+
+    // Find the collapse button (arrow left)
+    const collapseButtons = screen.getAllByTestId('icon').filter(icon =>
+      icon.textContent === 'arrow-left'
+    );
+    expect(collapseButtons.length).toBeGreaterThan(0);
+
+    // Click to collapse
+    fireEvent.click(collapseButtons[0].closest('button')!);
+
+    await waitFor(() => {
+      // Find the expand button (arrow right)
+      const expandButtons = screen.getAllByTestId('icon').filter(icon =>
+        icon.textContent === 'arrow-right'
+      );
+      expect(expandButtons.length).toBeGreaterThan(0);
+    });
+
+    // Click to expand
+    const expandButtons = screen.getAllByTestId('icon').filter(icon =>
+      icon.textContent === 'arrow-right'
+    );
+    fireEvent.click(expandButtons[0].closest('button')!);
+
+    await waitFor(() => {
+      // Should show collapse button again
+      const collapseButtonsAgain = screen.getAllByTestId('icon').filter(icon =>
+        icon.textContent === 'arrow-left'
+      );
+      expect(collapseButtonsAgain.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('should change sidebar width when toggling between open and closed states', async () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/testuser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
+    });
+
+    // Find sidebar element
+    const sidebar = container.querySelector('aside');
+    expect(sidebar).toBeInTheDocument();
+
+    // Initially should be wide (w-80)
+    expect(sidebar).toHaveClass('w-80');
+
+    // Collapse sidebar
+    const collapseButtons = screen.getAllByTestId('icon').filter(icon =>
+      icon.textContent === 'arrow-left'
+    );
+    fireEvent.click(collapseButtons[0].closest('button')!);
+
+    await waitFor(() => {
+      expect(sidebar).toHaveClass('w-20');
+    });
+
+    // Expand sidebar
+    const expandButtons = screen.getAllByTestId('icon').filter(icon =>
+      icon.textContent === 'arrow-right'
+    );
+    fireEvent.click(expandButtons[0].closest('button')!);
+
+    await waitFor(() => {
+      expect(sidebar).toHaveClass('w-80');
+    });
+  });
+});
+
+describe('ProfilePage - Sidebar Scroll Position Behavior', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    });
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [],
+      playground: [],
+    });
+  });
+
+  it('should transition sidebar from sticky to fixed position when scrolling past banner', async () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/testuser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
+    });
+
+    const sidebar = container.querySelector('aside');
+    expect(sidebar).toBeInTheDocument();
+
+    // Initially should be sticky
+    expect(sidebar).toHaveClass('sticky');
+    expect(sidebar).not.toHaveClass('fixed');
+
+    // Find scroll container
+    const scrollContainer = container.querySelector('.flex-1.overflow-y-auto');
+    expect(scrollContainer).toBeInTheDocument();
+
+    // Simulate scrolling past banner (256px)
+    Object.defineProperty(scrollContainer!, 'scrollTop', {
+      writable: true,
+      value: 300,
+    });
+    fireEvent.scroll(scrollContainer!);
+
+    await waitFor(() => {
+      expect(sidebar).toHaveClass('fixed');
+      expect(sidebar).not.toHaveClass('sticky');
+    });
+  });
+
+  it('should transition sidebar from fixed back to sticky when scrolling to top', async () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/testuser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
+    });
+
+    const sidebar = container.querySelector('aside');
+    const scrollContainer = container.querySelector('.flex-1.overflow-y-auto');
+
+    // Scroll past banner
+    Object.defineProperty(scrollContainer!, 'scrollTop', {
+      writable: true,
+      value: 300,
+    });
+    fireEvent.scroll(scrollContainer!);
+
+    await waitFor(() => {
+      expect(sidebar).toHaveClass('fixed');
+    });
+
+    // Scroll back to top
+    Object.defineProperty(scrollContainer!, 'scrollTop', {
+      writable: true,
+      value: 100,
+    });
+    fireEvent.scroll(scrollContainer!);
+
+    await waitFor(() => {
+      expect(sidebar).toHaveClass('sticky');
+      expect(sidebar).not.toHaveClass('fixed');
+    });
+  });
+
+  it('should show spacer when sidebar is fixed to prevent content shift', async () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/testuser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
+    });
+
+    const scrollContainer = container.querySelector('.flex-1.overflow-y-auto');
+
+    // Initially no spacer should be visible
+    let spacers = Array.from(container.querySelectorAll('div')).filter(div =>
+      div.hasAttribute('aria-hidden') && div.getAttribute('aria-hidden') === 'true'
+    );
+    expect(spacers.length).toBe(0);
+
+    // Scroll past banner
+    Object.defineProperty(scrollContainer!, 'scrollTop', {
+      writable: true,
+      value: 300,
+    });
+    fireEvent.scroll(scrollContainer!);
+
+    await waitFor(() => {
+      spacers = Array.from(container.querySelectorAll('div')).filter(div =>
+        div.hasAttribute('aria-hidden') && div.getAttribute('aria-hidden') === 'true'
+      );
+      expect(spacers.length).toBeGreaterThan(0);
+    });
+  });
+});
+
+describe('ProfilePage - Sidebar Projects Count', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    });
+  });
+
+  it('should display correct total number of projects (showcase + playground)', async () => {
+    const showcaseProjects: Project[] = [
+      { ...mockProject, id: 1, title: 'Showcase 1' },
+      { ...mockProject, id: 2, title: 'Showcase 2' },
+      { ...mockProject, id: 3, title: 'Showcase 3' },
+    ];
+
+    const playgroundProjects: Project[] = [
+      { ...mockProject, id: 4, title: 'Playground 1' },
+      { ...mockProject, id: 5, title: 'Playground 2' },
+    ];
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: showcaseProjects,
+      playground: playgroundProjects,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      // Find the Projects stat
+      const projectsLabel = screen.getByText('Projects');
+      expect(projectsLabel).toBeInTheDocument();
+
+      // Find the number above it (should be 5 = 3 showcase + 2 playground)
+      const statsContainer = projectsLabel.closest('div');
+      const projectCount = statsContainer?.querySelector('.text-lg.font-bold');
+      expect(projectCount?.textContent).toBe('5');
+    });
+  });
+
+  it('should display 0 when there are no projects', async () => {
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [],
+      playground: [],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const projectsLabel = screen.getByText('Projects');
+      const statsContainer = projectsLabel.closest('div');
+      const projectCount = statsContainer?.querySelector('.text-lg.font-bold');
+      expect(projectCount?.textContent).toBe('0');
+    });
+  });
+
+  it('should update count when projects are loaded dynamically', async () => {
+    // Start with no projects
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [],
+      playground: [],
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/testuser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const projectsLabel = screen.getByText('Projects');
+      const statsContainer = projectsLabel.closest('div');
+      const projectCount = statsContainer?.querySelector('.text-lg.font-bold');
+      expect(projectCount?.textContent).toBe('0');
+    });
+
+    // Update with projects
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [{ ...mockProject, id: 1 }],
+      playground: [{ ...mockProject, id: 2 }],
+    });
+
+    rerender(
+      <MemoryRouter initialEntries={['/testuser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const projectsLabel = screen.getByText('Projects');
+      const statsContainer = projectsLabel.closest('div');
+      const projectCount = statsContainer?.querySelector('.text-lg.font-bold');
+      expect(projectCount?.textContent).toBe('2');
+    });
+  });
+});
+
+describe('ProfilePage - Select Button Conditional Rendering', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should show Select button for profile owner on Showcase tab with projects', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    });
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [{ ...mockProject, id: 1 }],
+      playground: [],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser?tab=showcase']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Select')).toBeInTheDocument();
+    });
+  });
+
+  it('should show Select button for profile owner on Playground tab with projects', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    });
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [],
+      playground: [{ ...mockProject, id: 1 }],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Select')).toBeInTheDocument();
+    });
+  });
+
+  it('should NOT show Select button on Activity tab', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    });
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [{ ...mockProject, id: 1 }],
+      playground: [],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser?tab=activity']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('activity-feed')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Select')).not.toBeInTheDocument();
+  });
+
+  it('should NOT show Select button when viewing someone else\'s profile', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    });
+
+    vi.mocked(authService.getUserByUsername).mockResolvedValue(mockOtherUser);
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [{ ...mockProject, id: 1, username: 'otheruser' }],
+      playground: [],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/otheruser?tab=showcase']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Select')).not.toBeInTheDocument();
+  });
+
+  it('should NOT show Select button when Showcase tab has no projects', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    });
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [],
+      playground: [{ ...mockProject, id: 1 }],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser?tab=showcase']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('No projects yet')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Select')).not.toBeInTheDocument();
+  });
+
+  it('should NOT show Select button when Playground tab has no projects', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    });
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [{ ...mockProject, id: 1 }],
+      playground: [],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('No playground projects yet.')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Select')).not.toBeInTheDocument();
+  });
+
+  it('should hide Select button when switching from tab with projects to tab without', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    });
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [{ ...mockProject, id: 1 }],
+      playground: [],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser?tab=showcase']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Select')).toBeInTheDocument();
+    });
+
+    // Switch to Playground tab (which has no projects)
+    const playgroundTab = screen.getByText('Playground');
+    fireEvent.click(playgroundTab);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Select')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should show Select button when switching to tab with projects', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      isAuthenticated: true,
+    });
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [],
+      playground: [{ ...mockProject, id: 1 }],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser?tab=showcase']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('Select')).not.toBeInTheDocument();
+    });
+
+    // Switch to Playground tab (which has projects)
+    const playgroundTab = screen.getByText('Playground');
+    fireEvent.click(playgroundTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Select')).toBeInTheDocument();
+    });
+  });
+});

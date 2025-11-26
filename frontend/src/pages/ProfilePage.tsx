@@ -233,7 +233,7 @@ export default function ProfilePage() {
               <div className="flex items-end gap-8 w-full">
                 {/* Large Avatar */}
                 <div className="flex-shrink-0">
-                  <div className="w-40 h-40 rounded-2xl ring-4 ring-white dark:ring-gray-800 shadow-xl overflow-hidden bg-gray-100 dark:bg-white/5">
+                  <div className="w-40 h-40 rounded ring-4 ring-white dark:ring-gray-800 shadow-xl overflow-hidden bg-gray-100 dark:bg-white/5">
                     <img
                       src={displayUser?.avatarUrl || `https://ui-avatars.com/api/?name=${displayUser?.fullName || 'User'}&background=random`}
                       className="w-full h-full object-cover"
@@ -316,7 +316,7 @@ export default function ProfilePage() {
                     )}
 
                     {/* Stats Grid */}
-                    <div className="grid grid-cols-3 gap-2 border-y border-gray-200 dark:border-white/10 py-4 mb-6">
+                    <div className={`grid grid-cols-3 gap-2 ${scrolled ? 'border-y' : 'border-b'} border-gray-200 dark:border-white/10 py-4 mb-6`}>
                       <div className="text-center">
                         <div className="text-lg font-bold text-gray-900 dark:text-white">
                           {displayUser?.totalPoints || 0}
@@ -476,36 +476,41 @@ export default function ProfilePage() {
 
                     <div className="border-t border-gray-200 dark:border-gray-800 w-full" />
 
-                    {/* Tab Icons */}
+                    {/* Tab Icons - Always show all icons */}
                     <div className="flex flex-col gap-3">
+                      {/* Showcase Icon - Always visible */}
                       <button
                         onClick={() => handleTabChange('showcase')}
                         className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
                           activeTab === 'showcase'
-                            ? 'bg-brand-primary text-white'
+                            ? 'bg-teal-500 text-white shadow-md'
                             : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
                         }`}
                         title="Showcase"
                       >
                         <FontAwesomeIcon icon={faTh} className="w-3 h-3" />
                       </button>
+
+                      {/* Playground Icon - Always visible */}
                       <button
                         onClick={() => handleTabChange('playground')}
                         className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
                           activeTab === 'playground'
-                            ? 'bg-brand-primary text-white'
+                            ? 'bg-teal-500 text-white shadow-md'
                             : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
                         }`}
                         title="Playground"
                       >
                         <FontAwesomeIcon icon={faFlask} className="w-3 h-3" />
                       </button>
+
+                      {/* Activity Icon - Always visible for profile owner */}
                       {isOwnProfile && (
                         <button
                           onClick={() => handleTabChange('activity')}
                           className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
                             activeTab === 'activity'
-                              ? 'bg-brand-primary text-white'
+                              ? 'bg-teal-500 text-white shadow-md'
                               : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
                           }`}
                           title="Activity"
@@ -525,20 +530,29 @@ export default function ProfilePage() {
               {/* Top Header: Tabs & Actions */}
               <div className="flex items-center justify-center border-b border-gray-200 dark:border-gray-800 mb-8 pt-2">
                 <div className="flex items-baseline space-x-8">
-                  {/* Tabs */}
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => handleTabChange(tab.id as any)}
-                      className={`py-4 px-1 text-sm font-medium border-b-2 transition-colors ${
-                        activeTab === tab.id
-                          ? 'border-teal-500 text-teal-600 dark:text-teal-400'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
+                  {/* Tabs with Icons */}
+                  {tabs.map((tab) => {
+                    const tabIcons = {
+                      showcase: faTh,
+                      playground: faFlask,
+                      activity: faChartLine,
+                    };
+
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => handleTabChange(tab.id as any)}
+                        className={`flex items-center gap-2 py-4 px-1 text-sm font-medium border-b-2 transition-colors ${
+                          activeTab === tab.id
+                            ? 'border-teal-500 text-teal-600 dark:text-teal-400'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                      >
+                        <FontAwesomeIcon icon={tabIcons[tab.id as keyof typeof tabIcons]} className="w-3.5 h-3.5" />
+                        {tab.label}
+                      </button>
+                    );
+                  })}
 
                   {/* Select Button - Only for profile owner on Showcase/Playground tabs */}
                   {isOwnProfile &&
@@ -559,67 +573,69 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Masonry Grid Content */}
-              <div className="columns-1 md:columns-2 lg:columns-3 gap-6 pb-20 space-y-6">
-                {/* Showcase Tab */}
-                {activeTab === 'showcase' && (
-                  projects.showcase.length > 0 ? (
-                    projects.showcase.map((project) => (
-                      <div key={project.id} className="break-inside-avoid mb-6">
-                        <ProjectCard
-                          project={project}
-                          onEdit={() => navigate(`/${username}/${project.slug}/edit`)}
-                          onDelete={async () => {}}
-                          isOwner={isOwnProfile}
-                          variant="masonry"
-                          selectionMode={selectionMode}
-                          isSelected={selectedProjectIds.has(project.id)}
-                          onSelect={toggleSelection}
-                        />
+              {/* Masonry Grid Content - Only for Showcase and Playground */}
+              {(activeTab === 'showcase' || activeTab === 'playground') && (
+                <div className="columns-1 md:columns-2 lg:columns-3 gap-6 pb-20 space-y-6">
+                  {/* Showcase Tab */}
+                  {activeTab === 'showcase' && (
+                    projects.showcase.length > 0 ? (
+                      projects.showcase.map((project) => (
+                        <div key={project.id} className="break-inside-avoid mb-6">
+                          <ProjectCard
+                            project={project}
+                            onEdit={() => navigate(`/${username}/${project.slug}/edit`)}
+                            onDelete={async () => {}}
+                            isOwner={isOwnProfile}
+                            variant="masonry"
+                            selectionMode={selectionMode}
+                            isSelected={selectedProjectIds.has(project.id)}
+                            onSelect={toggleSelection}
+                          />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-20 text-center">
+                        <div className="w-20 h-20 bg-gray-200 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No projects yet</h3>
+                        <p className="text-gray-500 dark:text-gray-400">This portfolio is waiting for its first masterpiece.</p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="py-20 text-center">
-                      <div className="w-20 h-20 bg-gray-200 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-gray-400" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No projects yet</h3>
-                      <p className="text-gray-500 dark:text-gray-400">This portfolio is waiting for its first masterpiece.</p>
-                    </div>
-                  )
-                )}
+                    )
+                  )}
 
-                {/* Playground Tab */}
-                {activeTab === 'playground' && (
-                  projects.playground.length > 0 ? (
-                    projects.playground.map((project) => (
-                      <div key={project.id} className="break-inside-avoid mb-6">
-                        <ProjectCard
-                          project={project}
-                          onEdit={() => navigate(`/${username}/${project.slug}/edit`)}
-                          onDelete={async () => {}}
-                          isOwner={isOwnProfile}
-                          variant="masonry"
-                          selectionMode={selectionMode}
-                          isSelected={selectedProjectIds.has(project.id)}
-                          onSelect={toggleSelection}
-                        />
+                  {/* Playground Tab */}
+                  {activeTab === 'playground' && (
+                    projects.playground.length > 0 ? (
+                      projects.playground.map((project) => (
+                        <div key={project.id} className="break-inside-avoid mb-6">
+                          <ProjectCard
+                            project={project}
+                            onEdit={() => navigate(`/${username}/${project.slug}/edit`)}
+                            onDelete={async () => {}}
+                            isOwner={isOwnProfile}
+                            variant="masonry"
+                            selectionMode={selectionMode}
+                            isSelected={selectedProjectIds.has(project.id)}
+                            onSelect={toggleSelection}
+                          />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-20 text-center">
+                        <p className="text-gray-500 dark:text-gray-400">No playground projects yet.</p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="py-20 text-center">
-                      <p className="text-gray-500 dark:text-gray-400">No playground projects yet.</p>
-                    </div>
-                  )
-                )}
+                    )
+                  )}
+                </div>
+              )}
 
-                {/* Activity Tab - Only accessible to profile owner */}
-                {activeTab === 'activity' && isOwnProfile && (
-                  <div className="break-inside-avoid">
-                    <ActivityFeed />
-                  </div>
-                )}
-              </div>
+              {/* Activity Tab - Full width layout */}
+              {activeTab === 'activity' && isOwnProfile && (
+                <div className="pb-20">
+                  <ActivityFeed />
+                </div>
+              )}
             </div>
           </div>
         </div>
