@@ -59,6 +59,7 @@ export default function ProfilePage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBattleModal, setShowBattleModal] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   const { achievementsByCategory, isLoading: isAchievementsLoading } = useAchievements();
 
@@ -110,6 +111,20 @@ export default function ProfilePage() {
       setProfileUser(user);
     }
   }, [username, user, isOwnProfile]);
+
+  // Track scroll position to show/hide sidebar profile info
+  useEffect(() => {
+    const scrollContainer = document.querySelector('.profile-scroll-container');
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      // Show sidebar info when scrolled past banner (256px = h-64)
+      setScrolled(scrollContainer.scrollTop > 200);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Fetch projects
   useEffect(() => {

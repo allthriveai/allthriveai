@@ -71,11 +71,18 @@ export function UserMenu({ user }: UserMenuProps) {
     },
   ];
 
+  const handleAvatarClick = () => {
+    // Toggle dropdown
+    setIsOpen(!isOpen);
+    // Navigate to profile page
+    navigate(`/${user.username}?tab=showcase`);
+  };
+
   return (
     <div ref={dropdownRef} className="relative">
       {/* Avatar Button - Liquid Glass */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleAvatarClick}
         className="flex items-center gap-2 p-0.5 rounded-full ring-2 ring-white/20 hover:ring-4 hover:ring-teal-400/50 transition-all duration-300 hover:scale-105 shadow-lg shadow-teal-500/20 hover:shadow-xl hover:shadow-teal-500/30 backdrop-blur-xl"
         aria-label="User menu"
       >

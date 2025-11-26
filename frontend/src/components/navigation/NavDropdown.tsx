@@ -79,19 +79,17 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
       {/* Dropdown Trigger - Click to navigate, Hover to show dropdown */}
       <button
         onClick={() => {
-          // Navigate to section path if available
-          if (section.path) {
-            if (section.onClick) {
-              section.onClick();
-            } else {
-              navigate(section.path);
-            }
+          // Execute onClick handler or navigate to section path
+          if (section.onClick) {
+            section.onClick();
+          } else if (section.path) {
+            navigate(section.path);
           }
         }}
-        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 backdrop-blur-xl border ${
+        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 ${
           isActive || isOpen
-            ? 'bg-teal-400/[0.15] dark:bg-teal-500/[0.12] text-teal-700 dark:text-teal-300 border-teal-400/40 dark:border-teal-500/40 shadow-lg shadow-teal-500/20'
-            : 'bg-white/[0.05] hover:bg-white/[0.15] dark:bg-white/[0.03] dark:hover:bg-white/[0.1] text-gray-900 dark:text-gray-100 border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-black/5'
+            ? 'bg-teal-400/[0.15] dark:bg-teal-500/[0.12] text-teal-700 dark:text-teal-300 shadow-lg shadow-teal-500/20'
+            : 'hover:bg-white/[0.15] dark:hover:bg-white/[0.1] text-gray-900 dark:text-gray-100'
         }`}
       >
         {label}
