@@ -246,7 +246,7 @@ export default function ProjectEditorPage() {
                     <input
                       type="checkbox"
                       checked={project.isShowcase}
-                      onChange={handleToggleShowcase}
+                      onChange={editorProps.handleToggleShowcase}
                       disabled={editorProps.isSaving}
                       className="w-5 h-5 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 disabled:opacity-50"
                     />
@@ -288,7 +288,7 @@ export default function ProjectEditorPage() {
                   <button
                     onClick={() => {
                       window.open(`/${project.username}/${project.slug}`, '_blank');
-                      setShowSettingsSidebar(false);
+                      editorProps.setShowSettingsSidebar(false);
                     }}
                     className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
@@ -315,7 +315,7 @@ export default function ProjectEditorPage() {
                 <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Current URL</p>
                   <p className="text-sm font-mono text-gray-900 dark:text-white break-all">
-                    {window.location.origin}/{project.username}/{editableSlug || 'untitled'}
+                    {window.location.origin}/{project.username}/{editorProps.editableSlug || 'untitled'}
                   </p>
                 </div>
 
@@ -327,10 +327,10 @@ export default function ProjectEditorPage() {
                       <span className="text-sm text-gray-500 dark:text-gray-400">/{project.username}/</span>
                       <input
                         type="text"
-                        value={editableSlug}
+                        value={editorProps.editableSlug}
                         onChange={(e) => {
-                          setEditableSlug(e.target.value);
-                          setCustomSlugSet(true);
+                          editorProps.setEditableSlug(e.target.value);
+                          editorProps.setCustomSlugSet(true);
                         }}
                         placeholder="project-slug"
                         className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -338,12 +338,12 @@ export default function ProjectEditorPage() {
                     </div>
                   </label>
 
-                  {customSlugSet && (
+                  {editorProps.customSlugSet && (
                     <button
                       onClick={() => {
-                        setCustomSlugSet(false);
-                        const newSlug = generateSlug(projectTitle);
-                        setEditableSlug(newSlug);
+                        editorProps.setCustomSlugSet(false);
+                        const newSlug = generateSlug(editorProps.projectTitle);
+                        editorProps.setEditableSlug(newSlug);
                       }}
                       className="text-xs text-primary-600 dark:text-primary-400 hover:underline"
                     >
@@ -418,10 +418,10 @@ export default function ProjectEditorPage() {
         {/* Banner Image Section - Full Width */}
         <div className="mb-12">
           <div className="relative">
-            {thumbnailUrl ? (
-                <div className="group relative w-full h-80 overflow-hidden cursor-pointer" onClick={() => setShowBannerEdit(!showBannerEdit)}>
+            {editorProps.bannerUrl ? (
+                <div className="group relative w-full h-80 overflow-hidden cursor-pointer" onClick={() => editorProps.setShowBannerEdit(!editorProps.showBannerEdit)}>
                   <img
-                    src={thumbnailUrl}
+                    src={editorProps.bannerUrl}
                     alt="Project banner"
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -441,7 +441,7 @@ export default function ProjectEditorPage() {
                 </div>
               ) : (
                 <div className="w-full h-80 border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer"
-                     onClick={() => setShowBannerEdit(true)}>
+                     onClick={() => editorProps.setShowBannerEdit(true)}>
                   <div className="text-center">
                     <PhotoIcon className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
                     <p className="text-gray-600 dark:text-gray-400 font-medium mb-1">Add a banner image</p>
@@ -451,7 +451,7 @@ export default function ProjectEditorPage() {
               )}
 
               {/* Banner Edit Modal */}
-              {showBannerEdit && (
+              {editorProps.showBannerEdit && (
                 <div className="mt-4 mx-8 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg">
                   <div className="space-y-4">
                     {/* Gradient Options Section */}
@@ -470,10 +470,10 @@ export default function ProjectEditorPage() {
                           <button
                             key={index}
                             onClick={() => {
-                              setThumbnailUrl(gradientUrl);
+                              editorProps.setBannerUrl(gradientUrl);
                             }}
                             className={`relative h-20 rounded-lg overflow-hidden border-2 transition-all ${
-                              thumbnailUrl === gradientUrl
+                              editorProps.bannerUrl === gradientUrl
                                 ? 'border-primary-500 ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-800'
                                 : 'border-gray-300 dark:border-gray-700 hover:border-primary-400'
                             }`}
@@ -483,7 +483,7 @@ export default function ProjectEditorPage() {
                               alt={`Gradient ${index + 1}`}
                               className="w-full h-full object-cover"
                             />
-                            {thumbnailUrl === gradientUrl && (
+                            {editorProps.bannerUrl === gradientUrl && (
                               <div className="absolute inset-0 bg-primary-500/20 flex items-center justify-center">
                                 <CheckCircleIcon className="w-8 h-8 text-white drop-shadow-lg" />
                               </div>
@@ -508,7 +508,7 @@ export default function ProjectEditorPage() {
                       <div className="flex gap-2">
                         <label className="flex-1 cursor-pointer">
                           <div className="px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors text-center">
-                            {isUploadingBanner ? (
+                            {editorProps.isUploadingBanner ? (
                               <span className="text-gray-600 dark:text-gray-400">Uploading...</span>
                             ) : (
                               <span className="text-gray-600 dark:text-gray-400">Click to upload or drag & drop</span>
@@ -519,10 +519,10 @@ export default function ProjectEditorPage() {
                             accept="image/*"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
-                              if (file) handleBannerUpload(file);
+                              if (file) editorProps.handleBannerUpload(file);
                             }}
                             className="hidden"
-                            disabled={isUploadingBanner}
+                            disabled={editorProps.isUploadingBanner}
                           />
                         </label>
                       </div>
@@ -546,10 +546,10 @@ export default function ProjectEditorPage() {
                       <div className="flex gap-2">
                         <input
                           type="url"
-                          value={thumbnailUrl}
-                          onChange={(e) => setThumbnailUrl(e.target.value)}
+                          value={editorProps.bannerUrl}
+                          onChange={(e) => editorProps.setBannerUrl(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') setShowBannerEdit(false);
+                            if (e.key === 'Enter') editorProps.setShowBannerEdit(false);
                           }}
                           className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="https://example.com/banner.jpg"
@@ -561,15 +561,15 @@ export default function ProjectEditorPage() {
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => {
-                          setThumbnailUrl('');
-                          setShowBannerEdit(false);
+                          editorProps.setBannerUrl('');
+                          editorProps.setShowBannerEdit(false);
                         }}
                         className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                       >
                         Remove
                       </button>
                       <button
-                        onClick={() => setShowBannerEdit(false)}
+                        onClick={() => editorProps.setShowBannerEdit(false)}
                         className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
                       >
                         Done
@@ -620,8 +620,8 @@ export default function ProjectEditorPage() {
               </label>
               <input
                 type="text"
-                value={projectTitle}
-                onChange={(e) => setProjectTitle(e.target.value)}
+                value={editorProps.projectTitle}
+                onChange={(e) => editorProps.setProjectTitle(e.target.value)}
                 placeholder="Enter your project title"
                 disabled={editorProps.isSaving}
                 className="w-full px-4 py-3 text-lg border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
@@ -642,15 +642,15 @@ export default function ProjectEditorPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!heroQuote && !heroVideoUrl && heroSlideshowImages.length === 0) {
-                      setHeroDisplayMode('image');
+                    if (!editorProps.heroQuote && !editorProps.heroVideoUrl && editorProps.heroSlideshowImages.length === 0) {
+                      editorProps.setHeroDisplayMode('image');
                     }
                   }}
-                  disabled={heroQuote || heroVideoUrl || heroSlideshowImages.length > 0}
+                  disabled={editorProps.heroQuote || editorProps.heroVideoUrl || editorProps.heroSlideshowImages.length > 0}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                    heroDisplayMode === 'image'
+                    editorProps.heroDisplayMode === 'image'
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
-                      : heroQuote || heroVideoUrl || heroSlideshowImages.length > 0
+                      : editorProps.heroQuote || editorProps.heroVideoUrl || editorProps.heroSlideshowImages.length > 0
                       ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                       : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300'
                   }`}
@@ -661,15 +661,15 @@ export default function ProjectEditorPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!featuredImageUrl && !heroQuote && heroSlideshowImages.length === 0) {
-                      setHeroDisplayMode('video');
+                    if (!editorProps.featuredImageUrl && !editorProps.heroQuote && editorProps.heroSlideshowImages.length === 0) {
+                      editorProps.setHeroDisplayMode('video');
                     }
                   }}
-                  disabled={featuredImageUrl || heroQuote || heroSlideshowImages.length > 0}
+                  disabled={editorProps.featuredImageUrl || editorProps.heroQuote || editorProps.heroSlideshowImages.length > 0}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                    heroDisplayMode === 'video'
+                    editorProps.heroDisplayMode === 'video'
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
-                      : featuredImageUrl || heroQuote || heroSlideshowImages.length > 0
+                      : editorProps.featuredImageUrl || editorProps.heroQuote || editorProps.heroSlideshowImages.length > 0
                       ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                       : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300'
                   }`}
@@ -680,15 +680,15 @@ export default function ProjectEditorPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!featuredImageUrl && !heroVideoUrl && !heroQuote) {
-                      setHeroDisplayMode('slideshow');
+                    if (!editorProps.featuredImageUrl && !editorProps.heroVideoUrl && !editorProps.heroQuote) {
+                      editorProps.setHeroDisplayMode('slideshow');
                     }
                   }}
-                  disabled={featuredImageUrl || heroVideoUrl || heroQuote}
+                  disabled={editorProps.featuredImageUrl || editorProps.heroVideoUrl || editorProps.heroQuote}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                    heroDisplayMode === 'slideshow'
+                    editorProps.heroDisplayMode === 'slideshow'
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
-                      : featuredImageUrl || heroVideoUrl || heroQuote
+                      : editorProps.featuredImageUrl || editorProps.heroVideoUrl || editorProps.heroQuote
                       ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                       : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300'
                   }`}
@@ -699,15 +699,15 @@ export default function ProjectEditorPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!featuredImageUrl && !heroVideoUrl && heroSlideshowImages.length === 0) {
-                      setHeroDisplayMode('quote');
+                    if (!editorProps.featuredImageUrl && !editorProps.heroVideoUrl && editorProps.heroSlideshowImages.length === 0) {
+                      editorProps.setHeroDisplayMode('quote');
                     }
                   }}
-                  disabled={featuredImageUrl || heroVideoUrl || heroSlideshowImages.length > 0}
+                  disabled={editorProps.featuredImageUrl || editorProps.heroVideoUrl || editorProps.heroSlideshowImages.length > 0}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                    heroDisplayMode === 'quote'
+                    editorProps.heroDisplayMode === 'quote'
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
-                      : featuredImageUrl || heroVideoUrl || heroSlideshowImages.length > 0
+                      : editorProps.featuredImageUrl || editorProps.heroVideoUrl || editorProps.heroSlideshowImages.length > 0
                       ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                       : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300'
                   }`}
@@ -718,15 +718,15 @@ export default function ProjectEditorPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!featuredImageUrl && !heroVideoUrl && heroSlideshowImages.length === 0 && !heroQuote) {
-                      setHeroDisplayMode('slideup');
+                    if (!editorProps.featuredImageUrl && !editorProps.heroVideoUrl && editorProps.heroSlideshowImages.length === 0 && !editorProps.heroQuote) {
+                      editorProps.setHeroDisplayMode('slideup');
                     }
                   }}
-                  disabled={featuredImageUrl || heroVideoUrl || heroSlideshowImages.length > 0 || heroQuote}
+                  disabled={editorProps.featuredImageUrl || editorProps.heroVideoUrl || editorProps.heroSlideshowImages.length > 0 || editorProps.heroQuote}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                    heroDisplayMode === 'slideup'
+                    editorProps.heroDisplayMode === 'slideup'
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
-                      : featuredImageUrl || heroVideoUrl || heroSlideshowImages.length > 0 || heroQuote
+                      : editorProps.featuredImageUrl || editorProps.heroVideoUrl || editorProps.heroSlideshowImages.length > 0 || editorProps.heroQuote
                       ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                       : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-600 text-gray-700 dark:text-gray-300'
                   }`}
@@ -737,12 +737,12 @@ export default function ProjectEditorPage() {
               </div>
 
               {/* Image Tab Content */}
-              {heroDisplayMode === 'image' && (
+              {editorProps.heroDisplayMode === 'image' && (
                 <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg">
-                  {featuredImageUrl ? (
+                  {editorProps.featuredImageUrl ? (
                     <div className="relative group">
                       <img
-                        src={featuredImageUrl}
+                        src={editorProps.featuredImageUrl}
                         alt="Hero"
                         className="w-full max-h-96 object-contain rounded-lg"
                         onError={(e) => {
@@ -756,15 +756,15 @@ export default function ProjectEditorPage() {
                             accept="image/*"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
-                              if (file) handleFeaturedImageUpload(file);
+                              if (file) editorProps.handleFeaturedImageUpload(file);
                             }}
                             className="hidden"
-                            disabled={isUploadingFeatured}
+                            disabled={editorProps.isUploadingFeatured}
                           />
-                          {isUploadingFeatured ? 'Uploading...' : 'Change'}
+                          {editorProps.isUploadingFeatured ? 'Uploading...' : 'Change'}
                         </label>
                         <button
-                          onClick={() => setFeaturedImageUrl('')}
+                          onClick={() => editorProps.setFeaturedImageUrl('')}
                           className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
                         >
                           Remove
@@ -777,7 +777,7 @@ export default function ProjectEditorPage() {
                         <div className="flex flex-col items-center justify-center h-full text-center p-6">
                           <PhotoIcon className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-3" />
                           <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
-                            {isUploadingFeatured ? 'Uploading...' : 'Drop an image here or click to upload'}
+                            {editorProps.isUploadingFeatured ? 'Uploading...' : 'Drop an image here or click to upload'}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
                             Recommended: 1200x630px (1.91:1 ratio)
@@ -788,10 +788,10 @@ export default function ProjectEditorPage() {
                           accept="image/*"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) handleFeaturedImageUpload(file);
+                            if (file) editorProps.handleFeaturedImageUpload(file);
                           }}
                           className="hidden"
-                          disabled={isUploadingFeatured}
+                          disabled={editorProps.isUploadingFeatured}
                         />
                       </label>
                       <div className="mt-3">
@@ -802,8 +802,8 @@ export default function ProjectEditorPage() {
                         </div>
                         <input
                           type="url"
-                          value={featuredImageUrl}
-                          onChange={(e) => setFeaturedImageUrl(e.target.value)}
+                          value={editorProps.featuredImageUrl}
+                          onChange={(e) => editorProps.setFeaturedImageUrl(e.target.value)}
                           placeholder="https://example.com/image.jpg"
                           disabled={editorProps.isSaving}
                           className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
@@ -815,12 +815,12 @@ export default function ProjectEditorPage() {
               )}
 
               {/* Video Tab Content */}
-              {heroDisplayMode === 'video' && (
+              {editorProps.heroDisplayMode === 'video' && (
                 <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg space-y-4">
-                  {heroVideoUrl && (heroVideoUrl.endsWith('.mp4') || heroVideoUrl.endsWith('.webm') || heroVideoUrl.endsWith('.ogg') || heroVideoUrl.includes('/projects/videos/')) ? (
+                  {editorProps.heroVideoUrl && (editorProps.heroVideoUrl.endsWith('.mp4') || editorProps.heroVideoUrl.endsWith('.webm') || editorProps.heroVideoUrl.endsWith('.ogg') || editorProps.heroVideoUrl.includes('/projects/videos/')) ? (
                     <div className="relative group">
                       <video
-                        src={heroVideoUrl}
+                        src={editorProps.heroVideoUrl}
                         controls
                         className="w-full max-h-96 rounded-lg"
                         onError={(e) => {
@@ -834,15 +834,15 @@ export default function ProjectEditorPage() {
                             accept="video/mp4,video/webm,video/ogg"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
-                              if (file) handleVideoUpload(file);
+                              if (file) editorProps.handleVideoUpload(file);
                             }}
                             className="hidden"
-                            disabled={isUploadingVideo}
+                            disabled={editorProps.isUploadingVideo}
                           />
-                          {isUploadingVideo ? 'Uploading...' : 'Change Video'}
+                          {editorProps.isUploadingVideo ? 'Uploading...' : 'Change Video'}
                         </label>
                         <button
-                          onClick={() => setHeroVideoUrl('')}
+                          onClick={() => editorProps.setHeroVideoUrl('')}
                           className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
                         >
                           Remove
@@ -855,7 +855,7 @@ export default function ProjectEditorPage() {
                         <div className="flex flex-col items-center justify-center h-full text-center p-6">
                           <FaVideo className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-3" />
                           <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
-                            {isUploadingVideo ? 'Uploading video...' : 'Drop an MP4 video here or click to upload'}
+                            {editorProps.isUploadingVideo ? 'Uploading video...' : 'Drop an MP4 video here or click to upload'}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
                             Supports MP4, WebM, OGG formats
@@ -866,10 +866,10 @@ export default function ProjectEditorPage() {
                           accept="video/mp4,video/webm,video/ogg"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) handleVideoUpload(file);
+                            if (file) editorProps.handleVideoUpload(file);
                           }}
                           className="hidden"
-                          disabled={isUploadingVideo}
+                          disabled={editorProps.isUploadingVideo}
                         />
                       </label>
                       <div className="mt-3">
@@ -883,10 +883,10 @@ export default function ProjectEditorPage() {
                         </label>
                         <input
                           type="url"
-                          value={heroVideoUrl}
-                          onChange={(e) => setHeroVideoUrl(e.target.value)}
+                          value={editorProps.heroVideoUrl}
+                          onChange={(e) => editorProps.setHeroVideoUrl(e.target.value)}
                           placeholder="https://www.youtube.com/watch?v=..."
-                          disabled={editorProps.isSaving || isUploadingVideo}
+                          disabled={editorProps.isSaving || editorProps.isUploadingVideo}
                           className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
                         />
                       </div>
@@ -896,7 +896,7 @@ export default function ProjectEditorPage() {
               )}
 
               {/* Slideshow Tab Content */}
-              {heroDisplayMode === 'slideshow' && (
+              {editorProps.heroDisplayMode === 'slideshow' && (
                 <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -908,7 +908,7 @@ export default function ProjectEditorPage() {
                   </div>
 
                   {/* Image Grid with Drag-and-Drop */}
-                  {heroSlideshowImages.length > 0 && (
+                  {editorProps.heroSlideshowImages.length > 0 && (
                     <DndContext
                       sensors={sensors}
                       collisionDetection={closestCenter}
@@ -916,26 +916,26 @@ export default function ProjectEditorPage() {
                         const { active, over } = event;
                         if (!over || active.id === over.id) return;
 
-                        const oldIndex = heroSlideshowImages.indexOf(active.id as string);
-                        const newIndex = heroSlideshowImages.indexOf(over.id as string);
+                        const oldIndex = editorProps.heroSlideshowImages.indexOf(active.id as string);
+                        const newIndex = editorProps.heroSlideshowImages.indexOf(over.id as string);
 
                         if (oldIndex !== -1 && newIndex !== -1) {
-                          setHeroSlideshowImages(arrayMove(heroSlideshowImages, oldIndex, newIndex));
+                          editorProps.setHeroSlideshowImages(arrayMove(editorProps.heroSlideshowImages, oldIndex, newIndex));
                         }
                       }}
                     >
-                      <SortableContext items={heroSlideshowImages}>
+                      <SortableContext items={editorProps.heroSlideshowImages}>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                          {heroSlideshowImages.map((imageUrl, index) => (
+                          {editorProps.heroSlideshowImages.map((imageUrl, index) => (
                             <SlideshowImageItem
                               key={imageUrl}
                               id={imageUrl}
                               imageUrl={imageUrl}
                               index={index}
                               onRemove={() => {
-                                const newImages = [...heroSlideshowImages];
+                                const newImages = [...editorProps.heroSlideshowImages];
                                 newImages.splice(index, 1);
-                                setHeroSlideshowImages(newImages);
+                                editorProps.setHeroSlideshowImages(newImages);
                               }}
                             />
                           ))}
@@ -954,27 +954,27 @@ export default function ProjectEditorPage() {
                         const files = Array.from(e.target.files || []);
                         if (files.length === 0) return;
 
-                        setIsUploadingFeatured(true);
+                        editorProps.setIsUploadingFeatured(true);
                         try {
                           const uploadedUrls: string[] = [];
                           for (const file of files) {
                             const data = await uploadImage(file, 'projects', true);
                             uploadedUrls.push(data.url);
                           }
-                          setHeroSlideshowImages([...heroSlideshowImages, ...uploadedUrls]);
+                          editorProps.setHeroSlideshowImages([...editorProps.heroSlideshowImages, ...uploadedUrls]);
                         } catch (error: any) {
                           console.error('Upload error:', error);
                           alert(error.message || 'Failed to upload images');
                         } finally {
-                          setIsUploadingFeatured(false);
+                          editorProps.setIsUploadingFeatured(false);
                         }
                         e.target.value = ''; // Reset input
                       }}
-                      disabled={isUploadingFeatured || editorProps.isSaving}
+                      disabled={editorProps.isUploadingFeatured || editorProps.isSaving}
                       className="hidden"
                     />
                     <div className="p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
-                      {isUploadingFeatured ? (
+                      {editorProps.isUploadingFeatured ? (
                         <>
                           <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                           <p className="text-gray-600 dark:text-gray-400">Uploading images...</p>
@@ -993,16 +993,16 @@ export default function ProjectEditorPage() {
                     </div>
                   </label>
 
-                  {heroSlideshowImages.length > 0 && (
+                  {editorProps.heroSlideshowImages.length > 0 && (
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {heroSlideshowImages.length} image{heroSlideshowImages.length !== 1 ? 's' : ''} added
+                      {editorProps.heroSlideshowImages.length} image{editorProps.heroSlideshowImages.length !== 1 ? 's' : ''} added
                     </p>
                   )}
                 </div>
               )}
 
               {/* Quote Tab Content */}
-              {heroDisplayMode === 'quote' && (
+              {editorProps.heroDisplayMode === 'quote' && (
                 <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Prompt
@@ -1011,8 +1011,8 @@ export default function ProjectEditorPage() {
                     Share your prompt or project details
                   </p>
                   <textarea
-                    value={heroQuote}
-                    onChange={(e) => setHeroQuote(e.target.value)}
+                    value={editorProps.heroQuote}
+                    onChange={(e) => editorProps.setHeroQuote(e.target.value)}
                     placeholder="Enter your quote here..."
                     disabled={editorProps.isSaving}
                     rows={4}
@@ -1022,7 +1022,7 @@ export default function ProjectEditorPage() {
               )}
 
               {/* Slide-up Tab Content */}
-              {heroDisplayMode === 'slideup' && (
+              {editorProps.heroDisplayMode === 'slideup' && (
                 <div className="p-6 border-2 border-gray-300 dark:border-gray-700 rounded-lg space-y-6">
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">

@@ -47,14 +47,14 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'csp',
+    'core',  # Must come before allauth to ensure User model is available
+    'core.achievements',
+    'core.thrive_circle',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.github',
-    'core',
-    'core.achievements',
-    'core.thrive_circle',
 ]
 
 MIDDLEWARE = [
@@ -250,6 +250,17 @@ AZURE_OPENAI_DEPLOYMENT_NAME = config('AZURE_OPENAI_DEPLOYMENT_NAME', default='g
 
 # Default AI Provider (options: azure, openai, anthropic)
 DEFAULT_AI_PROVIDER = config('DEFAULT_AI_PROVIDER', default='azure')
+
+# LangSmith Configuration (AI Gateway Observability)
+LANGSMITH_API_KEY = config('LANGSMITH_API_KEY', default='')
+LANGSMITH_PROJECT = config('LANGSMITH_PROJECT', default='allthrive-ai-gateway')
+LANGSMITH_ENDPOINT = config('LANGSMITH_ENDPOINT', default='https://api.smith.langchain.com')
+LANGSMITH_TRACING_ENABLED = config('LANGSMITH_TRACING_ENABLED', default=True, cast=bool)
+
+# AI Gateway Cost Tracking
+AI_COST_TRACKING_ENABLED = config('AI_COST_TRACKING_ENABLED', default=True, cast=bool)
+AI_MONTHLY_SPEND_LIMIT_USD = config('AI_MONTHLY_SPEND_LIMIT_USD', default=1000.0, cast=float)
+AI_USER_DAILY_SPEND_LIMIT_USD = config('AI_USER_DAILY_SPEND_LIMIT_USD', default=5.0, cast=float)
 
 # Celery Configuration
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')

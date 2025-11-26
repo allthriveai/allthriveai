@@ -306,6 +306,9 @@ def github_import_confirm(request):
     )
 
     # Build repo data structure for sync
+    # Extract owner info from repo_full_name
+    owner_name = repo_full_name.split('/')[0] if '/' in repo_full_name else ''
+
     repo_data = {
         'name': title,
         'full_name': repo_full_name,
@@ -319,6 +322,8 @@ def github_import_confirm(request):
         'fork': preview_data.get('is_fork', False),
         'created_at': preview_data.get('created_at', ''),
         'updated_at': preview_data.get('updated_at', ''),
+        'readme_content': preview_data.get('readme_content', ''),  # Pass README for image extraction
+        'owner': {'login': owner_name},  # Basic owner info for avatar fallback
     }
 
     # Create project

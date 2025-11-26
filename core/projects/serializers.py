@@ -7,6 +7,7 @@ from core.tools.serializers import ToolListSerializer
 
 from .constants import DEFAULT_BANNER_IMAGE, MAX_CONTENT_SIZE, MAX_PROJECT_TAGS, MAX_TAG_LENGTH
 from .models import Project
+from .moderation import moderate_tags, sanitize_tag
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -26,7 +27,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     heart_count = serializers.ReadOnlyField()
     is_liked_by_user = serializers.SerializerMethodField()
     tools_details = ToolListSerializer(source='tools', many=True, read_only=True)
-    topics_details = TaxonomySerializer(source='topics', many=True, read_only=True)
+    categories_details = TaxonomySerializer(source='categories', many=True, read_only=True)
 
     class Meta:
         model = Project
@@ -44,13 +45,14 @@ class ProjectSerializer(serializers.ModelSerializer):
             'is_archived',
             'is_published',
             'published_at',
-            'thumbnail_url',
+            'banner_url',
             'featured_image_url',
             'external_url',
             'tools',
             'tools_details',
-            'topics',
-            'topics_details',
+            'categories',
+            'categories_details',
+            'user_tags',
             'heart_count',
             'is_liked_by_user',
             'content',
@@ -64,7 +66,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'heart_count',
             'is_liked_by_user',
             'tools_details',
-            'topics_details',
+            'categories_details',
             'created_at',
             'updated_at',
         ]
@@ -146,8 +148,26 @@ class ProjectSerializer(serializers.ModelSerializer):
 
         return value
 
-    def validate_thumbnail_url(self, value):
-        """Validate thumbnail URL if provided.
+    def validate_user_tags(self, value):
+        """Validate and moderate user-generated tags."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError('user_tags must be a list.')
+
+        # Sanitize tags
+        sanitized = [sanitize_tag(tag) for tag in value if tag]
+
+        # Moderate tags
+        approved, rejected = moderate_tags(sanitized, max_length=50, max_count=20)
+
+        if rejected:
+            raise serializers.ValidationError(
+                f'Some tags were rejected due to inappropriate content or formatting: {", ".join(rejected[:3])}'
+            )
+
+        return approved
+
+    def validate_banner_url(self, value):
+        """Validate banner URL if provided.
 
         Accepts both absolute URLs (https://...) and relative paths (/path/to/image).
         """
@@ -165,7 +185,7 @@ class ProjectSerializer(serializers.ModelSerializer):
                 validator(value)
             except DjangoValidationError as e:
                 raise serializers.ValidationError(
-                    'Invalid thumbnail URL. Must be a valid URL or relative path starting with /.'
+                    'Invalid banner URL. Must be a valid URL or relative path starting with /.'
                 ) from e
         return value
 
@@ -176,9 +196,42 @@ class ProjectSerializer(serializers.ModelSerializer):
             return obj.likes.filter(user=request.user).exists()
         return False
 
+    def to_representation(self, instance):
+        """Convert snake_case field names to camelCase for frontend compatibility."""
+        data = super().to_representation(instance)
+
+        # Map snake_case to camelCase for fields that need it
+        field_mapping = {
+            'user_avatar_url': 'userAvatarUrl',
+            'is_showcase': 'isShowcase',
+            'is_highlighted': 'isHighlighted',
+            'is_private': 'isPrivate',
+            'is_archived': 'isArchived',
+            'is_published': 'isPublished',
+            'published_at': 'publishedAt',
+            'banner_url': 'bannerUrl',
+            'featured_image_url': 'featuredImageUrl',
+            'external_url': 'externalUrl',
+            'tools_details': 'toolsDetails',
+            'categories_details': 'categoriesDetails',
+            'user_tags': 'userTags',
+            'heart_count': 'heartCount',
+            'is_liked_by_user': 'isLikedByUser',
+            'created_at': 'createdAt',
+            'updated_at': 'updatedAt',
+        }
+
+        # Create new dict with camelCase keys
+        camel_case_data = {}
+        for key, value in data.items():
+            new_key = field_mapping.get(key, key)
+            camel_case_data[new_key] = value
+
+        return camel_case_data
+
     def create(self, validated_data):
         """Create a new project with default banner image if not provided."""
-        # Set default banner image if thumbnail_url is not provided or empty
-        if not validated_data.get('thumbnail_url'):
-            validated_data['thumbnail_url'] = DEFAULT_BANNER_IMAGE
+        # Set default banner image if banner_url is not provided or empty
+        if not validated_data.get('banner_url'):
+            validated_data['banner_url'] = DEFAULT_BANNER_IMAGE
         return super().create(validated_data)

@@ -1,0 +1,1 @@
+export { RightAboutPanel } from './RightAboutPanel';

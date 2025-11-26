@@ -49,14 +49,15 @@ class GitHubSyncService:
         if self._social_account:
 
             class SocialAccountWrapper:
-                def __init__(self, social_account):
+                def __init__(self, social_account, access_token):
                     self.provider_username = social_account.extra_data.get('login', social_account.uid)
                     self.updated_at = social_account.last_login or social_account.date_joined
+                    self.access_token = access_token
 
                 def is_token_expired(self):
                     return False  # allauth handles token refresh
 
-            return SocialAccountWrapper(self._social_account)
+            return SocialAccountWrapper(self._social_account, self.access_token)
         return None
 
     def _get_access_token(self) -> str | None:
@@ -198,6 +199,103 @@ class GitHubSyncService:
             logger.error(f'Error decoding README for {owner}/{repo}: {e}')
             return None
 
+    def extract_first_image_from_readme(self, readme_content: str) -> str | None:
+        """
+        Extract the first valid image URL from README markdown.
+
+        Args:
+            readme_content: The README markdown content
+
+        Returns:
+            First image URL found, or None if no images exist
+        """
+        if not readme_content:
+            return None
+
+        import re
+
+        # Regex patterns for markdown images
+        # Pattern 1: ![alt](url)
+        markdown_pattern = r'!\[([^\]]*)\]\(([^\)]+)\)'
+        # Pattern 2: <img src="url" />
+        html_pattern = r'<img[^>]+src=["\']([^"\']+)["\']'
+
+        # Try markdown syntax first
+        markdown_matches = re.findall(markdown_pattern, readme_content)
+        if markdown_matches:
+            for _alt, url in markdown_matches:
+                # Skip badges and small icons (common patterns)
+                url_lower = url.lower()
+                # Skip shields.io, badges, and other non-content images
+                if any(
+                    skip in url_lower
+                    for skip in [
+                        'img.shields.io',
+                        'badge',
+                        'shield',
+                        'icon',
+                        'logo.svg',
+                        'star',
+                        'badge.fury.io',
+                        'travis-ci.org',
+                        'codecov.io',
+                    ]
+                ):
+                    continue
+                # Skip relative URLs without a clear image extension
+                if not url.startswith(('http://', 'https://')):
+                    continue
+                # Prefer images with clear extensions
+                if any(ext in url_lower for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
+                    return url
+
+        # Try HTML syntax
+        html_matches = re.findall(html_pattern, readme_content)
+        if html_matches:
+            for url in html_matches:
+                url_lower = url.lower()
+                # Skip shields.io, badges, and other non-content images
+                if any(
+                    skip in url_lower
+                    for skip in [
+                        'img.shields.io',
+                        'badge',
+                        'shield',
+                        'icon',
+                        'logo.svg',
+                        'star',
+                        'badge.fury.io',
+                        'travis-ci.org',
+                        'codecov.io',
+                    ]
+                ):
+                    continue
+                if not url.startswith(('http://', 'https://')):
+                    continue
+                if any(ext in url_lower for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
+                    return url
+
+        # Return first markdown image even without extension if we found nothing else
+        # (but still skip badges)
+        if markdown_matches:
+            for _alt, url in markdown_matches:
+                url_lower = url.lower()
+                if 'img.shields.io' in url_lower or 'badge' in url_lower:
+                    continue
+                if url.startswith(('http://', 'https://')):
+                    return url
+
+        # Return first HTML image even without extension (but still skip badges)
+        if html_matches:
+            for url in html_matches:
+                url_lower = url.lower()
+                if 'img.shields.io' in url_lower or 'badge' in url_lower:
+                    continue
+                if url.startswith(('http://', 'https://')):
+                    return url
+
+        return None
+
     def generate_tldr_from_readme(self, readme_content: str, repo_name: str = '') -> str:
         """
         Generate a concise tl;dr summary from README content using AI.
@@ -317,6 +415,11 @@ class GitHubSyncService:
             if not tldr:
                 tldr = repo_data.get('description', '') or f"A GitHub repository: {repo_data.get('name', '')}"
 
+            # Extract first image from README for preview
+            readme_image_url = None
+            if readme_content:
+                readme_image_url = self.extract_first_image_from_readme(readme_content)
+
             # Build preview data
             preview = {
                 'title': repo_data.get('name', 'Untitled'),
@@ -327,12 +430,13 @@ class GitHubSyncService:
                 'language': repo_data.get('language', ''),
                 'topics': repo_data.get('topics', []),
                 'stars': repo_data.get('stargazers_count', 0),
-                'forks': repo_data.get('forks_count', 0),
+                'forks': repo_data.get('forks', 0),
                 'is_fork': repo_data.get('fork', False),
                 'created_at': repo_data.get('created_at', ''),
                 'updated_at': repo_data.get('updated_at', ''),
                 'readme_content': readme_content,
                 'readme_html_url': readme_data.get('html_url', '') if readme_data else '',
+                'readme_image_url': readme_image_url,  # First extracted image from README
             }
 
             logger.info(f'Generated import preview for {repo_full_name}')
@@ -386,6 +490,8 @@ class GitHubSyncService:
         self, repo: dict, auto_publish: bool = False, add_to_showcase: bool = False
     ) -> Project:
         """Create a new project from GitHub repo data."""
+        from core.taxonomy.models import Taxonomy
+
         # Extract repo data
         name = repo.get('name', 'Untitled')
         description = repo.get('description', '')
@@ -398,6 +504,8 @@ class GitHubSyncService:
         is_fork = repo.get('fork', False)
         created_at = repo.get('created_at', '')
         updated_at = repo.get('updated_at', '')
+        owner = repo.get('owner', {})
+        readme_content = repo.get('readme_content', '')
 
         # Build content structure
         content = {
@@ -416,19 +524,88 @@ class GitHubSyncService:
             'tags': topics[:10] if topics else [language] if language else [],
         }
 
-        # Create project
+        # Banner image: Random gradient background
+        # Featured image (hero): README → GitHub screenshot → Owner avatar
+        import secrets
+
+        from core.projects.constants import DEFAULT_BANNER_IMAGES
+
+        # Assign random gradient banner
+        banner_url = secrets.choice(DEFAULT_BANNER_IMAGES)
+        featured_image_url = ''
+
+        # Try to extract image from README first (best quality, project-specific)
+        readme_image_url = None
+        if readme_content:
+            readme_image_url = self.extract_first_image_from_readme(readme_content)
+
+        # Set featured image (hero display) with priority: README > GitHub screenshot > Owner avatar
+        if readme_image_url:
+            featured_image_url = readme_image_url
+            logger.info(f'Using README image for hero display: {readme_image_url[:100]}')
+        elif html_url:
+            # GitHub's social preview image (auto-generated) as fallback
+            featured_image_url = f"https://opengraph.githubassets.com/1/{html_url.replace('https://github.com/', '')}"
+            logger.debug('Using GitHub OpenGraph image for hero display')
+        elif owner and owner.get('avatar_url'):
+            featured_image_url = owner.get('avatar_url')
+            logger.debug('Using owner avatar for hero display')
+
+        # Truncate description intelligently (avoid mid-word cuts)
+        if description and len(description) > 500:
+            # Find last space before 500 chars
+            truncated = description[:500]
+            last_space = truncated.rfind(' ')
+            if last_space > 400:  # Only use space if it's reasonably close to limit
+                description = truncated[:last_space].rstrip()
+            else:
+                description = truncated.rstrip()
+        elif not description:
+            description = f'GitHub repository: {name}'
+
+        # Create project with auto-populated fields
         project = Project.objects.create(
             user=self.user,
             title=name,
-            description=description[:500] if description else f'GitHub repository: {name}',
+            description=description,
             type=Project.ProjectType.GITHUB_REPO,
+            external_url=html_url,  # Auto-populate GitHub URL
+            banner_url=banner_url,  # Random gradient background
+            featured_image_url=featured_image_url,  # Hero image (README/GitHub/Avatar)
             is_showcase=add_to_showcase,
             is_published=auto_publish,
             published_at=timezone.now() if auto_publish else None,
             content=content,
         )
 
-        logger.info(f'Created project {project.id} from GitHub repo: {name}')
+        # Auto-select categories from GitHub repo topics
+        # Add to both categories (if they exist in taxonomy) and user_tags
+        user_tags = []
+        if topics:
+            # Find or create matching Taxonomy categories
+            for topic_name in topics[:10]:  # Limit to 10 topics
+                # Try to find existing category (case-insensitive)
+                category_taxonomy = Taxonomy.objects.filter(
+                    taxonomy_type='category', name__iexact=topic_name, is_active=True
+                ).first()
+
+                if category_taxonomy:
+                    project.categories.add(category_taxonomy)
+                    logger.debug(f'Added existing category "{topic_name}" to project {project.id}')
+                else:
+                    # Add to user_tags if not a predefined category
+                    user_tags.append(topic_name)
+
+            # Save user_tags
+            if user_tags:
+                project.user_tags = user_tags
+                project.save(update_fields=['user_tags'])
+                logger.info(f'Added {len(user_tags)} GitHub topics as user_tags to project {project.id}')
+
+        logger.info(
+            f'Created project {project.id} from GitHub repo: {name} '
+            f'(external_url={html_url}, topics={len(topics)}, featured_image={bool(featured_image_url)})'
+        )
         return project
 
     def _update_project_from_repo(self, project: Project, repo: dict) -> None:
@@ -441,9 +618,17 @@ class GitHubSyncService:
         forks = repo.get('forks_count', 0)
         updated_at = repo.get('updated_at', '')
 
-        # Update project description if changed
+        # Update project description if changed (with intelligent truncation)
         if description and description != project.description:
-            project.description = description[:500]
+            if len(description) > 500:
+                # Find last space before 500 chars
+                truncated = description[:500]
+                last_space = truncated.rfind(' ')
+                if last_space > 400:
+                    description = truncated[:last_space].rstrip()
+                else:
+                    description = truncated.rstrip()
+            project.description = description
 
         # Update content
         content = project.content or {}

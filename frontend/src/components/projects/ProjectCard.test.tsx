@@ -68,7 +68,7 @@ const mockProject: Project = {
   isArchived: false,
   isPublished: true,
   publishedAt: '2025-01-01T00:00:00Z',
-  thumbnailUrl: 'https://example.com/thumbnail.jpg',
+  bannerUrl: 'https://example.com/thumbnail.jpg',
   featuredImageUrl: 'https://example.com/featured.jpg',
   externalUrl: 'https://example.com',
   tools: [1, 2],

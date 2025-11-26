@@ -6,13 +6,13 @@ class Taxonomy(models.Model):
     """Unified taxonomy for the system.
 
     Taxonomy supports two types:
-    - 'tool'  -> represents a Tool entry (1:1 with core.tools.Tool)
-    - 'topic' -> represents a user-facing topic used for personalization
+    - 'tool'     -> represents a Tool entry (1:1 with core.tools.Tool)
+    - 'category' -> represents a predefined category for filtering projects
     """
 
     class TaxonomyType(models.TextChoices):
         TOOL = 'tool', 'Tool'
-        TOPIC = 'topic', 'Topic'
+        CATEGORY = 'category', 'Category'
 
     taxonomy_type = models.CharField(
         max_length=10, choices=TaxonomyType.choices, default=TaxonomyType.TOOL, db_index=True

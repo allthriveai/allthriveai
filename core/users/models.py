@@ -120,6 +120,12 @@ class User(AbstractUser):
     lifetime_side_quests_completed = models.IntegerField(default=0, help_text='Total side quests completed')
     lifetime_comments_posted = models.IntegerField(default=0, help_text='Total comments posted')
 
+    # Achievement tracking
+    total_achievements_unlocked = models.IntegerField(default=0, help_text='Total achievements unlocked')
+    last_achievement_earned_at = models.DateTimeField(
+        null=True, blank=True, help_text='Timestamp of most recently earned achievement'
+    )
+
     class Meta:
         ordering = ['-date_joined']
         indexes = [

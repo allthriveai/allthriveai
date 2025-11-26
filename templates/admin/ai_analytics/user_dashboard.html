@@ -1,0 +1,162 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+<style>
+    .user-dashboard {
+        padding: 20px;
+    }
+    .filter-bar {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+    }
+    .filter-bar a {
+        margin-right: 15px;
+        padding: 8px 16px;
+        border-radius: 4px;
+        text-decoration: none;
+    }
+    .filter-bar a.active {
+        background: #417690;
+        color: white;
+    }
+    .users-table {
+        width: 100%;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .users-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 2px solid #ddd;
+    }
+    .users-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .status-ok {
+        background: #d4edda;
+        color: #155724;
+    }
+    .status-warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+    .status-exceeded {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .progress-bar {
+        height: 20px;
+        background: #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        background: #417690;
+        transition: width 0.3s;
+    }
+    .progress-fill.warning {
+        background: #ffc107;
+    }
+    .progress-fill.danger {
+        background: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="user-dashboard">
+    <h1>👥 User AI Spend Monitoring</h1>
+    <p>Monitor user-level AI costs and enforce spend limits</p>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <strong>Filter:</strong>
+        <a href="?status=all" class="{% if status_filter == 'all' %}active{% endif %}">All Users</a>
+        <a href="?status=warning" class="{% if status_filter == 'warning' %}active{% endif %}">⚠️ Warning (>80%)</a>
+        <a href="?status=exceeded" class="{% if status_filter == 'exceeded' %}active{% endif %}">🚫 Exceeded</a>
+    </div>
+
+    <!-- Users Table -->
+    <table class="users-table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Daily Spend</th>
+                <th>Monthly Spend</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in users %}
+            <tr>
+                <td>
+                    <a href="{% url 'admin:core_user_change' item.user.id %}">
+                        <strong>{{ item.user.username }}</strong>
+                    </a>
+                </td>
+                <td>{{ item.user.email }}</td>
+                <td>
+                    <strong>${{ item.daily_spend|floatformat:4 }}</strong>
+                    <div class="progress-bar">
+                        <div class="progress-fill {% if item.daily_pct >= 100 %}danger{% elif item.daily_pct >= 80 %}warning{% endif %}"
+                             style="width: {{ item.daily_pct|floatformat:0 }}%"></div>
+                    </div>
+                    <small>{{ item.daily_pct|floatformat:1 }}% of limit</small>
+                </td>
+                <td>
+                    <strong>${{ item.monthly_spend|floatformat:4 }}</strong>
+                    <div class="progress-bar">
+                        <div class="progress-fill {% if item.monthly_pct >= 100 %}danger{% elif item.monthly_pct >= 80 %}warning{% endif %}"
+                             style="width: {% if item.monthly_pct > 100 %}100{% else %}{{ item.monthly_pct|floatformat:0 }}{% endif %}%"></div>
+                    </div>
+                    <small>{{ item.monthly_pct|floatformat:1 }}% of limit</small>
+                </td>
+                <td>
+                    {% if item.status == 'ok' %}
+                        <span class="status-badge status-ok">✓ OK</span>
+                    {% elif item.status == 'warning' %}
+                        <span class="status-badge status-warning">⚠️ Warning</span>
+                    {% else %}
+                        <span class="status-badge status-exceeded">🚫 Exceeded</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'admin:ai_analytics_dashboard' %}">View Details</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #888;">
+                    No users found with the selected filter
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 20px;">
+        <p>
+            <a href="{% url 'admin:ai_analytics_dashboard' %}" class="button">← Back to Dashboard</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

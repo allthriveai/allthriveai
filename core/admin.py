@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
+# AI Analytics Dashboard - must be imported to register custom admin views
+from .admin.ai_analytics_admin import register_ai_analytics_dashboard
 from .agents.models import Conversation, Message
 from .events.models import Event
 from .projects.models import CommentVote, ProjectComment
@@ -11,6 +13,8 @@ from .tools.models import Tool, ToolBookmark, ToolComparison, ToolReview
 
 # Direct domain imports
 from .users.models import User
+
+register_ai_analytics_dashboard(admin.site)
 
 
 @admin.register(Conversation)
@@ -253,6 +257,7 @@ class ToolAdmin(admin.ModelAdmin):
                     'best_practices',
                     'limitations',
                     'alternatives',
+                    'whats_new',
                 ),
                 'classes': ('collapse',),
             },

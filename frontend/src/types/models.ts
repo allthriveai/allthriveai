@@ -115,13 +115,14 @@ export interface Project {
   isArchived: boolean;
   isPublished: boolean;
   publishedAt?: string;
-  thumbnailUrl?: string;
+  bannerUrl?: string; // Banner/cover image (renamed from bannerUrl for clarity)
   featuredImageUrl?: string;
   externalUrl?: string;
   tools: number[]; // Tool IDs
   toolsDetails?: Tool[]; // Full tool objects with details
-  topics?: number[]; // Topic taxonomy IDs
-  topicsDetails?: Taxonomy[]; // Full topic taxonomy objects
+  categories?: number[]; // Category taxonomy IDs (predefined)
+  categoriesDetails?: Taxonomy[]; // Full category taxonomy objects
+  userTags?: string[]; // User-generated tags (free-form, moderated)
   heartCount: number;
   isLikedByUser: boolean;
   content: ProjectContent;
@@ -192,11 +193,12 @@ export interface ProjectPayload {
   isPrivate?: boolean;
   isArchived?: boolean;
   isPublished?: boolean;
-  thumbnailUrl?: string;
+  bannerUrl?: string;
   featuredImageUrl?: string;
   externalUrl?: string;
   tools?: number[];
-  topics?: number[]; // Topic taxonomy IDs
+  categories?: number[]; // Category taxonomy IDs (predefined)
+  userTags?: string[]; // User-generated tags (free-form, moderated)
   content?: ProjectContent;
 }
 

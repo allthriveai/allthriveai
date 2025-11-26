@@ -238,9 +238,9 @@ export default function QuizListPage() {
                     )}
 
                     {/* Thumbnail */}
-                    {quiz.thumbnailUrl ? (
+                    {quiz.bannerUrl ? (
                       <img
-                        src={quiz.thumbnailUrl}
+                        src={quiz.bannerUrl}
                         alt={quiz.title}
                         className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                       />

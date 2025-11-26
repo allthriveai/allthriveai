@@ -5,7 +5,13 @@ and managing social provider integrations.
 """
 
 from .models import SocialConnection, SocialProvider
-from .views import available_providers, connect_provider, connection_status, disconnect_provider, list_connections
+from .views import (
+    available_providers,
+    connect_provider,
+    connection_status,
+    disconnect_provider,
+    list_connections,
+)
 
 __all__ = [
     # Models

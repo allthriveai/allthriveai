@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -61,7 +62,7 @@ class Project(models.Model):
     is_published = models.BooleanField(default=True, help_text='Whether project is publicly visible')
     published_at = models.DateTimeField(null=True, blank=True, help_text='When project was first published')
     # CharField supports both full URLs and relative paths (e.g., /path/to/image)
-    thumbnail_url = models.CharField(max_length=500, blank=True, default='', help_text='Banner image URL')
+    banner_url = models.CharField(max_length=500, blank=True, default='', help_text='Banner image URL')
     # Featured image for cards and social sharing
     featured_image_url = models.CharField(
         max_length=500, blank=True, default='', help_text='Featured image for project cards'
@@ -74,13 +75,20 @@ class Project(models.Model):
     tools = models.ManyToManyField(
         Tool, blank=True, related_name='projects', help_text='Tools/technologies used in this project'
     )
-    # Topics for categorization and personalization
-    topics = models.ManyToManyField(
+    # Categories for filtering and organization (predefined taxonomy)
+    categories = models.ManyToManyField(
         Taxonomy,
         blank=True,
         related_name='projects',
-        limit_choices_to={'taxonomy_type': 'topic', 'is_active': True},
-        help_text='Topics that categorize this project (from Taxonomy with type=topic)',
+        limit_choices_to={'taxonomy_type': 'category', 'is_active': True},
+        help_text='Categories that organize this project (from predefined Taxonomy)',
+    )
+    # User-generated tags (free-form, moderated)
+    user_tags = ArrayField(
+        models.CharField(max_length=50),
+        blank=True,
+        default=list,
+        help_text='User-generated tags (moderated for inappropriate content)',
     )
     # Structured layout blocks for the project page (cover, tags, text/image blocks)
     content = models.JSONField(default=dict, blank=True)

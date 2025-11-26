@@ -24,7 +24,7 @@ export interface ProjectEditorProps {
 export interface ProjectEditorRenderProps {
   // State
   blocks: ProjectBlock[];
-  thumbnailUrl: string;
+  bannerUrl: string;
   showBannerEdit: boolean;
   isUploadingBanner: boolean;
   projectTitle: string;
@@ -57,7 +57,7 @@ export interface ProjectEditorRenderProps {
 
   // Setters
   setBlocks: (blocks: ProjectBlock[]) => void;
-  setThumbnailUrl: (url: string) => void;
+  setBannerUrl: (url: string) => void;
   setShowBannerEdit: (show: boolean) => void;
   setProjectTitle: (title: string) => void;
   setEditableSlug: (slug: string) => void;
@@ -115,7 +115,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
 
   // Editor state
   const [blocks, setBlocks] = useState<ProjectBlock[]>([]);
-  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [bannerUrl, setBannerUrl] = useState('');
   const [showBannerEdit, setShowBannerEdit] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
@@ -150,7 +150,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
   // Initialize state from project
   useEffect(() => {
     if (project) {
-      setThumbnailUrl(project.thumbnailUrl || '');
+      setBannerUrl(project.bannerUrl || '');
       setProjectTitle(project.title || '');
       setEditableSlug(project.slug || '');
       setFeaturedImageUrl(project.featuredImageUrl || '');
@@ -220,7 +220,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
   const formData = useMemo(
     () => ({
       blocks,
-      thumbnailUrl,
+      bannerUrl,
       projectTitle,
       editableSlug,
       featuredImageUrl,
@@ -241,7 +241,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
     }),
     [
       blocks,
-      thumbnailUrl,
+      bannerUrl,
       projectTitle,
       editableSlug,
       featuredImageUrl,
@@ -280,7 +280,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
         title: projectTitle || 'Untitled Project',
         slug: editableSlug,
         description: projectDescription,
-        thumbnailUrl,
+        bannerUrl,
         featuredImageUrl,
         externalUrl: projectUrl,
         tools: projectTools,
@@ -331,7 +331,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
     projectTitle,
     editableSlug,
     projectDescription,
-    thumbnailUrl,
+    bannerUrl,
     featuredImageUrl,
     projectUrl,
     projectTools,
@@ -433,7 +433,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
     setIsUploadingBanner(true);
     try {
       const data = await uploadImage(file, 'projects', true);
-      setThumbnailUrl(data.url);
+      setBannerUrl(data.url);
       setShowBannerEdit(false);
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -510,7 +510,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
       {children({
         // State
         blocks,
-        thumbnailUrl,
+        bannerUrl,
         showBannerEdit,
         isUploadingBanner,
         projectTitle,
@@ -543,7 +543,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
 
         // Setters
         setBlocks,
-        setThumbnailUrl,
+        setBannerUrl,
         setShowBannerEdit,
         setProjectTitle,
         setEditableSlug,

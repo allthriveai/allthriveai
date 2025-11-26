@@ -2,6 +2,7 @@ from django.conf import settings
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from .achievements.views import AchievementViewSet
 from .agents.auth_chat_views import auth_chat_finalize, auth_chat_state, auth_chat_stream
 from .agents.project_chat_views import project_chat_stream_v2
 from .agents.views import ConversationViewSet, MessageViewSet
@@ -50,7 +51,7 @@ from .thrive_circle.views import PointActivityViewSet, SideQuestViewSet, ThriveC
 from .tools.views import ToolBookmarkViewSet, ToolComparisonViewSet, ToolReviewViewSet, ToolViewSet
 from .uploads.views import upload_file, upload_image
 from .users.views import explore_users
-from .views import csp_report, db_health
+from .views import ai_analytics_views, csp_report, db_health
 
 # Main router for public/general endpoints
 main_router = DefaultRouter()
@@ -70,6 +71,7 @@ me_router.register(r'battle-invitations', BattleInvitationViewSet, basename='me-
 me_router.register(r'thrive-circle', ThriveCircleViewSet, basename='me-thrive-circle')
 me_router.register(r'point-activities', PointActivityViewSet, basename='me-point-activities')
 me_router.register(r'side-quests', SideQuestViewSet, basename='me-side-quests')
+me_router.register(r'achievements', AchievementViewSet, basename='me-achievements')
 
 # Taxonomy router (public but auth-required)
 taxonomy_router = DefaultRouter()
@@ -89,6 +91,12 @@ events_router.register(r'events', EventViewSet, basename='event')
 urlpatterns = [
     path('db/health/', db_health, name='db-health'),
     path('csp-report/', csp_report, name='csp_report'),  # CSP violation reporting
+    # AI Analytics endpoints
+    path('ai/analytics/user/', ai_analytics_views.user_ai_analytics, name='user_ai_analytics'),
+    path('ai/analytics/user/spend-limit/', ai_analytics_views.check_user_spend_limit, name='check_user_spend_limit'),
+    path('ai/analytics/system/', ai_analytics_views.system_ai_analytics, name='system_ai_analytics'),
+    path('ai/analytics/user/<int:user_id>/reset/', ai_analytics_views.reset_user_spend, name='reset_user_spend'),
+    path('ai/analytics/langsmith/health/', ai_analytics_views.langsmith_health, name='langsmith_health'),
     # Explore endpoints (public)
     path('projects/explore/', explore_projects, name='explore_projects'),
     path('search/semantic/', semantic_search, name='semantic_search'),

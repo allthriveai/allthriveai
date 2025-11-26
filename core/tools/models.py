@@ -84,6 +84,11 @@ class Tool(models.Model):
     best_practices = models.JSONField(default=list, blank=True, help_text='Best practices and recommendations')
     limitations = models.JSONField(default=list, blank=True, help_text='Known limitations or considerations')
     alternatives = models.JSONField(default=list, blank=True, help_text='List of alternative tool slugs')
+    whats_new = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Recent updates and what's new [{date: '2025-01-15', title: '', description: ''}]",
+    )
 
     # Technical Details
     model_info = models.JSONField(
@@ -142,6 +147,23 @@ class Tool(models.Model):
         if not self.meta_description and self.description:
             # Auto-generate meta description from description
             self.meta_description = self.description[:157] + '...' if len(self.description) > 160 else self.description
+
+        # Auto-create or update linked taxonomy
+        if not self.taxonomy:
+            taxonomy, created = Taxonomy.objects.get_or_create(
+                name=self.name,
+                defaults={
+                    'taxonomy_type': 'tool',
+                    'description': self.description,
+                    'website_url': self.website_url,
+                    'logo_url': self.logo_url,
+                    'usage_tips': self.usage_tips,
+                    'best_for': self.best_practices,
+                    'is_active': self.is_active,
+                },
+            )
+            self.taxonomy = taxonomy
+
         super().save(*args, **kwargs)
 
     def __str__(self):

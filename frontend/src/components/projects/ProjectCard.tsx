@@ -151,7 +151,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       };
     }
 
-    // Fallback: use featuredImageUrl > thumbnailUrl > Unsplash random image
+    // Fallback: use featuredImageUrl > bannerUrl > Unsplash random image
     if (project.featuredImageUrl) {
       return { type: 'image' as const, url: project.featuredImageUrl };
     }
@@ -159,8 +159,8 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     if (cover?.url) {
       return { type: 'image' as const, url: cover.url };
     }
-    if (project.thumbnailUrl) {
-      return { type: 'image' as const, url: project.thumbnailUrl };
+    if (project.bannerUrl) {
+      return { type: 'image' as const, url: project.bannerUrl };
     }
 
     // Create a gradient placeholder with project title
@@ -609,7 +609,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       {/* Thumbnail or placeholder */}
       <div className="relative aspect-video overflow-hidden">
         <img
-          src={project.thumbnailUrl || '/allthrive-placeholder.svg'}
+          src={project.bannerUrl || '/allthrive-placeholder.svg'}
           alt={project.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />

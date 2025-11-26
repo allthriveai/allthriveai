@@ -165,9 +165,9 @@ export default function QuizPage() {
               <div className="glass-strong rounded-xl p-8">
                 {/* Quiz Header */}
                 <div className="mb-8">
-                  {quiz.thumbnailUrl && (
+                  {quiz.bannerUrl && (
                     <img
-                      src={quiz.thumbnailUrl}
+                      src={quiz.bannerUrl}
                       alt={quiz.title}
                       className="w-full h-64 object-cover rounded-lg mb-6"
                     />

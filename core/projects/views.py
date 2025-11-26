@@ -292,8 +292,6 @@ def explore_projects(request):
     # Get query parameters
     tab = request.GET.get('tab', 'all')
     search_query = request.GET.get('search', '')
-    tools_param = request.GET.get('tools', '')
-    topics_param = request.GET.get('topics', '')
     sort = request.GET.get('sort', 'newest')
 
     # Build base queryset - all published, public projects
@@ -307,22 +305,40 @@ def explore_projects(request):
     if search_query:
         queryset = queryset.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
 
-    # Apply tools filter
-    if tools_param:
+    # Apply tools filter - handle both array params (tools=1&tools=2) and comma-separated (tools=1,2)
+    tools_list = request.GET.getlist('tools')
+    if tools_list:
         try:
-            tool_ids = [int(tid) for tid in tools_param.split(',') if tid.strip()]
+            # If multiple values received as array parameters
+            if len(tools_list) > 1:
+                tool_ids = [int(tid) for tid in tools_list if tid]
+            # If single value, check if it's comma-separated
+            elif tools_list[0]:
+                tool_ids = [int(tid) for tid in tools_list[0].split(',') if tid.strip()]
+            else:
+                tool_ids = []
+
             if tool_ids:
                 queryset = queryset.filter(tools__id__in=tool_ids).distinct()
-        except ValueError:
+        except (ValueError, IndexError):
             pass  # Invalid tool IDs, ignore
 
-    # Apply topics filter
-    if topics_param:
+    # Apply topics filter - handle both array params and comma-separated
+    topics_list = request.GET.getlist('topics')
+    if topics_list:
         try:
-            topic_ids = [int(tid) for tid in topics_param.split(',') if tid.strip()]
+            # If multiple values received as array parameters
+            if len(topics_list) > 1:
+                topic_ids = [int(tid) for tid in topics_list if tid]
+            # If single value, check if it's comma-separated
+            elif topics_list[0]:
+                topic_ids = [int(tid) for tid in topics_list[0].split(',') if tid.strip()]
+            else:
+                topic_ids = []
+
             if topic_ids:
                 queryset = queryset.filter(topics__id__in=topic_ids).distinct()
-        except ValueError:
+        except (ValueError, IndexError):
             pass  # Invalid topic IDs, ignore
 
     # Apply sorting or personalization

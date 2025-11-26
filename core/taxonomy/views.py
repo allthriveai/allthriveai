@@ -32,8 +32,15 @@ class TaxonomyViewSet(viewsets.ReadOnlyModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        """Return only active taxonomies."""
-        return Taxonomy.objects.filter(is_active=True)
+        """Return only active taxonomies, optionally filtered by type."""
+        queryset = Taxonomy.objects.filter(is_active=True)
+
+        # Filter by taxonomy_type if provided in query params
+        taxonomy_type = self.request.query_params.get('taxonomy_type')
+        if taxonomy_type:
+            queryset = queryset.filter(taxonomy_type=taxonomy_type)
+
+        return queryset
 
     @action(detail=False, methods=['get'])
     def by_type(self, request):

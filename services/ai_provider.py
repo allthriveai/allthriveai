@@ -1,11 +1,16 @@
 """
 AI Provider Service
 Supports Azure OpenAI, OpenAI, and Anthropic with easy switching between providers.
+Includes LangSmith tracing and cost tracking.
 """
 
+import logging
 from enum import Enum
 
 from django.conf import settings
+from langsmith.run_helpers import traceable
+
+logger = logging.getLogger(__name__)
 
 
 class AIProviderType(Enum):
@@ -34,18 +39,20 @@ class AIProvider:
         response = ai.complete("What is Django?")
     """
 
-    def __init__(self, provider: str | None = None, **kwargs):
+    def __init__(self, provider: str | None = None, user_id: int | None = None, **kwargs):
         """
         Initialize AI provider.
 
         Args:
             provider: Provider type (azure, openai, anthropic).
                      Defaults to DEFAULT_AI_PROVIDER from settings.
+            user_id: User ID for cost tracking and attribution
             **kwargs: Additional configuration options for the provider.
         """
         self._provider = None
         self._client = None
         self._config = kwargs
+        self.user_id = user_id
 
         # Set provider (uses default from settings if not specified)
         provider_type = provider or getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
@@ -126,6 +133,7 @@ class AIProvider:
 
         return Anthropic(api_key=api_key)
 
+    @traceable(name='ai_provider_complete', run_type='llm')
     def complete(
         self,
         prompt: str,

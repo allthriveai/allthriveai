@@ -85,6 +85,7 @@ class ToolDetailSerializer(serializers.ModelSerializer):
             'best_practices',
             'limitations',
             'alternatives',
+            'whats_new',
             # Technical
             'model_info',
             'integrations',

@@ -7,6 +7,8 @@ import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProfileSidebar } from './ProfileSidebar';
 import { ActivityFeed } from './ActivityFeed';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
+import { useAchievements } from '@/hooks/useAchievements';
+import { getRarityColorClasses, getCategoryDisplay, getCategoryIcon } from '@/services/achievements';
 import { PlusIcon, TrashIcon, CheckIcon, BoltIcon } from '@heroicons/react/24/outline';
 import { API_ENDPOINTS } from '@/config/api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -17,7 +19,9 @@ import {
   faHeart,
   faFire,
   faLock,
+  faBolt,
 } from '@fortawesome/free-solid-svg-icons';
+import { faSpinner } from '@fortawesome/free-solid-svg-icons';
 
 interface ProfileCenterProps {
   username?: string; // Username from URL params
@@ -33,6 +37,7 @@ interface ProfileCenterProps {
 export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, activeTab, onTabChange, onOpenChat, openAddProject }: ProfileCenterProps) {
   const navigate = useNavigate();
   const { tierStatus, isLoading: isTierLoading } = useThriveCircle();
+  const { achievementsByCategory, isLoading: isAchievementsLoading, error: achievementsError } = useAchievements();
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<{ showcase: Project[]; playground: Project[] }>({
     showcase: [],
@@ -57,13 +62,13 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
     description: string;
     type: ProjectType;
     isShowcase: boolean;
-    thumbnailUrl: string;
+    bannerUrl: string;
   }>({
     title: '',
     description: '',
     type: 'other',
     isShowcase: false,
-    thumbnailUrl: ''
+    bannerUrl: ''
   });
 
   // Determine which user's profile we're viewing
@@ -618,9 +623,9 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
 
                 {/* Project Thumbnail */}
                 <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-gradient-to-br from-primary-500/20 to-secondary-500/20">
-              {projects.showcase[0].thumbnailUrl ? (
+              {projects.showcase[0].bannerUrl ? (
                 <img
-                  src={projects.showcase[0].thumbnailUrl}
+                  src={projects.showcase[0].bannerUrl}
                   alt={projects.showcase[0].title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
@@ -836,153 +841,110 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
 
           {activeTab === 'achievements' && (
             <div>
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Achievements
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400 mt-1">
-                    Track your progress and unlock new badges
-                  </p>
-                </div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Achievements
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  Track your progress and unlock new badges
+                </p>
+              </div>
 
-                {/* Achievement Categories */}
+              {/* Loading State */}
+              {isAchievementsLoading && (
+                <div className="flex justify-center items-center py-12">
+                  <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-primary-500 animate-spin" />
+                </div>
+              )}
+
+              {/* Error State */}
+              {achievementsError && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 p-4 rounded-lg">
+                  <p className="font-medium">Failed to load achievements</p>
+                  <p className="text-sm">{achievementsError}</p>
+                </div>
+              )}
+
+              {/* Achievement Categories */}
+              {achievementsByCategory && !isAchievementsLoading && (
                 <div className="space-y-8">
-                  {/* Project Achievements */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                      <FontAwesomeIcon icon={faRocket} className="text-2xl text-blue-600 dark:text-blue-400" /> Project Milestones
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {/* First Project */}
-                      <div className="glass-subtle rounded-xl p-6 border-2 border-blue-500/30">
-                        <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-lg flex-shrink-0">
-                            <FontAwesomeIcon icon={faRocket} className="text-3xl" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-gray-900 dark:text-white mb-1">First Project</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Created your first project</p>
-                            <div className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Earned
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                  {Object.entries(achievementsByCategory).map(([category, achievements]) => (
+                    <div key={category}>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        {/* Render category icon dynamically */}
+                        <FontAwesomeIcon
+                          icon={getCategoryIcon(category) === 'faRocket' ? faRocket : getCategoryIcon(category) === 'faTrophy' ? faTrophy : getCategoryIcon(category) === 'faHeart' ? faHeart : getCategoryIcon(category) === 'faFire' ? faFire : faBolt}
+                          className="text-2xl text-primary-600 dark:text-primary-400"
+                        />
+                        {getCategoryDisplay(category)}
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {achievements.map((achievement) => {
+                          const rarityColors = getRarityColorClasses(achievement.rarity);
+                          const isLocked = !achievement.is_earned && achievement.progress_percentage < 100;
 
-                      {/* 10 Projects */}
-                      <div className="glass-subtle rounded-xl p-6 border-2 border-purple-500/30">
-                        <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white shadow-lg flex-shrink-0">
-                            <FontAwesomeIcon icon={faStar} className="text-3xl" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-gray-900 dark:text-white mb-1">10 Projects</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Built 10 amazing projects</p>
-                            <div className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded text-xs font-medium">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Earned
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                          // Determine border color class based on rarity
+                          const borderColorClass = achievement.is_earned
+                            ? achievement.rarity === 'legendary'
+                              ? 'border-yellow-500/30'
+                              : achievement.rarity === 'epic'
+                              ? 'border-purple-500/30'
+                              : achievement.rarity === 'rare'
+                              ? 'border-blue-500/30'
+                              : 'border-slate-500/30'
+                            : 'border-gray-300 dark:border-gray-700';
 
-                      {/* 50 Projects (Locked) */}
-                      <div className="glass-subtle rounded-xl p-6 opacity-60">
-                        <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 rounded-lg bg-gray-400 dark:bg-gray-600 flex items-center justify-center text-white shadow-lg flex-shrink-0">
-                            <FontAwesomeIcon icon={faLock} className="text-3xl" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-gray-900 dark:text-white mb-1">50 Projects</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Create 50 projects</p>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">Progress: 12/50</div>
-                            <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                              <div className="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full" style={{ width: '24%' }} />
+                          return (
+                            <div
+                              key={achievement.id}
+                              className={`glass-subtle rounded-xl p-6 border-2 transition-all ${borderColorClass} ${
+                                achievement.is_earned ? 'hover:shadow-lg' : isLocked ? 'opacity-60' : ''
+                              }`}
+                            >
+                              <div className="flex items-start gap-4">
+                                <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${achievement.is_earned ? `${rarityColors.from} ${rarityColors.to}` : 'from-gray-400 to-gray-500'} flex items-center justify-center text-white shadow-lg flex-shrink-0`}>
+                                  {achievement.is_earned || achievement.progress_percentage < 100 ? (
+                                    achievement.icon ? (
+                                      <FontAwesomeIcon icon={faStar} className="text-3xl" />
+                                    ) : (
+                                      <FontAwesomeIcon icon={faTrophy} className="text-3xl" />
+                                    )
+                                  ) : (
+                                    <FontAwesomeIcon icon={faLock} className="text-3xl" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-bold text-gray-900 dark:text-white mb-1">{achievement.name}</h4>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{achievement.description}</p>
+
+                                  {achievement.is_earned ? (
+                                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-xs font-medium">
+                                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                      Earned
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Progress: {achievement.current_value}/{achievement.criteria_value}</div>
+                                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                        <div
+                                          className="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full transition-all"
+                                          style={{ width: `${achievement.progress_percentage}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  </div>
-
-                  {/* Battle Achievements */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                      <FontAwesomeIcon icon={faTrophy} className="text-2xl text-yellow-600 dark:text-yellow-400" /> Battle Champion
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {/* Battle Champion */}
-                      <div className="glass-subtle rounded-xl p-6 border-2 border-yellow-500/30">
-                        <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center text-white shadow-lg flex-shrink-0">
-                            <FontAwesomeIcon icon={faTrophy} className="text-3xl" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-gray-900 dark:text-white mb-1">Battle Champion</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Won 5 prompt battles</p>
-                            <div className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded text-xs font-medium">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Earned
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Engagement Achievements */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                      <FontAwesomeIcon icon={faHeart} className="text-2xl text-green-600 dark:text-green-400" /> Community
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {/* Community Helper */}
-                      <div className="glass-subtle rounded-xl p-6 border-2 border-green-500/30">
-                        <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white shadow-lg flex-shrink-0">
-                            <FontAwesomeIcon icon={faHeart} className="text-3xl" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-gray-900 dark:text-white mb-1">Community Helper</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Helped others in the community</p>
-                            <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-xs font-medium">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Earned
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Week Streak */}
-                      <div className="glass-subtle rounded-xl p-6 border-2 border-orange-500/30">
-                        <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-lg flex-shrink-0">
-                            <FontAwesomeIcon icon={faFire} className="text-3xl" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-gray-900 dark:text-white mb-1">Week Streak</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Active for 7 days straight</p>
-                            <div className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded text-xs font-medium">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              Earned
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
+              )}
             </div>
           )}
 
@@ -1065,7 +1027,7 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                     description: form.description.trim() || undefined,
                     type: form.type,
                     isShowcase: form.isShowcase,
-                    thumbnailUrl: form.thumbnailUrl.trim() || undefined,
+                    bannerUrl: form.bannerUrl.trim() || undefined,
                   });
                   // Refresh lists
                   const data = await getUserProjects(user.username);
@@ -1073,7 +1035,7 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                   // Switch tab based on showcase flag
                   onTabChange(form.isShowcase ? 'showcase' : 'playground');
                   // Reset and close
-                  setForm({ title: '', description: '', type: 'other', isShowcase: true, thumbnailUrl: '' });
+                  setForm({ title: '', description: '', type: 'other', isShowcase: true, bannerUrl: '' });
                   setShowAddModal(false);
                 } catch (err: any) {
                   setFormError(err?.error || 'Failed to create project');
@@ -1140,8 +1102,8 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Thumbnail URL (optional)</label>
                 <input
                   type="url"
-                  value={form.thumbnailUrl}
-                  onChange={(e) => setForm((prev) => ({ ...prev, thumbnailUrl: e.target.value }))}
+                  value={form.bannerUrl}
+                  onChange={(e) => setForm((prev) => ({ ...prev, bannerUrl: e.target.value }))}
                   placeholder="https://..."
                   className="w-full rounded-lg border border-white/20 bg-white/60 dark:bg-white/5 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />

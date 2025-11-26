@@ -338,10 +338,10 @@ export default function ProjectDetailPage() {
         <div className="relative min-h-screen w-full flex items-center overflow-hidden bg-gray-900">
           {/* Background Layer */}
           <div className="absolute inset-0 z-0">
-            {project.thumbnailUrl ? (
+            {project.bannerUrl ? (
               <>
                 <img
-                  src={project.thumbnailUrl}
+                  src={project.bannerUrl}
                   alt=""
                   className="w-full h-full object-cover"
                   onError={(e) => {
