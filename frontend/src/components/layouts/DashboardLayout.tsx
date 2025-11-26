@@ -1,7 +1,6 @@
 import { useState, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bars3Icon } from '@heroicons/react/24/outline';
-import { LeftSidebar } from '@/components/navigation/LeftSidebar';
+import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightChatPanel } from '@/components/chat/RightChatPanel';
 import { RightAboutPanel } from '@/components/about';
 import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalendarPanel';
@@ -10,11 +9,9 @@ import { RightAddProjectChat } from '@/components/projects/RightAddProjectChat';
 interface DashboardLayoutProps {
   children: ReactNode | ((props: { openChat: (menuItem: string) => void; openAddProject: () => void }) => ReactNode);
   openAboutPanel?: boolean;
-  autoCollapseSidebar?: boolean;
 }
 
-export function DashboardLayout({ children, openAboutPanel = false, autoCollapseSidebar = false }: DashboardLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
@@ -108,32 +105,15 @@ export function DashboardLayout({ children, openAboutPanel = false, autoCollapse
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-brand-dark">
-      {/* Hamburger button - shows when sidebar is closed */}
-      {!sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Show sidebar"
-          className="fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-900 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700"
-        >
-          <Bars3Icon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-        </button>
-      )}
-
-      {/* Left Sidebar - only render when open if autoCollapseSidebar is true */}
-      {(!autoCollapseSidebar || sidebarOpen) && (
-        <LeftSidebar
-          onMenuClick={handleMenuClick}
-          isOpen={sidebarOpen}
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
-          onAddProject={handleOpenAddProject}
-        />
-      )}
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-brand-dark">
+      {/* Top Navigation */}
+      <TopNavigation
+        onMenuClick={handleMenuClick}
+        onAddProject={handleOpenAddProject}
+      />
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${
-        sidebarOpen ? 'ml-64' : autoCollapseSidebar ? 'ml-0' : 'ml-20 max-md:ml-0'
-      }`}>
+      <div className="flex-1 flex flex-col overflow-hidden">
         {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject }) : children}
       </div>
 

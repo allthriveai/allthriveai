@@ -180,7 +180,7 @@ export default function AccountSettingsPage() {
           {/* Profile Form */}
           <form onSubmit={handleSubmit} className="space-y-8" aria-label="Edit profile form">
             {/* Profile Photo Section */}
-            <div className="flex items-start gap-6">
+            <div className="flex flex-col items-center gap-6">
               <ImageUpload
                 currentImage={formData.avatarUrl}
                 onImageUploaded={(url) => {
@@ -190,7 +190,7 @@ export default function AccountSettingsPage() {
                   setFormData(prev => ({ ...prev, avatarUrl: '' }));
                 }}
               />
-              <div className="flex-1">
+              <div className="max-w-md text-center">
                 <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
                   Profile Photo
                 </h3>
