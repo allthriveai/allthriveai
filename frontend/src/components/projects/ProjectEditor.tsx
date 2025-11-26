@@ -35,8 +35,9 @@ export interface ProjectEditorRenderProps {
   projectDescription: string;
   projectTools: number[];
   allTools: any[];
-  projectTopics: number[];
-  availableTopics: Taxonomy[];
+  projectCategories: number[];
+  availableCategories: Taxonomy[];
+  projectTopics: string[];
   isUploadingFeatured: boolean;
   heroDisplayMode: 'image' | 'video' | 'slideshow' | 'quote' | 'slideup';
   heroQuote: string;
@@ -54,6 +55,8 @@ export interface ProjectEditorRenderProps {
   isSaving: boolean;
   lastSaved: Date | null;
   hasUnsavedChanges: boolean;
+  focusedBlockId: string | null;
+  showAddMenu: string | null;
 
   // Setters
   setBlocks: (blocks: ProjectBlock[]) => void;
@@ -66,7 +69,8 @@ export interface ProjectEditorRenderProps {
   setProjectUrl: (url: string) => void;
   setProjectDescription: (desc: string) => void;
   setProjectTools: (tools: number[]) => void;
-  setProjectTopics: (topics: number[]) => void;
+  setProjectCategories: (categories: number[]) => void;
+  setProjectTopics: (topics: string[]) => void;
   setHeroDisplayMode: (mode: 'image' | 'video' | 'slideshow' | 'quote' | 'slideup') => void;
   setHeroQuote: (quote: string) => void;
   setHeroVideoUrl: (url: string) => void;
@@ -77,6 +81,9 @@ export interface ProjectEditorRenderProps {
   setSlideUpElement2Type: (type: 'image' | 'video' | 'text') => void;
   setSlideUpElement2Content: (content: string) => void;
   setSlideUpElement2Caption: (caption: string) => void;
+  setShowSettingsSidebar: (show: boolean) => void;
+  setFocusedBlockId: (id: string | null) => void;
+  setShowAddMenu: (id: string | null) => void;
 
   // Handlers
   handleSave: () => Promise<void>;
@@ -128,8 +135,9 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
   const [projectDescription, setProjectDescription] = useState('');
   const [projectTools, setProjectTools] = useState<number[]>([]);
   const [allTools, setAllTools] = useState<any[]>([]);
-  const [projectTopics, setProjectTopics] = useState<number[]>([]);
-  const [availableTopics, setAvailableTopics] = useState<Taxonomy[]>([]);
+  const [projectCategories, setProjectCategories] = useState<number[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<Taxonomy[]>([]);
+  const [projectTopics, setProjectTopics] = useState<string[]>([]);
   const [isUploadingFeatured, setIsUploadingFeatured] = useState(false);
 
   // Hero display state
@@ -146,6 +154,11 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [isUploadingSlideUp1, setIsUploadingSlideUp1] = useState(false);
   const [isUploadingSlideUp2, setIsUploadingSlideUp2] = useState(false);
+  const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
+
+  // Block editing UI state
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+  const [showAddMenu, setShowAddMenu] = useState<string | null>(null);
 
   // Initialize state from project
   useEffect(() => {
@@ -157,6 +170,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
       setProjectUrl(project.externalUrl || '');
       setProjectDescription(project.description || '');
       setProjectTools(project.tools || []);
+      setProjectCategories(project.categories || []);
       setProjectTopics(project.topics || []);
 
       setHeroDisplayMode(project.content?.heroDisplayMode || 'image');
@@ -193,17 +207,17 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
       }
     }
 
-    async function loadTopics() {
+    async function loadCategories() {
       try {
-        const response = await api.get('/taxonomies/?taxonomy_type=topic');
-        setAvailableTopics(response.data.results || []);
+        const response = await api.get('/taxonomies/?taxonomy_type=category');
+        setAvailableCategories(response.data.results || []);
       } catch (error) {
-        console.error('Failed to load topics:', error);
+        console.error('Failed to load categories:', error);
       }
     }
 
     loadTools();
-    loadTopics();
+    loadCategories();
   }, []);
 
   // Auto-generate slug from title
@@ -227,6 +241,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
       projectUrl,
       projectDescription,
       projectTools,
+      projectCategories,
       projectTopics,
       heroDisplayMode,
       heroQuote,
@@ -248,6 +263,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
       projectUrl,
       projectDescription,
       projectTools,
+      projectCategories,
       projectTopics,
       heroDisplayMode,
       heroQuote,
@@ -284,9 +300,10 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
         featuredImageUrl,
         externalUrl: projectUrl,
         tools: projectTools,
+        categories: projectCategories,
         topics: projectTopics,
         content: {
-          blocks: blocks.map(({ id, ...block }) => block),
+          blocks: blocks.map(({ id: _id, ...block }) => block),
           heroDisplayMode,
           heroQuote,
           heroVideoUrl,
@@ -335,6 +352,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
     featuredImageUrl,
     projectUrl,
     projectTools,
+    projectCategories,
     projectTopics,
     blocks,
     heroDisplayMode,
@@ -463,7 +481,10 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
       setHeroVideoUrl(data.url);
     } catch (error: any) {
       console.error('Upload error:', error);
-      alert(error.message || 'Failed to upload video');
+      const errorMessage = error?.response?.data?.error || error?.message || 'Failed to upload video';
+      console.error('Detailed error:', errorMessage);
+      alert(errorMessage);
+      throw error;  // Re-throw for HeroDisplaySection to catch
     } finally {
       setIsUploadingVideo(false);
     }
@@ -521,8 +542,10 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
         projectDescription,
         projectTools,
         allTools,
+        projectCategories,
+        availableCategories,
+        availableTopics: availableCategories,  // Alias for availableCategories
         projectTopics,
-        availableTopics,
         isUploadingFeatured,
         heroDisplayMode,
         heroQuote,
@@ -537,9 +560,12 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
         isUploadingSlideUp1,
         isUploadingSlideUp2,
         isUploadingVideo,
+        showSettingsSidebar,
         isSaving,
         lastSaved,
         hasUnsavedChanges,
+        focusedBlockId,
+        showAddMenu,
 
         // Setters
         setBlocks,
@@ -552,6 +578,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
         setProjectUrl,
         setProjectDescription,
         setProjectTools,
+        setProjectCategories,
         setProjectTopics,
         setHeroDisplayMode,
         setHeroQuote,
@@ -563,6 +590,9 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
         setSlideUpElement2Type,
         setSlideUpElement2Content,
         setSlideUpElement2Caption,
+        setShowSettingsSidebar,
+        setFocusedBlockId,
+        setShowAddMenu,
 
         // Handlers
         handleSave,

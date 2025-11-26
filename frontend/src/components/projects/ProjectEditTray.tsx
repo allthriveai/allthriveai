@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { updateProject } from '@/services/projects';
 import type { Project } from '@/types/models';
 import { ProjectEditor } from '@/components/projects/ProjectEditor';
-import { ProjectFieldsEditor } from '@/components/projects/fields';
+import { ProjectFieldsEditor, ProjectSettingsSection } from '@/components/projects/fields';
 import { generateSlug } from '@/utils/slug';
 import {
   XMarkIcon,
@@ -141,93 +141,11 @@ export function ProjectEditTray({ isOpen, onClose, project, onProjectUpdate }: P
                   />
                 )}
                 {activeTab === 'settings' && (
-                  <div className="space-y-6">
-                    {/* Visibility Options */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Visibility</h3>
-                      <div className="space-y-2">
-                        <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
-                          <div className="flex items-center gap-3">
-                            <FaStar className="w-5 h-5 text-yellow-500" />
-                            <div>
-                              <p className="font-medium text-gray-900 dark:text-white">Showcase</p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">Display in showcase section</p>
-                            </div>
-                          </div>
-                          <input
-                            type="checkbox"
-                            checked={project.isShowcase}
-                            onChange={async () => {
-                              try {
-                                const updated = await updateProject(project.id, {
-                                  isShowcase: !project.isShowcase,
-                                });
-                                handleProjectUpdate(updated);
-                              } catch (error) {
-                                console.error('Failed to update:', error);
-                              }
-                            }}
-                            className="w-5 h-5 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500"
-                          />
-                        </label>
-
-                        <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
-                          <div className="flex items-center gap-3">
-                            <FaLock className="w-5 h-5 text-gray-500" />
-                            <div>
-                              <p className="font-medium text-gray-900 dark:text-white">Private</p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">Hide from public</p>
-                            </div>
-                          </div>
-                          <input
-                            type="checkbox"
-                            checked={project.isPrivate || false}
-                            onChange={async () => {
-                              try {
-                                const updated = await updateProject(project.id, {
-                                  isPrivate: !project.isPrivate,
-                                });
-                                handleProjectUpdate(updated);
-                              } catch (error) {
-                                console.error('Failed to update:', error);
-                              }
-                            }}
-                            className="w-5 h-5 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500"
-                          />
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Project Slug */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Project URL</h3>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-500">/{project.username}/</span>
-                          <input
-                            type="text"
-                            value={editorProps.editableSlug}
-                            onChange={(e) => {
-                              editorProps.setEditableSlug(e.target.value);
-                              editorProps.setCustomSlugSet(true);
-                            }}
-                            className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-                          />
-                        </div>
-                        {editorProps.customSlugSet && (
-                          <button
-                            onClick={() => {
-                              editorProps.setCustomSlugSet(false);
-                              editorProps.setEditableSlug(generateSlug(editorProps.projectTitle));
-                            }}
-                            className="text-xs text-primary-600 dark:text-primary-400 hover:underline"
-                          >
-                            Reset to auto-generate
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <ProjectSettingsSection
+                    project={project}
+                    onProjectUpdate={handleProjectUpdate}
+                    editorProps={editorProps}
+                  />
                 )}
               </div>
             </div>

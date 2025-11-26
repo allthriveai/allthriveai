@@ -2,6 +2,7 @@
 
 import logging
 
+from django.conf import settings
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -297,7 +298,7 @@ def github_import_confirm(request):
     # Allow user to override title and tl;dr from preview
     title = request.data.get('title') or preview_data.get('title', 'Untitled')
     tldr = request.data.get('tldr') or preview_data.get('tldr', '')
-    auto_publish = request.data.get('auto_publish', False)
+    auto_publish = request.data.get('auto_publish', True)  # Default to published
     add_to_showcase = request.data.get('add_to_showcase', False)
 
     logger.info(
@@ -394,12 +395,20 @@ def github_import_confirm(request):
         )
 
     except Exception as e:
+        import traceback
+
+        error_trace = traceback.format_exc()
         logger.error(
-            f'Failed to import GitHub repository {repo_full_name} for user {request.user.username}: {e}',
+            f'Failed to import GitHub repository {repo_full_name} for user {request.user.username}: {e}\n{error_trace}',
             exc_info=True,
             extra={'user_id': request.user.id, 'repo': repo_full_name},
         )
+        response_data = {
+            'success': False,
+            'error': f'Failed to import repository: {str(e)}',
+            'traceback': error_trace if settings.DEBUG else '',
+        }
         return Response(
-            {'success': False, 'error': f'Failed to import repository: {str(e)}'},
+            response_data,
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

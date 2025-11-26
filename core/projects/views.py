@@ -298,7 +298,7 @@ def explore_projects(request):
     queryset = (
         Project.objects.filter(is_published=True, is_private=False, is_archived=False)
         .select_related('user')
-        .prefetch_related('tools', 'likes', 'topics')
+        .prefetch_related('tools', 'likes')
     )
 
     # Apply search filter

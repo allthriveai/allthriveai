@@ -135,7 +135,7 @@ export function ImportGitHubModal({ isOpen, onClose }: ImportGitHubModalProps) {
         previewData,
         title,
         tldr,
-        autoPublish: false,
+        autoPublish: true,
         addToShowcase: false,
       });
 

@@ -20,8 +20,9 @@ class StorageService:
 
     def __init__(self):
         """Initialize MinIO client."""
+        # Minio 7.2.0+ uses endpoint, access_key, secret_key as positional args
         self.client = Minio(
-            settings.MINIO_ENDPOINT,
+            endpoint=settings.MINIO_ENDPOINT,
             access_key=settings.MINIO_ACCESS_KEY,
             secret_key=settings.MINIO_SECRET_KEY,
             secure=settings.MINIO_USE_SSL,
@@ -41,8 +42,8 @@ class StorageService:
                 return
 
             try:
-                if not self.client.bucket_exists(self.bucket_name):
-                    self.client.make_bucket(self.bucket_name)
+                if not self.client.bucket_exists(bucket_name=self.bucket_name):
+                    self.client.make_bucket(bucket_name=self.bucket_name)
                     self._set_public_read_policy()
                     logger.info(f'Created bucket: {self.bucket_name}')
 
@@ -66,7 +67,7 @@ class StorageService:
             ]
         }}"""
         try:
-            self.client.set_bucket_policy(self.bucket_name, policy)
+            self.client.set_bucket_policy(bucket_name=self.bucket_name, policy=policy)
             logger.info(f'Set public read policy for {self.bucket_name}/public/*')
         except S3Error as e:
             logger.error(f'Failed to set bucket policy: {e}')
@@ -114,7 +115,13 @@ class StorageService:
             file_stream = BytesIO(file_data)
             file_size = len(file_data)
 
-            self.client.put_object(self.bucket_name, object_name, file_stream, file_size, content_type=content_type)
+            self.client.put_object(
+                bucket_name=self.bucket_name,
+                object_name=object_name,
+                data=file_stream,
+                length=file_size,
+                content_type=content_type,
+            )
 
             # Construct URL - use public endpoint for browser access
             public_endpoint = getattr(settings, 'MINIO_ENDPOINT_PUBLIC', settings.MINIO_ENDPOINT)
@@ -156,7 +163,7 @@ class StorageService:
 
             object_name = parts[1]
 
-            self.client.remove_object(self.bucket_name, object_name)
+            self.client.remove_object(bucket_name=self.bucket_name, object_name=object_name)
             logger.info(f'Deleted file: {object_name}')
             return True, None
 
@@ -198,7 +205,7 @@ class StorageService:
         """
         try:
             url = self.client.presigned_get_object(
-                self.bucket_name, object_name, expires=timedelta(seconds=expires_seconds)
+                bucket_name=self.bucket_name, object_name=object_name, expires=timedelta(seconds=expires_seconds)
             )
             # Replace internal endpoint with public endpoint
             public_endpoint = getattr(settings, 'MINIO_ENDPOINT_PUBLIC', settings.MINIO_ENDPOINT)

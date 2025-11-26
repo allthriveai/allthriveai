@@ -35,6 +35,7 @@ from .integrations.github.views import (
     github_sync_trigger,
 )
 from .projects.comment_views import ProjectCommentViewSet
+from .projects.topic_suggestions import get_topic_suggestions
 from .projects.views import ProjectViewSet, explore_projects, public_user_projects, semantic_search, user_liked_projects
 from .quizzes.views import QuizAttemptViewSet, QuizViewSet
 from .referrals.views import ReferralCodeViewSet, ReferralViewSet, validate_referral_code
@@ -99,6 +100,7 @@ urlpatterns = [
     path('ai/analytics/langsmith/health/', ai_analytics_views.langsmith_health, name='langsmith_health'),
     # Explore endpoints (public)
     path('projects/explore/', explore_projects, name='explore_projects'),
+    path('projects/topic-suggestions/', get_topic_suggestions, name='topic_suggestions'),
     path('search/semantic/', semantic_search, name='semantic_search'),
     path('users/explore/', explore_users, name='explore_users'),
     # Public user endpoints

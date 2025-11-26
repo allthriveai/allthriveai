@@ -81,17 +81,44 @@ interface ProjectFieldsEditorProps {
     setProjectUrl: (url: string) => void;
     projectTools: number[];
     setProjectTools: (tools: number[]) => void;
-    projectTopics: number[];
-    setProjectTopics: (topics: number[]) => void;
-    availableTopics: any[];
+    projectCategories: number[];
+    setProjectCategories: (categories: number[]) => void;
+    availableCategories: any[];
+    projectTopics: string[];
+    setProjectTopics: (topics: string[]) => void;
     projectDescription: string;
     setProjectDescription: (description: string) => void;
+    // Hero display props
     heroDisplayMode: 'image' | 'video' | 'slideshow' | 'quote' | 'slideup';
     setHeroDisplayMode: (mode: 'image' | 'video' | 'slideshow' | 'quote' | 'slideup') => void;
     featuredImageUrl?: string;
-    heroQuote?: string;
+    setFeaturedImageUrl?: (url: string) => void;
+    handleFeaturedImageUpload?: (file: File) => void;
+    isUploadingFeatured?: boolean;
     heroVideoUrl?: string;
+    setHeroVideoUrl?: (url: string) => void;
+    handleVideoUpload?: (file: File) => void;
+    isUploadingVideo?: boolean;
     heroSlideshowImages?: string[];
+    setHeroSlideshowImages?: (images: string[]) => void;
+    heroQuote?: string;
+    setHeroQuote?: (quote: string) => void;
+    slideUpElement1Type?: 'image' | 'video' | 'text';
+    slideUpElement1Content?: string;
+    slideUpElement1Caption?: string;
+    setSlideUpElement1Type?: (type: 'image' | 'video' | 'text') => void;
+    setSlideUpElement1Content?: (content: string) => void;
+    setSlideUpElement1Caption?: (caption: string) => void;
+    handleSlideUpElement1Upload?: (file: File, type: 'image' | 'video') => void;
+    isUploadingSlideUp1?: boolean;
+    slideUpElement2Type?: 'image' | 'video' | 'text';
+    slideUpElement2Content?: string;
+    slideUpElement2Caption?: string;
+    setSlideUpElement2Type?: (type: 'image' | 'video' | 'text') => void;
+    setSlideUpElement2Content?: (content: string) => void;
+    setSlideUpElement2Caption?: (caption: string) => void;
+    handleSlideUpElement2Upload?: (file: File, type: 'image' | 'video') => void;
+    isUploadingSlideUp2?: boolean;
     isSaving: boolean;
   };
 }
@@ -142,9 +169,11 @@ export function ProjectFieldsEditor({
       case 'topics':
         return {
           ...baseProps,
+          projectCategories: editorProps.projectCategories,
+          setProjectCategories: editorProps.setProjectCategories,
+          availableCategories: editorProps.availableCategories,
           projectTopics: editorProps.projectTopics,
           setProjectTopics: editorProps.setProjectTopics,
-          availableTopics: editorProps.availableTopics,
         };
       case 'description':
         return {
@@ -158,9 +187,33 @@ export function ProjectFieldsEditor({
           heroDisplayMode: editorProps.heroDisplayMode,
           setHeroDisplayMode: editorProps.setHeroDisplayMode,
           featuredImageUrl: editorProps.featuredImageUrl,
-          heroQuote: editorProps.heroQuote,
+          setFeaturedImageUrl: editorProps.setFeaturedImageUrl,
+          handleFeaturedImageUpload: editorProps.handleFeaturedImageUpload,
+          isUploadingFeatured: editorProps.isUploadingFeatured,
           heroVideoUrl: editorProps.heroVideoUrl,
+          setHeroVideoUrl: editorProps.setHeroVideoUrl,
+          handleVideoUpload: editorProps.handleVideoUpload,
+          isUploadingVideo: editorProps.isUploadingVideo,
           heroSlideshowImages: editorProps.heroSlideshowImages,
+          setHeroSlideshowImages: editorProps.setHeroSlideshowImages,
+          heroQuote: editorProps.heroQuote,
+          setHeroQuote: editorProps.setHeroQuote,
+          slideUpElement1Type: editorProps.slideUpElement1Type,
+          slideUpElement1Content: editorProps.slideUpElement1Content,
+          slideUpElement1Caption: editorProps.slideUpElement1Caption,
+          setSlideUpElement1Type: editorProps.setSlideUpElement1Type,
+          setSlideUpElement1Content: editorProps.setSlideUpElement1Content,
+          setSlideUpElement1Caption: editorProps.setSlideUpElement1Caption,
+          handleSlideUpElement1Upload: editorProps.handleSlideUpElement1Upload,
+          isUploadingSlideUp1: editorProps.isUploadingSlideUp1,
+          slideUpElement2Type: editorProps.slideUpElement2Type,
+          slideUpElement2Content: editorProps.slideUpElement2Content,
+          slideUpElement2Caption: editorProps.slideUpElement2Caption,
+          setSlideUpElement2Type: editorProps.setSlideUpElement2Type,
+          setSlideUpElement2Content: editorProps.setSlideUpElement2Content,
+          setSlideUpElement2Caption: editorProps.setSlideUpElement2Caption,
+          handleSlideUpElement2Upload: editorProps.handleSlideUpElement2Upload,
+          isUploadingSlideUp2: editorProps.isUploadingSlideUp2,
         };
       default:
         return baseProps;

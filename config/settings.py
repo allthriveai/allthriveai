@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'csp',
     'core',  # Must come before allauth to ensure User model is available
+    'core.users',  # User model lives here
     'core.achievements',
     'core.thrive_circle',
     'allauth',
@@ -439,8 +440,8 @@ MINIO_BUCKET_NAME = config('MINIO_BUCKET_NAME', default='allthrive-media')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'  # Fallback for local development without MinIO
 
-# Custom User Model
-AUTH_USER_MODEL = 'core.User'
+# Custom User Model (points to users subdomain where User is defined)
+AUTH_USER_MODEL = 'users.User'
 
 # Django Sites Framework
 SITE_ID = 1

@@ -52,7 +52,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'tools_details',
             'categories',
             'categories_details',
-            'user_tags',
+            'topics',
             'heart_count',
             'is_liked_by_user',
             'content',
@@ -148,10 +148,10 @@ class ProjectSerializer(serializers.ModelSerializer):
 
         return value
 
-    def validate_user_tags(self, value):
-        """Validate and moderate user-generated tags."""
+    def validate_topics(self, value):
+        """Validate and moderate user-generated topics."""
         if not isinstance(value, list):
-            raise serializers.ValidationError('user_tags must be a list.')
+            raise serializers.ValidationError('topics must be a list.')
 
         # Sanitize tags
         sanitized = [sanitize_tag(tag) for tag in value if tag]

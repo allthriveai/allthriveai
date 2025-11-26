@@ -122,7 +122,7 @@ export interface Project {
   toolsDetails?: Tool[]; // Full tool objects with details
   categories?: number[]; // Category taxonomy IDs (predefined)
   categoriesDetails?: Taxonomy[]; // Full category taxonomy objects
-  userTags?: string[]; // User-generated tags (free-form, moderated)
+  topics?: string[]; // User-generated topics (free-form, moderated)
   heartCount: number;
   isLikedByUser: boolean;
   content: ProjectContent;
@@ -198,7 +198,7 @@ export interface ProjectPayload {
   externalUrl?: string;
   tools?: number[];
   categories?: number[]; // Category taxonomy IDs (predefined)
-  userTags?: string[]; // User-generated tags (free-form, moderated)
+  topics?: string[]; // User-generated topics (free-form, moderated)
   content?: ProjectContent;
 }
 

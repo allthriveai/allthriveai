@@ -28,7 +28,7 @@ function transformProject(data: any): Project {
     toolsDetails: data.toolsDetails || [],
     categories: data.categories || [],
     categoriesDetails: data.categoriesDetails || [],
-    userTags: data.userTags || [],
+    topics: data.topics || [],
     heartCount: data.heartCount || 0,
     isLikedByUser: data.isLikedByUser || false,
     content: data.content || {},

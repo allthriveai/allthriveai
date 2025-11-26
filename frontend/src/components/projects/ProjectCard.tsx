@@ -265,12 +265,12 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         )}
 
         {/* BACKGROUND LAYER */}
-        <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900 min-h-[280px]' : ''} ${isGradient ? 'min-h-[280px]' : ''}`}>
+        <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''} ${isGradient ? 'min-h-[280px]' : ''}`}>
             {heroElement.type === 'image' && (
               <img
                 src={heroElement.url}
                 alt={project.title}
-                className="w-full h-full min-h-[280px] object-cover"
+                className="w-full h-auto object-contain"
                 loading="lazy"
               />
             )}

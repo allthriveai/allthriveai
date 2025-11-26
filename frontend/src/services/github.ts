@@ -106,7 +106,7 @@ export async function confirmImport(params: {
     preview_data: params.previewData,
     title: params.title,
     tldr: params.tldr,
-    auto_publish: params.autoPublish ?? false,
+    auto_publish: params.autoPublish ?? true,
     add_to_showcase: params.addToShowcase ?? false,
   });
 

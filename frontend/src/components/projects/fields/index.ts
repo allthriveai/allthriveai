@@ -14,3 +14,4 @@ export { ToolsSection } from './ToolsSection';
 export { TopicsSection } from './TopicsSection';
 export { DescriptionSection } from './DescriptionSection';
 export { HeroDisplaySection } from './HeroDisplaySection';
+export { ProjectSettingsSection } from './ProjectSettingsSection';

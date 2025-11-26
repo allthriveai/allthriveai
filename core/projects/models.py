@@ -83,12 +83,12 @@ class Project(models.Model):
         limit_choices_to={'taxonomy_type': 'category', 'is_active': True},
         help_text='Categories that organize this project (from predefined Taxonomy)',
     )
-    # User-generated tags (free-form, moderated)
-    user_tags = ArrayField(
+    # User-generated topics (free-form, moderated)
+    topics = ArrayField(
         models.CharField(max_length=50),
         blank=True,
         default=list,
-        help_text='User-generated tags (moderated for inappropriate content)',
+        help_text='User-generated topics (moderated for inappropriate content)',
     )
     # Structured layout blocks for the project page (cover, tags, text/image blocks)
     content = models.JSONField(default=dict, blank=True)

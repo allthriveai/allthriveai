@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import type { User, Project, ProjectType } from '@/types/models';
 import { getUserProjects, createProject, bulkDeleteProjects, updateProject, deleteProject } from '@/services/projects';
 import { getUserByUsername } from '@/services/auth';
 import { ProjectCard } from '@/components/projects/ProjectCard';
-import { ProfileSidebar } from './ProfileSidebar';
 import { ActivityFeed } from './ActivityFeed';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
 import { useAchievements } from '@/hooks/useAchievements';
@@ -18,10 +17,9 @@ import {
   faTrophy,
   faHeart,
   faFire,
-  faLock,
   faBolt,
+  faSpinner,
 } from '@fortawesome/free-solid-svg-icons';
-import { faSpinner } from '@fortawesome/free-solid-svg-icons';
 
 interface ProfileCenterProps {
   username?: string; // Username from URL params
@@ -520,91 +518,66 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
               </div>
 
               {/* Achievements */}
-              <div className="py-4 border-t border-gray-200 dark:border-gray-800">
-                <button
-                  onClick={() => {
-                    onTabChange('achievements');
-                    // Smooth scroll to the tabs section
-                    setTimeout(() => {
-                      const tabsElement = document.querySelector('.flex.justify-center.border-b');
-                      if (tabsElement) {
-                        tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }, 100);
-                  }}
-                  className="text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors mb-3 block"
-                >
-                  Achievements
-                </button>
-                <div className="flex flex-wrap gap-2">
-                  {/* Example badges - replace with actual data */}
-                  <div className="group relative" title="First Project" onClick={() => {
-                    onTabChange('achievements');
-                    setTimeout(() => {
-                      const tabsElement = document.querySelector('.flex.justify-center.border-b');
-                      if (tabsElement) {
-                        tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }, 100);
-                  }}>
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-sm hover:scale-110 transition-transform cursor-pointer">
-                      <FontAwesomeIcon icon={faRocket} className="text-xl" />
+              {achievementsByCategory && !isAchievementsLoading && (() => {
+                // Get first 5 earned achievements across all categories for display
+                const earnedAchievements = Object.values(achievementsByCategory)
+                  .flat()
+                  .filter(a => a.is_earned)
+                  .slice(0, 5);
+
+                // Only show section if there are earned achievements
+                if (earnedAchievements.length === 0) {
+                  return null;
+                }
+
+                return (
+                  <div className="py-4 border-t border-gray-200 dark:border-gray-800">
+                    <button
+                      onClick={() => {
+                        onTabChange('achievements');
+                        setTimeout(() => {
+                          const tabsElement = document.querySelector('.flex.justify-center.border-b');
+                          if (tabsElement) {
+                            tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }
+                        }, 100);
+                      }}
+                      className="text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors mb-3 block"
+                    >
+                      Achievements
+                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      {earnedAchievements.map((achievement) => {
+                        const rarityColors = getRarityColorClasses(achievement.rarity);
+                        return (
+                          <div
+                            key={achievement.id}
+                            className="group relative"
+                            title={achievement.name}
+                            onClick={() => {
+                              onTabChange('achievements');
+                              setTimeout(() => {
+                                const tabsElement = document.querySelector('.flex.justify-center.border-b');
+                                if (tabsElement) {
+                                  tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }
+                              }, 100);
+                            }}
+                          >
+                            <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${rarityColors.from} ${rarityColors.to} flex items-center justify-center text-white shadow-sm hover:scale-110 transition-transform cursor-pointer`}>
+                              {achievement.icon ? (
+                                <FontAwesomeIcon icon={faStar} className="text-xl" />
+                              ) : (
+                                <FontAwesomeIcon icon={faTrophy} className="text-xl" />
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                  <div className="group relative" title="10 Projects" onClick={() => {
-                    onTabChange('achievements');
-                    setTimeout(() => {
-                      const tabsElement = document.querySelector('.flex.justify-center.border-b');
-                      if (tabsElement) {
-                        tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }, 100);
-                  }}>
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white shadow-sm hover:scale-110 transition-transform cursor-pointer">
-                      <FontAwesomeIcon icon={faStar} className="text-xl" />
-                    </div>
-                  </div>
-                  <div className="group relative" title="Battle Champion" onClick={() => {
-                    onTabChange('achievements');
-                    setTimeout(() => {
-                      const tabsElement = document.querySelector('.flex.justify-center.border-b');
-                      if (tabsElement) {
-                        tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }, 100);
-                  }}>
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center text-white shadow-sm hover:scale-110 transition-transform cursor-pointer">
-                      <FontAwesomeIcon icon={faTrophy} className="text-xl" />
-                    </div>
-                  </div>
-                  <div className="group relative" title="Community Helper" onClick={() => {
-                    onTabChange('achievements');
-                    setTimeout(() => {
-                      const tabsElement = document.querySelector('.flex.justify-center.border-b');
-                      if (tabsElement) {
-                        tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }, 100);
-                  }}>
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white shadow-sm hover:scale-110 transition-transform cursor-pointer">
-                      <FontAwesomeIcon icon={faHeart} className="text-xl" />
-                    </div>
-                  </div>
-                  <div className="group relative" title="Week Streak" onClick={() => {
-                    onTabChange('achievements');
-                    setTimeout(() => {
-                      const tabsElement = document.querySelector('.flex.justify-center.border-b');
-                      if (tabsElement) {
-                        tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }, 100);
-                  }}>
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-sm hover:scale-110 transition-transform cursor-pointer">
-                      <FontAwesomeIcon icon={faFire} className="text-xl" />
-                    </div>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
 
             {/* Right Column - Hero Featured Project */}
@@ -866,9 +839,35 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
               )}
 
               {/* Achievement Categories */}
-              {achievementsByCategory && !isAchievementsLoading && (
-                <div className="space-y-8">
-                  {Object.entries(achievementsByCategory).map(([category, achievements]) => (
+              {achievementsByCategory && !isAchievementsLoading && (() => {
+                // Get all earned achievements across all categories
+                const allEarnedAchievements = Object.entries(achievementsByCategory)
+                  .map(([category, achievements]) => ({
+                    category,
+                    earnedAchievements: achievements.filter(a => a.is_earned)
+                  }))
+                  .filter(({ earnedAchievements }) => earnedAchievements.length > 0);
+
+                // Show empty state if no earned achievements
+                if (allEarnedAchievements.length === 0) {
+                  return (
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-12 text-center">
+                      <FontAwesomeIcon icon={faTrophy} className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        No Achievements Yet
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        {isOwnProfile
+                          ? 'Start creating projects and engaging with the community to earn badges!'
+                          : 'This user hasn\'t earned any achievements yet.'}
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-8">
+                    {allEarnedAchievements.map(({ category, earnedAchievements }) => (
                     <div key={category}>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                         {/* Render category icon dynamically */}
@@ -879,62 +878,40 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                         {getCategoryDisplay(category)}
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {achievements.map((achievement) => {
+                        {earnedAchievements.map((achievement) => {
                           const rarityColors = getRarityColorClasses(achievement.rarity);
-                          const isLocked = !achievement.is_earned && achievement.progress_percentage < 100;
 
                           // Determine border color class based on rarity
-                          const borderColorClass = achievement.is_earned
-                            ? achievement.rarity === 'legendary'
-                              ? 'border-yellow-500/30'
-                              : achievement.rarity === 'epic'
-                              ? 'border-purple-500/30'
-                              : achievement.rarity === 'rare'
-                              ? 'border-blue-500/30'
-                              : 'border-slate-500/30'
-                            : 'border-gray-300 dark:border-gray-700';
+                          const borderColorClass = achievement.rarity === 'legendary'
+                            ? 'border-yellow-500/30'
+                            : achievement.rarity === 'epic'
+                            ? 'border-purple-500/30'
+                            : achievement.rarity === 'rare'
+                            ? 'border-blue-500/30'
+                            : 'border-slate-500/30';
 
                           return (
                             <div
                               key={achievement.id}
-                              className={`glass-subtle rounded-xl p-6 border-2 transition-all ${borderColorClass} ${
-                                achievement.is_earned ? 'hover:shadow-lg' : isLocked ? 'opacity-60' : ''
-                              }`}
+                              className={`glass-subtle rounded-xl p-6 border-2 transition-all hover:shadow-lg ${borderColorClass}`}
                             >
                               <div className="flex items-start gap-4">
-                                <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${achievement.is_earned ? `${rarityColors.from} ${rarityColors.to}` : 'from-gray-400 to-gray-500'} flex items-center justify-center text-white shadow-lg flex-shrink-0`}>
-                                  {achievement.is_earned || achievement.progress_percentage < 100 ? (
-                                    achievement.icon ? (
-                                      <FontAwesomeIcon icon={faStar} className="text-3xl" />
-                                    ) : (
-                                      <FontAwesomeIcon icon={faTrophy} className="text-3xl" />
-                                    )
+                                <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${rarityColors.from} ${rarityColors.to} flex items-center justify-center text-white shadow-lg flex-shrink-0`}>
+                                  {achievement.icon ? (
+                                    <FontAwesomeIcon icon={faStar} className="text-3xl" />
                                   ) : (
-                                    <FontAwesomeIcon icon={faLock} className="text-3xl" />
+                                    <FontAwesomeIcon icon={faTrophy} className="text-3xl" />
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-bold text-gray-900 dark:text-white mb-1">{achievement.name}</h4>
                                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{achievement.description}</p>
-
-                                  {achievement.is_earned ? (
-                                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-xs font-medium">
-                                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                      </svg>
-                                      Earned
-                                    </div>
-                                  ) : (
-                                    <div>
-                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Progress: {achievement.current_value}/{achievement.criteria_value}</div>
-                                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                        <div
-                                          className="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full transition-all"
-                                          style={{ width: `${achievement.progress_percentage}%` }}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
+                                  <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-xs font-medium">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    Earned {achievement.earned_at ? `on ${new Date(achievement.earned_at).toLocaleDateString()}` : ''}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -944,7 +921,8 @@ export function ProfileCenter({ username, user, isAuthenticated, isOwnProfile, a
                     </div>
                   ))}
                 </div>
-              )}
+                );
+              })()}
             </div>
           )}
 

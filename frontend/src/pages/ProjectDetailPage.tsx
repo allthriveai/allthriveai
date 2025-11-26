@@ -171,7 +171,7 @@ export default function ProjectDetailPage() {
 
     const handleKeyPress = (event: KeyboardEvent) => {
       // Only trigger if not typing in an input/textarea
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextArea) {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
         return;
       }
 
@@ -668,7 +668,7 @@ export default function ProjectDetailPage() {
                             <img
                               src={project.featuredImageUrl}
                               alt={`${project.title} featured`}
-                              className="relative w-full max-h-[400px] md:max-h-[600px] object-cover rounded-xl md:rounded-2xl shadow-inner"
+                              className="w-full h-auto rounded-xl md:rounded-2xl shadow-inner"
                             />
                           </div>
                         </div>

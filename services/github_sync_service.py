@@ -489,8 +489,10 @@ class GitHubSyncService:
     def _create_project_from_repo(
         self, repo: dict, auto_publish: bool = False, add_to_showcase: bool = False
     ) -> Project:
-        """Create a new project from GitHub repo data."""
+        """Create a new project from GitHub repo data with AI-powered metadata."""
         from core.taxonomy.models import Taxonomy
+        from core.tools.models import Tool
+        from services.github_ai_analyzer import analyze_github_repo
 
         # Extract repo data
         name = repo.get('name', 'Untitled')
@@ -551,17 +553,35 @@ class GitHubSyncService:
             featured_image_url = owner.get('avatar_url')
             logger.debug('Using owner avatar for hero display')
 
-        # Truncate description intelligently (avoid mid-word cuts)
-        if description and len(description) > 500:
-            # Find last space before 500 chars
+        # Use AI to analyze the repo and generate metadata (with fallback)
+        ai_metadata = {
+            'description': '',
+            'category_ids': [],
+            'topics': [],
+            'tool_names': [],
+        }
+        try:
+            logger.info(f'Attempting AI analysis for {name}')
+            ai_metadata = analyze_github_repo(repo, readme_content)
+            logger.info(f'AI analysis completed for {name}')
+        except Exception as e:
+            logger.warning(f'AI analysis failed for {name}, using defaults: {e}')
+
+        # Use AI-generated description if available and better than GitHub description
+        ai_description = ai_metadata.get('description', '')
+        if ai_description and len(ai_description) > len(description or ''):
+            description = ai_description
+        elif not description:
+            description = f'GitHub repository: {name}'
+
+        # Truncate description if needed
+        if len(description) > 500:
             truncated = description[:500]
             last_space = truncated.rfind(' ')
-            if last_space > 400:  # Only use space if it's reasonably close to limit
+            if last_space > 400:
                 description = truncated[:last_space].rstrip()
             else:
                 description = truncated.rstrip()
-        elif not description:
-            description = f'GitHub repository: {name}'
 
         # Create project with auto-populated fields
         project = Project.objects.create(
@@ -578,33 +598,55 @@ class GitHubSyncService:
             content=content,
         )
 
-        # Auto-select categories from GitHub repo topics
-        # Add to both categories (if they exist in taxonomy) and user_tags
-        user_tags = []
-        if topics:
-            # Find or create matching Taxonomy categories
-            for topic_name in topics[:10]:  # Limit to 10 topics
-                # Try to find existing category (case-insensitive)
-                category_taxonomy = Taxonomy.objects.filter(
-                    taxonomy_type='category', name__iexact=topic_name, is_active=True
-                ).first()
+        # Apply AI-suggested categories (with error handling)
+        try:
+            ai_category_ids = ai_metadata.get('category_ids', [])
+            if ai_category_ids:
+                for cat_id in ai_category_ids:
+                    try:
+                        category = Taxonomy.objects.get(id=cat_id, taxonomy_type='category', is_active=True)
+                        project.categories.add(category)
+                        logger.info(f'Added AI-suggested category "{category.name}" to project {project.id}')
+                    except (Taxonomy.DoesNotExist, ValueError, TypeError) as e:
+                        logger.warning(f'AI suggested category ID {cat_id} invalid: {e}')
+        except Exception as e:
+            logger.error(f'Failed to apply AI categories: {e}')
 
-                if category_taxonomy:
-                    project.categories.add(category_taxonomy)
-                    logger.debug(f'Added existing category "{topic_name}" to project {project.id}')
-                else:
-                    # Add to user_tags if not a predefined category
-                    user_tags.append(topic_name)
+        # Apply AI-suggested topics (with error handling)
+        try:
+            ai_topics = ai_metadata.get('topics', [])
+            if ai_topics and isinstance(ai_topics, list):
+                # Filter and sanitize topics
+                valid_topics = [str(t)[:50] for t in ai_topics if t][:20]
+                if valid_topics:
+                    project.topics = valid_topics
+                    project.save(update_fields=['topics'])
+                    logger.info(f'Added {len(project.topics)} AI-generated topics to project {project.id}')
+        except Exception as e:
+            logger.error(f'Failed to apply AI topics: {e}')
 
-            # Save user_tags
-            if user_tags:
-                project.user_tags = user_tags
-                project.save(update_fields=['user_tags'])
-                logger.info(f'Added {len(user_tags)} GitHub topics as user_tags to project {project.id}')
+        # Apply AI-suggested tools (with error handling)
+        try:
+            ai_tool_names = ai_metadata.get('tool_names', [])
+            if ai_tool_names and isinstance(ai_tool_names, list):
+                for tool_name in ai_tool_names:
+                    if not tool_name:
+                        continue
+                    try:
+                        tool = Tool.objects.filter(name__iexact=str(tool_name)).first()
+                        if tool:
+                            project.tools.add(tool)
+                            logger.info(f'Added AI-suggested tool "{tool.name}" to project {project.id}')
+                    except Exception as e:
+                        logger.warning(f'Failed to add tool "{tool_name}": {e}')
+        except Exception as e:
+            logger.error(f'Failed to apply AI tools: {e}')
 
         logger.info(
             f'Created project {project.id} from GitHub repo: {name} '
-            f'(external_url={html_url}, topics={len(topics)}, featured_image={bool(featured_image_url)})'
+            f'(external_url={html_url}, ai_topics={len(ai_topics)}, '
+            f'categories={project.categories.count()}, '
+            f'featured_image={bool(featured_image_url)})'
         )
         return project
 
