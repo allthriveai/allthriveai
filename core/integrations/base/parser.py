@@ -108,6 +108,7 @@ class BaseParser:
                 'hero_quote': None,
                 'mermaid_diagrams': [],
                 'demo_urls': [],
+                'demo_videos': [],
             }
 
         parser = cls(platform_data)
@@ -179,12 +180,20 @@ class BaseParser:
         # Group consecutive badge images into rows
         blocks = parser._group_badge_images(blocks)
 
+        # Extract demo videos (YouTube, Vimeo, GIFs)
+        demo_videos = cls.extract_demo_videos(readme_content)
+
+        # Extract demo URLs from badges
+        badge_demo_urls = cls.extract_demo_urls_from_badges(readme_content)
+        demo_urls.extend(badge_demo_urls)
+
         return {
             'blocks': blocks,
             'hero_image': hero_image,
             'hero_quote': hero_quote,
             'mermaid_diagrams': mermaid_diagrams,
             'demo_urls': demo_urls,
+            'demo_videos': demo_videos,
         }
 
     def _split_into_sections(self, content: str) -> list[dict[str, Any]]:
@@ -264,17 +273,19 @@ class BaseParser:
             normalized_url = self.normalize_image_url(url)
             logger.debug(f'   Image: {normalized_url} (alt: {alt_text})')
             images.append({'url': normalized_url, 'caption': alt_text})
-            # Remove image markdown from content
-            content = content.replace(f'![{alt_text}]({url})', '')
+            # Replace relative URLs with normalized absolute URLs in markdown
+            # This keeps images as markdown so they're editable
+            content = content.replace(f'![{alt_text}]({url})', f'![{alt_text}]({normalized_url})')
 
-        # Add images as blocks (group multiple images as image grid)
+        # For screenshot sections with multiple images, create an image grid block
+        # For other sections, keep images inline as markdown (more editable)
         if section_type == 'screenshots' and len(images) > 1:
             blocks.append({'type': 'imageGrid', 'images': images, 'caption': heading})
             logger.debug(f'   Added image grid with {len(images)} images')
-        elif images:
-            for img in images:
-                blocks.append({'type': 'image', 'url': img['url'], 'caption': img.get('caption', '')})
-            logger.debug(f'   Added {len(images)} individual image blocks')
+            # Remove the markdown images since we created a grid block
+            for alt_text, url in all_image_matches:
+                normalized_url = self.normalize_image_url(url)
+                content = content.replace(f'![{alt_text}]({normalized_url})', '')
 
         # Parse paragraphs
         paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
@@ -1119,3 +1130,203 @@ Return ONLY the Mermaid code starting with "graph TB". No explanation."""
 
             logger.debug(f'Traceback:\n{traceback.format_exc()}')
             return None
+
+    @classmethod
+    def scan_repository_for_images(cls, tree: list[dict], owner: str = '', repo: str = '') -> dict[str, Any]:
+        """Scan repository file tree for visual assets.
+
+        Searches for screenshots, logos, banners, and other images in common locations.
+
+        Args:
+            tree: Repository file tree from GitHub API
+            owner: Repository owner (for URL construction)
+            repo: Repository name (for URL construction)
+
+        Returns:
+            dict with:
+                - screenshots: List of screenshot URLs
+                - logo: Logo URL (SVG preferred)
+                - banner: Banner/hero image URL
+        """
+        screenshots = []
+        logo = None
+        banner = None
+
+        # Image extensions to search for
+        image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'}
+
+        # Screenshot directories (in priority order)
+        screenshot_paths = [
+            'screenshots/',
+            'docs/images/',
+            'docs/screenshots/',
+            '.github/screenshots/',
+            'assets/screenshots/',
+            'public/screenshots/',
+            'images/screenshots/',
+        ]
+
+        # Logo files (SVG preferred)
+        logo_paths = [
+            'logo.svg',
+            'assets/logo.svg',
+            '.github/logo.svg',
+            'public/logo.svg',
+            'logo.png',
+            'assets/logo.png',
+            '.github/logo.png',
+            'public/logo.png',
+        ]
+
+        # Banner files
+        banner_paths = [
+            'banner.png',
+            'banner.jpg',
+            'assets/banner.png',
+            '.github/banner.png',
+            'public/banner.png',
+        ]
+
+        # Scan tree for images
+        for item in tree:
+            if item.get('type') != 'blob':
+                continue
+
+            path = item.get('path', '').lower()
+
+            # Check for screenshots
+            for screenshot_dir in screenshot_paths:
+                if path.startswith(screenshot_dir) and any(path.endswith(ext) for ext in image_extensions):
+                    # Construct GitHub raw URL
+                    raw_url = f'https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{item["path"]}'
+                    screenshots.append(raw_url)
+                    logger.debug(f'📸 Found screenshot: {item["path"]}')
+                    break
+
+            # Check for logo (prioritize SVG)
+            if not logo:
+                for logo_path in logo_paths:
+                    if path == logo_path:
+                        raw_url = f'https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{item["path"]}'
+                        logo = raw_url
+                        logger.info(f'🎨 Found logo: {item["path"]}')
+                        break
+
+            # Check for banner
+            if not banner:
+                for banner_path in banner_paths:
+                    if path == banner_path:
+                        raw_url = f'https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{item["path"]}'
+                        banner = raw_url
+                        logger.info(f'🖼️  Found banner: {item["path"]}')
+                        break
+
+        # Limit screenshots to first 10
+        screenshots = screenshots[:10]
+
+        logger.info(
+            f'✅ Image scan complete: {len(screenshots)} screenshots, '
+            f'{"logo found" if logo else "no logo"}, '
+            f'{"banner found" if banner else "no banner"}'
+        )
+
+        return {
+            'screenshots': screenshots,
+            'logo': logo,
+            'banner': banner,
+        }
+
+    @classmethod
+    def extract_demo_videos(cls, readme_content: str) -> list[dict[str, str]]:
+        """Extract demo video URLs from README content.
+
+        Detects YouTube, Vimeo, and GIF animations.
+
+        Args:
+            readme_content: README markdown content
+
+        Returns:
+            List of dicts with type and URL for each video
+        """
+        videos = []
+
+        # YouTube patterns
+        youtube_patterns = [
+            re.compile(r'(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})'),
+            re.compile(r'youtube\.com/embed/([a-zA-Z0-9_-]{11})'),
+        ]
+
+        for pattern in youtube_patterns:
+            for match in pattern.finditer(readme_content):
+                video_id = match.group(1)
+                videos.append(
+                    {
+                        'type': 'youtube',
+                        'id': video_id,
+                        'url': f'https://www.youtube.com/watch?v={video_id}',
+                        'embed_url': f'https://www.youtube.com/embed/{video_id}',
+                    }
+                )
+                logger.debug(f'🎥 Found YouTube video: {video_id}')
+
+        # Vimeo pattern
+        vimeo_pattern = re.compile(r'vimeo\.com/(\d+)')
+        for match in vimeo_pattern.finditer(readme_content):
+            video_id = match.group(1)
+            videos.append(
+                {
+                    'type': 'vimeo',
+                    'id': video_id,
+                    'url': f'https://vimeo.com/{video_id}',
+                    'embed_url': f'https://player.vimeo.com/video/{video_id}',
+                }
+            )
+            logger.debug(f'🎥 Found Vimeo video: {video_id}')
+
+        # GIF animations (from markdown images)
+        gif_pattern = re.compile(r'!\[([^\]]*)\]\((.*?\.gif)\)', re.IGNORECASE)
+        for match in gif_pattern.finditer(readme_content):
+            alt_text = match.group(1)
+            gif_url = match.group(2)
+            videos.append(
+                {
+                    'type': 'gif',
+                    'url': gif_url,
+                    'alt': alt_text,
+                }
+            )
+            logger.debug(f'🎞️  Found GIF animation: {gif_url}')
+
+        logger.info(f'✅ Found {len(videos)} demo videos/GIFs')
+        return videos
+
+    @classmethod
+    def extract_demo_urls_from_badges(cls, readme_content: str) -> list[str]:
+        """Extract demo/live site URLs from badge links.
+
+        Parses badge markdown like: [![Demo](badge_url)](demo_url)
+
+        Args:
+            readme_content: README markdown content
+
+        Returns:
+            List of demo URLs extracted from badges
+        """
+        demo_urls = []
+
+        # Pattern: [![text](badge_url)](link_url)
+        badge_link_pattern = re.compile(r'\[!\[([^\]]*)\]\([^\)]+\)\]\(([^\)]+)\)')
+
+        demo_keywords = ['demo', 'live', 'preview', 'website', 'app', 'try']
+
+        for match in badge_link_pattern.finditer(readme_content):
+            badge_text = match.group(1).lower()
+            link_url = match.group(2)
+
+            # Check if badge text indicates a demo
+            if any(keyword in badge_text for keyword in demo_keywords):
+                demo_urls.append(link_url)
+                logger.debug(f'🔗 Found demo URL from badge: {link_url}')
+
+        logger.info(f'✅ Found {len(demo_urls)} demo URLs from badges')
+        return demo_urls

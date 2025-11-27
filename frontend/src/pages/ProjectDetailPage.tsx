@@ -982,7 +982,7 @@ export default function ProjectDetailPage() {
                     </div>
                   )}
 
-                  {block.type === 'mermaid' && (
+                  {block.type === 'mermaid' && block.code && (
                     <div className="my-8">
                       <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg overflow-x-auto">
                         <MermaidDiagram code={block.code} />
@@ -992,6 +992,14 @@ export default function ProjectDetailPage() {
                           {block.caption}
                         </p>
                       )}
+                    </div>
+                  )}
+
+                  {block.type === 'mermaid' && !block.code && (
+                    <div className="my-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        Mermaid diagram missing code content
+                      </p>
                     </div>
                   )}
 

@@ -173,3 +173,130 @@ Content 2.
         self.assertEqual(parser._categorize_section('Demo'), 'demo')
         self.assertEqual(parser._categorize_section('Random Heading'), 'overview')
         self.assertEqual(parser._categorize_section(None), 'overview')
+
+
+class EnhancedExtractionTestCase(TestCase):
+    """Test enhanced content extraction features (Phase 1)."""
+
+    def test_scan_repository_for_screenshots(self):
+        """Test screenshot extraction from file tree."""
+        tree = [
+            {'path': 'screenshots/demo1.png', 'type': 'blob'},
+            {'path': 'screenshots/demo2.png', 'type': 'blob'},
+            {'path': 'docs/images/screenshot.jpg', 'type': 'blob'},
+            {'path': 'src/main.py', 'type': 'blob'},
+        ]
+
+        result = BaseParser.scan_repository_for_images(tree, owner='test', repo='repo')
+
+        # Should find screenshots
+        self.assertEqual(len(result['screenshots']), 3)
+        self.assertIn('demo1.png', result['screenshots'][0])
+        self.assertIn('demo2.png', result['screenshots'][1])
+
+    def test_scan_repository_for_logo(self):
+        """Test logo detection with SVG priority."""
+        tree = [
+            {'path': 'logo.png', 'type': 'blob'},
+            {'path': 'logo.svg', 'type': 'blob'},
+            {'path': 'assets/logo.jpg', 'type': 'blob'},
+        ]
+
+        result = BaseParser.scan_repository_for_images(tree, owner='test', repo='repo')
+
+        # Should prefer SVG logo
+        self.assertIsNotNone(result['logo'])
+        self.assertIn('logo.svg', result['logo'])
+
+    def test_scan_repository_for_logo_png_fallback(self):
+        """Test logo detection falls back to PNG when no SVG."""
+        tree = [
+            {'path': 'logo.png', 'type': 'blob'},
+            {'path': 'assets/logo.jpg', 'type': 'blob'},
+        ]
+
+        result = BaseParser.scan_repository_for_images(tree, owner='test', repo='repo')
+
+        # Should use PNG
+        self.assertIsNotNone(result['logo'])
+        self.assertIn('logo.png', result['logo'])
+
+    def test_extract_youtube_urls(self):
+        """Test YouTube URL extraction from README."""
+        readme = """# Project
+
+Check out the demo: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+Also available: https://youtu.be/dQw4w9WgXcQ
+"""
+        result = BaseParser.extract_demo_videos(readme)
+
+        # Should find both YouTube URLs
+        youtube_videos = [v for v in result if v['type'] == 'youtube']
+        self.assertEqual(len(youtube_videos), 2)
+        self.assertEqual(youtube_videos[0]['id'], 'dQw4w9WgXcQ')
+
+    def test_extract_vimeo_urls(self):
+        """Test Vimeo URL extraction."""
+        readme = """# Project
+
+Demo: https://vimeo.com/123456789
+"""
+        result = BaseParser.extract_demo_videos(readme)
+
+        # Should find Vimeo URL
+        vimeo_videos = [v for v in result if v['type'] == 'vimeo']
+        self.assertEqual(len(vimeo_videos), 1)
+        self.assertEqual(vimeo_videos[0]['id'], '123456789')
+
+    def test_extract_gif_demos(self):
+        """Test GIF detection as demo animations."""
+        readme = """# Project
+
+![Demo](https://example.com/demo.gif)
+![Another](demo-animation.gif)
+"""
+        result = BaseParser.extract_demo_videos(readme)
+
+        # Should find GIFs
+        gif_videos = [v for v in result if v['type'] == 'gif']
+        self.assertGreaterEqual(len(gif_videos), 1)
+
+    def test_extract_demo_urls_from_badges(self):
+        """Test demo URL extraction from badge links."""
+        readme = """# Project
+
+[![Demo](https://img.shields.io/badge/demo-live-green)](https://my-demo.com)
+[![Website](https://img.shields.io/badge/website-online-blue)](https://my-site.com)
+[![Preview](https://img.shields.io/badge/preview-click-red)](https://preview.example.com)
+"""
+        result = BaseParser.extract_demo_urls_from_badges(readme)
+
+        # Should find demo URLs
+        self.assertGreaterEqual(len(result), 2)
+        self.assertIn('https://my-demo.com', result)
+        self.assertIn('https://my-site.com', result)
+
+    def test_extract_demo_urls_ignores_non_demo_badges(self):
+        """Test that non-demo badges are ignored."""
+        readme = """# Project
+
+[![Build](https://img.shields.io/badge/build-passing-green)](https://ci.example.com)
+[![License](https://img.shields.io/badge/license-MIT-blue)](https://license.com)
+"""
+        result = BaseParser.extract_demo_urls_from_badges(readme)
+
+        # Should not extract build/license badge links
+        self.assertEqual(len(result), 0)
+
+    def test_parse_includes_demo_videos(self):
+        """Test parse() method includes demo_videos in result."""
+        readme = """# Project
+
+Watch the demo: https://www.youtube.com/watch?v=test123
+"""
+        result = BaseParser.parse(readme)
+
+        # Should include demo_videos key
+        self.assertIn('demo_videos', result)
+        self.assertGreater(len(result['demo_videos']), 0)

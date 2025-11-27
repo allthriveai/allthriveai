@@ -6,6 +6,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { uploadImage, uploadFile } from '@/services/upload';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import { MermaidBlockEditor, MermaidColumnBlockEditor } from './MermaidBlockEditor';
 import type { ProjectBlock, ColumnBlock } from '@/types/models';
 import {
   Bars3Icon,
@@ -449,6 +450,13 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
               Badge Row ({block.badges?.length || 0} badges) - Read-only from GitHub import
             </p>
           </div>
+        ) : block.type === 'mermaid' ? (
+          <MermaidBlockEditor
+            block={block}
+            onChange={onChange}
+            onFocus={onFocus}
+            onBlur={onBlur}
+          />
         ) : (
           <div>
             {block.url ? (
@@ -695,6 +703,11 @@ export function ColumnBlockEditor({ block, onChange, onDelete, onUpload, dragHan
             </div>
           )}
         </div>
+      ) : block.type === 'mermaid' ? (
+        <MermaidColumnBlockEditor
+          block={block}
+          onChange={onChange}
+        />
       ) : (
         <div className="text-xs text-gray-500 p-2">
           Block type "{block.type}" not supported in columns yet

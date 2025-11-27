@@ -125,6 +125,18 @@ def analyze_github_repo(repo_data: dict, readme_content: str = '') -> dict:
         hero_image = f'https://opengraph.githubassets.com/1/{owner}/{name}'
         logger.info(f'No og:image found, using generated image: {hero_image}')
 
+    # Scan repository for visual assets (screenshots, logos, banners)
+    visual_assets = BaseParser.scan_repository_for_images(tree=repo_data.get('tree', []), owner=owner, repo=name)
+
+    # Use logo or banner as hero image if no og:image
+    if not repo_data.get('open_graph_image_url'):
+        if visual_assets.get('logo'):
+            hero_image = visual_assets['logo']
+            logger.info(f'Using project logo as hero image: {hero_image}')
+        elif visual_assets.get('banner'):
+            hero_image = visual_assets['banner']
+            logger.info(f'Using project banner as hero image: {hero_image}')
+
     # Build analysis prompt
     prompt = f"""Analyze this GitHub repository and provide metadata for a portfolio project.
 
@@ -259,8 +271,21 @@ Format your response as JSON:
                     'hero_quote': readme_parsed.get('hero_quote'),
                     'mermaid_diagrams': readme_parsed.get('mermaid_diagrams', []),
                     'demo_urls': readme_parsed.get('demo_urls', []),
+                    'demo_videos': readme_parsed.get('demo_videos', []),
                 }
             )
+
+            # Add screenshots as imageGrid block if available
+            if visual_assets.get('screenshots'):
+                screenshots = visual_assets['screenshots'][:6]  # Limit to 6
+                validated['readme_blocks'].append(
+                    {
+                        'type': 'imageGrid',
+                        'images': [{'url': url} for url in screenshots],
+                        'caption': 'Project Screenshots',
+                    }
+                )
+                logger.info(f'✅ Added {len(screenshots)} screenshots to blocks')
 
             # Generate architecture diagram if none found in README
             if not readme_parsed.get('mermaid_diagrams'):
@@ -292,6 +317,18 @@ Format your response as JSON:
             generated_blocks = generate_blocks_from_repo_structure(repo_data)
             validated['readme_blocks'] = generated_blocks
             logger.info(f'✅ Generated {len(generated_blocks)} blocks from repo structure')
+
+            # Add screenshots as imageGrid block if available
+            if visual_assets.get('screenshots'):
+                screenshots = visual_assets['screenshots'][:6]  # Limit to 6
+                validated['readme_blocks'].append(
+                    {
+                        'type': 'imageGrid',
+                        'images': [{'url': url} for url in screenshots],
+                        'caption': 'Project Screenshots',
+                    }
+                )
+                logger.info(f'✅ Added {len(screenshots)} screenshots to blocks')
 
             # Generate architecture diagram for repos without README
             logger.info('🎨 Generating architecture diagram with AI...')
@@ -388,6 +425,18 @@ Format your response as JSON:
             generated_blocks = generate_blocks_from_repo_structure(repo_data)
             fallback['readme_blocks'] = generated_blocks
             logger.info(f'✅ Generated {len(generated_blocks)} fallback blocks from repo structure')
+
+            # Add screenshots as imageGrid block if available
+            if visual_assets.get('screenshots'):
+                screenshots = visual_assets['screenshots'][:6]  # Limit to 6
+                fallback['readme_blocks'].append(
+                    {
+                        'type': 'imageGrid',
+                        'images': [{'url': url} for url in screenshots],
+                        'caption': 'Project Screenshots',
+                    }
+                )
+                logger.info(f'✅ Added {len(screenshots)} screenshots to fallback blocks')
 
             # Generate architecture diagram
             generated_diagram = BaseParser.generate_architecture_diagram(repo_data)
