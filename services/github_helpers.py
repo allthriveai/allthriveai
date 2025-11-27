@@ -128,11 +128,11 @@ def detect_tech_stack_from_files(tree: list[dict], deps: dict[str, str | None]) 
     return tech_stack
 
 
-async def normalize_mcp_repo_data(owner: str, repo: str, url: str, repo_files: dict) -> dict:
+async def normalize_github_repo_data(owner: str, repo: str, url: str, repo_files: dict) -> dict:
     """
-    Normalize MCP response into the shape expected by analyze_github_repo.
+    Normalize GitHub repository data into the shape expected by analyze_github_repo.
 
-    If MCP doesn't provide repo metadata (stars, description, etc.), this function
+    If repo_files doesn't provide repo metadata (stars, description, etc.), this function
     makes a single async REST call to https://api.github.com/repos/{owner}/{repo}.
 
     Args:
@@ -144,8 +144,8 @@ async def normalize_mcp_repo_data(owner: str, repo: str, url: str, repo_files: d
     Returns:
         Dictionary with normalized repository metadata
     """
-    # Fetch top-level repo metadata via REST (acceptable fallback per plan)
-    logger.debug(f'Normalizing MCP data for {owner}/{repo}')
+    # Fetch top-level repo metadata via REST if needed
+    logger.debug(f'Normalizing GitHub data for {owner}/{repo}')
     logger.debug(f'Input repo_files keys: {list(repo_files.keys())}')
     logger.debug(
         f'README length: {len(repo_files.get("readme", ""))}, '

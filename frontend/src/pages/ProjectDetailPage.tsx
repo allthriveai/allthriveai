@@ -473,7 +473,7 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // Default layout for projects without MCP analysis
+  // Default layout for all projects (GitHub repos, prompts, etc.)
   return (
     <DashboardLayout autoCollapseSidebar>
       <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto">

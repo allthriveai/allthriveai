@@ -17,10 +17,10 @@ from services.github_constants import IMPORT_RATE_LIMIT
 from services.github_helpers import (
     apply_ai_metadata,
     get_user_github_token,
-    normalize_mcp_repo_data,
+    normalize_github_repo_data,
     parse_github_url,
 )
-from services.github_mcp_service import GitHubMCPService
+from services.github_service import GitHubService
 
 logger = logging.getLogger(__name__)
 
@@ -212,21 +212,21 @@ def import_github_repo(request):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # Fetch repository data via MCP
+        # Fetch repository data via GitHub REST API
         import time
 
         start_time = time.time()
         logger.info(f'Importing GitHub repo {owner}/{repo} for user {request.user.id}')
 
-        mcp_service = GitHubMCPService(user_token)
-        mcp_start = time.time()
-        repo_files = mcp_service.get_repository_info_sync(owner, repo)
-        mcp_duration = time.time() - mcp_start
-        logger.info(f'MCP data fetch completed in {mcp_duration:.2f}s for {owner}/{repo}')
+        github_service = GitHubService(user_token)
+        fetch_start = time.time()
+        repo_files = github_service.get_repository_info_sync(owner, repo)
+        fetch_duration = time.time() - fetch_start
+        logger.info(f'GitHub data fetch completed in {fetch_duration:.2f}s for {owner}/{repo}')
 
-        # Normalize MCP data (run async function in sync context)
-        logger.debug(f'Normalizing MCP data for {owner}/{repo}')
-        repo_summary = asyncio.run(normalize_mcp_repo_data(owner, repo, url, repo_files))
+        # Normalize GitHub data (run async function in sync context)
+        logger.debug(f'Normalizing GitHub data for {owner}/{repo}')
+        repo_summary = asyncio.run(normalize_github_repo_data(owner, repo, url, repo_files))
         logger.debug(f'Normalized repo_summary: {repo_summary}')
 
         # Run AI analysis
@@ -305,7 +305,7 @@ def import_github_repo(request):
         total_duration = time.time() - start_time
         logger.info(
             f'Successfully imported GitHub repo {owner}/{repo} as project {project.id} '
-            f'(total: {total_duration:.2f}s, mcp: {mcp_duration:.2f}s, ai: {ai_duration:.2f}s)'
+            f'(total: {total_duration:.2f}s, fetch: {fetch_duration:.2f}s, ai: {ai_duration:.2f}s)'
         )
 
         return Response(

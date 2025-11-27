@@ -1,6 +1,6 @@
 """
 FastMCP Client Factory
-Creates FastMCP clients for different MCP servers (GitHub, Figma, etc.)
+Creates FastMCP clients for different MCP servers (Figma, etc.)
 """
 
 import logging
@@ -20,35 +20,10 @@ class MCPClientFactory:
         Args:
             mcp_servers_config: Dict with server configs like:
                 {
-                    "github": {"transport": "http", "url": "...", "headers": {...}},
                     "figma": {"transport": "http", "url": "...", "env": {...}}
                 }
         """
         self.config = mcp_servers_config
-
-    def create_github_client(self, user_token: str | None = None) -> Client:
-        """
-        Create FastMCP client connected only to GitHub MCP server.
-
-        Args:
-            user_token: Optional user-specific GitHub token. If provided, overrides
-                       the global token from config. Use this for per-user analysis.
-
-        Returns:
-            Client instance configured for GitHub MCP server
-        """
-        logger.debug('Creating GitHub MCP client')
-
-        # Start with base config
-        github_config = self.config['github'].copy()
-
-        # Override with user token if provided
-        if user_token:
-            logger.debug('Using user-specific GitHub token')
-            github_config['headers'] = {'Authorization': f'Bearer {user_token}'}
-
-        config = {'mcpServers': {'github': github_config}}
-        return Client(config)
 
     def create_figma_client(self, user_token: str | None = None) -> Client:
         """
@@ -79,13 +54,13 @@ class MCPClientFactory:
         Create FastMCP client connected to multiple MCP servers.
 
         Args:
-            *server_names: Names of servers to connect to (e.g., 'github', 'figma')
+            *server_names: Names of servers to connect to (e.g., 'figma')
 
         Returns:
             Client instance configured for specified servers
 
         Example:
-            client = factory.create_multi_server_client('github', 'figma')
+            client = factory.create_multi_server_client('figma')
         """
         logger.debug(f'Creating multi-server MCP client for: {server_names}')
         config = {'mcpServers': {}}

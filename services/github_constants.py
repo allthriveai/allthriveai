@@ -13,9 +13,9 @@ MAX_TOPIC_LENGTH = 50
 
 # API Limits
 GITHUB_API_TIMEOUT = 10  # seconds
-MCP_RETRY_ATTEMPTS = 3
-MCP_RETRY_MIN_WAIT = 2  # seconds
-MCP_RETRY_MAX_WAIT = 10  # seconds
+GITHUB_RETRY_ATTEMPTS = 3
+GITHUB_RETRY_MIN_WAIT = 2  # seconds
+GITHUB_RETRY_MAX_WAIT = 10  # seconds
 
 # Import Rate Limits
 IMPORT_RATE_LIMIT = '5/h'  # 5 imports per hour per user

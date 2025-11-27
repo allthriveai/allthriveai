@@ -220,10 +220,10 @@ def import_github_project(
     from services.github_helpers import (
         apply_ai_metadata,
         get_user_github_token,
-        normalize_mcp_repo_data,
+        normalize_github_repo_data,
         parse_github_url,
     )
-    from services.github_mcp_service import GitHubMCPService
+    from services.github_service import GitHubService
 
     User = get_user_model()
 
@@ -254,12 +254,12 @@ def import_github_project(
 
     logger.info(f'Starting GitHub import for {owner}/{repo} by user {user.username}')
 
-    # Fetch repository files/structure via MCP
-    mcp = GitHubMCPService(token)
-    repo_files = mcp.get_repository_info_sync(owner, repo)
+    # Fetch repository files/structure via GitHub REST API
+    github_service = GitHubService(token)
+    repo_files = github_service.get_repository_info_sync(owner, repo)
 
-    # Normalize MCP output into the schema analyze_github_repo expects
-    repo_summary = normalize_mcp_repo_data(owner, repo, url, repo_files)
+    # Normalize GitHub output into the schema analyze_github_repo expects
+    repo_summary = normalize_github_repo_data(owner, repo, url, repo_files)
 
     # Run AI analysis
     logger.info(f'Running AI analysis for {owner}/{repo}')

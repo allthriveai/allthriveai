@@ -2,8 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { listProjects, updateProject, deleteProjectRedirect } from '@/services/projects';
+import {
+  BasicInfoSection,
+  HeroDisplaySection,
+  ProjectUrlSection,
+  DescriptionSection,
+  TopicsSection,
+} from '@/components/projects/fields';
 import { ToolSelector } from '@/components/projects/ToolSelector';
-import { TopicDropdown } from '@/components/projects/TopicDropdown';
 import type { Project } from '@/types/models';
 import { generateSlug } from '@/utils/slug';
 import { ProjectEditor } from '@/components/projects/ProjectEditor';
@@ -414,19 +420,11 @@ export default function ProjectEditorPage() {
           <div className="max-w-5xl mx-auto px-8 py-8">
             <div className="space-y-6">
             {/* Page Title */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                Page Title
-              </label>
-              <input
-                type="text"
-                value={editorProps.projectTitle}
-                onChange={(e) => editorProps.setProjectTitle(e.target.value)}
-                placeholder="Enter your project title"
-                disabled={editorProps.isSaving}
-                className="w-full px-4 py-3 text-lg border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
-              />
-            </div>
+            <BasicInfoSection
+              projectTitle={editorProps.projectTitle}
+              setProjectTitle={editorProps.setProjectTitle}
+              isSaving={editorProps.isSaving}
+            />
 
             {/* Hero Display */}
             <div>
@@ -1120,22 +1118,11 @@ export default function ProjectEditorPage() {
             </div>
 
             {/* Project URL */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                Project URL
-              </label>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Link to live demo, GitHub repo, or external project page
-              </p>
-              <input
-                type="url"
-                value={editorProps.projectUrl}
-                onChange={(e) => editorProps.setProjectUrl(e.target.value)}
-                placeholder="https://example.com/my-project"
-                disabled={editorProps.isSaving}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
-              />
-            </div>
+            <ProjectUrlSection
+              projectUrl={editorProps.projectUrl}
+              setProjectUrl={editorProps.setProjectUrl}
+              isSaving={editorProps.isSaving}
+            />
 
             {/* Tools Used */}
             <div>
@@ -1152,54 +1139,23 @@ export default function ProjectEditorPage() {
               />
             </div>
 
-            {/* Topics */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                Categories
-              </label>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Select one or more categories to help others discover your project.
-              </p>
-              <TopicDropdown
-                selectedTopics={editorProps.projectCategories}
-                onChange={editorProps.setProjectCategories}
-                disabled={editorProps.isSaving}
-                availableTopics={editorProps.availableCategories}
-              />
-            </div>
+            {/* Categories and Topics */}
+            <TopicsSection
+              projectCategories={editorProps.projectCategories}
+              availableCategories={editorProps.availableCategories}
+              setProjectCategories={editorProps.setProjectCategories}
+              projectTopics={editorProps.projectTopics}
+              setProjectTopics={editorProps.setProjectTopics}
+              isSaving={editorProps.isSaving}
+            />
 
             {/* Why it's cool - Description */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                Why It's Cool
-              </label>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Share what makes this project interesting (max 200 characters)
-              </p>
-              <textarea
-                value={editorProps.projectDescription}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value.length <= 200) {
-                    editorProps.setProjectDescription(value);
-                  }
-                }}
-                placeholder="What makes this project special? What did you learn or accomplish?"
-                disabled={editorProps.isSaving}
-                maxLength={200}
-                rows={3}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 resize-none"
-              />
-              <div className="flex justify-end mt-1">
-                <span className={`text-xs ${
-                  editorProps.projectDescription.length >= 200
-                    ? 'text-red-500 dark:text-red-400 font-medium'
-                    : 'text-gray-500 dark:text-gray-400'
-                }`}>
-                  {editorProps.projectDescription.length}/200
-                </span>
-              </div>
-            </div>
+            <DescriptionSection
+              projectDescription={editorProps.projectDescription}
+              setProjectDescription={editorProps.setProjectDescription}
+              isSaving={editorProps.isSaving}
+              maxWords={200}
+            />
           </div>
           </div>
         )}

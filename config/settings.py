@@ -226,13 +226,6 @@ GITHUB_API_TOKEN = config('GITHUB_API_TOKEN', default='')  # Optional, increases
 # MCP (Model Context Protocol) Server Configuration
 # FastMCP client connects to these servers for multi-source project analysis
 MCP_SERVERS = {
-    'github': {
-        'transport': 'http',
-        'url': config('GITHUB_MCP_SERVER_URL', default='https://api.githubcopilot.com/mcp'),
-        'headers': {
-            'Authorization': f'Bearer {GITHUB_API_TOKEN}' if GITHUB_API_TOKEN else None,
-        },
-    },
     'figma': {
         'transport': 'http',
         'url': config('FIGMA_MCP_SERVER_URL', default=f'{BACKEND_URL_DEFAULT}:3845/mcp'),
