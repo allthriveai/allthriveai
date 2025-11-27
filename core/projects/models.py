@@ -16,12 +16,13 @@ class ProjectQuerySet(models.QuerySet):
         """Return projects accessible to the given user."""
         if user.is_staff:
             return self.all()
-        # User's own projects (published or draft) + published public showcase projects from others
-        return self.filter(models.Q(user=user) | models.Q(is_showcase=True, is_published=True, is_archived=False))
+        # User's own projects (published or draft) + public showcase projects from others
+        # Note: Explore pages now show all public projects regardless of is_published status
+        return self.filter(models.Q(user=user) | models.Q(is_showcase=True, is_archived=False, is_private=False))
 
     def public_showcase(self):
-        """Return only published public showcase projects."""
-        return self.filter(is_showcase=True, is_published=True, is_archived=False)
+        """Return only public showcase projects (not private, not archived)."""
+        return self.filter(is_showcase=True, is_archived=False, is_private=False)
 
     def by_user(self, username):
         """Return projects by username."""
@@ -102,7 +103,12 @@ class Project(models.Model):
             models.UniqueConstraint(
                 fields=['user', 'slug'],
                 name='unique_project_slug_per_user',
-            )
+            ),
+            models.UniqueConstraint(
+                fields=['user', 'external_url'],
+                condition=models.Q(external_url__isnull=False) & ~models.Q(external_url=''),
+                name='unique_external_url_per_user',
+            ),
         ]
         indexes = [
             models.Index(fields=['user', 'slug']),

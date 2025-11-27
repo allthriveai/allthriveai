@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
+    'django.contrib.sitemaps',
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
@@ -458,6 +459,10 @@ AUTH_USER_MODEL = 'users.User'
 
 # Django Sites Framework
 SITE_ID = 1
+
+# Site URL for SEO and sitemap generation
+# Used in meta tags, canonical URLs, and sitemap protocol
+SITE_URL = config('SITE_URL', default=BACKEND_URL_DEFAULT)
 
 # Email Configuration
 if not DEBUG:

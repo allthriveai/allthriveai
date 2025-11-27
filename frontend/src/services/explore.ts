@@ -4,9 +4,9 @@ import type { Project, PaginatedResponse } from '@/types/models';
 export interface ExploreParams {
   tab?: 'for-you' | 'trending' | 'all';
   search?: string;
-  tools?: number[];
-  topics?: number[]; // Taxonomy IDs
-  sort?: 'newest' | 'trending' | 'popular' | 'random';
+  categories?: number[];  // Category Taxonomy IDs (predefined)
+  topics?: string[];      // Topic strings (user-generated)
+  tools?: number[];       // Tool IDs
   page?: number;
   page_size?: number;
 }
@@ -29,7 +29,9 @@ export interface User {
  * Explore projects with filtering, search, and pagination
  */
 export async function exploreProjects(params: ExploreParams): Promise<PaginatedResponse<Project>> {
+  console.log('[exploreProjects] Calling API with params:', params);
   const response = await api.get<PaginatedResponse<any>>('/projects/explore/', { params });
+  console.log('[exploreProjects] Response:', { count: response.data.count, resultsLength: response.data.results?.length });
   return response.data;
 }
 

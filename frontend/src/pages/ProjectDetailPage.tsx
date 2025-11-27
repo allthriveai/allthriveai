@@ -948,21 +948,17 @@ export default function ProjectDetailPage() {
                         ''
                       }`}
                       dangerouslySetInnerHTML={{
-                        __html: sanitizeHtml(
-                          block.markdown !== false
-                            ? marked.parse(block.content) as string
-                            : block.content
-                        )
+                        __html: sanitizeHtml(marked.parse(block.content) as string)
                       }}
                     />
                   )}
 
                   {block.type === 'image' && (
-                    <figure>
+                    <figure className="flex flex-col items-center">
                       <img
                         src={block.url}
                         alt={block.caption || ''}
-                        className="w-full max-w-3xl mx-auto rounded-xl shadow-lg"
+                        className="max-w-full lg:max-w-3xl h-auto rounded-xl shadow-lg"
                       />
                       {block.caption && (
                         <figcaption className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
@@ -970,6 +966,20 @@ export default function ProjectDetailPage() {
                         </figcaption>
                       )}
                     </figure>
+                  )}
+
+                  {block.type === 'badgeRow' && block.badges && (
+                    <div className="flex flex-wrap items-center justify-center gap-2 my-4">
+                      {block.badges.map((badge: any, badgeIndex: number) => (
+                        <img
+                          key={badgeIndex}
+                          src={badge.url}
+                          alt={badge.caption || ''}
+                          className="h-auto"
+                          style={{ maxHeight: '28px' }}
+                        />
+                      ))}
+                    </div>
                   )}
 
                   {block.type === 'mermaid' && (
@@ -1047,20 +1057,16 @@ export default function ProjectDetailPage() {
                                       ''
                                     }`}
                                     dangerouslySetInnerHTML={{
-                                      __html: sanitizeHtml(
-                                        nestedBlock.markdown !== false
-                                          ? marked.parse(nestedBlock.content) as string
-                                          : nestedBlock.content
-                                      )
+                                      __html: sanitizeHtml(marked.parse(nestedBlock.content) as string)
                                     }}
                                   />
                                 )}
                                 {nestedBlock.type === 'image' && nestedBlock.url && (
-                                  <figure>
+                                  <figure className="flex flex-col items-center">
                                     <img
                                       src={nestedBlock.url}
                                       alt={nestedBlock.caption || ''}
-                                      className="w-full rounded-lg"
+                                      className="max-w-full h-auto rounded-lg"
                                     />
                                     {nestedBlock.caption && (
                                       <figcaption className="mt-2 text-sm text-gray-600 dark:text-gray-400">

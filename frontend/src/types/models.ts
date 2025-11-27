@@ -409,6 +409,9 @@ export interface UserTier {
   tierDisplay: string;
   totalPoints: number;
   level: number;
+  // Progress fields
+  pointsToNextLevel?: number;
+  pointsToNextTier?: number;
   // Phase 2: Streak fields
   currentStreakDays: number;
   longestStreakDays: number;
@@ -419,8 +422,8 @@ export interface UserTier {
   lifetimeSideQuestsCompleted: number;
   lifetimeCommentsPosted: number;
   // Metadata
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   recentActivities?: PointActivity[];
 }
 

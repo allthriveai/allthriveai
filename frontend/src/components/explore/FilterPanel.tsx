@@ -21,11 +21,11 @@ export function FilterPanel({
   onToolsChange,
   onClear,
 }: FilterPanelProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false); // Start collapsed
   const [showAllTopics, setShowAllTopics] = useState(false);
   const [showAllTools, setShowAllTools] = useState(false);
 
-  const maxInitialItems = 6;
+  const maxInitialItems = 12; // Show more items initially
   const visibleTopics = showAllTopics ? topics : topics.slice(0, maxInitialItems);
   const visibleTools = showAllTools ? tools : tools.slice(0, maxInitialItems);
 
@@ -48,67 +48,57 @@ export function FilterPanel({
   };
 
   return (
-    <div className="glass-subtle rounded-xl border border-gray-200 dark:border-gray-700">
-      {/* Header */}
-      <div className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors rounded-t-xl">
+    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+      {/* Compact Header */}
+      <div className="w-full flex items-center justify-between px-4 py-3">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-2 flex-1"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <FunnelIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <h3 className="font-semibold text-gray-900 dark:text-white">
+          <FunnelIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Filters
-          </h3>
+          </span>
           {hasFilters && (
-            <span className="px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-medium">
+            <span className="px-1.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 text-xs font-medium">
               {selectedTopics.length + selectedToolSlugs.length}
             </span>
           )}
+          {isExpanded ? (
+            <ChevronUpIcon className="w-4 h-4 text-gray-400" />
+          ) : (
+            <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+          )}
         </button>
 
-        <div className="flex items-center gap-2">
-          {hasFilters && (
-            <button
-              onClick={onClear}
-              className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              Clear all
-            </button>
-          )}
+        {hasFilters && (
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1"
-            aria-label={isExpanded ? 'Collapse filters' : 'Expand filters'}
+            onClick={onClear}
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1"
           >
-            {isExpanded ? (
-              <ChevronUpIcon className="w-5 h-5 text-gray-400" />
-            ) : (
-              <ChevronDownIcon className="w-5 h-5 text-gray-400" />
-            )}
+            <XMarkIcon className="w-3 h-3" />
+            Clear
           </button>
-        </div>
+        )}
       </div>
 
-      {/* Filter Content */}
+      {/* Compact Filter Content */}
       {isExpanded && (
-        <div className="p-4 pt-0 space-y-6">
+        <div className="px-4 pb-4 space-y-3 border-t border-gray-100 dark:border-gray-800 pt-3">
           {/* Topics */}
           {topics.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Topics
-              </h4>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {visibleTopics.map((topic) => (
                   <button
                     key={topic.id}
                     onClick={() => toggleTopic(topic.id)}
                     className={`
-                      px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                      px-2.5 py-1 rounded-md text-xs font-medium transition-all
                       ${
                         selectedTopics.includes(topic.id)
-                          ? 'bg-primary-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          ? 'bg-teal-500 text-white shadow-sm'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }
                     `}
                   >
@@ -118,9 +108,9 @@ export function FilterPanel({
                 {topics.length > maxInitialItems && (
                   <button
                     onClick={() => setShowAllTopics(!showAllTopics)}
-                    className="px-3 py-1.5 text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                    className="px-2.5 py-1 text-xs text-teal-600 dark:text-teal-400 hover:underline font-medium"
                   >
-                    {showAllTopics ? 'Show less' : `+${topics.length - maxInitialItems} more`}
+                    {showAllTopics ? '− Less' : `+${topics.length - maxInitialItems}`}
                   </button>
                 )}
               </div>
@@ -130,20 +120,17 @@ export function FilterPanel({
           {/* Tools */}
           {tools.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Tools
-              </h4>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {visibleTools.map((tool) => (
                   <button
                     key={tool.slug}
                     onClick={() => toggleTool(tool.slug)}
                     className={`
-                      px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                      px-2.5 py-1 rounded-md text-xs font-medium transition-all
                       ${
                         selectedToolSlugs.includes(tool.slug)
-                          ? 'bg-primary-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          ? 'bg-teal-500 text-white shadow-sm'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }
                     `}
                   >
@@ -153,9 +140,9 @@ export function FilterPanel({
                 {tools.length > maxInitialItems && (
                   <button
                     onClick={() => setShowAllTools(!showAllTools)}
-                    className="px-3 py-1.5 text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                    className="px-2.5 py-1 text-xs text-teal-600 dark:text-teal-400 hover:underline font-medium"
                   >
-                    {showAllTools ? 'Show less' : `+${tools.length - maxInitialItems} more`}
+                    {showAllTools ? '− Less' : `+${tools.length - maxInitialItems}`}
                   </button>
                 )}
               </div>

@@ -26,7 +26,11 @@ from .battles.views import (
     expire_battles,
 )
 from .events.views import EventViewSet
-from .integrations.github.views import import_github_repo, list_user_repos
+from .integrations.github.views import (
+    get_task_status,
+    import_github_repo_async,
+    list_user_repos,
+)
 from .projects.comment_views import ProjectCommentViewSet
 from .projects.topic_suggestions import get_topic_suggestions
 from .projects.views import (
@@ -168,7 +172,8 @@ urlpatterns = [
     path('social/status/<str:provider>/', connection_status, name='social_status'),
     # GitHub integration endpoints
     path('github/repos/', list_user_repos, name='github_repos'),
-    path('github/import/', import_github_repo, name='github_import'),
+    path('github/import/', import_github_repo_async, name='github_import'),
+    path('integrations/tasks/<str:task_id>/', get_task_status, name='task_status'),
     # Battle endpoints
     path('battles/stats/', battle_stats, name='battle_stats'),
     path('battles/leaderboard/', battle_leaderboard, name='battle_leaderboard'),

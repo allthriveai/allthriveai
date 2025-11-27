@@ -42,7 +42,8 @@ class ImportGitHubProjectInput(BaseModel):
     """Input for import_github_project tool."""
 
     url: str = Field(description='GitHub repository URL (e.g., https://github.com/user/repo)')
-    is_showcase: bool = Field(default=False, description='Whether to add the project to the showcase tab')
+    is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private (hidden from public)')
 
 
 # Tools
@@ -198,7 +199,8 @@ def extract_url_info(text: str) -> dict:
 @tool(args_schema=ImportGitHubProjectInput)
 def import_github_project(
     url: str,
-    is_showcase: bool = False,
+    is_showcase: bool = True,
+    is_private: bool = False,
     config: RunnableConfig | None = None,
 ) -> dict:
     """
@@ -215,15 +217,15 @@ def import_github_project(
     """
     from django.contrib.auth import get_user_model
 
-    from core.projects.models import Project
-    from services.github_ai_analyzer import analyze_github_repo
-    from services.github_helpers import (
+    from core.integrations.github.ai_analyzer import analyze_github_repo
+    from core.integrations.github.helpers import (
         apply_ai_metadata,
         get_user_github_token,
         normalize_github_repo_data,
         parse_github_url,
     )
-    from services.github_service import GitHubService
+    from core.integrations.github.service import GitHubService
+    from core.projects.models import Project
 
     User = get_user_model()
 
@@ -277,11 +279,15 @@ def import_github_project(
         external_url=url,
         content={
             'github': repo_summary,
-            'blocks': analysis.get('readme_blocks', []),
+            'blocks': analysis.get('readme_blocks', []),  # Frontend expects 'blocks'
             'mermaid_diagrams': analysis.get('mermaid_diagrams', []),
+            'demo_urls': analysis.get('demo_urls', []),
+            'hero_quote': analysis.get('hero_quote', ''),
+            'generated_diagram': analysis.get('generated_diagram', ''),
             'tech_stack': repo_files.get('tech_stack', {}),
         },
         is_showcase=is_showcase,
+        is_published=not is_private,  # Published unless marked as private
     )
 
     # Apply AI-suggested categories, topics, tools

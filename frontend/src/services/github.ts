@@ -59,40 +59,207 @@ export async function checkGitHubConnection(): Promise<boolean> {
 }
 
 /**
- * Import a GitHub repository as a portfolio project
+ * Enhanced error response type
  */
-export async function importGitHubRepo(url: string, isShowcase: boolean = false): Promise<{
+export interface GitHubError {
+  error: string;
+  error_code?: string;
+  suggestion?: string;
+  project?: {
+    id: number;
+    title: string;
+    slug: string;
+    url: string;
+  };
+}
+
+/**
+ * Task status response type
+ */
+export interface TaskStatus {
+  task_id: string;
+  status: 'PENDING' | 'STARTED' | 'SUCCESS' | 'FAILURE' | 'RETRY';
+  result?: {
+    success: boolean;
+    message?: string;
+    project?: {
+      id: number;
+      title: string;
+      slug: string;
+      url: string;
+    };
+    error?: string;
+    error_code?: string;
+    suggestion?: string;
+  };
+  error?: string;
+}
+
+/**
+ * Import a GitHub repository as a portfolio project.
+ *
+ * This queues the import as a background task and returns immediately.
+ * Polls for task completion and returns the final result.
+ */
+export async function importGitHubRepoAsync(
+  url: string,
+  isShowcase: boolean = false,
+  onProgress?: (status: string) => void
+): Promise<{
   project_id: number;
   slug: string;
   url: string;
 }> {
   try {
-    const response = await api.post<ApiResponse<{
-      project_id: number;
-      slug: string;
-      url: string;
-    }>>('/github/import/', {
+    // Queue the background task
+    const response = await api.post<{
+      success: boolean;
+      taskId: string;  // At root level after camelCase transform
+      message: string;
+      detail?: string;
+      statusUrl: string;
+      error?: string;
+      errorCode?: string;
+      suggestion?: string;
+      project?: any;
+    }>('/github/import/', {
       url,
       is_showcase: isShowcase,
     });
 
     if (!response.data.success) {
-      throw new Error(response.data.error || 'Failed to import repository');
+      // Extract enhanced error information from response
+      const errorData = response.data;
+      const error: any = new Error(errorData.error || 'Failed to start import');
+      if (errorData.errorCode) error.errorCode = errorData.errorCode;
+      if (errorData.suggestion) error.suggestion = errorData.suggestion;
+      if (errorData.project) error.project = errorData.project;
+      throw error;
     }
 
-    return response.data.data!;
+    const taskId = response.data.taskId;  // Fields are at root level
+    onProgress?.('🚀 Import queued successfully!');
+
+    // Poll for completion
+    const result = await pollTaskStatus(taskId, onProgress);
+
+    if (!result.success) {
+      const error: any = new Error(result.error || 'Import failed');
+      if (result.suggestion) error.suggestion = result.suggestion;
+      if (result.project) error.project = result.project;
+      if (result.error_code) error.errorCode = result.error_code;
+      throw error;
+    }
+
+    return {
+      project_id: result.project!.id,
+      slug: result.project!.slug,
+      url: result.project!.url,
+    };
+
   } catch (error: any) {
-    console.error('Failed to import GitHub repo:', error);
+    console.error('Failed to import GitHub repo (async):', error);
 
-    // Handle specific error cases
-    if (error.response?.status === 409) {
-      throw new Error(error.response?.data?.error || 'Repository already imported');
+    // If error already has enhanced properties (from manual throw), re-throw it
+    if (error.errorCode || error.suggestion || error.project) {
+      throw error;
     }
 
-    if (error.response?.status === 401) {
-      throw new Error('Please connect your GitHub account first.');
-    }
+    // Extract enhanced error information from axios response
+    const errorData: GitHubError = error.response?.data || {};
+    const errorMessage = errorData.error || error.message || 'Failed to import repository';
+    const suggestion = errorData.suggestion;
+    const project = errorData.project;
 
-    throw new Error(error.response?.data?.error || 'Failed to import repository');
+    // Create enhanced error with additional context
+    const enhancedError: any = new Error(errorMessage);
+    if (suggestion) enhancedError.suggestion = suggestion;
+    if (project) enhancedError.project = project;
+    if (errorData.error_code) enhancedError.errorCode = errorData.error_code;
+
+    throw enhancedError;
   }
+}
+
+/**
+ * Poll task status until completion
+ */
+async function pollTaskStatus(
+  taskId: string,
+  onProgress?: (status: string) => void,
+  maxAttempts: number = 60,
+  intervalMs: number = 2000
+): Promise<{
+  success: boolean;
+  project_id: number;
+  slug: string;
+  url: string;
+  error?: string;
+}> {
+  let attempts = 0;
+  let lastStatus = '';
+
+  while (attempts < maxAttempts) {
+    try {
+      const response = await api.get<TaskStatus>(`/integrations/tasks/${taskId}/`);
+      const status = response.data;
+
+      if (status.status === 'SUCCESS') {
+        onProgress?.('✨ Creating your beautiful portfolio...');
+        return status.result!;
+      }
+
+      if (status.status === 'FAILURE') {
+        const error = status.result?.error || status.error || 'Import failed';
+        const suggestion = status.result?.suggestion;
+
+        // Throw enhanced error with all context
+        const enhancedError: any = new Error(error);
+        if (suggestion) enhancedError.suggestion = suggestion;
+        if (status.result?.error_code) enhancedError.errorCode = status.result.error_code;
+        if (status.result?.project) enhancedError.project = status.result.project;
+        throw enhancedError;
+      }
+
+      // Determine status message based on task state
+      let statusMessage = '';
+      if (status.status === 'STARTED') {
+        statusMessage = '🔍 Analyzing project structure...';
+      } else if (status.status === 'RETRY') {
+        statusMessage = '🔄 Retrying...';
+      } else {
+        // PENDING
+        statusMessage = '⏳ Queued - starting analysis...';
+      }
+
+      // Only report status changes to avoid spam
+      if (statusMessage !== lastStatus) {
+        onProgress?.(statusMessage);
+        lastStatus = statusMessage;
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, intervalMs));
+      attempts++;
+
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        // Task not found yet, wait and retry
+        const initMessage = '⚡ Starting import...';
+        if (initMessage !== lastStatus) {
+          onProgress?.(initMessage);
+          lastStatus = initMessage;
+        }
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+        attempts++;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  // Timeout after maxAttempts
+  const timeoutError: any = new Error('Import is taking longer than expected. The project may still complete - please check your projects page.');
+  timeoutError.suggestion = 'If this keeps happening, try a smaller repository first.';
+  throw timeoutError;
 }

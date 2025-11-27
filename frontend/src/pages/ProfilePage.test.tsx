@@ -55,7 +55,7 @@ vi.mock('@/components/projects/ProjectCard', () => ({
 // Mock useThriveCircle hook
 vi.mock('@/hooks/useThriveCircle', () => ({
   useThriveCircle: vi.fn(() => ({
-    tierStatus: { totalPoints: 100, tierDisplay: 'Ember' },
+    tierStatus: { totalPoints: 100, tierDisplay: 'Seedling' },
     isLoading: false,
   })),
 }));

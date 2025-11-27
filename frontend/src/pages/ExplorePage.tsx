@@ -4,9 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import type { Taxonomy } from '@/types/models';
 import { api } from '@/services/api';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { SemanticSearchBar } from '@/components/explore/SemanticSearchBar';
+import { SearchBarWithFilters } from '@/components/explore/SearchBarWithFilters';
 import { TabNavigation, type ExploreTab } from '@/components/explore/TabNavigation';
-import { FilterPanel } from '@/components/explore/FilterPanel';
 import { ProjectsGrid } from '@/components/explore/ProjectsGrid';
 import { UserProfileCard } from '@/components/explore/UserProfileCard';
 import { QuizPreviewCard } from '@/components/quiz/QuizPreviewCard';
@@ -29,8 +28,8 @@ export function ExplorePage() {
     (searchParams.get('tab') as ExploreTab) || 'for-you'
   );
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-  const [selectedCategories, setSelectedCategories] = useState<number[]>(
-    searchParams.getAll('categories').map(Number).filter(Boolean)
+  const [selectedCategorySlugs, setSelectedCategorySlugs] = useState<string[]>(
+    searchParams.getAll('categories').filter(Boolean)
   );
   const [selectedToolSlugs, setSelectedToolSlugs] = useState<string[]>(
     searchParams.getAll('tools').filter(Boolean)
@@ -46,11 +45,11 @@ export function ExplorePage() {
     const params = new URLSearchParams();
     if (activeTab !== 'for-you') params.set('tab', activeTab);
     if (searchQuery) params.set('q', searchQuery);
-    selectedCategories.forEach(category => params.append('categories', String(category)));
+    selectedCategorySlugs.forEach(slug => params.append('categories', slug));
     selectedToolSlugs.forEach(slug => params.append('tools', slug));
     if (page > 1) params.set('page', String(page));
     setSearchParams(params, { replace: true });
-  }, [activeTab, searchQuery, selectedCategories, selectedToolSlugs, page, setSearchParams]);
+  }, [activeTab, searchQuery, selectedCategorySlugs, selectedToolSlugs, page, setSearchParams]);
 
   // Fetch filter options (tools)
   const { data: filterOptions } = useQuery({
@@ -69,20 +68,34 @@ export function ExplorePage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Convert category slugs to IDs for API
+  const selectedCategoryIds = taxonomyCategories
+    ?.filter(cat => selectedCategorySlugs.includes(cat.slug))
+    .map(cat => cat.id) || [];
+
   // Convert tool slugs to IDs for API
   const selectedToolIds = filterOptions?.tools
     .filter(tool => selectedToolSlugs.includes(tool.slug))
     .map(tool => tool.id) || [];
 
+  // Debug logging
+  console.log('[ExplorePage] State:', {
+    selectedCategorySlugs,
+    selectedCategoryIds,
+    taxonomyCategories: taxonomyCategories?.map(c => ({ id: c.id, slug: c.slug, name: c.name })),
+  });
+
   // Fetch projects (for most tabs)
   const exploreParams: ExploreParams = {
     tab: activeTab === 'for-you' ? 'for-you' : activeTab === 'trending' ? 'trending' : 'all',
     search: searchQuery || undefined,
-    topics: selectedCategories.length > 0 ? selectedCategories : undefined,
+    categories: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
     tools: selectedToolIds.length > 0 ? selectedToolIds : undefined,
     page,
     page_size: 30,
   };
+
+  console.log('[ExplorePage] exploreParams:', exploreParams);
 
   const {
     data: projectsData,
@@ -91,7 +104,14 @@ export function ExplorePage() {
   } = useQuery({
     queryKey: ['exploreProjects', exploreParams],
     queryFn: () => exploreProjects(exploreParams),
-    enabled: activeTab !== 'profiles' && (selectedToolSlugs.length === 0 || !!filterOptions),
+    // Only run query if:
+    // 1. Not on profiles tab
+    // 2. If tools are selected, filterOptions must be loaded
+    // 3. If categories are selected, taxonomyCategories must be loaded AND we have IDs
+    enabled:
+      activeTab !== 'profiles' &&
+      (selectedToolSlugs.length === 0 || !!filterOptions) &&
+      (selectedCategorySlugs.length === 0 || (!!taxonomyCategories && selectedCategoryIds.length > 0)),
   });
 
   // Fetch semantic search results
@@ -142,8 +162,8 @@ export function ExplorePage() {
   };
 
   // Handle filter changes
-  const handleCategoriesChange = (categories: number[]) => {
-    setSelectedCategories(categories);
+  const handleCategoriesChange = (categorySlugs: string[]) => {
+    setSelectedCategorySlugs(categorySlugs);
     setPage(1);
   };
 
@@ -153,7 +173,7 @@ export function ExplorePage() {
   };
 
   const handleClearFilters = () => {
-    setSelectedCategories([]);
+    setSelectedCategorySlugs([]);
     setSelectedToolSlugs([]);
     setPage(1);
   };
@@ -178,7 +198,7 @@ export function ExplorePage() {
         <div className="h-full overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-6">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 Explore
               </h1>
@@ -187,30 +207,28 @@ export function ExplorePage() {
               </p>
             </div>
 
-            {/* Search Bar */}
-            <SemanticSearchBar
-              onSearch={handleSearch}
-              placeholder="Search projects with AI..."
-              initialValue={searchQuery}
-            />
+            {/* Combined Glass Card with Tabs and Search */}
+            <div className="glass-subtle rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
+              {/* Tab Navigation */}
+              <TabNavigation activeTab={activeTab} onChange={handleTabChange} />
 
-            {/* Tab Navigation */}
-            <TabNavigation activeTab={activeTab} onChange={handleTabChange} />
-
-            {/* Filters */}
-            {showFilters && (
-              <div className="mb-6">
-                <FilterPanel
+              {/* Search Bar with Integrated Filters */}
+              <div className="mt-4">
+                <SearchBarWithFilters
+                  onSearch={handleSearch}
+                  placeholder="Search projects with AI..."
+                  initialValue={searchQuery}
                   topics={activeTab === 'categories' ? (taxonomyCategories ?? []) : []}
                   tools={activeTab === 'tools' ? (filterOptions?.tools ?? []) : []}
-                  selectedTopics={selectedCategories}
+                  selectedTopics={selectedCategorySlugs}
                   selectedToolSlugs={selectedToolSlugs}
                   onTopicsChange={handleCategoriesChange}
                   onToolsChange={handleToolsChange}
-                  onClear={handleClearFilters}
+                  showFilters={showFilters}
+                  openFiltersByDefault={activeTab === 'categories' || activeTab === 'tools'}
                 />
               </div>
-            )}
+            </div>
 
             {/* Content */}
             {activeTab === 'profiles' ? (

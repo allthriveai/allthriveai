@@ -1,17 +1,43 @@
 # AllThrive AI
 
-A full-stack AI application with Django backend and TypeScript frontend, featuring OpenAI and Anthropic integrations.
+**AI Portfolio Platform with Gamified Learning & Discovery**
 
-## Features
+AllThrive AI is a comprehensive platform where AI practitioners, learners, and researchers showcase projects, level up skills through gamified challenges, and connect with a thriving community.
 
-- Django REST Framework API
-- TypeScript frontend (React/Vite)
-- Conversation management
-- AI integration ready (OpenAI, Anthropic, LangChain)
-- Celery task queue with Redis
-- PostgreSQL support
-- CORS enabled
-- Docker-based development environment
+## Key Features
+
+### 🎨 Portfolio & Projects
+- Build professional AI project portfolios
+- Import projects from GitHub
+- Rich documentation with markdown, diagrams, and code examples
+- Project discovery and exploration
+
+### 🎮 Gamified Learning
+- Interactive AI/ML challenges and courses
+- Achievement system with badges and XP
+- Learning paths for NLP, Computer Vision, Deep Learning, and more
+- Side quests and community challenges
+
+### 👥 Community & Collaboration
+- Thrive Circles - topic-based learning communities
+- Peer feedback and project reviews
+- AI tool directory
+- Mentorship connections
+
+### 🤖 AI-Powered Features
+- OpenAI and Anthropic Claude integrations
+- LangChain for AI workflows
+- Vector search with RedisVL
+- AI-assisted project documentation
+
+## Technology Stack
+
+- **Backend:** Django REST Framework, Python, PostgreSQL
+- **Frontend:** React, TypeScript, Vite, TailwindCSS
+- **AI/ML:** OpenAI, Anthropic, LangChain, RedisVL
+- **Task Queue:** Celery with Redis
+- **Authentication:** OAuth (Google, GitHub)
+- **Infrastructure:** Docker-based development
 
 ## Quick Start with Docker
 
@@ -59,9 +85,11 @@ For your convenience, we provide Make commands to manage the development environ
 - `make test-backend` - Run all backend tests
 - `make test-frontend` - Run all frontend tests
 
-## Development Guidelines
+## Documentation
 
-Please refer to our [Styleguide](docs/STYLEGUIDE.md) for coding standards and best practices.
+- [Styleguide](docs/STYLEGUIDE.md) - Coding standards and best practices
+- [SEO Implementation](docs/SEO_IMPLEMENTATION.md) - SEO and LLM discoverability guide
+- [Public Info](PUBLIC_INFO.md) - Comprehensive platform description
 
 ## Manual Setup (Alternative)
 

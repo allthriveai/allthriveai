@@ -23,22 +23,23 @@ export async function getMyThriveCircleStatus(): Promise<ThriveCircleStatus> {
   // Convert snake_case to camelCase
   return {
     tierStatus: {
-      ...response.data.tier_status,
-      tierDisplay: response.data.tier_status.tier_display,
-      totalPoints: response.data.tier_status.total_points,
-      level: response.data.tier_status.level,
+      ...response.data,
+      tierDisplay: response.data.tier_display,
+      totalPoints: response.data.total_points,
+      level: response.data.level,
+      tier: response.data.tier,
+      // Progress fields
+      pointsToNextLevel: response.data.points_to_next_level,
+      pointsToNextTier: response.data.points_to_next_tier,
       // Phase 2: Streak fields
-      currentStreakDays: response.data.tier_status.current_streak_days,
-      longestStreakDays: response.data.tier_status.longest_streak_days,
-      lastActivityDate: response.data.tier_status.last_activity_date,
+      currentStreakDays: response.data.current_streak_days,
+      longestStreakDays: response.data.longest_streak_days,
+      lastActivityDate: response.data.last_activity_date,
       // Phase 2: Lifetime stats
-      lifetimeQuizzesCompleted: response.data.tier_status.lifetime_quizzes_completed,
-      lifetimeProjectsCreated: response.data.tier_status.lifetime_projects_created,
-      lifetimeSideQuestsCompleted: response.data.tier_status.lifetime_side_quests_completed,
-      lifetimeCommentsPosted: response.data.tier_status.lifetime_comments_posted,
-      // Metadata
-      createdAt: response.data.tier_status.created_at,
-      updatedAt: response.data.tier_status.updated_at,
+      lifetimeQuizzesCompleted: response.data.lifetime_quizzes_completed,
+      lifetimeProjectsCreated: response.data.lifetime_projects_created,
+      lifetimeSideQuestsCompleted: response.data.lifetime_side_quests_completed,
+      lifetimeCommentsPosted: response.data.lifetime_comments_posted,
     },
     recentActivities: response.data.recent_activities.map((activity: any) => ({
       ...activity,

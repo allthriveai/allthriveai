@@ -5,8 +5,8 @@ import logging
 from anthropic import AnthropicError
 from openai import OpenAIError
 
-from services.ai_provider import AIProvider
-from services.github_constants import (
+from core.integrations.base.parser import BaseParser
+from core.integrations.github.constants import (
     MAX_CATEGORIES_PER_PROJECT,
     MAX_CATEGORY_ID,
     MAX_DESCRIPTION_LENGTH,
@@ -15,7 +15,7 @@ from services.github_constants import (
     MAX_TOPICS_PER_PROJECT,
     MIN_CATEGORY_ID,
 )
-from services.readme_parser import ReadmeParser
+from services.ai_provider import AIProvider
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +76,11 @@ Format your response as JSON:
   "tool_names": ["ChatGPT", "GitHub Copilot"]
 }}"""
 
-    logger.debug(f'Starting AI analysis for {name}')
-    logger.debug(f'Input - description: {description[:100] if description else "None"}...')
-    logger.debug(f'Input - language: {language}, stars: {stars}, topics: {github_topics}')
-    logger.debug(f'Input - README length: {len(readme_content) if readme_content else 0} chars')
+    logger.info(f'🔍 Starting AI analysis for {name}')
+    logger.info(f'📝 Input - description: {description[:100] if description else "None"}...')
+    logger.info(f'🏷️  Input - language: {language}, stars: {stars}, topics: {github_topics}')
+    logger.info(f'📄 Input - README length: {len(readme_content) if readme_content else 0} chars')
+    logger.debug(f'📋 Full AI prompt:\n{prompt}')
 
     try:
         # Use default AI provider (Azure gateway) from settings
@@ -91,8 +92,8 @@ Format your response as JSON:
             max_tokens=500,
         )
 
-        logger.debug(f'AI response received for {name}, length: {len(response)} chars')
-        logger.debug(f'AI raw response: {response[:500]}...')
+        logger.info(f'✅ AI response received for {name}, length: {len(response)} chars')
+        logger.info(f'📨 AI raw response: {response}')  # Full response, not truncated
 
         # Parse JSON response
         import json
@@ -139,30 +140,60 @@ Format your response as JSON:
 
         # Parse README if provided
         if readme_content:
-            logger.debug(f'Parsing README for {name}, length: {len(readme_content)} chars')
-            readme_parsed = ReadmeParser.parse(readme_content, repo_data)
-            logger.debug(
-                f'README parsed for {name}: blocks={len(readme_parsed.get("blocks", []))}, '
-                f'hero_image={readme_parsed.get("hero_image")}, '
-                f'mermaid_diagrams={len(readme_parsed.get("mermaid_diagrams", []))}'
+            logger.info(f'📖 Parsing README for {name}, length: {len(readme_content)} chars')
+            readme_parsed = BaseParser.parse(readme_content, repo_data)
+            logger.info(
+                f'📊 README parsed for {name}:\n'
+                f'   - Blocks: {len(readme_parsed.get("blocks", []))}\n'
+                f'   - Hero image: {readme_parsed.get("hero_image")}\n'
+                f'   - Hero quote: {readme_parsed.get("hero_quote")}\n'
+                f'   - Mermaid diagrams found: {len(readme_parsed.get("mermaid_diagrams", []))}\n'
+                f'   - Demo URLs: {len(readme_parsed.get("demo_urls", []))}'
             )
+
+            # Log first few blocks for debugging
+            blocks = readme_parsed.get('blocks', [])
+            if blocks:
+                logger.debug(f'First 3 blocks: {blocks[:3]}')
+
+            # Transform README content into compelling portfolio copy
+            logger.info(f'✨ Transforming README content for {name}...')
+            transformed_blocks = BaseParser.transform_readme_content_with_ai(blocks, repo_data)
+
+            # Optimize layout with AI for more dynamic columns
+            optimized_blocks = BaseParser.optimize_layout_with_ai(transformed_blocks, repo_data)
+
             validated.update(
                 {
-                    'readme_blocks': readme_parsed.get('blocks', []),
+                    'readme_blocks': optimized_blocks,
                     'hero_image': readme_parsed.get('hero_image'),
                     'hero_quote': readme_parsed.get('hero_quote'),
                     'mermaid_diagrams': readme_parsed.get('mermaid_diagrams', []),
                     'demo_urls': readme_parsed.get('demo_urls', []),
                 }
             )
-            logger.debug(f'Updated validated with README data: hero_image={validated.get("hero_image")}')
+            logger.info(f'✨ Final hero_image after README parsing: "{validated.get("hero_image")}"')
 
             # Generate architecture diagram if none found in README
             if not readme_parsed.get('mermaid_diagrams'):
-                generated_diagram = ReadmeParser.generate_architecture_diagram(repo_data)
+                logger.info('🎨 No diagrams found in README, generating with AI...')
+                generated_diagram = BaseParser.generate_architecture_diagram(repo_data)
                 if generated_diagram:
                     validated['generated_diagram'] = generated_diagram
-                    logger.info(f'Generated architecture diagram for {name}')
+                    # Add generated diagram as a mermaid block so frontend can display it
+                    validated['readme_blocks'].append(
+                        {
+                            'type': 'mermaid',
+                            'code': generated_diagram,
+                            'caption': 'Architecture Diagram',
+                        }
+                    )
+                    logger.info(f'✅ AI generated architecture diagram for {name} and added to blocks')
+                    logger.debug(f'Generated diagram:\n{generated_diagram}')
+                else:
+                    logger.warning(f'❌ Failed to generate diagram for {name}')
+            else:
+                logger.info(f'✅ Using {len(readme_parsed.get("mermaid_diagrams", []))} diagram(s) from README')
 
         return validated
 
@@ -192,10 +223,15 @@ Format your response as JSON:
     # Still try to parse README even if AI fails
     if readme_content:
         try:
-            readme_parsed = ReadmeParser.parse(readme_content, repo_data)
+            readme_parsed = BaseParser.parse(readme_content, repo_data)
+
+            # Transform README content even in fallback
+            blocks = readme_parsed.get('blocks', [])
+            transformed_blocks = BaseParser.transform_readme_content_with_ai(blocks, repo_data)
+
             fallback.update(
                 {
-                    'readme_blocks': readme_parsed.get('blocks', []),
+                    'readme_blocks': transformed_blocks,
                     'hero_image': readme_parsed.get('hero_image'),
                     'hero_quote': readme_parsed.get('hero_quote'),
                     'mermaid_diagrams': readme_parsed.get('mermaid_diagrams', []),
@@ -203,11 +239,20 @@ Format your response as JSON:
                 }
             )
 
-            # Generate diagram
+            # Generate diagram if none found in README
             if not readme_parsed.get('mermaid_diagrams'):
-                generated_diagram = ReadmeParser.generate_architecture_diagram(repo_data)
+                generated_diagram = BaseParser.generate_architecture_diagram(repo_data)
                 if generated_diagram:
                     fallback['generated_diagram'] = generated_diagram
+                    # Add generated diagram as a mermaid block so frontend can display it
+                    fallback['readme_blocks'].append(
+                        {
+                            'type': 'mermaid',
+                            'code': generated_diagram,
+                            'caption': 'Architecture Diagram',
+                        }
+                    )
+                    logger.info(f'✅ Generated diagram added to fallback blocks for {name}')
         except Exception as parse_error:
             logger.warning(f'README parsing also failed for {name}: {parse_error}')
 

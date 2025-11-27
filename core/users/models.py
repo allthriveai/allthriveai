@@ -14,7 +14,9 @@ logger = logging.getLogger(__name__)
 
 class UserRole(models.TextChoices):
     EXPLORER = 'explorer', 'Explorer'
+    LEARNER = 'learner', 'Learner'
     EXPERT = 'expert', 'Expert'
+    CREATOR = 'creator', 'Creator'
     MENTOR = 'mentor', 'Mentor'
     PATRON = 'patron', 'Patron'
     ADMIN = 'admin', 'Admin'
@@ -54,6 +56,18 @@ class User(AbstractUser):
 
     # Privacy settings
     playground_is_public = models.BooleanField(default=True, help_text='Allow others to view your Playground projects')
+    is_profile_public = models.BooleanField(
+        default=True,
+        db_index=True,  # Index for sitemap queries
+        help_text='Allow profile to appear in search engines and sitemaps. Opt-out for privacy.',
+    )
+    gamification_is_public = models.BooleanField(
+        default=True, help_text='Show points, level, tier, and achievements on public profile'
+    )
+    allow_llm_training = models.BooleanField(
+        default=False,  # Opt-in by default for privacy
+        help_text='Allow AI models (like ChatGPT) to use profile data for training',
+    )
 
     # Gamification System - Single Source of Truth
     # Tier choices and thresholds
@@ -193,8 +207,16 @@ class User(AbstractUser):
         return self.role == UserRole.EXPLORER
 
     @property
+    def is_learner(self):
+        return self.role == UserRole.LEARNER
+
+    @property
     def is_expert(self):
         return self.role == UserRole.EXPERT
+
+    @property
+    def is_creator(self):
+        return self.role == UserRole.CREATOR
 
     @property
     def is_mentor(self):
@@ -216,10 +238,12 @@ class User(AbstractUser):
         """Check if user has at least the required role level."""
         role_hierarchy = {
             UserRole.EXPLORER: 1,
-            UserRole.EXPERT: 2,
-            UserRole.MENTOR: 3,
-            UserRole.PATRON: 4,
-            UserRole.ADMIN: 5,
+            UserRole.LEARNER: 2,
+            UserRole.EXPERT: 3,
+            UserRole.CREATOR: 4,
+            UserRole.MENTOR: 5,
+            UserRole.PATRON: 6,
+            UserRole.ADMIN: 7,
         }
 
         if self.is_superuser:

@@ -74,21 +74,23 @@ export default function ThriveCirclePage() {
                       {/* Tier Badge */}
                       <div className="p-6 rounded bg-gradient-primary text-white text-center mb-4 shadow-brand">
                         <FontAwesomeIcon icon={faFire} className="text-5xl mb-3" />
-                        <div className="text-xl font-bold capitalize">{tierStatus.tier}</div>
-                        <div className="text-sm opacity-90 mt-1">{tierStatus.totalXp?.toLocaleString() || 0} XP</div>
+                        <div className="text-xl font-bold">{tierStatus.tierDisplay || 'Seedling'}</div>
+                        <div className="text-sm opacity-90 mt-1">{tierStatus.totalPoints?.toLocaleString() || 0} Points</div>
+                        <div className="text-xs opacity-75 mt-1">Level {tierStatus.level || 1}</div>
                       </div>
 
                       {/* Progress to next tier */}
-                      {tierStatus.nextTierXp && (
+                      {tierStatus.pointsToNextTier !== undefined && tierStatus.pointsToNextTier > 0 && (
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm text-muted">
-                            <span>Next tier</span>
-                            <span>{Math.round(tierStatus.progressToNext || 0)}%</span>
+                            <span>Next tier in {tierStatus.pointsToNextTier?.toLocaleString() || 0} points</span>
                           </div>
                           <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-primary transition-all duration-500"
-                              style={{ width: `${tierStatus.progressToNext || 0}%` }}
+                              style={{
+                                width: `${Math.min(100, ((tierStatus.totalPoints || 0) / ((tierStatus.totalPoints || 0) + (tierStatus.pointsToNextTier || 1))) * 100)}%`
+                              }}
                             />
                           </div>
                         </div>

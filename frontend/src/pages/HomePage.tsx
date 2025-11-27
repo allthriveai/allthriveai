@@ -5,6 +5,7 @@ import { LiquidGlassButton } from '@/components/ui/LiquidGlassButton';
 import { Modal } from '@/components/ui/Modal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBrain, faLightbulb, faUsers } from '@fortawesome/free-solid-svg-icons';
+import { SEO, SEOPresets } from '@/components/common/SEO';
 
 export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,6 +43,7 @@ export default function HomePage() {
 
   return (
     <>
+      <SEO {...SEOPresets.home} />
       <HeroSection
         title="Grow Your AI Curiosity"
         highlightText="In Community"

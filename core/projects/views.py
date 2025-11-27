@@ -165,7 +165,7 @@ def get_project_by_slug(request, username, slug):
     """Get a single project by username and slug.
 
     Security:
-    - Public for published showcase projects
+    - Public for all projects that are not private and not archived
     - Private projects only visible to owner
     - Archived projects only visible to owner
     """
@@ -185,9 +185,9 @@ def get_project_by_slug(request, username, slug):
 
     # Allow access if:
     # 1. User is the owner
-    # 2. Project is published and not private and not archived
+    # 2. Project is not private and not archived (regardless of is_published status)
     if not is_owner:
-        if project.is_private or project.is_archived or not project.is_published:
+        if project.is_private or project.is_archived:
             return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
 
     serializer = ProjectSerializer(project, context={'request': request})
@@ -284,7 +284,7 @@ def user_liked_projects(request, username):
     This powers the Collection tab on profile pages.
 
     Security:
-    - Only returns projects that are public (is_published=True, is_private=False, not archived)
+    - Only returns projects that are public (is_private=False, not archived)
     - Rate limited similarly to other public project endpoints
     - Uses select_related/prefetch_related to avoid N+1 queries
     """
@@ -319,7 +319,6 @@ def user_liked_projects(request, username):
     queryset = (
         Project.objects.filter(
             likes__user=profile_user,
-            is_published=True,
             is_private=False,
             is_archived=False,
         )
@@ -347,18 +346,26 @@ def explore_projects(request):
     - page: page number (default: 1)
     - page_size: results per page (default: 30, max: 100)
 
-    Returns paginated list of showcase projects visible to all users.
+    Returns paginated list of all public projects (not private, not archived) regardless of showcase status.
     """
+    import logging
+
     from django.db.models import Count, Q
+
+    logger = logging.getLogger(__name__)
+
+    # Debug: Log all query parameters
+    logger.info(f'explore_projects called with params: {dict(request.GET)}')
 
     # Get query parameters
     tab = request.GET.get('tab', 'all')
     search_query = request.GET.get('search', '')
     sort = request.GET.get('sort', 'newest')
 
-    # Build base queryset - all published, public projects
+    # Build base queryset - all public projects (not private, not archived)
+    # Show all projects regardless of is_published status so playground projects appear in explore
     queryset = (
-        Project.objects.filter(is_published=True, is_private=False, is_archived=False)
+        Project.objects.filter(is_private=False, is_archived=False)
         .select_related('user')
         .prefetch_related('tools', 'likes')
     )
@@ -385,23 +392,45 @@ def explore_projects(request):
         except (ValueError, IndexError):
             pass  # Invalid tool IDs, ignore
 
-    # Apply topics filter - handle both array params and comma-separated
+    # Apply categories filter (predefined taxonomy) - handle both array params and comma-separated
+    categories_list = request.GET.getlist('categories')
+    if categories_list:
+        try:
+            # If multiple values received as array parameters
+            if len(categories_list) > 1:
+                category_ids = [int(cid) for cid in categories_list if cid]
+            # If single value, check if it's comma-separated
+            elif categories_list[0]:
+                category_ids = [int(cid) for cid in categories_list[0].split(',') if cid.strip()]
+            else:
+                category_ids = []
+
+            if category_ids:
+                # OR logic: match projects that have ANY of the selected categories
+                queryset = queryset.filter(categories__id__in=category_ids).distinct()
+        except (ValueError, IndexError):
+            pass  # Invalid category IDs, ignore
+
+    # Apply topics filter (user-generated tags) - handle both array params and comma-separated
     topics_list = request.GET.getlist('topics')
     if topics_list:
+        # Topics are free-form strings, not IDs
         try:
             # If multiple values received as array parameters
             if len(topics_list) > 1:
-                topic_ids = [int(tid) for tid in topics_list if tid]
+                topic_names = [t for t in topics_list if t]
             # If single value, check if it's comma-separated
             elif topics_list[0]:
-                topic_ids = [int(tid) for tid in topics_list[0].split(',') if tid.strip()]
+                topic_names = [t.strip() for t in topics_list[0].split(',') if t.strip()]
             else:
-                topic_ids = []
+                topic_names = []
 
-            if topic_ids:
-                queryset = queryset.filter(topics__id__in=topic_ids).distinct()
+            if topic_names:
+                # OR logic: match projects that have ANY of the selected topics
+                # Topics are stored as ArrayField, use __overlap to find any match
+                queryset = queryset.filter(topics__overlap=topic_names).distinct()
         except (ValueError, IndexError):
-            pass  # Invalid topic IDs, ignore
+            pass  # Invalid topics, ignore
 
     # Apply sorting or personalization
     if tab == 'for-you' and request.user.is_authenticated:
@@ -497,7 +526,7 @@ def semantic_search(request):
     # TODO: Replace this with Weaviate semantic search
     # For now, use basic text search as fallback
     queryset = (
-        Project.objects.filter(is_published=True, is_private=False, is_archived=False)
+        Project.objects.filter(is_private=False, is_archived=False)
         .filter(Q(title__icontains=query) | Q(description__icontains=query))
         .select_related('user')
         .prefetch_related('tools', 'likes')

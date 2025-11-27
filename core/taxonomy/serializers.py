@@ -13,6 +13,7 @@ class TaxonomySerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'name',
+            'slug',
             'taxonomy_type',
             'taxonomy_type_display',
             'description',

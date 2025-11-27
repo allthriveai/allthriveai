@@ -56,20 +56,27 @@ def explore_users(request):
     # Serialize users
     users_data = []
     for user in page:
-        users_data.append(
-            {
-                'id': user.id,
-                'username': user.username,
-                'full_name': user.get_full_name() or user.username,
-                'avatar_url': user.avatar_url,
-                'bio': user.bio or '',
-                'tagline': user.tagline or '',
-                'project_count': user.project_count,
-                'total_points': user.total_points,
-                'level': user.level,
-                'tier': user.tier,
-                'tier_display': user.get_tier_display(),
-            }
-        )
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'full_name': user.get_full_name() or user.username,
+            'avatar_url': user.avatar_url,
+            'bio': user.bio or '',
+            'tagline': user.tagline or '',
+            'project_count': user.project_count,
+        }
+
+        # Privacy: Only include gamification data if user allows it
+        if getattr(user, 'gamification_is_public', True):
+            user_data.update(
+                {
+                    'total_points': user.total_points,
+                    'level': user.level,
+                    'tier': user.tier,
+                    'tier_display': user.get_tier_display(),
+                }
+            )
+
+        users_data.append(user_data)
 
     return paginator.get_paginated_response(users_data)

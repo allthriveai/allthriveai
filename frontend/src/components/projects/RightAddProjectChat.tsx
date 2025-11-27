@@ -6,7 +6,7 @@ import { faRocket, faCommentDots, faBolt, faTable, faStar, faCodeBranch, faSpinn
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { createProject } from '@/services/projects';
-import { fetchGitHubRepos, checkGitHubConnection, importGitHubRepo, type GitHubRepository } from '@/services/github';
+import { fetchGitHubRepos, checkGitHubConnection, importGitHubRepoAsync, type GitHubRepository } from '@/services/github';
 
 interface RightAddProjectChatProps {
   isOpen: boolean;
@@ -124,10 +124,16 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
   const handleSelectRepo = async (repo: GitHubRepository) => {
     setStep('github_importing');
     addMessage('user', `Import "${repo.name}"`);
-    addMessage('agent', 'Analyzing and importing your repository... This may take a moment.');
 
     try {
-      const result = await importGitHubRepo(repo.htmlUrl, false);
+      const result = await importGitHubRepoAsync(
+        repo.htmlUrl,
+        false,
+        (status) => {
+          // Show progress updates
+          addMessage('agent', status);
+        }
+      );
 
       addMessage(
         'agent',
@@ -141,15 +147,44 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
       }, 1500);
     } catch (error: any) {
       console.error('Failed to import repo:', error);
-      addMessage(
-        'agent',
-        <>
-          <p className="mb-2">Failed to import repository.</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {error.message || 'Please try again.'}
-          </p>
-        </>
-      );
+
+      // Handle duplicate imports with link to existing project
+      if (error.errorCode === 'DUPLICATE_IMPORT' && error.project) {
+        addMessage(
+          'agent',
+          <>
+            <p className="mb-3">{error.message}</p>
+            {error.suggestion && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                {error.suggestion}
+              </p>
+            )}
+            <button
+              onClick={() => {
+                onClose();
+                navigate(error.project.url);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              View Project
+            </button>
+          </>
+        );
+      } else {
+        // Generic error display with suggestion if available
+        addMessage(
+          'agent',
+          <>
+            <p className="mb-2">{error.message || 'Failed to import repository.'}</p>
+            {error.suggestion && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                💡 {error.suggestion}
+              </p>
+            )}
+          </>
+        );
+      }
+
       setStep('github_repos');
     }
   };

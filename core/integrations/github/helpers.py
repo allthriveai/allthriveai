@@ -10,10 +10,23 @@ import re
 import httpx
 from allauth.socialaccount.models import SocialAccount, SocialToken
 
+from core.integrations.github.constants import GITHUB_API_TIMEOUT
 from core.social.models import SocialConnection, SocialProvider
-from services.github_constants import GITHUB_API_TIMEOUT
 
 logger = logging.getLogger(__name__)
+
+
+def get_import_lock_key(user_id: int) -> str:
+    """
+    Get the cache key for a user's import lock.
+
+    Args:
+        user_id: ID of the user
+
+    Returns:
+        Cache key string for the import lock
+    """
+    return f'github_import_lock:{user_id}'
 
 
 def parse_github_url(url: str) -> tuple[str, str]:
@@ -128,12 +141,12 @@ def detect_tech_stack_from_files(tree: list[dict], deps: dict[str, str | None]) 
     return tech_stack
 
 
-async def normalize_github_repo_data(owner: str, repo: str, url: str, repo_files: dict) -> dict:
+def normalize_github_repo_data(owner: str, repo: str, url: str, repo_files: dict) -> dict:
     """
     Normalize GitHub repository data into the shape expected by analyze_github_repo.
 
     If repo_files doesn't provide repo metadata (stars, description, etc.), this function
-    makes a single async REST call to https://api.github.com/repos/{owner}/{repo}.
+    makes a single REST call to https://api.github.com/repos/{owner}/{repo}.
 
     Args:
         owner: Repository owner
@@ -154,8 +167,8 @@ async def normalize_github_repo_data(owner: str, repo: str, url: str, repo_files
     )
 
     try:
-        async with httpx.AsyncClient(timeout=GITHUB_API_TIMEOUT) as client:
-            resp = await client.get(f'https://api.github.com/repos/{owner}/{repo}')
+        with httpx.Client(timeout=GITHUB_API_TIMEOUT) as client:
+            resp = client.get(f'https://api.github.com/repos/{owner}/{repo}')
             if resp.status_code == 200:
                 data = resp.json()
                 result = {
@@ -166,11 +179,19 @@ async def normalize_github_repo_data(owner: str, repo: str, url: str, repo_files
                     'stargazers_count': data.get('stargazers_count', 0),
                     'forks_count': data.get('forks_count', 0),
                     'html_url': url,
+                    'owner': owner,
+                    'repo': repo,
+                    'default_branch': data.get('default_branch', 'main'),
+                    # Include full project context for AI analysis
+                    'tree': repo_files.get('tree', []),
+                    'dependencies': repo_files.get('dependencies', {}),
+                    'tech_stack': repo_files.get('tech_stack', {}),
                 }
                 logger.debug(
                     f'Fetched GitHub API metadata: name={result["name"]}, '
                     f'description={result["description"][:50] if result["description"] else "None"}..., '
-                    f'language={result["language"]}, stars={result["stargazers_count"]}'
+                    f'language={result["language"]}, stars={result["stargazers_count"]}, '
+                    f'files={len(result["tree"])}, tech_stack={len(result["tech_stack"])}'
                 )
                 return result
     except Exception as e:
@@ -186,6 +207,13 @@ async def normalize_github_repo_data(owner: str, repo: str, url: str, repo_files
         'stargazers_count': 0,
         'forks_count': 0,
         'html_url': url,
+        'owner': owner,
+        'repo': repo,
+        'default_branch': 'main',
+        # Include full project context even in fallback
+        'tree': repo_files.get('tree', []),
+        'dependencies': repo_files.get('dependencies', {}),
+        'tech_stack': repo_files.get('tech_stack', {}),
     }
 
 

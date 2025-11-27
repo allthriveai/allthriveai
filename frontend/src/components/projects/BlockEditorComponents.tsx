@@ -12,6 +12,8 @@ import {
   TrashIcon,
   PlusIcon,
   PhotoIcon,
+  CodeBracketIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import {
   FaColumns,
@@ -78,6 +80,8 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
 
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  // Default to markdown mode (true = markdown, false = WYSIWYG)
+  const [isMarkdownMode, setIsMarkdownMode] = useState(true);
 
   // Create sensors for nested drag and drop (column blocks)
   const sensors = useSensors(
@@ -200,6 +204,20 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
     >
       {/* Hover Toolbar - Top Right Corner */}
       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
+        {/* Toggle button for text blocks */}
+        {block.type === 'text' && block.style !== 'heading' && (
+          <button
+            onClick={() => setIsMarkdownMode(!isMarkdownMode)}
+            className="p-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 rounded shadow-md border border-gray-200 dark:border-gray-700"
+            title={isMarkdownMode ? "Switch to WYSIWYG Editor" : "Switch to Markdown Editor"}
+          >
+            {isMarkdownMode ? (
+              <DocumentTextIcon className="w-4 h-4" />
+            ) : (
+              <CodeBracketIcon className="w-4 h-4" />
+            )}
+          </button>
+        )}
         <button {...attributes} {...listeners} className="p-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded shadow-md cursor-grab active:cursor-grabbing border border-gray-200 dark:border-gray-700" title="Drag to reorder">
           <Bars3Icon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
         </button>
@@ -398,6 +416,13 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
                 className="w-full text-4xl font-bold bg-transparent border-none outline-none text-gray-900 dark:text-white"
                 placeholder="Title"
               />
+            ) : isMarkdownMode ? (
+              <textarea
+                value={block.content || ''}
+                onChange={(e) => onChange({ content: e.target.value })}
+                className="w-full min-h-[150px] px-4 py-3 font-mono text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y"
+                placeholder="Start writing in markdown..."
+              />
             ) : (
               <RichTextEditor
                 content={block.content || ''}
@@ -406,11 +431,33 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
               />
             )}
           </div>
+        ) : block.type === 'badgeRow' ? (
+          <div>
+            <div className="flex flex-wrap gap-2 p-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900">
+              {block.badges?.map((badge: any, badgeIndex: number) => (
+                <div key={badgeIndex} className="relative group">
+                  <img
+                    src={badge.url}
+                    alt={badge.caption || ''}
+                    className="h-auto"
+                    style={{ maxHeight: '28px' }}
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+              Badge Row ({block.badges?.length || 0} badges) - Read-only from GitHub import
+            </p>
+          </div>
         ) : (
           <div>
             {block.url ? (
-              <div>
-                <img src={block.url} alt={block.caption} className="w-full rounded-lg mb-2" />
+              <div className="flex flex-col items-center">
+                <img
+                  src={block.url}
+                  alt={block.caption}
+                  className="max-w-full h-auto rounded-lg mb-2"
+                />
                 <input
                   type="text"
                   value={block.caption || ''}
@@ -481,6 +528,8 @@ export function DraggableColumnBlock({ id, block, onChange, onDelete, onUpload }
 // Column Block Editor
 export function ColumnBlockEditor({ block, onChange, onDelete, onUpload, dragHandleProps }: ColumnBlockEditorProps) {
   const [isUploading, setIsUploading] = useState(false);
+  // Default to markdown mode for column text blocks
+  const [isMarkdownMode, setIsMarkdownMode] = useState(true);
 
   const handleUpload = async (file: File) => {
     setIsUploading(true);
@@ -520,20 +569,48 @@ export function ColumnBlockEditor({ block, onChange, onDelete, onUpload, dragHan
         </div>
       )}
 
-      <button
-        onClick={onDelete}
-        className="absolute -top-1 -right-1 opacity-0 group-hover/col:opacity-100 transition-opacity p-1 bg-red-100 dark:bg-red-900/20 text-red-600 rounded-full"
-      >
-        <TrashIcon className="w-3 h-3" />
-      </button>
+      {/* Toolbar - Top Right Corner */}
+      <div className="absolute -top-1 -right-1 opacity-0 group-hover/col:opacity-100 transition-opacity flex gap-1 z-10">
+        {/* Toggle button for text blocks */}
+        {block.type === 'text' && (
+          <button
+            onClick={() => setIsMarkdownMode(!isMarkdownMode)}
+            className="p-1 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 rounded shadow-sm border border-gray-200 dark:border-gray-700"
+            title={isMarkdownMode ? "Switch to WYSIWYG Editor" : "Switch to Markdown Editor"}
+          >
+            {isMarkdownMode ? (
+              <DocumentTextIcon className="w-3 h-3" />
+            ) : (
+              <CodeBracketIcon className="w-3 h-3" />
+            )}
+          </button>
+        )}
+        <button
+          onClick={onDelete}
+          className="p-1 bg-red-100 dark:bg-red-900/20 hover:bg-red-200 dark:hover:bg-red-900/30 text-red-600 rounded shadow-sm border border-red-200 dark:border-red-800"
+        >
+          <TrashIcon className="w-3 h-3" />
+        </button>
+      </div>
 
       {block.type === 'text' ? (
-        <RichTextEditor
-          content={block.content || ''}
-          onChange={(content) => onChange({ content })}
-          placeholder="Start writing..."
-          className="text-sm"
-        />
+        <div>
+          {isMarkdownMode ? (
+            <textarea
+              value={block.content || ''}
+              onChange={(e) => onChange({ content: e.target.value })}
+              className="w-full min-h-[100px] px-3 py-2 font-mono text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y"
+              placeholder="Start writing in markdown..."
+            />
+          ) : (
+            <RichTextEditor
+              content={block.content || ''}
+              onChange={(content) => onChange({ content })}
+              placeholder="Start writing..."
+              className="text-sm"
+            />
+          )}
+        </div>
       ) : block.type === 'video' ? (
         <div>
           {block.url ? (
@@ -577,8 +654,12 @@ export function ColumnBlockEditor({ block, onChange, onDelete, onUpload, dragHan
       ) : block.type === 'image' ? (
         <div>
           {block.url ? (
-            <div>
-              <img src={block.url} alt={block.caption} className="w-full rounded mb-1" />
+            <div className="flex flex-col items-center">
+              <img
+                src={block.url}
+                alt={block.caption}
+                className="max-w-full h-auto rounded mb-1"
+              />
               <input
                 type="text"
                 value={block.caption || ''}

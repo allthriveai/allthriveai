@@ -19,3 +19,8 @@ GITHUB_RETRY_MAX_WAIT = 10  # seconds
 
 # Import Rate Limits
 IMPORT_RATE_LIMIT = '5/h'  # 5 imports per hour per user
+
+# Import Lock and Task Timeouts
+IMPORT_LOCK_TIMEOUT = 300  # 5 minutes - How long to hold the per-user import lock
+IMPORT_TASK_SOFT_LIMIT = 300  # 5 minutes - Celery soft time limit (sends exception)
+IMPORT_TASK_HARD_LIMIT = 360  # 6 minutes - Celery hard time limit (kills task)

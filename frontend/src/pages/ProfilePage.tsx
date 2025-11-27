@@ -10,6 +10,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useAchievements } from '@/hooks/useAchievements';
 import { ActivityFeed } from '@/components/profile/ActivityFeed';
 import { getRarityColorClasses } from '@/services/achievements';
+import { ToolTray } from '@/components/tools/ToolTray';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGithub,
@@ -34,6 +35,18 @@ import {
   faFlask,
   faChartLine,
 } from '@fortawesome/free-solid-svg-icons';
+
+// Helper to convert tier code to display name
+function getTierDisplay(tier?: string): string {
+  const tierMap: Record<string, string> = {
+    seedling: 'Seedling',
+    sprout: 'Sprout',
+    blossom: 'Blossom',
+    bloom: 'Bloom',
+    evergreen: 'Evergreen',
+  };
+  return tierMap[tier || ''] || 'Seedling';
+}
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -62,6 +75,8 @@ export default function ProfilePage() {
   const [showBattleModal, setShowBattleModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [toolTrayOpen, setToolTrayOpen] = useState(false);
+  const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
 
   const { achievementsByCategory, isLoading: isAchievementsLoading } = useAchievements();
 
@@ -355,7 +370,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="text-center border-l border-gray-200 dark:border-white/10">
                         <div className="text-lg font-bold text-gray-900 dark:text-white">
-                          {isTierLoading ? '...' : (tierStatus?.tierDisplay || 'Ember')}
+                          {isTierLoading ? '...' : (tierStatus?.tierDisplay || getTierDisplay(displayUser?.tier))}
                         </div>
                         <div className="text-[10px] uppercase tracking-wider text-gray-500">Tier</div>
                       </div>
@@ -441,12 +456,16 @@ export default function ProfilePage() {
 
                           return allTools.length > 0 ? (
                             allTools.slice(0, 8).map((tool) => (
-                              <span
+                              <button
                                 key={tool.id}
-                                className="px-2 py-1 text-xs bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 rounded-md border border-gray-200 dark:border-white/10"
+                                onClick={() => {
+                                  setSelectedToolSlug(tool.slug);
+                                  setToolTrayOpen(true);
+                                }}
+                                className="px-2 py-1 text-xs bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 rounded-md border border-gray-200 dark:border-white/10 hover:bg-teal-50 dark:hover:bg-teal-900/20 hover:border-teal-500 hover:text-teal-700 dark:hover:text-teal-300 transition-colors cursor-pointer"
                               >
                                 {tool.name}
-                              </span>
+                              </button>
                             ))
                           ) : (
                             <p className="text-sm text-gray-400 italic">No tools used yet</p>
@@ -673,6 +692,13 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Tool Tray */}
+        <ToolTray
+          isOpen={toolTrayOpen}
+          onClose={() => setToolTrayOpen(false)}
+          toolSlug={selectedToolSlug}
+        />
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (

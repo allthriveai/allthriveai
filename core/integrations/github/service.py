@@ -15,13 +15,13 @@ from tenacity import (
     wait_exponential,
 )
 
-from services.github_constants import (
+from core.integrations.github.constants import (
     GITHUB_API_TIMEOUT,
     GITHUB_RETRY_ATTEMPTS,
     GITHUB_RETRY_MAX_WAIT,
     GITHUB_RETRY_MIN_WAIT,
 )
-from services.github_helpers import detect_tech_stack_from_files
+from core.integrations.github.helpers import detect_tech_stack_from_files
 
 logger = logging.getLogger(__name__)
 

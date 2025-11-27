@@ -1,0 +1,41 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "AllThrive AI",
+  "name_for_model": "allthrive_ai",
+  "description_for_human": "AI Portfolio Platform with Gamified Learning & Discovery. Browse PUBLIC AI projects, tools, and learning resources.",
+  "description_for_model": "AllThrive AI is a platform for discovering PUBLIC AI/ML content. Access is limited to explicitly public data: (1) PUBLIC AI project portfolios marked as showcase by creators, (2) PUBLIC AI tool directory and reviews, (3) PUBLIC learning resources and tutorials, (4) PUBLIC community profiles (only users who opted-in). IMPORTANT: User privacy is protected - only access data explicitly marked as public by users. Do not attempt to access private profiles, draft projects, or user activity data.",
+  "auth": {
+    "type": "oauth",
+    "client_url": "https://allthrive.ai/auth/login",
+    "authorization_url": "https://allthrive.ai/api/v1/auth/oauth/authorize",
+    "authorization_content_type": "application/json",
+    "verification_tokens": {
+      "openai": "allthrive_ai_verification_token"
+    }
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://allthrive.ai/api/v1/openapi.json",
+    "is_user_authenticated": false
+  },
+  "logo_url": "https://allthrive.ai/logo.png",
+  "contact_email": "support@allthrive.ai",
+  "legal_info_url": "https://allthrive.ai/legal",
+  "privacy_policy_url": "https://allthrive.ai/privacy",
+  "capabilities": [
+    "Browse PUBLIC AI project portfolios",
+    "Search PUBLIC AI tools directory",
+    "Discover PUBLIC learning resources",
+    "View PUBLIC community profiles",
+    "Access PUBLIC project documentation"
+  ],
+  "data_usage_policy": "Only accesses PUBLIC data explicitly marked as discoverable by users. User privacy is respected - private profiles, draft projects, and personal data are not accessible.",
+  "data_retention": "We do not store user queries or personal information",
+  "categories": [
+    "education",
+    "developer_tools",
+    "ai_ml",
+    "community",
+    "portfolio"
+  ]
+}

@@ -1,0 +1,54 @@
+# AllThrive AI - AI Portfolio Platform with Gamified Learning & Discovery
+# This file controls how search engines crawl our site
+
+# LLM/AI Model Crawlers - Block from training on user data
+# Users must explicitly opt-in via privacy settings
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: CCBot
+User-agent: anthropic-ai
+User-agent: Claude-Web
+User-agent: ClaudeBot
+User-agent: Omgilibot
+User-agent: FacebookBot
+Disallow: /@*  # Block user profiles from AI training
+Disallow: /api/
+Allow: /  # Allow public pages only
+
+# Traditional Search Engines - Allow indexing
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: Slurp
+User-agent: DuckDuckBot
+User-agent: Baiduspider
+User-agent: YandexBot
+Allow: /
+
+# Default for all other crawlers
+User-agent: *
+Allow: /
+
+# Allow all public pages
+Allow: /$
+Allow: /about
+Allow: /explore
+Allow: /learn
+Allow: /tools
+Allow: /api/v1/
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /account
+Disallow: /api/v1/auth/
+
+# Disallow OAuth callback routes
+Disallow: /oauth/
+
+# Allow public user profiles (for search engines only)
+# Note: LLM crawlers are blocked above
+Allow: /@*
+
+# Sitemap location
+Sitemap: https://allthrive.ai/sitemap.xml

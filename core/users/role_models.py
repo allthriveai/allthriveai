@@ -75,10 +75,12 @@ class RoleUpgradeRequest(models.Model):
         # Expert and Patron can be auto-approved from lower roles
         role_hierarchy = {
             UserRole.EXPLORER: 1,
-            UserRole.EXPERT: 2,
-            UserRole.MENTOR: 3,
-            UserRole.PATRON: 4,
-            UserRole.ADMIN: 5,
+            UserRole.LEARNER: 2,
+            UserRole.EXPERT: 3,
+            UserRole.CREATOR: 4,
+            UserRole.MENTOR: 5,
+            UserRole.PATRON: 6,
+            UserRole.ADMIN: 7,
         }
 
         current_level = role_hierarchy.get(self.current_role, 0)
@@ -88,8 +90,8 @@ class RoleUpgradeRequest(models.Model):
         if requested_level <= current_level:
             return False
 
-        # Expert and Patron can be auto-approved
-        return self.requested_role in [UserRole.EXPERT, UserRole.PATRON]
+        # Learner, Expert, Creator, and Patron can be auto-approved
+        return self.requested_role in [UserRole.LEARNER, UserRole.EXPERT, UserRole.CREATOR, UserRole.PATRON]
 
 
 class RolePermission(models.Model):

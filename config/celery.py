@@ -10,4 +10,4 @@ app.autodiscover_tasks()
 
 # Manually discover tasks from modules not in INSTALLED_APPS
 # These apps have models under 'core' app but tasks need explicit discovery
-app.autodiscover_tasks(['core.projects'])
+app.autodiscover_tasks(['core.projects', 'core.integrations'])
