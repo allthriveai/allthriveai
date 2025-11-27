@@ -198,3 +198,181 @@ class GitHubIntegration(BaseIntegration):
             return True
         except ValueError:
             return False
+
+    def import_project(self, user_id: int, url: str, **kwargs) -> dict[str, Any]:
+        """Import a GitHub repository as a portfolio project.
+
+        This is the main entry point for the generic import task.
+        It wraps the existing GitHub import logic.
+
+        Args:
+            user_id: ID of the user importing the project
+            url: GitHub repository URL
+            **kwargs: Additional options (is_showcase, is_private)
+
+        Returns:
+            dict with import result
+        """
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+
+        from core.integrations.github.ai_analyzer import analyze_github_repo
+        from core.integrations.github.helpers import apply_ai_metadata
+        from core.integrations.utils import (
+            IntegrationErrorCode,
+            acquire_import_lock,
+            check_duplicate_project,
+            get_integration_token,
+        )
+        from core.projects.models import Project
+
+        User = get_user_model()
+
+        is_showcase = kwargs.get('is_showcase', True)
+        is_private = kwargs.get('is_private', False)
+
+        try:
+            # Get user
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                logger.error(f'User {user_id} not found for GitHub import')
+                return {
+                    'success': False,
+                    'error': 'User account not found',
+                    'error_code': IntegrationErrorCode.AUTH_REQUIRED,
+                }
+
+            # Acquire import lock
+            if not acquire_import_lock(user_id):
+                return {
+                    'success': False,
+                    'error': 'You already have an import in progress',
+                    'error_code': IntegrationErrorCode.IMPORT_IN_PROGRESS,
+                    'suggestion': 'Please wait for your current import to finish before starting a new one.',
+                }
+
+            # Parse GitHub URL
+            try:
+                owner, repo = parse_github_url(url)
+            except ValueError as e:
+                return {
+                    'success': False,
+                    'error': f'Invalid GitHub URL: {str(e)}',
+                    'error_code': IntegrationErrorCode.INVALID_URL,
+                    'suggestion': 'Make sure the URL follows this format: https://github.com/username/repository',
+                }
+
+            # Check for duplicate
+            existing_project = check_duplicate_project(user, url)
+            if existing_project:
+                project_url = f'/{user.username}/{existing_project.slug}'
+                return {
+                    'success': False,
+                    'error': f'This repository is already in your portfolio as "{existing_project.title}"',
+                    'error_code': IntegrationErrorCode.DUPLICATE_IMPORT,
+                    'suggestion': 'View your existing project or delete it before re-importing.',
+                    'project': {
+                        'id': existing_project.id,
+                        'title': existing_project.title,
+                        'slug': existing_project.slug,
+                        'url': project_url,
+                    },
+                }
+
+            # Get GitHub token
+            user_token = get_integration_token(user, 'github')
+            if not user_token:
+                return {
+                    'success': False,
+                    'error': 'GitHub account is not connected',
+                    'error_code': IntegrationErrorCode.AUTH_REQUIRED,
+                    'suggestion': 'Please connect your GitHub account in settings and try again.',
+                }
+
+            # Fetch repository data
+            try:
+                github_service = GitHubService(user_token)
+                repo_files = github_service.get_repository_info_sync(owner, repo)
+            except Exception as e:
+                error_msg = str(e)
+                if '404' in error_msg:
+                    return {
+                        'success': False,
+                        'error': f'Repository "{owner}/{repo}" not found',
+                        'error_code': IntegrationErrorCode.NOT_FOUND,
+                        'suggestion': 'Make sure the repository exists and you have access to it.',
+                    }
+                elif 'rate limit' in error_msg.lower():
+                    return {
+                        'success': False,
+                        'error': 'GitHub API rate limit exceeded',
+                        'error_code': IntegrationErrorCode.RATE_LIMIT_EXCEEDED,
+                        'suggestion': 'Please try again in a few minutes.',
+                    }
+                else:
+                    logger.error(f'Error fetching GitHub data: {e}')
+                    raise
+
+            # Normalize GitHub data
+            repo_summary = normalize_github_repo_data(owner, repo, url, repo_files)
+
+            # Run AI analysis
+            logger.info(f'Running AI analysis for {owner}/{repo}')
+            analysis = analyze_github_repo(repo_data=repo_summary, readme_content=repo_files.get('readme', ''))
+
+            # Create project
+            logger.info(f'Creating project for {owner}/{repo}')
+            hero_image = analysis.get('hero_image')
+
+            project = Project.objects.create(
+                user=user,
+                title=repo_summary.get('name', repo),
+                description=analysis.get('description', repo_summary.get('description', '')),
+                type=Project.ProjectType.GITHUB_REPO,
+                external_url=url,
+                is_showcase=is_showcase,
+                is_published=not is_private,
+                banner_url='',
+                featured_image_url=hero_image if hero_image else '',
+                content={
+                    'github': {
+                        'owner': owner,
+                        'repo': repo,
+                        'stars': repo_summary.get('stargazers_count', 0),
+                        'forks': repo_summary.get('forks_count', 0),
+                        'language': repo_summary.get('language', ''),
+                        'readme': repo_files.get('readme', ''),
+                        'tree': repo_files.get('tree', []),
+                        'dependencies': repo_files.get('dependencies', {}),
+                        'tech_stack': repo_files.get('tech_stack', {}),
+                        'analyzed_at': timezone.now().isoformat(),
+                    },
+                    'blocks': analysis.get('readme_blocks', []),
+                    'mermaid_diagrams': analysis.get('mermaid_diagrams', []),
+                    'demo_urls': analysis.get('demo_urls', []),
+                    'hero_quote': analysis.get('hero_quote', ''),
+                    'generated_diagram': analysis.get('generated_diagram', ''),
+                },
+            )
+
+            # Apply AI metadata
+            apply_ai_metadata(project, analysis)
+
+            logger.info(f'Successfully imported {owner}/{repo} as project {project.id}')
+
+            project_url = f'/{user.username}/{project.slug}'
+            return {
+                'success': True,
+                'message': f'Successfully imported {owner}/{repo}!',
+                'project': {
+                    'id': project.id,
+                    'title': project.title,
+                    'slug': project.slug,
+                    'url': project_url,
+                },
+            }
+
+        except Exception as e:
+            logger.error(f'Failed to import GitHub repo: {e}', exc_info=True)
+            raise  # Re-raise for Celery retry

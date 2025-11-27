@@ -31,6 +31,7 @@ from .integrations.github.views import (
     import_github_repo_async,
     list_user_repos,
 )
+from .integrations.views import import_from_url, list_integrations
 from .projects.comment_views import ProjectCommentViewSet
 from .projects.topic_suggestions import get_topic_suggestions
 from .projects.views import (
@@ -170,10 +171,13 @@ urlpatterns = [
     path('social/callback/<str:provider>/', social_oauth_callback, name='social_callback'),
     path('social/disconnect/<str:provider>/', disconnect_provider, name='social_disconnect'),
     path('social/status/<str:provider>/', connection_status, name='social_status'),
-    # GitHub integration endpoints
+    # Generic integration endpoints
+    path('integrations/import-from-url/', import_from_url, name='import_from_url'),
+    path('integrations/available/', list_integrations, name='list_integrations'),
+    path('integrations/tasks/<str:task_id>/', get_task_status, name='task_status'),
+    # GitHub integration endpoints (legacy - use generic endpoints above)
     path('github/repos/', list_user_repos, name='github_repos'),
     path('github/import/', import_github_repo_async, name='github_import'),
-    path('integrations/tasks/<str:task_id>/', get_task_status, name='task_status'),
     # Battle endpoints
     path('battles/stats/', battle_stats, name='battle_stats'),
     path('battles/leaderboard/', battle_leaderboard, name='battle_leaderboard'),

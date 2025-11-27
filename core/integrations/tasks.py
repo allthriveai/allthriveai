@@ -18,6 +18,89 @@ from core.integrations.github.constants import (
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# Generic Import Task - Works for all integrations
+# =============================================================================
+
+
+@shared_task(bind=True, max_retries=3, soft_time_limit=IMPORT_TASK_SOFT_LIMIT, time_limit=IMPORT_TASK_HARD_LIMIT)
+def import_project_generic_task(self, platform: str, user_id: int, url: str, **kwargs):
+    """
+    Generic background task for importing projects from any integration.
+
+    This task uses the IntegrationRegistry to dynamically dispatch to the
+    correct platform-specific import logic (GitHub, GitLab, npm, etc.).
+
+    Args:
+        platform: Platform name (e.g., 'github', 'gitlab', 'npm')
+        user_id: ID of the user importing the project
+        url: Project URL
+        **kwargs: Platform-specific options (is_showcase, is_private, etc.)
+
+    Returns:
+        dict with import result:
+            - success: bool
+            - message: str
+            - project: dict (if successful)
+            - error: str (if failed)
+            - error_code: str (if failed)
+    """
+    from core.integrations.registry import IntegrationRegistry
+    from core.integrations.utils import IntegrationErrorCode, release_import_lock
+
+    lock_released = False
+
+    try:
+        # Get integration from registry
+        integration_class = IntegrationRegistry.get(platform)
+        if not integration_class:
+            logger.error(f'Unknown platform: {platform}')
+            return {
+                'success': False,
+                'error': f'Unknown platform: {platform}',
+                'error_code': IntegrationErrorCode.UNKNOWN_PLATFORM,
+                'suggestion': f'Supported platforms: {", ".join(IntegrationRegistry.list_all())}',
+            }
+
+        # Create integration instance
+        integration = integration_class()
+
+        logger.info(f'[Task {self.request.id}] Starting {integration.display_name} import for user {user_id}: {url}')
+
+        # Delegate to platform-specific import
+        result = integration.import_project(user_id, url, **kwargs)
+
+        logger.info(f'[Task {self.request.id}] Import completed: {result.get("success")}')
+
+        return result
+
+    except Exception as e:
+        logger.error(f'[Task {self.request.id}] Import failed: {type(e).__name__}: {e}', exc_info=True)
+
+        # Release lock on error
+        try:
+            release_import_lock(user_id)
+            lock_released = True
+        except Exception as lock_error:
+            logger.warning(f'Failed to release lock on error: {lock_error}')
+
+        # Retry on unexpected errors
+        raise self.retry(exc=e, countdown=60) from e
+
+    finally:
+        # Ensure lock is released
+        if not lock_released:
+            try:
+                release_import_lock(user_id)
+            except Exception as e:
+                logger.warning(f'Failed to release lock in finally block: {e}')
+
+
+# =============================================================================
+# Platform-Specific Tasks (Legacy - being migrated to generic task)
+# =============================================================================
+
+
 @shared_task(bind=True, max_retries=3, soft_time_limit=IMPORT_TASK_SOFT_LIMIT, time_limit=IMPORT_TASK_HARD_LIMIT)
 def import_github_repo_task(self, user_id: int, url: str, is_showcase: bool = True, is_private: bool = False):
     """

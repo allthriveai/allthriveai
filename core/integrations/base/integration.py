@@ -104,3 +104,58 @@ class BaseIntegration(ABC):
             bool: True if this integration can handle the URL
         """
         return self.name in url.lower()
+
+    @abstractmethod
+    def import_project(self, user_id: int, url: str, **kwargs) -> dict[str, Any]:
+        """Import a project from this integration.
+
+        This is the main entry point called by the generic import task.
+        Each integration implements platform-specific import logic here.
+
+        Args:
+            user_id: ID of the user importing the project
+            url: Project URL
+            **kwargs: Platform-specific options (e.g., is_showcase, is_private)
+
+        Returns:
+            dict with:
+                - success: bool
+                - message: str
+                - project: dict with id, title, slug, url
+                OR
+                - success: False
+                - error: str
+                - error_code: str
+                - suggestion: str (optional)
+
+        Raises:
+            Exception: On unexpected errors (will be retried by Celery)
+        """
+        pass
+
+    def is_connected(self, user: 'User') -> bool:
+        """Check if user has connected this integration.
+
+        Default implementation checks for social account.
+        Override for custom logic.
+
+        Args:
+            user: User instance
+
+        Returns:
+            bool: True if connected
+        """
+        from core.integrations.utils import check_integration_connection
+
+        return check_integration_connection(user, self.name)
+
+    def get_oauth_url(self) -> str:
+        """Get OAuth connection URL for this integration.
+
+        Args:
+            None
+
+        Returns:
+            str: OAuth URL
+        """
+        return f'/accounts/{self.name}/login/?process=connect'

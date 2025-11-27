@@ -111,10 +111,12 @@ export async function importGitHubRepoAsync(
   url: string;
 }> {
   try {
-    // Queue the background task
+    // Queue the background task using generic integration endpoint
     const response = await api.post<{
       success: boolean;
       taskId: string;  // At root level after camelCase transform
+      platform?: string;
+      platformDisplay?: string;
       message: string;
       detail?: string;
       statusUrl: string;
@@ -122,7 +124,7 @@ export async function importGitHubRepoAsync(
       errorCode?: string;
       suggestion?: string;
       project?: any;
-    }>('/github/import/', {
+    }>('/integrations/import-from-url/', {
       url,
       is_showcase: isShowcase,
     });
@@ -138,6 +140,12 @@ export async function importGitHubRepoAsync(
     }
 
     const taskId = response.data.taskId;  // Fields are at root level
+
+    // Log platform detection for debugging
+    if (response.data.platform) {
+      console.log(`Auto-detected platform: ${response.data.platformDisplay || response.data.platform}`);
+    }
+
     onProgress?.('🚀 Import queued successfully!');
 
     // Poll for completion
