@@ -115,7 +115,7 @@ def sync_github_to_integrations(sender, request, sociallogin, **kwargs):
     )
 
     # Note: We don't create a SocialConnection because:
-    # 1. GitHubSyncService now checks both SocialAccount and SocialConnection
+    # 1. GitHub helpers check both SocialAccount and SocialConnection for tokens
     # 2. Tokens are stored in django-allauth's SocialToken table
     # 3. This avoids duplicate storage and potential sync issues
 

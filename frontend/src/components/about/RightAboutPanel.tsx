@@ -10,9 +10,14 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
     <>
       {/* Sliding Panel */}
       <div
-        className={`fixed right-0 top-16 w-full md:w-[480px] h-[calc(100vh-4rem)] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col shadow-lg transition-transform duration-300 z-40 ${
+        className={`fixed right-0 top-16 w-full md:w-[480px] h-[calc(100vh-4rem)] border-l border-white/20 dark:border-white/10 flex flex-col shadow-2xl transition-transform duration-300 z-40 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
@@ -123,7 +128,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
               </h2>
 
               <div className="space-y-5">
-                <div className="border-l-4 border-primary-400 pl-4 py-2">
+                <div className="border-l-4 border-primary-400 pl-4 py-2 bg-white dark:bg-gray-800 rounded-r-lg">
                   <h3 className="text-lg font-bold text-primary-600 dark:text-primary-400 mb-2">
                     1. Curiosity First
                   </h3>
@@ -133,7 +138,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                   </p>
                 </div>
 
-                <div className="border-l-4 border-primary-400 pl-4 py-2">
+                <div className="border-l-4 border-primary-400 pl-4 py-2 bg-white dark:bg-gray-800 rounded-r-lg">
                   <h3 className="text-lg font-bold text-primary-600 dark:text-primary-400 mb-2">
                     2. Learn by Doing
                   </h3>
@@ -143,7 +148,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                   </p>
                 </div>
 
-                <div className="border-l-4 border-accent-400 pl-4 py-2">
+                <div className="border-l-4 border-accent-400 pl-4 py-2 bg-white dark:bg-gray-800 rounded-r-lg">
                   <h3 className="text-lg font-bold text-accent-600 dark:text-accent-400 mb-2">
                     3. We Thrive Together
                   </h3>
@@ -153,7 +158,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                   </p>
                 </div>
 
-                <div className="border-l-4 border-accent-400 pl-4 py-2">
+                <div className="border-l-4 border-accent-400 pl-4 py-2 bg-white dark:bg-gray-800 rounded-r-lg">
                   <h3 className="text-lg font-bold text-accent-600 dark:text-accent-400 mb-2">
                     4. Lead with Kindness & Respect
                   </h3>
@@ -163,7 +168,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                   </p>
                 </div>
 
-                <div className="border-l-4 border-primary-400 pl-4 py-2">
+                <div className="border-l-4 border-primary-400 pl-4 py-2 bg-white dark:bg-gray-800 rounded-r-lg">
                   <h3 className="text-lg font-bold text-primary-600 dark:text-primary-400 mb-2">
                     5. Celebrate the Messy Middle
                   </h3>
@@ -173,7 +178,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                   </p>
                 </div>
 
-                <div className="border-l-4 border-accent-400 pl-4 py-2">
+                <div className="border-l-4 border-accent-400 pl-4 py-2 bg-white dark:bg-gray-800 rounded-r-lg">
                   <h3 className="text-lg font-bold text-accent-600 dark:text-accent-400 mb-2">
                     6. You Belong Here
                   </h3>

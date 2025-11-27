@@ -4,7 +4,7 @@ import type { TopicSlug } from '@/config/topics';
 export type UserRole = 'explorer' | 'expert' | 'mentor' | 'patron' | 'admin';
 
 // Thrive Circle tier names
-export type TierName = 'ember' | 'spark' | 'blaze' | 'beacon' | 'phoenix';
+export type TierName = 'seedling' | 'sprout' | 'blossom' | 'bloom' | 'evergreen';
 
 // User model
 export interface User {

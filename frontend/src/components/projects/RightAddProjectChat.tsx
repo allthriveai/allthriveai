@@ -2,26 +2,17 @@ import { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faGitlab, faFigma } from '@fortawesome/free-brands-svg-icons';
-import { faRocket, faCommentDots, faBolt, faTable, faStar, faCodeBranch, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faRocket, faCommentDots, faBolt, faTable } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { createProject } from '@/services/projects';
-import {
-  checkGitHubConnection,
-  fetchGitHubRepos,
-  getImportPreview,
-  confirmImport,
-  getGitHubConnectUrl,
-  type GitHubRepository,
-  type GitHubImportPreview,
-} from '@/services/github';
 
 interface RightAddProjectChatProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type ChatStep = 'welcome' | 'github_checking' | 'github_connect' | 'github_repos' | 'github_preview' | 'github_importing';
+type ChatStep = 'welcome';
 
 interface ChatMessage {
   id: string;
@@ -36,48 +27,12 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
 
   const [step, setStep] = useState<ChatStep>('welcome');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [repos, setRepos] = useState<GitHubRepository[]>([]);
-  const [selectedRepo, setSelectedRepo] = useState<GitHubRepository | null>(null);
-  const [previewData, setPreviewData] = useState<GitHubImportPreview | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Check for OAuth return and resume GitHub import flow
-  useEffect(() => {
-    // Only check when the panel is actually open
-    if (!isOpen) return;
-
-    const oauthReturn = localStorage.getItem('github_oauth_return');
-    const oauthStep = localStorage.getItem('github_oauth_step');
-
-    console.log('🔍 Checking OAuth return state:', {
-      isOpen,
-      oauthReturn,
-      oauthStep,
-    });
-
-    if (oauthReturn === 'add_project_chat' && oauthStep === 'importing') {
-      console.log('✅ OAuth return detected! Resuming GitHub import flow...');
-
-      // Clear the flags
-      localStorage.removeItem('github_oauth_return');
-      localStorage.removeItem('github_oauth_step');
-
-      // Auto-start the import flow
-      setTimeout(() => {
-        handleImport();
-      }, 500);
-    }
-  }, [isOpen]); // React when isOpen changes
 
   // Reset when modal closes
   useEffect(() => {
     if (!isOpen) {
       setStep('welcome');
       setMessages([]);
-      setRepos([]);
-      setSelectedRepo(null);
-      setPreviewData(null);
-      setSearchQuery('');
     }
   }, [isOpen]);
 

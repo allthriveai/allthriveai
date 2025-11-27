@@ -58,19 +58,19 @@ class User(AbstractUser):
     # Gamification System - Single Source of Truth
     # Tier choices and thresholds
     TIER_CHOICES = [
-        ('ember', 'Ember'),
-        ('spark', 'Spark'),
-        ('blaze', 'Blaze'),
-        ('beacon', 'Beacon'),
-        ('phoenix', 'Phoenix'),
+        ('seedling', 'Seedling'),
+        ('sprout', 'Sprout'),
+        ('blossom', 'Blossom'),
+        ('bloom', 'Bloom'),
+        ('evergreen', 'Evergreen'),
     ]
 
     TIER_THRESHOLDS = {
-        'ember': 0,
-        'spark': 500,
-        'blaze': 2000,
-        'beacon': 5000,
-        'phoenix': 10000,
+        'seedling': 0,
+        'sprout': 1000,
+        'blossom': 2500,
+        'bloom': 5000,
+        'evergreen': 10000,
     }
 
     # Level thresholds (points required to reach each level)
@@ -104,7 +104,7 @@ class User(AbstractUser):
     total_points = models.IntegerField(default=0, help_text='Total points earned by user')
     level = models.IntegerField(default=1, help_text='User level calculated from points')
     tier = models.CharField(
-        max_length=20, choices=TIER_CHOICES, default='ember', help_text='User tier based on total points'
+        max_length=20, choices=TIER_CHOICES, default='seedling', help_text='User tier based on total points'
     )
 
     # Streak tracking
@@ -324,15 +324,15 @@ class User(AbstractUser):
 
     def _calculate_tier(self):
         """Calculate tier from total_points using threshold mapping."""
-        if self.total_points >= self.TIER_THRESHOLDS['phoenix']:
-            return 'phoenix'
-        elif self.total_points >= self.TIER_THRESHOLDS['beacon']:
-            return 'beacon'
-        elif self.total_points >= self.TIER_THRESHOLDS['blaze']:
-            return 'blaze'
-        elif self.total_points >= self.TIER_THRESHOLDS['spark']:
-            return 'spark'
-        return 'ember'
+        if self.total_points >= self.TIER_THRESHOLDS['evergreen']:
+            return 'evergreen'
+        elif self.total_points >= self.TIER_THRESHOLDS['bloom']:
+            return 'bloom'
+        elif self.total_points >= self.TIER_THRESHOLDS['blossom']:
+            return 'blossom'
+        elif self.total_points >= self.TIER_THRESHOLDS['sprout']:
+            return 'sprout'
+        return 'seedling'
 
     def _calculate_level(self):
         """
@@ -405,7 +405,7 @@ class User(AbstractUser):
     @property
     def points_to_next_tier(self):
         """Calculate points needed to reach next tier."""
-        tier_order = ['ember', 'spark', 'blaze', 'beacon', 'phoenix']
+        tier_order = ['seedling', 'sprout', 'blossom', 'bloom', 'evergreen']
         current_index = tier_order.index(self.tier)
 
         if current_index >= len(tier_order) - 1:
@@ -419,4 +419,4 @@ class User(AbstractUser):
     @property
     def tier_display(self):
         """Get human-readable tier name."""
-        return dict(self.TIER_CHOICES).get(self.tier, 'Ember')
+        return dict(self.TIER_CHOICES).get(self.tier, 'Seedling')

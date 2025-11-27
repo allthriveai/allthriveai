@@ -225,19 +225,13 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         return { height: '', width: '' };
       }
 
-      // Image cards - add min-height for consistency
+      // Image cards - no forced height, let content determine size
       if (heroElement.type === 'image') {
-        // For GitHub repos - smaller minimum
-        if (project.type === 'github_repo') {
-          return { height: 'min-h-[200px]', width: '' };
-        }
-
-        // For regular images, use minimum height for consistency
-        return { height: 'min-h-[280px]', width: '' };
+        return { height: '', width: '' };
       }
 
-      // Default - add minimum height
-      return { height: 'min-h-[280px]', width: '' };
+      // Default - no forced height
+      return { height: '', width: '' };
     };
 
     const { height: dynamicHeightClass, width: dynamicWidthClass } = getDynamicSizeClass();
@@ -265,18 +259,18 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         )}
 
         {/* BACKGROUND LAYER */}
-        <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''} ${isGradient ? 'min-h-[280px]' : ''}`}>
+        <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''}`}>
             {heroElement.type === 'image' && (
               <img
                 src={heroElement.url}
                 alt={project.title}
-                className="w-full h-auto object-contain"
+                className="w-full h-auto object-cover"
                 loading="lazy"
               />
             )}
 
             {isGradient && heroElement.type === 'gradient' && (
-              <div className={`w-full min-h-[280px] bg-gradient-to-br ${heroElement.gradient} flex items-center justify-center p-8`}>
+              <div className={`w-full aspect-[4/3] bg-gradient-to-br ${heroElement.gradient} flex items-center justify-center p-8`}>
                 <div className="text-center">
                   <h3 className="text-3xl font-bold text-white drop-shadow-lg">
                     {heroElement.title}

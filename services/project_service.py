@@ -19,10 +19,11 @@ class ProjectService:
     """Service for creating and managing projects."""
 
     # Valid project types
-    VALID_TYPES = ['github_repo', 'image_collection', 'prompt', 'other']
+    VALID_TYPES = ['github_repo', 'figma_design', 'image_collection', 'prompt', 'other']
 
     # URL patterns
     GITHUB_URL_PATTERN = re.compile(r'https?://github\.com/[\w-]+/[\w-]+')
+    FIGMA_URL_PATTERN = re.compile(r'https?://(www\.)?figma\.com/(file|design)/[\w-]+')
     URL_PATTERN = re.compile(r'https?://[^\s]+')
 
     @classmethod
@@ -113,10 +114,18 @@ class ProjectService:
         return bool(cls.GITHUB_URL_PATTERN.match(url))
 
     @classmethod
+    def is_figma_url(cls, url: str) -> bool:
+        """Check if URL is a Figma design URL."""
+        return bool(cls.FIGMA_URL_PATTERN.match(url))
+
+    @classmethod
     def infer_project_type_from_url(cls, url: str) -> str:
         """Infer project type from URL."""
         if cls.is_github_url(url):
             return 'github_repo'
+
+        if cls.is_figma_url(url):
+            return 'figma_design'
 
         # Check for image hosting services
         image_domains = ['imgur.com', 'instagram.com', 'pinterest.com', 'behance.net', 'dribbble.com']
@@ -139,24 +148,31 @@ class ProjectService:
             'repo': 'github_repo',
             'repository': 'github_repo',
             'software': 'github_repo',
+            # Figma design
+            '2': 'figma_design',
+            'figma': 'figma_design',
+            'figma design': 'figma_design',
+            'design file': 'figma_design',
+            'ui': 'figma_design',
+            'ui design': 'figma_design',
+            'mockup': 'figma_design',
             # Image collection
-            '2': 'image_collection',
+            '3': 'image_collection',
             'image': 'image_collection',
             'images': 'image_collection',
             'image collection': 'image_collection',
             'art': 'image_collection',
-            'design': 'image_collection',
             'artwork': 'image_collection',
             'gallery': 'image_collection',
             # Prompt
-            '3': 'prompt',
+            '4': 'prompt',
             'prompt': 'prompt',
             'prompts': 'prompt',
             'conversation': 'prompt',
             'ai': 'prompt',
             'ai prompt': 'prompt',
             # Other
-            '4': 'other',
+            '5': 'other',
             'other': 'other',
         }
 

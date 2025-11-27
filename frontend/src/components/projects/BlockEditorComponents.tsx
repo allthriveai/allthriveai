@@ -11,6 +11,7 @@ import {
   Bars3Icon,
   TrashIcon,
   PlusIcon,
+  PhotoIcon,
 } from '@heroicons/react/24/outline';
 import {
   FaColumns,

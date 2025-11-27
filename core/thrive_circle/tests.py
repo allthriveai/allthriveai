@@ -28,36 +28,36 @@ class UserPointsModelTest(TestCase):
 
     def test_user_default_tier(self):
         """Test user starts with default tier"""
-        self.assertEqual(self.user.tier, 'ember')
+        self.assertEqual(self.user.tier, 'seedling')
         self.assertEqual(self.user.total_points, 0)
         self.assertEqual(self.user.level, 1)
 
-    def test_tier_progression_ember_to_spark(self):
-        """Test tier upgrade from Ember to Spark at 500 points"""
-        self.user.add_points(500, 'quiz_complete', 'Test quiz')
+    def test_tier_progression_seedling_to_sprout(self):
+        """Test tier upgrade from Seedling to Sprout at 1000 points"""
+        self.user.add_points(1000, 'quiz_complete', 'Test quiz')
         self.user.refresh_from_db()
-        self.assertEqual(self.user.tier, 'spark')
-        self.assertEqual(self.user.total_points, 500)
+        self.assertEqual(self.user.tier, 'sprout')
+        self.assertEqual(self.user.total_points, 1000)
 
-    def test_tier_progression_to_blaze(self):
-        """Test tier upgrade to Blaze at 2000 points"""
-        self.user.add_points(2000, 'special_event', 'Bonus points')
+    def test_tier_progression_to_blossom(self):
+        """Test tier upgrade to Blossom at 2500 points"""
+        self.user.add_points(2500, 'special_event', 'Bonus points')
         self.user.refresh_from_db()
-        self.assertEqual(self.user.tier, 'blaze')
-        self.assertEqual(self.user.total_points, 2000)
+        self.assertEqual(self.user.tier, 'blossom')
+        self.assertEqual(self.user.total_points, 2500)
 
-    def test_tier_progression_to_beacon(self):
-        """Test tier upgrade to Beacon at 5000 points"""
+    def test_tier_progression_to_bloom(self):
+        """Test tier upgrade to Bloom at 5000 points"""
         self.user.add_points(5000, 'special_event', 'Big reward')
         self.user.refresh_from_db()
-        self.assertEqual(self.user.tier, 'beacon')
+        self.assertEqual(self.user.tier, 'bloom')
         self.assertEqual(self.user.total_points, 5000)
 
-    def test_tier_progression_to_phoenix(self):
-        """Test tier upgrade to Phoenix at 10000 points"""
+    def test_tier_progression_to_evergreen(self):
+        """Test tier upgrade to Evergreen at 10000 points"""
         self.user.add_points(10000, 'special_event', 'Massive points')
         self.user.refresh_from_db()
-        self.assertEqual(self.user.tier, 'phoenix')
+        self.assertEqual(self.user.tier, 'evergreen')
         self.assertEqual(self.user.total_points, 10000)
 
     def test_level_progression(self):
@@ -179,21 +179,21 @@ class PointActivityModelTest(TestCase):
 
     def test_activity_records_tier_at_time(self):
         """Test that activity records tier at time of award"""
-        self.assertEqual(self.user.tier, 'ember')
+        self.assertEqual(self.user.tier, 'seedling')
 
         self.user.add_points(100, 'quiz_complete')
 
         activity = PointActivity.objects.filter(user=self.user).first()
-        self.assertEqual(activity.tier_at_time, 'ember')
+        self.assertEqual(activity.tier_at_time, 'seedling')
 
-        # Upgrade to spark (needs 500 total points)
-        self.user.add_points(400, 'project_create')
+        # Upgrade to sprout (needs 1000 total points)
+        self.user.add_points(900, 'project_create')
         self.user.refresh_from_db()
-        self.assertEqual(self.user.tier, 'spark')
+        self.assertEqual(self.user.tier, 'sprout')
 
-        # New activity should record spark tier
+        # New activity should record sprout tier
         activity2 = PointActivity.objects.filter(user=self.user).order_by('-created_at').first()
-        self.assertEqual(activity2.tier_at_time, 'ember')  # Was ember when points were calculated
+        self.assertEqual(activity2.tier_at_time, 'seedling')  # Was seedling when points were calculated
 
 
 class ThriveCircleAPITest(APITestCase):
@@ -206,16 +206,16 @@ class ThriveCircleAPITest(APITestCase):
 
     def test_my_status_endpoint(self):
         """Test GET /api/v1/me/thrive-circle/my_status/"""
-        self.user.total_points = 600
-        self.user.tier = 'spark'
+        self.user.total_points = 1500
+        self.user.tier = 'sprout'
         self.user.save()
 
         response = self.client.get('/api/v1/me/thrive-circle/my_status/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('total_points', response.data)
-        self.assertEqual(response.data['total_points'], 600)
-        self.assertEqual(response.data['tier'], 'spark')
+        self.assertEqual(response.data['total_points'], 1500)
+        self.assertEqual(response.data['tier'], 'sprout')
 
     def test_award_points_endpoint_valid(self):
         """Test POST /api/v1/me/thrive-circle/award_points/ with valid data"""

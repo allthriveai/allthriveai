@@ -12,6 +12,10 @@ import { sanitizeHtml } from '@/utils/sanitize';
 import { SlideUpHero } from '@/components/projects/SlideUpHero';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ProjectEditTray } from '@/components/projects/ProjectEditTray';
+import { GitHubProjectLayout } from '@/components/projects/github/GitHubProjectLayout';
+import { GitHubProjectPendingView } from '@/components/projects/github/GitHubProjectPendingView';
+import { FigmaProjectLayout } from '@/components/projects/figma/FigmaProjectLayout';
+import { FigmaProjectPendingView } from '@/components/projects/figma/FigmaProjectPendingView';
 import mermaid from 'mermaid';
 import { marked } from 'marked';
 import {
@@ -35,6 +39,7 @@ import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 
 const typeIcons = {
   github_repo: CodeBracketIcon,
+  figma_design: PhotoIcon,
   image_collection: PhotoIcon,
   prompt: ChatBubbleLeftRightIcon,
   other: DocumentTextIcon,
@@ -42,6 +47,7 @@ const typeIcons = {
 
 const typeLabels = {
   github_repo: 'GitHub Repository',
+  figma_design: 'Figma Design',
   image_collection: 'Image Collection',
   prompt: 'Prompt',
   other: 'Project',
@@ -146,6 +152,9 @@ export default function ProjectDetailPage() {
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
 
+  // GitHub analysis state
+  const [analysisStatus, setAnalysisStatus] = useState<'pending' | 'complete' | 'failed' | null>(null);
+
   useEffect(() => {
     async function loadProject() {
       if (!username || !projectSlug) {
@@ -216,6 +225,41 @@ export default function ProjectDetailPage() {
 
     loadComments();
   }, [project, isFeedbackSidebarOpen, commentsLoaded]);
+
+  // Analysis polling (GitHub and Figma)
+  useEffect(() => {
+    if (!project) return;
+
+    // Determine which content key to check based on project type
+    const contentKey = project.type === 'github_repo' ? 'github' : project.type === 'figma_design' ? 'figma' : null;
+    if (!contentKey) return;
+
+    const status = project.content?.[contentKey]?.analysis_status;
+    setAnalysisStatus(status || null);
+
+    // Poll if pending
+    if (status === 'pending') {
+      const pollInterval = setInterval(async () => {
+        if (!username || !projectSlug) return;
+
+        try {
+          const updated = await getProjectBySlug(username, projectSlug);
+          const newStatus = updated.content?.[contentKey]?.analysis_status;
+
+          if (newStatus !== 'pending') {
+            setProject(updated);
+            setAnalysisStatus(newStatus);
+            clearInterval(pollInterval);
+          }
+        } catch (error) {
+          console.error('Failed to poll for analysis status:', error);
+          clearInterval(pollInterval);
+        }
+      }, 3000); // Poll every 3 seconds
+
+      return () => clearInterval(pollInterval);
+    }
+  }, [project, username, projectSlug]);
 
   const isOwner = isAuthenticated && user && project && user.username.toLowerCase() === project.username.toLowerCase();
 
@@ -385,6 +429,51 @@ export default function ProjectDetailPage() {
 
   const Icon = typeIcons[project.type];
 
+  // Render GitHub project layouts
+  if (project.type === 'github_repo') {
+    if (analysisStatus === 'pending') {
+      return (
+        <DashboardLayout autoCollapseSidebar>
+          <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto">
+            <GitHubProjectPendingView project={project} />
+          </div>
+        </DashboardLayout>
+      );
+    }
+    if (analysisStatus === 'complete' && project.content?.github?.analysis) {
+      return (
+        <DashboardLayout autoCollapseSidebar>
+          <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto">
+            <GitHubProjectLayout project={project} />
+          </div>
+        </DashboardLayout>
+      );
+    }
+  }
+
+  // Render Figma project layouts
+  if (project.type === 'figma_design') {
+    if (analysisStatus === 'pending') {
+      return (
+        <DashboardLayout autoCollapseSidebar>
+          <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto">
+            <FigmaProjectPendingView project={project} />
+          </div>
+        </DashboardLayout>
+      );
+    }
+    if (analysisStatus === 'complete' && project.content?.figma?.analysis) {
+      return (
+        <DashboardLayout autoCollapseSidebar>
+          <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto">
+            <FigmaProjectLayout project={project} />
+          </div>
+        </DashboardLayout>
+      );
+    }
+  }
+
+  // Default layout for projects without MCP analysis
   return (
     <DashboardLayout autoCollapseSidebar>
       <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto">

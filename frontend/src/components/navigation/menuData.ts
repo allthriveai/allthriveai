@@ -6,6 +6,22 @@ import {
   faUser,
   faLifeRing,
   faWrench,
+  faTrophy,
+  faBrain,
+  faUserGroup,
+  faGift,
+  faCalendar,
+  faComments,
+  faBug,
+  faInfoCircle,
+  faHeart,
+  faWandSparkles,
+  faDollarSign,
+  faIdCard,
+  faFolderOpen,
+  faCog,
+  faPuzzlePiece,
+  faTicket,
 } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
@@ -15,6 +31,7 @@ export interface MenuItem {
   external?: boolean; // External URL
   onClick?: () => void;
   subItems?: MenuItem[];
+  icon?: IconDefinition;
 }
 
 export interface MenuSection {
@@ -40,9 +57,10 @@ export const getMenuSections = (
     icon: faGamepad,
     path: '/play/side-quests',
     items: [
-      { label: "This Week's Challenge", path: '#' },
-      { label: 'Side Quests', path: '/play/side-quests' },
-      { label: 'Prompt Battle', path: '/play/prompt-battle' },
+      { label: "This Week's Challenge", path: '#', icon: faTrophy },
+      { label: 'Side Quests', path: '/play/side-quests', icon: faGamepad },
+      { label: 'Prompt Battle', path: '/play/prompt-battle', icon: faTrophy },
+      { label: 'Quizzes', path: '/quick-quizzes', icon: faBrain },
     ],
   },
   {
@@ -50,9 +68,10 @@ export const getMenuSections = (
     icon: faGraduationCap,
     path: '/learn',
     items: [
-      { label: 'Learning Paths', path: '#' },
-      { label: 'Quick Quizzes', path: '/quick-quizzes' },
-      { label: 'Mentorship Program', path: '#' },
+      { label: 'Learning Paths', path: '#', icon: faGraduationCap },
+      { label: 'Quizzes', path: '/quick-quizzes', icon: faBrain },
+      { label: 'Mentorship Program', path: '#', icon: faUsers },
+      { label: 'AI Tool Directory', path: '/tools', icon: faWrench },
     ],
   },
   {
@@ -60,9 +79,9 @@ export const getMenuSections = (
     icon: faUsers,
     path: '/thrive-circle',
     items: [
-      { label: 'Your Thrive Circle', path: '/thrive-circle' },
-      { label: 'Perks', path: '#' },
-      { label: 'Events Calendar', onClick: () => onMenuClick('Events Calendar') },
+      { label: 'Your Thrive Circle', path: '/thrive-circle', icon: faUserGroup },
+      { label: 'Perks', path: '#', icon: faGift },
+      { label: 'Events Calendar', onClick: () => onMenuClick('Events Calendar'), icon: faCalendar },
     ],
   },
   {
@@ -70,18 +89,19 @@ export const getMenuSections = (
     icon: faLifeRing,
     onClick: () => onMenuClick('Chat'),
     items: [
-      { label: 'Report an Issue', path: 'https://github.com/allthriveai/allthriveai/issues', external: true },
-      { label: 'Chat', onClick: () => onMenuClick('Chat') },
+      { label: 'Chat', onClick: () => onMenuClick('Chat'), icon: faComments },
+      { label: 'Report an Issue', path: 'https://github.com/allthriveai/allthriveai/issues', external: true, icon: faBug },
       {
         label: 'About All Thrive',
         onClick: () => onMenuClick('About Us'),
+        icon: faInfoCircle,
         subItems: [
-          { label: 'About Us', onClick: () => onMenuClick('About Us') },
-          { label: 'Our Values', onClick: () => onMenuClick('Our Values') },
-          { label: 'Whats New', path: '#' },
+          { label: 'About Us', onClick: () => onMenuClick('About Us'), icon: faInfoCircle },
+          { label: 'Our Values', onClick: () => onMenuClick('Our Values'), icon: faHeart },
+          { label: 'Whats New', path: '#', icon: faWandSparkles },
         ]
       },
-      { label: 'Pricing', path: '#' },
+      { label: 'Pricing', path: '#', icon: faDollarSign },
     ],
   },
   {
@@ -92,14 +112,16 @@ export const getMenuSections = (
       {
         label: 'My Profile',
         path: username ? `/${username}?tab=showcase` : '#',
+        icon: faIdCard,
       },
       {
         label: 'My Projects',
         path: username ? `/${username}?tab=playground` : '#',
+        icon: faFolderOpen,
       },
-      { label: 'My Account', path: '/account/settings' },
-      { label: 'Chrome Extension', path: '#' },
-      { label: 'My Referral Codes', path: '/account/settings/referrals' },
+      { label: 'My Account', path: '/account/settings', icon: faCog },
+      { label: 'Chrome Extension', path: '#', icon: faPuzzlePiece },
+      { label: 'My Referral Codes', path: '/account/settings/referrals', icon: faTicket },
     ],
   },
 ];
@@ -108,7 +130,7 @@ export const getMenuSections = (
 export const ROUTE_PATTERNS: Record<string, (path: string, search: string, username?: string) => boolean> = {
   'EXPLORE': (path) => path === '/explore',
   'LEARN': (path) => path === '/learn',
-  'Quick Quizzes': (path) => path === '/quick-quizzes',
+  'Quizzes': (path) => path === '/quick-quizzes',
   'Side Quests': (path) => path === '/play/side-quests',
   'Prompt Battle': (path) => path === '/play/prompt-battle',
   'Chat': (_, search) => search.includes('chat='),

@@ -82,7 +82,7 @@ describe('ActivityFeed - getActivityColor', () => {
         activityType: 'quiz_complete',
         activityTypeDisplay: 'Quiz Complete',
         description: 'Completed a quiz',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T10:00:00Z',
       },
     ];
@@ -116,7 +116,7 @@ describe('ActivityFeed - getActivityColor', () => {
         activityType: 'project_create',
         activityTypeDisplay: 'Project Created',
         description: 'Created a new project',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T10:00:00Z',
       },
     ];
@@ -150,7 +150,7 @@ describe('ActivityFeed - getActivityColor', () => {
         activityType: 'unknown_activity' as PointActivityType,
         activityTypeDisplay: 'Unknown Activity',
         description: 'An unknown activity',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T10:00:00Z',
       },
     ];
@@ -229,7 +229,7 @@ describe('ActivityFeed - Points Aggregation Logic', () => {
         activityType: 'quiz_complete',
         activityTypeDisplay: 'Quiz Complete',
         description: 'Quiz 1',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T10:00:00Z',
       },
       {
@@ -240,7 +240,7 @@ describe('ActivityFeed - Points Aggregation Logic', () => {
         activityType: 'project_create',
         activityTypeDisplay: 'Project Created',
         description: 'Project 1',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T11:00:00Z',
       },
       {
@@ -251,7 +251,7 @@ describe('ActivityFeed - Points Aggregation Logic', () => {
         activityType: 'daily_login',
         activityTypeDisplay: 'Daily Login',
         description: 'Logged in',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T12:00:00Z',
       },
     ];
@@ -282,7 +282,7 @@ describe('ActivityFeed - Points Aggregation Logic', () => {
         activityType: 'quiz_complete',
         activityTypeDisplay: 'Quiz Complete',
         description: 'Quiz 1',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T10:00:00Z',
       },
       {
@@ -293,7 +293,7 @@ describe('ActivityFeed - Points Aggregation Logic', () => {
         activityType: 'quiz_complete',
         activityTypeDisplay: 'Quiz Complete',
         description: 'Quiz 2',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T11:00:00Z',
       },
       {
@@ -304,7 +304,7 @@ describe('ActivityFeed - Points Aggregation Logic', () => {
         activityType: 'project_create',
         activityTypeDisplay: 'Project Created',
         description: 'Project 1',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T12:00:00Z',
       },
     ];
@@ -337,7 +337,7 @@ describe('ActivityFeed - Points Aggregation Logic', () => {
         activityType: 'quiz_complete',
         activityTypeDisplay: 'Quiz Complete',
         description: 'Quiz',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T10:00:00Z',
       },
       {
@@ -348,7 +348,7 @@ describe('ActivityFeed - Points Aggregation Logic', () => {
         activityType: 'project_create',
         activityTypeDisplay: 'Project Created',
         description: 'Project',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T11:00:00Z',
       },
     ];
@@ -397,7 +397,7 @@ describe('ActivityFeed - Points Aggregation Logic', () => {
         activityType: 'quiz_complete',
         activityTypeDisplay: 'Quiz Complete',
         description: 'Quiz',
-        tierAtTime: 'ember',
+        tierAtTime: 'seedling',
         createdAt: '2025-01-15T10:00:00Z',
       },
     ];

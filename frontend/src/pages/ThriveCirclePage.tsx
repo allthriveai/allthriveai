@@ -48,7 +48,7 @@ export default function ThriveCirclePage() {
                 {tierStatus?.tierDisplay ? `${tierStatus.tierDisplay} Circle` : 'Thrive Circle'}
               </h1>
               <p className="text-xl text-primary-100 max-w-3xl">
-                Your gamified learning journey. Earn XP through quizzes, projects, and community engagement to unlock tiers from Ember to Phoenix. Track your streaks, complete weekly goals, and grow with fellow learners.
+                Your gamified learning journey. Earn XP through quizzes, projects, and community engagement to unlock tiers from Seedling to Evergreen. Track your streaks, complete weekly goals, and grow with fellow learners.
               </p>
             </div>
           </div>

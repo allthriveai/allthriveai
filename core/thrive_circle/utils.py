@@ -99,16 +99,16 @@ def get_next_tier_xp(current_tier):
     Get XP needed for next tier.
 
     Args:
-        current_tier: String representing current tier (e.g., 'ember')
+        current_tier: String representing current tier (e.g., 'seedling')
 
     Returns:
         Integer representing XP threshold for next tier, or None if already at max tier.
     """
     tier_thresholds = {
-        'ember': 500,
-        'spark': 2000,
-        'blaze': 5000,
-        'beacon': 10000,
-        'phoenix': None,  # Max tier
+        'seedling': 1000,
+        'sprout': 2500,
+        'blossom': 5000,
+        'bloom': 10000,
+        'evergreen': None,  # Max tier
     }
     return tier_thresholds.get(current_tier)

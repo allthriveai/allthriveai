@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getToolBySlug } from '@/services/tools';
-import type { Tool } from '@/types/models';
+import { exploreProjects } from '@/services/explore';
+import { ProjectCard } from '@/components/projects/ProjectCard';
+import type { Tool, Project } from '@/types/models';
 import {
   ArrowTopRightOnSquareIcon,
   DocumentTextIcon,
@@ -29,6 +32,11 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
   const [error, setError] = useState<string | null>(null);
   const [showLinksDropdown, setShowLinksDropdown] = useState(false);
 
+  // Projects using this tool
+  const [projectsUsingTool, setProjectsUsingTool] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [totalProjectCount, setTotalProjectCount] = useState(0);
+
   useEffect(() => {
     if (isOpen && toolSlug) {
       loadTool(toolSlug);
@@ -49,6 +57,49 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     }
   }
 
+  // Fetch projects using this tool when tool is loaded
+  useEffect(() => {
+    if (tool?.id) {
+      loadProjectsUsingTool(tool.id);
+    }
+  }, [tool?.id]);
+
+  async function loadProjectsUsingTool(toolId: number) {
+    try {
+      setProjectsLoading(true);
+      const response = await exploreProjects({
+        tools: [toolId],
+        page_size: 20, // Fetch more to account for client-side filtering
+        sort: 'trending',
+      });
+
+      // Client-side filter to ensure only projects with this tool are shown
+      const filteredProjects = response.results.filter((project) =>
+        project.tools && project.tools.includes(toolId)
+      );
+
+      // Take only first 4 after filtering
+      setProjectsUsingTool(filteredProjects.slice(0, 4));
+
+      // Count should reflect actual filtered count
+      const totalFiltered = response.results.filter((project) =>
+        project.tools && project.tools.includes(toolId)
+      ).length;
+
+      // Estimate total count based on filter ratio
+      const filterRatio = response.results.length > 0
+        ? totalFiltered / response.results.length
+        : 1;
+      setTotalProjectCount(Math.round(response.count * filterRatio));
+    } catch (err) {
+      console.error('Failed to load projects using tool:', err);
+      setProjectsUsingTool([]);
+      setTotalProjectCount(0);
+    } finally {
+      setProjectsLoading(false);
+    }
+  }
+
   if (!isOpen) return null;
 
   // Loading state
@@ -59,7 +110,14 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
           className="fixed inset-0 z-40 transition-opacity duration-300 ease-in-out pointer-events-none"
           onClick={onClose}
         />
-        <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out translate-x-0">
+        <aside
+          className="fixed right-0 top-0 h-full w-full md:w-96 lg:w-[32rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out translate-x-0"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          }}
+        >
           <div className="p-6 animate-pulse">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-4 flex-1">
@@ -92,7 +150,14 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
           className="fixed inset-0 z-40 transition-opacity duration-300 ease-in-out pointer-events-none"
           onClick={onClose}
         />
-        <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out translate-x-0">
+        <aside
+          className="fixed right-0 top-0 h-full w-full md:w-96 lg:w-[32rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out translate-x-0"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          }}
+        >
           <div className="p-6">
             <div className="flex items-start justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Tool Not Found</h2>
@@ -128,7 +193,14 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
       />
 
       {/* Right Sidebar Drawer - Smooth slide-in animation */}
-      <aside className="fixed right-0 top-0 h-full w-full md:w-[600px] lg:w-[800px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out animate-slide-in-right">
+      <aside
+        className="fixed right-0 top-0 h-full w-full md:w-96 lg:w-[32rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out animate-slide-in-right"
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        }}
+      >
         {/* Header - Fixed */}
         <div className="flex-shrink-0 px-5 py-3 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between gap-3">
@@ -305,15 +377,60 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
 
             {/* AllThrive Projects Using This Tool */}
             <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-              <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-2 flex items-center gap-2">
-                <FontAwesomeIcon icon={faFolderOpen} className="w-3.5 h-3.5" />
-                All Thrive projects using this tool
-              </h2>
-              <div className="text-center py-6 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-dashed border-gray-200 dark:border-gray-700">
-                <p className="text-gray-500 dark:text-gray-400 text-sm italic">
-                  Project showcase coming soon...
-                </p>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider flex items-center gap-2">
+                  <FontAwesomeIcon icon={faFolderOpen} className="w-3.5 h-3.5" />
+                  Projects using {tool.name}
+                </h2>
+                {totalProjectCount > 0 && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {totalProjectCount} total
+                  </span>
+                )}
               </div>
+
+              {projectsLoading ? (
+                // Loading state - Show 4 skeleton cards in 2-column grid
+                <div className="grid grid-cols-2 gap-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="bg-gray-200 dark:bg-gray-700 rounded-lg h-32" />
+                    </div>
+                  ))}
+                </div>
+              ) : projectsUsingTool.length === 0 ? (
+                // Empty state - No projects using this tool
+                <div className="text-center py-6 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-dashed border-gray-200 dark:border-gray-700">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    No projects using {tool.name} yet
+                  </p>
+                  <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
+                    Be the first to build something!
+                  </p>
+                </div>
+              ) : (
+                // Loaded state - Show projects and link to explore
+                <>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {projectsUsingTool.map((project) => (
+                      <div key={project.id} className="break-inside-avoid">
+                        <ProjectCard
+                          project={project}
+                          variant="masonry"
+                          userAvatarUrl={project.userAvatarUrl}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <Link
+                    to={`/explore?tab=tools&tools=${tool.slug}`}
+                    className="text-sm text-primary-600 dark:text-primary-400 hover:underline inline-flex items-center gap-1"
+                  >
+                    View all {totalProjectCount} {totalProjectCount === 1 ? 'project' : 'projects'}{' '}
+                    using {tool.name} →
+                  </Link>
+                </>
+              )}
             </section>
           </div>
         </div>

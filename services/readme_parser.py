@@ -114,7 +114,7 @@ class ReadmeParser:
             if section_type == 'demo':
                 links = parser.LINK_PATTERN.findall(content)
                 for link_text, link_url in links:
-                    if any(kw in link_text.lower() for kw in ['demo', 'live', 'website', 'try']):
+                    if link_text and any(kw in link_text.lower() for kw in ['demo', 'live', 'website', 'try']):
                         demo_urls.append(link_url)
                         blocks.append(
                             {
@@ -163,8 +163,10 @@ class ReadmeParser:
 
         return sections
 
-    def _categorize_section(self, heading: str) -> str:
+    def _categorize_section(self, heading: str | None) -> str:
         """Categorize section based on heading keywords."""
+        if not heading:
+            return 'overview'
         heading_lower = heading.lower()
 
         if any(kw in heading_lower for kw in self.DEMO_KEYWORDS):
@@ -222,19 +224,23 @@ class ReadmeParser:
         for paragraph in paragraphs:
             # Check if it's a code block placeholder
             if '__CODE_BLOCK_' in paragraph:
-                idx = int(paragraph.replace('__CODE_BLOCK_', '').replace('__', ''))
-                code_block = code_blocks[idx]
+                # Extract index using regex to handle mixed content
+                match = re.search(r'__CODE_BLOCK_(\d+)__', paragraph)
+                if match:
+                    idx = int(match.group(1))
+                    if idx < len(code_blocks):
+                        code_block = code_blocks[idx]
 
-                # Skip installation/setup code blocks (too technical for portfolio)
-                if section_type not in ['installation', 'usage']:
-                    blocks.append(
-                        {
-                            'type': 'code_snippet',
-                            'code': code_block['code'],
-                            'language': code_block['language'],
-                            'filename': None,
-                        }
-                    )
+                        # Skip installation/setup code blocks (too technical for portfolio)
+                        if section_type not in ['installation', 'usage']:
+                            blocks.append(
+                                {
+                                    'type': 'code_snippet',
+                                    'code': code_block['code'],
+                                    'language': code_block['language'],
+                                    'filename': None,
+                                }
+                            )
             # Check if it's a list
             elif paragraph.startswith(('-', '*', '+')) or re.match(r'^\d+\.', paragraph):
                 # Convert list to text block
@@ -260,8 +266,8 @@ class ReadmeParser:
         Returns:
             Mermaid diagram code or None
         """
-        language = repo_data.get('language', '').lower()
-        topics = [t.lower() for t in repo_data.get('topics', [])]
+        language = (repo_data.get('language') or '').lower()
+        topics = [t.lower() for t in (repo_data.get('topics') or []) if t]
 
         # Detect project type and generate appropriate diagram
         if 'django' in topics or 'flask' in topics or 'fastapi' in topics:

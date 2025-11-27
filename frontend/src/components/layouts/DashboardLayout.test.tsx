@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DashboardLayout } from './DashboardLayout';
+import { ThemeProvider } from '@/context/ThemeContext';
 
 // Mock child components
 vi.mock('@/components/navigation/LeftSidebar', () => ({
@@ -57,9 +58,11 @@ describe('DashboardLayout', () => {
   const renderDashboardLayout = (props = {}) => {
     return render(
       <BrowserRouter>
-        <DashboardLayout {...props}>
-          <div data-testid="dashboard-content">Dashboard Content</div>
-        </DashboardLayout>
+        <ThemeProvider>
+          <DashboardLayout {...props}>
+            <div data-testid="dashboard-content">Dashboard Content</div>
+          </DashboardLayout>
+        </ThemeProvider>
       </BrowserRouter>
     );
   };
@@ -119,9 +122,11 @@ describe('DashboardLayout', () => {
       // Rerender the component
       rerender(
         <BrowserRouter>
-          <DashboardLayout>
-            <div data-testid="dashboard-content">Dashboard Content</div>
-          </DashboardLayout>
+          <ThemeProvider>
+            <DashboardLayout>
+              <div data-testid="dashboard-content">Dashboard Content</div>
+            </DashboardLayout>
+          </ThemeProvider>
         </BrowserRouter>
       );
 
@@ -163,7 +168,9 @@ describe('DashboardLayout', () => {
 
       render(
         <BrowserRouter>
-          <DashboardLayout>{functionChild}</DashboardLayout>
+          <ThemeProvider>
+            <DashboardLayout>{functionChild}</DashboardLayout>
+          </ThemeProvider>
         </BrowserRouter>
       );
 

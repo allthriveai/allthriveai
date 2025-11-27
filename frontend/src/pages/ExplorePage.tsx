@@ -91,7 +91,7 @@ export function ExplorePage() {
   } = useQuery({
     queryKey: ['exploreProjects', exploreParams],
     queryFn: () => exploreProjects(exploreParams),
-    enabled: activeTab !== 'profiles',
+    enabled: activeTab !== 'profiles' && (selectedToolSlugs.length === 0 || !!filterOptions),
   });
 
   // Fetch semantic search results

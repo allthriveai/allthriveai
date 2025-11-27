@@ -38,6 +38,13 @@ class ExtractURLInfoInput(BaseModel):
     text: str = Field(description='Text that may contain URLs')
 
 
+class ImportGitHubProjectInput(BaseModel):
+    """Input for import_github_project tool."""
+
+    url: str = Field(description='GitHub repository URL (e.g., https://github.com/user/repo)')
+    is_showcase: bool = Field(default=False, description='Whether to add the project to the showcase tab')
+
+
 # Tools
 @tool(args_schema=CreateProjectInput)
 def create_project(
@@ -188,5 +195,107 @@ def extract_url_info(text: str) -> dict:
     }
 
 
+@tool(args_schema=ImportGitHubProjectInput)
+def import_github_project(
+    url: str,
+    is_showcase: bool = False,
+    config: RunnableConfig | None = None,
+) -> dict:
+    """
+    Import a GitHub repository as a portfolio project with full AI analysis.
+
+    This tool:
+    1. Uses GitHub MCP to fetch README, file tree, and dependency files
+    2. Normalizes that data into the repo_data shape used by analyze_github_repo
+    3. Calls analyze_github_repo to get description, categories, topics, tools, and blocks
+    4. Creates a structured project page and applies AI-suggested metadata
+
+    Returns:
+        Dictionary with success status, project_id, slug, and URL
+    """
+    from django.contrib.auth import get_user_model
+
+    from core.projects.models import Project
+    from services.github_ai_analyzer import analyze_github_repo
+    from services.github_helpers import (
+        apply_ai_metadata,
+        get_user_github_token,
+        normalize_mcp_repo_data,
+        parse_github_url,
+    )
+    from services.github_mcp_service import GitHubMCPService
+
+    User = get_user_model()
+
+    # Validate config / user context
+    if not config or 'configurable' not in config or 'user_id' not in config['configurable']:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    user_id = config['configurable']['user_id']
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'success': False, 'error': 'User not found'}
+
+    # Parse and validate URL
+    try:
+        owner, repo = parse_github_url(url)
+    except ValueError as e:
+        return {'success': False, 'error': str(e)}
+
+    # Get user's GitHub token
+    token = get_user_github_token(user)
+    if not token:
+        return {
+            'success': False,
+            'error': 'GitHub account not connected. Please connect GitHub in settings.',
+        }
+
+    logger.info(f'Starting GitHub import for {owner}/{repo} by user {user.username}')
+
+    # Fetch repository files/structure via MCP
+    mcp = GitHubMCPService(token)
+    repo_files = mcp.get_repository_info_sync(owner, repo)
+
+    # Normalize MCP output into the schema analyze_github_repo expects
+    repo_summary = normalize_mcp_repo_data(owner, repo, url, repo_files)
+
+    # Run AI analysis
+    logger.info(f'Running AI analysis for {owner}/{repo}')
+    analysis = analyze_github_repo(
+        repo_data=repo_summary,
+        readme_content=repo_files.get('readme', ''),
+    )
+
+    # Create project with full metadata
+    project = Project.objects.create(
+        user=user,
+        title=repo_summary.get('name', repo),
+        description=analysis.get('description') or repo_summary.get('description', ''),
+        type=Project.ProjectType.GITHUB_REPO,
+        external_url=url,
+        content={
+            'github': repo_summary,
+            'blocks': analysis.get('readme_blocks', []),
+            'mermaid_diagrams': analysis.get('mermaid_diagrams', []),
+            'tech_stack': repo_files.get('tech_stack', {}),
+        },
+        is_showcase=is_showcase,
+    )
+
+    # Apply AI-suggested categories, topics, tools
+    apply_ai_metadata(project, analysis)
+
+    logger.info(f'Successfully imported {owner}/{repo} as project {project.id}')
+
+    return {
+        'success': True,
+        'project_id': project.id,
+        'slug': project.slug,
+        'url': f'/{user.username}/{project.slug}',
+    }
+
+
 # Tool list for agent
-PROJECT_TOOLS = [create_project, fetch_github_metadata, extract_url_info]
+PROJECT_TOOLS = [create_project, fetch_github_metadata, extract_url_info, import_github_project]

@@ -101,7 +101,7 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
       {/* Dropdown Menu - Light/Dark mode support */}
       {isOpen && (
         <div
-          className="absolute top-full left-0 mt-2 w-64 rounded-2xl shadow-2xl border border-white/30 dark:border-white/20 py-2 animate-fade-in transition-all duration-200 animate-scale-in overflow-hidden"
+          className="absolute top-full left-0 mt-2 w-64 rounded shadow-2xl border border-white/30 dark:border-white/20 py-2 animate-fade-in transition-all duration-200 animate-scale-in overflow-hidden"
           style={{
             backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.85)',
             backdropFilter: 'blur(20px) saturate(180%)',
@@ -123,9 +123,17 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
                       // Toggle submenu
                       toggleSubItem(item.label);
                     }}
-                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 hover:bg-white/[0.15] dark:hover:bg-white/[0.1] rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl"
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 hover:bg-white/[0.15] dark:hover:bg-white/[0.1] transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl"
                   >
-                    <span>{item.label}</span>
+                    <div className="flex items-center gap-2">
+                      {item.icon && (
+                        <FontAwesomeIcon
+                          icon={item.icon}
+                          className="w-4 h-4 !text-gray-400 dark:!text-gray-500"
+                        />
+                      )}
+                      <span>{item.label}</span>
+                    </div>
                     <ChevronDownIcon
                       className={`w-4 h-4 transition-transform ${
                         openSubItems.includes(item.label) ? 'rotate-180' : ''
@@ -133,14 +141,22 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
                     />
                   </button>
                   {openSubItems.includes(item.label) && (
-                    <div className="bg-white/[0.08] dark:bg-white/[0.05] rounded-xl mt-1 backdrop-blur-xl">
+                    <div className="bg-white/[0.08] dark:bg-white/[0.05] mt-1 backdrop-blur-xl">
                       {item.subItems.map((subItem) => (
                         <button
                           key={subItem.label}
                           onClick={() => handleItemClick(subItem)}
-                          className="w-full text-left px-8 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-white/[0.15] dark:hover:bg-white/[0.1] hover:text-gray-900 dark:hover:text-gray-100 rounded-lg transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl"
+                          className="w-full text-left px-8 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-white/[0.15] dark:hover:bg-white/[0.1] hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl"
                         >
-                          {subItem.label}
+                          <div className="flex items-center gap-2">
+                            {subItem.icon && (
+                              <FontAwesomeIcon
+                                icon={subItem.icon}
+                                className="w-3.5 h-3.5 !text-gray-400 dark:!text-gray-500"
+                              />
+                            )}
+                            <span>{subItem.label}</span>
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -150,7 +166,7 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
                 // Regular menu item
                 <button
                   onClick={() => handleItemClick(item)}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-all duration-200 rounded-xl backdrop-blur-xl ${
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-all duration-200 backdrop-blur-xl ${
                     item.path === '#'
                       ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
                       : 'text-gray-900 dark:text-gray-100 hover:bg-white/[0.15] dark:hover:bg-white/[0.1] hover:scale-[1.02]'
@@ -158,7 +174,13 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
                   disabled={item.path === '#'}
                 >
                   <div className="flex items-center gap-2">
-                    {item.label}
+                    {item.icon && (
+                      <FontAwesomeIcon
+                        icon={item.icon}
+                        className="w-4 h-4 !text-gray-400 dark:!text-gray-500"
+                      />
+                    )}
+                    <span>{item.label}</span>
                     {item.path === '#' && (
                       <span className="text-xs text-gray-400 dark:text-gray-600">
                         Coming soon

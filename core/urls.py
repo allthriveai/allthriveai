@@ -26,14 +26,6 @@ from .battles.views import (
     expire_battles,
 )
 from .events.views import EventViewSet
-from .integrations.github.views import (
-    github_import_confirm,
-    github_import_preview,
-    github_repos_list,
-    github_sync_single_repo,
-    github_sync_status,
-    github_sync_trigger,
-)
 from .projects.comment_views import ProjectCommentViewSet
 from .projects.topic_suggestions import get_topic_suggestions
 from .projects.views import (
@@ -173,14 +165,6 @@ urlpatterns = [
     path('social/callback/<str:provider>/', social_oauth_callback, name='social_callback'),
     path('social/disconnect/<str:provider>/', disconnect_provider, name='social_disconnect'),
     path('social/status/<str:provider>/', connection_status, name='social_status'),
-    # GitHub sync endpoints
-    path('github/sync/status/', github_sync_status, name='github_sync_status'),
-    path('github/sync/trigger/', github_sync_trigger, name='github_sync_trigger'),
-    path('github/repos/', github_repos_list, name='github_repos_list'),
-    path('github/sync/repo/', github_sync_single_repo, name='github_sync_single_repo'),
-    # GitHub import endpoints (new UI flow)
-    path('github/import/preview/', github_import_preview, name='github_import_preview'),
-    path('github/import/confirm/', github_import_confirm, name='github_import_confirm'),
     # Battle endpoints
     path('battles/stats/', battle_stats, name='battle_stats'),
     path('battles/leaderboard/', battle_leaderboard, name='battle_leaderboard'),

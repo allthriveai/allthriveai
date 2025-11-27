@@ -134,7 +134,15 @@ export function MobileMenu({ isOpen, onClose, menuSections, onMenuClick, onAddPr
                             onClick={() => toggleSubItem(item.label)}
                             className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10 rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl"
                           >
-                            <span>{item.label}</span>
+                            <div className="flex items-center gap-2">
+                              {item.icon && (
+                                <FontAwesomeIcon
+                                  icon={item.icon}
+                                  className="w-4 h-4 !text-gray-400 dark:!text-gray-500"
+                                />
+                              )}
+                              <span>{item.label}</span>
+                            </div>
                             <ChevronDownIcon
                               className={`w-4 h-4 transition-transform ${
                                 openSubItems.includes(item.label) ? 'rotate-180' : ''
@@ -149,7 +157,15 @@ export function MobileMenu({ isOpen, onClose, menuSections, onMenuClick, onAddPr
                                   onClick={() => handleItemClick(subItem)}
                                   className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/20 dark:hover:bg-white/10 rounded-lg transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl"
                                 >
-                                  {subItem.label}
+                                  <div className="flex items-center gap-2">
+                                    {subItem.icon && (
+                                      <FontAwesomeIcon
+                                        icon={subItem.icon}
+                                        className="w-3.5 h-3.5 !text-gray-400 dark:!text-gray-500"
+                                      />
+                                    )}
+                                    <span>{subItem.label}</span>
+                                  </div>
                                 </button>
                               ))}
                             </div>
@@ -167,7 +183,15 @@ export function MobileMenu({ isOpen, onClose, menuSections, onMenuClick, onAddPr
                           disabled={item.path === '#'}
                         >
                           <div className="flex items-center justify-between">
-                            <span>{item.label}</span>
+                            <div className="flex items-center gap-2">
+                              {item.icon && (
+                                <FontAwesomeIcon
+                                  icon={item.icon}
+                                  className="w-4 h-4 !text-gray-400 dark:!text-gray-500"
+                                />
+                              )}
+                              <span>{item.label}</span>
+                            </div>
                             {item.path === '#' && (
                               <span className="text-xs text-gray-400 dark:text-gray-600">
                                 Soon

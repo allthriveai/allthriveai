@@ -38,6 +38,7 @@ class Project(models.Model):
 
     class ProjectType(models.TextChoices):
         GITHUB_REPO = 'github_repo', 'GitHub Repository'
+        FIGMA_DESIGN = 'figma_design', 'Figma Design'
         IMAGE_COLLECTION = 'image_collection', 'Image Collection'
         PROMPT = 'prompt', 'Prompt / Conversation'
         OTHER = 'other', 'Other'
@@ -53,7 +54,7 @@ class Project(models.Model):
         choices=ProjectType.choices,
         default=ProjectType.OTHER,
     )
-    is_showcase = models.BooleanField(default=False, help_text='Display in showcase section')
+    is_showcase = models.BooleanField(default=True, help_text='Display in showcase section')
     is_highlighted = models.BooleanField(
         default=False, db_index=True, help_text='Featured at top of profile (only one per user)'
     )

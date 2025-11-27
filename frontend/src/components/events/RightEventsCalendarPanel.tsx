@@ -103,9 +103,14 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
 
       {/* Panel */}
       <div
-        className={`fixed top-16 right-0 h-[calc(100vh-4rem)] w-full md:w-96 lg:w-[32rem] bg-white dark:bg-gray-900 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
+        className={`fixed top-16 right-0 h-[calc(100vh-4rem)] w-full md:w-96 lg:w-[32rem] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col border-l border-white/20 dark:border-white/10 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">

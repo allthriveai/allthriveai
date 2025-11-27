@@ -223,6 +223,25 @@ ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 # GitHub API Token (for project agent)
 GITHUB_API_TOKEN = config('GITHUB_API_TOKEN', default='')  # Optional, increases rate limit
 
+# MCP (Model Context Protocol) Server Configuration
+# FastMCP client connects to these servers for multi-source project analysis
+MCP_SERVERS = {
+    'github': {
+        'transport': 'http',
+        'url': config('GITHUB_MCP_SERVER_URL', default='https://api.githubcopilot.com/mcp'),
+        'headers': {
+            'Authorization': f'Bearer {GITHUB_API_TOKEN}' if GITHUB_API_TOKEN else None,
+        },
+    },
+    'figma': {
+        'transport': 'http',
+        'url': config('FIGMA_MCP_SERVER_URL', default=f'{BACKEND_URL_DEFAULT}:3845/mcp'),
+        'env': {
+            'FIGMA_ACCESS_TOKEN': config('FIGMA_ACCESS_TOKEN', default=''),
+        },
+    },
+}
+
 # Social OAuth Provider Credentials
 # These are for account linking (separate from authentication OAuth)
 GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')

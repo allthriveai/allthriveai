@@ -742,134 +742,7 @@ describe('ProfilePage - Sidebar Toggle State', () => {
   });
 });
 
-describe('ProfilePage - Sidebar Scroll Position Behavior', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    mockUseAuth.mockReturnValue({
-      user: mockUser,
-      isAuthenticated: true,
-    });
-
-    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
-      showcase: [],
-      playground: [],
-    });
-  });
-
-  it('should transition sidebar from sticky to fixed position when scrolling past banner', async () => {
-    const { container } = render(
-      <MemoryRouter initialEntries={['/testuser']}>
-        <Routes>
-          <Route path="/:username" element={<ProfilePage />} />
-        </Routes>
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Showcase')).toBeInTheDocument();
-    });
-
-    const sidebar = container.querySelector('aside');
-    expect(sidebar).toBeInTheDocument();
-
-    // Initially should be sticky
-    expect(sidebar).toHaveClass('sticky');
-    expect(sidebar).not.toHaveClass('fixed');
-
-    // Find scroll container
-    const scrollContainer = container.querySelector('.flex-1.overflow-y-auto');
-    expect(scrollContainer).toBeInTheDocument();
-
-    // Simulate scrolling past banner (256px)
-    Object.defineProperty(scrollContainer!, 'scrollTop', {
-      writable: true,
-      value: 300,
-    });
-    fireEvent.scroll(scrollContainer!);
-
-    await waitFor(() => {
-      expect(sidebar).toHaveClass('fixed');
-      expect(sidebar).not.toHaveClass('sticky');
-    });
-  });
-
-  it('should transition sidebar from fixed back to sticky when scrolling to top', async () => {
-    const { container } = render(
-      <MemoryRouter initialEntries={['/testuser']}>
-        <Routes>
-          <Route path="/:username" element={<ProfilePage />} />
-        </Routes>
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Showcase')).toBeInTheDocument();
-    });
-
-    const sidebar = container.querySelector('aside');
-    const scrollContainer = container.querySelector('.flex-1.overflow-y-auto');
-
-    // Scroll past banner
-    Object.defineProperty(scrollContainer!, 'scrollTop', {
-      writable: true,
-      value: 300,
-    });
-    fireEvent.scroll(scrollContainer!);
-
-    await waitFor(() => {
-      expect(sidebar).toHaveClass('fixed');
-    });
-
-    // Scroll back to top
-    Object.defineProperty(scrollContainer!, 'scrollTop', {
-      writable: true,
-      value: 100,
-    });
-    fireEvent.scroll(scrollContainer!);
-
-    await waitFor(() => {
-      expect(sidebar).toHaveClass('sticky');
-      expect(sidebar).not.toHaveClass('fixed');
-    });
-  });
-
-  it('should show spacer when sidebar is fixed to prevent content shift', async () => {
-    const { container } = render(
-      <MemoryRouter initialEntries={['/testuser']}>
-        <Routes>
-          <Route path="/:username" element={<ProfilePage />} />
-        </Routes>
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Showcase')).toBeInTheDocument();
-    });
-
-    const scrollContainer = container.querySelector('.flex-1.overflow-y-auto');
-
-    // Initially no spacer should be visible
-    let spacers = Array.from(container.querySelectorAll('div')).filter(div =>
-      div.hasAttribute('aria-hidden') && div.getAttribute('aria-hidden') === 'true'
-    );
-    expect(spacers.length).toBe(0);
-
-    // Scroll past banner
-    Object.defineProperty(scrollContainer!, 'scrollTop', {
-      writable: true,
-      value: 300,
-    });
-    fireEvent.scroll(scrollContainer!);
-
-    await waitFor(() => {
-      spacers = Array.from(container.querySelectorAll('div')).filter(div =>
-        div.hasAttribute('aria-hidden') && div.getAttribute('aria-hidden') === 'true'
-      );
-      expect(spacers.length).toBeGreaterThan(0);
-    });
-  });
-});
+// Sidebar scroll position tests removed - implementation has changed to simpler conditional rendering
 
 describe('ProfilePage - Sidebar Projects Count', () => {
   beforeEach(() => {
@@ -907,13 +780,13 @@ describe('ProfilePage - Sidebar Projects Count', () => {
     );
 
     await waitFor(() => {
-      // Find the Projects stat
-      const projectsLabel = screen.getByText('Projects');
+      // Find the Projects label in uppercase
+      const projectsLabel = screen.getByText(/Projects/i);
       expect(projectsLabel).toBeInTheDocument();
 
       // Find the number above it (should be 5 = 3 showcase + 2 playground)
       const statsContainer = projectsLabel.closest('div');
-      const projectCount = statsContainer?.querySelector('.text-lg.font-bold');
+      const projectCount = statsContainer?.parentElement?.querySelector('.text-lg.font-bold');
       expect(projectCount?.textContent).toBe('5');
     });
   });
@@ -933,9 +806,12 @@ describe('ProfilePage - Sidebar Projects Count', () => {
     );
 
     await waitFor(() => {
-      const projectsLabel = screen.getByText('Projects');
-      const statsContainer = projectsLabel.closest('div');
-      const projectCount = statsContainer?.querySelector('.text-lg.font-bold');
+      // Find the Projects label within the stats grid (uppercase styling)
+      const projectsLabels = screen.getAllByText(/Projects/i);
+      const projectsLabel = projectsLabels.find(el => el.classList.contains('uppercase'));
+      expect(projectsLabel).toBeInTheDocument();
+      const statsContainer = projectsLabel?.closest('div');
+      const projectCount = statsContainer?.parentElement?.querySelector('.text-lg.font-bold');
       expect(projectCount?.textContent).toBe('0');
     });
   });
@@ -956,9 +832,12 @@ describe('ProfilePage - Sidebar Projects Count', () => {
     );
 
     await waitFor(() => {
-      const projectsLabel = screen.getByText('Projects');
-      const statsContainer = projectsLabel.closest('div');
-      const projectCount = statsContainer?.querySelector('.text-lg.font-bold');
+      // Find the Projects label within the stats grid (uppercase styling)
+      const projectsLabels = screen.getAllByText(/Projects/i);
+      const projectsLabel = projectsLabels.find(el => el.classList.contains('uppercase'));
+      expect(projectsLabel).toBeInTheDocument();
+      const statsContainer = projectsLabel?.closest('div');
+      const projectCount = statsContainer?.parentElement?.querySelector('.text-lg.font-bold');
       expect(projectCount?.textContent).toBe('0');
     });
 

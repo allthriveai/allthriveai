@@ -32,11 +32,11 @@ class PointsConfig:
 
     # Tier Thresholds
     TIER_THRESHOLDS = {
-        'ember': 0,
-        'spark': 500,
-        'blaze': 2000,
-        'beacon': 5000,
-        'phoenix': 10000,
+        'seedling': 0,
+        'sprout': 1000,
+        'blossom': 2500,
+        'bloom': 5000,
+        'evergreen': 10000,
     }
 
     # Validation
@@ -97,18 +97,18 @@ class PointsService:
             total_points: User's total accumulated points
 
         Returns:
-            Tier name (ember/spark/blaze/beacon/phoenix)
+            Tier name (seedling/sprout/blossom/bloom/evergreen)
         """
-        if total_points >= PointsConfig.TIER_THRESHOLDS['phoenix']:
-            return 'phoenix'
-        elif total_points >= PointsConfig.TIER_THRESHOLDS['beacon']:
-            return 'beacon'
-        elif total_points >= PointsConfig.TIER_THRESHOLDS['blaze']:
-            return 'blaze'
-        elif total_points >= PointsConfig.TIER_THRESHOLDS['spark']:
-            return 'spark'
+        if total_points >= PointsConfig.TIER_THRESHOLDS['evergreen']:
+            return 'evergreen'
+        elif total_points >= PointsConfig.TIER_THRESHOLDS['bloom']:
+            return 'bloom'
+        elif total_points >= PointsConfig.TIER_THRESHOLDS['blossom']:
+            return 'blossom'
+        elif total_points >= PointsConfig.TIER_THRESHOLDS['sprout']:
+            return 'sprout'
         else:
-            return 'ember'
+            return 'seedling'
 
     @staticmethod
     def get_points_to_next_tier(current_points: int) -> tuple[str, int]:
@@ -123,12 +123,12 @@ class PointsService:
         """
         current_tier = PointsService.get_tier_for_points(current_points)
 
-        tier_order = ['ember', 'spark', 'blaze', 'beacon', 'phoenix']
+        tier_order = ['seedling', 'sprout', 'blossom', 'bloom', 'evergreen']
         current_index = tier_order.index(current_tier)
 
         if current_index >= len(tier_order) - 1:
             # Already at max tier
-            return ('phoenix', 0)
+            return ('evergreen', 0)
 
         next_tier = tier_order[current_index + 1]
         next_threshold = PointsConfig.TIER_THRESHOLDS[next_tier]

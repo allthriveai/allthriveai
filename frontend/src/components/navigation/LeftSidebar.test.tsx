@@ -229,7 +229,7 @@ describe('LeftSidebar', () => {
       // Items should now be visible
       await waitFor(() => {
         expect(screen.getByText('Learning Paths')).toBeInTheDocument();
-        expect(screen.getByText('Quick Quizzes')).toBeInTheDocument();
+        expect(screen.getByText('Quizzes')).toBeInTheDocument();
         expect(screen.getByText('Mentorship Program')).toBeInTheDocument();
       });
 
