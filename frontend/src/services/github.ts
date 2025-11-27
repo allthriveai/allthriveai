@@ -173,6 +173,14 @@ export async function importGitHubRepoAsync(
       throw error;
     }
 
+    // Handle rate limiting (429) specially
+    if (error.response?.status === 429) {
+      const enhancedError: any = new Error('You\'ve reached the import limit');
+      enhancedError.suggestion = 'You can import up to 20 projects per hour. Please wait a few minutes and try again.';
+      enhancedError.errorCode = 'RATE_LIMIT_EXCEEDED';
+      throw enhancedError;
+    }
+
     // Extract enhanced error information from axios response
     const errorData: GitHubError = error.response?.data || {};
     const errorMessage = errorData.error || error.message || 'Failed to import repository';

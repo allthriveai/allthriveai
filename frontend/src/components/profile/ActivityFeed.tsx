@@ -34,8 +34,11 @@ export function ActivityFeed() {
         setStatistics(data.statistics);
         setPointsFeed(data.pointsFeed || []);
       } catch (err: any) {
-        console.error('Failed to load activity:', err);
-        setError(err?.message || 'Failed to load activity data');
+        console.error('Failed to load activity - Full error:', err);
+        console.error('Error message:', err?.message);
+        console.error('Error details:', err?.details);
+        console.error('Error response:', err?.response);
+        setError(err?.message || err?.error || 'Failed to load activity data');
       } finally {
         setIsLoading(false);
       }

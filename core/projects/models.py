@@ -3,8 +3,8 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils.text import slugify
 
+from core.integrations.utils import normalize_slug
 from core.taxonomy.models import Taxonomy
 from core.tools.models import Tool
 
@@ -134,7 +134,7 @@ class Project(models.Model):
         Optimized to use a single database query.
         """
         base = self.slug or self.title or 'project'
-        slug = slugify(base) or 'project'
+        slug = normalize_slug(base)
 
         # Check if base slug is available
         existing = Project.objects.filter(user=self.user, slug=slug).exclude(pk=self.pk)

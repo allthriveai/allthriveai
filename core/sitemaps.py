@@ -144,7 +144,6 @@ class UserProfileSitemap(Sitemap):
                 .only(
                     'username',
                     'date_joined',
-                    'updated_at',
                     'is_profile_public',  # Minimal fields
                 )
                 .order_by('-date_joined')[: self.limit]
@@ -163,8 +162,8 @@ class UserProfileSitemap(Sitemap):
 
     def lastmod(self, obj):
         """Return last modification date."""
-        # Use updated_at if available, otherwise date_joined
-        return getattr(obj, 'updated_at', obj.date_joined)
+        # User model doesn't have updated_at, use date_joined
+        return obj.date_joined
 
     def location(self, obj):
         """Return the URL path for each user profile."""

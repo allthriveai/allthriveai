@@ -147,6 +147,12 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
       }, 1500);
     } catch (error: any) {
       console.error('Failed to import repo:', error);
+      console.log('Error details:', {
+        message: error.message,
+        suggestion: error.suggestion,
+        errorCode: error.errorCode,
+        project: error.project,
+      });
 
       // Handle duplicate imports with link to existing project
       if (error.errorCode === 'DUPLICATE_IMPORT' && error.project) {
@@ -170,15 +176,31 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
             </button>
           </>
         );
-      } else {
-        // Generic error display with suggestion if available
+      } else if (error.errorCode === 'RATE_LIMIT_EXCEEDED') {
+        // Special handling for rate limit errors
         addMessage(
           'agent',
           <>
-            <p className="mb-2">{error.message || 'Failed to import repository.'}</p>
+            <p className="mb-2">⏱️ {error.message}</p>
             {error.suggestion && (
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                 💡 {error.suggestion}
+              </p>
+            )}
+          </>
+        );
+      } else {
+        // Generic error display with suggestion if available
+        const errorMessage = error.message || 'Failed to import repository.';
+        const errorSuggestion = error.suggestion;
+
+        addMessage(
+          'agent',
+          <>
+            <p className="mb-2">{errorMessage}</p>
+            {errorSuggestion && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                💡 {errorSuggestion}
               </p>
             )}
           </>

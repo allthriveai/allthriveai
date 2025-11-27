@@ -20,6 +20,77 @@ from services.ai_provider import AIProvider
 logger = logging.getLogger(__name__)
 
 
+def generate_blocks_from_repo_structure(repo_data: dict) -> list:
+    """Generate content blocks from repository structure when no README exists.
+
+    Args:
+        repo_data: Repository data including tree, dependencies, tech_stack
+
+    Returns:
+        List of content blocks describing the project structure
+    """
+    blocks = []
+    language = repo_data.get('language', '')
+    tree = repo_data.get('tree', [])
+    dependencies = repo_data.get('dependencies', {})
+    tech_stack = repo_data.get('tech_stack', {})
+
+    # Add overview section
+    blocks.append({'type': 'text', 'style': 'heading', 'content': 'Project Overview'})
+
+    # Tech stack section
+    if language or tech_stack.get('languages'):
+        languages_text = f'**Primary Language:** {language}\n\n'
+        if tech_stack.get('frameworks'):
+            languages_text += f"**Frameworks:** {', '.join(tech_stack['frameworks'])}\n\n"
+        if tech_stack.get('tools'):
+            languages_text += f"**Tools:** {', '.join(tech_stack['tools'])}\n\n"
+
+        blocks.append({'type': 'text', 'style': 'body', 'content': languages_text.strip()})
+
+    # Project structure
+    if tree:
+        # Get key directories and files
+        dirs = set()
+        key_files = []
+        for item in tree:
+            path = item.get('path', '')
+            if '/' in path:
+                dirs.add(path.split('/')[0])
+            elif path in ['package.json', 'requirements.txt', 'Dockerfile', '.github', 'docker-compose.yml']:
+                key_files.append(path)
+
+        if dirs or key_files:
+            blocks.append({'type': 'text', 'style': 'heading', 'content': 'Project Structure'})
+
+            structure_text = ''
+            if dirs:
+                structure_text += f"**Key Directories:** {', '.join(sorted(dirs)[:10])}\n\n"
+            if key_files:
+                structure_text += f"**Configuration:** {', '.join(key_files)}\n\n"
+
+            blocks.append({'type': 'text', 'style': 'body', 'content': structure_text.strip()})
+
+    # Dependencies section
+    if dependencies:
+        blocks.append({'type': 'text', 'style': 'heading', 'content': 'Dependencies'})
+
+        for dep_file, content in dependencies.items():
+            if content and dep_file == 'package.json':
+                try:
+                    import json
+
+                    pkg = json.loads(content)
+                    deps = pkg.get('dependencies', {})
+                    if deps:
+                        deps_list = ', '.join(list(deps.keys())[:10])
+                        blocks.append({'type': 'text', 'style': 'body', 'content': f'**npm packages:** {deps_list}'})
+                except (json.JSONDecodeError, KeyError) as e:
+                    logger.warning(f'Error parsing package.json dependency: {e}')
+
+    return blocks
+
+
 def analyze_github_repo(repo_data: dict, readme_content: str = '') -> dict:
     """Use AI to analyze a GitHub repo and generate smart metadata.
 
@@ -45,6 +116,14 @@ def analyze_github_repo(repo_data: dict, readme_content: str = '') -> dict:
     language = repo_data.get('language', '')
     github_topics = repo_data.get('topics', [])
     stars = repo_data.get('stargazers_count', 0)
+    owner = repo_data.get('owner', '')
+
+    # Get or generate hero image
+    hero_image = repo_data.get('open_graph_image_url')
+    if not hero_image and owner and name:
+        # Use GitHub social image generator as fallback
+        hero_image = f'https://opengraph.githubassets.com/1/{owner}/{name}'
+        logger.info(f'No og:image found, using generated image: {hero_image}')
 
     # Build analysis prompt
     prompt = f"""Analyze this GitHub repository and provide metadata for a portfolio project.
@@ -138,7 +217,10 @@ Format your response as JSON:
             f'topics={validated["topics"]}, tools={validated["tool_names"]}'
         )
 
-        # Parse README if provided
+        # Set hero image
+        validated['hero_image'] = hero_image
+
+        # Parse README if provided, otherwise generate blocks from repo structure
         if readme_content:
             logger.info(f'📖 Parsing README for {name}, length: {len(readme_content)} chars')
             readme_parsed = BaseParser.parse(readme_content, repo_data)
@@ -163,16 +245,22 @@ Format your response as JSON:
             # Optimize layout with AI for more dynamic columns
             optimized_blocks = BaseParser.optimize_layout_with_ai(transformed_blocks, repo_data)
 
+            # Only update hero_image if README parsing found one
+            readme_hero = readme_parsed.get('hero_image')
+            if readme_hero:
+                validated['hero_image'] = readme_hero
+                logger.info(f'✨ Using hero image from README: {readme_hero}')
+            else:
+                logger.info(f'✨ README has no hero image, keeping generated image: {hero_image}')
+
             validated.update(
                 {
                     'readme_blocks': optimized_blocks,
-                    'hero_image': readme_parsed.get('hero_image'),
                     'hero_quote': readme_parsed.get('hero_quote'),
                     'mermaid_diagrams': readme_parsed.get('mermaid_diagrams', []),
                     'demo_urls': readme_parsed.get('demo_urls', []),
                 }
             )
-            logger.info(f'✨ Final hero_image after README parsing: "{validated.get("hero_image")}"')
 
             # Generate architecture diagram if none found in README
             if not readme_parsed.get('mermaid_diagrams'):
@@ -180,12 +268,16 @@ Format your response as JSON:
                 generated_diagram = BaseParser.generate_architecture_diagram(repo_data)
                 if generated_diagram:
                     validated['generated_diagram'] = generated_diagram
+                    # Add heading before diagram
+                    validated['readme_blocks'].append(
+                        {'type': 'text', 'style': 'heading', 'content': 'System Architecture'}
+                    )
                     # Add generated diagram as a mermaid block so frontend can display it
                     validated['readme_blocks'].append(
                         {
                             'type': 'mermaid',
                             'code': generated_diagram,
-                            'caption': 'Architecture Diagram',
+                            'caption': 'Project architecture and component relationships',
                         }
                     )
                     logger.info(f'✅ AI generated architecture diagram for {name} and added to blocks')
@@ -194,6 +286,32 @@ Format your response as JSON:
                     logger.warning(f'❌ Failed to generate diagram for {name}')
             else:
                 logger.info(f'✅ Using {len(readme_parsed.get("mermaid_diagrams", []))} diagram(s) from README')
+        else:
+            # No README - generate blocks from repo structure
+            logger.info(f'📦 No README found for {name}, generating blocks from repo structure')
+            generated_blocks = generate_blocks_from_repo_structure(repo_data)
+            validated['readme_blocks'] = generated_blocks
+            logger.info(f'✅ Generated {len(generated_blocks)} blocks from repo structure')
+
+            # Generate architecture diagram for repos without README
+            logger.info('🎨 Generating architecture diagram with AI...')
+            generated_diagram = BaseParser.generate_architecture_diagram(repo_data)
+            if generated_diagram:
+                validated['generated_diagram'] = generated_diagram
+                # Add heading before diagram
+                validated['readme_blocks'].append(
+                    {'type': 'text', 'style': 'heading', 'content': 'System Architecture'}
+                )
+                validated['readme_blocks'].append(
+                    {
+                        'type': 'mermaid',
+                        'code': generated_diagram,
+                        'caption': 'Project architecture and component relationships',
+                    }
+                )
+                logger.info('✅ AI generated architecture diagram and added to blocks')
+            else:
+                logger.warning(f'❌ Failed to generate diagram for {name}')
 
         return validated
 
@@ -214,7 +332,7 @@ Format your response as JSON:
         'topics': [t.lower() for t in github_topics[:8]] if github_topics else [],
         'tool_names': [],
         'readme_blocks': [],
-        'hero_image': None,
+        'hero_image': hero_image,  # Use generated GitHub image
         'hero_quote': None,
         'mermaid_diagrams': [],
         'demo_urls': [],
@@ -229,10 +347,14 @@ Format your response as JSON:
             blocks = readme_parsed.get('blocks', [])
             transformed_blocks = BaseParser.transform_readme_content_with_ai(blocks, repo_data)
 
+            # Only update hero_image if README parsing found one
+            readme_hero = readme_parsed.get('hero_image')
+            if readme_hero:
+                fallback['hero_image'] = readme_hero
+
             fallback.update(
                 {
                     'readme_blocks': transformed_blocks,
-                    'hero_image': readme_parsed.get('hero_image'),
                     'hero_quote': readme_parsed.get('hero_quote'),
                     'mermaid_diagrams': readme_parsed.get('mermaid_diagrams', []),
                     'demo_urls': readme_parsed.get('demo_urls', []),
@@ -244,16 +366,44 @@ Format your response as JSON:
                 generated_diagram = BaseParser.generate_architecture_diagram(repo_data)
                 if generated_diagram:
                     fallback['generated_diagram'] = generated_diagram
+                    # Add heading before diagram
+                    fallback['readme_blocks'].append(
+                        {'type': 'text', 'style': 'heading', 'content': 'System Architecture'}
+                    )
                     # Add generated diagram as a mermaid block so frontend can display it
                     fallback['readme_blocks'].append(
                         {
                             'type': 'mermaid',
                             'code': generated_diagram,
-                            'caption': 'Architecture Diagram',
+                            'caption': 'Project architecture and component relationships',
                         }
                     )
                     logger.info(f'✅ Generated diagram added to fallback blocks for {name}')
         except Exception as parse_error:
             logger.warning(f'README parsing also failed for {name}: {parse_error}')
+    else:
+        # No README in fallback - generate blocks from repo structure
+        try:
+            logger.info(f'📦 No README in fallback for {name}, generating blocks from repo structure')
+            generated_blocks = generate_blocks_from_repo_structure(repo_data)
+            fallback['readme_blocks'] = generated_blocks
+            logger.info(f'✅ Generated {len(generated_blocks)} fallback blocks from repo structure')
+
+            # Generate architecture diagram
+            generated_diagram = BaseParser.generate_architecture_diagram(repo_data)
+            if generated_diagram:
+                fallback['generated_diagram'] = generated_diagram
+                # Add heading before diagram
+                fallback['readme_blocks'].append({'type': 'text', 'style': 'heading', 'content': 'System Architecture'})
+                fallback['readme_blocks'].append(
+                    {
+                        'type': 'mermaid',
+                        'code': generated_diagram,
+                        'caption': 'Project architecture and component relationships',
+                    }
+                )
+                logger.info(f'✅ Generated diagram added to fallback blocks for {name}')
+        except Exception as gen_error:
+            logger.warning(f'Block generation also failed for {name}: {gen_error}')
 
     return fallback

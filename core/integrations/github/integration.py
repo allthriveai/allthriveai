@@ -220,7 +220,6 @@ class GitHubIntegration(BaseIntegration):
         from core.integrations.github.helpers import apply_ai_metadata
         from core.integrations.utils import (
             IntegrationErrorCode,
-            acquire_import_lock,
             check_duplicate_project,
             get_integration_token,
         )
@@ -243,14 +242,8 @@ class GitHubIntegration(BaseIntegration):
                     'error_code': IntegrationErrorCode.AUTH_REQUIRED,
                 }
 
-            # Acquire import lock
-            if not acquire_import_lock(user_id):
-                return {
-                    'success': False,
-                    'error': 'You already have an import in progress',
-                    'error_code': IntegrationErrorCode.IMPORT_IN_PROGRESS,
-                    'suggestion': 'Please wait for your current import to finish before starting a new one.',
-                }
+            # Note: Lock is already acquired in the view before queueing this task
+            # We should NOT acquire it again here to avoid double-locking
 
             # Parse GitHub URL
             try:

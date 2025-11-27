@@ -8,10 +8,41 @@ import logging
 from typing import Any
 
 from django.core.cache import cache
+from django.utils.text import slugify as django_slugify
 from rest_framework import status
 from rest_framework.response import Response
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Text/Slug Utilities
+# =============================================================================
+
+
+def normalize_slug(text: str) -> str:
+    """Normalize text into a URL-friendly slug.
+
+    Converts text to lowercase, replaces spaces and special characters with hyphens,
+    and replaces underscores with hyphens for SEO-friendly URLs.
+
+    Args:
+        text: Text to normalize (e.g., project title, repo name)
+
+    Returns:
+        Normalized slug (e.g., "my-awesome-project")
+
+    Examples:
+        >>> normalize_slug("My Awesome Project")
+        'my-awesome-project'
+        >>> normalize_slug("drupal_install_profile")
+        'drupal-install-profile'
+        >>> normalize_slug("Hello World & More!")
+        'hello-world-more'
+    """
+    slug = django_slugify(text) or 'project'
+    # Replace underscores with hyphens for better SEO
+    return slug.replace('_', '-')
 
 
 # =============================================================================
@@ -128,7 +159,10 @@ def get_import_lock_key(user_id: int) -> str:
 
 
 def acquire_import_lock(user_id: int, timeout: int = 300) -> bool:
-    """Acquire import lock for user.
+    """Acquire import lock for user using atomic operation.
+
+    Uses cache.add() which is atomic - only sets if key doesn't exist.
+    This prevents race conditions with concurrent requests.
 
     Args:
         user_id: User ID
@@ -139,12 +173,16 @@ def acquire_import_lock(user_id: int, timeout: int = 300) -> bool:
     """
     lock_key = get_import_lock_key(user_id)
 
-    if cache.get(lock_key):
-        return False
+    # cache.add() is atomic - returns True only if key was set (didn't exist)
+    # This prevents race condition between check and set
+    acquired = cache.add(lock_key, True, timeout=timeout)
 
-    cache.set(lock_key, True, timeout=timeout)
-    logger.info(f'Acquired import lock for user {user_id}')
-    return True
+    if acquired:
+        logger.info(f'Acquired import lock for user {user_id}')
+    else:
+        logger.debug(f'Import lock already held for user {user_id}')
+
+    return acquired
 
 
 def release_import_lock(user_id: int) -> None:
@@ -239,9 +277,22 @@ def get_integration_token(user, platform: str) -> str | None:
     """
     try:
         social_account = user.socialaccount_set.filter(provider=platform).first()
-        if social_account:
-            return social_account.socialtoken_set.first().token
-    except Exception as e:
-        logger.warning(f'Error getting {platform} token for user {user.id}: {e}')
+        if not social_account:
+            logger.debug(f'No {platform} account found for user {user.id}')
+            return None
 
-    return None
+        social_token = social_account.socialtoken_set.first()
+        if not social_token:
+            logger.error(f'User {user.id} has {platform} account but no token - OAuth may be incomplete')
+            return None
+
+        # TODO: Check token expiry and refresh if needed
+        # For now, return the token as-is
+        return social_token.token
+
+    except AttributeError as e:
+        logger.error(f'Attribute error getting {platform} token for user {user.id}: {e}', exc_info=True)
+        return None
+    except Exception as e:
+        logger.warning(f'Error getting {platform} token for user {user.id}: {e}', exc_info=True)
+        return None

@@ -30,7 +30,31 @@ export interface User {
  */
 export async function exploreProjects(params: ExploreParams): Promise<PaginatedResponse<Project>> {
   console.log('[exploreProjects] Calling API with params:', params);
-  const response = await api.get<PaginatedResponse<any>>('/projects/explore/', { params });
+
+  // Build query string manually to avoid axios adding [] brackets to arrays
+  const queryParams = new URLSearchParams();
+
+  if (params.tab) queryParams.append('tab', params.tab);
+  if (params.search) queryParams.append('search', params.search);
+  if (params.page) queryParams.append('page', params.page.toString());
+  if (params.page_size) queryParams.append('page_size', params.page_size.toString());
+
+  // Add array parameters without brackets (categories=1&categories=2)
+  if (params.categories) {
+    params.categories.forEach(id => queryParams.append('categories', id.toString()));
+  }
+  if (params.tools) {
+    params.tools.forEach(id => queryParams.append('tools', id.toString()));
+  }
+  if (params.topics) {
+    params.topics.forEach(topic => queryParams.append('topics', topic));
+  }
+
+  const queryString = queryParams.toString();
+  const url = `/projects/explore/${queryString ? `?${queryString}` : ''}`;
+
+  console.log('[exploreProjects] URL:', url);
+  const response = await api.get<PaginatedResponse<any>>(url);
   console.log('[exploreProjects] Response:', { count: response.data.count, resultsLength: response.data.results?.length });
   return response.data;
 }

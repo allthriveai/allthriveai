@@ -80,9 +80,13 @@ export function ExplorePage() {
 
   // Debug logging
   console.log('[ExplorePage] State:', {
+    activeTab,
     selectedCategorySlugs,
     selectedCategoryIds,
+    selectedToolSlugs,
+    selectedToolIds,
     taxonomyCategories: taxonomyCategories?.map(c => ({ id: c.id, slug: c.slug, name: c.name })),
+    filterOptions: filterOptions?.tools.map(t => ({ id: t.id, slug: t.slug, name: t.name })),
   });
 
   // Fetch projects (for most tabs)
@@ -107,11 +111,11 @@ export function ExplorePage() {
     // Only run query if:
     // 1. Not on profiles tab
     // 2. If tools are selected, filterOptions must be loaded
-    // 3. If categories are selected, taxonomyCategories must be loaded AND we have IDs
+    // 3. If categories are selected, taxonomyCategories must be loaded (IDs might be empty if no match, which is ok - we want to show 0 results)
     enabled:
       activeTab !== 'profiles' &&
       (selectedToolSlugs.length === 0 || !!filterOptions) &&
-      (selectedCategorySlugs.length === 0 || (!!taxonomyCategories && selectedCategoryIds.length > 0)),
+      (selectedCategorySlugs.length === 0 || !!taxonomyCategories),
   });
 
   // Fetch semantic search results
@@ -145,9 +149,15 @@ export function ExplorePage() {
   });
 
   // Determine which data to display
+  // IMPORTANT: If category or tool filters are selected but taxonomies/tools haven't loaded yet,
+  // show loading state instead of showing unfiltered results
+  const isWaitingForFilters =
+    (selectedCategorySlugs.length > 0 && !taxonomyCategories) ||
+    (selectedToolSlugs.length > 0 && !filterOptions);
+
   const displayProjects = searchQuery && semanticResults ? semanticResults : projectsData?.results || [];
   const displayQuizzes = quizzesData?.results || [];
-  const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes;
+  const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isWaitingForFilters;
 
   // Handle tab change
   const handleTabChange = (tab: ExploreTab) => {
@@ -284,12 +294,36 @@ export function ExplorePage() {
                   </div>
                 ) : displayProjects.length === 0 && displayQuizzes.length === 0 ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                      <p className="text-lg text-gray-600 dark:text-gray-400">
-                        {searchQuery ? `No results found for "${searchQuery}"` : 'No content found'}
+                    <div className="text-center max-w-md mx-auto">
+                      <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        {(() => {
+                          if (searchQuery) {
+                            return `No results found for "${searchQuery}"`;
+                          }
+                          if (selectedCategorySlugs.length > 0 || selectedToolSlugs.length > 0) {
+                            const filterNames = [
+                              ...selectedCategorySlugs.map(slug =>
+                                taxonomyCategories?.find(c => c.slug === slug)?.name || slug
+                              ),
+                              ...selectedToolSlugs.map(slug =>
+                                filterOptions?.tools.find(t => t.slug === slug)?.name || slug
+                              )
+                            ];
+                            return `No projects found with ${filterNames.length === 1 ? 'this filter' : 'these filters'}`;
+                          }
+                          return 'No projects found';
+                        })()}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                        Try adjusting your filters or search query
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {(() => {
+                          if (selectedCategorySlugs.length > 0 || selectedToolSlugs.length > 0) {
+                            return 'Try selecting different categories or tools to discover more projects';
+                          }
+                          if (searchQuery) {
+                            return 'Try different keywords or clear your search to see all projects';
+                          }
+                          return 'Check back later for new content';
+                        })()}
                       </p>
                     </div>
                   </div>
