@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGithub, faGitlab, faFigma } from '@fortawesome/free-brands-svg-icons';
-import { faRocket, faCommentDots, faBolt, faTable } from '@fortawesome/free-solid-svg-icons';
+import { faGithub } from '@fortawesome/free-brands-svg-icons';
+import { faRocket, faCommentDots, faBolt, faTable, faStar, faCodeBranch, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { createProject } from '@/services/projects';
+import { fetchGitHubRepos, checkGitHubConnection, importGitHubRepo, type GitHubRepository } from '@/services/github';
 
 interface RightAddProjectChatProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type ChatStep = 'welcome';
+type ChatStep = 'welcome' | 'github_loading' | 'github_repos' | 'github_connect' | 'github_importing';
 
 interface ChatMessage {
   id: string;
@@ -27,12 +28,16 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
 
   const [step, setStep] = useState<ChatStep>('welcome');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [repos, setRepos] = useState<GitHubRepository[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Reset when modal closes
   useEffect(() => {
     if (!isOpen) {
       setStep('welcome');
       setMessages([]);
+      setRepos([]);
+      setSearchQuery('');
     }
   }, [isOpen]);
 
@@ -47,8 +52,8 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
     });
   };
 
-  const handleImport = async () => {
-    setStep('github_checking');
+  const handleImportGitHub = async () => {
+    setStep('github_loading');
     addMessage('user', 'Import from GitHub');
     addMessage('agent', 'Checking your GitHub connection...');
 
@@ -62,160 +67,90 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
           <>
             <p className="mb-2">You need to connect your GitHub account first.</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              This allows us to access your repositories and import them to AllThrive.
+              This allows us to access your repositories and import them.
             </p>
           </>
         );
-      } else {
-        // Load repos
+        return;
+      }
+
+      // Fetch repos
+      addMessage('agent', 'Loading your GitHub repositories...');
+
+      try {
+        const fetchedRepos = await fetchGitHubRepos();
+        setRepos(fetchedRepos);
         setStep('github_repos');
-        addMessage('agent', 'Loading your GitHub repositories...');
 
-        try {
-          const fetchedRepos = await fetchGitHubRepos();
-          setRepos(fetchedRepos);
-
-          addMessage(
-            'agent',
-            <>
-              <p className="mb-2">Found {fetchedRepos.length} repositories!</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Select a repository to import:
-              </p>
-            </>
-          );
-        } catch (repoError: any) {
-          console.error('Failed to fetch GitHub repos:', repoError);
-
-          // Handle rate limit errors with specific message
-          if (repoError?.message?.includes('rate limit') || repoError?.message?.includes('Rate limit')) {
-            addMessage(
-              'agent',
-              <>
-                <p className="mb-2">⏱️ You've reached the rate limit for repository fetches.</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {repoError.message}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  Please wait a few minutes and try again.
-                </p>
-              </>
-            );
-          } else {
-            addMessage(
-              'agent',
-              <>
-                <p className="mb-2">Failed to load your repositories.</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Please try reconnecting your GitHub account.
-                </p>
-              </>
-            );
-          }
-          setStep('welcome');
-          throw repoError; // Re-throw to outer catch
-        }
+        addMessage(
+          'agent',
+          <>
+            <p className="mb-2">Found {fetchedRepos.length} repositories!</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Select a repository to import:
+            </p>
+          </>
+        );
+      } catch (repoError: any) {
+        console.error('Failed to fetch GitHub repos:', repoError);
+        addMessage(
+          'agent',
+          <>
+            <p className="mb-2">Failed to load your repositories.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {repoError.message || 'Please try again.'}
+            </p>
+          </>
+        );
+        setStep('welcome');
       }
     } catch (error) {
       console.error('GitHub import error:', error);
-      // Don't show generic error if we already showed a specific one
-      if (step !== 'github_connect') {
-        addMessage('agent', 'Something went wrong. Please try again.');
-        setStep('welcome');
-      }
+      addMessage('agent', 'Something went wrong. Please try again.');
+      setStep('welcome');
     }
   };
 
   const handleConnectGitHub = () => {
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     const frontendUrl = window.location.origin;
     const returnPath = window.location.pathname + window.location.search;
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-    console.log('🔗 Connecting to GitHub via django-allauth...');
-
-    // Store state to reopen chat after OAuth redirect
-    localStorage.setItem('github_oauth_return', 'add_project_chat');
-    localStorage.setItem('github_oauth_step', 'importing');
-
-    // Use django-allauth's GitHub login endpoint
-    // The signal handler will automatically create a SocialConnection record
-    // This uses /accounts/github/login/callback/ (already registered in GitHub OAuth App)
-    const redirectUrl = `${backendUrl}/accounts/github/login/?process=connect&next=${encodeURIComponent(frontendUrl + returnPath)}`;
-    console.log('🔗 Redirecting to:', redirectUrl);
 
     // Redirect to django-allauth GitHub OAuth
+    const redirectUrl = `${backendUrl}/accounts/github/login/?process=connect&next=${encodeURIComponent(frontendUrl + returnPath)}`;
     window.location.href = redirectUrl;
   };
 
   const handleSelectRepo = async (repo: GitHubRepository) => {
-    setSelectedRepo(repo);
-    setStep('github_preview');
-
+    setStep('github_importing');
     addMessage('user', `Import "${repo.name}"`);
-    addMessage('agent', `Analyzing ${repo.name}... This may take a moment.`);
+    addMessage('agent', 'Analyzing and importing your repository... This may take a moment.');
 
     try {
-      const preview = await getImportPreview(repo.fullName);
-      setPreviewData(preview);
+      const result = await importGitHubRepo(repo.htmlUrl, false);
 
+      addMessage(
+        'agent',
+        `✅ Successfully imported "${repo.name}"! Redirecting to your project...`
+      );
+
+      // Close panel and navigate to the project
+      setTimeout(() => {
+        onClose();
+        navigate(result.url);
+      }, 1500);
+    } catch (error: any) {
+      console.error('Failed to import repo:', error);
       addMessage(
         'agent',
         <>
-          <p className="mb-2">Here's what I found:</p>
-          <div className="space-y-2 text-sm">
-            <p><strong>Title:</strong> {preview.title}</p>
-            {preview.language && <p><strong>Language:</strong> {preview.language}</p>}
-            {preview.stars > 0 && (
-              <p><strong>Stars:</strong> {preview.stars}</p>
-            )}
-            {preview.tldr && (
-              <div>
-                <strong>Summary:</strong>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">{preview.tldr}</p>
-              </div>
-            )}
-          </div>
-          <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-            Ready to import this project?
+          <p className="mb-2">Failed to import repository.</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {error.message || 'Please try again.'}
           </p>
         </>
       );
-    } catch (error) {
-      console.error('Failed to get preview:', error);
-      addMessage('agent', 'Failed to analyze repository. Please try again.');
       setStep('github_repos');
-    }
-  };
-
-  const handleConfirmImport = async () => {
-    if (!selectedRepo || !previewData) return;
-
-    setStep('github_importing');
-    addMessage('user', 'Yes, import it!');
-    addMessage('agent', 'Importing your project...');
-
-    try {
-      const result = await confirmImport({
-        repoFullName: selectedRepo.fullName,
-        previewData,
-        autoPublish: false,
-        addToShowcase: false,
-      });
-
-      addMessage(
-        'agent',
-        `✅ Successfully imported "${result.projectSlug}"! Redirecting you now...`
-      );
-
-      // Close panel and navigate
-      setTimeout(() => {
-        onClose();
-        navigate(result.redirectUrl);
-      }, 1500);
-    } catch (error) {
-      console.error('Failed to import project:', error);
-      addMessage('agent', 'Failed to import project. Please try again.');
-      setStep('github_preview');
     }
   };
 
@@ -248,13 +183,6 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
       addMessage('agent', 'Failed to create project. Please try again.');
     }
   };
-
-  const filteredRepos = repos.filter((repo) =>
-    searchQuery.trim() === ''
-      ? true
-      : repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        repo.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <>
@@ -292,7 +220,7 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
                 {/* 4 Button Options */}
                 <div className="space-y-2">
                   <button
-                    onClick={handleImport}
+                    onClick={handleImportGitHub}
                     className="w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm"
                   >
                     <div className="flex items-center gap-3">
@@ -301,10 +229,10 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
                       </div>
                       <div className="flex-1">
                         <div className="font-medium text-slate-900 dark:text-slate-100 text-sm">
-                          Import Existing Project
+                          Import from GitHub
                         </div>
                         <div className="text-xs text-slate-600 dark:text-slate-400">
-                          From GitHub, GitLab, etc.
+                          Import existing GitHub repository
                         </div>
                       </div>
                     </div>
@@ -401,7 +329,7 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
             </div>
           )}
 
-          {/* GitHub Repos Step */}
+          {/* GitHub Repos List */}
           {step === 'github_repos' && repos.length > 0 && (
             <div className="flex justify-start">
               <div className="w-full max-w-md space-y-3">
@@ -416,65 +344,50 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
 
                 {/* Repo List */}
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {filteredRepos.slice(0, 20).map((repo) => (
-                    <button
-                      key={repo.fullName}
-                      onClick={() => handleSelectRepo(repo)}
-                      className="w-full text-left px-3 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-500 transition-all text-sm"
-                    >
-                      <div className="font-medium text-gray-900 dark:text-white">{repo.name}</div>
-                      {repo.description && (
-                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-                          {repo.description}
+                  {repos
+                    .filter((repo) =>
+                      searchQuery.trim() === ''
+                        ? true
+                        : repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          repo.description?.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .slice(0, 20)
+                    .map((repo) => (
+                      <button
+                        key={repo.fullName}
+                        onClick={() => handleSelectRepo(repo)}
+                        className="w-full text-left px-3 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-500 transition-all text-sm"
+                      >
+                        <div className="font-medium text-gray-900 dark:text-white">{repo.name}</div>
+                        {repo.description && (
+                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                            {repo.description}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-500">
+                          {repo.language && <span>{repo.language}</span>}
+                          {repo.stars > 0 && (
+                            <span className="flex items-center gap-1">
+                              <FontAwesomeIcon icon={faStar} className="w-3 h-3" />
+                              {repo.stars}
+                            </span>
+                          )}
+                          {repo.forks > 0 && (
+                            <span className="flex items-center gap-1">
+                              <FontAwesomeIcon icon={faCodeBranch} className="w-3 h-3" />
+                              {repo.forks}
+                            </span>
+                          )}
                         </div>
-                      )}
-                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-500">
-                        {repo.language && <span>{repo.language}</span>}
-                        {repo.stars > 0 && (
-                          <span className="flex items-center gap-1">
-                            <FontAwesomeIcon icon={faStar} className="w-3 h-3" />
-                            {repo.stars}
-                          </span>
-                        )}
-                        {repo.forks > 0 && (
-                          <span className="flex items-center gap-1">
-                            <FontAwesomeIcon icon={faCodeBranch} className="w-3 h-3" />
-                            {repo.forks}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    ))}
                 </div>
               </div>
             </div>
           )}
 
-          {/* GitHub Preview Step */}
-          {step === 'github_preview' && previewData && (
-            <div className="flex justify-start">
-              <div className="max-w-md space-y-2">
-                <button
-                  onClick={handleConfirmImport}
-                  className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition-colors"
-                >
-                  Import Project
-                </button>
-                <button
-                  onClick={() => {
-                    setStep('github_repos');
-                    addMessage('user', 'Go back to repository list');
-                  }}
-                  className="ml-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
-                >
-                  Choose Different Repo
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Importing State */}
-          {step === 'github_importing' && (
+          {/* Loading State */}
+          {(step === 'github_loading' || step === 'github_importing') && (
             <div className="flex justify-center py-8">
               <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-primary-500 animate-spin" />
             </div>

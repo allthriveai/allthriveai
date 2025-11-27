@@ -437,7 +437,7 @@ LOGGING = {
         },
         'services': {
             'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'level': 'DEBUG',
         },
     },
     'root': {

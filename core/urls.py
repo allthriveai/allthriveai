@@ -26,6 +26,7 @@ from .battles.views import (
     expire_battles,
 )
 from .events.views import EventViewSet
+from .integrations.github.views import import_github_repo, list_user_repos
 from .projects.comment_views import ProjectCommentViewSet
 from .projects.topic_suggestions import get_topic_suggestions
 from .projects.views import (
@@ -165,6 +166,9 @@ urlpatterns = [
     path('social/callback/<str:provider>/', social_oauth_callback, name='social_callback'),
     path('social/disconnect/<str:provider>/', disconnect_provider, name='social_disconnect'),
     path('social/status/<str:provider>/', connection_status, name='social_status'),
+    # GitHub integration endpoints
+    path('github/repos/', list_user_repos, name='github_repos'),
+    path('github/import/', import_github_repo, name='github_import'),
     # Battle endpoints
     path('battles/stats/', battle_stats, name='battle_stats'),
     path('battles/leaderboard/', battle_leaderboard, name='battle_leaderboard'),

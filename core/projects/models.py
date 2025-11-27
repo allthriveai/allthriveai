@@ -106,6 +106,7 @@ class Project(models.Model):
         ]
         indexes = [
             models.Index(fields=['user', 'slug']),
+            models.Index(fields=['user', 'external_url']),  # For duplicate detection
             models.Index(fields=['is_showcase', 'is_archived', '-created_at']),
             models.Index(fields=['user', '-created_at']),
             models.Index(fields=['is_published', '-published_at']),  # For browse/explore pages

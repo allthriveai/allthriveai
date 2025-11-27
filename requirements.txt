@@ -35,3 +35,5 @@ ruff>=0.6.4
 bandit[toml]>=1.7.6
 fastmcp>=0.1.0  # MCP client for multi-source analysis
 pyyaml>=6.0  # For parsing docker-compose.yml files
+tenacity>=8.2.0  # Retry logic for API calls
+httpx>=0.25.0  # Async HTTP client

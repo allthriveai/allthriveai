@@ -1,5 +1,5 @@
-"""
-Shared helpers for GitHub integration.
+"""Shared helpers for GitHub integration.
+
 Used by GitHubMCPService, import_github_project tool, and other GitHub services.
 """
 
@@ -7,9 +7,11 @@ import json
 import logging
 import re
 
+import httpx
 from allauth.socialaccount.models import SocialAccount, SocialToken
 
 from core.social.models import SocialConnection, SocialProvider
+from services.github_constants import GITHUB_API_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -126,12 +128,12 @@ def detect_tech_stack_from_files(tree: list[dict], deps: dict[str, str | None]) 
     return tech_stack
 
 
-def normalize_mcp_repo_data(owner: str, repo: str, url: str, repo_files: dict) -> dict:
+async def normalize_mcp_repo_data(owner: str, repo: str, url: str, repo_files: dict) -> dict:
     """
     Normalize MCP response into the shape expected by analyze_github_repo.
 
     If MCP doesn't provide repo metadata (stars, description, etc.), this function
-    makes a single REST call to https://api.github.com/repos/{owner}/{repo}.
+    makes a single async REST call to https://api.github.com/repos/{owner}/{repo}.
 
     Args:
         owner: Repository owner
@@ -142,22 +144,35 @@ def normalize_mcp_repo_data(owner: str, repo: str, url: str, repo_files: dict) -
     Returns:
         Dictionary with normalized repository metadata
     """
-    import requests
-
     # Fetch top-level repo metadata via REST (acceptable fallback per plan)
+    logger.debug(f'Normalizing MCP data for {owner}/{repo}')
+    logger.debug(f'Input repo_files keys: {list(repo_files.keys())}')
+    logger.debug(
+        f'README length: {len(repo_files.get("readme", ""))}, '
+        f'tree items: {len(repo_files.get("tree", []))}, '
+        f'deps: {list(repo_files.get("dependencies", {}).keys())}'
+    )
+
     try:
-        resp = requests.get(f'https://api.github.com/repos/{owner}/{repo}', timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            return {
-                'name': data.get('name', repo),
-                'description': data.get('description', ''),
-                'language': data.get('language', ''),
-                'topics': data.get('topics', []),
-                'stargazers_count': data.get('stargazers_count', 0),
-                'forks_count': data.get('forks_count', 0),
-                'html_url': url,
-            }
+        async with httpx.AsyncClient(timeout=GITHUB_API_TIMEOUT) as client:
+            resp = await client.get(f'https://api.github.com/repos/{owner}/{repo}')
+            if resp.status_code == 200:
+                data = resp.json()
+                result = {
+                    'name': data.get('name', repo),
+                    'description': data.get('description', ''),
+                    'language': data.get('language', ''),
+                    'topics': data.get('topics', []),
+                    'stargazers_count': data.get('stargazers_count', 0),
+                    'forks_count': data.get('forks_count', 0),
+                    'html_url': url,
+                }
+                logger.debug(
+                    f'Fetched GitHub API metadata: name={result["name"]}, '
+                    f'description={result["description"][:50] if result["description"] else "None"}..., '
+                    f'language={result["language"]}, stars={result["stargazers_count"]}'
+                )
+                return result
     except Exception as e:
         logger.warning(f'Failed to fetch repo metadata for {owner}/{repo}: {e}')
 

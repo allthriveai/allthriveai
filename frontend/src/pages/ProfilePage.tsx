@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
 import type { User, Project } from '@/types/models';
 import { getUserByUsername } from '@/services/auth';
-import { getUserProjects } from '@/services/projects';
+import { getUserProjects, bulkDeleteProjects } from '@/services/projects';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useAchievements } from '@/hooks/useAchievements';
@@ -173,6 +173,30 @@ export default function ProfilePage() {
   const exitSelectionMode = () => {
     setSelectionMode(false);
     setSelectedProjectIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProjectIds.size === 0) return;
+
+    setIsDeleting(true);
+    try {
+      await bulkDeleteProjects(Array.from(selectedProjectIds));
+
+      // Remove deleted projects from state
+      setProjects(prev => ({
+        showcase: prev.showcase.filter(p => !selectedProjectIds.has(p.id)),
+        playground: prev.playground.filter(p => !selectedProjectIds.has(p.id)),
+      }));
+
+      // Exit selection mode and close modal
+      exitSelectionMode();
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error('Failed to delete projects:', error);
+      alert('Failed to delete projects. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Tabs logic
@@ -554,21 +578,31 @@ export default function ProfilePage() {
                     );
                   })}
 
-                  {/* Select Button - Only for profile owner on Showcase/Playground tabs */}
+                  {/* Select/Delete Buttons - Only for profile owner on Showcase/Playground tabs */}
                   {isOwnProfile &&
                    ((activeTab === 'showcase' && projects.showcase.length > 0) ||
                     (activeTab === 'playground' && projects.playground.length > 0)) && (
-                    <button
-                      onClick={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
-                      className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors text-sm font-medium ml-4 ${
-                        selectionMode
-                          ? 'bg-teal-500/10 border-teal-500/50 text-teal-600 dark:text-teal-400'
-                          : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10'
-                      }`}
-                    >
-                      <FontAwesomeIcon icon={faList} className="w-3 h-3" />
-                      {selectionMode ? 'Cancel' : 'Select'}
-                    </button>
+                    <div className="flex items-center gap-2 ml-4">
+                      {selectionMode && selectedProjectIds.size > 0 && (
+                        <button
+                          onClick={() => setShowDeleteConfirm(true)}
+                          className="flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors text-sm font-medium bg-red-500/10 border-red-500/50 text-red-600 dark:text-red-400 hover:bg-red-500/20"
+                        >
+                          Delete ({selectedProjectIds.size})
+                        </button>
+                      )}
+                      <button
+                        onClick={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
+                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors text-sm font-medium ${
+                          selectionMode
+                            ? 'bg-teal-500/10 border-teal-500/50 text-teal-600 dark:text-teal-400'
+                            : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        <FontAwesomeIcon icon={faList} className="w-3 h-3" />
+                        {selectionMode ? 'Cancel' : 'Select'}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -639,6 +673,37 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                Delete {selectedProjectIds.size} project{selectedProjectIds.size > 1 ? 's' : ''}?
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                This action cannot be undone. The selected project{selectedProjectIds.size > 1 ? 's' : ''} will be permanently deleted.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isDeleting && <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />}
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

@@ -20,13 +20,20 @@ logger = logging.getLogger(__name__)
 class GitHubMCPService:
     """Service for interacting with GitHub's official MCP server via FastMCP."""
 
-    def __init__(self, user_token: str | None):
+    def __init__(self, user_token: str):
         """
         Initialize GitHub MCP Service.
 
         Args:
             user_token: User's GitHub OAuth token for authenticated API access
+
+        Raises:
+            ValueError: If user_token is None or empty
         """
+        if not user_token:
+            raise ValueError('GitHub token is required for MCP service')
+
+        self.token = user_token
         factory = MCPClientFactory(settings.MCP_SERVERS)
         # This injects the per-user token into the Authorization header config
         self.client = factory.create_github_client(user_token=user_token)
@@ -43,20 +50,23 @@ class GitHubMCPService:
             README content as string or None if not found
         """
         try:
+            logger.debug(f'Fetching README for {owner}/{repo} via MCP')
             async with self.client:
                 result = await self.client.call_tool(
-                    'github',
+                    'github',  # ✅ Server name is required!
                     'get_file_contents',
                     arguments={'owner': owner, 'repo': repo, 'path': 'README.md'},
                 )
 
                 if result.get('isError'):
+                    logger.debug(f'README not found for {owner}/{repo}: {result.get("error", "unknown error")}')
                     return None
 
                 content = result.get('content', [{}])[0].get('text', '')
+                logger.debug(f'README fetched for {owner}/{repo}, length: {len(content)} chars')
                 return content
         except Exception as e:
-            logger.warning(f'Failed to fetch README for {owner}/{repo}: {e}')
+            logger.warning(f'Failed to fetch README for {owner}/{repo}: {e}', exc_info=True)
             return None
 
     async def get_repository_tree(self, owner: str, repo: str) -> list[dict]:
@@ -71,28 +81,32 @@ class GitHubMCPService:
             List of file/directory objects in the repository tree
         """
         try:
+            logger.debug(f'Fetching tree for {owner}/{repo} via MCP')
             async with self.client:
                 result = await self.client.call_tool(
-                    'github',
+                    'github',  # ✅ Server name is required!
                     'get_tree',
                     arguments={'owner': owner, 'repo': repo, 'tree_sha': 'HEAD', 'recursive': True},
                 )
 
                 if result.get('isError'):
+                    logger.debug(f'Tree not found for {owner}/{repo}: {result.get("error", "unknown error")}')
                     return []
 
                 import json
 
                 content = result.get('content', [{}])[0].get('text', '[]')
                 data = json.loads(content) if isinstance(content, str) else content
-                return data.get('tree', [])
+                tree = data.get('tree', [])
+                logger.debug(f'Tree fetched for {owner}/{repo}, {len(tree)} files')
+                return tree
         except Exception as e:
-            logger.warning(f'Failed to fetch tree for {owner}/{repo}: {e}')
+            logger.warning(f'Failed to fetch tree for {owner}/{repo}: {e}', exc_info=True)
             return []
 
     async def get_dependency_files(self, owner: str, repo: str) -> dict[str, str | None]:
         """
-        Best-effort fetch of key dependency files.
+        Best-effort fetch of key dependency files via GitHub MCP Server.
 
         Fetches: package.json, requirements.txt, Pipfile, go.mod, Cargo.toml
 
@@ -118,17 +132,27 @@ class GitHubMCPService:
             for path in dependency_file_paths:
                 try:
                     result = await self.client.call_tool(
-                        'github',
+                        'github',  # ✅ Server name is required!
                         'get_file_contents',
                         arguments={'owner': owner, 'repo': repo, 'path': path},
                     )
 
                     if not result.get('isError'):
                         files[path] = result.get('content', [{}])[0].get('text')
+                        logger.debug(f'Successfully fetched {path} for {owner}/{repo}')
                     else:
+                        logger.debug(f'{path} not found for {owner}/{repo}')
                         files[path] = None
-                except Exception:
+                except Exception as e:
+                    logger.debug(f'Failed to fetch {path} for {owner}/{repo}: {e}')
                     files[path] = None
+
+        # Log summary of what was found
+        found_files = [path for path, content in files.items() if content is not None]
+        if found_files:
+            logger.debug(f'Found {len(found_files)} dependency files for {owner}/{repo}: {", ".join(found_files)}')
+        else:
+            logger.debug(f'No dependency files found for {owner}/{repo}')
 
         return files
 
