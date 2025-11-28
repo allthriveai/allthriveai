@@ -77,14 +77,17 @@ class AIAnalyzerTestCase(TestCase):
         self.assertEqual(result['hero_image'], 'https://example.com/hero.png')
 
     @patch('services.ai_provider.AIProvider.complete')
+    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
     @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
-    def test_analyze_without_readme(self, mock_diagram, mock_ai):
+    def test_analyze_without_readme(self, mock_diagram, mock_scan, mock_ai):
         """Test analysis without README (generates blocks from repo structure)."""
         # Mock AI response
         mock_ai.return_value = json.dumps(
             {'description': 'A Python project', 'category_ids': [9], 'topics': ['python'], 'tool_names': []}
         )
 
+        # Mock scan_repository_for_images
+        mock_scan.return_value = {'screenshots': [], 'logo': None, 'banner': None}
         mock_diagram.return_value = 'graph TD\n  A --> B'
 
         # Analyze without README
@@ -107,10 +110,16 @@ class AIAnalyzerTestCase(TestCase):
         self.assertEqual(blocks[0]['style'], 'heading')
 
     @patch('services.ai_provider.AIProvider.complete')
-    def test_analyze_handles_ai_error(self, mock_ai):
+    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
+    def test_analyze_handles_ai_error(self, mock_diagram, mock_scan, mock_ai):
         """Test fallback when AI fails."""
         # Mock AI error
         mock_ai.side_effect = Exception('AI service error')
+
+        # Mock other methods that will be called in fallback
+        mock_scan.return_value = {'screenshots': [], 'logo': None, 'banner': None}
+        mock_diagram.return_value = None
 
         # Should fall back to basic metadata
         result = analyze_github_repo(self.repo_data, readme_content='')
@@ -321,7 +330,8 @@ class AIAnalyzerTestCase(TestCase):
 
     @patch('services.ai_provider.AIProvider.complete')
     @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
-    def test_analyze_limits_screenshots_to_six(self, mock_scan, mock_ai):
+    @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
+    def test_analyze_limits_screenshots_to_six(self, mock_diagram, mock_scan, mock_ai):
         """Test analyze_github_repo limits screenshots in imageGrid to 6."""
         # Mock AI response
         mock_ai.return_value = json.dumps(
@@ -336,6 +346,8 @@ class AIAnalyzerTestCase(TestCase):
             'logo': None,
             'banner': None,
         }
+
+        mock_diagram.return_value = None
 
         result = analyze_github_repo(self.repo_data, readme_content='')
 

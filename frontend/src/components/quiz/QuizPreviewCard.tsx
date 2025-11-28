@@ -62,8 +62,8 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
           {/* Shimmer Effect on Hover */}
           <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-          {/* Image Container with Overlay */}
-          <div className={`relative ${isCompact ? 'h-32' : 'h-56'} overflow-hidden rounded-t`}>
+          {/* Image Container with Overlay - Taller for vertical mobile design */}
+          <div className={`relative ${isCompact ? 'h-48' : 'h-72'} overflow-hidden rounded-t`}>
             {/* Background Image */}
             {quiz.thumbnailUrl ? (
               <img

@@ -105,7 +105,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-brand-dark">
+    <div className="flex flex-col h-screen">
       {/* Top Navigation */}
       <TopNavigation
         onMenuClick={handleMenuClick}

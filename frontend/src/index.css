@@ -14,17 +14,78 @@
     --transition-smooth: 0.3s ease;
   }
 
-  /* Light mode background gradient */
+  /* Light mode background with gradient and texture */
   body {
-    @apply bg-gradient-to-br from-white via-slate-50 to-slate-100;
     @apply text-slate-900 antialiased font-sans;
     @apply transition-colors duration-300;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e3e9f0 25%, #d4dce6 50%, #e8eef5 75%, #f0f4f8 100%);
+    position: relative;
+    overflow-x: hidden;
   }
 
-  /* Dark mode background - deep space gradient */
-  body.dark {
-    @apply bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950;
+  /* Animated gradient orbs for light mode */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -20%;
+    right: -10%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(circle, rgba(57, 189, 214, 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: float 20s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -20%;
+    left: -10%;
+    width: 50%;
+    height: 50%;
+    background: radial-gradient(circle, rgba(59, 212, 203, 0.12) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: float 25s ease-in-out infinite reverse;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Dark mode background with gradient and texture */
+  :root.dark body,
+  html.dark body {
     @apply text-slate-100;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #0f1623 50%, #1a2332 75%, #0d1117 100%);
+  }
+
+  /* Animated gradient orbs for dark mode */
+  :root.dark body::before,
+  html.dark body::before {
+    background: radial-gradient(circle, rgba(57, 189, 214, 0.08) 0%, transparent 70%);
+  }
+
+  :root.dark body::after,
+  html.dark body::after {
+    background: radial-gradient(circle, rgba(59, 212, 203, 0.06) 0%, transparent 70%);
+  }
+
+  /* Subtle texture overlay */
+  body > div:first-child {
+    position: relative;
+    z-index: 1;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(30px, -30px) scale(1.1);
+    }
+    66% {
+      transform: translate(-20px, 20px) scale(0.9);
+    }
   }
 
   /* Typography hierarchy */
