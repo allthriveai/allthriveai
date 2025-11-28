@@ -40,6 +40,8 @@ class UserSerializer(serializers.ModelSerializer):
             'youtube_url',
             'instagram_url',
             'playground_is_public',
+            'is_profile_public',
+            'allow_llm_training',
             'date_joined',
             'last_login',
             'social_connections',
@@ -186,6 +188,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'youtube_url',
             'instagram_url',
             'playground_is_public',
+            'is_profile_public',
+            'allow_llm_training',
         ]
 
     def validate_username(self, value):

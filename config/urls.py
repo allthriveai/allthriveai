@@ -2,12 +2,18 @@
 
 from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
-from django.http import HttpResponse
 from django.urls import include, path, re_path
 
-from core.auth.views import username_profile_view
 from core.sitemaps import ProjectSitemap, StaticViewSitemap, ToolSitemap, UserProfileSitemap
 from core.views.core_views import ai_plugin_manifest, db_health, robots_txt
+from core.views.crawler_views import (
+    about_view,
+    explore_view,
+    homepage_view,
+    profile_view,
+    project_detail_view,
+    tools_directory_view,
+)
 
 # Sitemap configuration
 sitemaps = {
@@ -33,7 +39,14 @@ urlpatterns = [
     # Versioned API namespace
     path('api/v1/', include('core.urls')),
     path('accounts/', include('allauth.urls')),
-    path('', lambda request: HttpResponse('AllThrive AI is running. Visit /admin/ or /api/v1/')),
-    # Username profile route - must be last to avoid conflicts
-    re_path(r'^(?P<username>[a-zA-Z0-9_-]+)$', username_profile_view, name='username_profile'),
+    # Public pages with crawler support
+    path('', homepage_view, name='homepage'),
+    path('about', about_view, name='about'),
+    path('explore', explore_view, name='explore'),
+    path('tools', tools_directory_view, name='tools'),
+    # User profiles and projects with crawler support
+    re_path(r'^@(?P<username>[a-zA-Z0-9_-]+)/(?P<slug>[a-zA-Z0-9_-]+)$', project_detail_view, name='project_detail'),
+    re_path(r'^@(?P<username>[a-zA-Z0-9_-]+)$', profile_view, name='profile'),
+    # Fallback for old username format (without @)
+    re_path(r'^(?P<username>[a-zA-Z0-9_-]+)$', profile_view, name='username_profile'),
 ]

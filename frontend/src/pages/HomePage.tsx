@@ -45,9 +45,10 @@ export default function HomePage() {
     <>
       <SEO {...SEOPresets.home} />
       <HeroSection
-        title="Grow Your AI Curiosity"
-        highlightText="In Community"
-        description="An AI playground for collaborative learning and project showcases"
+        title="Discover and share"
+        highlightText="AI creations from any tool"
+        description={`Explore AI-generated images, apps, and agents.
+Showcase your work and connect with other builders.`}
         buttonText="Request invitation to join"
         onButtonClick={handleInvitationClick}
         colors={[

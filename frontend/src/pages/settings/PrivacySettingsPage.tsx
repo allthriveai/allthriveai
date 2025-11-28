@@ -7,11 +7,15 @@ import { updateProfile } from '@/services/auth';
 export default function PrivacySettingsPage() {
   const { user, refreshUser } = useAuth();
   const [playgroundIsPublic, setPlaygroundIsPublic] = useState(user?.playgroundIsPublic ?? true);
+  const [isProfilePublic, setIsProfilePublic] = useState(user?.isProfilePublic ?? true);
+  const [allowLlmTraining, setAllowLlmTraining] = useState(user?.allowLlmTraining ?? false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
       setPlaygroundIsPublic(user.playgroundIsPublic ?? true);
+      setIsProfilePublic(user.isProfilePublic ?? true);
+      setAllowLlmTraining(user.allowLlmTraining ?? false);
     }
   }, [user]);
 
@@ -26,6 +30,38 @@ export default function PrivacySettingsPage() {
       // Revert on error
       setPlaygroundIsPublic(!value);
       alert('Failed to update privacy setting. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleProfilePublic = async (value: boolean) => {
+    try {
+      setSaving(true);
+      setIsProfilePublic(value);
+      await updateProfile({ isProfilePublic: value });
+      await refreshUser();
+    } catch (error) {
+      console.error('Failed to update profile visibility:', error);
+      // Revert on error
+      setIsProfilePublic(!value);
+      alert('Failed to update profile visibility. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleLlmTraining = async (value: boolean) => {
+    try {
+      setSaving(true);
+      setAllowLlmTraining(value);
+      await updateProfile({ allowLlmTraining: value });
+      await refreshUser();
+    } catch (error) {
+      console.error('Failed to update LLM training setting:', error);
+      // Revert on error
+      setAllowLlmTraining(!value);
+      alert('Failed to update LLM training setting. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -51,21 +87,81 @@ export default function PrivacySettingsPage() {
                 Profile Visibility
               </h2>
 
+              <div className="space-y-4">
+                {/* Profile Public Toggle */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 pr-4">
+                      <h3 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
+                        Public Profile
+                      </h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        Allow your profile to appear in search engines and sitemaps. Disable for complete privacy.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isProfilePublic}
+                        onChange={(e) => handleToggleProfilePublic(e.target.checked)}
+                        disabled={saving}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Playground Public Toggle */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 pr-4">
+                      <h3 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
+                        Public Playground
+                      </h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        Allow others to view your Playground projects. Disable to make it private.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={playgroundIsPublic}
+                        onChange={(e) => handleTogglePlayground(e.target.checked)}
+                        disabled={saving}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI & LLM Section */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                AI & Machine Learning
+              </h2>
+
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 pr-4">
                     <h3 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
-                      Public Playground
+                      Allow AI Model Training
                     </h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                      Allow others to view your Playground projects. Disable to make it private.
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                      Allow AI models like ChatGPT and Claude to use your public profile and projects for training.
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500">
+                      When disabled, AI crawlers (GPTBot, ClaudeBot, etc.) will be blocked from indexing your content. Traditional search engines (Google, Bing) are unaffected.
                     </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={playgroundIsPublic}
-                      onChange={(e) => handleTogglePlayground(e.target.checked)}
+                      checked={allowLlmTraining}
+                      onChange={(e) => handleToggleLlmTraining(e.target.checked)}
                       disabled={saving}
                       className="sr-only peer"
                     />
@@ -85,11 +181,12 @@ export default function PrivacySettingsPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm text-blue-900 dark:text-blue-100">
-                    <strong>About Showcase & Playground:</strong>
+                    <strong>Privacy Settings Guide:</strong>
                   </p>
                   <ul className="text-sm text-blue-800 dark:text-blue-200 mt-2 space-y-1 list-disc list-inside">
-                    <li><strong>Showcase</strong> is always public and displays your featured work, bio, and contact links</li>
-                    <li><strong>Playground</strong> is public by default, but you can make it private if you prefer</li>
+                    <li><strong>Public Profile:</strong> Controls visibility to search engines. Disable for complete privacy.</li>
+                    <li><strong>Public Playground:</strong> Controls who can view your Playground projects.</li>
+                    <li><strong>AI Model Training:</strong> Opt-out by default. Enable to help improve AI models like ChatGPT and Claude.</li>
                   </ul>
                 </div>
               </div>

@@ -16,9 +16,9 @@ interface SEOProps {
  * Optimized for search engines and social media sharing
  */
 export function SEO({
-  title = 'AllThrive AI - AI Portfolio Platform with Gamified Learning & Discovery',
-  description = 'Showcase your AI projects, discover innovative work, and level up your skills through interactive challenges. Build your AI portfolio, earn achievements, and connect with the community.',
-  keywords = 'AI portfolio, machine learning projects, AI learning platform, gamified learning, AI community, project showcase, AI tools, deep learning, developer portfolio, coding challenges',
+  title = 'AllThrive AI - Discover and share AI creations from any tool',
+  description = 'Explore AI-generated images, apps, and agents from any tool. Showcase your work, connect with other builders, and grow your reputation as an AI creator.',
+  keywords = 'AI creations, AI portfolio, AI projects, Midjourney, Replit, Claude, AI showcase, AI community, AI builders, AI tools, cross-platform AI',
   image = 'https://allthrive.ai/og-image.jpg',
   url,
   type = 'website',
@@ -93,19 +93,19 @@ export function SEO({
 // Preset configurations for common pages
 export const SEOPresets = {
   home: {
-    title: 'AllThrive AI - AI Portfolio Platform with Gamified Learning & Discovery',
-    description: 'Showcase your AI projects, discover innovative work, and level up your skills through interactive challenges. Build your AI portfolio, earn achievements, and connect with the community.',
-    keywords: 'AI portfolio, machine learning projects, AI learning platform, gamified learning, AI community, project showcase',
+    title: 'AllThrive AI - Discover and share AI creations from any tool',
+    description: 'Explore AI-generated images, apps, and agents from any tool. Showcase your work, connect with other builders, and grow your reputation as an AI creator.',
+    keywords: 'AI creations, AI portfolio, AI projects, Midjourney, Replit, Claude, AI showcase, AI community, AI builders',
   },
   about: {
     title: 'About AllThrive AI',
-    description: 'Learn about AllThrive AI - the platform empowering AI practitioners, learners, and researchers to showcase projects, learn through gamification, and connect with the community.',
-    keywords: 'about allthrive, AI platform, AI learning, AI community, mission',
+    description: 'AllThrive AI is where AI creators showcase work from any tool - from Midjourney art to Replit apps to Claude agents. Discover, share, and connect with builders.',
+    keywords: 'about allthrive, AI platform, AI creators, AI community, cross-platform AI, AI showcase',
   },
   explore: {
-    title: 'Explore AI Projects',
-    description: 'Discover innovative AI projects from the community. Browse machine learning models, deep learning experiments, NLP projects, computer vision applications, and more.',
-    keywords: 'AI projects, machine learning projects, discover AI, AI portfolio examples, ML projects',
+    title: 'Explore AI Creations',
+    description: 'Discover AI-generated images, apps, agents, and more from the community. Browse creations made with Midjourney, Replit, Claude, and every AI tool.',
+    keywords: 'explore AI, AI creations, AI projects, Midjourney gallery, Replit projects, AI showcase, discover AI',
   },
   learn: {
     title: 'Learn AI & Machine Learning',
