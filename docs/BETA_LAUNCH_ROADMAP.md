@@ -1,6 +1,6 @@
 # AllThrive AI - Beta Launch Roadmap (2-4 Weeks)
 
-**Date:** 2025-11-28
+**Date:** 2025-11-28 (Updated after codebase review)
 **Target:** Friends & Family Beta
 **Timeline:** 2-4 weeks
 **Core Value:** Build your AI portfolio
@@ -8,897 +8,657 @@
 
 ---
 
-## Executive Summary
+## What's Already Built (Comprehensive Feature Set!)
 
-**Goal:** Get 5-10 close friends using AllThrive AI to build their AI portfolios in the next 2-4 weeks.
+After reviewing the codebase, here's what you already have:
 
-**Critical Path:**
-- **Week 1:** Deploy to production (AWS or simpler hosting)
-- **Week 2:** Polish core features + invite alpha testers
-- **Week 3-4:** Fix bugs, add YouTube integration, scale to beta
+### ✅ AUTHENTICATION & USERS
+- Email/password authentication with rate limiting
+- Google OAuth login
+- GitHub OAuth login (for imports)
+- Password change for authenticated users
+- User profiles with rich fields (bio, tagline, social links, pronouns, etc.)
+- Avatar management (URL-based from OAuth providers)
+- Privacy controls (profile public/private, gamification visibility)
+- Role-based permissions (8 user roles)
 
-**What to Skip:** Billing, learning paths, advanced features, monetization
+### ✅ PROJECTS & PORTFOLIOS
+- **Manual project creation** - Full CRUD with rich content blocks
+- **GitHub import** - AI-powered analysis, README parsing, auto-categorization
+- **Project types**: GitHub repos, Figma designs, image collections, prompts
+- **Visibility controls**: Showcase, private, archived, published
+- **Featured images** and banners
+- **Tools & categories** - Many-to-many relationships
+- **Project likes** (heart system)
+- **Project comments** with moderation
 
----
+### ✅ GAMIFICATION (Very Comprehensive!)
+- **Points system** - 11 activity types earning points
+- **Levels** - 23+ levels based on points
+- **Tiers** - 5 tiers (seedling → evergreen)
+- **Streaks** - Daily activity tracking with bonuses
+- **Weekly goals** - 4 goal types with progress tracking
+- **Side quests** - 10 quest types with difficulty levels
+- **Achievements** - Categories, rarity levels, secret achievements
+- **Quizzes** - Full quiz system with True/False, Multiple Choice, Swipe questions
 
-## Critical Path: Week 1-2 (MUST HAVE FOR BETA)
+### ✅ FRONTEND PAGES
+- Home page
+- Profile page (with projects, activity feed, stats)
+- Explore page (discovery/community)
+- Thrive Circle page (gamification hub)
+- Learn page
+- Quiz pages (list, detail, results)
+- Prompt Battle pages
+- Tool directory
+- Settings pages (10+ settings pages!)
+- About page
+- Style guide page
 
-These are **blocking** for getting the first 5-10 beta testers on the platform.
-
-### 🚨 P0: DEPLOYMENT & INFRASTRUCTURE (Week 1)
-
-**Without this, no one can use the app.**
-
-#### 1. AWS Staging/Production Server Setup ✅ ON YOUR LIST
-- Deploy Django backend to AWS (EC2 or ECS)
-  - Alternative: Railway, Render, or Heroku for faster deploy
-- Deploy frontend (S3 + CloudFront or Vercel)
-- Setup PostgreSQL RDS (or managed Postgres)
-- Setup Redis for Celery
-- Configure environment variables (.env → AWS Secrets Manager)
-- SSL certificates (HTTPS via Let's Encrypt or AWS Certificate Manager)
-
-**Estimated time:** 3-5 days
-**Blocker:** Nothing can happen without this
-**Priority:** P0 - CRITICAL
-
-#### 2. Domain & DNS
-- Purchase/configure domain (allthriveai.com?)
-- Setup DNS records (Route 53 or Cloudflare)
-- SSL certificate setup
-- Redirect HTTP → HTTPS
-
-**Estimated time:** 1 day
-**Priority:** P0 - CRITICAL
-
-#### 3. Database Migration to Production
-- Run migrations on production DB
-- Seed initial data:
-  - Taxonomies (categories)
-  - Tools/technologies
-  - Sample projects (optional)
-- Create admin superuser
-- Test database connectivity
-
-**Estimated time:** 1 day
-**Priority:** P0 - CRITICAL
-
----
-
-### 🔥 P0: CORE USER FLOWS (Week 1-2)
-
-**These flows MUST work perfectly for beta testers.**
-
-#### 4. Authentication Flow ❌ MISSING FROM YOUR LIST
-**Components:**
-- Sign up (email + password)
-- Login
-- OAuth (GitHub, Google) - check if working
-- Password reset flow
-- **Email verification** (CRITICAL for production)
-- Logout
-
-**Missing pieces to check:**
-- [ ] Email verification on signup
-- [ ] Password reset emails working
-- [ ] OAuth redirect URLs configured for production domain
-- [ ] Rate limiting on login/signup (prevent brute force)
-- [ ] CSRF protection enabled
-
-**Estimated time:** 2-3 days if missing pieces
-**Priority:** P0 - CRITICAL
-
-#### 5. Profile Creation & Editing
-**Components:**
-- Create profile on signup
-- Edit profile (bio, tagline, location, pronouns)
-- Upload avatar image
-- Add social links (GitHub, YouTube, LinkedIn, Twitter, etc.)
-- Privacy settings (profile public/private)
-- Save/update profile
-
-**Already working?** Likely yes, needs testing
-**Estimated time:** 1-2 days for fixes/polish
-**Priority:** P0 - CRITICAL
-
-#### 6. Project Creation (CORE FEATURE)
-**Components:**
-- Create project manually
-- Add title, description
-- Select tools/technologies
-- Select categories
-- Upload featured image
-- Add README/content blocks
-- Add demo URL, repo URL
-- Publish project (make public)
-- Edit/update project
-- Delete project
-
-**Already working?** Check completeness
-**Estimated time:** 2-3 days for polish
-**Priority:** P0 - CRITICAL
-
-#### 7. GitHub Import ✅ ALREADY WORKING
-**Components:**
-- Connect GitHub OAuth
-- List user's repos
-- Select repo to import
-- AI analysis runs
-- Project auto-created
-- Tools/categories auto-detected
-- README parsed
-
-**Already working?** Yes, according to you
-**Estimated time:** 1 day for end-to-end testing + fixes
-**Priority:** P0 - CRITICAL
+### ✅ UI/UX
+- **Beautiful design** - Glassmorphism, gradients, custom animations
+- **Dark mode** support throughout
+- **Responsive** - Mobile and desktop
+- **Color palette** - Teal/cyan brand colors finalized
+- **Loading states** - Spinners and transitions
+- **Toast notifications** - Success/error feedback
 
 ---
 
-### 🎯 P1: BETA-READY FEATURES (Week 2)
+## What's MISSING for Beta Launch
 
-**Make the experience professional and polished.**
+Based on the codebase review, here are the **critical gaps** to fill:
 
-#### 8. Profile Page Polish
-**Components:**
-- Public profile page looks great
-- Shows all projects in grid/list
-- Social links displayed
-- Bio/tagline prominent
-- Avatar displays correctly
-- Responsive design (mobile + desktop)
-- Share profile button
+### 🚨 P0: CRITICAL (Week 1)
+
+#### 1. Password Reset Flow ❌ NOT IMPLEMENTED
+**Current state:** Password change works, but no "forgot password" flow
+
+**Need to build:**
+- Backend endpoint for password reset request
+- Password reset token generation
+- Password reset confirmation endpoint
+- Email template for reset link
+- Frontend password reset pages
 
 **Estimated time:** 2-3 days
-**Priority:** P1 - HIGH
+**Why critical:** Users will forget passwords in production
 
-#### 9. Project Detail Page Polish
-**Components:**
-- Project page looks professional
-- README renders correctly (markdown → HTML)
-- Images display properly
-- Tools/categories shown as badges
-- External links work (GitHub, demo)
-- Share button (copy link, Twitter, LinkedIn)
-- Responsive design
+---
+
+#### 2. Email Verification ⚠️ OPTIONAL (Should be Required)
+**Current state:** Set to 'optional' in settings
+
+**Need to do:**
+- Change `ACCOUNT_EMAIL_VERIFICATION = 'mandatory'`
+- Test email verification flow
+- Create email templates
+- Handle unverified user state in UI
+
+**Estimated time:** 1-2 days
+**Why critical:** Prevents spam accounts, validates real users
+
+---
+
+#### 3. Email Service Setup ❌ NOT CONFIGURED
+**Current state:** Email backend not configured for production
+
+**Need to do:**
+- Choose service (SendGrid recommended for beta)
+- Configure Django email settings
+- Create email templates:
+  - Welcome email
+  - Email verification
+  - Password reset
+  - (Optional: Weekly digest)
+- Test all emails end-to-end
 
 **Estimated time:** 2 days
-**Priority:** P1 - HIGH
-
-#### 10. Explore Page (Basic)
-**Components:**
-- List all public projects
-- Filter by category
-- Filter by tools
-- Search by title (basic text search)
-- Sort by newest, popular (optional)
-- Pagination or infinite scroll
-
-**Estimated time:** 2-3 days
-**Priority:** P1 - HIGH
+**Why critical:** Can't do verification or password reset without this
 
 ---
 
-### 📧 P1: COMMUNICATION (Week 2)
+#### 4. Production Testing & Bug Fixes
+**Current state:** Everything runs on localhost
 
-#### 11. Email Notifications Setup ✅ ON YOUR LIST
-**Services to choose:**
-- SendGrid (easiest)
-- AWS SES (cheapest)
-- Mailgun (reliable)
+**Need to do:**
+- Test all core flows end-to-end on staging
+- Fix any bugs found during testing
+- Test on mobile browsers
+- Test all OAuth flows with production URLs
 
-**Required emails:**
-- [ ] Welcome email on signup
-- [ ] Email verification email
-- [ ] Password reset email
-- [ ] (Optional) Weekly digest
+**Estimated time:** 3-5 days (ongoing)
+**Why critical:** Production always has surprises
 
-**Configuration:**
-- Setup email service account
-- Configure Django email backend
-- Test email sending in production
-- Create email templates (HTML + plain text)
+---
 
-**Estimated time:** 2 days
-**Priority:** P1 - HIGH
+### 🎯 P1: IMPORTANT (Week 2)
 
-#### 12. Support Chat or Contact Form ✅ ON YOUR LIST
-**Options:**
-- Simple contact form (email to your inbox)
-- Intercom (free tier for beta)
-- Crisp chat (free tier)
-- Tawk.to (free forever)
+#### 5. Error Pages (404, 500)
+**Current state:** Using default Django error pages
 
-**For beta, include:**
-- Feedback mechanism
-- Bug report button
-- "Send us a message" form
+**Need to create:**
+- Custom branded 404 page
+- Custom branded 500 page
+- Frontend error boundaries
 
 **Estimated time:** 1 day
-**Priority:** P1 - HIGH
 
 ---
 
-### 🎨 P1: POLISH & BRANDING (Week 2)
+#### 6. Landing Page for Beta Signups
+**Current state:** Home page exists but may need beta messaging
 
-#### 13. Branding Finalization ✅ ON YOUR LIST
-**Tasks:**
-- [ ] Final color palette (see /styleguide)
-- [ ] Logo finalized (all sizes: favicon, header, social)
-- [ ] Typography locked in
-- [ ] Button styles consistent
-- [ ] Spacing/padding consistent
-- [ ] Dark mode (if planned)
+**Need to add:**
+- Beta signup call-to-action
+- Value proposition for beta testers
+- Screenshots or demo video
+- "What to expect" section
 
-**Estimated time:** 2-3 days
-**Priority:** P1 - HIGH
+**Estimated time:** 1-2 days
 
-#### 14. Onboarding Flow ❌ MISSING FROM YOUR LIST
-**Critical for beta testers!**
+---
 
-**Components:**
+#### 7. Terms of Service & Privacy Policy
+**Current state:** Not found
+
+**Need to create:**
+- Terms of Service page
+- Privacy Policy page
+- Link in footer
+- Checkbox on signup
+
+**Estimated time:** 1 day (use template from Termly or TermsFeed)
+**Why important:** Legal requirement
+
+---
+
+#### 8. Monitoring & Error Tracking
+**Current state:** No error monitoring
+
+**Need to setup:**
+- Sentry for error tracking
+- Get alerts for 500 errors
+- Monitor user signups and activity
+
+**Estimated time:** 1 day
+**Why important:** You need to know when things break
+
+---
+
+#### 9. Analytics
+**Current state:** No analytics tracking
+
+**Need to setup:**
+- Google Analytics or Plausible
+- Track: signups, project creations, page views
+- Basic conversion funnel
+
+**Estimated time:** 1 day
+**Why important:** Understand user behavior
+
+---
+
+#### 10. Backup Strategy
+**Current state:** No backup plan documented
+
+**Need to setup:**
+- Automated daily database backups
+- Test restore process
+- Backup retention policy
+
+**Estimated time:** 1 day (AWS RDS automated backups)
+**Why important:** Don't lose beta tester data
+
+---
+
+### ⚠️ P2: NICE TO HAVE (Week 3-4)
+
+#### 11. Onboarding Flow
+**Current state:** No guided onboarding
+
+**Recommended:**
 - Welcome screen after signup
 - "Complete your profile" prompt
-- "Create your first project" call-to-action
-- Optional tour/walkthrough
-- Sample project template option
-- Skip button (don't force)
-
-**Why important:** Beta testers need guidance on what to do first.
+- "Create your first project" CTA
+- Optional product tour
 
 **Estimated time:** 2-3 days
-**Priority:** P1 - HIGH
+**Why nice to have:** Helps beta testers get started
 
 ---
 
-## Nice to Have: Week 3-4 (IF TIME ALLOWS)
+#### 12. YouTube Integration (For Content Creators)
+**Current state:** Not implemented (but you have the architecture)
 
-These enhance the experience but aren't blockers for beta launch.
+**See:** `/docs/CONTENT_AUTOMATION_PLAN.md` for full plan
 
-### Week 3
-
-#### 15. Gamification (Basic Points) ✅ ON YOUR LIST
-**Simplified for beta:**
-- Points for creating project
-- Points for completing profile
-- Simple level system (Level 1-10)
-- Display points on profile
-
-**DEFER to post-beta:**
-- Streaks
-- Daily goals
-- Achievements/badges
-- Side quests
-- Prompt battle
-- Thrive Circle expansion
-
-**Estimated time:** 3-4 days
-**Priority:** P2 - NICE TO HAVE
-
-#### 16. User Activity Tracking ✅ ON YOUR LIST
-**Basic tracking:**
-- Track views on projects
-- Track profile visits
-- Simple analytics dashboard
-- "Most viewed" projects
-
-**DEFER:**
-- Complex analytics
-- User behavior funnels
-- Conversion tracking
-
-**Estimated time:** 2-3 days
-**Priority:** P2 - NICE TO HAVE
-
-#### 17. Enhanced Search ✅ ON YOUR LIST
-**Basic improvements:**
-- Search by keyword (project title + description)
-- Filter by multiple categories
-- Filter by multiple tools
-- Sort options (newest, trending)
-
-**DEFER:**
-- Vector search (Weaviate)
-- AI-powered search
-- "Explore for you" personalization
-
-**Estimated time:** 2-3 days
-**Priority:** P2 - NICE TO HAVE
+**Estimated time:** 1 week
+**Why nice to have:** Your target users are content creators
 
 ---
 
-### Week 4
+#### 13. Support/Feedback Widget
+**Current state:** No feedback mechanism
 
-#### 18. YouTube Integration ✅ ON YOUR LIST
-**For content creators (your target users!):**
-- Connect YouTube OAuth
-- Import videos as projects
-- Auto-populate title, description, thumbnail
-- Link to original video
+**Options:**
+- Simple contact form
+- Intercom (free tier)
+- Crisp chat (free tier)
 
-**See:** `/docs/CONTENT_AUTOMATION_PLAN.md`
-
-**Estimated time:** 3-5 days
-**Priority:** P2 - NICE TO HAVE (but valuable for content creators)
-
-#### 19. Additional Integrations ✅ ON YOUR LIST
-**Priority order:**
-1. YouTube (Week 4 if time)
-2. GitLab (similar to GitHub)
-3. Instagram (harder, limited API)
-4. TikTok (very hard, restrictive API)
-
-**Recommendation:** Just do YouTube for beta
-
-**Estimated time:** 3-5 days per integration
-**Priority:** P3 - LOW (except YouTube)
+**Estimated time:** 1 day
+**Why nice to have:** Beta testers need easy way to report bugs
 
 ---
 
-## DEFER to Post-Beta (3+ months out)
+## What to SKIP for Beta
 
-These are great ideas but **NOT** needed for friends & family beta.
+Based on your original list, here's what to defer:
 
-### ❌ Monetization & Business
-
-**Skip for free beta:**
-- Billing/Payment/Pricing - Make beta completely free
-- Sell Courses - Feature creep, complex to build
-- User Roles & Paywall - Not needed until monetization
-
-**Why skip:** Beta testers won't pay. Get product-market fit first.
-
-### ❌ Advanced Features
-
-**Too complex for 2-4 week timeline:**
-- Learning Paths (Go1 integration) - Partnership negotiations take months
-- Weaviate Vector Search - Overkill, basic search is fine
-- Agent Create Projects (Nano Banana) - Cool but not core value
-- Prompt Battle expansion - Not core portfolio value
-- Side Quests expansion - Gamification v2.0
-- Thrive Circle expansion - Not portfolio-focused
-- Describe Project Agent expansion - Nice to have, not blocker
-- Podcasts as portfolio pieces - Can add later
-
-**Why skip:** Not aligned with core value prop of "Build your AI portfolio"
-
-### ⚠️ Technical Debt
-
-**Do AFTER beta launch if issues arise:**
-- Performance Optimizations - Premature optimization is evil
-- DRY Principles/Utils Refactoring - Works now, refactor later
-- Personalization (Explore for You) - Need user data first
-
-**Why defer:** Focus on launching, not perfecting code quality
+### ❌ SKIP (Post-Beta)
+- **Billing/Payment/Pricing** - Beta is free
+- **Learning Paths (Go1 integration)** - Partnership takes months
+- **Sell Courses** - Too complex
+- **Weaviate Vector Search** - Basic search is fine
+- **Agent Create Projects (Nano Banana)** - Not core MVP
+- **Prompt Battle expansion** - Already exists, don't expand
+- **Side Quests expansion** - Already exists, don't expand
+- **Thrive Circle expansion** - Already exists, don't expand
+- **Describe Project Agent** - Not critical
+- **User Roles & Paywall** - Not needed for free beta
+- **Instagram/TikTok/GitLab integrations** - GitHub is enough
+- **Podcasts as portfolio** - Can add later
+- **Performance optimizations** - Do after beta if slow
+- **DRY refactoring** - Do after beta
+- **Personalization (Explore for You)** - Already exists!
 
 ---
 
-## MISSING from Your Original List (Critical Items)
+## Revised 2-Week Sprint Plan
 
-### 🔐 Authentication & Security
+### Week 1: Critical Auth & Infrastructure
 
-1. **Email Verification**
-   - Users must verify email before full access
-   - Prevent spam accounts
-   - Required for production
+**Monday (Day 1):**
+- [ ] Setup email service (SendGrid account + Django config)
+- [ ] Create email templates (welcome, verification, password reset)
 
-2. **Password Reset Flow**
-   - Must work end-to-end in production
-   - Test with real email service
-
-3. **Rate Limiting**
-   - Prevent brute force on login
-   - Prevent spam signups
-   - Django-ratelimit or django-axes
-
-4. **CSRF Protection**
-   - Should already be in Django
-   - Verify it's working
-
-5. **HTTPS Enforcement**
-   - Redirect all HTTP → HTTPS
-   - Secure cookies only
-
-**Why critical:** Security is non-negotiable in production
-
----
-
-### 🎨 Core UX
-
-6. **Error Pages (404, 500)**
-   - Custom branded 404 page ("Page not found")
-   - Custom 500 page ("Something went wrong")
-   - Better than default Django error pages
-
-7. **Loading States**
-   - Spinners for async operations
-   - "Loading..." states
-   - Skeleton screens (optional)
-
-8. **Toast Notifications**
-   - Success messages ("Profile updated!")
-   - Error messages ("Something went wrong")
-   - React-hot-toast or similar
-
-9. **Responsive Mobile Design**
-   - Must work on mobile browsers
-   - Test on iPhone and Android
-   - Responsive navigation
-
-10. **Image Upload & Storage**
-    - S3 or Cloudinary for images
-    - Avatar uploads
-    - Project featured images
-    - Compress/resize images
-
-**Why critical:** Bad UX = beta testers bounce
-
----
-
-### 🧪 Beta-Specific
-
-11. **Beta Signup Flow**
-    - Invite codes for exclusive access?
-    - Or open beta (anyone can sign up)?
-    - Waitlist landing page?
-
-12. **Terms of Service & Privacy Policy**
-    - **Legal requirement** for any production app
-    - Use a template (Termly, TermsFeed)
-    - Link in footer
-
-13. **Feedback Mechanism**
-    - How will beta testers report bugs?
-    - Feedback widget?
-    - "Report a bug" button?
-    - Email? Discord? Notion form?
-
-14. **Analytics**
-    - Google Analytics or Plausible
-    - Track page views, signups, project creations
-    - Understand user behavior
-
-15. **Monitoring & Logging**
-    - Sentry for error tracking
-    - **Critical:** Know when things break
-    - Get alerts for 500 errors
-
-16. **Backup Strategy**
-    - Automated database backups on AWS
-    - Daily backups minimum
-    - Test restore process
-
-17. **Staging vs Production Environments**
-    - Separate staging environment for testing
-    - Deploy to staging first, then production
-    - Test migrations on staging
-
-**Why critical:** You need to know what's happening in production
-
----
-
-### 📱 Content & Marketing
-
-18. **Landing Page**
-    - What do beta testers see before signing up?
-    - Hero section explaining value prop
-    - "Sign up for beta" CTA
-    - Screenshots or demo video
-
-19. **Meta Tags & SEO**
-    - Basic SEO (title, description)
-    - Open Graph tags for sharing on social
-    - Twitter cards
-
-20. **Social Share Cards**
-    - OG images for profiles
-    - OG images for projects
-    - Looks great when shared on Twitter/LinkedIn
-
-**Why important:** First impression matters for beta testers
-
----
-
-## Recommended Sprint Plan
-
-### Week 1: Deploy & Foundation
-
-**Goal:** Get the app live and accessible
-
-**Monday-Tuesday (Day 1-2):**
-- [ ] Setup AWS infrastructure (EC2, RDS, Redis, S3)
-  - Alternative: Use Railway/Render for faster setup
-- [ ] Configure environment variables
-- [ ] Setup domain & DNS
+**Tuesday (Day 2):**
+- [ ] Implement password reset flow (backend)
+- [ ] Password reset frontend pages
+- [ ] Test end-to-end
 
 **Wednesday (Day 3):**
-- [ ] Deploy Django backend
-- [ ] Run migrations
-- [ ] Seed database
+- [ ] Enable mandatory email verification
+- [ ] Test verification flow
+- [ ] Handle unverified user states in UI
 
 **Thursday (Day 4):**
-- [ ] Deploy frontend (Vercel or S3)
-- [ ] Configure SSL/HTTPS
-- [ ] Test deployment end-to-end
+- [ ] Setup Sentry for error tracking
+- [ ] Setup analytics (Google Analytics or Plausible)
+- [ ] Configure production logging
 
-**Friday-Sunday (Day 5-7):**
-- [ ] Test authentication flow
-- [ ] Fix any deployment issues
-- [ ] Setup error monitoring (Sentry)
+**Friday (Day 5):**
+- [ ] Create Terms of Service page
+- [ ] Create Privacy Policy page
+- [ ] Add signup checkbox
+
+**Weekend (Day 6-7):**
+- [ ] Test all core flows on staging:
+  - Signup with email verification
+  - Login/logout
+  - Password reset
+  - Profile creation
+  - Project creation
+  - GitHub import
 
 **End of Week 1 Checkpoint:**
-- ✅ App accessible via domain (https://allthriveai.com)
-- ✅ User can sign up and log in
-- ✅ Database working in production
-- ✅ No critical errors
+- ✅ Email service working
+- ✅ Password reset functional
+- ✅ Email verification mandatory
+- ✅ Legal pages in place
+- ✅ Error monitoring active
+- ✅ All core flows tested on staging
 
 ---
 
-### Week 2: Core Features & Polish
-
-**Goal:** Make the core experience work beautifully
+### Week 2: Polish & Soft Launch
 
 **Monday (Day 8):**
-- [ ] Setup email service (SendGrid/SES)
-- [ ] Configure email verification
-- [ ] Test welcome emails
+- [ ] Custom 404 and 500 error pages
+- [ ] Frontend error boundaries
+- [ ] Mobile responsive testing
 
 **Tuesday (Day 9):**
-- [ ] Profile creation/editing polish
-- [ ] Avatar upload working
-- [ ] Social links functional
+- [ ] Beta landing page messaging
+- [ ] Update home page with beta CTA
+- [ ] Add screenshots/demo content
 
 **Wednesday (Day 10):**
-- [ ] Project creation polish
-- [ ] Image uploads working
-- [ ] Markdown rendering correct
+- [ ] Setup automated database backups
+- [ ] Test backup restore
+- [ ] Document backup process
 
 **Thursday (Day 11):**
-- [ ] GitHub import end-to-end test
-- [ ] Fix any import bugs
-- [ ] Test with real GitHub repos
+- [ ] Fix any bugs found during testing
+- [ ] Polish UI/UX rough edges
+- [ ] Final mobile testing
 
 **Friday (Day 12):**
-- [ ] Profile page polish
-- [ ] Responsive design fixes
-- [ ] Mobile testing
+- [ ] Create onboarding flow (if time)
+- [ ] "Create your first project" prompts
+- [ ] Welcome screen
 
-**Saturday (Day 13):**
-- [ ] Project detail page polish
-- [ ] Share buttons working
-- [ ] SEO meta tags
-
-**Sunday (Day 14):**
-- [ ] Branding finalization
-- [ ] Onboarding flow
-- [ ] Terms of Service page
-
-**End of Week 2 Checkpoint:**
-- ✅ User can create beautiful profile
-- ✅ User can create project (manual or GitHub)
-- ✅ Site looks polished and professional
-- ✅ Ready to invite 2-3 alpha testers
-
----
-
-### Week 3: Alpha Testing & Iteration
-
-**Goal:** Get feedback from 2-3 close friends, fix critical issues
-
-**Monday (Day 15):**
-- [ ] Onboarding flow complete
-- [ ] Create documentation/FAQ
-- [ ] Prepare "How to use" guide
-
-**Tuesday (Day 16):**
-- [ ] Setup feedback mechanism
-- [ ] Add support chat widget
-- [ ] Create bug report template
-
-**Wednesday (Day 17):**
-- [ ] Basic gamification (if time)
-- [ ] Points for actions
-- [ ] Level display
-
-**Thursday (Day 18):**
-- [ ] Invite 2-3 close friends (alpha testers)
-- [ ] Personal onboarding call
+**Weekend (Day 13-14):**
+- [ ] Final end-to-end testing
+- [ ] Invite 2-3 alpha testers (closest friends)
 - [ ] Watch them use the app (user testing)
 
-**Friday-Sunday (Day 19-21):**
-- [ ] Fix critical bugs from alpha feedback
-- [ ] Polish rough edges
-- [ ] Improve onboarding based on feedback
-
-**End of Week 3 Checkpoint:**
-- ✅ 2-3 alpha testers actively using app
-- ✅ Critical bugs fixed
-- ✅ Feedback incorporated
-- ✅ Ready to scale to 10 beta testers
+**End of Week 2 Checkpoint:**
+- ✅ All critical features working
+- ✅ 2-3 alpha testers actively using
+- ✅ Critical bugs identified and fixed
+- ✅ Ready to invite more beta testers
 
 ---
 
-### Week 4: Beta Expansion & YouTube
+### Week 3: Alpha Feedback & Iteration
 
-**Goal:** Scale to 10 beta testers, add YouTube for content creators
+**Monday-Wednesday (Day 15-17):**
+- [ ] Fix critical bugs from alpha feedback
+- [ ] Improve onboarding based on observations
+- [ ] Polish confusing UI elements
 
-**Monday (Day 22):**
-- [ ] YouTube OAuth integration
-- [ ] Test video import
+**Thursday (Day 18):**
+- [ ] Setup support/feedback widget (Intercom or Crisp)
+- [ ] Create bug report template
+- [ ] Document known issues
 
-**Tuesday-Wednesday (Day 23-24):**
-- [ ] YouTube import working
-- [ ] Enhanced search/filters
-- [ ] Explore page improvements
+**Friday-Sunday (Day 19-21):**
+- [ ] Invite 5-7 more beta testers
+- [ ] Personal onboarding for each
+- [ ] Monitor usage and fix issues
 
-**Thursday (Day 25):**
-- [ ] Invite 5-10 more beta testers
-- [ ] Personal outreach to each
-- [ ] Explain value prop
+**End of Week 3 Checkpoint:**
+- ✅ 8-10 beta testers using app
+- ✅ Critical bugs squashed
+- ✅ Feedback mechanism in place
+- ✅ Users creating projects successfully
 
-**Friday-Sunday (Day 26-28):**
-- [ ] Monitor usage and errors
-- [ ] Fix bugs as they arise
-- [ ] Iterate based on feedback
-- [ ] Celebrate beta launch! 🎉
+---
 
-**End of Week 4 Checkpoint:**
-- ✅ 10+ beta testers signed up
-- ✅ 50+ projects created
-- ✅ YouTube import working
-- ✅ Beta launch successful
+### Week 4: Scale & YouTube (Optional)
+
+**If everything is stable, consider adding:**
+
+**Monday-Wednesday (Day 22-24):**
+- [ ] YouTube OAuth integration (if time and demand)
+- [ ] YouTube video import as projects
+- [ ] Test with content creator beta testers
+
+**Thursday-Sunday (Day 25-28):**
+- [ ] Continue monitoring and fixing bugs
+- [ ] Invite remaining beta testers (to 15-20 total)
+- [ ] Celebrate successful beta launch! 🎉
+
+---
+
+## Testing Checklist (Before Inviting Beta Testers)
+
+### Authentication Flows
+- [ ] Sign up with email + password
+- [ ] Email verification email received and link works
+- [ ] Log in with email + password
+- [ ] Log in with Google OAuth
+- [ ] Log in with GitHub OAuth
+- [ ] Password reset request
+- [ ] Password reset email received
+- [ ] Password reset link works
+- [ ] Change password (authenticated user)
+- [ ] Log out
+
+### Profile Flows
+- [ ] Create profile after signup
+- [ ] Edit profile (bio, tagline, social links)
+- [ ] Upload avatar (via OAuth or Gravatar)
+- [ ] View own profile
+- [ ] View another user's public profile
+- [ ] Privacy settings work (hide profile)
+
+### Project Flows
+- [ ] Create project manually
+- [ ] Add title, description, tools, categories
+- [ ] Upload featured image
+- [ ] Add README content blocks
+- [ ] Publish project
+- [ ] View project detail page
+- [ ] Edit project
+- [ ] Delete project
+- [ ] GitHub import (full flow)
+- [ ] Like/unlike project
+- [ ] Comment on project
+
+### Gamification Flows
+- [ ] Earn points for creating project
+- [ ] Level up when points threshold reached
+- [ ] Daily login streak tracked
+- [ ] Weekly goals appear
+- [ ] Complete weekly goal
+- [ ] Side quest progress tracked
+- [ ] Achievement unlocked
+- [ ] Quiz taken and scored
+- [ ] Thrive Circle page loads with tier info
+
+### Edge Cases
+- [ ] Duplicate username rejected
+- [ ] Duplicate email rejected
+- [ ] Invalid email format rejected
+- [ ] Weak password rejected
+- [ ] Rate limiting works (too many login attempts)
+- [ ] 404 page for non-existent user/project
+- [ ] 500 error page works (test by triggering error)
+- [ ] Mobile responsive on iPhone
+- [ ] Mobile responsive on Android
+
+### Email Flows
+- [ ] Welcome email sent on signup
+- [ ] Verification email sent
+- [ ] Password reset email sent
+- [ ] All emails have proper formatting
+- [ ] All email links work (staging domain)
 
 ---
 
 ## Success Metrics
 
 ### Week 2 (Ready for Alpha)
-- [ ] **0 critical bugs** - Core flows work 100%
-- [ ] **Auth success rate: 100%** - No signup/login failures
-- [ ] **Project creation time: <5 min** - Easy for new users
-- [ ] **Profile looks professional** - You'd be proud to share it
+- [ ] 0 critical bugs in core flows
+- [ ] Email verification: 100% success rate
+- [ ] Password reset: 100% success rate
+- [ ] Auth success rate: >99%
+- [ ] Project creation: <5 minutes for new user
+- [ ] 2-3 alpha testers actively using
 
 ### Week 4 (Beta Success)
-- [ ] **10+ beta testers** signed up
-- [ ] **50+ projects created** total
-- [ ] **80%+ activation** - Testers create ≥1 project
-- [ ] **<5% error rate** in core flows
-- [ ] **Positive feedback** on portfolio value prop
-- [ ] **1+ testimonial** from satisfied beta tester
+- [ ] 15-20 beta testers signed up
+- [ ] 100+ projects created total
+- [ ] 80%+ of users create ≥1 project
+- [ ] <5% error rate in core flows
+- [ ] Daily active users: 50%+
+- [ ] Positive feedback on portfolio value
+- [ ] At least 1 testimonial
 
 ---
 
 ## Risk Mitigation
 
-### Risk 1: Deployment Takes Longer Than Expected
-
-**Likelihood:** High (if using AWS for first time)
-
-**Mitigation:**
-- Start with simpler hosting (Vercel frontend + Railway backend)
-- Use managed services to reduce complexity
-- Have fallback plan if AWS is too complex
-- Budget extra 2-3 days for deployment debugging
-
-**Backup Plan:**
-- Vercel for frontend (easy deploy)
-- Railway or Render for Django backend (easier than AWS)
-- Managed PostgreSQL (Railway/Render includes this)
-
----
-
-### Risk 2: Friends Don't Use the Beta
+### Risk 1: Beta Testers Don't Engage
 
 **Likelihood:** Medium
 
 **Mitigation:**
-- **Personal outreach before inviting** - Don't just send invite link
-- **Explain value prop clearly** - "Build your AI portfolio to attract opportunities"
-- **Offer to help create first project** - Onboarding call or screen share
-- **Incentivize early adopters** - Swag, lifetime free tier, early access badge
-- **Make it stupid simple** - 5 minutes from signup to first project
-
-**Questions to ask yourself:**
-- Would I personally use this to showcase my AI work?
-- Is it easier than LinkedIn or GitHub profile?
-- What's the compelling reason for my friends to use it?
+- Personal 1-on-1 onboarding calls
+- Explain value prop clearly: "This is your AI portfolio to attract opportunities"
+- Offer to help create first project via screen share
+- Make it STUPID SIMPLE to get first project live
+- Ask for specific feedback: "What would make this more useful?"
 
 ---
 
-### Risk 3: Critical Bugs in Production
+### Risk 2: Critical Bugs in Production
 
-**Likelihood:** High (always happens in production)
+**Likelihood:** High (always happens)
 
 **Mitigation:**
-- **Setup Sentry immediately** - Know when errors happen
-- **Have rollback plan** - Git tags for each deploy, database backups
-- **Test core flows manually** before inviting users
-- **Start with 2-3 alpha testers** before scaling to 10
-- **Fix critical bugs within 24 hours** - Show responsiveness
+- Start with 2-3 alpha testers before scaling
+- Fix critical bugs within 24 hours
+- Have Sentry alerts going to your phone
+- Test everything manually before each new invite batch
 
-**What counts as "critical":**
-- Can't sign up
+**What's critical:**
+- Can't sign up or log in
 - Can't create project
-- Site down / 500 errors
 - Data loss
+- 500 errors preventing site use
 
 ---
 
-### Risk 4: Scope Creep
+### Risk 3: Email Deliverability Issues
 
-**Likelihood:** Very High (you have lots of ideas!)
+**Likelihood:** Medium
 
 **Mitigation:**
-- **Ruthlessly say NO to new features**
-- **Ask:** "Does this help my friends build portfolios in 2 weeks?"
-- **If NO → defer to post-beta**
-- **Use this doc as reference** when tempted to add features
-- **Focus on core value:** Portfolio creation
-
-**Mantra:** "Ship it, then improve it."
+- Use SendGrid (best deliverability for transactional)
+- Setup SPF and DKIM records for domain
+- Monitor bounce rates
+- Test with Gmail, Outlook, Yahoo
+- Have support email as backup
 
 ---
 
-## Decision Framework
+### Risk 4: Forgotten Critical Feature
 
-When tempted to add a feature, ask:
+**Likelihood:** Low (you've built a LOT)
 
-### The Beta Test:
-> "Does this directly help my close friends build their AI portfolio in the next 2 weeks?"
-
-**If YES →** Consider adding (but still prioritize)
-**If NO →** Defer to post-beta
-
-### Examples:
-
-❌ **Billing** - No (beta is free)
-❌ **Learning paths** - No (not about portfolios)
-❌ **Prompt battle** - No (fun but not core value)
-✅ **YouTube import** - Yes (content creators showcase videos)
-✅ **Profile polish** - Yes (portfolio must look great)
-✅ **Onboarding** - Yes (friends need guidance)
+**Mitigation:**
+- Use this testing checklist before invites
+- Ask alpha testers: "What's missing or confusing?"
+- Be ready to ship quick fixes
+- Don't try to build everything - focus on core portfolio value
 
 ---
 
-## What to Say NO To (For Now)
+## What Makes This Beta Different
 
-### Monetization
-- ❌ Billing/payments/pricing
-- ❌ Subscription tiers
-- ❌ Paywalls
-- ❌ Selling courses/products
+### You're in a MUCH Better Position Than I Thought!
 
-**Why:** Beta should be free. Get product-market fit first.
+**You already have:**
+- ✅ Complete authentication (just missing password reset)
+- ✅ Full-featured profiles
+- ✅ Sophisticated project system with AI-powered GitHub import
+- ✅ Very comprehensive gamification (points, levels, tiers, streaks, goals, quests, achievements!)
+- ✅ Quiz system
+- ✅ Beautiful, modern UI with dark mode
+- ✅ Many pages and settings
+- ✅ Responsive design
 
-### Complex Features
-- ❌ Learning paths (Go1 integration)
-- ❌ Vector search (Weaviate)
-- ❌ AI agents (Nano Banana create projects)
-- ❌ Advanced gamification (streaks, side quests, prompt battle)
-- ❌ Social features (comments, likes, follows)
-- ❌ Marketplace
-- ❌ Teams/organizations
+**You just need:**
+- Password reset flow (2-3 days)
+- Email verification enabled (1 day)
+- Email service setup (2 days)
+- Legal pages (1 day)
+- Monitoring (1 day)
+- Testing (3-5 days)
 
-**Why:** Adds complexity without proving core value prop.
+**Timeline is realistic!** You can absolutely get 10-15 friends using this in 2-4 weeks.
 
-### Multiple Integrations
-- ⚠️ YouTube - Maybe (if time in Week 4)
-- ❌ Instagram - No (API is difficult)
-- ❌ TikTok - No (API extremely restricted)
-- ❌ GitLab - No (GitHub is enough)
-- ❌ Figma - No (not core for AI portfolios)
+---
 
-**Why:** GitHub is enough. One integration that works > many that don't.
+## Notion Ticket Breakdown
 
-### Technical Perfection
-- ❌ Performance optimizations (unless it's slow)
-- ❌ Code refactoring (unless it's blocking)
-- ❌ DRY principles cleanup (works now = good enough)
-- ❌ Personalization algorithms (need users first)
+Here's how to structure your Notion tickets:
 
-**Why:** Perfect is the enemy of done. Ship first, optimize later.
+### Epic: Authentication Completion
+**Tickets:**
+1. [P0] Setup SendGrid email service
+2. [P0] Create email templates (welcome, verification, reset)
+3. [P0] Implement password reset backend
+4. [P0] Build password reset frontend pages
+5. [P0] Enable mandatory email verification
+6. [P0] Test all auth flows end-to-end
+
+### Epic: Production Readiness
+**Tickets:**
+1. [P0] Setup Sentry error tracking
+2. [P0] Setup Google Analytics
+3. [P0] Create Terms of Service page
+4. [P0] Create Privacy Policy page
+5. [P1] Create custom 404 page
+6. [P1] Create custom 500 page
+7. [P1] Setup automated database backups
+
+### Epic: Beta Launch Prep
+**Tickets:**
+1. [P1] Update home page for beta messaging
+2. [P1] Add screenshots/demo content
+3. [P1] Create onboarding flow
+4. [P1] Add support/feedback widget
+5. [P2] Test mobile responsive design
+6. [P2] Fix UI/UX polish items
+
+### Epic: Testing & Iteration
+**Tickets:**
+1. [P0] Test all auth flows on staging
+2. [P0] Test profile flows on staging
+3. [P0] Test project flows on staging
+4. [P0] Test GitHub import flow
+5. [P0] Fix critical bugs from testing
+6. [P1] Mobile browser testing (iPhone, Android)
 
 ---
 
 ## Final Recommendations
 
-### 🎯 DO THIS (Critical Path to Beta)
+### Focus on These 4 Things
 
-**Week 1: Deploy**
-1. Get app live on a domain with HTTPS
-2. Auth working (signup, login, password reset)
-3. Database seeded and working
+**Week 1:**
+1. Get email working (SendGrid + templates)
+2. Build password reset flow
+3. Enable email verification
+4. Test everything
 
-**Week 2: Polish**
-1. Profile + project creation look professional
-2. Finalize branding (colors, logo)
-3. Setup emails (welcome, verification)
+**Week 2:**
+1. Add legal pages
+2. Setup monitoring (Sentry)
+3. Polish any rough edges
 4. Invite 2-3 alpha testers
 
-**Week 3: Iterate**
-1. Fix bugs from alpha feedback
-2. Add onboarding flow
-3. Make it stupid simple to create first project
+### Don't Build These (You Already Have Them!)
 
-**Week 4: Scale**
-1. Add YouTube import (if time)
-2. Invite 10 beta testers
-3. Monitor and fix issues
+- ❌ Gamification - You have a comprehensive system already!
+- ❌ Profiles - Fully built with privacy controls
+- ❌ Projects - Full CRUD + AI-powered GitHub import
+- ❌ UI/UX - Beautiful design already
+- ❌ Quizzes - Complete system
+- ❌ Most settings pages - You have 10+ already!
 
----
+### Your Biggest Advantage
 
-### 🚫 SKIP THIS (Post-Beta)
+You've built a **product-rich platform** already. Most beta launches have 10% of what you have. Your challenge isn't building features - it's **making sure core flows work perfectly** for your first 10 friends.
 
-**Definitely skip:**
-- All billing/monetization
-- Learning paths partnerships
-- Selling courses
-- Advanced AI agents
-- Complex gamification expansions
-- All "expand the idea" items
-
-**Probably skip:**
-- Multiple integrations (stick to GitHub + maybe YouTube)
-- Advanced search (basic search is fine)
-- Personalization (need data first)
+Focus on:
+1. Authentication reliability (password reset!)
+2. Email deliverability (verification, welcome)
+3. GitHub import working flawlessly (your killer feature)
+4. Onboarding that gets users to first project quickly
 
 ---
 
-### 👀 MONITOR THIS (Add if Beta Testers Request It)
+**You're closer than you think!** 🚀
 
-**Be ready to add if testers complain:**
-- Better search (if basic search sucks)
-- More gamification (if testers love it)
-- Specific integrations (if testers need them)
-- Mobile app (if mobile web is painful)
-
-**Listen to feedback, but stay focused on portfolios.**
+Let's get your friends building their AI portfolios.
 
 ---
 
-## Next Steps
-
-1. **Review this roadmap** - Does it make sense? Any disagreements?
-
-2. **Create Notion tickets** - Break down tasks into actionable tickets
-
-3. **Start with deployment** - This is the #1 blocker
-
-4. **Timebox everything** - If something takes >2 days, ask for help or simplify
-
-5. **Ship fast, iterate faster** - Don't wait for perfection
-
----
-
-## Notion Ticket Template
-
-When creating tickets, use this structure:
-
-**Title:** [P0/P1/P2] Feature Name
-**Description:** What needs to be done
-**Acceptance Criteria:** How do you know it's done?
-**Estimated Time:** 1 day, 2 days, etc.
-**Priority:** P0 (must have), P1 (should have), P2 (nice to have)
-**Week:** Week 1, Week 2, etc.
-
-**Example:**
-
-```
-Title: [P0] Deploy Django Backend to AWS
-Description: Setup EC2 instance, configure RDS PostgreSQL, deploy Django app
-Acceptance Criteria:
-- Django app accessible via domain
-- Database connected and migrations run
-- Admin panel accessible
-- Health check endpoint returns 200
-Estimated Time: 2-3 days
-Priority: P0
-Week: Week 1
-```
-
----
-
-**Status:** ✅ Planning Complete
+**Status:** ✅ Plan Complete (Updated After Codebase Review)
 **Created:** 2025-11-28
-**Ready For:** Beta Launch Execution
-
-**Good luck with your beta launch! 🚀**
+**Next Steps:** Create Notion tickets and start Week 1 sprint
