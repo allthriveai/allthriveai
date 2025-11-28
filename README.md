@@ -8,10 +8,10 @@ AllThrive AI is a platform for showcasing AI projects, exploring community creat
 
 ### 🎨 Portfolio, Projects & Marketplace
 - **Unified Portfolio**: Consolidate all your AI projects from any tool into one professional portfolio
-- **Chrome Extension**: Automatically capture and add AI projects you're working on to your portfolio
-- **Integrations**: Automatic project portfolio creation from whichever AI tool you're building with
 - **Explore & Discovery**: For You, Trending, and All tabs with filtering by categories, topics, and tools
-- **Marketplace**: Sell and discover AI prompts, templates, and digital products
+- **Integrations**: Automatic project portfolio creation from whichever AI tool you're building with
+- **Chrome Extension**: Automatically capture and add AI projects you're working on where you are working to your portfolio
+- **Creator Marketplace**: Sell and discover your AI prompts, courses, and digital products
 - **Privacy Controls**: Public/private projects, customizable profiles, and visibility settings
 
 ### 🎮 Gamified Learning System
