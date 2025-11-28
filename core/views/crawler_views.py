@@ -273,7 +273,7 @@ def _sanitize_markdown_html(markdown_text):
 
 @vary_on_headers('User-Agent')
 @cache_control(public=True, max_age=900)
-@ratelimit(key='ip', rate='200/h', method=['GET'])
+@ratelimit(key='user_agent', rate='200/h', method=['GET'])
 def project_detail_view(request, username, slug):
     """
     Project detail page - either React app or crawler template.
@@ -345,7 +345,7 @@ def project_detail_view(request, username, slug):
 
 @vary_on_headers('User-Agent')
 @cache_control(public=True, max_age=900)
-@ratelimit(key='ip', rate='200/h', method=['GET'])
+@ratelimit(key='user_agent', rate='200/h', method=['GET'])
 def profile_view(request, username):
     """
     User profile page - either React app or crawler template.
