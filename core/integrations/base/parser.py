@@ -422,7 +422,7 @@ class BaseParser:
     def _is_badge_url(self, url: str) -> bool:
         """Check if URL is a badge/shield image."""
         if not url:
-            return True
+            return False
 
         badge_services = [
             'img.shields.io',

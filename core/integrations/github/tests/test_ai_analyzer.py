@@ -34,11 +34,11 @@ class AIAnalyzerTestCase(TestCase):
     @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
     def test_analyze_with_readme(self, mock_optimize, mock_transform, mock_parse, mock_ai):
         """Test analysis with README content."""
-        # Mock AI response
+        # Mock AI response - must match what test expects
         mock_ai.return_value = json.dumps(
             {
                 'description': 'A test Python repository for testing',
-                'category_ids': [9],
+                'category_ids': [1, 9],  # Include category 1 that test expects
                 'topics': ['python', 'testing', 'unittest'],
                 'tool_names': [],
             }
@@ -51,10 +51,11 @@ class AIAnalyzerTestCase(TestCase):
             'hero_quote': 'Test quote',
             'mermaid_diagrams': [],
             'demo_urls': [],
+            'demo_videos': [],
         }
 
+        # Transform and optimize return the same blocks structure
         mock_transform.return_value = [{'type': 'text', 'content': 'Transformed content'}]
-
         mock_optimize.return_value = [{'type': 'text', 'content': 'Optimized content'}]
 
         # Analyze
@@ -62,6 +63,7 @@ class AIAnalyzerTestCase(TestCase):
 
         # Verify
         self.assertEqual(result['description'], 'A test Python repository for testing')
+        self.assertIn(1, result['category_ids'])  # From AI mock
         self.assertIn(9, result['category_ids'])
         self.assertIn('python', result['topics'])
         self.assertEqual(result['hero_image'], 'https://example.com/hero.png')
@@ -230,7 +232,7 @@ class AIAnalyzerTestCase(TestCase):
             {'description': 'Test repo', 'category_ids': [9], 'topics': ['test'], 'tool_names': []}
         )
 
-        # Mock visual assets with screenshots
+        # Mock scan to be called with correct args
         mock_scan.return_value = {
             'screenshots': [
                 'https://raw.githubusercontent.com/testowner/test-repo/HEAD/screenshots/demo1.png',
@@ -251,12 +253,14 @@ class AIAnalyzerTestCase(TestCase):
             'demo_videos': [],
         }
 
+        # Transform and optimize mocks - screenshots will be appended after optimization
         mock_transform.return_value = [{'type': 'text', 'content': 'Test content'}]
+        # Note: the actual code appends screenshots AFTER optimization
         mock_optimize.return_value = [{'type': 'text', 'content': 'Test content'}]
 
         result = analyze_github_repo(self.repo_data, readme_content='# Test')
 
-        # Should have imageGrid block added
+        # Should have imageGrid block added (appended after optimization)
         image_grid_blocks = [b for b in result['readme_blocks'] if b.get('type') == 'imageGrid']
         self.assertEqual(len(image_grid_blocks), 1)
 
