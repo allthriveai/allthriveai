@@ -29,11 +29,11 @@ class AIAnalyzerTestCase(TestCase):
         }
 
     @patch('services.ai_provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
-    @patch('core.integrations.base.parser.BaseParser.parse')
-    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
     @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
-    def test_analyze_with_readme(self, mock_optimize, mock_transform, mock_parse, mock_scan, mock_ai):
+    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
+    @patch('core.integrations.base.parser.BaseParser.parse')
+    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
+    def test_analyze_with_readme(self, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai):
         """Test analysis with README content."""
         # Mock AI response - must match what test expects
         mock_ai.return_value = json.dumps(
@@ -120,7 +120,9 @@ class AIAnalyzerTestCase(TestCase):
         self.assertEqual(result['category_ids'], [9])  # Default to Developer & Coding
 
     @patch('services.ai_provider.AIProvider.complete')
-    def test_analyze_validates_category_ids(self, mock_ai):
+    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
+    def test_analyze_validates_category_ids(self, mock_diagram, mock_scan, mock_ai):
         """Test category ID validation."""
         # Mock AI with invalid category IDs
         mock_ai.return_value = json.dumps(
@@ -132,6 +134,10 @@ class AIAnalyzerTestCase(TestCase):
             }
         )
 
+        # Mock scan and diagram generation
+        mock_scan.return_value = {'screenshots': [], 'logo': None, 'banner': None}
+        mock_diagram.return_value = None
+
         result = analyze_github_repo(self.repo_data, readme_content='')
 
         # Only valid IDs should be included
@@ -141,12 +147,12 @@ class AIAnalyzerTestCase(TestCase):
         self.assertNotIn(-1, result['category_ids'])
 
     @patch('services.ai_provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
-    @patch('core.integrations.base.parser.BaseParser.parse')
-    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
     @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
+    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
+    @patch('core.integrations.base.parser.BaseParser.parse')
+    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
     def test_analyze_uses_logo_as_hero_when_no_og_image(
-        self, mock_optimize, mock_transform, mock_parse, mock_scan, mock_ai
+        self, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai
     ):
         """Test analyze_github_repo uses extracted logo/banner as hero image when no open graph image."""
         # Mock AI response
@@ -184,12 +190,12 @@ class AIAnalyzerTestCase(TestCase):
         self.assertEqual(result['hero_image'], 'https://raw.githubusercontent.com/testowner/test-repo/HEAD/logo.svg')
 
     @patch('services.ai_provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
-    @patch('core.integrations.base.parser.BaseParser.parse')
-    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
     @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
+    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
+    @patch('core.integrations.base.parser.BaseParser.parse')
+    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
     def test_analyze_uses_banner_as_hero_when_no_logo(
-        self, mock_optimize, mock_transform, mock_parse, mock_scan, mock_ai
+        self, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai
     ):
         """Test analyze_github_repo uses banner when no logo available."""
         # Mock AI response
@@ -227,12 +233,12 @@ class AIAnalyzerTestCase(TestCase):
         self.assertEqual(result['hero_image'], 'https://raw.githubusercontent.com/testowner/test-repo/HEAD/banner.png')
 
     @patch('services.ai_provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
-    @patch('core.integrations.base.parser.BaseParser.parse')
-    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
     @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
+    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
+    @patch('core.integrations.base.parser.BaseParser.parse')
+    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
     def test_analyze_adds_screenshots_as_image_grid(
-        self, mock_optimize, mock_transform, mock_parse, mock_scan, mock_ai
+        self, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai
     ):
         """Test analyze_github_repo correctly adds extracted screenshots as an imageGrid block."""
         # Mock AI response
