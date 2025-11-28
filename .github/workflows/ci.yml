@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: ["main"]
   pull_request:
 
 jobs:
@@ -44,8 +44,15 @@ jobs:
       PYTHONUNBUFFERED: "1"
       # Redis for caching (SEO sitemap caching)
       REDIS_URL: redis://localhost:6379/0
+      CACHE_URL: redis://localhost:6379/2
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/0
       # SEO configuration
       SITE_URL: http://localhost:8000
+      # JWT/Auth cookies
+      COOKIE_DOMAIN: localhost
+      # CSRF settings
+      CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
 
     steps:
       - name: Checkout
@@ -97,15 +104,32 @@ jobs:
       - name: DB health endpoint smoke test
         run: |
           . venv/bin/activate
-          # Start server in background
-          python manage.py runserver 127.0.0.1:8000 >/dev/null 2>&1 &
+          # Start server in background with logs
+          python manage.py runserver 127.0.0.1:8000 > /tmp/server.log 2>&1 &
           SRV_PID=$!
-          # Wait for server and hit health endpoint
-          for i in {1..60}; do
-            if curl -sSf http://127.0.0.1:8000/api/v1/db/health/ > /dev/null; then
-              echo "Healthcheck OK"; OK=1; break; fi; sleep 1; done
+          # Wait for server to start
+          sleep 3
+          # Try health endpoint and show response if it fails
+          for i in {1..30}; do
+            if curl -sSf http://127.0.0.1:8000/api/v1/db/health/ > /tmp/health_response.txt 2>&1; then
+              echo "✅ Healthcheck OK"
+              cat /tmp/health_response.txt
+              OK=1
+              break
+            fi
+            sleep 1
+          done
+          # Cleanup
           kill $SRV_PID || true
-          if [ "${OK:-0}" != "1" ]; then echo "Healthcheck failed"; exit 1; fi
+          # If failed, show server logs and response
+          if [ "${OK:-0}" != "1" ]; then
+            echo "❌ Healthcheck failed"
+            echo "Server logs:"
+            tail -50 /tmp/server.log
+            echo "Health endpoint response:"
+            cat /tmp/health_response.txt || echo "No response captured"
+            exit 1
+          fi
 
   seo-privacy:
     name: SEO & Privacy Tests
@@ -144,7 +168,12 @@ jobs:
       CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
       PYTHONUNBUFFERED: "1"
       REDIS_URL: redis://localhost:6379/0
+      CACHE_URL: redis://localhost:6379/2
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/0
       SITE_URL: http://localhost:8000
+      COOKIE_DOMAIN: localhost
+      CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
 
     steps:
       - name: Checkout
