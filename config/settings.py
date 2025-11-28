@@ -290,11 +290,12 @@ CHAT_SESSION_TTL = config('CHAT_SESSION_TTL', default=1800, cast=int)  # 30 minu
 
 # Cache Configuration
 # Use Redis for caching (DB 2 for cache)
-# Use dummy cache during tests to avoid Redis dependency
+# Use LocMemCache during tests (supports atomic operations like add())
 if 'test' in sys.argv or 'pytest' in sys.modules:
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'test-cache',
         }
     }
 else:

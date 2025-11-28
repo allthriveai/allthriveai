@@ -265,6 +265,7 @@ class BaseParser:
 
         # Extract images
         images = []
+        badge_images = []
         all_image_matches = self.IMAGE_PATTERN.findall(content)
         logger.debug(f'🖼️  Found {len(all_image_matches)} total images in section "{heading}"')
 
@@ -272,7 +273,13 @@ class BaseParser:
             # Normalize relative URLs to absolute URLs
             normalized_url = self.normalize_image_url(url)
             logger.debug(f'   Image: {normalized_url} (alt: {alt_text})')
-            images.append({'url': normalized_url, 'caption': alt_text})
+
+            # Separate badges from regular images
+            if self._is_badge_url(normalized_url):
+                badge_images.append({'url': normalized_url, 'caption': alt_text})
+            else:
+                images.append({'url': normalized_url, 'caption': alt_text})
+
             # Replace relative URLs with normalized absolute URLs in markdown
             # This keeps images as markdown so they're editable
             content = content.replace(f'![{alt_text}]({url})', f'![{alt_text}]({normalized_url})')
@@ -285,7 +292,14 @@ class BaseParser:
             # Remove the markdown images since we created a grid block
             for alt_text, url in all_image_matches:
                 normalized_url = self.normalize_image_url(url)
-                content = content.replace(f'![{alt_text}]({normalized_url})', '')
+                if not self._is_badge_url(normalized_url):
+                    content = content.replace(f'![{alt_text}]({normalized_url})', '')
+
+        # Add badge images as separate image blocks so they can be grouped later
+        for badge in badge_images:
+            blocks.append({'type': 'image', 'url': badge['url'], 'caption': badge['caption']})
+            # Remove badges from markdown content
+            content = content.replace(f'![{badge["caption"]}]({badge["url"]})', '')
 
         # Parse paragraphs
         paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]

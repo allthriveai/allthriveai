@@ -91,7 +91,7 @@ def _get_cached_response(cache_key, generator_func, ttl=900):
 
 @vary_on_headers('User-Agent')
 @cache_control(public=True, max_age=900)  # 15 minutes
-@ratelimit(key='user_agent', rate='100/h', method=['GET'])
+@ratelimit(key='ip', rate='100/h', method=['GET'])
 def homepage_view(request):
     """Homepage - either React app or crawler template."""
     # Create cache key that includes crawler status
@@ -106,7 +106,7 @@ def homepage_view(request):
 
 @vary_on_headers('User-Agent')
 @cache_control(public=True, max_age=900)
-@ratelimit(key='user_agent', rate='100/h', method=['GET'])
+@ratelimit(key='ip', rate='100/h', method=['GET'])
 def about_view(request):
     """About page - either React app or crawler template."""
     is_bot = is_crawler(request)
@@ -120,7 +120,7 @@ def about_view(request):
 
 @vary_on_headers('User-Agent')
 @cache_control(public=True, max_age=900)
-@ratelimit(key='user_agent', rate='100/h', method=['GET'])
+@ratelimit(key='ip', rate='100/h', method=['GET'])
 def explore_view(request):
     """Explore projects page - either React app or crawler template."""
     is_bot = is_crawler(request)
@@ -164,7 +164,7 @@ def explore_view(request):
 
 @vary_on_headers('User-Agent')
 @cache_control(public=True, max_age=900)
-@ratelimit(key='user_agent', rate='100/h', method=['GET'])
+@ratelimit(key='ip', rate='100/h', method=['GET'])
 def tools_directory_view(request):
     """Tools directory page - either React app or crawler template."""
     is_bot = is_crawler(request)
@@ -273,7 +273,7 @@ def _sanitize_markdown_html(markdown_text):
 
 @vary_on_headers('User-Agent')
 @cache_control(public=True, max_age=900)
-@ratelimit(key='user_agent', rate='200/h', method=['GET'])
+@ratelimit(key='ip', rate='200/h', method=['GET'])
 def project_detail_view(request, username, slug):
     """
     Project detail page - either React app or crawler template.
@@ -345,7 +345,7 @@ def project_detail_view(request, username, slug):
 
 @vary_on_headers('User-Agent')
 @cache_control(public=True, max_age=900)
-@ratelimit(key='user_agent', rate='200/h', method=['GET'])
+@ratelimit(key='ip', rate='200/h', method=['GET'])
 def profile_view(request, username):
     """
     User profile page - either React app or crawler template.
