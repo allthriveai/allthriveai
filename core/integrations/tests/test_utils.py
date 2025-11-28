@@ -60,9 +60,19 @@ class ImportLockTestCase(TestCase):
     def test_acquire_lock_already_held(self):
         """Test lock acquisition when already held."""
         # First acquire should succeed
-        self.assertTrue(acquire_import_lock(1))
+        result1 = acquire_import_lock(1)
+        self.assertTrue(result1, 'First lock acquisition should succeed')
+
+        # Verify lock is in cache
+        from core.integrations.utils import get_import_lock_key
+
+        lock_key = get_import_lock_key(1)
+        lock_exists = cache.get(lock_key) is not None
+        self.assertTrue(lock_exists, f'Lock should exist in cache after acquisition: {lock_key}')
+
         # Second acquire should fail
-        self.assertFalse(acquire_import_lock(1))
+        result2 = acquire_import_lock(1)
+        self.assertFalse(result2, 'Second lock acquisition should fail when lock is already held')
 
     def test_acquire_lock_different_users(self):
         """Test lock acquisition for different users."""

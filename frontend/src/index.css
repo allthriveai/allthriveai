@@ -485,7 +485,7 @@
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.5);
-    border-radius: 2px;
+    border-radius: 4px;
   }
 
   .dark .scrollbar-thin {
