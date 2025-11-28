@@ -7,36 +7,44 @@ AllThrive AI is a comprehensive platform where AI practitioners, learners, and r
 ## Key Features
 
 ### 🎨 Portfolio & Projects
-- Build professional AI project portfolios
-- Import projects from GitHub
-- Rich documentation with markdown, diagrams, and code examples
-- Project discovery and exploration
+- **Project Showcase**: Build professional portfolios with rich content blocks (text, images, code, diagrams)
+- **GitHub Integration**: Import and sync projects directly from GitHub repositories
+- **Project Types**: Support for GitHub repos, Figma designs, image collections, prompts, and more
+- **Privacy Controls**: Public/private projects, archive functionality, and featured project highlighting
+- **Engagement**: Hearts/likes system and community feedback on projects
 
-### 🎮 Gamified Learning
-- Interactive AI/ML challenges and courses
-- Achievement system with badges and XP
-- Learning paths for NLP, Computer Vision, Deep Learning, and more
-- Side quests and community challenges
+### 🎮 Gamified Learning System
+- **5-Tier Progression**: Seedling → Sprout → Blossom → Bloom → Evergreen (0 to 10,000+ points)
+- **23+ Levels**: Dynamic leveling system with increasing point thresholds
+- **Interactive Quizzes**: True/false, multiple choice, and swipe-based quiz formats across AI/ML topics
+- **Achievement System**: Unlock achievements across Projects, Battles, Community, Engagement, and Streak categories
+- **Side Quests**: Optional challenges like Quiz Mastery, Project Showcase, Community Helper, Learning Streak
+- **Weekly Goals**: Bonus point opportunities with progress tracking
+- **Streak Tracking**: Daily login streaks with bonus rewards
 
 ### 👥 Community & Collaboration
-- Thrive Circles - topic-based learning communities
-- Peer feedback and project reviews
-- AI tool directory
-- Mentorship connections
+- **Thrive Circles**: Point-based progression and community engagement system
+- **Project Comments**: Feedback and discussion on community projects
+- **AI Tool Directory**: Comprehensive catalog of 200+ AI tools with reviews, ratings, and categorization
+- **Social Integration**: Connect GitHub, GitLab, LinkedIn, Figma, and Hugging Face accounts
+- **User Profiles**: Customizable profiles with bio, tagline, social links, and public/private settings
 
 ### 🤖 AI-Powered Features
-- OpenAI and Anthropic Claude integrations
-- LangChain for AI workflows
-- Vector search with RedisVL
-- AI-assisted project documentation
+- Multi-provider AI support (Azure OpenAI, OpenAI, Anthropic Claude)
+- LangChain and LangGraph for AI workflows
+- LangSmith for AI observability and cost tracking
+- Redis for session management and caching
+- AI-assisted project documentation and analysis
 
 ## Technology Stack
 
 - **Backend:** Django REST Framework, Python, PostgreSQL
 - **Frontend:** React, TypeScript, Vite, TailwindCSS
-- **AI/ML:** OpenAI, Anthropic, LangChain, RedisVL
+- **AI/ML:** Azure OpenAI, OpenAI, Anthropic Claude, LangChain, LangGraph, LangSmith
 - **Task Queue:** Celery with Redis
-- **Authentication:** OAuth (Google, GitHub)
+- **Caching & Sessions:** Redis
+- **Storage:** MinIO (S3-compatible)
+- **Authentication:** OAuth (Google, GitHub) + Social account linking (GitLab, LinkedIn, Figma, Hugging Face)
 - **Infrastructure:** Docker-based development
 
 ## Quick Start with Docker
@@ -97,7 +105,9 @@ See [Database Seeding Guide](docs/DATABASE_SEEDING_GUIDE.md) for detailed instru
 
 - [Styleguide](docs/STYLEGUIDE.md) - Coding standards and best practices
 - [SEO Implementation](docs/SEO_IMPLEMENTATION.md) - SEO and LLM discoverability guide
-- [Public Info](PUBLIC_INFO.md) - Comprehensive platform description
+- [Database Seeding Guide](docs/DATABASE_SEEDING_GUIDE.md) - How to seed initial data
+- [Quiz Seeding](docs/QUIZ_SEEDING.md) - Quiz data seeding guide
+- [Public Info](docs/PUBLIC_INFO.md) - Comprehensive platform description
 
 ## Manual Setup (Alternative)
 
