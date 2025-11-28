@@ -73,25 +73,32 @@ function MermaidDiagram({ code }: { code: string }) {
   const [diagramId] = useState(`mermaid-${Math.random().toString(36).substr(2, 9)}`);
 
   useEffect(() => {
-    if (!diagramRef.current || !code) return;
+    if (!code) return;
 
-    async function renderDiagram() {
-      try {
-        setError(null);
-        if (diagramRef.current) {
-          diagramRef.current.innerHTML = '';
-          const { svg } = await mermaid.render(diagramId, code);
+    // Add delay to ensure ref is ready
+    const timer = setTimeout(() => {
+      if (!diagramRef.current) return;
+
+      async function renderDiagram() {
+        try {
+          setError(null);
           if (diagramRef.current) {
-            diagramRef.current.innerHTML = svg;
+            diagramRef.current.innerHTML = '';
+            const { svg } = await mermaid.render(diagramId, code);
+            if (diagramRef.current) {
+              diagramRef.current.innerHTML = svg;
+            }
           }
+        } catch (err) {
+          console.error('Mermaid rendering error:', err);
+          setError('Failed to render diagram');
         }
-      } catch (err) {
-        console.error('Mermaid rendering error:', err);
-        setError('Failed to render diagram');
       }
-    }
 
-    renderDiagram();
+      renderDiagram();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [code, diagramId]);
 
   if (error) {
@@ -992,14 +999,6 @@ export default function ProjectDetailPage() {
                           {block.caption}
                         </p>
                       )}
-                    </div>
-                  )}
-
-                  {block.type === 'mermaid' && !block.code && (
-                    <div className="my-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                        Mermaid diagram missing code content
-                      </p>
                     </div>
                   )}
 

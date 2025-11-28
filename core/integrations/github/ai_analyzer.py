@@ -1,5 +1,6 @@
 """AI-powered GitHub repository analyzer for smart project metadata."""
 
+import json
 import logging
 
 from anthropic import AnthropicError
@@ -78,8 +79,6 @@ def generate_blocks_from_repo_structure(repo_data: dict) -> list:
         for dep_file, content in dependencies.items():
             if content and dep_file == 'package.json':
                 try:
-                    import json
-
                     pkg = json.loads(content)
                     deps = pkg.get('dependencies', {})
                     if deps:
@@ -187,8 +186,6 @@ Format your response as JSON:
         logger.info(f'📨 AI raw response: {response}')  # Full response, not truncated
 
         # Parse JSON response
-        import json
-
         result = json.loads(response)
         logger.debug(f'AI parsed result keys: {list(result.keys())}')
 

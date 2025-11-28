@@ -1187,7 +1187,10 @@ Return ONLY the Mermaid code starting with "graph TB". No explanation."""
             'public/banner.png',
         ]
 
-        # Scan tree for images
+        # Scan tree for images - collect all candidates first
+        logo_candidates = {}
+        banner_candidates = {}
+
         for item in tree:
             if item.get('type') != 'blob':
                 continue
@@ -1203,23 +1206,33 @@ Return ONLY the Mermaid code starting with "graph TB". No explanation."""
                     logger.debug(f'📸 Found screenshot: {item["path"]}')
                     break
 
-            # Check for logo (prioritize SVG)
-            if not logo:
-                for logo_path in logo_paths:
-                    if path == logo_path:
-                        raw_url = f'https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{item["path"]}'
-                        logo = raw_url
-                        logger.info(f'🎨 Found logo: {item["path"]}')
-                        break
+            # Check for logo and store with priority
+            for priority, logo_path in enumerate(logo_paths):
+                if path == logo_path:
+                    raw_url = f'https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{item["path"]}'
+                    logo_candidates[priority] = raw_url
+                    logger.debug(f'🎨 Found logo candidate: {item["path"]} (priority {priority})')
+                    break
 
-            # Check for banner
-            if not banner:
-                for banner_path in banner_paths:
-                    if path == banner_path:
-                        raw_url = f'https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{item["path"]}'
-                        banner = raw_url
-                        logger.info(f'🖼️  Found banner: {item["path"]}')
-                        break
+            # Check for banner and store with priority
+            for priority, banner_path in enumerate(banner_paths):
+                if path == banner_path:
+                    raw_url = f'https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{item["path"]}'
+                    banner_candidates[priority] = raw_url
+                    logger.debug(f'🖼️  Found banner candidate: {item["path"]} (priority {priority})')
+                    break
+
+        # Select logo with highest priority (lowest priority number)
+        if logo_candidates:
+            best_priority = min(logo_candidates.keys())
+            logo = logo_candidates[best_priority]
+            logger.info(f'🎨 Selected logo: {logo}')
+
+        # Select banner with highest priority
+        if banner_candidates:
+            best_priority = min(banner_candidates.keys())
+            banner = banner_candidates[best_priority]
+            logger.info(f'🖼️  Selected banner: {banner}')
 
         # Limit screenshots to first 10
         screenshots = screenshots[:10]

@@ -71,12 +71,11 @@ export function MermaidBlockEditor({ block, onChange, onFocus, onBlur }: Mermaid
     }
 
     const updates = {
-      type: 'mermaid',
+      type: 'mermaid' as const,
       code: code.trim(),
       caption,
     };
 
-    console.log('Mermaid block saving:', updates);
     onChange(updates);
     setIsEditing(false);
     onBlur?.();

@@ -1,21 +1,21 @@
-# AllThrive AI - AI Portfolio Platform with Gamified Learning & Discovery
-# This file controls how search engines crawl our site
+# ============================================
+# AllThrive AI - AI Portfolio Platform
+# Robots.txt - Pre-Launch Strategy
+# Updated: 2025-11-27
+# ============================================
+#
+# Strategy: Build brand awareness and domain authority while protecting
+# user-generated content until official launch. LLMs can discover our
+# platform and tools, but user projects remain private until we're ready.
+#
+# ============================================
 
-# LLM/AI Model Crawlers - Block from training on user data
-# Users must explicitly opt-in via privacy settings
-User-agent: GPTBot
-User-agent: ChatGPT-User
-User-agent: CCBot
-User-agent: anthropic-ai
-User-agent: Claude-Web
-User-agent: ClaudeBot
-User-agent: Omgilibot
-User-agent: FacebookBot
-Disallow: /@*  # Block user profiles from AI training
-Disallow: /api/
-Allow: /  # Allow public pages only
+# ============================================
+# TRADITIONAL SEARCH ENGINES - Full Access
+# ============================================
+# Allow Google, Bing, etc. to index all public content
+# This builds SEO authority and helps users discover the platform
 
-# Traditional Search Engines - Allow indexing
 User-agent: Googlebot
 User-agent: Bingbot
 User-agent: Slurp
@@ -23,32 +23,82 @@ User-agent: DuckDuckBot
 User-agent: Baiduspider
 User-agent: YandexBot
 Allow: /
-
-# Default for all other crawlers
-User-agent: *
-Allow: /
-
-# Allow all public pages
-Allow: /$
-Allow: /about
-Allow: /explore
-Allow: /learn
-Allow: /tools
-Allow: /api/v1/
-
-# Disallow admin and private areas
-Disallow: /admin/
-Disallow: /dashboard
-Disallow: /settings
-Disallow: /account
 Disallow: /api/v1/auth/
-
-# Disallow OAuth callback routes
+Disallow: /admin/
+Disallow: /settings
+Disallow: /dashboard
+Disallow: /account
 Disallow: /oauth/
 
-# Allow public user profiles (for search engines only)
-# Note: LLM crawlers are blocked above
-Allow: /@*
+# ============================================
+# LLM/AI CRAWLERS - Selective Pre-Launch Access
+# ============================================
+# Strategy: Allow LLMs to index brand pages and tools directory,
+# but block user-generated content (profiles/projects) until launch.
+# This lets us build LLM awareness while maintaining quality control.
 
-# Sitemap location
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: CCBot
+User-agent: anthropic-ai
+User-agent: Claude-Web
+User-agent: ClaudeBot
+User-agent: PerplexityBot
+User-agent: Applebot-Extended
+User-agent: Google-Extended
+User-agent: Omgilibot
+User-agent: FacebookBot
+
+# ALLOW: Public informational pages (brand awareness)
+Allow: /$
+Allow: /about$
+Allow: /explore$
+Allow: /learn$
+Allow: /tools
+Allow: /tools/*
+
+# BLOCK: User-generated content (until official launch)
+# This protects beta content and gives us control over timing
+Disallow: /@*
+
+# BLOCK: Internal/private areas (always)
+Disallow: /api/
+Disallow: /admin/
+Disallow: /settings
+Disallow: /dashboard
+Disallow: /account
+Disallow: /oauth/
+Disallow: /play
+Disallow: /thrive-circle
+
+# ============================================
+# DEFAULT FOR ALL OTHER CRAWLERS
+# ============================================
+User-agent: *
+Allow: /
+Disallow: /api/v1/auth/
+Disallow: /admin/
+Disallow: /settings
+Disallow: /dashboard
+Disallow: /account
+Disallow: /oauth/
+
+# ============================================
+# SITEMAPS
+# ============================================
 Sitemap: https://allthrive.ai/sitemap.xml
+Sitemap: https://allthrive.ai/sitemap-projects.xml
+Sitemap: https://allthrive.ai/sitemap-profiles.xml
+Sitemap: https://allthrive.ai/sitemap-tools.xml
+
+# ============================================
+# POST-LAUNCH UPDATES
+# ============================================
+# On launch day, update LLM crawler rules to:
+#   - Remove "Disallow: /@*" (open user content)
+#   - Keep privacy controls via user.allow_llm_training setting
+#   - Consider dynamic robots.txt based on user preferences
+#
+# This will make 1,000+ projects immediately available to LLMs
+# while respecting individual user privacy choices.
+# ============================================
