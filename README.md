@@ -1,17 +1,18 @@
 # AllThrive AI
 
-**AI Portfolio Platform with Gamified Learning & Discovery**
+**AI Portfolio Platform with Gamified Learning & Marketplace**
 
-AllThrive AI is a comprehensive platform where AI practitioners, learners, and researchers showcase projects, level up skills through gamified challenges, and connect with a thriving community.
+AllThrive AI is a platform for showcasing AI projects, exploring community creations, learning through interactive challenges, buying and selling digital products, and connecting with builders and learners.
 
 ## Key Features
 
-### 🎨 Portfolio & Projects
+### 🎨 Portfolio, Projects & Marketplace
 - **Project Showcase**: Build professional portfolios with rich content blocks (text, images, code, diagrams)
 - **GitHub Integration**: Import and sync projects directly from GitHub repositories
 - **Project Types**: Support for GitHub repos, Figma designs, image collections, prompts, and more
-- **Privacy Controls**: Public/private projects, archive functionality, and featured project highlighting
-- **Engagement**: Hearts/likes system and community feedback on projects
+- **Explore & Discovery**: For You, Trending, and All tabs with filtering by categories, topics, and tools
+- **Marketplace** *(Coming Soon)*: Sell and discover AI prompts, templates, and digital products
+- **Privacy Controls**: Public/private projects, customizable profiles, and visibility settings
 
 ### 🎮 Gamified Learning System
 - **5-Tier Progression**: Seedling → Sprout → Blossom → Bloom → Evergreen (0 to 10,000+ points)
@@ -23,11 +24,10 @@ AllThrive AI is a comprehensive platform where AI practitioners, learners, and r
 - **Streak Tracking**: Daily login streaks with bonus rewards
 
 ### 👥 Community & Collaboration
-- **Thrive Circles**: Point-based progression and community engagement system
-- **Project Comments**: Feedback and discussion on community projects
-- **AI Tool Directory**: Comprehensive catalog of 200+ AI tools with reviews, ratings, and categorization
-- **Social Integration**: Connect GitHub, GitLab, LinkedIn, Figma, and Hugging Face accounts
-- **User Profiles**: Customizable profiles with bio, tagline, social links, and public/private settings
+- **Thrive Circles**: Point-based community engagement and progression tracking
+- **Comments & Feedback**: Discussion and peer feedback on projects
+- **AI Tool Directory**: Comprehensive catalog of 200+ AI tools with reviews and ratings
+- **Social Connections**: Integrate GitHub, GitLab, LinkedIn, Figma, and Hugging Face accounts
 
 ### 🤖 AI-Powered Features
 - Multi-provider AI support (Azure OpenAI, OpenAI, Anthropic Claude)
@@ -41,6 +41,7 @@ AllThrive AI is a comprehensive platform where AI practitioners, learners, and r
 - **Backend:** Django REST Framework, Python, PostgreSQL
 - **Frontend:** React, TypeScript, Vite, TailwindCSS
 - **AI/ML:** Azure OpenAI, OpenAI, Anthropic Claude, LangChain, LangGraph, LangSmith
+- **Vector Search:** Weaviate
 - **Task Queue:** Celery with Redis
 - **Caching & Sessions:** Redis
 - **Storage:** MinIO (S3-compatible)
