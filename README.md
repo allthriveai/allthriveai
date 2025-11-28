@@ -7,34 +7,36 @@ AllThrive AI is a platform for showcasing AI projects, exploring community creat
 ## Key Features
 
 ### 🎨 Portfolio, Projects & Marketplace
-- **Project Showcase**: Build professional portfolios with rich content blocks (text, images, code, diagrams)
-- **GitHub Integration**: Import and sync projects directly from GitHub repositories
+- **Unified Portfolio**: Consolidate all your AI projects from any tool into one professional portfolio
+- **Chrome Extension**: Automatically capture and add AI projects you're working on to your portfolio
+- **Integrations**: Automatic project creation from AI tools (GitHub, Figma, and more)
 - **Project Types**: Support for GitHub repos, Figma designs, image collections, prompts, and more
 - **Explore & Discovery**: For You, Trending, and All tabs with filtering by categories, topics, and tools
-- **Marketplace** *(Coming Soon)*: Sell and discover AI prompts, templates, and digital products
+- **Marketplace**: Sell and discover AI prompts, templates, and digital products
 - **Privacy Controls**: Public/private projects, customizable profiles, and visibility settings
 
 ### 🎮 Gamified Learning System
-- **5-Tier Progression**: Seedling → Sprout → Blossom → Bloom → Evergreen (0 to 10,000+ points)
-- **23+ Levels**: Dynamic leveling system with increasing point thresholds
+- **Personalized Learning Paths**: Interactive courses tailored to your interests and skill level
 - **Interactive Quizzes**: True/false, multiple choice, and swipe-based quiz formats across AI/ML topics
-- **Achievement System**: Unlock achievements across Projects, Battles, Community, Engagement, and Streak categories
+- **AI Tool Directory**: Comprehensive catalog of 200+ AI tools with detailed information
+- **Achievement System**: Unlock achievements for milestones and accomplishments
 - **Side Quests**: Optional challenges like Quiz Mastery, Project Showcase, Community Helper, Learning Streak
-- **Weekly Goals**: Bonus point opportunities with progress tracking
+- **Weekly Community Build Challenges**: Collaborative building challenges with bonus rewards
 - **Streak Tracking**: Daily login streaks with bonus rewards
 
 ### 👥 Community & Collaboration
 - **Thrive Circles**: Point-based community engagement and progression tracking
+- **5-Tier Progression**: Seedling → Sprout → Blossom → Bloom → Evergreen (0 to 10,000+ points)
+- **Multi-Level System**: Dynamic progression with increasing point thresholds
+- **Weekly Events**: Webinars, topic discussions, interviews, and community project highlights
 - **Comments & Feedback**: Discussion and peer feedback on projects
-- **AI Tool Directory**: Comprehensive catalog of 200+ AI tools with reviews and ratings
-- **Social Connections**: Integrate GitHub, GitLab, LinkedIn, Figma, and Hugging Face accounts
 
 ### 🤖 AI-Powered Features
-- Multi-provider AI support (Azure OpenAI, OpenAI, Anthropic Claude)
-- LangChain and LangGraph for AI workflows
-- LangSmith for AI observability and cost tracking
-- Redis for session management and caching
-- AI-assisted project documentation and analysis
+- **Personalized Recommendations**: AI-driven content discovery based on your interests and activity
+- **Multi-Provider AI**: Azure OpenAI, OpenAI, and Anthropic Claude support
+- **AI Workflows**: LangChain and LangGraph for intelligent automation
+- **Observability & Cost Tracking**: LangSmith integration for monitoring AI usage
+- **AI-Assisted Documentation**: Automatic project analysis and content generation
 
 ## Technology Stack
 
