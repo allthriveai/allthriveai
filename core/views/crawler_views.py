@@ -124,7 +124,14 @@ def about_view(request):
 def explore_view(request):
     """Explore projects page - either React app or crawler template."""
     is_bot = is_crawler(request)
-    cache_key = f'explore:{"crawler" if is_bot else "user"}:v1'
+
+    # Differentiate cache by crawler type (LLM vs search engine)
+    # to prevent cache collision where LLM crawlers get search engine results
+    if is_bot:
+        crawler_type = 'llm' if is_llm_crawler(request) else 'search'
+        cache_key = f'explore:{crawler_type}:v1'
+    else:
+        cache_key = 'explore:user:v1'
 
     def generate_response():
         context = {}

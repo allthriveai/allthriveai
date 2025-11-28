@@ -85,6 +85,14 @@ For your convenience, we provide Make commands to manage the development environ
 - `make test-backend` - Run all backend tests
 - `make test-frontend` - Run all frontend tests
 
+### Database & Data Seeding
+- `make reset-db` - **DANGER**: Flush database, migrate, and seed all initial data
+- `make seed-all` - Seed all initial data (topics, taxonomies, tools, quizzes)
+- `make seed-quizzes` - Seed initial quiz data only
+- `make create-pip` - Create Pip bot user
+
+See [Database Seeding Guide](docs/DATABASE_SEEDING_GUIDE.md) for detailed instructions.
+
 ## Documentation
 
 - [Styleguide](docs/STYLEGUIDE.md) - Coding standards and best practices

@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
 from core.auth.serializers import UserSerializer
+from core.taxonomy.serializers import TaxonomySerializer
+from core.tools.serializers import ToolListSerializer
 
 from .models import Quiz, QuizAttempt, QuizQuestion
 
@@ -39,6 +41,8 @@ class QuizSerializer(serializers.ModelSerializer):
 
     question_count = serializers.IntegerField(read_only=True)
     created_by = UserSerializer(read_only=True)
+    tools = ToolListSerializer(many=True, read_only=True)
+    categories = TaxonomySerializer(many=True, read_only=True)
     user_has_attempted = serializers.SerializerMethodField()
     user_best_score = serializers.SerializerMethodField()
     user_attempt_count = serializers.SerializerMethodField()
@@ -53,6 +57,9 @@ class QuizSerializer(serializers.ModelSerializer):
             'slug',
             'description',
             'topic',
+            'topics',
+            'tools',
+            'categories',
             'difficulty',
             'estimated_time',
             'question_count',

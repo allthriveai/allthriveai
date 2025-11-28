@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-frontend restart-backend build logs shell-frontend shell-backend test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip
+.PHONY: help up down restart restart-frontend restart-backend build logs shell-frontend shell-backend test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-all reset-db
 
 help:
 	@echo "Available commands:"
@@ -16,6 +16,9 @@ help:
 	@echo "Data commands:"
 	@echo "  make create-pip      - Create Pip bot user (if doesn't exist)"
 	@echo "  make recreate-pip    - Delete and recreate Pip with latest data"
+	@echo "  make seed-quizzes    - Seed initial quiz data into the database"
+	@echo "  make seed-all        - Seed all initial data (topics, taxonomies, tools, quizzes)"
+	@echo "  make reset-db        - DANGER: Flush database, migrate, and seed all data"
 	@echo ""
 	@echo "Testing commands:"
 	@echo "  make test            - Run all tests (backend + frontend)"
@@ -68,6 +71,30 @@ create-pip:
 recreate-pip:
 	@echo "Recreating Pip with latest data..."
 	docker-compose exec web python manage.py create_pip --recreate
+
+seed-quizzes:
+	@echo "Seeding quizzes..."
+	docker-compose exec web python manage.py seed_quizzes
+
+seed-all:
+	@echo "Seeding all initial data..."
+	docker-compose exec web python manage.py seed_topics
+	docker-compose exec web python manage.py seed_taxonomies
+	docker-compose exec web python manage.py seed_categories
+	docker-compose exec web python manage.py seed_tools
+	docker-compose exec web python manage.py seed_quizzes
+	@echo "✓ All data seeded successfully!"
+
+reset-db:
+	@echo "⚠️  WARNING: This will DELETE all data in the database!"
+	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || (echo "Cancelled." && exit 1)
+	@echo "Flushing database..."
+	docker-compose exec web python manage.py flush --no-input
+	@echo "Running migrations..."
+	docker-compose exec web python manage.py migrate
+	@echo "Seeding initial data..."
+	@make seed-all
+	@echo "✓ Database reset complete with initial data!"
 
 # Testing commands
 test: test-backend test-frontend

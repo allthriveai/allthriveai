@@ -16,8 +16,8 @@ interface SEOProps {
  * Optimized for search engines and social media sharing
  */
 export function SEO({
-  title = 'AllThrive AI - Discover and share AI creations from any tool',
-  description = 'Explore AI-generated images, apps, and agents from any tool. Showcase your work, connect with other builders, and grow your reputation as an AI creator.',
+  title = 'AllThrive AI - Build Your AI Portfolio',
+  description = 'Build your AI portfolio. Showcase work from any AI tool, learn through games, and connect with builders.',
   keywords = 'AI creations, AI portfolio, AI projects, Midjourney, Replit, Claude, AI showcase, AI community, AI builders, AI tools, cross-platform AI',
   image = 'https://allthrive.ai/og-image.jpg',
   url,
@@ -43,6 +43,9 @@ export function SEO({
       { property: 'og:title', content: fullTitle },
       { property: 'og:description', content: description },
       { property: 'og:image', content: image },
+      { property: 'og:image:width', content: '1200' },
+      { property: 'og:image:height', content: '630' },
+      { property: 'og:image:alt', content: fullTitle },
       { property: 'og:url', content: currentUrl },
       { property: 'og:type', content: type },
       { property: 'og:site_name', content: 'AllThrive AI' },
@@ -93,9 +96,9 @@ export function SEO({
 // Preset configurations for common pages
 export const SEOPresets = {
   home: {
-    title: 'AllThrive AI - Discover and share AI creations from any tool',
-    description: 'Explore AI-generated images, apps, and agents from any tool. Showcase your work, connect with other builders, and grow your reputation as an AI creator.',
-    keywords: 'AI creations, AI portfolio, AI projects, Midjourney, Replit, Claude, AI showcase, AI community, AI builders',
+    title: 'AllThrive AI - Build Your AI Portfolio',
+    description: 'Build your AI portfolio. Showcase work from any AI tool, learn through games, and connect with builders.',
+    keywords: 'AI portfolio, AI projects, AI games, AI learning, Midjourney, Replit, Claude, AI showcase, AI community, AI builders',
   },
   about: {
     title: 'About AllThrive AI',

@@ -65,9 +65,9 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
           {/* Image Container with Overlay */}
           <div className={`relative ${isCompact ? 'h-32' : 'h-56'} overflow-hidden ${isCompact ? 'rounded-t-lg' : 'rounded-t-xl'}`}>
             {/* Background Image */}
-            {quiz.thumbnail_url ? (
+            {quiz.thumbnailUrl ? (
               <img
-                src={quiz.thumbnail_url}
+                src={quiz.thumbnailUrl}
                 alt={quiz.title}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
               />
@@ -95,7 +95,7 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
             </div>
 
             {/* Completion Badge if completed */}
-            {quiz.user_completed && !isCompact && (
+            {quiz.userCompleted && !isCompact && (
               <div className="absolute top-4 left-4">
                 <div className="px-4 py-2 rounded-full backdrop-blur-md bg-primary-500/30 border border-primary-400/40 font-semibold text-sm text-primary-200 shadow-lg flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
@@ -131,20 +131,67 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
                 {quiz.description}
               </p>
 
+              {/* Taxonomy Pills - Topics, Tools, Categories */}
+              {!isCompact && (quiz.topics?.length > 0 || quiz.tools?.length > 0 || quiz.categories?.length > 0) && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {/* Topic Tags */}
+                  {quiz.topics?.slice(0, 3).map((topic) => (
+                    <span
+                      key={topic}
+                      className="px-2 py-0.5 text-xs rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                    >
+                      {topic}
+                    </span>
+                  ))}
+
+                  {/* Tool Pills */}
+                  {quiz.tools?.slice(0, 2).map((tool) => (
+                    <span
+                      key={tool.id}
+                      className="px-2 py-0.5 text-xs rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1"
+                      title={tool.tagline}
+                    >
+                      {tool.logoUrl && (
+                        <img src={tool.logoUrl} alt="" className="w-3 h-3 object-contain" />
+                      )}
+                      {tool.name}
+                    </span>
+                  ))}
+
+                  {/* Category Pills */}
+                  {quiz.categories?.slice(0, 2).map((category) => (
+                    <span
+                      key={category.id}
+                      className="px-2 py-0.5 text-xs rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                      title={category.description}
+                    >
+                      {category.name}
+                    </span>
+                  ))}
+
+                  {/* Show count if more items */}
+                  {((quiz.topics?.length || 0) + (quiz.tools?.length || 0) + (quiz.categories?.length || 0)) > 7 && (
+                    <span className="px-2 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                      +{((quiz.topics?.length || 0) + (quiz.tools?.length || 0) + (quiz.categories?.length || 0)) - 7} more
+                    </span>
+                  )}
+                </div>
+              )}
+
               {/* Stats Row - Compact */}
               <div className={`flex items-center ${isCompact ? 'gap-3 mb-3' : 'gap-4 mb-4'} ${isCompact ? 'text-xs' : 'text-xs'} text-gray-500 dark:text-gray-400`}>
                 <div className="flex items-center gap-1">
                   <ClockIcon className="w-3.5 h-3.5" />
-                  <span>{quiz.estimated_time} min</span>
+                  <span>{quiz.estimatedTime} min</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <ChartBarIcon className="w-3.5 h-3.5" />
-                  <span>{quiz.question_count} {isCompact ? 'Q' : 'questions'}</span>
+                  <span>{quiz.questionCount} {isCompact ? 'Q' : 'questions'}</span>
                 </div>
-                {quiz.user_best_score !== null && !isCompact && (
+                {quiz.userBestScore !== null && !isCompact && (
                   <div className={`flex items-center gap-1 ${colors.text} font-semibold`}>
                     <SparklesIcon className="w-3.5 h-3.5" />
-                    <span>{quiz.user_best_score}%</span>
+                    <span>{quiz.userBestScore}%</span>
                   </div>
                 )}
               </div>
@@ -172,14 +219,14 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
 
               <span className="relative z-10 flex items-center justify-center gap-2">
                 <SparklesIcon className={`${isCompact ? 'w-4 h-4' : 'w-5 h-5'} group-hover/button:rotate-12 transition-transform`} />
-                {quiz.user_has_attempted ? 'Retake Quiz' : 'Take Quiz'}
+                {quiz.userHasAttempted ? 'Retake Quiz' : 'Take Quiz'}
               </span>
             </div>
 
             {/* Attempt Counter - if attempted */}
-            {quiz.user_attempt_count > 0 && !isCompact && (
+            {quiz.userAttemptCount > 0 && !isCompact && (
               <div className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
-                Attempted {quiz.user_attempt_count}×
+                Attempted {quiz.userAttemptCount}×
               </div>
             )}
           </div>

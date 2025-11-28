@@ -192,9 +192,9 @@ export function QuizOverlay({ isOpen, onClose, quizSlug }: QuizOverlayProps) {
           {/* Intro State */}
           {quiz && !loading && !error && quizState === 'intro' && (
             <div className="glass-strong rounded-xl p-6">
-              {quiz.thumbnail_url && (
+              {quiz.thumbnailUrl && (
                 <img
-                  src={quiz.thumbnail_url}
+                  src={quiz.thumbnailUrl}
                   alt={quiz.title}
                   className="w-full h-48 object-cover rounded-lg mb-6"
                 />
@@ -218,15 +218,55 @@ export function QuizOverlay({ isOpen, onClose, quizSlug }: QuizOverlayProps) {
                   {quiz.difficulty}
                 </span>
                 <span className="text-gray-600 dark:text-gray-400 text-sm">
-                  {quiz.estimated_time} minutes
+                  {quiz.estimatedTime} minutes
                 </span>
                 <span className="text-gray-600 dark:text-gray-400 text-sm">
-                  {quiz.question_count} questions
-                </span>
-                <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                  {quiz.topic}
+                  {quiz.questionCount} questions
                 </span>
               </div>
+
+              {/* Taxonomy Pills - Topics, Tools, Categories */}
+              {(quiz.topics?.length > 0 || quiz.tools?.length > 0 || quiz.categories?.length > 0) && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">What You'll Learn:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {/* Topic Tags */}
+                    {quiz.topics?.map((topic) => (
+                      <span
+                        key={topic}
+                        className="px-3 py-1 text-sm rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-medium"
+                      >
+                        {topic}
+                      </span>
+                    ))}
+
+                    {/* Tool Pills */}
+                    {quiz.tools?.map((tool) => (
+                      <span
+                        key={tool.id}
+                        className="px-3 py-1 text-sm rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-medium flex items-center gap-2"
+                        title={tool.tagline}
+                      >
+                        {tool.logoUrl && (
+                          <img src={tool.logoUrl} alt="" className="w-4 h-4 object-contain" />
+                        )}
+                        {tool.name}
+                      </span>
+                    ))}
+
+                    {/* Category Pills */}
+                    {quiz.categories?.map((category) => (
+                      <span
+                        key={category.id}
+                        className="px-3 py-1 text-sm rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-medium"
+                        title={category.description}
+                      >
+                        {category.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Start Quiz Button */}
               <div className="text-center">

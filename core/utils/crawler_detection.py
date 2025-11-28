@@ -62,7 +62,17 @@ def is_llm_crawler(request) -> bool:
     Returns:
         bool: True if request is from LLM crawler (GPTBot, ClaudeBot, etc.)
     """
-    llm_bots = ['GPTBot', 'ChatGPT-User', 'ClaudeBot', 'anthropic-ai', 'Claude-Web', 'CCBot', 'PerplexityBot']
+    llm_bots = [
+        'GPTBot',
+        'ChatGPT-User',
+        'ClaudeBot',
+        'anthropic-ai',
+        'Claude-Web',
+        'CCBot',
+        'PerplexityBot',
+        'Applebot-Extended',  # Apple's LLM crawler
+        'Google-Extended',  # Google's LLM crawler
+    ]
 
     user_agent = request.headers.get('user-agent', '')
 

@@ -1,7 +1,11 @@
 import uuid
 
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
+
+from core.taxonomy.models import Taxonomy
+from core.tools.models import Tool
 
 
 class Quiz(models.Model):
@@ -19,11 +23,30 @@ class Quiz(models.Model):
         max_length=200, unique=True, null=True, blank=True, help_text='URL-friendly version of title'
     )
     description = models.TextField()
-    topic = models.CharField(max_length=100)
+    topic = models.CharField(max_length=100)  # Kept for backward compatibility
     difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default='beginner')
     estimated_time = models.IntegerField(help_text='Estimated time in minutes')
     thumbnail_url = models.URLField(blank=True, null=True)
     is_published = models.BooleanField(default=False)
+    # Tools mentioned/covered in this quiz
+    tools = models.ManyToManyField(
+        Tool, blank=True, related_name='quizzes', help_text='AI tools/technologies covered in this quiz'
+    )
+    # Categories for filtering and organization (predefined taxonomy)
+    categories = models.ManyToManyField(
+        Taxonomy,
+        blank=True,
+        related_name='quizzes',
+        limit_choices_to={'taxonomy_type': 'category', 'is_active': True},
+        help_text='Categories that organize this quiz (from predefined Taxonomy)',
+    )
+    # User-generated topics (free-form tags)
+    topics = ArrayField(
+        models.CharField(max_length=50),
+        blank=True,
+        default=list,
+        help_text='Topic tags for this quiz',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_quizzes')
