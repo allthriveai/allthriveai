@@ -193,6 +193,18 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
                   };
                 });
 
+                // Request backend to issue cookies now that flow is complete
+                try {
+                  await fetch(`${API_URL}/auth/chat/finalize/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ session_id: data.session_id }),
+                  });
+                } catch (e) {
+                  console.error('Finalize auth chat failed:', e);
+                }
+
                 currentMessageRef.current = '';
               } else if (data.type === 'error') {
                 setState(prev => ({

@@ -3,12 +3,14 @@ import { ProtectedRoute } from './ProtectedRoute';
 import HomePage from '@/pages/HomePage';
 import AboutPage from '@/pages/AboutPage';
 import AuthPage from '@/pages/AuthPage';
+import LoginPage from '@/pages/LoginPage';
+import SignupPage from '@/pages/SignupPage';
 import ProfilePage from '@/pages/ProfilePage';
 import ProjectDetailPage from '@/pages/ProjectDetailPage';
 import ProjectEditorPage from '@/pages/ProjectEditorPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
 import PasswordSettingsPage from '@/pages/settings/PasswordSettingsPage';
-import SocialSettingsPage from '@/pages/settings/SocialSettingsPage';
+import IntegrationsSettingsPage from '@/pages/settings/IntegrationsSettingsPage';
 import PersonalizationSettingsPage from '@/pages/settings/PersonalizationSettingsPage';
 import NotificationsSettingsPage from '@/pages/settings/NotificationsSettingsPage';
 import BillingSettingsPage from '@/pages/settings/BillingSettingsPage';
@@ -19,10 +21,14 @@ import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
 import QuizListPage from '@/pages/quizzes/QuizListPage';
 import QuizPage from '@/pages/quizzes/QuizPage';
+import LearnPage from '@/pages/LearnPage';
 import ToolDirectoryPage from '@/pages/ToolDirectoryPage';
 import ToolDetailPage from '@/pages/ToolDetailPage';
+import { ExplorePage } from '@/pages/ExplorePage';
 import PromptBattlePage from '@/pages/play/PromptBattlePage';
 import BattleDetailPage from '@/pages/play/BattleDetailPage';
+import ThriveCirclePage from '@/pages/ThriveCirclePage';
+import SideQuestsPage from '@/pages/SideQuestsPage';
 
 export function AppRoutes() {
   return (
@@ -33,6 +39,9 @@ export function AppRoutes() {
       <Route path="/about-us" element={<AboutPage />} />
       <Route path="/styleguide" element={<StyleGuidePage />} />
 
+      {/* Learn route */}
+      <Route path="/learn" element={<LearnPage />} />
+
       {/* Quiz routes - must come before /:username routes */}
       <Route path="/quick-quizzes" element={<QuizListPage />} />
       <Route path="/quick-quizzes/:slug" element={<QuizPage />} />
@@ -41,6 +50,9 @@ export function AppRoutes() {
       <Route path="/tools" element={<ToolDirectoryPage />}>
         <Route path=":slug" element={<ToolDetailPage />} />
       </Route>
+
+      {/* Explore - public route */}
+      <Route path="/explore" element={<ExplorePage />} />
 
       {/* Play routes - protected */}
       <Route
@@ -60,9 +72,30 @@ export function AppRoutes() {
         }
       />
 
-      {/* Auth routes - unified chat-based auth */}
+      {/* Thrive Circle - protected */}
       <Route
-        path="/login"
+        path="/thrive-circle"
+        element={
+          <ProtectedRoute>
+            <ThriveCirclePage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Side Quests - protected */}
+      <Route
+        path="/play/side-quests"
+        element={
+          <ProtectedRoute>
+            <SideQuestsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Auth routes */}
+      {/* Main auth route - chat onboarding */}
+      <Route
+        path="/auth"
         element={
           <ProtectedRoute redirectIfAuthenticated>
             <AuthPage />
@@ -70,9 +103,9 @@ export function AppRoutes() {
         }
       />
 
-      {/* Redirect old routes to new unified auth */}
-      <Route path="/auth" element={<Navigate to="/login" replace />} />
-      <Route path="/signup" element={<Navigate to="/login" replace />} />
+      {/* Redirect all other auth routes to /auth */}
+      <Route path="/login" element={<Navigate to="/auth" replace />} />
+      <Route path="/signup" element={<Navigate to="/auth" replace />} />
 
       {/* Protected routes - Settings */}
       <Route
@@ -92,10 +125,10 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/account/settings/social"
+        path="/account/settings/integrations"
         element={
           <ProtectedRoute>
-            <SocialSettingsPage />
+            <IntegrationsSettingsPage />
           </ProtectedRoute>
         }
       />
@@ -164,7 +197,9 @@ export function AppRoutes() {
             <ProjectDetailPage />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route path="tools/:slug" element={<ToolDetailPage />} />
+      </Route>
       <Route
         path="/dashboard"
         element={

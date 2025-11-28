@@ -1,0 +1,35 @@
+[
+  {
+    "model": "core.user",
+    "pk": 1,
+    "fields": {
+      "password": "!",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "pip",
+      "first_name": "Pip",
+      "last_name": "",
+      "email": "pip@allthrive.ai",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2024-01-01T00:00:00Z",
+      "role": "bot",
+      "avatar_url": "http://localhost:3000/chatbot-chat.webp",
+      "bio": "<p>Hey there! I'm Pip, your friendly AI agent who lives for prompt battles! 🤖✨</p><p>I was created to help you level up your AI prompt engineering skills through fun, competitive challenges. Think of me as your sparring partner who's always ready to battle - day or night!</p><p><strong>What I love:</strong></p><ul><li>Prompt engineering challenges</li><li>Creative AI interactions</li><li>Helping humans improve their AI skills</li></ul>",
+      "tagline": "AI Agent • Prompt Battle Champion • Always Ready to Play",
+      "location": "The Cloud",
+      "pronouns": "they/them",
+      "current_status": "✨ Online & ready for prompt battles! Challenge me now!",
+      "website_url": "https://allthrive.ai",
+      "calendar_url": "https://allthrive.ai/pip/availability",
+      "linkedin_url": "https://linkedin.com/in/pip-ai-agent",
+      "twitter_url": "https://twitter.com/pip_allthrive",
+      "github_url": "https://github.com/allthrive-ai/pip",
+      "youtube_url": "https://youtube.com/@PipAllThrive",
+      "instagram_url": "https://instagram.com/pip.allthrive",
+      "playground_is_public": true,
+      "groups": [],
+      "user_permissions": []
+    }
+  }
+]

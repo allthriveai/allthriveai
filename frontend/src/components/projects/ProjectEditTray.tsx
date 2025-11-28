@@ -1,0 +1,157 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { updateProject } from '@/services/projects';
+import type { Project } from '@/types/models';
+import { ProjectEditor } from '@/components/projects/ProjectEditor';
+import { ProjectFieldsEditor, ProjectSettingsSection } from '@/components/projects/fields';
+import { generateSlug } from '@/utils/slug';
+import {
+  XMarkIcon,
+  PhotoIcon,
+  TrashIcon,
+  ArrowTopRightOnSquareIcon,
+  Cog6ToothIcon,
+} from '@heroicons/react/24/outline';
+import {
+  FaImage,
+  FaVideo,
+  FaQuoteLeft,
+  FaImages,
+  FaArrowUp,
+  FaStar,
+  FaLock,
+} from 'react-icons/fa';
+
+interface ProjectEditTrayProps {
+  isOpen: boolean;
+  onClose: () => void;
+  project: Project;
+  onProjectUpdate: (updatedProject: Project) => void;
+}
+
+type TabId = 'tldr' | 'hero' | 'settings';
+
+export function ProjectEditTray({ isOpen, onClose, project, onProjectUpdate }: ProjectEditTrayProps) {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabId>('tldr');
+
+  // Handle slug change for tray (use window.history to avoid unmounting)
+  const handleSlugChange = (newSlug: string) => {
+    if (project.username) {
+      window.history.replaceState({}, '', `/${project.username}/${newSlug}`);
+    }
+  };
+
+  // Preserve like state when updating project
+  const handleProjectUpdate = (updatedProject: Project) => {
+    const projectWithLikes = {
+      ...updatedProject,
+      isLikedByUser: project.isLikedByUser,
+      heartCount: project.heartCount,
+    };
+    onProjectUpdate(projectWithLikes);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <ProjectEditor
+      project={project}
+      onProjectUpdate={handleProjectUpdate}
+      onSlugChange={handleSlugChange}
+    >
+      {(editorProps) => (
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black/20 z-40 animate-[fade-in_0.2s_ease-out]"
+            onClick={onClose}
+          />
+
+          {/* Sidebar */}
+          <div className="fixed top-0 right-0 h-full w-full md:w-[600px] lg:w-[700px] bg-white dark:bg-gray-900 shadow-2xl z-50 overflow-y-auto animate-[slide-in-right_0.3s_ease-out]">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between z-10">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Edit Project</h2>
+                  {editorProps.isSaving ? (
+                    <p className="text-xs text-gray-500">Saving...</p>
+                  ) : editorProps.lastSaved ? (
+                    <p className="text-xs text-gray-500">Saved {editorProps.lastSaved.toLocaleTimeString()}</p>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate(`/${project.username}/${project.slug}/edit`)}
+                    className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                    title="Open full editor"
+                  >
+                    <ArrowTopRightOnSquareIcon className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Tab Navigation */}
+              <div className="border-b border-gray-200 dark:border-gray-800 px-6">
+                <nav className="flex gap-4" aria-label="Tabs">
+                  {[
+                    { id: 'tldr' as const, label: 'TL;DR', icon: PhotoIcon },
+                    { id: 'hero' as const, label: 'Hero Display', icon: FaImage },
+                    { id: 'settings' as const, label: 'Settings', icon: Cog6ToothIcon },
+                  ].map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                          activeTab === tab.id
+                            ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              {/* Tab Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {activeTab === 'tldr' && (
+                  <ProjectFieldsEditor
+                    template="quick-edit"
+                    editorProps={editorProps}
+                  />
+                )}
+
+                {activeTab === 'hero' && (
+                  <ProjectFieldsEditor
+                    template="quick-edit-hero"
+                    editorProps={editorProps}
+                  />
+                )}
+                {activeTab === 'settings' && (
+                  <ProjectSettingsSection
+                    project={project}
+                    onProjectUpdate={handleProjectUpdate}
+                    editorProps={editorProps}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </ProjectEditor>
+  );
+}

@@ -10,6 +10,7 @@ build/
 venv/
 env/
 ENV/
+.venv/
 
 # Django
 *.log
@@ -42,3 +43,14 @@ celerybeat.pid
 
 # Redis
 dump.rdb
+
+# Backup files
+*.bak
+*.bak[0-9]
+*.backup
+*.old
+*.thumbnailbak
+
+# Test artifacts
+playwright-report/
+test-results/

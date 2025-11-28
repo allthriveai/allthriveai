@@ -1,18 +1,21 @@
 import { useState, ReactNode, useEffect } from 'react';
-import { Bars3Icon } from '@heroicons/react/24/outline';
-import { LeftSidebar } from '@/components/navigation/LeftSidebar';
+import { useNavigate } from 'react-router-dom';
+import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightChatPanel } from '@/components/chat/RightChatPanel';
 import { RightAboutPanel } from '@/components/about';
+import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalendarPanel';
+import { RightAddProjectChat } from '@/components/projects/RightAddProjectChat';
 
 interface DashboardLayoutProps {
-  children: ReactNode | ((props: { openChat: (menuItem: string) => void }) => ReactNode);
+  children: ReactNode | ((props: { openChat: (menuItem: string) => void; openAddProject: () => void }) => ReactNode);
   openAboutPanel?: boolean;
 }
 
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [chatOpen, setChatOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
+  const [eventsOpen, setEventsOpen] = useState(false);
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
 
   // Auto-open about panel when prop is true
@@ -24,11 +27,24 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     }
   }, [openAboutPanel]);
 
+  // Check for GitHub OAuth return and auto-open Add Project panel
+  useEffect(() => {
+    const oauthReturn = localStorage.getItem('github_oauth_return');
+    console.log('🔍 DashboardLayout checking OAuth return:', { oauthReturn });
+
+    if (oauthReturn === 'add_project_chat') {
+      console.log('✅ Opening Add Project panel after OAuth return');
+      // Open the Add Project panel automatically
+      handleOpenAddProject();
+    }
+  }, []);
+
   const handleMenuClick = (menuItem: string) => {
     if (menuItem === 'About Us') {
       const wasOpen = aboutOpen;
       setAboutOpen(true);
       setChatOpen(false);
+      setEventsOpen(false);
       setSelectedMenuItem(null);
       // Scroll to About Us section
       setTimeout(() => {
@@ -40,6 +56,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     } else if (menuItem === 'Our Values') {
       setAboutOpen(true);
       setChatOpen(false);
+      setEventsOpen(false);
       setSelectedMenuItem(null);
       // Wait for panel to open and then scroll to the element
       setTimeout(() => {
@@ -48,10 +65,16 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }, 100);
+    } else if (menuItem === 'Events Calendar') {
+      setEventsOpen(true);
+      setChatOpen(false);
+      setAboutOpen(false);
+      setSelectedMenuItem(null);
     } else {
       setSelectedMenuItem(menuItem);
       setChatOpen(true);
       setAboutOpen(false);
+      setEventsOpen(false);
     }
   };
 
@@ -64,32 +87,37 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setAboutOpen(false);
   };
 
-  return (
-    <div className="flex h-screen bg-gray-50 dark:bg-brand-dark overflow-hidden">
-      {/* Mobile toggle button - shows when sidebar is closed on mobile */}
-      {!sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Show sidebar"
-          className="fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-900 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 md:hidden"
-        >
-          <Bars3Icon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-        </button>
-      )}
+  const handleCloseEvents = () => {
+    setEventsOpen(false);
+  };
 
-      {/* Left Sidebar */}
-      <LeftSidebar
+  const handleOpenAddProject = () => {
+    // Open Add Project panel with 4 options
+    setAddProjectOpen(true);
+    setChatOpen(false);
+    setAboutOpen(false);
+    setEventsOpen(false);
+    setSelectedMenuItem(null);
+  };
+
+  const handleCloseAddProject = () => {
+    setAddProjectOpen(false);
+  };
+
+  return (
+    <div className="flex flex-col h-screen">
+      {/* Top Navigation */}
+      <TopNavigation
         onMenuClick={handleMenuClick}
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        onAddProject={handleOpenAddProject}
       />
 
       {/* Main Content Area */}
-      <div className={`flex-1 overflow-hidden transition-all duration-300 ${
-        sidebarOpen ? 'ml-64' : 'ml-20 max-md:ml-0'
-      }`}>
-        {typeof children === 'function' ? children({ openChat: handleMenuClick }) : children}
-      </div>
+      <main className="flex-1 overflow-y-auto scroll-pt-16">
+        <div className="pt-16">
+          {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject }) : children}
+        </div>
+      </main>
 
       {/* Right Chat Panel */}
       <RightChatPanel
@@ -102,6 +130,18 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       <RightAboutPanel
         isOpen={aboutOpen}
         onClose={handleCloseAbout}
+      />
+
+      {/* Right Events Calendar Panel */}
+      <RightEventsCalendarPanel
+        isOpen={eventsOpen}
+        onClose={handleCloseEvents}
+      />
+
+      {/* Right Add Project Chat */}
+      <RightAddProjectChat
+        isOpen={addProjectOpen}
+        onClose={handleCloseAddProject}
       />
 
       {/* Overlay when chat is open */}
@@ -117,6 +157,22 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         <div
           className="fixed inset-0 bg-black/20 z-30 md:hidden"
           onClick={handleCloseAbout}
+        />
+      )}
+
+      {/* Overlay when events is open */}
+      {eventsOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-30 md:hidden"
+          onClick={handleCloseEvents}
+        />
+      )}
+
+      {/* Overlay when add project is open */}
+      {addProjectOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-30 md:hidden"
+          onClick={handleCloseAddProject}
         />
       )}
     </div>

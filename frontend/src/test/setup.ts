@@ -1,1 +1,54 @@
 import '@testing-library/jest-dom';
+import { vi } from 'vitest';
+
+// Add custom matchers from @testing-library/jest-dom
+// This allows us to use matchers like .toBeInTheDocument(), .toHaveTextContent(), etc.
+
+// Mock the AuthContext to prevent "useAuth must be used within an AuthProvider" errors
+vi.mock('@/context/AuthContext', () => ({
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAuth: () => ({
+    isAuthenticated: false,
+    user: null,
+    login: vi.fn(),
+    logout: vi.fn(),
+    loading: false,
+  }),
+}));
+
+// Mock window.matchMedia for components that use media queries
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {}, // deprecated
+    removeListener: () => {}, // deprecated
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }),
+});
+
+// Mock IntersectionObserver for components that use it
+global.IntersectionObserver = class IntersectionObserver {
+  constructor() {}
+  disconnect() {}
+  observe() {}
+  takeRecords() {
+    return [];
+  }
+  unobserve() {}
+} as any;
+
+// Mock ResizeObserver for components that use it
+global.ResizeObserver = class ResizeObserver {
+  constructor() {}
+  disconnect() {}
+  observe() {}
+  unobserve() {}
+} as any;
+
+// Suppress console errors in tests (optional - remove if you want to see them)
+// global.console.error = () => {};

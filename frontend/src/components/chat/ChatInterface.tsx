@@ -76,9 +76,14 @@ export function ChatInterface({
     <>
       {/* Sliding Panel */}
       <div
-        className={`fixed right-0 top-0 w-full md:w-[480px] h-screen bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col shadow-lg transition-transform duration-300 z-40 ${
+        className={`fixed right-0 top-16 w-full md:w-[480px] h-[calc(100vh-4rem)] border-l border-white/20 dark:border-white/10 flex flex-col shadow-2xl transition-transform duration-300 z-40 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">

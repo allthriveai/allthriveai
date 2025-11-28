@@ -1,4 +1,5 @@
 """Referral code validation and sanitization utilities."""
+
 import logging
 import re
 
@@ -16,30 +17,30 @@ class ReferralCodeValidator:
 
     MIN_LENGTH = 3
     MAX_LENGTH = 20
-    PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+    PATTERN = re.compile(r'^[A-Za-z0-9_-]+$')
 
     # Reserved codes that can't be used
     RESERVED_CODES = {
-        "ADMIN",
-        "API",
-        "APP",
-        "AUTH",
-        "BILLING",
-        "BLOG",
-        "DASHBOARD",
-        "DEV",
-        "DOCS",
-        "HELP",
-        "LOGIN",
-        "LOGOUT",
-        "NULL",
-        "ROOT",
-        "SETTINGS",
-        "SIGNUP",
-        "SUPPORT",
-        "SYSTEM",
-        "TEST",
-        "WWW",
+        'ADMIN',
+        'API',
+        'APP',
+        'AUTH',
+        'BILLING',
+        'BLOG',
+        'DASHBOARD',
+        'DEV',
+        'DOCS',
+        'HELP',
+        'LOGIN',
+        'LOGOUT',
+        'NULL',
+        'ROOT',
+        'SETTINGS',
+        'SIGNUP',
+        'SUPPORT',
+        'SYSTEM',
+        'TEST',
+        'WWW',
     }
 
     @classmethod
@@ -53,21 +54,21 @@ class ReferralCodeValidator:
             Tuple of (is_valid, error_message)
         """
         if not code:
-            return False, "Code cannot be empty"
+            return False, 'Code cannot be empty'
 
         # Strip and uppercase
         code = code.strip().upper()
 
         # Length check
         if len(code) < cls.MIN_LENGTH:
-            return False, f"Code must be at least {cls.MIN_LENGTH} characters"
+            return False, f'Code must be at least {cls.MIN_LENGTH} characters'
 
         if len(code) > cls.MAX_LENGTH:
-            return False, f"Code must be at most {cls.MAX_LENGTH} characters"
+            return False, f'Code must be at most {cls.MAX_LENGTH} characters'
 
         # Pattern check (alphanumeric, hyphens, underscores only)
         if not cls.PATTERN.match(code):
-            return False, "Code can only contain letters, numbers, hyphens, and underscores"
+            return False, 'Code can only contain letters, numbers, hyphens, and underscores'
 
         # Reserved words check
         if code in cls.RESERVED_CODES:
@@ -75,10 +76,10 @@ class ReferralCodeValidator:
 
         # Profanity check
         if profanity.contains_profanity(code):
-            logger.warning(f"Profanity detected in referral code attempt: {code}")
-            return False, "Code contains inappropriate language"
+            logger.warning(f'Profanity detected in referral code attempt: {code}')
+            return False, 'Code contains inappropriate language'
 
-        return True, ""
+        return True, ''
 
     @classmethod
     def sanitize(cls, code: str) -> str:
@@ -91,13 +92,13 @@ class ReferralCodeValidator:
             Sanitized code
         """
         if not code:
-            return ""
+            return ''
 
         # Remove spaces and convert to uppercase
         code = code.strip().upper()
 
         # Keep only alphanumeric, hyphens, and underscores
-        code = re.sub(r"[^A-Z0-9_-]", "", code)
+        code = re.sub(r'[^A-Z0-9_-]', '', code)
 
         # Truncate to max length
         if len(code) > cls.MAX_LENGTH:
@@ -126,14 +127,14 @@ def generate_default_referral_code(username: str) -> str:
             return sanitized
 
     # Fallback: username prefix + random suffix
-    prefix = sanitized[:8] if sanitized else ""
-    suffix = get_random_string(4, allowed_chars="23456789ABCDEFGHJKLMNPQRSTUVWXYZ")
+    prefix = sanitized[:8] if sanitized else ''
+    suffix = get_random_string(4, allowed_chars='23456789ABCDEFGHJKLMNPQRSTUVWXYZ')
 
     if prefix:
-        return f"{prefix}{suffix}"
+        return f'{prefix}{suffix}'
 
     # Ultimate fallback: fully random
-    return get_random_string(8, allowed_chars="23456789ABCDEFGHJKLMNPQRSTUVWXYZ")
+    return get_random_string(8, allowed_chars='23456789ABCDEFGHJKLMNPQRSTUVWXYZ')
 
 
 def check_code_availability(code: str, exclude_user_id: int = None) -> bool:

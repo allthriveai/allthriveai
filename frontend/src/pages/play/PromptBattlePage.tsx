@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 
@@ -43,6 +43,7 @@ interface BattleStats {
 export default function PromptBattlePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [activeBattles, setActiveBattles] = useState<Battle[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<BattleInvitation[]>([]);
@@ -60,6 +61,17 @@ export default function PromptBattlePage() {
     const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, []);
+
+  // Handle opponent username from location state
+  useEffect(() => {
+    const state = location.state as { opponentUsername?: string } | null;
+    if (state?.opponentUsername) {
+      setOpponentUsername(state.opponentUsername);
+      setShowInviteModal(true);
+      // Clear the state to prevent re-opening on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const fetchData = async () => {
     try {

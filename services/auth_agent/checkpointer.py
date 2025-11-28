@@ -11,6 +11,7 @@ To enable Redis:
 2. Initialize indexes on startup
 3. Update get_checkpointer() to use RedisSaver
 """
+
 import logging
 
 from langgraph.checkpoint.memory import MemorySaver
@@ -27,7 +28,7 @@ def get_checkpointer():
         MemorySaver instance for in-memory state persistence
     """
     # Using MemorySaver for now - Redis requires index initialization
-    logger.info("Using MemorySaver for LangGraph state persistence")
+    logger.info('Using MemorySaver for LangGraph state persistence')
     return MemorySaver()
 
     # TODO: Uncomment and configure when Redis indexes are initialized

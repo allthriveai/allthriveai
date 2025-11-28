@@ -1,0 +1,225 @@
+{% extends "crawler/base.html" %}
+
+{% block title %}AI Tools Directory - AllThrive AI{% endblock %}
+
+{% block description %}Explore 250+ AI tools across all categories. Find the best AI tools for chat, code, image generation, video, audio, writing, and more.{% endblock %}
+
+{% block og_title %}AI Tools Directory - 250+ AI Tools - AllThrive AI{% endblock %}
+{% block og_description %}Explore 250+ AI tools for chat, code, image generation, video, audio, writing, and more{% endblock %}
+
+{% block content %}
+<article>
+    <section>
+        <h2>AI Tools Directory</h2>
+        <p>
+            Discover and explore the best AI tools for every use case. From ChatGPT to Midjourney,
+            find detailed information, pricing, and use cases for 250+ AI tools.
+        </p>
+    </section>
+
+    {% if tools %}
+    <section>
+        <h2>Featured Tools ({{ tools|length }})</h2>
+
+        {% for tool in tools %}
+        <article style="border-bottom: 1px solid #e5e7eb; padding: 20px 0; margin: 20px 0;">
+            <h3>
+                <a href="/tools/{{ tool.slug }}">{{ tool.name }}</a>
+            </h3>
+
+            {% if tool.tagline %}
+            <p><em>{{ tool.tagline }}</em></p>
+            {% endif %}
+
+            {% if tool.description %}
+            <p>{{ tool.description }}</p>
+            {% endif %}
+
+            <p class="meta-info">
+                <strong>Category:</strong> {{ tool.get_category_display }}
+                {% if tool.pricing_model %}
+                • <strong>Pricing:</strong> {{ tool.get_pricing_model_display }}
+                {% endif %}
+                {% if tool.starting_price %}
+                ({{ tool.starting_price }})
+                {% endif %}
+            </p>
+
+            {% if tool.tags %}
+            <p class="meta-info">
+                <strong>Tags:</strong>
+                {% for tag in tool.tags %}
+                    {{ tag }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </p>
+            {% endif %}
+
+            {% if tool.website_url %}
+            <p>
+                <a href="{{ tool.website_url }}" target="_blank" rel="noopener">Visit {{ tool.name }} →</a>
+                •
+                <a href="/tools/{{ tool.slug }}">Learn more</a>
+            </p>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </section>
+    {% else %}
+    <section>
+        <h2>Browse AI Tools by Category</h2>
+        <p>
+            Our directory includes tools across all categories:
+        </p>
+    </section>
+    {% endif %}
+
+    <section>
+        <h2>Tool Categories</h2>
+
+        <h3>💬 Chat & Conversational AI</h3>
+        <p>
+            Chatbots, virtual assistants, and conversational AI platforms:
+        </p>
+        <ul>
+            <li><strong>ChatGPT</strong> - OpenAI's conversational AI</li>
+            <li><strong>Claude</strong> - Anthropic's AI assistant</li>
+            <li><strong>Gemini</strong> - Google's multimodal AI</li>
+            <li><strong>Perplexity</strong> - AI-powered search and answers</li>
+        </ul>
+
+        <h3>💻 Code & Development</h3>
+        <p>
+            AI coding assistants, code generation, and development tools:
+        </p>
+        <ul>
+            <li><strong>GitHub Copilot</strong> - AI pair programmer</li>
+            <li><strong>Cursor</strong> - AI-first code editor</li>
+            <li><strong>Replit Ghostwriter</strong> - AI code assistant</li>
+            <li><strong>Tabnine</strong> - Code completion</li>
+        </ul>
+
+        <h3>🎨 Image Generation</h3>
+        <p>
+            AI image creation, art generation, and photo editing:
+        </p>
+        <ul>
+            <li><strong>DALL-E 3</strong> - OpenAI's image generator</li>
+            <li><strong>Midjourney</strong> - AI art generation</li>
+            <li><strong>Stable Diffusion</strong> - Open source image generation</li>
+            <li><strong>Adobe Firefly</strong> - Adobe's generative AI</li>
+        </ul>
+
+        <h3>🎬 Video Generation & Editing</h3>
+        <p>
+            AI video creation, editing, and animation tools:
+        </p>
+        <ul>
+            <li><strong>Runway</strong> - AI video generation and editing</li>
+            <li><strong>Pika</strong> - Text-to-video generation</li>
+            <li><strong>Descript</strong> - AI video and audio editing</li>
+        </ul>
+
+        <h3>🎵 Audio & Music</h3>
+        <p>
+            AI music generation, voice synthesis, and audio tools:
+        </p>
+        <ul>
+            <li><strong>ElevenLabs</strong> - AI voice generation</li>
+            <li><strong>Suno</strong> - AI music creation</li>
+            <li><strong>Murf AI</strong> - Text-to-speech</li>
+        </ul>
+
+        <h3>✍️ Writing & Content</h3>
+        <p>
+            AI writing assistants, content generation, and copywriting tools:
+        </p>
+        <ul>
+            <li><strong>Jasper</strong> - AI content creation</li>
+            <li><strong>Copy.ai</strong> - AI copywriting</li>
+            <li><strong>Grammarly</strong> - AI writing assistant</li>
+        </ul>
+
+        <h3>🔍 Research & Search</h3>
+        <p>
+            AI-powered research, search, and knowledge discovery:
+        </p>
+        <ul>
+            <li><strong>Perplexity</strong> - AI search engine</li>
+            <li><strong>Consensus</strong> - AI research assistant</li>
+            <li><strong>Elicit</strong> - Research automation</li>
+        </ul>
+
+        <h3>⚡ Productivity & Workflow</h3>
+        <p>
+            AI automation, task management, and productivity tools:
+        </p>
+        <ul>
+            <li><strong>Notion AI</strong> - AI-powered workspace</li>
+            <li><strong>Zapier AI</strong> - Workflow automation</li>
+            <li><strong>Make (Integromat)</strong> - Automation platform</li>
+        </ul>
+
+        <h3>📊 Data & Analytics</h3>
+        <p>
+            AI data analysis, visualization, and business intelligence:
+        </p>
+        <ul>
+            <li><strong>Julius AI</strong> - Data analysis assistant</li>
+            <li><strong>Tableau AI</strong> - Analytics with AI</li>
+            <li><strong>DataRobot</strong> - Automated ML</li>
+        </ul>
+
+        <h3>🎨 Design & Creative</h3>
+        <p>
+            AI design tools, prototyping, and creative software:
+        </p>
+        <ul>
+            <li><strong>Canva AI</strong> - Design with AI assistance</li>
+            <li><strong>Figma AI</strong> - AI-powered design features</li>
+            <li><strong>Uizard</strong> - AI prototyping</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>How to Use This Directory</h2>
+        <p>
+            Each tool listing includes:
+        </p>
+        <ul>
+            <li><strong>Detailed Description</strong> - What the tool does and who it's for</li>
+            <li><strong>Pricing Information</strong> - Free tiers, subscriptions, and enterprise options</li>
+            <li><strong>Key Features</strong> - Main capabilities and unique selling points</li>
+            <li><strong>Use Cases</strong> - Real-world applications and examples</li>
+            <li><strong>Integration Info</strong> - APIs, platforms, and compatibility</li>
+            <li><strong>Community Projects</strong> - See what others built with each tool</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Find the Right Tool</h2>
+        <p>
+            Looking for a specific type of AI tool? Browse by:
+        </p>
+        <ul>
+            <li><strong>Category</strong> - Chat, Code, Image, Video, Audio, etc.</li>
+            <li><strong>Pricing</strong> - Free, Freemium, Subscription, Enterprise</li>
+            <li><strong>Use Case</strong> - What you want to build or accomplish</li>
+            <li><strong>Projects</strong> - Tools used in community projects</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Submit a Tool</h2>
+        <p>
+            Know an amazing AI tool that should be in our directory?
+        </p>
+        <p>
+            We're constantly adding new tools based on community recommendations and our research.
+            Join AllThrive AI to submit tools, write reviews, and share your experience.
+        </p>
+        <p>
+            <a href="/">Join AllThrive AI →</a>
+        </p>
+    </section>
+</article>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends "crawler/base.html" %}
+
+{% block title %}{{ project.title }} by @{{ project.user.username }} - AllThrive AI{% endblock %}
+
+{% block description %}{{ project.description|default:"AI project by "|add:project.user.username|add:" on AllThrive AI"|truncatewords:30 }}{% endblock %}
+
+{% block og_type %}article{% endblock %}
+{% block og_title %}{{ project.title }} by @{{ project.user.username }}{% endblock %}
+{% block og_description %}{{ project.description|truncatewords:30 }}{% endblock %}
+{% if project.featured_image_url %}
+{% block og_image %}{{ project.featured_image_url }}{% endblock %}
+{% elif project.banner_url %}
+{% block og_image %}{{ project.banner_url }}{% endblock %}
+{% endif %}
+
+{% block extra_styles %}
+.project-header {
+    margin-bottom: 30px;
+}
+
+.project-banner {
+    width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.project-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 20px 0;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+.project-meta-item {
+    flex: 1;
+    min-width: 200px;
+}
+
+.tools-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.tool-tag {
+    background: #eff6ff;
+    color: #1e40af;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.category-tag {
+    background: #f0fdf4;
+    color: #166534;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.topic-tag {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+{% endblock %}
+
+{% block content %}
+<article class="project-header">
+    <h1>{{ project.title }}</h1>
+
+    <p class="meta-info">
+        By <a href="/@{{ project.user.username }}">@{{ project.user.username }}</a>
+        {% if project.published_at %}
+        • Published {{ project.published_at|date:"F j, Y" }}
+        {% endif %}
+        {% if project.updated_at %}
+        • Updated {{ project.updated_at|date:"F j, Y" }}
+        {% endif %}
+    </p>
+
+    {% if project.description %}
+    <p style="font-size: 1.1em; color: #555; margin: 20px 0;">
+        {{ project.description }}
+    </p>
+    {% endif %}
+
+    {% if project.banner_url %}
+    <img src="{{ project.banner_url }}" alt="{{ project.title }} banner" class="project-banner">
+    {% endif %}
+
+    <div class="project-meta">
+        {% if project.type %}
+        <div class="project-meta-item">
+            <strong>Project Type:</strong><br>
+            {{ project.get_type_display }}
+        </div>
+        {% endif %}
+
+        {% if project.external_url %}
+        <div class="project-meta-item">
+            <strong>Project Link:</strong><br>
+            <a href="{{ project.external_url }}" target="_blank" rel="noopener">{{ project.external_url }}</a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if project.tools.all %}
+    <div style="margin: 20px 0;">
+        <strong>Tools & Technologies:</strong>
+        <div class="tools-list">
+            {% for tool in project.tools.all %}
+            <a href="/tools/{{ tool.slug }}" class="tool-tag">{{ tool.name }}</a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if project.categories.all %}
+    <div style="margin: 20px 0;">
+        <strong>Categories:</strong>
+        <div class="tools-list">
+            {% for category in project.categories.all %}
+            <span class="category-tag">{{ category.name }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if project.topics %}
+    <div style="margin: 20px 0;">
+        <strong>Topics:</strong>
+        <div class="tools-list">
+            {% for topic in project.topics %}
+            <span class="topic-tag">{{ topic }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</article>
+
+{% if readme_content %}
+<article>
+    <h2>README</h2>
+    <div>
+        {{ readme_content|safe }}
+    </div>
+</article>
+{% endif %}
+
+<section style="margin-top: 40px; padding: 20px; background: #f9fafb; border-radius: 6px;">
+    <h2>About the Creator</h2>
+    <p>
+        <strong><a href="/@{{ project.user.username }}">@{{ project.user.username }}</a></strong>
+    </p>
+    <p>
+        <a href="/@{{ project.user.username }}">View all projects by @{{ project.user.username }} →</a>
+    </p>
+</section>
+
+<section style="margin-top: 30px;">
+    <h2>Explore More Projects</h2>
+    <p>
+        Interested in similar projects? Check out:
+    </p>
+    <ul>
+        <li><a href="/explore">Browse all AI projects</a></li>
+        {% if project.categories.all %}
+        {% for category in project.categories.all %}
+        <li>More projects in <strong>{{ category.name }}</strong></li>
+        {% endfor %}
+        {% endif %}
+        {% if project.tools.all %}
+        {% for tool in project.tools.all %}
+        <li><a href="/tools/{{ tool.slug }}">Projects built with {{ tool.name }}</a></li>
+        {% endfor %}
+        {% endif %}
+    </ul>
+</section>
+{% endblock %}

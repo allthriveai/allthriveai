@@ -1,4 +1,5 @@
 """Audit logging models for security and change tracking."""
+
 from django.conf import settings
 from django.db import models
 
@@ -7,18 +8,18 @@ class UserAuditLog(models.Model):
     """Track security-relevant user actions and profile changes."""
 
     class Action(models.TextChoices):
-        LOGIN = "login", "Login"
-        LOGOUT = "logout", "Logout"
-        PROFILE_UPDATE = "profile_update", "Profile Update"
-        PASSWORD_CHANGE = "password_change", "Password Change"
-        EMAIL_CHANGE = "email_change", "Email Change"
-        ROLE_CHANGE = "role_change", "Role Change"
-        FAILED_LOGIN = "failed_login", "Failed Login"
-        ACCOUNT_LOCKED = "account_locked", "Account Locked"
-        OAUTH_LOGIN = "oauth_login", "OAuth Login"
+        LOGIN = 'login', 'Login'
+        LOGOUT = 'logout', 'Logout'
+        PROFILE_UPDATE = 'profile_update', 'Profile Update'
+        PASSWORD_CHANGE = 'password_change', 'Password Change'
+        EMAIL_CHANGE = 'email_change', 'Email Change'
+        ROLE_CHANGE = 'role_change', 'Role Change'
+        FAILED_LOGIN = 'failed_login', 'Failed Login'
+        ACCOUNT_LOCKED = 'account_locked', 'Account Locked'
+        OAUTH_LOGIN = 'oauth_login', 'OAuth Login'
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="audit_logs", db_index=True
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='audit_logs', db_index=True
     )
     action = models.CharField(max_length=50, choices=Action.choices, db_index=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
@@ -28,17 +29,17 @@ class UserAuditLog(models.Model):
     success = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ["-timestamp"]
+        ordering = ['-timestamp']
         indexes = [
-            models.Index(fields=["user", "-timestamp"]),
-            models.Index(fields=["action", "-timestamp"]),
-            models.Index(fields=["ip_address", "-timestamp"]),
+            models.Index(fields=['user', '-timestamp']),
+            models.Index(fields=['action', '-timestamp']),
+            models.Index(fields=['ip_address', '-timestamp']),
         ]
-        verbose_name = "User Audit Log"
-        verbose_name_plural = "User Audit Logs"
+        verbose_name = 'User Audit Log'
+        verbose_name_plural = 'User Audit Logs'
 
     def __str__(self):
-        return f"{self.user.username} - {self.get_action_display()} at {self.timestamp}"
+        return f'{self.user.username} - {self.get_action_display()} at {self.timestamp}'
 
     @classmethod
     def log_action(cls, user, action, request=None, details=None, success=True):
@@ -53,17 +54,17 @@ class UserAuditLog(models.Model):
             success: Whether the action succeeded (default True)
         """
         ip_address = None
-        user_agent = ""
+        user_agent = ''
 
         if request:
             # Get IP address from request
-            x_forwarded_for = request.headers.get("x-forwarded-for")
+            x_forwarded_for = request.headers.get('x-forwarded-for')
             if x_forwarded_for:
-                ip_address = x_forwarded_for.split(",")[0]
+                ip_address = x_forwarded_for.split(',')[0]
             else:
-                ip_address = request.META.get("REMOTE_ADDR")
+                ip_address = request.META.get('REMOTE_ADDR')
 
-            user_agent = request.headers.get("user-agent", "")[:500]  # Limit length
+            user_agent = request.headers.get('user-agent', '')[:500]  # Limit length
 
         return cls.objects.create(
             user=user,

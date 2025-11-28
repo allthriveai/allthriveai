@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+
 export default function BattleDetailPage() {
   const { battleId } = useParams<{ battleId: string }>();
   const { user } = useAuth();
@@ -18,22 +20,36 @@ export default function BattleDetailPage() {
     fetchBattle();
     const interval = setInterval(fetchBattle, 5000); // Refresh every 5 seconds
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battleId]);
 
   const fetchBattle = async () => {
     try {
-      const response = await fetch(`/api/v1/me/battles/${battleId}/`, {
+      const url = `${API_BASE_URL}/me/battles/${battleId}/`;
+      console.log('Fetching battle from:', url);
+
+      const response = await fetch(url, {
         credentials: 'include',
       });
 
+      console.log('Battle fetch response:', response.status, response.statusText, response.url);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Battle data:', data);
         setBattle(data);
         setLoading(false);
+      } else {
+        const text = await response.text();
+        console.error('Battle fetch failed:', response.status, response.statusText);
+        console.error('Response body (first 200 chars):', text.substring(0, 200));
+        setLoading(false);
+        setError(`Failed to load battle (${response.status})`);
       }
     } catch (err) {
       console.error('Error fetching battle:', err);
       setLoading(false);
+      setError('Network error loading battle');
     }
   };
 
@@ -43,9 +59,28 @@ export default function BattleDetailPage() {
     setError('');
 
     try {
-      const response = await fetch(`/api/v1/me/battles/${battleId}/submit/`, {
+      // Get CSRF token
+      const getCookie = (name: string): string | null => {
+        const cookies = document.cookie ? document.cookie.split('; ') : [];
+        for (const cookie of cookies) {
+          if (cookie.startsWith(name + '=')) {
+            return decodeURIComponent(cookie.substring(name.length + 1));
+          }
+        }
+        return null;
+      };
+
+      const csrfToken = getCookie('csrftoken');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/me/battles/${battleId}/submit/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify({
           prompt_text: promptText,

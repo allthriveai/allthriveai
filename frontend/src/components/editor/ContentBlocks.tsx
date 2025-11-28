@@ -8,6 +8,7 @@ import {
   PencilIcon,
   PhotoIcon,
 } from '@heroicons/react/24/outline';
+import { MermaidBlock, CodeSnippetBlock } from './MermaidBlock';
 
 interface BlockProps {
   block: ProjectBlock & { id: string };
@@ -303,6 +304,10 @@ export function BlockRenderer({ block, onUpdate, onDelete }: BlockProps) {
     return <TextBlock block={block} onUpdate={onUpdate} onDelete={onDelete} />;
   } else if (block.type === 'image') {
     return <ImageBlock block={block} onUpdate={onUpdate} onDelete={onDelete} />;
+  } else if (block.type === 'mermaid') {
+    return <MermaidBlock block={block} onUpdate={onUpdate} onDelete={onDelete} />;
+  } else if (block.type === 'code_snippet') {
+    return <CodeSnippetBlock block={block} onUpdate={onUpdate} onDelete={onDelete} />;
   }
 
   return null;

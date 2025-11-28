@@ -97,7 +97,7 @@ export function HeroSection({
                 >
                   {title} <span className="text-primary">{highlightText}</span>
                 </h1>
-                <p className={`text-xl text-white/90 leading-relaxed ${descriptionClassName}`}>
+                <p className={`text-xl text-white/90 leading-relaxed whitespace-pre-line ${descriptionClassName}`}>
                   {description}
                 </p>
                 <div>
@@ -124,7 +124,7 @@ export function HeroSection({
             >
               {title} <span className="text-primary">{highlightText}</span>
             </h1>
-            <p className={`text-lg sm:text-xl text-white text-pretty max-w-2xl mx-auto leading-relaxed mb-10 px-4 ${descriptionClassName}`}>
+            <p className={`text-lg sm:text-xl text-white text-pretty max-w-2xl mx-auto leading-relaxed mb-10 px-4 whitespace-pre-line ${descriptionClassName}`}>
               {description}
             </p>
             <button

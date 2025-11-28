@@ -1,0 +1,144 @@
+{% extends "crawler/base.html" %}
+
+{% block title %}Explore AI Projects - AllThrive AI{% endblock %}
+
+{% block description %}Discover AI projects from our community. Browse chatbots, image generators, LLM applications, and more built by AI enthusiasts and professionals.{% endblock %}
+
+{% block og_title %}Explore AI Projects - AllThrive AI{% endblock %}
+{% block og_description %}Discover AI projects from our community - chatbots, image generators, LLM applications, and more{% endblock %}
+
+{% block content %}
+<article>
+    <section>
+        <h2>Explore AI Projects</h2>
+        <p>
+            Discover projects built by our community of AI builders. From chatbots to image generators,
+            find inspiration and learn from real-world AI implementations.
+        </p>
+    </section>
+
+    {% if projects %}
+    <section>
+        <h2>Featured Projects ({{ projects|length }})</h2>
+
+        {% for project in projects %}
+        <article style="border-bottom: 1px solid #e5e7eb; padding: 20px 0; margin: 20px 0;">
+            <h3>
+                <a href="/@{{ project.user.username }}/{{ project.slug }}">{{ project.title }}</a>
+            </h3>
+
+            <p class="meta-info">
+                By <a href="/@{{ project.user.username }}">@{{ project.user.username }}</a>
+                {% if project.published_at %}
+                • Published {{ project.published_at|date:"F j, Y" }}
+                {% endif %}
+            </p>
+
+            {% if project.description %}
+            <p>{{ project.description }}</p>
+            {% endif %}
+
+            {% if project.tools.all %}
+            <p class="meta-info">
+                <strong>Tools used:</strong>
+                {% for tool in project.tools.all %}
+                    <a href="/tools/{{ tool.slug }}">{{ tool.name }}</a>{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </p>
+            {% endif %}
+
+            {% if project.categories.all %}
+            <p class="meta-info">
+                <strong>Categories:</strong>
+                {% for category in project.categories.all %}
+                    {{ category.name }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </p>
+            {% endif %}
+
+            {% if project.topics %}
+            <p class="meta-info">
+                <strong>Topics:</strong>
+                {% for topic in project.topics %}
+                    {{ topic }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </p>
+            {% endif %}
+
+            <p>
+                <a href="/@{{ project.user.username }}/{{ project.slug }}">View project →</a>
+            </p>
+        </article>
+        {% endfor %}
+    </section>
+    {% else %}
+    <section>
+        <h2>No Projects Yet</h2>
+        <p>
+            Be the first to showcase your AI project on AllThrive AI!
+        </p>
+    </section>
+    {% endif %}
+
+    <section>
+        <h2>Project Categories</h2>
+        <p>
+            Browse projects by category:
+        </p>
+        <ul>
+            <li><strong>Chatbots & Conversational AI</strong> - LLM-powered chat applications</li>
+            <li><strong>Image Generation</strong> - AI art, DALL-E projects, Stable Diffusion</li>
+            <li><strong>Text Generation</strong> - Content creation, writing assistants</li>
+            <li><strong>Code Generation</strong> - AI coding assistants and tools</li>
+            <li><strong>Audio & Music</strong> - AI-generated music, speech synthesis</li>
+            <li><strong>Video Generation</strong> - AI video creation and editing</li>
+            <li><strong>Data Analysis</strong> - ML models, analytics, insights</li>
+            <li><strong>Automation</strong> - AI-powered workflows and agents</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Find Projects By Tool</h2>
+        <p>
+            Looking for projects built with specific AI tools?
+        </p>
+        <ul>
+            <li><a href="/tools">Browse our AI Tools Directory</a> - 250+ tools cataloged</li>
+            <li><strong>ChatGPT Projects</strong> - See what others built with GPT-4</li>
+            <li><strong>Claude Projects</strong> - Anthropic's Claude implementations</li>
+            <li><strong>Midjourney</strong> - AI art and image generation</li>
+            <li><strong>Stable Diffusion</strong> - Open source image generation</li>
+            <li><strong>LangChain</strong> - LLM application frameworks</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Get Inspired</h2>
+        <p>
+            Each project on AllThrive AI includes:
+        </p>
+        <ul>
+            <li><strong>Detailed README</strong> - Learn how it was built</li>
+            <li><strong>Tech Stack</strong> - See which tools and frameworks were used</li>
+            <li><strong>Screenshots & Demos</strong> - Visual examples of the project</li>
+            <li><strong>GitHub Links</strong> - Access the source code (when public)</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Showcase Your Project</h2>
+        <p>
+            Built something with AI? Share it with the community!
+        </p>
+        <ul>
+            <li>Create rich portfolios with markdown support</li>
+            <li>Sync directly from GitHub</li>
+            <li>Get discovered by LLMs like ChatGPT and Claude</li>
+            <li>Connect with other AI builders</li>
+        </ul>
+        <p>
+            <a href="/">Join AllThrive AI and showcase your work →</a>
+        </p>
+    </section>
+</article>
+{% endblock %}

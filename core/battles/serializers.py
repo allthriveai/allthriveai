@@ -1,4 +1,5 @@
 """Serializers for Prompt Battle feature."""
+
 from rest_framework import serializers
 
 from core.users.models import User
@@ -11,50 +12,50 @@ class BattleUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "username", "avatar_url"]
-        read_only_fields = ["id", "username", "avatar_url"]
+        fields = ['id', 'username', 'avatar_url']
+        read_only_fields = ['id', 'username', 'avatar_url']
 
 
 class BattleSubmissionSerializer(serializers.ModelSerializer):
     """Serializer for battle submissions."""
 
-    username = serializers.ReadOnlyField(source="user.username")
-    user_avatar = serializers.ReadOnlyField(source="user.avatar_url")
+    username = serializers.ReadOnlyField(source='user.username')
+    user_avatar = serializers.ReadOnlyField(source='user.avatar_url')
 
     class Meta:
         model = BattleSubmission
         fields = [
-            "id",
-            "battle",
-            "user",
-            "username",
-            "user_avatar",
-            "prompt_text",
-            "submission_type",
-            "generated_output_url",
-            "generated_output_text",
-            "score",
-            "evaluation_feedback",
-            "submitted_at",
-            "evaluated_at",
+            'id',
+            'battle',
+            'user',
+            'username',
+            'user_avatar',
+            'prompt_text',
+            'submission_type',
+            'generated_output_url',
+            'generated_output_text',
+            'score',
+            'evaluation_feedback',
+            'submitted_at',
+            'evaluated_at',
         ]
         read_only_fields = [
-            "id",
-            "username",
-            "user_avatar",
-            "submitted_at",
-            "score",
-            "evaluation_feedback",
-            "evaluated_at",
+            'id',
+            'username',
+            'user_avatar',
+            'submitted_at',
+            'score',
+            'evaluation_feedback',
+            'evaluated_at',
         ]
 
     def validate_prompt_text(self, value):
         """Validate prompt text length."""
         if len(value.strip()) < 10:
-            raise serializers.ValidationError("Prompt must be at least 10 characters long.")
+            raise serializers.ValidationError('Prompt must be at least 10 characters long.')
 
         if len(value) > 5000:
-            raise serializers.ValidationError("Prompt must be less than 5000 characters.")
+            raise serializers.ValidationError('Prompt must be less than 5000 characters.')
 
         return value
 
@@ -62,9 +63,9 @@ class BattleSubmissionSerializer(serializers.ModelSerializer):
 class PromptBattleSerializer(serializers.ModelSerializer):
     """Serializer for prompt battles with full details."""
 
-    challenger_data = BattleUserSerializer(source="challenger", read_only=True)
-    opponent_data = BattleUserSerializer(source="opponent", read_only=True)
-    winner_data = BattleUserSerializer(source="winner", read_only=True)
+    challenger_data = BattleUserSerializer(source='challenger', read_only=True)
+    opponent_data = BattleUserSerializer(source='opponent', read_only=True)
+    winner_data = BattleUserSerializer(source='winner', read_only=True)
     submissions = BattleSubmissionSerializer(many=True, read_only=True)
 
     time_remaining = serializers.SerializerMethodField()
@@ -75,40 +76,40 @@ class PromptBattleSerializer(serializers.ModelSerializer):
     class Meta:
         model = PromptBattle
         fields = [
-            "id",
-            "challenger",
-            "challenger_data",
-            "opponent",
-            "opponent_data",
-            "challenge_text",
-            "status",
-            "battle_type",
-            "duration_minutes",
-            "created_at",
-            "started_at",
-            "expires_at",
-            "completed_at",
-            "winner",
-            "winner_data",
-            "submissions",
-            "time_remaining",
-            "is_expired",
-            "user_has_submitted",
-            "can_submit",
+            'id',
+            'challenger',
+            'challenger_data',
+            'opponent',
+            'opponent_data',
+            'challenge_text',
+            'status',
+            'battle_type',
+            'duration_minutes',
+            'created_at',
+            'started_at',
+            'expires_at',
+            'completed_at',
+            'winner',
+            'winner_data',
+            'submissions',
+            'time_remaining',
+            'is_expired',
+            'user_has_submitted',
+            'can_submit',
         ]
         read_only_fields = [
-            "id",
-            "challenger_data",
-            "opponent_data",
-            "winner_data",
-            "created_at",
-            "started_at",
-            "expires_at",
-            "completed_at",
-            "winner",
-            "submissions",
-            "time_remaining",
-            "is_expired",
+            'id',
+            'challenger_data',
+            'opponent_data',
+            'winner_data',
+            'created_at',
+            'started_at',
+            'expires_at',
+            'completed_at',
+            'winner',
+            'submissions',
+            'time_remaining',
+            'is_expired',
         ]
 
     def get_time_remaining(self, obj):
@@ -117,7 +118,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
 
     def get_user_has_submitted(self, obj):
         """Check if the current user has submitted."""
-        request = self.context.get("request")
+        request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return False
 
@@ -125,7 +126,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
 
     def get_can_submit(self, obj):
         """Check if the current user can submit."""
-        request = self.context.get("request")
+        request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return False
 
@@ -143,11 +144,11 @@ class PromptBattleSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Validate battle creation."""
         # Check if challenger and opponent are different
-        challenger = data.get("challenger")
-        opponent = data.get("opponent")
+        challenger = data.get('challenger')
+        opponent = data.get('opponent')
 
         if challenger == opponent:
-            raise serializers.ValidationError("Cannot create a battle with yourself.")
+            raise serializers.ValidationError('Cannot create a battle with yourself.')
 
         return data
 
@@ -155,9 +156,9 @@ class PromptBattleSerializer(serializers.ModelSerializer):
 class PromptBattleListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for listing battles."""
 
-    challenger_username = serializers.ReadOnlyField(source="challenger.username")
-    opponent_username = serializers.ReadOnlyField(source="opponent.username")
-    winner_username = serializers.ReadOnlyField(source="winner.username")
+    challenger_username = serializers.ReadOnlyField(source='challenger.username')
+    opponent_username = serializers.ReadOnlyField(source='opponent.username')
+    winner_username = serializers.ReadOnlyField(source='winner.username')
 
     time_remaining = serializers.SerializerMethodField()
     submission_count = serializers.SerializerMethodField()
@@ -165,19 +166,19 @@ class PromptBattleListSerializer(serializers.ModelSerializer):
     class Meta:
         model = PromptBattle
         fields = [
-            "id",
-            "challenger_username",
-            "opponent_username",
-            "challenge_text",
-            "status",
-            "battle_type",
-            "duration_minutes",
-            "created_at",
-            "started_at",
-            "expires_at",
-            "winner_username",
-            "time_remaining",
-            "submission_count",
+            'id',
+            'challenger_username',
+            'opponent_username',
+            'challenge_text',
+            'status',
+            'battle_type',
+            'duration_minutes',
+            'created_at',
+            'started_at',
+            'expires_at',
+            'winner_username',
+            'time_remaining',
+            'submission_count',
         ]
         read_only_fields = fields
 
@@ -193,44 +194,44 @@ class PromptBattleListSerializer(serializers.ModelSerializer):
 class BattleInvitationSerializer(serializers.ModelSerializer):
     """Serializer for battle invitations."""
 
-    sender_data = BattleUserSerializer(source="sender", read_only=True)
-    recipient_data = BattleUserSerializer(source="recipient", read_only=True)
-    battle_data = PromptBattleListSerializer(source="battle", read_only=True)
+    sender_data = BattleUserSerializer(source='sender', read_only=True)
+    recipient_data = BattleUserSerializer(source='recipient', read_only=True)
+    battle_data = PromptBattleListSerializer(source='battle', read_only=True)
 
     is_expired = serializers.ReadOnlyField()
 
     class Meta:
         model = BattleInvitation
         fields = [
-            "id",
-            "battle",
-            "battle_data",
-            "sender",
-            "sender_data",
-            "recipient",
-            "recipient_data",
-            "message",
-            "status",
-            "created_at",
-            "responded_at",
-            "expires_at",
-            "is_expired",
+            'id',
+            'battle',
+            'battle_data',
+            'sender',
+            'sender_data',
+            'recipient',
+            'recipient_data',
+            'message',
+            'status',
+            'created_at',
+            'responded_at',
+            'expires_at',
+            'is_expired',
         ]
         read_only_fields = [
-            "id",
-            "battle_data",
-            "sender_data",
-            "recipient_data",
-            "created_at",
-            "responded_at",
-            "expires_at",
-            "is_expired",
+            'id',
+            'battle_data',
+            'sender_data',
+            'recipient_data',
+            'created_at',
+            'responded_at',
+            'expires_at',
+            'is_expired',
         ]
 
     def validate_message(self, value):
         """Validate invitation message."""
         if len(value) > 500:
-            raise serializers.ValidationError("Message must be less than 500 characters.")
+            raise serializers.ValidationError('Message must be less than 500 characters.')
 
         return value
 
@@ -247,13 +248,13 @@ class CreateBattleInvitationSerializer(serializers.Serializer):
         """Validate that opponent exists."""
         try:
             opponent = User.objects.get(username=value.lower())
-        except User.DoesNotExist:
-            raise serializers.ValidationError(f"User '{value}' does not exist.")
+        except User.DoesNotExist as e:
+            raise serializers.ValidationError(f"User '{value}' does not exist.") from e
 
         # Check if trying to battle yourself
-        request = self.context.get("request")
+        request = self.context.get('request')
         if request and request.user == opponent:
-            raise serializers.ValidationError("Cannot create a battle with yourself.")
+            raise serializers.ValidationError('Cannot create a battle with yourself.')
 
         return value
 

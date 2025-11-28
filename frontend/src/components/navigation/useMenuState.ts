@@ -18,8 +18,10 @@ export function useMenuState({
   search,
   username,
 }: UseMenuStateProps) {
-  const [openSections, setOpenSections] = useState<string[]>(['EXPLORE']);
+  // All useState hooks must be at the top
+  const [openSections, setOpenSections] = useState<string[]>([]);
   const [openSubItems, setOpenSubItems] = useState<string[]>([]);
+  const [wasSearching, setWasSearching] = useState(false);
 
   // Filter menu sections based on search query
   const filteredMenuSections = useMemo(() => {
@@ -78,6 +80,7 @@ export function useMenuState({
   // Auto-expand sections when searching
   useEffect(() => {
     if (searchQuery.trim()) {
+      setWasSearching(true);
       const matchingSections = filteredMenuSections.map(s => s.title);
       setOpenSections(matchingSections);
 
@@ -92,22 +95,24 @@ export function useMenuState({
         });
       });
       setOpenSubItems(matchingSubItems);
-    } else {
-      // Reset to default when search is cleared
-      setOpenSections(['EXPLORE']);
+    } else if (wasSearching) {
+      // Only reset when search is actively cleared (not on initial mount)
+      setWasSearching(false);
+      setOpenSections([]);
       setOpenSubItems([]);
     }
-  }, [searchQuery, filteredMenuSections, menuSections]);
+  }, [searchQuery, filteredMenuSections, menuSections, wasSearching]);
 
   const toggleSection = useCallback((title: string, isOpen: boolean, onToggle: () => void) => {
     if (!isOpen) {
       onToggle();
       setOpenSections([title]);
     } else {
+      // Accordion behavior: only one section open at a time
       setOpenSections(prev =>
         prev.includes(title)
-          ? prev.filter(s => s !== title)
-          : [title]
+          ? [] // Close current section
+          : [title] // Open new section and close others
       );
     }
   }, []);

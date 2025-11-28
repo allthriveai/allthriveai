@@ -1,169 +1,351 @@
-"""API views for GitHub repository synchronization."""
+"""GitHub integration views - simple read-only endpoints.
+
+NOTE: These views are GitHub-specific. For a generic integration-agnostic approach,
+see the IntegrationRegistry pattern demonstrated in _import_project_generic().
+Future multi-integration views should use IntegrationRegistry.get_for_url(url).
+"""
+
+import logging
+
+from django.core.cache import cache
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from services.github_sync_service import GitHubSyncService
+from core.integrations.github.constants import IMPORT_LOCK_TIMEOUT, IMPORT_RATE_LIMIT
+from core.integrations.github.helpers import (
+    get_import_lock_key,
+    get_user_github_token,
+    parse_github_url,
+)
+from core.projects.models import Project
 
 
-@api_view(["GET"])
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    """Session authentication without CSRF check for API endpoints."""
+
+    def enforce_csrf(self, request):
+        return  # Skip CSRF check
+
+
+logger = logging.getLogger(__name__)
+
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def github_sync_status(request):
-    """Get GitHub sync status for the current user."""
-    sync_service = GitHubSyncService(request.user)
-    sync_status = sync_service.get_sync_status()
-
-    return Response({"success": True, "data": sync_status})
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def github_sync_trigger(request):
+def list_user_repos(request):
     """
-    Trigger GitHub repository sync.
+    Fetch user's GitHub repositories using the GitHub MCP Server.
 
-    Body parameters:
-        - auto_publish (bool): Auto-publish synced repos as projects
-        - add_to_showcase (bool): Add synced projects to showcase
-        - include_private (bool): Include private repositories
-        - include_forks (bool): Include forked repositories
-        - min_stars (int): Minimum star count to sync
+    This is a simple read-only endpoint that fetches the user's repos
+    for display in the UI. The actual import happens via the agent's
+    import_github_project tool.
+
+    Returns:
+        List of repositories with basic metadata
     """
-    sync_service = GitHubSyncService(request.user)
+    try:
+        # Get user's GitHub token
+        user_token = get_user_github_token(request.user)
 
-    if not sync_service.is_connected():
-        return Response(
-            {"success": False, "error": "GitHub account not connected. Please connect your GitHub account first."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        if not user_token:
+            return Response(
+                {
+                    'success': False,
+                    'error': 'GitHub not connected. Please connect your GitHub account first.',
+                    'connected': False,
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
-    # Get sync options from request
-    auto_publish = request.data.get("auto_publish", False)
-    add_to_showcase = request.data.get("add_to_showcase", False)
-    include_private = request.data.get("include_private", False)
-    include_forks = request.data.get("include_forks", True)
-    min_stars = request.data.get("min_stars", 0)
+        # Fetch repos using GitHub REST API (simple approach)
+        # We use REST here instead of MCP because we just need a simple list
+        import requests
 
-    # Perform sync
-    result = sync_service.sync_all_repositories(
-        auto_publish=auto_publish,
-        add_to_showcase=add_to_showcase,
-        include_private=include_private,
-        include_forks=include_forks,
-        min_stars=min_stars,
-    )
-
-    if not result.get("success"):
-        return Response(
-            {"success": False, "error": result.get("error", "Sync failed")},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
-    return Response(
-        {
-            "success": True,
-            "data": {
-                "created": result["created"],
-                "updated": result["updated"],
-                "skipped": result["skipped"],
-                "total_repos": result["total_repos"],
-                "message": f"Synced {result['total_repos']} repositories: "
-                f"{result['created']} created, {result['updated']} updated, "
-                f"{result['skipped']} skipped",
-            },
+        headers = {
+            'Authorization': f'token {user_token}',
+            'Accept': 'application/vnd.github.v3+json',
         }
-    )
 
+        # Fetch user's repos (sorted by updated, limited to 100)
+        response = requests.get(
+            'https://api.github.com/user/repos',
+            headers=headers,
+            params={
+                'sort': 'updated',
+                'per_page': 100,
+                'affiliation': 'owner,collaborator',
+            },
+            timeout=10,
+        )
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def github_repos_list(request):
-    """List user's GitHub repositories (without syncing)."""
-    sync_service = GitHubSyncService(request.user)
+        if response.status_code == 401:
+            return Response(
+                {
+                    'success': False,
+                    'error': 'GitHub token is invalid or expired. Please reconnect your GitHub account.',
+                    'connected': False,
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
-    if not sync_service.is_connected():
-        return Response({"success": False, "error": "GitHub account not connected"}, status=status.HTTP_400_BAD_REQUEST)
+        if response.status_code == 403:
+            # Check for rate limiting
+            if 'X-RateLimit-Remaining' in response.headers and response.headers['X-RateLimit-Remaining'] == '0':
+                reset_time = response.headers.get('X-RateLimit-Reset', 'unknown')
+                return Response(
+                    {
+                        'success': False,
+                        'error': f'GitHub API rate limit exceeded. Resets at {reset_time}.',
+                    },
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
 
-    include_private = request.query_params.get("include_private", "false").lower() == "true"
+        response.raise_for_status()
+        repos_data = response.json()
 
-    repos = sync_service.fetch_repositories(include_private=include_private)
+        # Transform to simpler format for frontend
+        repos = []
+        for repo in repos_data:
+            repos.append(
+                {
+                    'name': repo['name'],
+                    'fullName': repo['full_name'],
+                    'description': repo['description'] or '',
+                    'htmlUrl': repo['html_url'],
+                    'language': repo['language'] or '',
+                    'stars': repo['stargazers_count'],
+                    'forks': repo['forks_count'],
+                    'isPrivate': repo['private'],
+                    'updatedAt': repo['updated_at'],
+                }
+            )
 
-    # Format repo data for frontend
-    repo_list = []
-    for repo in repos:
-        repo_list.append(
+        return Response(
             {
-                "name": repo.get("name"),
-                "full_name": repo.get("full_name"),
-                "description": repo.get("description"),
-                "html_url": repo.get("html_url"),
-                "homepage": repo.get("homepage"),
-                "language": repo.get("language"),
-                "topics": repo.get("topics", []),
-                "stars": repo.get("stargazers_count", 0),
-                "forks": repo.get("forks_count", 0),
-                "is_fork": repo.get("fork", False),
-                "is_private": repo.get("private", False),
-                "created_at": repo.get("created_at"),
-                "updated_at": repo.get("updated_at"),
+                'success': True,
+                'data': {
+                    'repositories': repos,
+                    'count': len(repos),
+                },
             }
         )
 
-    return Response({"success": True, "data": {"repositories": repo_list, "count": len(repo_list)}})
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def github_sync_single_repo(request):
-    """
-    Sync a single GitHub repository by name.
-
-    Body parameters:
-        - repo_name (str): Repository name
-        - auto_publish (bool): Auto-publish as project
-        - add_to_showcase (bool): Add to showcase
-    """
-    repo_name = request.data.get("repo_name")
-
-    if not repo_name:
-        return Response({"success": False, "error": "repo_name is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    sync_service = GitHubSyncService(request.user)
-
-    if not sync_service.is_connected():
-        return Response({"success": False, "error": "GitHub account not connected"}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Fetch all repos and find the requested one
-    repos = sync_service.fetch_repositories()
-    repo = next((r for r in repos if r.get("name") == repo_name), None)
-
-    if not repo:
+    except requests.RequestException as e:
+        logger.error(f'Failed to fetch GitHub repos: {e}')
         return Response(
-            {"success": False, "error": f'Repository "{repo_name}" not found'}, status=status.HTTP_404_NOT_FOUND
-        )
-
-    # Sync the repository
-    auto_publish = request.data.get("auto_publish", False)
-    add_to_showcase = request.data.get("add_to_showcase", False)
-
-    project, was_created = sync_service.sync_repository_to_project(
-        repo, auto_publish=auto_publish, add_to_showcase=add_to_showcase
-    )
-
-    if not project:
-        return Response(
-            {"success": False, "error": "Failed to sync repository"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-    return Response(
-        {
-            "success": True,
-            "data": {
-                "project_id": project.id,
-                "project_slug": project.slug,
-                "was_created": was_created,
-                "message": f"Repository '{repo_name}' {'created' if was_created else 'updated'} as project",
+            {
+                'success': False,
+                'error': 'Failed to fetch repositories from GitHub. Please try again.',
             },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+    except Exception as e:
+        logger.error(f'Unexpected error fetching GitHub repos: {e}', exc_info=True)
+        return Response(
+            {
+                'success': False,
+                'error': 'An unexpected error occurred. Please try again.',
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+# Temporarily disabled rate limiting for testing
+# @ratelimit(key='user', rate=IMPORT_RATE_LIMIT, method='POST')
+@api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def import_github_repo_async(request):
+    """
+    Import a GitHub repository as a portfolio project.
+
+    This endpoint queues the import as a Celery background task and returns immediately,
+    allowing the user to continue using the app while the import happens in the background.
+
+    Benefits:
+    - Returns in <500ms instead of 10-25 seconds
+    - Doesn't block HTTP workers
+    - Better scalability
+    - Real-time progress updates via polling
+
+    Request body:
+        {
+            "url": "https://github.com/owner/repo",
+            "is_showcase": true (optional, default: true),
+            "is_private": false (optional, default: false)
         }
-    )
+
+    Returns:
+        {
+            "success": true,
+            "task_id": "abc123...",
+            "message": "Import started! Check status at /api/integrations/tasks/abc123",
+            "status_url": "/api/integrations/tasks/abc123/"
+        }
+
+    To check task status:
+        GET /api/integrations/tasks/{task_id}/
+    """
+    try:
+        # Check rate limit
+        if getattr(request, 'limited', False):
+            return Response(
+                {
+                    'success': False,
+                    'error': f'Too many imports. You can import up to {IMPORT_RATE_LIMIT} repositories per hour.',
+                    'error_code': 'RATE_LIMIT_EXCEEDED',
+                    'suggestion': 'Please wait a few minutes before importing another repository.',
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        # Get and validate URL
+        url = request.data.get('url')
+        is_showcase = request.data.get('is_showcase', True)
+        is_private = request.data.get('is_private', False)
+
+        if not url:
+            return Response(
+                {
+                    'success': False,
+                    'error': 'Please provide a GitHub repository URL',
+                    'error_code': 'MISSING_URL',
+                    'suggestion': 'Enter a URL like: https://github.com/username/repository',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Parse GitHub URL for early validation
+        try:
+            owner, repo = parse_github_url(url)
+        except ValueError as e:
+            return Response(
+                {
+                    'success': False,
+                    'error': f'Invalid GitHub URL: {str(e)}',
+                    'error_code': 'INVALID_URL',
+                    'suggestion': 'Make sure the URL follows this format: https://github.com/username/repository',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # =============================================================================
+        # CRITICAL: Per-user import locking
+        # =============================================================================
+        lock_key = get_import_lock_key(request.user.id)
+
+        if cache.get(lock_key):
+            return Response(
+                {
+                    'success': False,
+                    'error': 'You already have an import in progress',
+                    'error_code': 'IMPORT_IN_PROGRESS',
+                    'suggestion': (
+                        'Please wait for your current import to finish before starting a new one. '
+                        'This usually takes 10-30 seconds.'
+                    ),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # =============================================================================
+        # OPTIMIZATION: Check for duplicates BEFORE queueing task
+        # =============================================================================
+        existing_project = Project.objects.filter(user=request.user, external_url=url).first()
+        if existing_project:
+            project_url = f'/{request.user.username}/{existing_project.slug}'
+            return Response(
+                {
+                    'success': False,
+                    'error': f'This repository is already in your portfolio as "{existing_project.title}"',
+                    'error_code': 'DUPLICATE_IMPORT',
+                    'suggestion': 'View your existing project or delete it before re-importing.',
+                    'project': {
+                        'id': existing_project.id,
+                        'title': existing_project.title,
+                        'slug': existing_project.slug,
+                        'url': project_url,
+                    },
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Acquire lock (will be released by task when complete)
+        cache.set(lock_key, True, timeout=IMPORT_LOCK_TIMEOUT)
+        logger.info(f'Acquired import lock for user {request.user.id}')
+
+        # Queue background task
+        from core.integrations.tasks import import_github_repo_task
+
+        task = import_github_repo_task.delay(
+            user_id=request.user.id, url=url, is_showcase=is_showcase, is_private=is_private
+        )
+
+        logger.info(f'Queued GitHub import task {task.id} for {owner}/{repo} by user {request.user.username}')
+
+        return Response(
+            {
+                'success': True,
+                'task_id': task.id,
+                'message': f'Importing {owner}/{repo}...',
+                'detail': 'Your project is being analyzed and will appear in your portfolio in a few moments.',
+                'status_url': f'/api/integrations/tasks/{task.id}',
+            },
+            status=status.HTTP_202_ACCEPTED,  # 202 = Accepted for processing
+        )
+
+    except Exception as e:
+        logger.error(f'Failed to queue GitHub import task: {e}', exc_info=True)
+
+        # Release lock on error
+        lock_key = get_import_lock_key(request.user.id)
+        cache.delete(lock_key)
+
+        from django.conf import settings
+
+        error_detail = str(e) if settings.DEBUG else 'Something went wrong while starting the import.'
+
+        return Response(
+            {
+                'success': False,
+                'error': error_detail,
+                'error_code': 'IMPORT_FAILED',
+                'error_type': type(e).__name__,
+                'suggestion': 'Please try again in a moment. If the problem persists, contact support.',
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_task_status(request, task_id):
+    """
+    Get the status of a background import task.
+
+    Returns:
+        {
+            "task_id": "abc123",
+            "status": "PENDING" | "STARTED" | "SUCCESS" | "FAILURE" | "RETRY",
+            "result": {...} (if SUCCESS),
+            "error": "..." (if FAILURE)
+        }
+    """
+    from celery.result import AsyncResult
+
+    task = AsyncResult(task_id)
+
+    response_data = {
+        'task_id': task_id,
+        'status': task.status,
+    }
+
+    if task.successful():
+        response_data['result'] = task.result
+    elif task.failed():
+        response_data['error'] = str(task.info)
+
+    return Response(response_data)

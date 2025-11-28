@@ -6,9 +6,12 @@ import { ThemeToggle } from '@/components/common/ThemeToggle';
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { login: authLogin, isAuthenticated, isLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const from = (location.state as { from?: { pathname: string }; message?: string })?.from?.pathname || '/dashboard';
 
@@ -48,6 +51,21 @@ export default function LoginPage() {
     }
   };
 
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoggingIn(true);
+
+    try {
+      await authLogin(email, password);
+      // Force a full page reload to ensure AuthContext reinitializes with new auth cookies
+      window.location.href = from;
+    } catch (err: any) {
+      setError(err?.error || 'Login failed. Please check your credentials.');
+      setIsLoggingIn(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -83,10 +101,61 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* Email/Password Login Form */}
+          <form onSubmit={handleEmailLogin} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent transition-all"
+                placeholder="your@email.com"
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent transition-all"
+                placeholder="••••••••"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-medium rounded-xl transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoggingIn ? 'Signing in...' : 'Sign in with Email'}
+            </button>
+          </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-3 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or continue with</span>
+            </div>
+          </div>
+
           <div className="space-y-3">
             {/* Google Login Button */}
             <button
               onClick={handleGoogleLogin}
+              type="button"
               className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all duration-200 font-medium shadow-sm"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -113,6 +182,7 @@ export default function LoginPage() {
             {/* GitHub Login Button */}
             <button
               onClick={handleGitHubLogin}
+              type="button"
               className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all duration-200 font-medium shadow-sm"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -124,15 +194,6 @@ export default function LoginPage() {
               </svg>
               Continue with GitHub
             </button>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-3 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Secure OAuth Authentication</span>
-            </div>
           </div>
 
           {/* Role Info */}

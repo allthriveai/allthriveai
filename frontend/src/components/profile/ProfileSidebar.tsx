@@ -15,12 +15,12 @@ interface ProfileSidebarProps {
 }
 
 export function ProfileSidebar({ user, projectCount, showcaseCount }: ProfileSidebarProps) {
-  // Mock data for stats - these would come from the API in production
+  // Use real data from user object
   const stats = {
-    points: 1250,
-    level: 8,
-    streak: 12,
-    connections: 47,
+    points: user?.totalPoints || 0,
+    level: user?.level || 1,
+    streak: user?.currentStreak || 0,
+    connections: 0, // Future: implement connections feature
   };
 
   return (
@@ -31,9 +31,10 @@ export function ProfileSidebar({ user, projectCount, showcaseCount }: ProfileSid
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3">
             About
           </h3>
-          <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed whitespace-pre-wrap">
-            {user.bio}
-          </p>
+          <div
+            className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none"
+            dangerouslySetInnerHTML={{ __html: user.bio }}
+          />
         </div>
       )}
       {/* Stats Card */}

@@ -125,13 +125,13 @@ export default {
       },
       borderRadius: {
         'DEFAULT': '4px',
-        'sm': '2px',
+        'sm': '4px',
         'md': '4px',
-        'lg': '8px',
-        'xl': '12px',
-        '2xl': '16px',
-        '3xl': '24px',
-        '4xl': '2rem',
+        'lg': '4px',
+        'xl': '4px',
+        '2xl': '4px',
+        '3xl': '4px',
+        '4xl': '4px',
         'full': '9999px',
       },
       backgroundImage: {
@@ -157,6 +157,7 @@ export default {
         'glass': '12px',
         'glass-lg': '16px',
         'glass-xl': '24px',
+        '3xl': '32px',
       },
       transitionDuration: {
         '150': '150ms',

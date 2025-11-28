@@ -16,10 +16,21 @@ function transformProject(data: any): Project {
     description: data.description || '',
     type: data.type,
     isShowcase: data.isShowcase,
+    isHighlighted: data.isHighlighted ?? false,
+    isPrivate: data.isPrivate ?? false,
     isArchived: data.isArchived,
     isPublished: data.isPublished ?? false,
     publishedAt: data.publishedAt,
-    thumbnailUrl: data.thumbnailUrl,
+    bannerUrl: data.bannerUrl,
+    featuredImageUrl: data.featuredImageUrl || '',
+    externalUrl: data.externalUrl || '',
+    tools: data.tools || [],
+    toolsDetails: data.toolsDetails || [],
+    categories: data.categories || [],
+    categoriesDetails: data.categoriesDetails || [],
+    topics: data.topics || [],
+    heartCount: data.heartCount || 0,
+    isLikedByUser: data.isLikedByUser || false,
     content: data.content || {},
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
@@ -53,16 +64,11 @@ export async function getProject(id: number): Promise<Project> {
 
 /**
  * Get a project by username and slug
+ * Uses the direct project detail endpoint
  */
 export async function getProjectBySlug(username: string, slug: string): Promise<Project> {
-  // For now, we'll list all projects and filter
-  // TODO: Add dedicated backend endpoint for /{username}/{slug}
-  const projects = await listProjects();
-  const project = projects.find(p => p.username === username && p.slug === slug);
-  if (!project) {
-    throw new Error('Project not found');
-  }
-  return project;
+  const response = await api.get<any>(`/users/${username}/projects/${slug}/`);
+  return transformProject(response.data);
 }
 
 /**
@@ -120,4 +126,22 @@ export async function getUserProjects(username: string): Promise<{
     showcase: response.data.showcase.map(transformProject),
     playground: response.data.playground.map(transformProject),
   };
+}
+
+/**
+ * Toggle like/heart on a project
+ */
+export async function toggleProjectLike(projectId: number): Promise<{ liked: boolean; heartCount: number }> {
+  const response = await api.post<{ liked: boolean; heart_count: number }>(`/me/projects/${projectId}/toggle-like/`);
+  return {
+    liked: response.data.liked,
+    heartCount: response.data.heart_count,
+  };
+}
+
+/**
+ * Delete a redirect for a project
+ */
+export async function deleteProjectRedirect(projectId: number, redirectId: number): Promise<void> {
+  await api.delete(`/me/projects/${projectId}/redirects/${redirectId}/`);
 }

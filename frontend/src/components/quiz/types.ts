@@ -2,12 +2,36 @@ export type QuizDifficulty = 'beginner' | 'intermediate' | 'advanced';
 
 export type QuestionType = 'true_false' | 'multiple_choice' | 'swipe';
 
+export interface Tool {
+  id: number;
+  name: string;
+  slug: string;
+  tagline: string;
+  description: string;
+  logoUrl?: string;
+  websiteUrl: string;
+  category: string;
+  categoryDisplay: string;
+}
+
+export interface Taxonomy {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  taxonomyType: 'category' | 'tool' | 'topic';
+  color?: string;
+}
+
 export interface Quiz {
   id: string;
   title: string;
   slug: string;
   description: string;
-  topic: string;
+  topic: string; // legacy field
+  topics: string[]; // array of topic tags
+  tools: Tool[]; // AI tools covered in quiz
+  categories: Taxonomy[]; // taxonomy categories
   difficulty: QuizDifficulty;
   estimatedTime: number; // minutes
   questionCount: number;
@@ -18,6 +42,8 @@ export interface Quiz {
   userHasAttempted: boolean;
   userBestScore: number | null;
   userAttemptCount: number;
+  userCompleted: boolean;
+  userLatestScore: number | null;
 }
 
 export interface QuizQuestion {

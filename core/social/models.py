@@ -1,4 +1,5 @@
 """Models for social account connections and OAuth integrations."""
+
 import base64
 import hashlib
 
@@ -11,57 +12,57 @@ from django.db import models
 class SocialProvider(models.TextChoices):
     """Supported social OAuth providers."""
 
-    GITHUB = "github", "GitHub"
-    GITLAB = "gitlab", "GitLab"
-    LINKEDIN = "linkedin", "LinkedIn"
-    FIGMA = "figma", "Figma"
-    HUGGINGFACE = "huggingface", "Hugging Face"
-    MIDJOURNEY = "midjourney", "Midjourney"
+    GITHUB = 'github', 'GitHub'
+    GITLAB = 'gitlab', 'GitLab'
+    LINKEDIN = 'linkedin', 'LinkedIn'
+    FIGMA = 'figma', 'Figma'
+    HUGGINGFACE = 'huggingface', 'Hugging Face'
+    MIDJOURNEY = 'midjourney', 'Midjourney'
 
 
 class SocialConnection(models.Model):
     """Store OAuth tokens and metadata for connected social accounts."""
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="social_connections")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='social_connections')
 
-    provider = models.CharField(max_length=20, choices=SocialProvider.choices, help_text="OAuth provider name")
+    provider = models.CharField(max_length=20, choices=SocialProvider.choices, help_text='OAuth provider name')
 
-    provider_user_id = models.CharField(max_length=255, help_text="Unique user ID from the provider")
+    provider_user_id = models.CharField(max_length=255, help_text='Unique user ID from the provider')
 
-    provider_username = models.CharField(max_length=255, blank=True, help_text="Username on the provider platform")
+    provider_username = models.CharField(max_length=255, blank=True, help_text='Username on the provider platform')
 
-    provider_email = models.EmailField(blank=True, null=True, help_text="Email from provider (if available)")
+    provider_email = models.EmailField(blank=True, null=True, help_text='Email from provider (if available)')
 
     # Encrypted token storage
-    access_token_encrypted = models.BinaryField(help_text="Encrypted OAuth access token")
+    access_token_encrypted = models.BinaryField(help_text='Encrypted OAuth access token')
 
-    refresh_token_encrypted = models.BinaryField(blank=True, null=True, help_text="Encrypted OAuth refresh token")
+    refresh_token_encrypted = models.BinaryField(blank=True, null=True, help_text='Encrypted OAuth refresh token')
 
-    token_expires_at = models.DateTimeField(null=True, blank=True, help_text="When the access token expires")
+    token_expires_at = models.DateTimeField(null=True, blank=True, help_text='When the access token expires')
 
-    scopes = models.TextField(blank=True, help_text="Comma-separated list of granted OAuth scopes")
+    scopes = models.TextField(blank=True, help_text='Comma-separated list of granted OAuth scopes')
 
-    profile_url = models.URLField(blank=True, help_text="Link to user profile on provider")
+    profile_url = models.URLField(blank=True, help_text='Link to user profile on provider')
 
-    avatar_url = models.URLField(blank=True, help_text="Profile picture from provider")
+    avatar_url = models.URLField(blank=True, help_text='Profile picture from provider')
 
-    extra_data = models.JSONField(default=dict, blank=True, help_text="Additional provider-specific data")
+    extra_data = models.JSONField(default=dict, blank=True, help_text='Additional provider-specific data')
 
-    is_active = models.BooleanField(default=True, help_text="Whether this connection is currently active")
+    is_active = models.BooleanField(default=True, help_text='Whether this connection is currently active')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [["user", "provider"]]
-        ordering = ["-created_at"]
+        unique_together = [['user', 'provider']]
+        ordering = ['-created_at']
         indexes = [
-            models.Index(fields=["user", "provider"]),
-            models.Index(fields=["provider", "provider_user_id"]),
+            models.Index(fields=['user', 'provider']),
+            models.Index(fields=['provider', 'provider_user_id']),
         ]
 
     def __str__(self):
-        return f"{self.user.username} - {self.get_provider_display()}"
+        return f'{self.user.username} - {self.get_provider_display()}'
 
     @staticmethod
     def _get_encryption_key():
@@ -75,14 +76,14 @@ class SocialConnection(models.Model):
     def encrypt_token(self, token: str) -> bytes:
         """Encrypt an OAuth token."""
         if not token:
-            return b""
+            return b''
         f = Fernet(self._get_encryption_key())
         return f.encrypt(token.encode())
 
     def decrypt_token(self, encrypted_token: bytes) -> str:
         """Decrypt an OAuth token."""
         if not encrypted_token:
-            return ""
+            return ''
         f = Fernet(self._get_encryption_key())
         return f.decrypt(encrypted_token).decode()
 
@@ -101,7 +102,7 @@ class SocialConnection(models.Model):
         """Get decrypted refresh token."""
         if self.refresh_token_encrypted:
             return self.decrypt_token(self.refresh_token_encrypted)
-        return ""
+        return ''
 
     @refresh_token.setter
     def refresh_token(self, value: str):
@@ -121,11 +122,11 @@ class SocialConnection(models.Model):
         """Get scopes as a list."""
         if not self.scopes:
             return []
-        return [s.strip() for s in self.scopes.split(",")]
+        return [s.strip() for s in self.scopes.split(',')]
 
     def set_scopes_list(self, scopes: list):
         """Set scopes from a list."""
-        self.scopes = ",".join(scopes)
+        self.scopes = ','.join(scopes)
 
     def clean(self):
         """Validate the model."""
@@ -133,8 +134,8 @@ class SocialConnection(models.Model):
 
         # Ensure we have at least an access token
         if not self.access_token_encrypted:
-            raise ValidationError("Access token is required")
+            raise ValidationError('Access token is required')
 
         # Validate provider-specific requirements
         if self.provider == SocialProvider.GITHUB and not self.provider_username:
-            raise ValidationError("GitHub connections require a username")
+            raise ValidationError('GitHub connections require a username')

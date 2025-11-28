@@ -1,0 +1,37 @@
+{% extends "admin/index.html" %}
+{% load static %}
+
+{% block content %}
+{{ block.super }}
+
+<!-- AI Analytics Dashboard Link -->
+<div class="module" style="margin-top: 20px;">
+    <h2>🤖 AI Gateway Analytics</h2>
+    <table>
+        <tr>
+            <th scope="row">
+                <a href="{% url 'admin:ai_analytics_dashboard' %}">
+                    📊 AI Analytics Dashboard
+                </a>
+            </th>
+            <td>View real-time AI costs, usage metrics, and LangSmith traces</td>
+        </tr>
+        <tr>
+            <th scope="row">
+                <a href="{% url 'admin:ai_user_dashboard' %}">
+                    👥 User Spend Monitoring
+                </a>
+            </th>
+            <td>Monitor per-user AI costs and enforce spend limits</td>
+        </tr>
+        <tr>
+            <th scope="row">
+                <a href="https://smith.langchain.com" target="_blank">
+                    🔍 View in LangSmith ↗
+                </a>
+            </th>
+            <td>Open LangSmith dashboard for detailed traces and analytics</td>
+        </tr>
+    </table>
+</div>
+{% endblock %}

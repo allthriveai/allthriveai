@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Root pre-push hook for AllThrive AI
+# Runs API versioning check and core test/lint suite via Docker
+
+set -euo pipefail
+
+printf '\n[pre-push] Running API versioning check...\n'
+if [ -x scripts/pre-push ]; then
+  scripts/pre-push
+fi
+
+printf '\n[pre-push] Running backend checks...\n'
+docker-compose run --rm -T web ruff check .
+docker-compose run --rm -T web bandit -c pyproject.toml -r .
+docker-compose run --rm -T web python manage.py test --verbosity=2
+
+printf '\n[pre-push] Running frontend checks...\n'
+docker-compose run --rm -T frontend npm run lint
+docker-compose run --rm -T frontend npm run type-check
+docker-compose run --rm -T frontend npm test
+
+printf '\n[pre-push] All checks passed.\n'

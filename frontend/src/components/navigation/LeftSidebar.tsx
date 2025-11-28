@@ -14,30 +14,70 @@ import {
   SunIcon,
   MoonIcon,
   MagnifyingGlassIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { getMenuSections, ROUTE_PATTERNS, TIMING, type MenuItem } from './menuData';
+import { getMenuSections, ROUTE_PATTERNS, TIMING, TOOLS_ICON, type MenuItem } from './menuData';
 import { useMenuState } from './useMenuState';
+import { getTools } from '@/services/tools';
+import { createProject } from '@/services/projects';
+import type { Tool } from '@/types/models';
 
 interface LeftSidebarProps {
   onMenuClick: (menuItem: string) => void;
   isOpen: boolean;
   onToggle: () => void;
+  onAddProject?: () => void;
 }
 
-export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps) {
+export function LeftSidebar({ onMenuClick, isOpen, onToggle, onAddProject }: LeftSidebarProps) {
   const { user, logout, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [tools, setTools] = useState<Tool[]>([]);
 
-  // Memoized menu sections
+  // Load tools on mount
+  useEffect(() => {
+    async function loadTools() {
+      try {
+        const response = await getTools({ ordering: 'name' });
+        setTools(response.results);
+      } catch (err) {
+        console.error('Failed to load tools for sidebar:', err);
+        // Fail silently - sidebar will work without tools
+      }
+    }
+    loadTools();
+  }, []);
+
+  // Memoized menu sections (base sections without tools)
   const menuSections = useMemo(
     () => getMenuSections(onMenuClick, user?.username),
     [onMenuClick, user?.username]
   );
+
+  // Memoized menu sections WITH tools (only used when searching)
+  const menuSectionsWithTools = useMemo(() => {
+    if (!searchQuery.trim() || tools.length === 0) {
+      return menuSections;
+    }
+
+    // When searching, add tools as a searchable section
+    const sections = [...menuSections];
+    sections.push({
+      title: 'TOOLS',
+      icon: TOOLS_ICON,
+      items: tools.map(tool => ({
+        label: tool.name,
+        path: `/tools/${tool.slug}`,
+      })),
+    });
+
+    return sections;
+  }, [menuSections, tools, searchQuery]);
 
   // Helper function to check if a menu item is active
   const isMenuItemActive = useCallback(
@@ -75,7 +115,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
     toggleSection,
     toggleSubItem,
   } = useMenuState({
-    menuSections,
+    menuSections: menuSectionsWithTools,
     isMenuItemActive,
     searchQuery,
     pathname: location.pathname,
@@ -87,7 +127,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
   const handleLogout = useCallback(async () => {
     try {
       await logout();
-      navigate('/login');
+      navigate('/auth');
     } catch (error) {
       console.error('Logout failed:', error);
       // TODO: Show toast notification to user
@@ -143,46 +183,40 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
 
       {/* Sidebar */}
       <div
-        className={`fixed h-screen glass-strong flex flex-col overflow-y-auto z-50 transition-all duration-300 ${
-          isOpen ? 'w-64 translate-x-0' : 'w-20 translate-x-0 max-md:-translate-x-full'
-        }`}
+        className={`fixed h-screen glass-strong flex flex-col z-50 transition-all duration-300 ${
+          isOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full md:translate-x-0'
+        } overflow-hidden`}
       >
         {/* Header with close/collapse buttons */}
-        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+        <div className="p-6 border-b border-white/10 flex items-center justify-between flex-shrink-0">
           {isOpen ? (
             <>
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/explore')}
                 className="flex items-center gap-2 text-slate-900 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
               >
-                <HomeIcon className="w-5 h-5" />
-                <span className="font-semibold">All Thrive</span>
+                <HomeIcon className="w-5 h-5 flex-shrink-0" />
+                <span className="font-semibold whitespace-nowrap transition-opacity duration-300">
+                  All Thrive
+                </span>
               </button>
 
               <div className="flex items-center gap-2">
-                {/* Collapse button (desktop only) */}
+                {/* Close/Collapse button */}
                 <button
                   onClick={onToggle}
-                  className="hidden md:block p-2 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors"
-                  aria-label="Collapse sidebar"
-                >
-                  <ChevronLeftIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                </button>
-
-                {/* Close button (mobile only) */}
-                <button
-                  onClick={onToggle}
-                  className="md:hidden p-2 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors"
+                  className="p-2 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg transition-colors"
                   aria-label="Close sidebar"
                 >
-                  <XMarkIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  <XMarkIcon className="w-5 h-5 text-slate-600 dark:text-slate-400 md:hidden" />
+                  <ChevronLeftIcon className="w-5 h-5 text-slate-600 dark:text-slate-400 hidden md:block" />
                 </button>
               </div>
             </>
           ) : (
             <div className="w-full flex flex-col items-center gap-2">
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/explore')}
                 className="w-full flex items-center justify-center text-slate-900 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
               >
                 <HomeIcon className="w-5 h-5" />
@@ -200,7 +234,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
 
         {/* Search Bar */}
         {isOpen && (
-          <div className="px-4 pt-4 pb-2">
+          <div className="px-4 pt-4 pb-2 flex-shrink-0">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
@@ -208,7 +242,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                 placeholder="Search menu..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/20 rounded-lg text-slate-700 dark:text-slate-300 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
+                className="w-full pl-9 pr-3 py-2 text-sm bg-white/10 dark:bg-white/5 border border-slate-300 dark:border-white/20 rounded-lg text-slate-700 dark:text-slate-300 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
               />
               {searchQuery && (
                 <button
@@ -223,38 +257,135 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
           </div>
         )}
 
+        {/* Add Project Button */}
+        {isAuthenticated && user?.username && onAddProject && (
+          <div className={`pb-2 flex-shrink-0 ${isOpen ? 'px-4' : 'px-2'}`}>
+            <button
+              onClick={onAddProject}
+              className={`w-full flex items-center gap-2 bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/10 rounded-lg transition-colors font-medium text-sm ${
+                isOpen ? 'px-4 py-2.5' : 'p-3 justify-center'
+              }`}
+              title={!isOpen ? 'Add Project' : undefined}
+            >
+              <PlusIcon className="w-4 h-4" />
+              {isOpen && <span>Add Project</span>}
+            </button>
+          </div>
+        )}
+
         {/* Menu Sections */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden">
           {filteredMenuSections.length > 0 ? (
-            filteredMenuSections.map((section) => (
+            filteredMenuSections.map((section) => {
+              const hasItems = section.items.length > 0;
+              const isExpandableSection = hasItems;
+              const shouldShowItems = isOpen && hasItems && openSections.includes(section.title);
+
+              // Check if any item in this section is active
+              const hasActiveItem = hasItems && section.items.some(item => {
+                if (isMenuItemActive(item)) return true;
+                if (item.subItems) {
+                  return item.subItems.some(subItem => isMenuItemActive(subItem));
+                }
+                return false;
+              });
+
+              // Determine if section should be highlighted
+              const isSectionActive = hasActiveItem || (
+                !hasItems && section.path && location.pathname === section.path
+              );
+
+              return (
               <div key={section.title} className="mb-2">
                 {/* Section Header */}
-                <button
-                  onClick={() => toggleSection(section.title, isOpen, onToggle)}
-                  className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
-                    isOpen ? 'justify-between' : 'justify-center'
-                  } ${
-                    openSections.includes(section.title)
-                      ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'
-                  }`}
-                  title={!isOpen ? section.title : undefined}
-                >
-                  <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
-                    <FontAwesomeIcon icon={section.icon} className="w-4 h-4" />
-                    {isOpen && <span>{section.title}</span>}
+                {isExpandableSection ? (
+                  // Expandable section with items (dropdown)
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        if (section.onClick) {
+                          section.onClick();
+                        } else if (section.path) {
+                          navigate(section.path);
+                        }
+                      }}
+                      className={`flex-1 flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
+                        isSectionActive
+                          ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10'
+                      }`}
+                      title={!isOpen ? section.title : undefined}
+                    >
+                      <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
+                        <FontAwesomeIcon icon={section.icon} className="w-4 h-4 flex-shrink-0" />
+                        {isOpen && (
+                          <span className="whitespace-nowrap transition-opacity duration-300">
+                            {section.title}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSection(section.title, isOpen, onToggle);
+                        }}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                        aria-label="Toggle submenu"
+                      >
+                        {openSections.includes(section.title) ? (
+                          <ChevronUpIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                        ) : (
+                          <ChevronDownIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                        )}
+                      </button>
+                    )}
                   </div>
-                  {isOpen && (
-                    openSections.includes(section.title) ? (
-                      <ChevronUpIcon className="w-4 h-4" />
-                    ) : (
-                      <ChevronDownIcon className="w-4 h-4" />
-                    )
-                  )}
-                </button>
+                ) : section.onClick ? (
+                  // Section with onClick handler and no items
+                  <button
+                    onClick={section.onClick}
+                    className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
+                      isOpen ? 'justify-between' : 'justify-center'
+                    } text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10`}
+                    title={!isOpen ? section.title : undefined}
+                  >
+                    <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
+                      <FontAwesomeIcon icon={section.icon} className="w-4 h-4 flex-shrink-0" />
+                      {isOpen && (
+                        <span className="whitespace-nowrap transition-opacity duration-300">
+                          {section.title}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ) : section.path ? (
+                  // Direct link section (no dropdown, no items)
+                  <button
+                    onClick={() => navigate(section.path!)}
+                    className={`w-full flex items-center px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-lg ${
+                      isOpen ? 'justify-between' : 'justify-center'
+                    } ${
+                      isSectionActive
+                        ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10'
+                    }`}
+                    title={!isOpen ? section.title : undefined}
+                  >
+                    <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
+                      <FontAwesomeIcon icon={section.icon} className="w-4 h-4 flex-shrink-0" />
+                      {isOpen && (
+                        <span className="whitespace-nowrap transition-opacity duration-300">
+                          {section.title}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ) : null}
 
                 {/* Section Items */}
-                {isOpen && openSections.includes(section.title) && (
+                {shouldShowItems && (
                   <div className="mt-1 space-y-1">
                     {section.items.map((item) => (
                       <div key={item.label}>
@@ -265,11 +396,11 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                               onClick={() => toggleSubItem(item.label)}
                               className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all ${
                                 openSubItems.includes(item.label)
-                                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30 font-medium'
-                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100'
+                                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30 font-semibold'
+                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal'
                               }`}
                             >
-                              <span>{item.label}</span>
+                              <span className="whitespace-nowrap">{item.label}</span>
                               {openSubItems.includes(item.label) ? (
                                 <ChevronUpIcon className="w-3 h-3" />
                               ) : (
@@ -291,7 +422,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal'
                                     }`}
                                   >
-                                    {subItem.label}
+                                    <span className="whitespace-nowrap">{subItem.label}</span>
                                   </a>
                                 ))}
                               </div>
@@ -307,10 +438,10 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                             className={`block px-3 py-2 text-sm rounded-lg transition-all cursor-pointer ${
                               isMenuItemActive(item)
                                 ? 'bg-primary-100 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 font-semibold'
-                                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal hover:font-medium'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-slate-100 font-normal'
                             }`}
                           >
-                            {item.label}
+                            <span className="whitespace-nowrap">{item.label}</span>
                           </a>
                         )}
                       </div>
@@ -318,7 +449,8 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
                   </div>
                 )}
               </div>
-            ))
+              );
+            })
           ) : (
             <div className="px-3 py-8 text-center">
               <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -329,7 +461,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
         </nav>
 
         {/* Theme Toggle & Auth Button */}
-        <div className="p-4 border-t border-white/10 space-y-2">
+        <div className="p-4 border-t border-white/10 space-y-2 flex-shrink-0">
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
@@ -344,7 +476,7 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
               <SunIcon className="w-5 h-5" />
             )}
             {isOpen && (
-              <span className="font-medium">
+              <span className="font-medium whitespace-nowrap transition-opacity duration-300">
                 {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
               </span>
             )}
@@ -359,19 +491,27 @@ export function LeftSidebar({ onMenuClick, isOpen, onToggle }: LeftSidebarProps)
               }`}
               title={!isOpen ? 'Log Out' : undefined}
             >
-              <ArrowRightOnRectangleIcon className="w-5 h-5" />
-              {isOpen && <span className="font-medium">Log Out</span>}
+              <ArrowRightOnRectangleIcon className="w-5 h-5 flex-shrink-0" />
+              {isOpen && (
+                <span className="font-medium whitespace-nowrap transition-opacity duration-300">
+                  Log Out
+                </span>
+              )}
             </button>
           ) : (
             <button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/auth')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-primary-500 dark:text-primary-400 hover:bg-primary-500/10 dark:hover:bg-primary-500/10 rounded-lg transition-colors ${
                 isOpen ? '' : 'justify-center px-0'
               }`}
               title={!isOpen ? 'Log In' : undefined}
             >
-              <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-              {isOpen && <span className="font-medium">Log In</span>}
+              <ArrowLeftOnRectangleIcon className="w-5 h-5 flex-shrink-0" />
+              {isOpen && (
+                <span className="font-medium whitespace-nowrap transition-opacity duration-300">
+                  Log In
+                </span>
+              )}
             </button>
           )}
         </div>

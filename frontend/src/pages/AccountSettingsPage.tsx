@@ -17,6 +17,11 @@ interface ProfileFormData {
   avatarUrl: string;
   websiteUrl: string;
   calendarUrl: string;
+  linkedinUrl: string;
+  twitterUrl: string;
+  githubUrl: string;
+  youtubeUrl: string;
+  instagramUrl: string;
 }
 
 export default function AccountSettingsPage() {
@@ -32,6 +37,11 @@ export default function AccountSettingsPage() {
     avatarUrl: '',
     websiteUrl: '',
     calendarUrl: '',
+    linkedinUrl: '',
+    twitterUrl: '',
+    githubUrl: '',
+    youtubeUrl: '',
+    instagramUrl: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -54,6 +64,11 @@ export default function AccountSettingsPage() {
         avatarUrl: user.avatarUrl || '',
         websiteUrl: user.websiteUrl || '',
         calendarUrl: user.calendarUrl || '',
+        linkedinUrl: user.linkedinUrl || '',
+        twitterUrl: user.twitterUrl || '',
+        githubUrl: user.githubUrl || '',
+        youtubeUrl: user.youtubeUrl || '',
+        instagramUrl: user.instagramUrl || '',
       });
     }
   }, [user]);
@@ -118,6 +133,11 @@ export default function AccountSettingsPage() {
         avatarUrl: formData.avatarUrl,
         websiteUrl: formData.websiteUrl,
         calendarUrl: formData.calendarUrl,
+        linkedinUrl: formData.linkedinUrl,
+        twitterUrl: formData.twitterUrl,
+        githubUrl: formData.githubUrl,
+        youtubeUrl: formData.youtubeUrl,
+        instagramUrl: formData.instagramUrl,
       };
 
       await api.patch('/me/profile/', payload);
@@ -160,7 +180,7 @@ export default function AccountSettingsPage() {
           {/* Profile Form */}
           <form onSubmit={handleSubmit} className="space-y-8" aria-label="Edit profile form">
             {/* Profile Photo Section */}
-            <div className="flex items-start gap-6">
+            <div className="flex flex-col items-center gap-6">
               <ImageUpload
                 currentImage={formData.avatarUrl}
                 onImageUploaded={(url) => {
@@ -170,7 +190,7 @@ export default function AccountSettingsPage() {
                   setFormData(prev => ({ ...prev, avatarUrl: '' }));
                 }}
               />
-              <div className="flex-1">
+              <div className="max-w-md text-center">
                 <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
                   Profile Photo
                 </h3>
@@ -352,6 +372,93 @@ export default function AccountSettingsPage() {
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     Link to your Calendly, Cal.com, or other booking calendar
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Social Media Links */}
+            <div className="glass-strong rounded-xl p-6 border border-white/20">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">
+                Social Media Links
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-5">
+                These links will appear on your public Showcase profile
+              </p>
+
+              <div className="space-y-5">
+                <div>
+                  <label htmlFor="linkedinUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    LinkedIn
+                  </label>
+                  <input
+                    type="url"
+                    id="linkedinUrl"
+                    name="linkedinUrl"
+                    value={formData.linkedinUrl}
+                    onChange={handleChange}
+                    placeholder="https://linkedin.com/in/username"
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="twitterUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Twitter / X
+                  </label>
+                  <input
+                    type="url"
+                    id="twitterUrl"
+                    name="twitterUrl"
+                    value={formData.twitterUrl}
+                    onChange={handleChange}
+                    placeholder="https://twitter.com/username"
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="githubUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    GitHub
+                  </label>
+                  <input
+                    type="url"
+                    id="githubUrl"
+                    name="githubUrl"
+                    value={formData.githubUrl}
+                    onChange={handleChange}
+                    placeholder="https://github.com/username"
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="youtubeUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    YouTube
+                  </label>
+                  <input
+                    type="url"
+                    id="youtubeUrl"
+                    name="youtubeUrl"
+                    value={formData.youtubeUrl}
+                    onChange={handleChange}
+                    placeholder="https://youtube.com/@username"
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="instagramUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Instagram
+                  </label>
+                  <input
+                    type="url"
+                    id="instagramUrl"
+                    name="instagramUrl"
+                    value={formData.instagramUrl}
+                    onChange={handleChange}
+                    placeholder="https://instagram.com/username"
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
                 </div>
               </div>
             </div>

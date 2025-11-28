@@ -18,13 +18,13 @@ logger = logging.getLogger(__name__)
 class ReferralRegenerateThrottle(UserRateThrottle):
     """Limit referral code changes to prevent abuse."""
 
-    rate = "5/day"
+    rate = '5/day'
 
 
 class ReferralValidationThrottle(AnonRateThrottle):
     """Limit public referral code validation to prevent enumeration."""
 
-    rate = "20/minute"
+    rate = '20/minute'
 
 
 class ReferralCodeViewSet(viewsets.ModelViewSet):
@@ -72,30 +72,30 @@ class ReferralCodeViewSet(viewsets.ModelViewSet):
                     # Add suffix on collision
                     from django.utils.crypto import get_random_string
 
-                    suffix = get_random_string(3, allowed_chars="23456789")
-                    code = f"{default_code[:15]}{suffix}"
+                    suffix = get_random_string(3, allowed_chars='23456789')
+                    code = f'{default_code[:15]}{suffix}'
 
                 referral_code = ReferralCode.objects.create(user=user, code=code)
-                logger.info(f"Created referral code {referral_code.code} for user {user.username}")
+                logger.info(f'Created referral code {referral_code.code} for user {user.username}')
                 return referral_code
-            except IntegrityError:
-                logger.warning(f"Referral code collision on attempt {attempt + 1} for user {user.username}")
+            except IntegrityError as e:
+                logger.warning(f'Referral code collision on attempt {attempt + 1} for user {user.username}')
                 if attempt == max_attempts - 1:
-                    raise ValueError(f"Unable to generate unique referral code for user {user.username}")
+                    raise ValueError(f'Unable to generate unique referral code for user {user.username}') from e
                 continue
 
-        raise ValueError("Unable to generate unique referral code")
+        raise ValueError('Unable to generate unique referral code')
 
     def create(self, request):
         """Create a referral code for the user if they don't have one."""
-        if hasattr(request.user, "referral_code"):
-            return Response({"error": "You already have a referral code"}, status=status.HTTP_400_BAD_REQUEST)
+        if hasattr(request.user, 'referral_code'):
+            return Response({'error': 'You already have a referral code'}, status=status.HTTP_400_BAD_REQUEST)
 
         referral_code = self._create_unique_referral_code(request.user)
         serializer = self.get_serializer(referral_code)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=['get'])
     def stats(self, request):
         """Get referral statistics for the authenticated user."""
         try:
@@ -104,35 +104,35 @@ class ReferralCodeViewSet(viewsets.ModelViewSet):
             # Return empty stats if no referral code exists
             return Response(
                 {
-                    "total_referrals": 0,
-                    "pending_referrals": 0,
-                    "completed_referrals": 0,
-                    "rewarded_referrals": 0,
-                    "total_uses": 0,
+                    'total_referrals': 0,
+                    'pending_referrals': 0,
+                    'completed_referrals': 0,
+                    'rewarded_referrals': 0,
+                    'total_uses': 0,
                 }
             )
 
         # Optimized: Single query with conditional aggregation to prevent N+1
         referrals = Referral.objects.filter(referrer=request.user)
         referrals_aggregate = referrals.aggregate(
-            total=Count("id"),
-            pending=Count("id", filter=Q(status=ReferralStatus.PENDING)),
-            completed=Count("id", filter=Q(status=ReferralStatus.COMPLETED)),
-            rewarded=Count("id", filter=Q(status=ReferralStatus.REWARDED)),
+            total=Count('id'),
+            pending=Count('id', filter=Q(status=ReferralStatus.PENDING)),
+            completed=Count('id', filter=Q(status=ReferralStatus.COMPLETED)),
+            rewarded=Count('id', filter=Q(status=ReferralStatus.REWARDED)),
         )
 
         stats = {
-            "total_referrals": referrals_aggregate["total"] or 0,
-            "pending_referrals": referrals_aggregate["pending"] or 0,
-            "completed_referrals": referrals_aggregate["completed"] or 0,
-            "rewarded_referrals": referrals_aggregate["rewarded"] or 0,
-            "total_uses": referral_code.uses_count,
+            'total_referrals': referrals_aggregate['total'] or 0,
+            'pending_referrals': referrals_aggregate['pending'] or 0,
+            'completed_referrals': referrals_aggregate['completed'] or 0,
+            'rewarded_referrals': referrals_aggregate['rewarded'] or 0,
+            'total_uses': referral_code.uses_count,
         }
 
         serializer = ReferralStatsSerializer(stats)
         return Response(serializer.data)
 
-    @action(detail=False, methods=["post"], throttle_classes=[ReferralRegenerateThrottle])
+    @action(detail=False, methods=['post'], throttle_classes=[ReferralRegenerateThrottle])
     def update_code(self, request):
         """Update the user's referral code to a custom vanity code.
 
@@ -145,19 +145,19 @@ class ReferralCodeViewSet(viewsets.ModelViewSet):
 
         Rate limited to 5 times per day to prevent abuse.
         """
-        custom_code = request.data.get("code", "").strip().upper()
+        custom_code = request.data.get('code', '').strip().upper()
 
         if not custom_code:
-            return Response({"error": "Code is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Code is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validate the code
         is_valid, error_msg = ReferralCodeValidator.validate(custom_code)
         if not is_valid:
-            return Response({"error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': error_msg}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check availability
         if not check_code_availability(custom_code, exclude_user_id=request.user.id):
-            return Response({"error": "This code is already taken"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'This code is already taken'}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             try:
@@ -165,37 +165,37 @@ class ReferralCodeViewSet(viewsets.ModelViewSet):
                 referral_code = ReferralCode.objects.select_for_update().get(user=request.user)
                 old_code = referral_code.code
                 referral_code.code = custom_code
-                referral_code.save(update_fields=["code"])
-                logger.info(f"User {request.user.username} changed referral code from {old_code} to {custom_code}")
+                referral_code.save(update_fields=['code'])
+                logger.info(f'User {request.user.username} changed referral code from {old_code} to {custom_code}')
             except ReferralCode.DoesNotExist:
                 # Create new code with custom value
                 referral_code = ReferralCode.objects.create(user=request.user, code=custom_code)
-                logger.info(f"User {request.user.username} created custom referral code: {custom_code}")
+                logger.info(f'User {request.user.username} created custom referral code: {custom_code}')
 
         serializer = self.get_serializer(referral_code)
         return Response(serializer.data)
 
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=['post'])
     def check_availability(self, request):
         """Check if a referral code is available.
 
         Allows users to preview if their desired code is available before saving.
         """
-        code = request.data.get("code", "").strip().upper()
+        code = request.data.get('code', '').strip().upper()
 
         if not code:
-            return Response({"available": False, "error": "Code is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'available': False, 'error': 'Code is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validate format
         is_valid, error_msg = ReferralCodeValidator.validate(code)
         if not is_valid:
-            return Response({"available": False, "error": error_msg}, status=status.HTTP_200_OK)
+            return Response({'available': False, 'error': error_msg}, status=status.HTTP_200_OK)
 
         # Check availability
         is_available = check_code_availability(code, exclude_user_id=request.user.id)
 
         return Response(
-            {"available": is_available, "code": code, "error": None if is_available else "This code is already taken"}
+            {'available': is_available, 'code': code, 'error': None if is_available else 'This code is already taken'}
         )
 
 
@@ -212,11 +212,11 @@ class ReferralViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         """Return referrals made by the authenticated user."""
         return Referral.objects.filter(referrer=self.request.user).select_related(
-            "referrer", "referred_user", "referral_code"
+            'referrer', 'referred_user', 'referral_code'
         )
 
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([AllowAny])  # Must be public for signup flow
 @throttle_classes([ReferralValidationThrottle])  # Rate limit to prevent enumeration
 def validate_referral_code(request, code):
@@ -236,15 +236,15 @@ def validate_referral_code(request, code):
 
         if not referral_code.is_valid():
             return Response(
-                {"valid": False, "error": "This referral code is no longer valid"}, status=status.HTTP_400_BAD_REQUEST
+                {'valid': False, 'error': 'This referral code is no longer valid'}, status=status.HTTP_400_BAD_REQUEST
             )
 
         return Response(
             {
-                "valid": True,
-                "referrer_username": referral_code.user.username,
+                'valid': True,
+                'referrer_username': referral_code.user.username,
             }
         )
 
     except ReferralCode.DoesNotExist:
-        return Response({"valid": False, "error": "Invalid referral code"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'valid': False, 'error': 'Invalid referral code'}, status=status.HTTP_404_NOT_FOUND)

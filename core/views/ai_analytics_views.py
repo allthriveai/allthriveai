@@ -1,0 +1,250 @@
+"""
+AI Analytics and Monitoring Dashboard Views
+
+Provides endpoints for:
+- User cost analytics
+- System-wide AI metrics
+- Spend limit monitoring
+- Performance dashboards
+"""
+
+from datetime import datetime
+
+from django.core.cache import cache
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
+
+from services.langsmith_service import langsmith_service
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_ai_analytics(request):
+    """
+    Get AI cost and usage analytics for the authenticated user.
+
+    Query params:
+        days: Number of days to look back (default: 30)
+
+    Returns:
+        {
+            'user_id': int,
+            'period_days': int,
+            'total_cost_usd': float,
+            'total_tokens': int,
+            'total_requests': int,
+            'avg_latency_ms': float,
+            'avg_cost_per_request': float,
+            'daily_spend': float,
+            'monthly_spend': float,
+            'daily_limit': float,
+            'monthly_limit': float,
+            'limit_status': 'ok' | 'warning' | 'exceeded'
+        }
+    """
+    days = int(request.query_params.get('days', 30))
+    user_id = request.user.id
+
+    try:
+        # Get analytics from LangSmith
+        analytics = langsmith_service.get_user_analytics(user_id, days=days)
+
+        # Get current spend from cache
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        month = datetime.utcnow().strftime('%Y-%m')
+        daily_key = f'ai_cost:user:{user_id}:daily:{today}'
+        monthly_key = f'ai_cost:user:{user_id}:monthly:{month}'
+
+        daily_spend = cache.get(daily_key, 0.0)
+        monthly_spend = cache.get(monthly_key, 0.0)
+
+        # Add current spend info
+        from django.conf import settings
+
+        analytics['daily_spend'] = round(daily_spend, 4)
+        analytics['monthly_spend'] = round(monthly_spend, 4)
+        analytics['daily_limit'] = settings.AI_USER_DAILY_SPEND_LIMIT_USD
+        analytics['monthly_limit'] = settings.AI_MONTHLY_SPEND_LIMIT_USD
+
+        # Determine limit status
+        daily_pct = (daily_spend / settings.AI_USER_DAILY_SPEND_LIMIT_USD) * 100
+        monthly_pct = (monthly_spend / settings.AI_MONTHLY_SPEND_LIMIT_USD) * 100
+
+        if daily_pct >= 100 or monthly_pct >= 100:
+            analytics['limit_status'] = 'exceeded'
+        elif daily_pct >= 80 or monthly_pct >= 80:
+            analytics['limit_status'] = 'warning'
+        else:
+            analytics['limit_status'] = 'ok'
+
+        return Response(analytics)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def system_ai_analytics(request):
+    """
+    Get system-wide AI analytics (admin only).
+
+    Query params:
+        days: Number of days to look back (default: 7)
+
+    Returns:
+        {
+            'period_days': int,
+            'total_cost_usd': float,
+            'total_tokens': int,
+            'total_requests': int,
+            'error_count': int,
+            'error_rate': float,
+            'avg_cost_per_request': float,
+            'providers': {
+                'azure': {'cost': float, 'requests': int},
+                'openai': {'cost': float, 'requests': int},
+                'anthropic': {'cost': float, 'requests': int}
+            }
+        }
+    """
+    days = int(request.query_params.get('days', 7))
+
+    try:
+        analytics = langsmith_service.get_system_analytics(days=days)
+        return Response(analytics)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_user_spend_limit(request):
+    """
+    Check if user is approaching or has exceeded spend limits.
+
+    Returns:
+        {
+            'within_limits': bool,
+            'daily_spend': float,
+            'daily_limit': float,
+            'daily_remaining': float,
+            'daily_percent_used': float,
+            'monthly_spend': float,
+            'monthly_limit': float,
+            'monthly_remaining': float,
+            'monthly_percent_used': float,
+            'warning_message': str | null,
+            'blocked': bool
+        }
+    """
+    user_id = request.user.id
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    month = datetime.utcnow().strftime('%Y-%m')
+
+    daily_key = f'ai_cost:user:{user_id}:daily:{today}'
+    monthly_key = f'ai_cost:user:{user_id}:monthly:{month}'
+
+    daily_spend = cache.get(daily_key, 0.0)
+    monthly_spend = cache.get(monthly_key, 0.0)
+
+    from django.conf import settings
+
+    daily_limit = settings.AI_USER_DAILY_SPEND_LIMIT_USD
+    monthly_limit = settings.AI_MONTHLY_SPEND_LIMIT_USD
+
+    daily_remaining = max(0, daily_limit - daily_spend)
+    monthly_remaining = max(0, monthly_limit - monthly_spend)
+
+    daily_percent = (daily_spend / daily_limit) * 100 if daily_limit > 0 else 0
+    monthly_percent = (monthly_spend / monthly_limit) * 100 if monthly_limit > 0 else 0
+
+    within_limits = daily_spend <= daily_limit and monthly_spend <= monthly_limit
+    blocked = daily_spend > daily_limit or monthly_spend > monthly_limit
+
+    warning_message = None
+    if blocked:
+        warning_message = 'You have exceeded your AI usage limits for today or this month.'
+    elif daily_percent >= 80 or monthly_percent >= 80:
+        warning_message = f"You've used {max(daily_percent, monthly_percent):.1f}% of your AI usage limit."
+
+    return Response(
+        {
+            'within_limits': within_limits,
+            'daily_spend': round(daily_spend, 4),
+            'daily_limit': daily_limit,
+            'daily_remaining': round(daily_remaining, 4),
+            'daily_percent_used': round(daily_percent, 2),
+            'monthly_spend': round(monthly_spend, 4),
+            'monthly_limit': monthly_limit,
+            'monthly_remaining': round(monthly_remaining, 4),
+            'monthly_percent_used': round(monthly_percent, 2),
+            'warning_message': warning_message,
+            'blocked': blocked,
+        }
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def reset_user_spend(request, user_id):
+    """
+    Reset spend tracking for a specific user (admin only).
+
+    Useful for testing or resolving billing issues.
+    """
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    month = datetime.utcnow().strftime('%Y-%m')
+
+    daily_key = f'ai_cost:user:{user_id}:daily:{today}'
+    monthly_key = f'ai_cost:user:{user_id}:monthly:{month}'
+
+    cache.delete(daily_key)
+    cache.delete(monthly_key)
+
+    return Response(
+        {
+            'message': f'Spend tracking reset for user {user_id}',
+            'user_id': user_id,
+            'reset_date': datetime.utcnow().isoformat(),
+        }
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def langsmith_health(request):
+    """
+    Check LangSmith integration health (admin only).
+
+    Returns:
+        {
+            'enabled': bool,
+            'project': str,
+            'endpoint': str,
+            'connected': bool,
+            'error': str | null
+        }
+    """
+    from django.conf import settings
+
+    health = {
+        'enabled': settings.LANGSMITH_TRACING_ENABLED,
+        'project': settings.LANGSMITH_PROJECT,
+        'endpoint': settings.LANGSMITH_ENDPOINT,
+        'connected': False,
+        'error': None,
+    }
+
+    if langsmith_service.enabled and langsmith_service.client:
+        try:
+            # Try to ping LangSmith
+            list(langsmith_service.client.list_runs(project_name=settings.LANGSMITH_PROJECT, limit=1))
+            health['connected'] = True
+        except Exception as e:
+            health['error'] = str(e)
+
+    return Response(health)

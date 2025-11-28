@@ -21,12 +21,12 @@ export function ProtectedRoute({ children, redirectIfAuthenticated = false }: Pr
 
   // Redirect authenticated users away from login page
   if (redirectIfAuthenticated && isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/explore" replace />;
   }
 
-  // Redirect unauthenticated users to login
+  // Redirect unauthenticated users to auth (chat onboarding)
   if (!redirectIfAuthenticated && !isAuthenticated) {
-    return <Navigate to="/login" state={{ returnUrl: location.pathname }} replace />;
+    return <Navigate to="/auth" state={{ returnUrl: location.pathname }} replace />;
   }
 
   return <>{children}</>;
