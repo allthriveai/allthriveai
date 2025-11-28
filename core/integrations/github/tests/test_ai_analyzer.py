@@ -29,10 +29,11 @@ class AIAnalyzerTestCase(TestCase):
         }
 
     @patch('services.ai_provider.AIProvider.complete')
+    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
     @patch('core.integrations.base.parser.BaseParser.parse')
     @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
     @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
-    def test_analyze_with_readme(self, mock_optimize, mock_transform, mock_parse, mock_ai):
+    def test_analyze_with_readme(self, mock_optimize, mock_transform, mock_parse, mock_scan, mock_ai):
         """Test analysis with README content."""
         # Mock AI response - must match what test expects
         mock_ai.return_value = json.dumps(
@@ -43,6 +44,13 @@ class AIAnalyzerTestCase(TestCase):
                 'tool_names': [],
             }
         )
+
+        # Mock scan_repository_for_images to avoid errors
+        mock_scan.return_value = {
+            'screenshots': [],
+            'logo': None,
+            'banner': None,
+        }
 
         # Mock README parsing
         mock_parse.return_value = {

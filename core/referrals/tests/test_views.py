@@ -218,6 +218,11 @@ class ValidateReferralCodeViewTestCase(TestCase):
 
     def setUp(self):
         """Set up test client and users."""
+        from django.core.cache import cache
+
+        # Clear cache to reset rate limiting between tests
+        cache.clear()
+
         self.client = APIClient()
         self.user = User.objects.create_user(username='referrer', email='referrer@example.com', password='testpass123')
         self.valid_code = ReferralCode.objects.create(user=self.user, code='VALIDCODE', is_active=True)

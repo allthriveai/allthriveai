@@ -48,7 +48,7 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
       onClick={handleClick}
       className="block group w-full text-left"
     >
-      <div className={`relative overflow-hidden ${isCompact ? 'rounded-xl' : 'rounded-2xl'} transition-all duration-500 hover:scale-[1.02] ${!isCompact && 'hover:-translate-y-2'}`}>
+      <div className={`relative overflow-hidden rounded transition-all duration-500 hover:scale-[1.02] ${!isCompact && 'hover:-translate-y-2'}`}>
         {/* Glassmorphism Container */}
         <div className={`
           relative glass-card backdrop-blur-xl bg-gradient-to-br ${colors.bg}
@@ -63,7 +63,7 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
           <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
           {/* Image Container with Overlay */}
-          <div className={`relative ${isCompact ? 'h-32' : 'h-56'} overflow-hidden ${isCompact ? 'rounded-t-lg' : 'rounded-t-xl'}`}>
+          <div className={`relative ${isCompact ? 'h-32' : 'h-56'} overflow-hidden rounded-t`}>
             {/* Background Image */}
             {quiz.thumbnailUrl ? (
               <img
@@ -106,7 +106,7 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
 
             {/* Topic Tag - Bottom Left */}
             <div className={`absolute ${isCompact ? 'bottom-2 left-2' : 'bottom-4 left-4'}`}>
-              <div className={`${isCompact ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded-lg backdrop-blur-md bg-white/20 border border-white/30 text-white font-medium shadow-lg`}>
+              <div className={`${isCompact ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded backdrop-blur-md bg-white/20 border border-white/30 text-white font-medium shadow-lg`}>
                 {quiz.topic}
               </div>
             </div>
@@ -209,7 +209,7 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
               transform transition-all duration-300
               hover:scale-[1.03] hover:-translate-y-0.5
               group/button
-              rounded-xl
+              rounded
             `}>
               {/* Animated gradient overlay on hover */}
               <div className="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-accent-500/20 opacity-0 group-hover/button:opacity-100 transition-opacity duration-300" />
@@ -250,7 +250,7 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
 
         {/* Outer Glow on Hover */}
         <div className={`
-          absolute -inset-1 rounded-2xl ${colors.bg} opacity-0 group-hover:opacity-50 blur-xl transition-opacity duration-500 -z-10
+          absolute -inset-1 rounded ${colors.bg} opacity-0 group-hover:opacity-50 blur-xl transition-opacity duration-500 -z-10
         `} />
       </div>
     </Component>

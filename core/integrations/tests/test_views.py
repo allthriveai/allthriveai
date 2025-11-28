@@ -35,7 +35,7 @@ class IntegrationViewsTestCase(TestCase):
 
     def test_import_from_url_unauthenticated(self):
         """Test import requires authentication."""
-        response = self.client.post('/api/integrations/import-from-url/', {'url': 'https://github.com/test/repo'})
+        response = self.client.post('/api/v1/integrations/import-from-url/', {'url': 'https://github.com/test/repo'})
         self.assertEqual(response.status_code, 401)
 
     @patch('core.integrations.github.integration.GitHubIntegration.import_project')
@@ -52,7 +52,7 @@ class IntegrationViewsTestCase(TestCase):
         }
 
         response = self.client.post(
-            '/api/integrations/import-from-url/', {'url': 'https://github.com/test/repo', 'is_showcase': True}
+            '/api/v1/integrations/import-from-url/', {'url': 'https://github.com/test/repo', 'is_showcase': True}
         )
 
         self.assertEqual(response.status_code, 202)
@@ -65,7 +65,7 @@ class IntegrationViewsTestCase(TestCase):
         # Create existing project
         Project.objects.create(user=self.user, title='Test Project', external_url='https://github.com/test/repo')
 
-        response = self.client.post('/api/integrations/import-from-url/', {'url': 'https://github.com/test/repo'})
+        response = self.client.post('/api/v1/integrations/import-from-url/', {'url': 'https://github.com/test/repo'})
 
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.data['error_code'], 'DUPLICATE_IMPORT')
@@ -74,7 +74,7 @@ class IntegrationViewsTestCase(TestCase):
         """Test invalid URL handling."""
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.post('/api/integrations/import-from-url/', {'url': 'not-a-valid-url'})
+        response = self.client.post('/api/v1/integrations/import-from-url/', {'url': 'not-a-valid-url'})
 
         self.assertEqual(response.status_code, 400)
 
@@ -86,7 +86,7 @@ class IntegrationViewsTestCase(TestCase):
         )
         self.client.force_authenticate(user=user2)
 
-        response = self.client.post('/api/integrations/import-from-url/', {'url': 'https://github.com/test/repo'})
+        response = self.client.post('/api/v1/integrations/import-from-url/', {'url': 'https://github.com/test/repo'})
 
         self.assertEqual(response.status_code, 401)  # AUTH_REQUIRED returns 401 (Unauthorized)
         self.assertEqual(response.data['error_code'], 'AUTH_REQUIRED')
