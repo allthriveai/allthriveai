@@ -115,9 +115,9 @@ export const getMenuSections = (
         icon: faIdCard,
       },
       {
-        label: 'My Projects',
-        path: username ? `/${username}?tab=playground` : '#',
-        icon: faFolderOpen,
+        label: 'Activity & Points',
+        path: username ? `/${username}?tab=activity` : '#',
+        icon: faTrophy,
       },
       { label: 'My Account', path: '/account/settings', icon: faCog },
       { label: 'Chrome Extension', path: '#', icon: faPuzzlePiece },
@@ -138,8 +138,8 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
   'My Referral Codes': (path) => path === '/account/settings/referrals',
   'My Profile': (path, search, username) =>
     username ? path === `/${username}` && (search.includes('tab=showcase') || !search.includes('tab=')) : false,
-  'My Projects': (path, search, username) =>
-    username ? path === `/${username}` && search.includes('tab=playground') : false,
+  'Activity & Points': (path, search, username) =>
+    username ? path === `/${username}` && search.includes('tab=activity') : false,
   'Your Thrive Circle': (path) => path === '/thrive-circle',
   'AI Tool Directory': (path) => path === '/tools',
 };

@@ -17,6 +17,18 @@ class OAuthProviderConfig:
     """Configuration for OAuth providers."""
 
     PROVIDERS = {
+        SocialProvider.GOOGLE: {
+            'authorize_url': 'https://accounts.google.com/o/oauth2/v2/auth',
+            'token_url': 'https://oauth2.googleapis.com/token',
+            'user_info_url': 'https://www.googleapis.com/oauth2/v2/userinfo',
+            'scopes': [
+                'https://www.googleapis.com/auth/userinfo.email',
+                'https://www.googleapis.com/auth/userinfo.profile',
+                'https://www.googleapis.com/auth/youtube.readonly',
+            ],
+            'client_id_setting': 'GOOGLE_CLIENT_ID',
+            'client_secret_setting': 'GOOGLE_CLIENT_SECRET',
+        },
         SocialProvider.GITHUB: {
             'authorize_url': 'https://github.com/login/oauth/authorize',
             'token_url': 'https://github.com/login/oauth/access_token',
@@ -164,7 +176,23 @@ class SocialOAuthService:
 
     def parse_user_data(self, user_info: dict) -> dict:
         """Parse user data from provider-specific format to common format."""
-        if self.provider == SocialProvider.GITHUB:
+        if self.provider == SocialProvider.GOOGLE:
+            return {
+                'provider_user_id': str(user_info['id']),
+                'provider_username': user_info.get('email', '').split('@')[0],
+                'provider_email': user_info.get('email'),
+                'profile_url': '',
+                'avatar_url': user_info.get('picture', ''),
+                'extra_data': {
+                    'name': user_info.get('name'),
+                    'given_name': user_info.get('given_name'),
+                    'family_name': user_info.get('family_name'),
+                    'verified_email': user_info.get('verified_email'),
+                    'locale': user_info.get('locale'),
+                },
+            }
+
+        elif self.provider == SocialProvider.GITHUB:
             return {
                 'provider_user_id': str(user_info['id']),
                 'provider_username': user_info.get('login', ''),

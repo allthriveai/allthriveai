@@ -208,12 +208,16 @@ def signup(request):
 @permission_classes([AllowAny])
 def oauth_urls(request):
     """Return OAuth provider URLs for frontend."""
-    base_url = request.build_absolute_uri('/')[:-1]
+    from django.conf import settings
+
+    # Use SITE_URL from settings instead of request.build_absolute_uri
+    # to ensure correct external URL (not Docker internal hostname)
+    base_url = getattr(settings, 'SITE_URL', request.build_absolute_uri('/')[:-1])
 
     return Response(
         {
-            'google': f'{base_url}/api/v1/auth/google/',
-            'github': f'{base_url}/api/v1/auth/github/',
+            'google': f'{base_url}/api/v1/social/connect/google/',
+            'github': f'{base_url}/api/v1/social/connect/github/',
         }
     )
 

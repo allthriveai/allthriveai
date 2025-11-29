@@ -42,6 +42,7 @@ class Project(models.Model):
         FIGMA_DESIGN = 'figma_design', 'Figma Design'
         IMAGE_COLLECTION = 'image_collection', 'Image Collection'
         PROMPT = 'prompt', 'Prompt / Conversation'
+        VIDEO = 'video', 'Video'
         OTHER = 'other', 'Other'
 
     objects = ProjectQuerySet.as_manager()
@@ -94,6 +95,15 @@ class Project(models.Model):
     )
     # Structured layout blocks for the project page (cover, tags, text/image blocks)
     content = models.JSONField(default=dict, blank=True)
+    # Content source that created this project (if auto-synced from YouTube, RSS, etc.)
+    content_source = models.ForeignKey(
+        'integrations.ContentSource',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='projects',
+        help_text='Content source that created this project (if auto-synced)',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

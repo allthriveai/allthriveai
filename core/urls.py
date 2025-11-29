@@ -175,6 +175,8 @@ urlpatterns = [
     path('integrations/import-from-url/', import_from_url, name='import_from_url'),
     path('integrations/available/', list_integrations, name='list_integrations'),
     path('integrations/tasks/<str:task_id>/', get_task_status, name='task_status'),
+    # YouTube integration endpoints
+    path('integrations/', include('core.integrations.youtube.urls')),
     # GitHub integration endpoints (legacy - use generic endpoints above)
     path('github/repos/', list_user_repos, name='github_repos'),
     path('github/import/', import_github_repo_async, name='github_import'),

@@ -71,7 +71,9 @@ api.interceptors.response.use(
       };
 
       // Handle 401 - token expired, redirect to auth
-      if (error.response.status === 401) {
+      // Skip redirect if the request has the X-Skip-Auth-Redirect header
+      const skipRedirect = error.config?.headers?.['X-Skip-Auth-Redirect'] === 'true';
+      if (error.response.status === 401 && !skipRedirect) {
         const currentPath = window.location.pathname;
         if (currentPath !== '/auth' && currentPath !== '/' && currentPath !== '/about') {
           window.location.href = `/auth?returnUrl=${encodeURIComponent(currentPath)}`;

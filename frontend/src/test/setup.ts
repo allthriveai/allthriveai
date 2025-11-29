@@ -4,15 +4,21 @@ import { vi } from 'vitest';
 // Add custom matchers from @testing-library/jest-dom
 // This allows us to use matchers like .toBeInTheDocument(), .toHaveTextContent(), etc.
 
-// Mock the AuthContext to prevent "useAuth must be used within an AuthProvider" errors
+// Mock the AuthContext and useAuth hook to prevent "useAuth must be used within an AuthProvider" errors
 vi.mock('@/context/AuthContext', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+  AuthContext: {}, // minimal mock
+}));
+
+vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
     isAuthenticated: false,
     user: null,
     login: vi.fn(),
     logout: vi.fn(),
-    loading: false,
+    refreshUser: vi.fn(),
+    isLoading: false,
+    error: null,
   }),
 }));
 

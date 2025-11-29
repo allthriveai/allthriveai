@@ -3,6 +3,7 @@ Django settings for allthrive-ai-django project.
 """
 
 import os
+import socket
 import sys
 from datetime import timedelta
 from pathlib import Path
@@ -52,6 +53,7 @@ INSTALLED_APPS = [
     'core.users',  # User model lives here
     'core.achievements',
     'core.thrive_circle',
+    'core.integrations',  # Content source integrations (YouTube, RSS, etc.)
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -101,13 +103,20 @@ if DATABASE_URL:
     # Use DATABASE_URL if provided (e.g., postgresql://user:pass@host:5432/dbname)
     import dj_database_url
 
-    DATABASES = {
-        'default': dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=600,
-            conn_health_checks=True,  # Enable connection health checks
-        )
-    }
+    db_config = dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=600,
+        conn_health_checks=True,  # Enable connection health checks
+    )
+
+    # Fallback to localhost if 'db' hostname is not resolvable (local development)
+    if db_config.get('HOST') == 'db':
+        try:
+            socket.gethostbyname('db')
+        except socket.gaierror:
+            db_config['HOST'] = 'localhost'
+
+    DATABASES = {'default': db_config}
     # Add connection pooling and timeouts for PostgreSQL
     DATABASES['default']['OPTIONS'] = {
         'connect_timeout': 10,
@@ -238,6 +247,9 @@ MCP_SERVERS = {
 
 # Social OAuth Provider Credentials
 # These are for account linking (separate from authentication OAuth)
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
+
 GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')
 GITHUB_CLIENT_SECRET = config('GITHUB_CLIENT_SECRET', default='')
 

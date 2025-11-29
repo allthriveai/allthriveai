@@ -165,10 +165,10 @@ export default function AccountSettingsPage() {
   return (
     <DashboardLayout>
       <SettingsLayout>
-        <div className="p-8">
-          <div className="max-w-4xl">
+        <div className="p-4 md:p-8">
+          <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-6 md:mb-8">
               <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
                 Edit Profile
               </h1>
@@ -180,28 +180,30 @@ export default function AccountSettingsPage() {
           {/* Profile Form */}
           <form onSubmit={handleSubmit} className="space-y-8" aria-label="Edit profile form">
             {/* Profile Photo Section */}
-            <div className="flex flex-col items-center gap-6">
-              <ImageUpload
-                currentImage={formData.avatarUrl}
-                onImageUploaded={(url) => {
-                  setFormData(prev => ({ ...prev, avatarUrl: url }));
-                }}
-                onImageRemoved={() => {
-                  setFormData(prev => ({ ...prev, avatarUrl: '' }));
-                }}
-              />
-              <div className="max-w-md text-center">
-                <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 p-4 md:p-6 glass-strong rounded-xl border border-white/20">
+              <div className="flex-shrink-0">
+                <ImageUpload
+                  currentImage={formData.avatarUrl}
+                  onImageUploaded={(url) => {
+                    setFormData(prev => ({ ...prev, avatarUrl: url }));
+                  }}
+                  onImageRemoved={() => {
+                    setFormData(prev => ({ ...prev, avatarUrl: '' }));
+                  }}
+                />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
                   Profile Photo
                 </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 max-w-md">
                   Upload a profile photo by dragging and dropping or clicking to select a file.
                   Images are stored securely and will be displayed on your profile.
                 </p>
                 {formData.avatarUrl && (
-                  <div className="mt-4">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 break-all">
-                      Current URL: {formData.avatarUrl}
+                  <div className="mt-2 p-2 bg-slate-100 dark:bg-slate-800 rounded text-left">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 break-all font-mono">
+                      {formData.avatarUrl}
                     </p>
                   </div>
                 )}

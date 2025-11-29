@@ -1,5 +1,6 @@
 import { useState, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '@/hooks/useTheme';
 import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightChatPanel } from '@/components/chat/RightChatPanel';
 import { RightAboutPanel } from '@/components/about';
@@ -12,6 +13,7 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
+  const { theme } = useTheme();
   const [chatOpen, setChatOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
@@ -104,77 +106,90 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setAddProjectOpen(false);
   };
 
+  const backgroundImage = theme === 'dark' ? '/dark.jpeg' : '/light.jpeg';
+
   return (
-    <div className="flex flex-col h-screen">
-      {/* Top Navigation */}
-      <TopNavigation
-        onMenuClick={handleMenuClick}
-        onAddProject={handleOpenAddProject}
+    <div className="relative h-screen w-full overflow-hidden">
+      {/* Background Layer */}
+      <div
+        className={`absolute inset-0 bg-cover bg-center bg-no-repeat ${
+          theme === 'light' ? '-scale-x-100 -scale-y-100' : ''
+        }`}
+        style={{ backgroundImage: `url(${backgroundImage})` }}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto scroll-pt-16">
-        <div className="pt-16">
-          {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject }) : children}
-        </div>
-      </main>
-
-      {/* Right Chat Panel */}
-      <RightChatPanel
-        isOpen={chatOpen}
-        onClose={handleCloseChat}
-        selectedMenuItem={selectedMenuItem}
-      />
-
-      {/* Right About Panel */}
-      <RightAboutPanel
-        isOpen={aboutOpen}
-        onClose={handleCloseAbout}
-      />
-
-      {/* Right Events Calendar Panel */}
-      <RightEventsCalendarPanel
-        isOpen={eventsOpen}
-        onClose={handleCloseEvents}
-      />
-
-      {/* Right Add Project Chat */}
-      <RightAddProjectChat
-        isOpen={addProjectOpen}
-        onClose={handleCloseAddProject}
-      />
-
-      {/* Overlay when chat is open */}
-      {chatOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-30 md:hidden"
-          onClick={handleCloseChat}
+      {/* Main App Layout */}
+      <div className="relative z-10 flex flex-col h-full">
+        {/* Top Navigation */}
+        <TopNavigation
+          onMenuClick={handleMenuClick}
+          onAddProject={handleOpenAddProject}
         />
-      )}
 
-      {/* Overlay when about is open */}
-      {aboutOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-30 md:hidden"
-          onClick={handleCloseAbout}
-        />
-      )}
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto scroll-pt-16">
+          <div className="pt-16">
+            {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject }) : children}
+          </div>
+        </main>
 
-      {/* Overlay when events is open */}
-      {eventsOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-30 md:hidden"
-          onClick={handleCloseEvents}
+        {/* Right Chat Panel */}
+        <RightChatPanel
+          isOpen={chatOpen}
+          onClose={handleCloseChat}
+          selectedMenuItem={selectedMenuItem}
         />
-      )}
 
-      {/* Overlay when add project is open */}
-      {addProjectOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-30 md:hidden"
-          onClick={handleCloseAddProject}
+        {/* Right About Panel */}
+        <RightAboutPanel
+          isOpen={aboutOpen}
+          onClose={handleCloseAbout}
         />
-      )}
+
+        {/* Right Events Calendar Panel */}
+        <RightEventsCalendarPanel
+          isOpen={eventsOpen}
+          onClose={handleCloseEvents}
+        />
+
+        {/* Right Add Project Chat */}
+        <RightAddProjectChat
+          isOpen={addProjectOpen}
+          onClose={handleCloseAddProject}
+        />
+
+        {/* Overlay when chat is open */}
+        {chatOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-30 md:hidden"
+            onClick={handleCloseChat}
+          />
+        )}
+
+        {/* Overlay when about is open */}
+        {aboutOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-30 md:hidden"
+            onClick={handleCloseAbout}
+          />
+        )}
+
+        {/* Overlay when events is open */}
+        {eventsOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-30 md:hidden"
+            onClick={handleCloseEvents}
+          />
+        )}
+
+        {/* Overlay when add project is open */}
+        {addProjectOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-30 md:hidden"
+            onClick={handleCloseAddProject}
+          />
+        )}
+      </div>
     </div>
   );
 }

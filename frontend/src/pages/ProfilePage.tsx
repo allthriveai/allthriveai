@@ -99,18 +99,29 @@ export default function ProfilePage() {
 
   // Track scroll position to fix sidebar after banner
   useEffect(() => {
-    const scrollContainer = document.querySelector('.flex-1.overflow-y-auto');
+    // Find the main scroll container from DashboardLayout
+    const scrollContainer = document.querySelector('main');
     if (!scrollContainer) return;
 
     const handleScroll = () => {
-      // Banner height is 256px (h-64 = 16rem = 256px)
-      const bannerHeight = 256;
+      // Banner height is h-48 (192px) on mobile, h-64 (256px) on desktop
+      // Using the smaller value ensures it triggers correctly on mobile
+      const bannerHeight = 192;
       setScrolled(scrollContainer.scrollTop > bannerHeight);
     };
 
     scrollContainer.addEventListener('scroll', handleScroll);
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Auto-collapse sidebar on scroll
+  useEffect(() => {
+    if (scrolled && sidebarOpen) {
+      setSidebarOpen(false);
+    } else if (!scrolled && !sidebarOpen) {
+      setSidebarOpen(true);
+    }
+  }, [scrolled]);
 
   // Update URL when tab changes
   const handleTabChange = (tab: 'showcase' | 'playground' | 'activity') => {
@@ -256,23 +267,59 @@ export default function ProfilePage() {
 
   return (
     <DashboardLayout>
-      <div className="flex h-full w-full relative bg-gray-50 dark:bg-[#0a0a0a]">
+      <div className="flex flex-col w-full relative bg-gray-50 dark:bg-[#0a0a0a]">
 
-        {/* Scrollable main area containing banner and content */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Main content area */}
+        <div className="w-full relative">
+          {/* Mobile Sticky Header - Shows when scrolled past banner */}
+          <div
+            className={`lg:hidden fixed top-16 left-0 right-0 z-50 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/10 transition-all duration-300 transform ${
+              scrolled ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
+            }`}
+          >
+            <div className="flex items-center justify-between px-4 py-2 h-14">
+              {/* User Info */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-full overflow-hidden ring-1 ring-gray-200 dark:ring-white/10 flex-shrink-0">
+                  <img
+                    src={displayUser?.avatarUrl || `https://ui-avatars.com/api/?name=${displayUser?.fullName || 'User'}&background=random`}
+                    className="w-full h-full object-cover"
+                    alt="Profile"
+                  />
+                </div>
+                <span className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                  {displayUser?.fullName || displayUser?.username}
+                </span>
+              </div>
+
+              {/* Connect Icons */}
+              {socialLinks.length > 0 && (
+                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                  {socialLinks.slice(0, 3).map((link, i) => (
+                    <a
+                      key={i}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-brand-primary hover:text-white transition-colors"
+                      title={link.label}
+                    >
+                      <FontAwesomeIcon icon={link.icon} className="w-3.5 h-3.5" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Large Hero Banner - Scrolls with page */}
-          <div className="h-64 w-full relative group overflow-hidden bg-white dark:bg-[#0a0a0a]">
-            <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-blue-500/10 to-purple-500/10 dark:from-teal-900/20 dark:via-blue-900/20 dark:to-purple-900/20" />
-            <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
-                 style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}
-            />
-
+          <div className="h-48 md:h-64 w-full relative group overflow-hidden transition-all duration-500 ease-in-out">
             {/* Banner Content - Large photo and name */}
-            <div className="absolute inset-0 flex items-end p-8 lg:p-12">
-              <div className="flex items-end gap-8 w-full">
+            <div className="absolute inset-0 flex items-end p-4 md:p-8 lg:p-12">
+              <div className="flex items-end gap-4 md:gap-8 w-full">
                 {/* Large Avatar */}
-                <div className="flex-shrink-0">
-                  <div className="w-40 h-40 rounded ring-4 ring-white dark:ring-gray-800 shadow-xl overflow-hidden bg-gray-100 dark:bg-white/5">
+                <div className="flex-shrink-0 transition-all duration-500 ease-in-out">
+                  <div className="w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded ring-4 ring-white dark:ring-gray-800 shadow-xl overflow-hidden bg-gray-100 dark:bg-white/5 transition-all duration-500">
                     <img
                       src={displayUser?.avatarUrl || `https://ui-avatars.com/api/?name=${displayUser?.fullName || 'User'}&background=random`}
                       className="w-full h-full object-cover"
@@ -282,14 +329,14 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Name & Tagline */}
-                <div className="pb-4 flex-1">
-                  <h1 className="text-5xl font-bold mb-2 leading-tight">
+                <div className="pb-2 md:pb-4 flex-1 min-w-0 transition-all duration-500 ease-in-out">
+                  <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-1 md:mb-2 leading-tight truncate transition-all duration-500">
                     <span className="bg-gradient-to-r from-teal-600 via-blue-600 to-purple-600 dark:from-teal-400 dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                       {displayUser?.fullName || displayUser?.username || 'Portfolio'}
                     </span>
                   </h1>
                   {displayUser?.tagline && (
-                    <p className="text-gray-600 dark:text-gray-300 text-lg">
+                    <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base lg:text-lg line-clamp-2 md:line-clamp-none">
                       {displayUser.tagline}
                     </p>
                   )}
@@ -299,33 +346,23 @@ export default function ProfilePage() {
           </div>
 
           {/* Flex Container for Sidebar + Content */}
-          <div className="flex gap-6 px-6 lg:px-10">
+          <div className="flex flex-col lg:flex-row gap-6 px-4 md:px-6 lg:px-8 w-full">
 
-            {/* Spacer when sidebar is fixed (to prevent content shift) */}
-            {scrolled && (
-              <div
-                className={`flex-shrink-0 ${sidebarOpen ? 'w-80' : 'w-20'}`}
-                aria-hidden="true"
-              />
-            )}
-
-            {/* Left Sidebar - Sticky/Fixed */}
+            {/* Left Sidebar - Sticky on Desktop, Relative on Mobile */}
             <aside
-              className={`${
-                scrolled ? 'fixed top-16 left-0' : 'sticky top-16'
-              } self-start transition-all duration-300 ${
-                sidebarOpen ? 'w-80' : 'w-20'
-              } flex-shrink-0 z-40`}
-              style={{ height: 'calc(100vh - 4rem)' }}
+              className={`self-start transition-all duration-300 w-full ${
+                sidebarOpen ? 'lg:w-[30%]' : 'lg:w-20'
+              } flex-shrink-0 z-40 mb-6 lg:mb-0 lg:sticky lg:top-20`}
+              style={{ height: 'auto', minHeight: 'fit-content' }}
             >
-              <div className="h-full bg-white dark:bg-gray-900/50 border-r border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col">
+              <div className="h-full bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-xl lg:rounded-none lg:border-y-0 lg:border-l-0 lg:border-r overflow-hidden flex flex-col transition-all duration-300">
                 {sidebarOpen ? (
                   /* Expanded Sidebar View */
-                  <div className="flex flex-col h-full p-6 overflow-y-auto">
-                    {/* Toggle Button */}
+                  <div className="flex flex-col h-full p-4 overflow-y-auto">
+                    {/* Toggle Button - Desktop Only */}
                     <button
                       onClick={() => setSidebarOpen(false)}
-                      className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      className="hidden lg:block absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                     >
                       <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4" />
                     </button>
@@ -357,19 +394,19 @@ export default function ProfilePage() {
                     {/* Stats Grid */}
                     <div className={`grid grid-cols-3 gap-2 ${scrolled ? 'border-y' : 'border-b'} border-gray-200 dark:border-white/10 py-4 mb-6`}>
                       <div className="text-center">
-                        <div className="text-lg font-bold text-gray-900 dark:text-white">
+                        <div className="text-sm font-bold text-gray-900 dark:text-white mb-1">
                           {displayUser?.totalPoints || 0}
                         </div>
                         <div className="text-[10px] uppercase tracking-wider text-gray-500">Points</div>
                       </div>
-                      <div className="text-center border-l border-gray-200 dark:border-white/10">
-                        <div className="text-lg font-bold text-gray-900 dark:text-white">
+                      <div className="text-center border-l border-gray-200 dark:border-white/10 pl-1">
+                        <div className="text-sm font-bold text-gray-900 dark:text-white mb-1">
                           {projects.showcase.length + projects.playground.length}
                         </div>
                         <div className="text-[10px] uppercase tracking-wider text-gray-500">Projects</div>
                       </div>
-                      <div className="text-center border-l border-gray-200 dark:border-white/10">
-                        <div className="text-lg font-bold text-gray-900 dark:text-white">
+                      <div className="text-center border-l border-gray-200 dark:border-white/10 pl-1">
+                        <div className="text-sm font-bold text-gray-900 dark:text-white mb-1">
                           {isTierLoading ? '...' : (tierStatus?.tierDisplay || getTierDisplay(displayUser?.tier))}
                         </div>
                         <div className="text-[10px] uppercase tracking-wider text-gray-500">Tier</div>
@@ -475,8 +512,8 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 ) : (
-                  /* Collapsed Sidebar View */
-                  <div className="flex flex-col items-center h-full py-6 gap-6">
+                  /* Collapsed Sidebar View - Desktop Only (Sidebar is always expanded/stacked on mobile) */
+                  <div className="hidden lg:flex flex-col items-center h-full py-6 gap-6">
                     {/* Toggle Button */}
                     <button
                       onClick={() => setSidebarOpen(true)}
@@ -568,11 +605,11 @@ export default function ProfilePage() {
             </aside>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col pb-10 max-w-[1600px]">
+            <div className="flex-1 flex flex-col pb-10 min-w-0 max-w-7xl">
 
               {/* Top Header: Tabs & Actions */}
-              <div className="flex items-center justify-center border-b border-gray-200 dark:border-gray-800 mb-8 pt-2">
-                <div className="flex items-baseline space-x-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-200 dark:border-gray-800 mb-6 md:mb-8 pt-2 gap-4">
+                <div className="flex items-baseline space-x-4 md:space-x-8 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 w-full md:w-auto">
                   {/* Tabs with Icons */}
                   {tabs.map((tab) => {
                     const tabIcons = {
@@ -601,7 +638,7 @@ export default function ProfilePage() {
                   {isOwnProfile &&
                    ((activeTab === 'showcase' && projects.showcase.length > 0) ||
                     (activeTab === 'playground' && projects.playground.length > 0)) && (
-                    <div className="flex items-center gap-2 ml-4">
+                    <div className="flex items-center gap-2 md:ml-4 self-end md:self-auto">
                       {selectionMode && selectedProjectIds.size > 0 && (
                         <button
                           onClick={() => setShowDeleteConfirm(true)}
@@ -628,7 +665,7 @@ export default function ProfilePage() {
 
               {/* Masonry Grid Content - Only for Showcase and Playground */}
               {(activeTab === 'showcase' || activeTab === 'playground') && (
-                <div className="columns-1 md:columns-2 lg:columns-3 gap-6 pb-20 space-y-6">
+                <div className="columns-1 md:columns-2 xl:columns-3 gap-6 pb-20 space-y-6">
                   {/* Showcase Tab */}
                   {activeTab === 'showcase' && (
                     projects.showcase.length > 0 ? (

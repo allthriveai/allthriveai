@@ -8,7 +8,6 @@ import logging
 import re
 
 import httpx
-from allauth.socialaccount.models import SocialAccount, SocialToken
 
 from core.integrations.github.constants import GITHUB_API_TIMEOUT
 from core.social.models import SocialConnection, SocialProvider
@@ -65,6 +64,9 @@ def get_user_github_token(user) -> str | None:
     Returns:
         User's GitHub access token or None if not connected
     """
+    # Import here to avoid circular import during Django app loading
+    from allauth.socialaccount.models import SocialAccount, SocialToken
+
     # First try django-allauth (for users who signed up with GitHub)
     try:
         social_account = SocialAccount.objects.get(user=user, provider='github')
