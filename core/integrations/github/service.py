@@ -227,7 +227,7 @@ class GitHubService:
         # Log summary
         found_files = [path for path, content in files.items() if content]
         if found_files:
-            logger.debug(f"Found {len(found_files)} dependency files for {owner}/{repo}: " f"{', '.join(found_files)}")
+            logger.debug(f'Found {len(found_files)} dependency files for {owner}/{repo}: {", ".join(found_files)}')
         else:
             logger.debug(f'No dependency files found for {owner}/{repo}')
 

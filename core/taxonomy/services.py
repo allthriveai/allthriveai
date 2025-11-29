@@ -35,7 +35,7 @@ def extract_tools_from_project(project) -> list[Tool]:
     tools_found = []
 
     # Combine text sources for analysis
-    text = f"{project.title} {project.description or ''}".lower()
+    text = f'{project.title} {project.description or ""}'.lower()
 
     if not text.strip():
         return tools_found
@@ -91,7 +91,7 @@ def calculate_confidence_score(user, tag_name: str, source: str) -> float:
     projects = Project.objects.filter(user=user, is_archived=False)
 
     for project in projects:
-        text = f"{project.title} {project.description or ''}".lower()
+        text = f'{project.title} {project.description or ""}'.lower()
         if tag_name.lower() in text:
             evidence_count += 1
 
@@ -117,7 +117,7 @@ def calculate_confidence_score(user, tag_name: str, source: str) -> float:
     recent_projects = projects.filter(created_at__gte=timezone.now() - timedelta(days=30))
 
     for project in recent_projects:
-        text = f"{project.title} {project.description or ''}".lower()
+        text = f'{project.title} {project.description or ""}'.lower()
         if tag_name.lower() in text:
             recency_bonus = 0.1
             break

@@ -49,9 +49,9 @@ export function UserMenu({ user }: UserMenuProps) {
       },
     },
     {
-      label: 'My Projects',
+      label: 'Activity & Points',
       onClick: () => {
-        navigate(`/${user.username}?tab=playground`);
+        navigate(`/${user.username}?tab=activity`);
         setIsOpen(false);
       },
     },

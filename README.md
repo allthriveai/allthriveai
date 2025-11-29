@@ -1,40 +1,47 @@
 # AllThrive AI
 
-**AI Portfolio Platform with Gamified Learning & Marketplace**
+**Explore AI Together**
 
-AllThrive AI is a platform for showcasing AI projects, exploring community creations, learning through interactive challenges, buying and selling digital products, and connecting with builders and learners.
+Find trending AI projects, automate your portfolio, and grow your skills.
 
 ## Key Features
 
-### 🎨 Portfolio, Projects & Marketplace
-- **Unified Portfolio**: Consolidate all your AI projects from any tool into one professional portfolio
-- **Explore & Discovery**: For You, Trending, and All tabs with filtering by categories, topics, and tools
-- **Integrations**: Automatic project portfolio creation from whichever AI tool you're building with
-- **Chrome Extension**: Automatically capture and add AI projects where you are working to your portfolio
-- **Creator Marketplace**: Sell and discover your AI prompts, courses, and digital products
-- **Privacy Controls**: Public/private projects, customizable profiles, and visibility settings
+### 🔍 Discover & Explore
+- **For You Feed**: Personalized AI project discovery based on your interests and activity
+- **Trending Tab**: See what's hot in the AI builder community right now
+- **All Projects Feed**: Browse the full catalog with filters by tool, category, and topic
+- **Curation Agents**: AI agents that curate the latest AI news and conversations
+- **AI Tool Directory**: 200+ curated AI tools with real examples of what people build
+- **Smart Filters**: Find exactly what you're looking for by skill level, tool, or topic
+- **No More Tab Chaos**: Everything happening in AI, without drowning in Reddit threads and YouTube rabbit holes
 
-### 🎮 Gamified Learning System
+### 🎨 Portfolio & Showcase
+- **Unified Portfolio**: Consolidate all your AI projects from any tool into one professional portfolio
+- **Automatic Capture**: Chrome extension automatically adds projects as you work
+- **Integrations**: Auto-sync projects from whichever AI tool you're building with
+- **Privacy Controls**: Public/private projects, customizable profiles, and visibility settings
+- **Professional Presence**: Showcase your AI journey in one coherent place
+
+### 🎮 Learn & Level Up
 - **Personalized Learning Paths**: Interactive courses tailored to your interests and skill level
 - **Interactive Quizzes**: True/false, multiple choice, and swipe-based quiz formats across AI/ML topics
-- **AI Tool Directory**: Comprehensive catalog of 200+ AI tools with detailed information
 - **Achievement System**: Unlock achievements for milestones and accomplishments
 - **Side Quests**: Optional challenges like Quiz Mastery, Project Showcase, Community Helper, Learning Streak
 - **Weekly Community Build Challenges**: Collaborative building challenges with bonus rewards
 - **Streak Tracking**: Daily login streaks with bonus rewards
+- **Learn By Doing**: Gain XP and progress through Thrive Circles as you build
+
+### 🛒 Marketplace
+- **Creator Marketplace**: Sell your AI prompts, courses, and digital products
+- **Discover Resources**: Find and purchase community-created prompts, templates, and courses
+- **Monetize Your Knowledge**: Turn your AI experiments and expertise into income
+- **Curated Quality**: Browse vetted resources from experienced builders
 
 ### 👥 Community & Collaboration
-- **Thrive Circles**: Community groups based on your activity — Seedling, Sprout, Blossom, Bloom, or Evergreen
+- **Thrive Circles**: Community groups based on your activity: Seedling, Sprout, Blossom, Bloom, or Evergreen
 - **Multi-Level System**: Dynamic progression with increasing point thresholds
 - **Weekly Events**: Webinars, topic discussions, interviews, and community project highlights
 - **Comments & Feedback**: Discussion and peer feedback on projects
-
-### 🤖 AI-Powered Features
-- **Personalized Recommendations**: AI-driven content discovery based on your interests and activity
-- **Multi-Provider AI**: Azure OpenAI, OpenAI, and Anthropic Claude support
-- **AI Workflows**: LangChain and LangGraph for intelligent automation
-- **Observability & Cost Tracking**: LangSmith integration for monitoring AI usage
-- **AI-Assisted Documentation**: Automatic project analysis and content generation
 
 ## Technology Stack
 

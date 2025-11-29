@@ -43,9 +43,9 @@ def generate_blocks_from_repo_structure(repo_data: dict) -> list:
     if language or tech_stack.get('languages'):
         languages_text = f'**Primary Language:** {language}\n\n'
         if tech_stack.get('frameworks'):
-            languages_text += f"**Frameworks:** {', '.join(tech_stack['frameworks'])}\n\n"
+            languages_text += f'**Frameworks:** {", ".join(tech_stack["frameworks"])}\n\n'
         if tech_stack.get('tools'):
-            languages_text += f"**Tools:** {', '.join(tech_stack['tools'])}\n\n"
+            languages_text += f'**Tools:** {", ".join(tech_stack["tools"])}\n\n'
 
         blocks.append({'type': 'text', 'style': 'body', 'content': languages_text.strip()})
 
@@ -66,9 +66,9 @@ def generate_blocks_from_repo_structure(repo_data: dict) -> list:
 
             structure_text = ''
             if dirs:
-                structure_text += f"**Key Directories:** {', '.join(sorted(dirs)[:10])}\n\n"
+                structure_text += f'**Key Directories:** {", ".join(sorted(dirs)[:10])}\n\n'
             if key_files:
-                structure_text += f"**Configuration:** {', '.join(key_files)}\n\n"
+                structure_text += f'**Configuration:** {", ".join(key_files)}\n\n'
 
             blocks.append({'type': 'text', 'style': 'body', 'content': structure_text.strip()})
 

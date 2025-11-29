@@ -188,7 +188,7 @@ def import_from_url(request):
             # Extract identifier for display
             identifier_info = integration.extract_project_identifier(url)
             if integration.name == 'github':
-                identifier = f"{identifier_info['owner']}/{identifier_info['repo']}"
+                identifier = f'{identifier_info["owner"]}/{identifier_info["repo"]}'
             else:
                 identifier = url
 

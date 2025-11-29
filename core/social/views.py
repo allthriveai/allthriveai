@@ -141,23 +141,23 @@ def oauth_callback(request, provider):
 
     # Handle OAuth errors
     if error:
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/social?error={error}')
+        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error={error}')
 
     if not code or not state:
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/social?error=missing_params')
+        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error=missing_params')
 
     # Verify state token
     cache_key = f'oauth_state:{state}'
     cached_data = cache.get(cache_key)
 
     if not cached_data:
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/social?error=invalid_state')
+        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error=invalid_state')
 
     if cached_data['user_id'] != request.user.id:
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/social?error=user_mismatch')
+        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error=user_mismatch')
 
     if cached_data['provider'] != provider:
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/social?error=provider_mismatch')
+        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error=provider_mismatch')
 
     # Clear state from cache
     cache.delete(cache_key)
@@ -179,7 +179,7 @@ def oauth_callback(request, provider):
         )
 
         # Redirect back to settings page with success
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/social?connected={provider}')
+        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?connected={provider}')
 
     except Exception as e:
         # Log error and redirect with error message
@@ -189,7 +189,7 @@ def oauth_callback(request, provider):
             extra={'user_id': request.user.id, 'provider': provider},
         )
 
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/social?error=connection_failed')
+        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error=connection_failed')
 
 
 @api_view(['POST'])

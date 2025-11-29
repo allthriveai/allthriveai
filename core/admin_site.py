@@ -88,7 +88,7 @@ class AllThriveAdminSite(AdminSite):
         print('\n=== DEBUG: Admin Model Discovery ===')
         for app_label, app_data in app_dict.items():
             for model in app_data['models']:
-                model_key = f"{app_label}.{model['object_name'].lower()}"
+                model_key = f'{app_label}.{model["object_name"].lower()}'
                 group_label = model_groups.get(model_key)
                 print(f'Model: {model_key} -> Group: {group_label}')
 
@@ -112,7 +112,7 @@ class AllThriveAdminSite(AdminSite):
                     {
                         'name': group['name'],
                         'app_label': group['app_label'],
-                        'app_url': f"/admin/{group['app_label']}/",
+                        'app_url': f'/admin/{group["app_label"]}/',
                         'has_module_perms': True,
                         'models': group['models'],
                     }

@@ -285,7 +285,7 @@ class CredentialAuthService:
                     raise AuthValidationError('Username must be less than 30 characters')
                 if not re.match(r'^[a-z0-9_-]+$', username):
                     raise AuthValidationError(
-                        'Username can only contain lowercase letters, numbers, ' 'underscores, and hyphens'
+                        'Username can only contain lowercase letters, numbers, underscores, and hyphens'
                     )
                 # Check availability (inside transaction prevents race condition)
                 if User.objects.filter(username=username).exists():

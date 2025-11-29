@@ -409,7 +409,7 @@ class BaseParser:
             start_idx = end_idx
 
         logger.debug(
-            f'📐 Created {column_count}-column layout with {len(text_blocks)} items ' f'for {section_type} section'
+            f'📐 Created {column_count}-column layout with {len(text_blocks)} items for {section_type} section'
         )
 
         return {
@@ -604,11 +604,11 @@ class BaseParser:
                 style = block.get('style', 'body')
                 block_summary.append(f'{i}: text/{style} - {content_preview}...')
             elif block_type == 'image':
-                block_summary.append(f"{i}: image - {block.get('caption', 'no caption')}")
+                block_summary.append(f'{i}: image - {block.get("caption", "no caption")}')
             elif block_type == 'mermaid':
                 block_summary.append(f'{i}: mermaid diagram')
             elif block_type == 'code_snippet':
-                block_summary.append(f"{i}: code - {block.get('language', 'unknown')}")
+                block_summary.append(f'{i}: code - {block.get("language", "unknown")}')
             else:
                 block_summary.append(f'{i}: {block_type}')
 

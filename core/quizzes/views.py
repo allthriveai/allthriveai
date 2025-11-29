@@ -203,8 +203,7 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
 
                 # Award points to user (this handles tier/level upgrades automatically)
                 description = (
-                    f"Completed '{attempt.quiz.title}' ({attempt.percentage_score}% score) "
-                    f'quiz_attempt:{attempt.id}'
+                    f"Completed '{attempt.quiz.title}' ({attempt.percentage_score}% score) quiz_attempt:{attempt.id}"
                 )
                 request.user.add_points(
                     amount=points_amount,

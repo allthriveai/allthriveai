@@ -111,7 +111,7 @@ def sync_github_to_integrations(sender, request, sociallogin, **kwargs):
 
     # Check if user already has this logged elsewhere
     logger.info(
-        f'GitHub OAuth connected for user {user.username} (id={user.id}). ' f'User can now access GitHub integrations.'
+        f'GitHub OAuth connected for user {user.username} (id={user.id}). User can now access GitHub integrations.'
     )
 
     # Note: We don't create a SocialConnection because:

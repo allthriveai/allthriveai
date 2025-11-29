@@ -16,8 +16,8 @@ interface SEOProps {
  * Optimized for search engines and social media sharing
  */
 export function SEO({
-  title = 'AllThrive AI - Build Your AI Portfolio',
-  description = 'Build your AI portfolio. Showcase work from any AI tool, learn through games, and connect with builders.',
+  title = 'AllThrive AI - Explore AI Together',
+  description = 'Find trending AI projects, automate your portfolio, and grow your skills.',
   keywords = 'AI creations, AI portfolio, AI projects, Midjourney, Replit, Claude, AI showcase, AI community, AI builders, AI tools, cross-platform AI',
   image = 'https://allthrive.ai/og-image.jpg',
   url,
@@ -96,9 +96,9 @@ export function SEO({
 // Preset configurations for common pages
 export const SEOPresets = {
   home: {
-    title: 'AllThrive AI - Build Your AI Portfolio',
-    description: 'Build your AI portfolio. Showcase work from any AI tool, learn through games, and connect with builders.',
-    keywords: 'AI portfolio, AI projects, AI games, AI learning, Midjourney, Replit, Claude, AI showcase, AI community, AI builders',
+    title: 'AllThrive AI - Explore AI Together',
+    description: 'Find trending AI projects, automate your portfolio, and grow your skills.',
+    keywords: 'AI portfolio, AI projects, AI feed, AI discovery, trending AI, AI learning, AI showcase, AI community, AI builders, automate portfolio, explore AI',
   },
   about: {
     title: 'About AllThrive AI',

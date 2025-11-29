@@ -72,7 +72,7 @@ class Event(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.title} ({self.start_date.strftime('%Y-%m-%d')})"
+        return f'{self.title} ({self.start_date.strftime("%Y-%m-%d")})'
 
     @property
     def is_past(self):

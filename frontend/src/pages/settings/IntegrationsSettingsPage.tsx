@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { api } from '@/services/api';
+import { useAuth } from '@/hooks/useAuth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faGitlab, faFigma, faInstagram, faTiktok, faYoutube } from '@fortawesome/free-brands-svg-icons';
+import { VideoPickerModal } from '@/components/integrations/VideoPickerModal';
+import { getUserFriendlyError, type UserFriendlyError } from '@/utils/errorMessages';
+
+console.log('[IntegrationsSettingsPage] MODULE LOADED - File imported successfully');
 
 interface Integration {
   id: string;
@@ -18,6 +24,10 @@ interface Integration {
 }
 
 export default function IntegrationsSettingsPage() {
+  console.log('[IntegrationsSettingsPage] Component rendering...');
+
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [integrations, setIntegrations] = useState<Integration[]>([
     {
       id: 'github',
@@ -25,7 +35,7 @@ export default function IntegrationsSettingsPage() {
       description: 'Automatically sync your GitHub repositories as projects',
       icon: faGithub,
       isConnected: false,
-      isAvailable: true, // GitHub is available
+      isAvailable: true,
     },
     {
       id: 'gitlab',
@@ -33,7 +43,7 @@ export default function IntegrationsSettingsPage() {
       description: 'Import your GitLab projects and showcase your work',
       icon: faGitlab,
       isConnected: false,
-      isAvailable: false, // Coming soon
+      isAvailable: false,
     },
     {
       id: 'figma',
@@ -41,7 +51,7 @@ export default function IntegrationsSettingsPage() {
       description: 'Embed your Figma designs and prototypes in your portfolio',
       icon: faFigma,
       isConnected: false,
-      isAvailable: false, // Coming soon
+      isAvailable: false,
     },
     {
       id: 'instagram',
@@ -49,7 +59,7 @@ export default function IntegrationsSettingsPage() {
       description: 'Automatically sync your Instagram posts and videos to your project feed',
       icon: faInstagram,
       isConnected: false,
-      isAvailable: false, // Coming soon
+      isAvailable: false,
     },
     {
       id: 'tiktok',
@@ -57,75 +67,197 @@ export default function IntegrationsSettingsPage() {
       description: 'Import your TikTok videos as project showcases',
       icon: faTiktok,
       isConnected: false,
-      isAvailable: false, // Coming soon
+      isAvailable: false,
     },
     {
       id: 'youtube',
       name: 'YouTube',
-      description: 'Embed your YouTube videos in your project portfolio',
+      description: 'Automatically sync your YouTube videos as projects and enable auto-import of new uploads',
       icon: faYoutube,
       isConnected: false,
-      isAvailable: false, // Coming soon
+      isAvailable: true,
     },
   ]);
   const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState<UserFriendlyError | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [videoPickerState, setVideoPickerState] = useState({
+    isOpen: false,
+    selectedVideoIds: new Set<string>(),
+  });
+  const [youtubeChannelId, setYoutubeChannelId] = useState<string | null>(null);
+  const [youtubeChannelName, setYoutubeChannelName] = useState<string | null>(null);
+  const [youtubeNeedsReconnect, setYoutubeNeedsReconnect] = useState(false);
 
-  // Fetch GitHub connection status on mount
+  // Fetch connection status on mount
   useEffect(() => {
+    console.log('[IntegrationsSettingsPage] useEffect mounting...');
+    let isMounted = true;
+
     async function fetchConnectionStatus() {
+      console.log('[IntegrationsSettingsPage] fetchConnectionStatus started');
       try {
-        const response = await api.get('/social/status/github/');
+        // Check GitHub status
+        console.log('[IntegrationsSettingsPage] Fetching GitHub status...');
+        const githubResponse = await api.get('/social/status/github/');
+        const githubData = githubResponse.data.data || githubResponse.data;
+        console.log('[IntegrationsSettingsPage] GitHub data:', githubData);
 
-        // Response structure: { success: true, data: { connected: true, ... } }
-        const statusData = response.data.data || response.data;
-
-        if (statusData.connected) {
+        if (githubData.connected && isMounted) {
+          console.log('[IntegrationsSettingsPage] GitHub is connected');
           setIntegrations(prev =>
             prev.map(integration =>
               integration.id === 'github'
                 ? {
                     ...integration,
                     isConnected: true,
-                    username: statusData.providerUsername || 'GitHub User',
-                    connectedAt: statusData.connectedAt,
+                    username: githubData.providerUsername || 'GitHub User',
+                    connectedAt: githubData.connectedAt,
                   }
                 : integration
             )
           );
         }
-      } catch (error) {
-        console.error('Failed to fetch GitHub connection status:', error);
+
+        // Check YouTube status (Google OAuth)
+        console.log('[IntegrationsSettingsPage] Fetching YouTube status...');
+        const youtubeResponse = await api.get('/social/status/google/');
+        const youtubeData = youtubeResponse.data.data || youtubeResponse.data;
+        console.log('[IntegrationsSettingsPage] YouTube data:', youtubeData);
+
+        if (youtubeData.connected && isMounted) {
+          console.log('[IntegrationsSettingsPage] YouTube is connected');
+          // First set the integration as connected with email
+          setIntegrations(prev =>
+            prev.map(integration =>
+              integration.id === 'youtube'
+                ? {
+                    ...integration,
+                    isConnected: true,
+                    username: youtubeData.providerEmail || 'Google Account',
+                    connectedAt: youtubeData.connectedAt,
+                  }
+                : integration
+            )
+          );
+
+          // Fetch sync status
+          fetchSyncStatus();
+
+          // Then try to fetch YouTube channel info to update the username
+          try {
+            console.log('[IntegrationsSettingsPage] Fetching YouTube channel info...');
+            const channelResponse = await api.get('/integrations/youtube/my-channel/', {
+              headers: { 'X-Skip-Auth-Redirect': 'true' }
+            });
+            console.log('[IntegrationsSettingsPage] YouTube channel response:', channelResponse.data);
+            if (channelResponse.data?.success && channelResponse.data?.channel && isMounted) {
+              const channelData = channelResponse.data.channel;
+              console.log('[IntegrationsSettingsPage] YouTube channel data:', channelData);
+              setYoutubeChannelId(channelData.id);
+              setYoutubeChannelName(channelData.title);
+
+              // Update with channel name
+              setIntegrations(prev =>
+                prev.map(integration =>
+                  integration.id === 'youtube'
+                    ? { ...integration, username: channelData.title }
+                    : integration
+                )
+              );
+            }
+          } catch (error: any) {
+            console.error('[IntegrationsSettingsPage] Could not fetch YouTube channel:', error);
+            console.error('[IntegrationsSettingsPage] Error details:', {
+              message: error.message,
+              statusCode: error.statusCode
+            });
+            // If 401, YouTube needs reconnection for proper permissions
+            if (error.statusCode === 401) {
+              setYoutubeNeedsReconnect(true);
+            }
+            // Keep the email fallback already set above
+          }
+        }
+      } catch (error: any) {
+        console.error('[IntegrationsSettingsPage] Failed to fetch connection status:', error);
+        console.error('[IntegrationsSettingsPage] Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status
+        });
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          console.log('[IntegrationsSettingsPage] Setting loading to false');
+          setLoading(false);
+        }
       }
     }
 
     fetchConnectionStatus();
+
+    return () => {
+      console.log('[IntegrationsSettingsPage] useEffect cleanup - unmounting');
+      isMounted = false;
+    };
   }, []);
 
   const handleConnect = async (integrationId: string) => {
-    setErrorMessage('');
+    setErrorMessage(null);
     setSuccessMessage('');
 
     if (integrationId === 'github') {
-      // Redirect to GitHub OAuth flow
       try {
         const response = await api.get('/auth/urls/');
-        const githubUrl = response.data.github_login_url;
+        const githubUrl = response.data.github;
         if (githubUrl) {
           window.location.href = githubUrl;
         } else {
-          setErrorMessage('GitHub login URL not available');
+          setErrorMessage({
+            title: 'Connection Error',
+            message: 'GitHub login URL not available. Please try again later.',
+            variant: 'error',
+          });
         }
       } catch (error) {
         console.error('Failed to get GitHub OAuth URL:', error);
-        setErrorMessage('Failed to connect to GitHub. Please try again.');
+        const friendlyError = getUserFriendlyError(error, 'github');
+        setErrorMessage(friendlyError);
+      }
+    } else if (integrationId === 'youtube') {
+      try {
+        console.log('[IntegrationsSettingsPage] Initiating Google OAuth flow...');
+        const response = await api.get('/social/connect/google/');
+        console.log('[IntegrationsSettingsPage] OAuth response:', response.data);
+
+        if (response.data.success && response.data.data?.authUrl) {
+          const authUrl = response.data.data.authUrl;
+          console.log('[IntegrationsSettingsPage] Redirecting to:', authUrl);
+          window.location.href = authUrl;
+        } else {
+          console.error('[IntegrationsSettingsPage] No authUrl in response');
+          setErrorMessage({
+            title: 'Connection Error',
+            message: 'Failed to get Google OAuth URL. Please try again later.',
+            variant: 'error',
+          });
+        }
+      } catch (error: any) {
+        console.error('[IntegrationsSettingsPage] Failed to initiate Google OAuth:', error);
+        console.error('[IntegrationsSettingsPage] Error details:', {
+          message: error.message,
+          statusCode: error.statusCode,
+          error: error.error
+        });
+        const friendlyError = getUserFriendlyError(error, 'youtube');
+        setErrorMessage(friendlyError);
       }
     } else {
-      // Placeholder for future integrations
-      setErrorMessage(`${integrationId} integration is coming soon!`);
+      setErrorMessage({
+        title: 'Coming Soon',
+        message: `${integrationId} integration is coming soon! We're working hard to bring you more integrations.`,
+        variant: 'info',
+      });
     }
   };
 
@@ -134,14 +266,13 @@ export default function IntegrationsSettingsPage() {
       return;
     }
 
-    setErrorMessage('');
+    setErrorMessage(null);
     setSuccessMessage('');
 
     if (integrationId === 'github') {
       try {
         await api.post('/social/disconnect/github/');
 
-        // Update state
         setIntegrations(prev =>
           prev.map(integration =>
             integration.id === 'github'
@@ -158,22 +289,176 @@ export default function IntegrationsSettingsPage() {
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
         console.error('Failed to disconnect GitHub:', error);
-        setErrorMessage('Failed to disconnect GitHub. Please try again.');
+        const friendlyError = getUserFriendlyError(error, 'github');
+        setErrorMessage(friendlyError);
+      }
+    } else if (integrationId === 'youtube') {
+      try {
+        await api.post('/social/disconnect/google/');
+
+        setIntegrations(prev =>
+          prev.map(integration =>
+            integration.id === 'youtube'
+              ? {
+                  ...integration,
+                  isConnected: false,
+                  username: undefined,
+                  connectedAt: undefined,
+                  syncEnabled: undefined,
+                }
+              : integration
+          )
+        );
+
+        setSuccessMessage(`${integrationName} disconnected successfully`);
+      } catch (error) {
+        console.error('Failed to disconnect YouTube:', error);
+        const friendlyError = getUserFriendlyError(error, 'youtube');
+        setErrorMessage(friendlyError);
       }
     } else {
-      // Placeholder for future integrations
       setSuccessMessage(`${integrationName} disconnected successfully`);
     }
   };
 
   const handleToggleSync = async (integrationId: string) => {
-    setIntegrations(prev =>
-      prev.map(integration =>
-        integration.id === integrationId
-          ? { ...integration, syncEnabled: !integration.syncEnabled }
-          : integration
-      )
-    );
+    if (integrationId !== 'youtube') {
+      return;
+    }
+
+    const integration = integrations.find(i => i.id === 'youtube');
+    if (!integration) return;
+
+    const newSyncEnabled = !integration.syncEnabled;
+
+    try {
+      const response = await api.post('/integrations/youtube/toggle-sync/', {
+        enabled: newSyncEnabled
+      });
+
+      if (response.data.success) {
+        setIntegrations(prev =>
+          prev.map(i =>
+            i.id === integrationId
+              ? { ...i, syncEnabled: newSyncEnabled }
+              : i
+          )
+        );
+        setSuccessMessage(response.data.message || `Auto-sync ${newSyncEnabled ? 'enabled' : 'disabled'}`);
+      }
+    } catch (error: any) {
+      console.error('Failed to toggle sync:', error);
+      const friendlyError = getUserFriendlyError(error, 'youtube');
+      setErrorMessage(friendlyError);
+    }
+  };
+
+  const handleImportChannel = async () => {
+    setErrorMessage(null);
+    setSuccessMessage('');
+
+    try {
+      const response = await api.post('/integrations/youtube/import-channel/', {
+        max_videos: 50
+      });
+
+      if (response.data.success) {
+        setSuccessMessage(
+          'Your channel is being imported! This may take a few minutes. ' +
+          'Auto-sync is now enabled for new uploads.'
+        );
+
+        // Refresh sync status after a delay
+        setTimeout(() => fetchSyncStatus(), 5000);
+      }
+    } catch (error: any) {
+      console.error('Failed to import channel:', error);
+      const friendlyError = getUserFriendlyError(error, 'youtube');
+      setErrorMessage(friendlyError);
+    }
+  };
+
+  const fetchSyncStatus = async () => {
+    try {
+      const response = await api.get('/integrations/youtube/sync-status/');
+
+      if (response.data.success) {
+        setIntegrations(prev =>
+          prev.map(integration =>
+            integration.id === 'youtube'
+              ? {
+                  ...integration,
+                  syncEnabled: response.data.syncEnabled || false,
+                }
+              : integration
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Failed to fetch sync status:', error);
+    }
+  };
+
+  // Video picker modal handlers
+  const handleOpenVideoPicker = () => {
+    console.log('[IntegrationsSettingsPage] Opening video picker modal');
+    setVideoPickerState(prev => ({ ...prev, isOpen: true }));
+  };
+
+  const handleCloseVideoPicker = () => {
+    console.log('[IntegrationsSettingsPage] Closing video picker modal');
+    setVideoPickerState(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleSelectionChange = (videoIds: Set<string>) => {
+    console.log('[IntegrationsSettingsPage] Selection changed:', videoIds.size, 'videos selected');
+    setVideoPickerState(prev => ({ ...prev, selectedVideoIds: videoIds }));
+  };
+
+  const handleImportVideos = async (videoIds: string[]) => {
+    console.log('[IntegrationsSettingsPage] Starting import for', videoIds.length, 'videos');
+    setErrorMessage(null);
+    setSuccessMessage('');
+
+    try {
+      // Import each video
+      const importPromises = videoIds.map(videoId => {
+        console.log('[IntegrationsSettingsPage] Importing video:', videoId);
+        return api.post('/integrations/youtube/import/', {
+          video_url: `https://youtube.com/watch?v=${videoId}`,
+          is_showcase: true,
+          is_private: false,
+        });
+      });
+
+      await Promise.all(importPromises);
+      console.log('[IntegrationsSettingsPage] All videos imported successfully');
+
+      setSuccessMessage(
+        `Successfully imported ${videoIds.length} video${videoIds.length !== 1 ? 's' : ''}! ` +
+        `Redirecting to your profile...`
+      );
+
+      // Clear selection
+      setVideoPickerState({ isOpen: false, selectedVideoIds: new Set() });
+
+      // Redirect to user's profile page after a short delay
+      setTimeout(() => {
+        if (user?.username) {
+          navigate(`/${user.username}`);
+        }
+      }, 2000);
+    } catch (error: any) {
+      console.error('[IntegrationsSettingsPage] Failed to import videos:', error);
+      console.error('[IntegrationsSettingsPage] Import error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      const friendlyError = getUserFriendlyError(error, 'youtube');
+      setErrorMessage(friendlyError);
+      throw error; // Re-throw to keep modal open
+    }
   };
 
   return (
@@ -196,9 +481,61 @@ export default function IntegrationsSettingsPage() {
               <div
                 role="alert"
                 aria-live="assertive"
-                className="mb-6 glass-strong rounded-xl p-4 border border-red-500/20 bg-red-500/5"
+                className={`mb-6 glass-strong rounded-xl p-5 border ${
+                  errorMessage.variant === 'error' ? 'border-red-500/20 bg-red-500/5' :
+                  errorMessage.variant === 'warning' ? 'border-yellow-500/20 bg-yellow-500/5' :
+                  'border-blue-500/20 bg-blue-500/5'
+                }`}
               >
-                <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
+                <div className="flex items-start gap-3">
+                  {/* Icon */}
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                    errorMessage.variant === 'error' ? 'bg-red-100 dark:bg-red-900/20' :
+                    errorMessage.variant === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/20' :
+                    'bg-blue-100 dark:bg-blue-900/20'
+                  }`}>
+                    <span className="text-xl">
+                      {errorMessage.variant === 'error' ? '⚠️' :
+                       errorMessage.variant === 'warning' ? '⏸️' :
+                       'ℹ️'}
+                    </span>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1">
+                    <h4 className={`font-semibold mb-1 ${
+                      errorMessage.variant === 'error' ? 'text-red-700 dark:text-red-400' :
+                      errorMessage.variant === 'warning' ? 'text-yellow-700 dark:text-yellow-400' :
+                      'text-blue-700 dark:text-blue-400'
+                    }`}>
+                      {errorMessage.title}
+                    </h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                      {errorMessage.message}
+                    </p>
+
+                    {/* Action Button */}
+                    {errorMessage.actionText && errorMessage.actionHref && (
+                      <a
+                        href={errorMessage.actionHref}
+                        className="inline-block px-4 py-2 text-sm font-medium bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                      >
+                        {errorMessage.actionText}
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Dismiss button */}
+                  <button
+                    onClick={() => setErrorMessage(null)}
+                    className="flex-shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    aria-label="Dismiss"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
             {successMessage && (
@@ -286,6 +623,46 @@ export default function IntegrationsSettingsPage() {
                     </div>
                   )}
 
+                  {/* YouTube import info */}
+                  {integration.id === 'youtube' && integration.isConnected && (
+                    <div className="mb-4 p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                      <p className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-2">
+                        📥 YouTube Integration Active
+                      </p>
+                      <p className="text-xs text-blue-800 dark:text-blue-200 mb-3">
+                        {youtubeChannelId
+                          ? `Your YouTube channel is connected. Browse and import your videos below.`
+                          : 'Please reconnect YouTube to grant video access permissions.'}
+                      </p>
+                      {youtubeChannelId ? (
+                        <div className="space-y-2">
+                          <button
+                            onClick={handleOpenVideoPicker}
+                            className="w-full px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-medium"
+                          >
+                            Browse & Import Videos
+                          </button>
+                          <button
+                            onClick={handleImportChannel}
+                            className="w-full px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors text-sm font-medium"
+                          >
+                            📺 Import My Channel (Auto-Sync)
+                          </button>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                            Importing your channel enables auto-sync for new uploads
+                          </p>
+                        </div>
+                      ) : youtubeNeedsReconnect ? (
+                        <button
+                          onClick={() => handleConnect('youtube')}
+                          className="w-full px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white transition-colors text-sm font-medium"
+                        >
+                          🔄 Reconnect YouTube
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
+
                   {/* Sync toggle for connected integrations */}
                   {integration.isConnected && integration.syncEnabled !== undefined && (
                     <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-white/5">
@@ -366,6 +743,15 @@ export default function IntegrationsSettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Video Picker Modal */}
+        <VideoPickerModal
+          isOpen={videoPickerState.isOpen}
+          onClose={handleCloseVideoPicker}
+          onImport={handleImportVideos}
+          selectedVideoIds={videoPickerState.selectedVideoIds}
+          onSelectionChange={handleSelectionChange}
+        />
       </SettingsLayout>
     </DashboardLayout>
   );

@@ -127,4 +127,4 @@ class Command(BaseCommand):
             )
 
             for user in users_with_tags:
-                self.stdout.write(f"  {user['user__username']}: {user['tag_count']} tags")
+                self.stdout.write(f'  {user["user__username"]}: {user["tag_count"]} tags')

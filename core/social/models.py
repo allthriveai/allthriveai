@@ -12,6 +12,7 @@ from django.db import models
 class SocialProvider(models.TextChoices):
     """Supported social OAuth providers."""
 
+    GOOGLE = 'google', 'Google'
     GITHUB = 'github', 'GitHub'
     GITLAB = 'gitlab', 'GitLab'
     LINKEDIN = 'linkedin', 'LinkedIn'
@@ -84,6 +85,9 @@ class SocialConnection(models.Model):
         """Decrypt an OAuth token."""
         if not encrypted_token:
             return ''
+        # Convert memoryview to bytes if needed (Django BinaryField can return memoryview)
+        if isinstance(encrypted_token, memoryview):
+            encrypted_token = bytes(encrypted_token)
         f = Fernet(self._get_encryption_key())
         return f.decrypt(encrypted_token).decode()
 

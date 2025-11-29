@@ -132,7 +132,7 @@ export function ImageUpload({
   };
 
   return (
-    <div className={className}>
+    <div className={`${className} flex flex-col items-center`}>
       <input
         ref={fileInputRef}
         type="file"
@@ -156,7 +156,7 @@ export function ImageUpload({
             <button
               type="button"
               onClick={handleRemove}
-              className="absolute -top-2 -right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors"
+              className="absolute top-0 right-0 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors transform translate-x-1/4 -translate-y-1/4"
               aria-label="Remove image"
             >
               <XMarkIcon className="w-4 h-4" />

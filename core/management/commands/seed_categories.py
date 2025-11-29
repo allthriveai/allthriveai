@@ -8,12 +8,23 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Create predefined categories for project filtering."""
+        # Cleanup old categories
+        try:
+            categories_to_remove = ['Images, Design & Branding', 'Video & Multimodal Media']
+            for cat_name in categories_to_remove:
+                old_cat = Taxonomy.objects.filter(name=cat_name).first()
+                if old_cat:
+                    self.stdout.write(self.style.WARNING(f'Removing deprecated category: {old_cat.name}'))
+                    old_cat.delete()
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Error cleaning up old categories: {e}'))
+
         categories_data = [
             {
                 'name': 'Chatbots & Conversation',
                 'slug': 'chatbots-conversation',
                 'description': (
-                    'Chat and text-based experiences: Q&A bots, ' 'conversational guides, coaching/mentor bots.'
+                    'Chat and text-based experiences: Q&A bots, conversational guides, coaching/mentor bots.'
                 ),
                 'color': 'blue',
             },
@@ -24,15 +35,23 @@ class Command(BaseCommand):
                 'color': 'cyan',
             },
             {
-                'name': 'Images, Design & Branding',
-                'slug': 'images-design-branding',
-                'description': 'Visual work with AI: illustrations, brand systems, social graphics, UI mockups.',
+                'name': 'Images & Video',
+                'slug': 'images-video',
+                'description': 'Visual content: AI-generated images, videos, illustrations, and animations.',
                 'color': 'purple',
             },
             {
-                'name': 'Video & Multimodal Media',
-                'slug': 'video-creative-media',
-                'description': 'AI-generated or AI-edited videos, animations, and multimodal content.',
+                'name': 'Design (Mockups & UI)',
+                'slug': 'design-ui',
+                'description': (
+                    'UI/UX design work: mockups, prototypes, brand systems, and interface concepts (e.g. Figma).'
+                ),
+                'color': 'pink',
+            },
+            {
+                'name': 'Audio & Multimodal',
+                'slug': 'audio-multimodal',
+                'description': 'Audio, music, speech synthesis, and complex multimodal experiences.',
                 'color': 'red',
             },
             {

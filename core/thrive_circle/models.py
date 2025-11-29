@@ -145,7 +145,8 @@ class SideQuest(models.Model):
     TOPIC_CHOICES = [
         ('chatbots-conversation', 'Chatbots & Conversation'),
         ('websites-apps', 'Websites & Apps'),
-        ('images-design-branding', 'Images, Design & Branding'),
+        ('images-video', 'Images & Video'),
+        ('design-ui', 'Design (Mockups & UI)'),
         ('video-creative-media', 'Video & Multimodal Media'),
         ('podcasts-education', 'Podcasts & Educational Series'),
         ('games-interactive', 'Games & Interactive Experiences'),

@@ -12,14 +12,14 @@ class Command(BaseCommand):
             {
                 'name': 'Chatbots & Conversation Projects',
                 'description': (
-                    'Chat and text-based experiences: Q&A bots, conversational guides, ' 'coaching/mentor bots.'
+                    'Chat and text-based experiences: Q&A bots, conversational guides, coaching/mentor bots.'
                 ),
                 'color': 'blue',
             },
             {
                 'name': 'Websites & Apps Built with AI',
                 'description': (
-                    'Sites and apps where AI helps power the experience: landing pages, tools, ' 'dashboards.'
+                    'Sites and apps where AI helps power the experience: landing pages, tools, dashboards.'
                 ),
                 'color': 'cyan',
             },

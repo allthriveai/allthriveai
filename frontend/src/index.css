@@ -147,39 +147,39 @@
 
   /* Level 1: Subtle Glass - Background trays, Navigation */
   .glass-subtle {
-    @apply bg-white/50 backdrop-blur-glass-sm;
-    @apply border border-white/20;
+    @apply bg-white/40 backdrop-blur-glass;
+    @apply border border-white/10;
     @apply shadow-glass-sm;
   }
 
   .dark .glass-subtle {
-    @apply bg-black/60 backdrop-blur-glass-sm;
-    @apply border border-white/10;
+    @apply bg-black/40 backdrop-blur-glass;
+    @apply border border-white/5;
     @apply shadow-glass;
   }
 
   /* Level 2: Standard Glass - Content cards, Modals */
   .glass {
-    @apply bg-white/70 backdrop-blur-glass;
-    @apply border border-white/30;
+    @apply bg-white/40 backdrop-blur-glass-lg;
+    @apply border border-white/20;
     @apply shadow-glass;
   }
 
   .dark .glass {
-    @apply bg-black/75 backdrop-blur-glass;
-    @apply border border-white/20;
+    @apply bg-black/40 backdrop-blur-glass-lg;
+    @apply border border-white/10;
     @apply shadow-glass-lg;
   }
 
   /* Level 3: Strong Glass - Overlays, Chat panel, Dropdowns */
   .glass-strong {
-    @apply bg-white/70 backdrop-blur-glass-xl;
+    @apply bg-white/60 backdrop-blur-glass-xl;
     @apply border border-white/20;
     @apply shadow-glass-lg;
   }
 
   .dark .glass-strong {
-    @apply bg-black/70 backdrop-blur-glass-xl;
+    @apply bg-black/60 backdrop-blur-glass-xl;
     @apply border border-white/10;
     @apply shadow-glass-xl;
   }

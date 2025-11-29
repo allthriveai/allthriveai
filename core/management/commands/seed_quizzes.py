@@ -58,7 +58,7 @@ class Command(BaseCommand):
                     },
                     {
                         'question': (
-                            'Which framework specializes in building multi-agent systems ' 'with graph-based workflows?'
+                            'Which framework specializes in building multi-agent systems with graph-based workflows?'
                         ),
                         'type': 'multiple_choice',
                         'correct_answer': 'LangGraph',
@@ -88,7 +88,7 @@ class Command(BaseCommand):
                     },
                     {
                         'question': (
-                            'Which framework is developed by Microsoft Research for autonomous ' 'agent conversations?'
+                            'Which framework is developed by Microsoft Research for autonomous agent conversations?'
                         ),
                         'type': 'multiple_choice',
                         'correct_answer': 'AutoGen',
@@ -122,7 +122,7 @@ class Command(BaseCommand):
                 'title': 'Prompt Engineering Essentials',
                 'slug': 'prompt-engineering-essentials',
                 'description': (
-                    'Master the art of talking to AI! Learn key techniques to get better ' 'results from any AI model.'
+                    'Master the art of talking to AI! Learn key techniques to get better results from any AI model.'
                 ),
                 'topic': 'Prompt Engineering',
                 'difficulty': 'beginner',
@@ -286,7 +286,7 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(
                         self.style.WARNING(
-                            f'  ⚠ No matching categories found for {quiz.title}. ' f'Run seed_categories first.'
+                            f'  ⚠ No matching categories found for {quiz.title}. Run seed_categories first.'
                         )
                     )
 
@@ -299,7 +299,7 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.SUCCESS(f'  → Added {tool_count} tools to {quiz.title}'))
                 else:
                     self.stdout.write(
-                        self.style.WARNING(f'  ⚠ No matching tools found for {quiz.title}. ' f'Run seed_tools first.')
+                        self.style.WARNING(f'  ⚠ No matching tools found for {quiz.title}. Run seed_tools first.')
                     )
 
             # Create or update questions
