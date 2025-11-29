@@ -14,6 +14,13 @@ app.autodiscover_tasks()
 # These apps have models under 'core' app but tasks need explicit discovery
 app.autodiscover_tasks(['core.projects', 'core.integrations', 'core.integrations.youtube'])
 
+# Task execution settings for scalability
+app.conf.task_default_rate_limit = '100/m'  # 100 tasks per minute per worker (prevents broker overload)
+app.conf.task_acks_late = True  # Tasks acknowledged after execution (prevents loss on worker crash)
+app.conf.worker_prefetch_multiplier = 1  # Fetch one task at a time (fair distribution across workers)
+app.conf.task_time_limit = 300  # 5 minutes hard limit
+app.conf.task_soft_time_limit = 240  # 4 minutes soft limit (task should handle gracefully)
+
 # Configure task queues for priority handling (YouTube integration)
 app.conf.task_queues = (
     Queue('default', routing_key='default'),

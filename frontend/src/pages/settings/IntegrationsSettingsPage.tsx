@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faGitlab, faFigma, faInstagram, faTiktok, faYoutube } from '@fortawesome/free-brands-svg-icons';
 import { VideoPickerModal } from '@/components/integrations/VideoPickerModal';
+import { getUserFriendlyError, type UserFriendlyError } from '@/utils/errorMessages';
 
 console.log('[IntegrationsSettingsPage] MODULE LOADED - File imported successfully');
 
@@ -78,7 +79,7 @@ export default function IntegrationsSettingsPage() {
     },
   ]);
   const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState<UserFriendlyError | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [videoPickerState, setVideoPickerState] = useState({
     isOpen: false,
@@ -202,7 +203,7 @@ export default function IntegrationsSettingsPage() {
   }, []);
 
   const handleConnect = async (integrationId: string) => {
-    setErrorMessage('');
+    setErrorMessage(null);
     setSuccessMessage('');
 
     if (integrationId === 'github') {
@@ -212,11 +213,16 @@ export default function IntegrationsSettingsPage() {
         if (githubUrl) {
           window.location.href = githubUrl;
         } else {
-          setErrorMessage('GitHub login URL not available');
+          setErrorMessage({
+            title: 'Connection Error',
+            message: 'GitHub login URL not available. Please try again later.',
+            variant: 'error',
+          });
         }
       } catch (error) {
         console.error('Failed to get GitHub OAuth URL:', error);
-        setErrorMessage('Failed to connect to GitHub. Please try again.');
+        const friendlyError = getUserFriendlyError(error, 'github');
+        setErrorMessage(friendlyError);
       }
     } else if (integrationId === 'youtube') {
       try {
@@ -230,7 +236,11 @@ export default function IntegrationsSettingsPage() {
           window.location.href = authUrl;
         } else {
           console.error('[IntegrationsSettingsPage] No authUrl in response');
-          setErrorMessage('Failed to get Google OAuth URL');
+          setErrorMessage({
+            title: 'Connection Error',
+            message: 'Failed to get Google OAuth URL. Please try again later.',
+            variant: 'error',
+          });
         }
       } catch (error: any) {
         console.error('[IntegrationsSettingsPage] Failed to initiate Google OAuth:', error);
@@ -239,10 +249,15 @@ export default function IntegrationsSettingsPage() {
           statusCode: error.statusCode,
           error: error.error
         });
-        setErrorMessage(`Failed to connect to YouTube: ${error.error || error.message || 'Unknown error'}`);
+        const friendlyError = getUserFriendlyError(error, 'youtube');
+        setErrorMessage(friendlyError);
       }
     } else {
-      setErrorMessage(`${integrationId} integration is coming soon!`);
+      setErrorMessage({
+        title: 'Coming Soon',
+        message: `${integrationId} integration is coming soon! We're working hard to bring you more integrations.`,
+        variant: 'info',
+      });
     }
   };
 
@@ -251,7 +266,7 @@ export default function IntegrationsSettingsPage() {
       return;
     }
 
-    setErrorMessage('');
+    setErrorMessage(null);
     setSuccessMessage('');
 
     if (integrationId === 'github') {
@@ -274,7 +289,8 @@ export default function IntegrationsSettingsPage() {
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
         console.error('Failed to disconnect GitHub:', error);
-        setErrorMessage('Failed to disconnect GitHub. Please try again.');
+        const friendlyError = getUserFriendlyError(error, 'github');
+        setErrorMessage(friendlyError);
       }
     } else if (integrationId === 'youtube') {
       try {
@@ -297,7 +313,8 @@ export default function IntegrationsSettingsPage() {
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
         console.error('Failed to disconnect YouTube:', error);
-        setErrorMessage('Failed to disconnect YouTube. Please try again.');
+        const friendlyError = getUserFriendlyError(error, 'youtube');
+        setErrorMessage(friendlyError);
       }
     } else {
       setSuccessMessage(`${integrationName} disconnected successfully`);
@@ -331,12 +348,13 @@ export default function IntegrationsSettingsPage() {
       }
     } catch (error: any) {
       console.error('Failed to toggle sync:', error);
-      setErrorMessage(error.error || 'Failed to toggle auto-sync');
+      const friendlyError = getUserFriendlyError(error, 'youtube');
+      setErrorMessage(friendlyError);
     }
   };
 
   const handleImportChannel = async () => {
-    setErrorMessage('');
+    setErrorMessage(null);
     setSuccessMessage('');
 
     try {
@@ -355,7 +373,8 @@ export default function IntegrationsSettingsPage() {
       }
     } catch (error: any) {
       console.error('Failed to import channel:', error);
-      setErrorMessage(error.error || 'Failed to import channel');
+      const friendlyError = getUserFriendlyError(error, 'youtube');
+      setErrorMessage(friendlyError);
     }
   };
 
@@ -398,7 +417,7 @@ export default function IntegrationsSettingsPage() {
 
   const handleImportVideos = async (videoIds: string[]) => {
     console.log('[IntegrationsSettingsPage] Starting import for', videoIds.length, 'videos');
-    setErrorMessage('');
+    setErrorMessage(null);
     setSuccessMessage('');
 
     try {
@@ -436,7 +455,8 @@ export default function IntegrationsSettingsPage() {
         response: error.response?.data,
         status: error.response?.status
       });
-      setErrorMessage('Failed to import some videos. Please try again.');
+      const friendlyError = getUserFriendlyError(error, 'youtube');
+      setErrorMessage(friendlyError);
       throw error; // Re-throw to keep modal open
     }
   };
@@ -461,9 +481,61 @@ export default function IntegrationsSettingsPage() {
               <div
                 role="alert"
                 aria-live="assertive"
-                className="mb-6 glass-strong rounded-xl p-4 border border-red-500/20 bg-red-500/5"
+                className={`mb-6 glass-strong rounded-xl p-5 border ${
+                  errorMessage.variant === 'error' ? 'border-red-500/20 bg-red-500/5' :
+                  errorMessage.variant === 'warning' ? 'border-yellow-500/20 bg-yellow-500/5' :
+                  'border-blue-500/20 bg-blue-500/5'
+                }`}
               >
-                <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
+                <div className="flex items-start gap-3">
+                  {/* Icon */}
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                    errorMessage.variant === 'error' ? 'bg-red-100 dark:bg-red-900/20' :
+                    errorMessage.variant === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/20' :
+                    'bg-blue-100 dark:bg-blue-900/20'
+                  }`}>
+                    <span className="text-xl">
+                      {errorMessage.variant === 'error' ? '⚠️' :
+                       errorMessage.variant === 'warning' ? '⏸️' :
+                       'ℹ️'}
+                    </span>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1">
+                    <h4 className={`font-semibold mb-1 ${
+                      errorMessage.variant === 'error' ? 'text-red-700 dark:text-red-400' :
+                      errorMessage.variant === 'warning' ? 'text-yellow-700 dark:text-yellow-400' :
+                      'text-blue-700 dark:text-blue-400'
+                    }`}>
+                      {errorMessage.title}
+                    </h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                      {errorMessage.message}
+                    </p>
+
+                    {/* Action Button */}
+                    {errorMessage.actionText && errorMessage.actionHref && (
+                      <a
+                        href={errorMessage.actionHref}
+                        className="inline-block px-4 py-2 text-sm font-medium bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                      >
+                        {errorMessage.actionText}
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Dismiss button */}
+                  <button
+                    onClick={() => setErrorMessage(null)}
+                    className="flex-shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    aria-label="Dismiss"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
             {successMessage && (

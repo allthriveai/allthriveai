@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { api } from '@/services/api';
+import { getYouTubeErrorMessage, type UserFriendlyError } from '@/utils/errorMessages';
 
 console.log('[VideoPickerModal] MODULE LOADED - File imported successfully');
 
@@ -36,7 +37,7 @@ export function VideoPickerModal({
 
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<UserFriendlyError | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [importing, setImporting] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -77,7 +78,9 @@ export function VideoPickerModal({
             response: error.response?.data,
             status: error.response?.status
           });
-          setError('Failed to load videos. Please try again.');
+          // Translate error to user-friendly message
+          const friendlyError = getYouTubeErrorMessage(error);
+          setError(friendlyError);
         } else if (error.name === 'AbortError') {
           console.log('[VideoPickerModal] Fetch aborted');
         }
@@ -208,13 +211,54 @@ export function VideoPickerModal({
 
                   {error && (
                     <div className="text-center py-12">
-                      <p className="text-red-600 dark:text-red-400">{error}</p>
-                      <button
-                        onClick={() => window.location.reload()}
-                        className="mt-4 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
-                      >
-                        Retry
-                      </button>
+                      <div className="max-w-md mx-auto">
+                        {/* Error Icon */}
+                        <div className="mb-4">
+                          <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${
+                            error.variant === 'error' ? 'bg-red-100 dark:bg-red-900/20' :
+                            error.variant === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/20' :
+                            'bg-blue-100 dark:bg-blue-900/20'
+                          }`}>
+                            <span className="text-3xl">
+                              {error.variant === 'error' ? '⚠️' :
+                               error.variant === 'warning' ? '⏸️' :
+                               'ℹ️'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Error Title */}
+                        <h3 className={`text-lg font-semibold mb-2 ${
+                          error.variant === 'error' ? 'text-red-700 dark:text-red-400' :
+                          error.variant === 'warning' ? 'text-yellow-700 dark:text-yellow-400' :
+                          'text-blue-700 dark:text-blue-400'
+                        }`}>
+                          {error.title}
+                        </h3>
+
+                        {/* Error Message */}
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+                          {error.message}
+                        </p>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 justify-center">
+                          {error.actionText && error.actionHref && (
+                            <a
+                              href={error.actionHref}
+                              className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                            >
+                              {error.actionText}
+                            </a>
+                          )}
+                          <button
+                            onClick={() => window.location.reload()}
+                            className="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          >
+                            Try Again
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
 

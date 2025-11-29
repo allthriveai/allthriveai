@@ -31,7 +31,7 @@ if google_client_id and google_client_secret:
         },
     )
     google_app.sites.add(site)
-    print(f"✅ Google OAuth app {'created' if created else 'updated'}: {google_app.client_id}")
+    print(f'✅ Google OAuth app {"created" if created else "updated"}: {google_app.client_id}')
 else:
     print('⚠️  Google OAuth credentials not found in environment')
 
@@ -49,7 +49,7 @@ if github_client_id and github_client_secret:
         },
     )
     github_app.sites.add(site)
-    print(f"✅ GitHub OAuth app {'created' if created else 'updated'}: {github_app.client_id}")
+    print(f'✅ GitHub OAuth app {"created" if created else "updated"}: {github_app.client_id}')
 else:
     print('⚠️  GitHub OAuth credentials not found in environment')
 

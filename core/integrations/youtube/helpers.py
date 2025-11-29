@@ -234,19 +234,35 @@ def _check_user_quota(user_id: int) -> bool:
 
 def _increment_quota(user_id: int, units: int = 3):
     """
-    Increment user's YouTube API quota usage.
+    Increment user's YouTube API quota usage atomically to prevent race conditions.
+
+    Uses cache.incr() which is atomic in Redis/Memcached.
+    Falls back to set() if key doesn't exist.
 
     Args:
         user_id: User ID
         units: Quota units consumed (default: 3 for video fetch)
     """
     quota_key = f'youtube_quota:user:{user_id}'
-    current = cache.get(quota_key, 0)
 
     # Set TTL to midnight tomorrow
     tomorrow = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
     ttl = int((tomorrow - timezone.now()).total_seconds())
 
-    cache.set(quota_key, current + units, timeout=ttl)
+    try:
+        # Atomic increment - prevents race conditions with multiple workers
+        new_value = cache.incr(quota_key, delta=units)
 
-    logger.debug(f'User {user_id} quota: {current + units}/10000 units')
+        # Note: incr() doesn't update TTL in Django cache, but since we set TTL
+        # on first creation, it will expire at midnight as expected
+
+    except ValueError:
+        # Key doesn't exist, initialize it with TTL
+        cache.set(quota_key, units, timeout=ttl)
+        new_value = units
+
+    logger.debug(f'User {user_id} quota: {new_value}/10000 units')
+
+    # Log warning if approaching limit
+    if new_value > 8000:
+        logger.warning(f'User {user_id} quota high: {new_value}/10000 units ({(new_value / 10000) * 100:.1f}%)')

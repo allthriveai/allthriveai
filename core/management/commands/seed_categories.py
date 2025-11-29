@@ -24,7 +24,7 @@ class Command(BaseCommand):
                 'name': 'Chatbots & Conversation',
                 'slug': 'chatbots-conversation',
                 'description': (
-                    'Chat and text-based experiences: Q&A bots, ' 'conversational guides, coaching/mentor bots.'
+                    'Chat and text-based experiences: Q&A bots, conversational guides, coaching/mentor bots.'
                 ),
                 'color': 'blue',
             },

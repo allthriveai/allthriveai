@@ -27,7 +27,7 @@ def analyze_youtube_video(video_data: dict[str, Any], user) -> dict[str, Any]:
             'topics': [topic strings]
         }
     """
-    logger.info(f"Analyzing video: {video_data['title']}")
+    logger.info(f'Analyzing video: {video_data["title"]}')
 
     # Prepare context for AI analysis
     context = _prepare_analysis_context(video_data)
@@ -45,7 +45,7 @@ def analyze_youtube_video(video_data: dict[str, Any], user) -> dict[str, Any]:
         # Extract topics (cleaned and validated)
         topics = _clean_topics(ai_result.get('topics', []))
 
-        logger.info(f'Analysis complete: {len(tools)} tools, ' f'{len(categories)} categories, {len(topics)} topics')
+        logger.info(f'Analysis complete: {len(tools)} tools, {len(categories)} categories, {len(topics)} topics')
 
         return {'tools': tools, 'categories': categories, 'topics': topics}
 
@@ -58,12 +58,12 @@ def analyze_youtube_video(video_data: dict[str, Any], user) -> dict[str, Any]:
 def _prepare_analysis_context(video_data: dict[str, Any]) -> str:
     """Prepare text context for AI analysis."""
     context_parts = [
-        f"Title: {video_data['title']}",
-        f"Description: {video_data['description'][:500]}",  # First 500 chars
+        f'Title: {video_data["title"]}',
+        f'Description: {video_data["description"][:500]}',  # First 500 chars
     ]
 
     if video_data.get('tags'):
-        context_parts.append(f"Tags: {', '.join(video_data['tags'][:10])}")
+        context_parts.append(f'Tags: {", ".join(video_data["tags"][:10])}')
 
     return '\n'.join(context_parts)
 

@@ -145,18 +145,18 @@ def import_youtube_video_task(
                 # Apply tools
                 if ai_metadata.get('tools'):
                     project.tools.set(ai_metadata['tools'])
-                    logger.info(f"Added {len(ai_metadata['tools'])} tools to project")
+                    logger.info(f'Added {len(ai_metadata["tools"])} tools to project')
 
                 # Apply categories
                 if ai_metadata.get('categories'):
                     project.categories.set(ai_metadata['categories'])
-                    logger.info(f"Added {len(ai_metadata['categories'])} categories to project")
+                    logger.info(f'Added {len(ai_metadata["categories"])} categories to project')
 
                 # Apply topics
                 if ai_metadata.get('topics'):
                     project.topics = ai_metadata['topics']
                     project.save()
-                    logger.info(f"Added {len(ai_metadata['topics'])} topics to project")
+                    logger.info(f'Added {len(ai_metadata["topics"])} topics to project')
 
             except Exception as e:
                 logger.error(f'AI analysis failed for video {video_id}: {e}', exc_info=True)

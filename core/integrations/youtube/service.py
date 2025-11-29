@@ -21,6 +21,102 @@ class QuotaExceededError(Exception):
     pass
 
 
+class CircuitBreakerError(Exception):
+    """Raised when circuit breaker is open (service unavailable)."""
+
+    pass
+
+
+# Global HTTP client with connection pooling
+# Reuses TCP connections and SSL sessions for better performance
+_http_client = None
+
+
+def get_http_client() -> httpx.Client:
+    """Get or create singleton HTTP client with connection pooling."""
+    global _http_client
+    if _http_client is None:
+        _http_client = httpx.Client(
+            timeout=10.0,
+            limits=httpx.Limits(
+                max_connections=100,  # Total connections across all hosts
+                max_keepalive_connections=20,  # Keepalive pool size
+            ),
+            http2=True,  # Enable HTTP/2 for better performance
+        )
+    return _http_client
+
+
+# Simple circuit breaker implementation
+class CircuitBreaker:
+    """
+    Simple circuit breaker to fail fast when YouTube API is down.
+
+    States:
+    - CLOSED: Normal operation, requests allowed
+    - OPEN: Too many failures, requests blocked for recovery_timeout
+    - HALF_OPEN: Testing if service recovered (allows 1 request)
+    """
+
+    def __init__(self, failure_threshold: int = 5, recovery_timeout: int = 60):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.cache_key = 'youtube_circuit_breaker'
+
+    def _get_state(self) -> dict:
+        """Get current circuit breaker state from cache."""
+        return cache.get(self.cache_key, {'failures': 0, 'state': 'closed', 'opened_at': None})
+
+    def _set_state(self, state: dict):
+        """Save circuit breaker state to cache."""
+        cache.set(self.cache_key, state, timeout=self.recovery_timeout)
+
+    def call(self, func, *args, **kwargs):
+        """Execute function with circuit breaker protection."""
+        import time
+
+        state = self._get_state()
+
+        # Check if circuit is open
+        if state['state'] == 'open':
+            opened_at = state.get('opened_at', 0)
+            if time.time() - opened_at < self.recovery_timeout:
+                logger.warning('Circuit breaker OPEN - YouTube API requests blocked')
+                raise CircuitBreakerError('YouTube API circuit breaker is open (service unavailable)')
+            # Recovery timeout elapsed, transition to half-open
+            state['state'] = 'half_open'
+            logger.info('Circuit breaker transitioning to HALF_OPEN (testing recovery)')
+
+        # Execute the function
+        try:
+            result = func(*args, **kwargs)
+            # Success - reset failures
+            if state['failures'] > 0:
+                logger.info(f'Circuit breaker reset (was at {state["failures"]} failures)')
+            self._set_state({'failures': 0, 'state': 'closed', 'opened_at': None})
+            return result
+
+        except (httpx.HTTPStatusError, httpx.RequestError) as e:
+            # Increment failure count
+            state['failures'] = state.get('failures', 0) + 1
+            logger.warning(f'Circuit breaker failure #{state["failures"]}: {e}')
+
+            # Check if threshold exceeded
+            if state['failures'] >= self.failure_threshold:
+                state['state'] = 'open'
+                state['opened_at'] = time.time()
+                logger.error(
+                    f'Circuit breaker OPENED after {state["failures"]} failures (recovery in {self.recovery_timeout}s)'
+                )
+
+            self._set_state(state)
+            raise
+
+
+# Global circuit breaker instance
+_circuit_breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60)
+
+
 class YouTubeService:
     """YouTube Data API v3 client - SYNCHRONOUS for Celery compatibility."""
 
@@ -91,6 +187,7 @@ class YouTubeService:
         Raises:
             IntegrationNotFoundError: If video not found
             QuotaExceededError: If API quota exceeded
+            CircuitBreakerError: If circuit breaker is open
         """
         self._check_quota()
 
@@ -98,15 +195,20 @@ class YouTubeService:
 
         logger.debug(f'Fetching video info for {video_id}')
 
+        def _make_request():
+            client = get_http_client()
+            response = client.get(
+                f'{self.BASE_URL}/videos',
+                params=params,
+                headers=self._get_headers(),
+            )
+            response.raise_for_status()
+            return response.json()
+
         try:
-            with httpx.Client(timeout=10) as client:
-                response = client.get(
-                    f'{self.BASE_URL}/videos',
-                    params=params,
-                    headers=self._get_headers(),
-                )
-                response.raise_for_status()
-                data = response.json()
+            data = _circuit_breaker.call(_make_request)
+        except CircuitBreakerError:
+            raise
         except httpx.HTTPStatusError as e:
             logger.error(f'HTTP error fetching video {video_id}: {e}')
             raise IntegrationError(f'Failed to fetch video: {e}', integration_name='youtube', original_error=e) from e
@@ -139,7 +241,7 @@ class YouTubeService:
 
     def _make_request(self, endpoint: str, params: dict) -> dict:
         """
-        Make a generic request to YouTube API.
+        Make a generic request to YouTube API with connection pooling and circuit breaker.
 
         Args:
             endpoint: API endpoint path (e.g., '/channels', '/videos')
@@ -150,6 +252,7 @@ class YouTubeService:
 
         Raises:
             IntegrationError: If request fails
+            CircuitBreakerError: If circuit breaker is open
         """
         self._check_quota()
 
@@ -158,15 +261,20 @@ class YouTubeService:
 
         logger.debug(f'Making YouTube API request to {endpoint}')
 
+        def _request():
+            client = get_http_client()
+            response = client.get(
+                url,
+                params=params,
+                headers=self._get_headers(),
+            )
+            response.raise_for_status()
+            return response.json()
+
         try:
-            with httpx.Client(timeout=10) as client:
-                response = client.get(
-                    url,
-                    params=params,
-                    headers=self._get_headers(),
-                )
-                response.raise_for_status()
-                return response.json()
+            return _circuit_breaker.call(_request)
+        except CircuitBreakerError:
+            raise
         except httpx.HTTPStatusError as e:
             logger.error(f'HTTP error on {endpoint}: {e}')
             raise IntegrationError(f'YouTube API error: {e}', integration_name='youtube', original_error=e) from e
@@ -231,22 +339,33 @@ class YouTubeService:
 
             logger.debug(f'Fetching videos for channel {channel_id} (page token: {next_page_token})')
 
+            def _fetch_page(params=params, headers=headers):
+                client = get_http_client()
+                response = client.get(
+                    f'{self.BASE_URL}/search',
+                    params=params,
+                    headers=headers,
+                )
+
+                # 304 Not Modified - no new videos
+                if response.status_code == 304:
+                    logger.info(f'Channel {channel_id} not modified (ETag match)')
+                    return None  # Signal to return early
+
+                response.raise_for_status()
+                return response
+
             try:
-                with httpx.Client(timeout=10) as client:
-                    response = client.get(
-                        f'{self.BASE_URL}/search',
-                        params=params,
-                        headers=headers,
-                    )
+                response = _circuit_breaker.call(_fetch_page)
 
-                    # 304 Not Modified - no new videos
-                    if response.status_code == 304:
-                        logger.info(f'Channel {channel_id} not modified (ETag match)')
-                        return {'videos': [], 'etag': etag}
+                # Handle 304 Not Modified case
+                if response is None:
+                    return {'videos': [], 'etag': etag}
 
-                    response.raise_for_status()
-                    data = response.json()
+                data = response.json()
 
+            except CircuitBreakerError:
+                raise
             except httpx.HTTPStatusError as e:
                 logger.error(f'HTTP error fetching channel videos: {e}')
                 raise IntegrationError(
@@ -299,15 +418,20 @@ class YouTubeService:
 
         logger.debug(f'Fetching channel info for {channel_id}')
 
+        def _fetch_channel():
+            client = get_http_client()
+            response = client.get(
+                f'{self.BASE_URL}/channels',
+                params=params,
+                headers=self._get_headers(),
+            )
+            response.raise_for_status()
+            return response.json()
+
         try:
-            with httpx.Client(timeout=10) as client:
-                response = client.get(
-                    f'{self.BASE_URL}/channels',
-                    params=params,
-                    headers=self._get_headers(),
-                )
-                response.raise_for_status()
-                data = response.json()
+            data = _circuit_breaker.call(_fetch_channel)
+        except CircuitBreakerError:
+            raise
         except httpx.HTTPStatusError as e:
             logger.error(f'HTTP error fetching channel {channel_id}: {e}')
             raise IntegrationError(f'Failed to fetch channel: {e}', integration_name='youtube', original_error=e) from e

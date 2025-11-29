@@ -313,8 +313,8 @@ class SocialOAuthService:
 
         action = 'Created' if created else 'Updated'
         logger.info(
-            f"{action} {self.provider} connection for user {user.username} "
-            f"(provider_user={parsed_data['provider_username']})"
+            f'{action} {self.provider} connection for user {user.username} '
+            f'(provider_user={parsed_data["provider_username"]})'
         )
 
         return connection
