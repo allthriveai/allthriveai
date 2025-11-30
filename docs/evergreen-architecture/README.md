@@ -33,16 +33,17 @@ Unlike time-bound implementation docs (which go in `/docs/archived/`), these doc
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| 07-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
-| 08-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
-| 09-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
+| [07-WEBSOCKET-IMPLEMENTATION.md](./07-WEBSOCKET-IMPLEMENTATION.md) | ✅ Complete | WebSocket architecture, auth flow, debugging guide |
+| 08-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
+| 09-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
+| 10-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
 
 ### Design & UX
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| 10-DESIGN-SYSTEM.md | 📝 Planned | Color palette, typography, components, patterns |
-| 11-UX-PRINCIPLES.md | 📝 Planned | Interaction patterns, accessibility, mobile-first |
+| 11-DESIGN-SYSTEM.md | 📝 Planned | Color palette, typography, components, patterns |
+| 12-UX-PRINCIPLES.md | 📝 Planned | Interaction patterns, accessibility, mobile-first |
 
 ---
 

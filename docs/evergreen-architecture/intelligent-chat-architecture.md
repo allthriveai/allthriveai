@@ -2519,12 +2519,68 @@ This document describes the complete architecture of the IntelligentChatPanel sy
 **Current State:**
 - ✅ WebSocket connection working
 - ✅ Frontend UI complete
-- ❌ Intent router not being called
-- ❌ Using wrong agent (state machine instead of LLM agent)
-- ❌ All messages get same response
+- ✅ Intent detection integrated in `tasks.py`
+- ✅ Using AIProvider for streaming responses
+- ✅ Intent-specific system prompts implemented
+- ⚠️  Using AIProvider directly instead of LangGraph agent
+- ❌ Conversation history not wired up yet
+- ❌ Integration type detection not implemented
+- ❌ LangGraph state management not fully integrated
 
-**Required Changes:**
-- Add `IntentDetectionService.detect_intent()` call in `tasks.py`
-- Replace `project_graph.stream()` with `project_agent.astream()`
-- Update event parsing for LLM streaming format
-- Update metrics to use actual detected intent
+**Implementation Details (as of 2025-11-30):**
+
+The current implementation in `/core/agents/tasks.py` includes:
+
+1. **Intent Detection** (Line 79-86):
+   - Uses `IntentDetectionService.detect_intent()`
+   - Returns: `project-creation`, `support`, or `discovery`
+   - TODO: Wire up actual conversation history (currently `None`)
+   - TODO: Extract integration type from conversation context (currently `None`)
+
+2. **System Prompt Routing** (Line 106):
+   - Helper function `_get_system_prompt_for_intent()` returns different prompts based on intent
+   - `project-creation`: Guides users through project creation
+   - `discovery`: Helps users explore AI/ML projects
+   - `support`: Provides platform help and troubleshooting
+
+3. **Streaming with AIProvider** (Line 111-130):
+   - Uses centralized `AIProvider` for streaming completions
+   - Bypasses LangGraph temporarily to avoid compatibility issues
+   - Streams chunks via Redis Pub/Sub to WebSocket
+   - Includes timing metrics and error handling
+
+4. **State Management** (Line 158):
+   - Currently using mock state: `{'last_message': sanitized_message}`
+   - TODO: Integrate actual LangGraph checkpointer
+   - TODO: Replace with proper conversation state from `get_cached_checkpoint()`
+
+**Next Steps:**
+
+1. **Wire Up Conversation History**
+   - Fetch message history from database
+   - Pass to intent detection for better context
+   - Store in format compatible with LangGraph
+
+2. **Extract Integration Type**
+   - Get integration type from conversation/project context
+   - Use for specialized responses (GitHub, YouTube, etc.)
+
+3. **Integrate LangGraph State**
+   - Implement `get_cached_checkpoint()` function
+   - Replace mock state with actual LangGraph state
+   - Enable proper conversation memory/context
+
+4. **Add Intent-Specific Features**
+   - **Project Creation**: Form-based setup, GitHub/YouTube parsing
+   - **Discovery**: Search integration, recommendation system
+   - **Support**: FAQ integration, documentation links
+
+5. **Persist Messages**
+   - Save user message and AI response to database
+   - Link to conversation and project (if applicable)
+   - Track timestamps and metadata
+
+6. **Transition to LangGraph Agent** (Future):
+   - Replace AIProvider with full LangGraph agent
+   - Enable tool calling for project creation
+   - Implement human-in-the-loop confirmations
