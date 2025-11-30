@@ -290,8 +290,7 @@ def _process_with_langgraph_agent(
             {
                 'type': 'chat.message',
                 'event': 'chunk',
-                'chunk': "I'm here to help! However, I encountered an issue processing your request. "
-                'Please try again.',
+                'chunk': "I'm here to help! However, I encountered an issue processing your request. Please try again.",
                 'conversation_id': conversation_id,
             },
         )

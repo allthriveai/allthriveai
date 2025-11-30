@@ -271,17 +271,17 @@ def import_github_project(
     Import a GitHub repository as a portfolio project with full AI analysis.
 
     This tool:
-    1. Uses GitHub MCP to fetch README, file tree, and dependency files
-    2. Normalizes that data into the repo_data shape used by analyze_github_repo
-    3. Calls analyze_github_repo to get description, categories, topics, tools, and blocks
-    4. Creates a structured project page and applies AI-suggested metadata
+    1. Uses GitHub REST API to fetch README, file tree, and dependency files
+    2. Normalizes that data into the repo_data shape used by the AI analyzer
+    3. Calls analyze_github_repo_for_template to generate structured sections
+    4. Creates a project with section-based content for consistent, beautiful display
 
     Returns:
         Dictionary with success status, project_id, slug, and URL
     """
     from django.contrib.auth import get_user_model
 
-    from core.integrations.github.ai_analyzer import analyze_github_repo
+    from core.integrations.github.ai_analyzer import analyze_github_repo_for_template
     from core.integrations.github.helpers import (
         apply_ai_metadata,
         get_user_github_token,
@@ -322,34 +322,66 @@ def import_github_project(
 
     # Fetch repository files/structure via GitHub REST API
     github_service = GitHubService(token)
+
+    # Verify user owns or contributed to the repository
+    try:
+        is_authorized = github_service.verify_repo_access_sync(owner, repo)
+        if not is_authorized:
+            return {
+                'success': False,
+                'error': (
+                    f'You can only import repositories you own or have contributed to. '
+                    f'The repository {owner}/{repo} does not appear to be associated '
+                    f'with your GitHub account.'
+                ),
+            }
+    except Exception as e:
+        logger.warning(f'Failed to verify repo access for {owner}/{repo}: {e}')
+        # If verification fails, allow import but log warning
+        # This prevents blocking legitimate imports due to API issues
+
     repo_files = github_service.get_repository_info_sync(owner, repo)
 
-    # Normalize GitHub output into the schema analyze_github_repo expects
+    # Normalize GitHub output into the schema the AI analyzer expects
     repo_summary = normalize_github_repo_data(owner, repo, url, repo_files)
 
-    # Run AI analysis
-    logger.info(f'Running AI analysis for {owner}/{repo}')
-    analysis = analyze_github_repo(
+    # Run AI analysis using the new template-based analyzer
+    logger.info(f'Running template-based AI analysis for {owner}/{repo}')
+    analysis = analyze_github_repo_for_template(
         repo_data=repo_summary,
         readme_content=repo_files.get('readme', ''),
     )
 
+    # Get hero image from analysis
+    hero_image = analysis.get('hero_image', '')
+    if not hero_image:
+        hero_image = f'https://opengraph.githubassets.com/1/{owner}/{repo}'
+
+    # Build content with template v2 sections
+    content = {
+        # Template version for frontend to detect new format
+        'templateVersion': analysis.get('templateVersion', 2),
+        # Structured sections for beautiful, consistent display
+        'sections': analysis.get('sections', []),
+        # Raw GitHub data for reference/regeneration
+        'github': repo_summary,
+        # Tech stack for quick reference
+        'tech_stack': repo_files.get('tech_stack', {}),
+    }
+
     # Create project with full metadata
+    # NOTE: banner_url is left empty (defaults to gradient on frontend)
+    #       featured_image_url gets the hero image for cards/sharing
     project = Project.objects.create(
         user=user,
         title=repo_summary.get('name', repo),
         description=analysis.get('description') or repo_summary.get('description', ''),
         type=Project.ProjectType.GITHUB_REPO,
         external_url=url,
-        content={
-            'github': repo_summary,
-            'blocks': analysis.get('readme_blocks', []),  # Frontend expects 'blocks'
-            'mermaid_diagrams': analysis.get('mermaid_diagrams', []),
-            'demo_urls': analysis.get('demo_urls', []),
-            'hero_quote': analysis.get('hero_quote', ''),
-            'generated_diagram': analysis.get('generated_diagram', ''),
-            'tech_stack': repo_files.get('tech_stack', {}),
-        },
+        # Set featured image for cards/sharing - banner stays empty (gradient)
+        featured_image_url=hero_image,
+        # banner_url intentionally left empty - frontend renders gradient
+        content=content,
         is_showcase=is_showcase,
         is_published=not is_private,  # Published unless marked as private
     )
@@ -357,7 +389,9 @@ def import_github_project(
     # Apply AI-suggested categories, topics, tools
     apply_ai_metadata(project, analysis)
 
-    logger.info(f'Successfully imported {owner}/{repo} as project {project.id}')
+    logger.info(
+        f'Successfully imported {owner}/{repo} as project {project.id} with {len(content.get("sections", []))} sections'
+    )
 
     return {
         'success': True,
@@ -368,4 +402,6 @@ def import_github_project(
 
 
 # Tool list for agent
-PROJECT_TOOLS = [create_project, fetch_github_metadata, extract_url_info, import_github_project]
+# Note: fetch_github_metadata is kept for potential future use but not exposed to agent
+# GitHub imports require OAuth via import_github_project for ownership verification
+PROJECT_TOOLS = [create_project, extract_url_info, import_github_project]

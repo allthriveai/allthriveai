@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
 import type { Project } from '@/types/models';
 import { TechStackGrid } from './TechStackGrid';
 import { DirectoryTree } from './DirectoryTree';
+import { MermaidDiagram } from '../shared';
 import {
   CodeBracketIcon,
   CubeIcon,
@@ -10,49 +10,9 @@ import {
   StarIcon,
   LinkIcon,
 } from '@heroicons/react/24/outline';
-import mermaid from 'mermaid';
 
 interface GitHubProjectLayoutProps {
   project: Project;
-}
-
-// Mermaid Diagram Component
-function MermaidDiagram({ code }: { code: string }) {
-  const diagramRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [diagramId] = useState(`mermaid-${Math.random().toString(36).substr(2, 9)}`);
-
-  useEffect(() => {
-    if (!diagramRef.current || !code) return;
-
-    async function renderDiagram() {
-      try {
-        setError(null);
-        if (diagramRef.current) {
-          diagramRef.current.innerHTML = '';
-          const { svg } = await mermaid.render(diagramId, code);
-          if (diagramRef.current) {
-            diagramRef.current.innerHTML = svg;
-          }
-        }
-      } catch (err) {
-        console.error('Mermaid rendering error:', err);
-        setError('Failed to render diagram');
-      }
-    }
-
-    renderDiagram();
-  }, [code, diagramId]);
-
-  if (error) {
-    return (
-      <div className="text-red-600 dark:text-red-400 text-sm p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-        {error}
-      </div>
-    );
-  }
-
-  return <div ref={diagramRef} className="flex justify-center" />;
 }
 
 export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {

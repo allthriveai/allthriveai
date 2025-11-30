@@ -291,7 +291,9 @@ export function useIntelligentChat({
             case 'tool_end':
               // Tool execution completed - check for project creation
               console.log(`[WebSocket] Tool ended: ${data.tool}`, data.output);
-              if (data.tool === 'create_project' && data.output?.success && data.output?.url) {
+              // Handle both create_project and import_github_project
+              if ((data.tool === 'create_project' || data.tool === 'import_github_project') &&
+                  data.output?.success && data.output?.url) {
                 // Project was created successfully - trigger callback
                 onProjectCreated?.(data.output.url, data.output.title || 'Project');
               }

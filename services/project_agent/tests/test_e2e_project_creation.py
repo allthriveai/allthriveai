@@ -149,7 +149,7 @@ class TestProjectCreationE2E:
             state=state,
         )
 
-        assert result['success'] is True, f"create_project failed: {result.get('error')}"
+        assert result['success'] is True, f'create_project failed: {result.get("error")}'
         assert 'project_id' in result
         print(f'✓ create_project returned: {result}')
 
@@ -206,7 +206,7 @@ class TestProjectCreationE2E:
         tool_message = result['messages'][0]
         content = json.loads(tool_message.content)
 
-        assert content['success'] is True, f"Tool failed: {content.get('error')}"
+        assert content['success'] is True, f'Tool failed: {content.get("error")}'
         print('✓ tool_node correctly injected state and created project')
 
         # Cleanup
@@ -336,7 +336,7 @@ class TestGitHubMetadataFetching:
 
                     assert result['success'] is True
                     assert result['title'] == 'test-repo'
-                    print(f"✓ fetch_github_metadata works: {result['title']}")
+                    print(f'✓ fetch_github_metadata works: {result["title"]}')
 
     def test_fetch_github_metadata_invalid_url(self):
         """Test that invalid URLs are rejected."""
@@ -400,7 +400,7 @@ class TestIntegration:
 
         assert metadata['success'] is True
         conversation.append(('tool', f'fetch_github_metadata: {metadata}'))
-        print(f"Tool: fetch_github_metadata -> {metadata['title']}")
+        print(f'Tool: fetch_github_metadata -> {metadata["title"]}')
 
         # Agent response asking about showcase
         agent_response_1 = f"Found '{metadata['title']}'! Showcase or Playground?"
@@ -423,9 +423,9 @@ class TestIntegration:
             state=state,
         )
 
-        assert result['success'] is True, f"create_project failed: {result.get('error')}"
+        assert result['success'] is True, f'create_project failed: {result.get("error")}'
         conversation.append(('tool', f'create_project: {result}'))
-        print(f"Tool: create_project -> project_id={result['project_id']}")
+        print(f'Tool: create_project -> project_id={result["project_id"]}')
 
         # Agent confirms
         agent_response_2 = f"Created '{metadata['title']}' in your Showcase!"

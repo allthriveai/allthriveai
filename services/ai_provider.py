@@ -19,6 +19,7 @@ class AIProviderType(Enum):
     AZURE = 'azure'
     OPENAI = 'openai'
     ANTHROPIC = 'anthropic'
+    GEMINI = 'gemini'
 
 
 class AIProvider:
@@ -82,6 +83,8 @@ class AIProvider:
             return self._initialize_openai_client()
         elif self._provider == AIProviderType.ANTHROPIC:
             return self._initialize_anthropic_client()
+        elif self._provider == AIProviderType.GEMINI:
+            return self._initialize_gemini_client()
 
     def _initialize_azure_client(self):
         """Initialize Azure OpenAI client."""
@@ -134,6 +137,23 @@ class AIProvider:
 
         return Anthropic(api_key=api_key)
 
+    def _initialize_gemini_client(self):
+        """Initialize Google Gemini client."""
+        try:
+            import google.generativeai as genai
+        except ImportError:
+            raise ImportError(
+                'Google Generative AI library not installed. Install with: pip install google-generativeai'
+            )
+
+        api_key = getattr(settings, 'GOOGLE_API_KEY', None)
+
+        if not api_key:
+            raise ValueError('Google API key not configured. Set GOOGLE_API_KEY in settings.')
+
+        genai.configure(api_key=api_key)
+        return genai
+
     @traceable(name='ai_provider_complete', run_type='llm')
     def complete(
         self,
@@ -164,6 +184,8 @@ class AIProvider:
             return self._complete_openai(prompt, model, temperature, max_tokens, system_message, **kwargs)
         elif self._provider == AIProviderType.ANTHROPIC:
             return self._complete_anthropic(prompt, model, temperature, max_tokens, system_message, **kwargs)
+        elif self._provider == AIProviderType.GEMINI:
+            return self._complete_gemini(prompt, model, temperature, max_tokens, system_message, **kwargs)
 
     def _complete_azure(
         self,
@@ -259,6 +281,43 @@ class AIProvider:
 
         return response.content[0].text
 
+    def _complete_gemini(
+        self,
+        prompt: str,
+        model: str | None,
+        temperature: float,
+        max_tokens: int | None,
+        system_message: str | None,
+        **kwargs,
+    ) -> str:
+        """Google Gemini completion."""
+        model_name = model or getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
+
+        generation_config = {
+            'temperature': temperature,
+        }
+        if max_tokens:
+            generation_config['max_output_tokens'] = max_tokens
+
+        # Handle system message if provided
+        model_kwargs = {}
+        if system_message:
+            model_kwargs['system_instruction'] = system_message
+
+        model_instance = self._client.GenerativeModel(model_name=model_name, **model_kwargs)
+
+        response = model_instance.generate_content(prompt, generation_config=generation_config, **kwargs)
+
+        # Store token usage for tracking (Gemini provides usage metadata)
+        if hasattr(response, 'usage_metadata'):
+            self.last_usage = {
+                'prompt_tokens': response.usage_metadata.prompt_token_count,
+                'completion_tokens': response.usage_metadata.candidates_token_count,
+                'total_tokens': response.usage_metadata.total_token_count,
+            }
+
+        return response.text
+
     def stream_complete(
         self,
         prompt: str,
@@ -288,6 +347,8 @@ class AIProvider:
             yield from self._stream_openai(prompt, model, temperature, max_tokens, system_message, **kwargs)
         elif self._provider == AIProviderType.ANTHROPIC:
             yield from self._stream_anthropic(prompt, model, temperature, max_tokens, system_message, **kwargs)
+        elif self._provider == AIProviderType.GEMINI:
+            yield from self._stream_gemini(prompt, model, temperature, max_tokens, system_message, **kwargs)
 
     def _stream_azure(
         self,
@@ -370,6 +431,37 @@ class AIProvider:
             for text in stream.text_stream:
                 yield text
 
+    def _stream_gemini(
+        self,
+        prompt: str,
+        model: str | None,
+        temperature: float,
+        max_tokens: int | None,
+        system_message: str | None,
+        **kwargs,
+    ):
+        """Google Gemini streaming completion."""
+        model_name = model or getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
+
+        generation_config = {
+            'temperature': temperature,
+        }
+        if max_tokens:
+            generation_config['max_output_tokens'] = max_tokens
+
+        # Handle system message if provided
+        model_kwargs = {}
+        if system_message:
+            model_kwargs['system_instruction'] = system_message
+
+        model_instance = self._client.GenerativeModel(model_name=model_name, **model_kwargs)
+
+        response = model_instance.generate_content(prompt, generation_config=generation_config, stream=True, **kwargs)
+
+        for chunk in response:
+            if chunk.text:
+                yield chunk.text
+
     @property
     def current_provider(self) -> str:
         """Get the current provider name."""
@@ -384,6 +476,8 @@ class AIProvider:
             return 'gpt-4'
         elif self._provider == AIProviderType.ANTHROPIC:
             return 'claude-3-5-sonnet-20241022'
+        elif self._provider == AIProviderType.GEMINI:
+            return getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
         return 'unknown'
 
     @property
@@ -433,6 +527,16 @@ class AIProvider:
             return ChatAnthropic(
                 model=kwargs.pop('model', 'claude-3-5-sonnet-20241022'),
                 api_key=getattr(settings, 'ANTHROPIC_API_KEY', ''),
+                temperature=temperature,
+                **kwargs,
+            )
+
+        elif self._provider == AIProviderType.GEMINI:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+
+            return ChatGoogleGenerativeAI(
+                model=kwargs.pop('model', getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')),
+                google_api_key=getattr(settings, 'GOOGLE_API_KEY', ''),
                 temperature=temperature,
                 **kwargs,
             )

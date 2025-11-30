@@ -234,6 +234,8 @@ REST_FRAMEWORK = {
 # AI API Keys
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
+GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
+GEMINI_MODEL_NAME = config('GEMINI_MODEL_NAME', default='gemini-1.5-flash')
 
 # GitHub API Token (for project agent)
 GITHUB_API_TOKEN = config('GITHUB_API_TOKEN', default='')  # Optional, increases rate limit

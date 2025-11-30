@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import { renderContent } from '@/utils/markdown';
 
 interface DescriptionSectionProps {
   projectDescription: string;
@@ -52,18 +53,20 @@ export function DescriptionSection({
         </button>
       </div>
       {isMarkdownMode ? (
-        <textarea
-          value={projectDescription}
-          onChange={(e) => setProjectDescription(e.target.value)}
-          placeholder="Describe what makes your project interesting...\n\nMarkdown supported:\n- **bold** and *italic*\n- [links](url)\n- Lists and more!"
-          rows={6}
-          disabled={isSaving}
-          className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 font-mono text-sm ${
-            isOverLimit
-              ? 'border-red-500 dark:border-red-500'
-              : 'border-gray-300 dark:border-gray-700'
-          }`}
-        />
+        <div>
+          <textarea
+            value={projectDescription}
+            onChange={(e) => setProjectDescription(e.target.value)}
+            placeholder="Describe what makes your project interesting...\n\nMarkdown supported:\n- **bold** and *italic*\n- [links](url)\n- Lists and more!"
+            rows={6}
+            disabled={isSaving}
+            className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 font-mono text-sm ${
+              isOverLimit
+                ? 'border-red-500 dark:border-red-500'
+                : 'border-gray-300 dark:border-gray-700'
+            }`}
+          />
+        </div>
       ) : (
         <div className={`border rounded-lg ${
           isOverLimit
@@ -71,10 +74,9 @@ export function DescriptionSection({
             : 'border-gray-300 dark:border-gray-700'
         }`}>
           <RichTextEditor
-            value={projectDescription}
+            content={projectDescription}
             onChange={setProjectDescription}
             placeholder="Describe what makes your project interesting..."
-            minHeight="120px"
           />
         </div>
       )}

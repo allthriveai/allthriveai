@@ -284,3 +284,81 @@ class GitHubService:
         import asyncio
 
         return asyncio.run(self.get_repository_info(owner, repo))
+
+    async def verify_repo_access(self, owner: str, repo: str) -> bool:
+        """
+        Verify the authenticated user owns or has contributed to a repository.
+
+        Checks:
+        1. Is the user the repository owner?
+        2. Has the user contributed commits to the repository?
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+
+        Returns:
+            True if user owns or contributed to the repo, False otherwise
+        """
+        try:
+            # Get authenticated user's info
+            user_url = f'{self.BASE_URL}/user'
+            user_data = await self._make_request(user_url)
+            if not user_data:
+                logger.warning('Failed to get authenticated user info')
+                return False
+
+            github_username = user_data.get('login', '').lower()
+
+            # Check 1: Is user the repo owner?
+            if owner.lower() == github_username:
+                logger.info(f'User {github_username} is owner of {owner}/{repo}')
+                return True
+
+            # Check 2: Has user contributed to the repo?
+            # Use the contributors endpoint to check if user has any commits
+            contributors_url = f'{self.BASE_URL}/repos/{owner}/{repo}/contributors'
+            contributors = await self._make_request(contributors_url)
+
+            if contributors:
+                for contributor in contributors:
+                    if contributor.get('login', '').lower() == github_username:
+                        logger.info(f'User {github_username} is a contributor to {owner}/{repo}')
+                        return True
+
+            # Check 3: Is user a collaborator? (has push access)
+            # This catches cases where user was added as collaborator but hasn't pushed yet
+            try:
+                collab_url = f'{self.BASE_URL}/repos/{owner}/{repo}/collaborators/{github_username}'
+                async with httpx.AsyncClient(timeout=GITHUB_API_TIMEOUT) as client:
+                    response = await client.get(collab_url, headers=self.headers)
+                    # 204 means user is a collaborator
+                    if response.status_code == 204:
+                        logger.info(f'User {github_username} is a collaborator on {owner}/{repo}')
+                        return True
+            except Exception as e:
+                logger.debug(f'Collaborator check failed (expected for non-collaborators): {e}')
+
+            logger.info(f'User {github_username} does not own or contribute to {owner}/{repo}')
+            return False
+
+        except Exception as e:
+            logger.error(f'Error verifying repo access for {owner}/{repo}: {e}')
+            raise
+
+    def verify_repo_access_sync(self, owner: str, repo: str) -> bool:
+        """
+        Synchronous wrapper for verify_repo_access.
+
+        Use this in synchronous contexts like LangChain tools.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+
+        Returns:
+            True if user owns or contributed to the repo, False otherwise
+        """
+        import asyncio
+
+        return asyncio.run(self.verify_repo_access(owner, repo))

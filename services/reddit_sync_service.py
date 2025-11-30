@@ -5,6 +5,7 @@ import logging
 import re
 from datetime import datetime
 from urllib.parse import urlparse
+from xml.etree.ElementTree import Element
 
 import defusedxml.ElementTree as ET
 import requests
@@ -65,7 +66,7 @@ class RedditRSSParser:
             raise
 
     @classmethod
-    def _parse_entry(cls, entry: ET.Element) -> dict | None:
+    def _parse_entry(cls, entry: Element) -> dict | None:
         """Parse a single Atom entry into post data."""
         try:
             # Extract post ID from the id tag (e.g., "t3_1pa4e7t")
@@ -148,6 +149,125 @@ class RedditSyncService:
     """Service for syncing Reddit threads from RSS feeds."""
 
     USER_AGENT = 'Mozilla/5.0 (compatible; AllThrive/1.0; +https://allthrive.ai)'
+
+    @classmethod
+    def fetch_post_metrics(cls, permalink: str) -> dict:
+        """Fetch score, comment count, and full-size image from Reddit's JSON API.
+
+        Reddit provides a .json endpoint for every post without authentication.
+        Example: https://reddit.com/r/subreddit/comments/id/title.json
+
+        Returns:
+            Dict with 'score', 'num_comments', and 'image_url' (or defaults)
+        """
+        try:
+            # Reddit has a .json endpoint for every post
+            json_url = permalink.rstrip('/') + '.json'
+
+            response = requests.get(
+                json_url,
+                headers={'User-Agent': cls.USER_AGENT},
+                timeout=10,
+            )
+            response.raise_for_status()
+
+            data = response.json()
+            # Reddit returns an array with [post_data, comments_data]
+            post_data = data[0]['data']['children'][0]['data']
+
+            # Try to get full-size image
+            image_url = ''
+
+            # Check for preview images (most common)
+            if 'preview' in post_data and 'images' in post_data['preview']:
+                images = post_data['preview']['images']
+                if images and len(images) > 0:
+                    # Get the highest resolution image
+                    source = images[0].get('source', {})
+                    image_url = source.get('url', '')
+                    # Reddit HTML-encodes the URLs, decode them
+                    if image_url:
+                        image_url = image_url.replace('&amp;', '&')
+
+            # Fallback to url_overridden_by_dest (for direct image links)
+            if not image_url and 'url_overridden_by_dest' in post_data:
+                url = post_data['url_overridden_by_dest']
+                # Check if it's an image URL
+                if any(url.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']):
+                    image_url = url
+
+            # Fallback to thumbnail if no better option
+            if not image_url:
+                thumbnail = post_data.get('thumbnail', '')
+                if thumbnail and thumbnail not in ['self', 'default', 'nsfw', 'spoiler']:
+                    image_url = thumbnail
+
+            # Extract video data if available
+            video_url = ''
+            video_duration = 0
+            if 'secure_media' in post_data and post_data['secure_media']:
+                reddit_video = post_data['secure_media'].get('reddit_video', {})
+                if reddit_video:
+                    video_url = reddit_video.get('fallback_url', '')
+                    video_duration = reddit_video.get('duration', 0)
+
+            # Extract gallery data if available
+            gallery_images = []
+            if 'gallery_data' in post_data and 'media_metadata' in post_data:
+                gallery_data = post_data['gallery_data'].get('items', [])
+                media_metadata = post_data['media_metadata']
+
+                for item in gallery_data:
+                    media_id = item.get('media_id')
+                    if media_id and media_id in media_metadata:
+                        media = media_metadata[media_id]
+                        if 's' in media:  # 's' contains the source image
+                            img_url = media['s'].get('u', '') or media['s'].get('gif', '')
+                            if img_url:
+                                gallery_images.append(img_url.replace('&amp;', '&'))
+
+            return {
+                'score': post_data.get('score', 0),
+                'num_comments': post_data.get('num_comments', 0),
+                'upvote_ratio': post_data.get('upvote_ratio', 0),
+                'image_url': image_url,
+                'selftext': post_data.get('selftext', ''),
+                'selftext_html': post_data.get('selftext_html', ''),
+                'post_hint': post_data.get('post_hint', ''),
+                'link_flair_text': post_data.get('link_flair_text', ''),
+                'link_flair_background_color': post_data.get('link_flair_background_color', ''),
+                'is_video': post_data.get('is_video', False),
+                'video_url': video_url,
+                'video_duration': video_duration,
+                'is_gallery': bool(gallery_images),
+                'gallery_images': gallery_images,
+                'domain': post_data.get('domain', ''),
+                'url': post_data.get('url', ''),
+                'over_18': post_data.get('over_18', False),
+                'spoiler': post_data.get('spoiler', False),
+            }
+        except Exception as e:
+            logger.warning(f'Failed to fetch metrics for {permalink}: {e}')
+            return {
+                'score': 0,
+                'num_comments': 0,
+                'upvote_ratio': 0,
+                'image_url': '',
+                'selftext': '',
+                'selftext_html': '',
+                'post_hint': '',
+                'link_flair_text': '',
+                'link_flair_background_color': '',
+                'is_video': False,
+                'video_url': '',
+                'video_duration': 0,
+                'is_gallery': False,
+                'gallery_images': [],
+                'domain': '',
+                'url': '',
+                'over_18': False,
+                'spoiler': False,
+            }
 
     @classmethod
     def sync_bot(cls, bot: RedditCommunityBot, full_sync: bool = False) -> dict:
@@ -261,6 +381,12 @@ class RedditSyncService:
     @classmethod
     def _create_thread(cls, bot: RedditCommunityBot, post_data: dict):
         """Create a new Project and RedditThread."""
+        # Fetch current metrics (score, comments, full-size image) from Reddit
+        metrics = cls.fetch_post_metrics(post_data['permalink'])
+
+        # Use full-size image if available, fallback to RSS thumbnail
+        image_url = metrics.get('image_url') or post_data['thumbnail_url']
+
         # Create project
         project = Project.objects.create(
             user=bot.bot_user,
@@ -268,18 +394,22 @@ class RedditSyncService:
             description=post_data['content'][:5000] if post_data['content'] else '',  # Truncate if too long
             type=Project.ProjectType.REDDIT_THREAD,
             external_url=post_data['permalink'],
-            featured_image_url=post_data['thumbnail_url'],
+            featured_image_url=image_url,
             is_showcase=True,
             is_published=True,
             is_private=False,
         )
 
-        # Prepare metadata (convert datetime to string for JSON storage)
-        metadata = post_data.copy()
+        # Prepare metadata with all Reddit data
+        metadata = {
+            **post_data,
+            **metrics,  # Include all metrics data (selftext, video, gallery, etc.)
+        }
+        # Convert datetime to string for JSON storage
         if metadata.get('published_utc'):
             metadata['published_utc'] = metadata['published_utc'].isoformat()
 
-        # Create Reddit thread metadata
+        # Create Reddit thread metadata with fetched metrics
         RedditThread.objects.create(
             project=project,
             bot=bot,
@@ -287,34 +417,51 @@ class RedditSyncService:
             subreddit=post_data['subreddit'] or bot.subreddit,
             author=post_data['author'],
             permalink=post_data['permalink'],
-            score=0,  # RSS doesn't provide score directly
-            num_comments=0,  # RSS doesn't provide comment count directly
-            thumbnail_url=post_data['thumbnail_url'],
+            score=metrics['score'],
+            num_comments=metrics['num_comments'],
+            thumbnail_url=image_url,
             created_utc=post_data['published_utc'] or timezone.now(),
             reddit_metadata=metadata,
         )
 
-        logger.info(f'Created new thread: {project.slug} (r/{post_data["subreddit"]})')
+        logger.info(
+            f'Created new thread: {project.slug} (r/{post_data["subreddit"]}) - '
+            f'{metrics["score"]} score, {metrics["num_comments"]} comments'
+        )
 
     @classmethod
     def _update_thread(cls, thread: RedditThread, post_data: dict):
         """Update existing RedditThread with fresh data."""
+        # Fetch current metrics (score, comments, full-size image) from Reddit
+        metrics = cls.fetch_post_metrics(post_data['permalink'])
+
+        # Use full-size image if available, fallback to RSS thumbnail
+        image_url = metrics.get('image_url') or post_data['thumbnail_url']
+
         # Update project fields that might change
         project = thread.project
-        project.featured_image_url = post_data['thumbnail_url']
+        project.featured_image_url = image_url
         project.save(update_fields=['featured_image_url'])
 
-        # Prepare metadata (convert datetime to string for JSON storage)
-        metadata = post_data.copy()
+        # Prepare metadata with all Reddit data
+        metadata = {
+            **post_data,
+            **metrics,  # Include all metrics data (selftext, video, gallery, etc.)
+        }
+        # Convert datetime to string for JSON storage
         if metadata.get('published_utc'):
             metadata['published_utc'] = metadata['published_utc'].isoformat()
 
-        # Update thread metadata
-        thread.thumbnail_url = post_data['thumbnail_url']
+        # Update thread metadata with refreshed metrics
+        thread.thumbnail_url = image_url
+        thread.score = metrics['score']
+        thread.num_comments = metrics['num_comments']
         thread.reddit_metadata = metadata
-        thread.save(update_fields=['thumbnail_url', 'reddit_metadata', 'last_synced_at'])
+        thread.save(update_fields=['thumbnail_url', 'score', 'num_comments', 'reddit_metadata', 'last_synced_at'])
 
-        logger.debug(f'Updated thread: {thread.reddit_post_id}')
+        logger.debug(
+            f'Updated thread: {thread.reddit_post_id} - {metrics["score"]} score, {metrics["num_comments"]} comments'
+        )
 
     @classmethod
     def sync_all_active_bots(cls) -> dict:

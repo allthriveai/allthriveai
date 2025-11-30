@@ -225,6 +225,9 @@ def apply_ai_metadata(project, analysis: dict) -> None:
 
     Extracted from GitHubSyncService._create_project_from_repo.
 
+    IMPORTANT: This function GUARANTEES at least one category is assigned.
+    For GitHub repos, defaults to category 9 (Developer & Coding) if AI fails.
+
     Args:
         project: Project instance to update
         analysis: Dictionary with category_ids, topics, tool_names from AI analysis
@@ -232,22 +235,57 @@ def apply_ai_metadata(project, analysis: dict) -> None:
     from core.taxonomy.models import Taxonomy
     from core.tools.models import Tool
 
-    # Apply categories
+    # Apply categories - MUST have at least one
+    categories_added = 0
     for cat_id in analysis.get('category_ids', []):
         try:
             category = Taxonomy.objects.get(id=cat_id, taxonomy_type='category', is_active=True)
             project.categories.add(category)
+            categories_added += 1
+            logger.info(f'Added category {cat_id} ({category.name}) to project {project.id}')
         except Taxonomy.DoesNotExist:
-            logger.warning(f'Category {cat_id} not found')
+            logger.warning(f'Category {cat_id} not found, skipping')
+
+    # GUARANTEE at least one category - default to "Developer & Coding" (ID=9) for code projects
+    if categories_added == 0:
+        try:
+            default_category = Taxonomy.objects.get(id=9, taxonomy_type='category', is_active=True)
+            project.categories.add(default_category)
+            logger.info(f'No AI categories valid, defaulting to "Developer & Coding" for project {project.id}')
+        except Taxonomy.DoesNotExist:
+            # Last resort: get any active category
+            fallback = Taxonomy.objects.filter(taxonomy_type='category', is_active=True).first()
+            if fallback:
+                project.categories.add(fallback)
+                logger.warning(f'Default category not found, using fallback "{fallback.name}" for project {project.id}')
 
     # Apply topics
     topics = analysis.get('topics', [])
     if topics:
         project.topics = topics[:20]  # Limit to 20
         project.save(update_fields=['topics'])
+        logger.info(f'Applied {len(topics[:20])} topics to project {project.id}')
 
-    # Apply tools
+    # Apply tools - try multiple matching strategies
+    tools_added = 0
     for tool_name in analysis.get('tool_names', []):
+        # Strategy 1: Exact case-insensitive match
         tool = Tool.objects.filter(name__iexact=tool_name).first()
+
+        # Strategy 2: Slug match (e.g., "GitHub Copilot" -> "github-copilot")
+        if not tool:
+            slug_guess = tool_name.lower().replace(' ', '-')
+            tool = Tool.objects.filter(slug__iexact=slug_guess).first()
+
+        # Strategy 3: Partial name match
+        if not tool:
+            tool = Tool.objects.filter(name__icontains=tool_name).first()
+
         if tool:
             project.tools.add(tool)
+            tools_added += 1
+            logger.info(f'Added tool "{tool.name}" to project {project.id}')
+        else:
+            logger.debug(f'Tool "{tool_name}" not found in database')
+
+    logger.info(f'AI metadata applied: {categories_added} categories, {len(topics)} topics, {tools_added} tools')

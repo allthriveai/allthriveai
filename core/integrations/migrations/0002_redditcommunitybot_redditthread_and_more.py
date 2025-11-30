@@ -48,7 +48,7 @@ class Migration(migrations.Migration):
                     models.JSONField(
                         blank=True,
                         default=dict,
-                        help_text=('Bot configuration: min_score, min_comments, ' 'sync_interval_minutes, etc.'),
+                        help_text=('Bot configuration: min_score, min_comments, sync_interval_minutes, etc.'),
                     ),
                 ),
                 (

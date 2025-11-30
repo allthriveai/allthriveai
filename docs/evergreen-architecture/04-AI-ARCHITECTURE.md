@@ -33,10 +33,10 @@ This document defines the AI architecture for AllThrive AI, including LangGraph 
                      │
 ┌────────────────────▼────────────────────────────────────────┐
 │                AI Provider Abstraction                       │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Azure OpenAI│  │   OpenAI    │  │  Anthropic  │         │
-│  │   (GPT-4)   │  │  (GPT-4o)   │  │ (Claude 3.5)│         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
+│  │ Azure OpenAI│  │   OpenAI    │  │  Anthropic  │  │  Gemini     │ │
+│  │   (GPT-4)   │  │  (GPT-4o)   │  │ (Claude 3.5)│  │(Flash 1.5/3)│ │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘ │
 └─────────────────────────────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────────┐
@@ -214,6 +214,7 @@ def get_checkpointer():
 1. **Azure OpenAI** (primary)
 2. **OpenAI** (fallback)
 3. **Anthropic** (Claude)
+4. **Gemini** (Google)
 
 **Usage**:
 ```python
@@ -250,8 +251,12 @@ OPENAI_API_KEY=...
 # Anthropic (alternative)
 ANTHROPIC_API_KEY=...
 
+# Google Gemini
+GOOGLE_API_KEY=...
+GEMINI_MODEL_NAME=gemini-1.5-flash
+
 # Default provider
-DEFAULT_AI_PROVIDER=azure  # or openai, anthropic
+DEFAULT_AI_PROVIDER=azure  # or openai, anthropic, gemini
 ```
 
 ---
@@ -262,6 +267,7 @@ DEFAULT_AI_PROVIDER=azure  # or openai, anthropic
 - **Azure OpenAI**: `gpt-4` (deployment name)
 - **OpenAI**: `gpt-4-turbo-preview`
 - **Anthropic**: `claude-3-5-sonnet-20240620`
+- **Gemini**: `gemini-1.5-flash`
 
 **Model Override**:
 ```python
@@ -457,8 +463,8 @@ def complete(self, prompt, **kwargs):
 ```python
 class AIUsageLog(models.Model):
     user = ForeignKey(User)
-    provider = CharField()  # azure, openai, anthropic
-    model = CharField()  # gpt-4, claude-3-5-sonnet, etc.
+    provider = CharField()  # azure, openai, anthropic, gemini
+    model = CharField()  # gpt-4, claude-3-5-sonnet, gemini-1.5-flash, etc.
     prompt_tokens = IntegerField()
     completion_tokens = IntegerField()
     total_tokens = IntegerField()

@@ -70,9 +70,9 @@ async def test_chat(username: str, password: str):
             print(f'\n[3/4] Sending {len(test_messages)} test messages...\n')
 
             for i, message in enumerate(test_messages, 1):
-                print(f"\n{'='*60}")
+                print(f'\n{"=" * 60}')
                 print(f'Test {i}/{len(test_messages)}: {message}')
-                print(f"{'='*60}")
+                print(f'{"=" * 60}')
 
                 # Send message
                 await websocket.send(json.dumps({'message': message}))

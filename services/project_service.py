@@ -103,7 +103,7 @@ class ProjectService:
             return None, str(e)
         except Exception as e:
             logger.error(
-                f'Error creating project for user_id={user_id}, title={title}, ' f'type={project_type}: {e}',
+                f'Error creating project for user_id={user_id}, title={title}, type={project_type}: {e}',
                 exc_info=True,
             )
             return None, f'Failed to create project: {str(e)}'
