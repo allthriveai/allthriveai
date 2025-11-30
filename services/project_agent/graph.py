@@ -2,8 +2,6 @@
 
 from langgraph.graph import END, StateGraph
 
-from services.auth_agent.checkpointer import get_checkpointer
-
 from .nodes import (
     ProjectState,
     create_project_node,
@@ -56,5 +54,6 @@ workflow.add_conditional_edges(
     },
 )
 
-# Compile the graph with checkpointer for persistence
-project_graph = workflow.compile(checkpointer=get_checkpointer())
+# Compile the graph without an external checkpointer to keep the
+# project chat flow simple and compatible with async streaming.
+project_graph = workflow.compile()

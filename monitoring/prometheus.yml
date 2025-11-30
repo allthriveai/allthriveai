@@ -1,0 +1,50 @@
+# Prometheus Configuration for AllThrive AI
+# Collects metrics for scalability monitoring (100k users target)
+
+global:
+  scrape_interval: 15s  # Scrape metrics every 15 seconds
+  evaluation_interval: 15s  # Evaluate rules every 15 seconds
+  external_labels:
+    monitor: 'allthriveai-monitor'
+    environment: 'development'
+
+# Scrape configurations
+scrape_configs:
+  # Django application metrics
+  - job_name: 'django'
+    static_configs:
+      - targets: ['web:8000']
+    metrics_path: '/metrics'  # Will add this endpoint in Phase 1
+
+  # PostgreSQL database metrics
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['db:5432']
+    # Will use postgres_exporter in production
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    # Will use redis_exporter in production
+
+  # Celery worker metrics
+  - job_name: 'celery'
+    static_configs:
+      - targets: ['celery:8000']
+    # Will add flower or celery-exporter in Phase 2
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+# Alerting rules (will add in Phase 1)
+# rule_files:
+#   - 'alerts.yml'
+
+# Alertmanager configuration (optional, for production)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']

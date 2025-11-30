@@ -114,10 +114,10 @@ def create_project_agent():
     # After tools, always go back to agent
     workflow.add_edge('tools', 'agent')
 
-    # Compile
-    from services.auth_agent.checkpointer import get_checkpointer
-
-    return workflow.compile(checkpointer=get_checkpointer())
+    # Compile without external checkpointer to avoid async aget_tuple
+    # issues in the current LangGraph checkpoint implementations.
+    # For now, project agent state is kept in-process only.
+    return workflow.compile()
 
 
 # Create agent instance

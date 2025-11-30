@@ -53,6 +53,7 @@ class AIProvider:
         self._client = None
         self._config = kwargs
         self.user_id = user_id
+        self.last_usage = None  # Track last request token usage
 
         # Set provider (uses default from settings if not specified)
         provider_type = provider or getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
@@ -185,6 +186,14 @@ class AIProvider:
             model=deployment_name, messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
         )
 
+        # Store token usage for tracking
+        if hasattr(response, 'usage'):
+            self.last_usage = {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
+                'total_tokens': response.usage.total_tokens,
+            }
+
         return response.choices[0].message.content
 
     def _complete_openai(
@@ -207,6 +216,14 @@ class AIProvider:
         response = self._client.chat.completions.create(
             model=model_name, messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
         )
+
+        # Store token usage for tracking
+        if hasattr(response, 'usage'):
+            self.last_usage = {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
+                'total_tokens': response.usage.total_tokens,
+            }
 
         return response.choices[0].message.content
 
@@ -231,6 +248,14 @@ class AIProvider:
             messages=[{'role': 'user', 'content': prompt}],
             **kwargs,
         )
+
+        # Store token usage for tracking (Anthropic uses different field names)
+        if hasattr(response, 'usage'):
+            self.last_usage = {
+                'prompt_tokens': response.usage.input_tokens,
+                'completion_tokens': response.usage.output_tokens,
+                'total_tokens': response.usage.input_tokens + response.usage.output_tokens,
+            }
 
         return response.content[0].text
 
@@ -349,6 +374,17 @@ class AIProvider:
     def current_provider(self) -> str:
         """Get the current provider name."""
         return self._provider.value if self._provider else None
+
+    @property
+    def current_model(self) -> str:
+        """Get the default model name for the current provider."""
+        if self._provider == AIProviderType.AZURE:
+            return getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
+        elif self._provider == AIProviderType.OPENAI:
+            return 'gpt-4'
+        elif self._provider == AIProviderType.ANTHROPIC:
+            return 'claude-3-5-sonnet-20241022'
+        return 'unknown'
 
     @property
     def client(self):

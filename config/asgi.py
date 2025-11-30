@@ -1,11 +1,28 @@
 """
-ASGI config for allthrive-ai-django project.
+ASGI config for AllThrive AI project.
+
+Exposes the ASGI callable as a module-level variable named ``application``.
+Supports both HTTP and WebSocket protocols with JWT authentication.
 """
 
 import os
 
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.security.websocket import AllowedHostsOriginValidator
 from django.core.asgi import get_asgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
-application = get_asgi_application()
+# Initialize Django ASGI application early to ensure the AppRegistry
+# is populated before importing code that may import ORM models.
+django_asgi_app = get_asgi_application()
+
+from core.agents.middleware import JWTAuthMiddlewareStack
+from core.agents.routing import websocket_urlpatterns
+
+application = ProtocolTypeRouter(
+    {
+        'http': django_asgi_app,
+        'websocket': AllowedHostsOriginValidator(JWTAuthMiddlewareStack(URLRouter(websocket_urlpatterns))),
+    }
+)

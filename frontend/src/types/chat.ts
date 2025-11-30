@@ -72,3 +72,31 @@ export interface StreamingResponse {
   onComplete: (fullContent: string) => void;
   onError: (error: Error) => void;
 }
+
+/**
+ * Chat modes for intelligent routing
+ */
+export type ChatMode = 'support' | 'project-creation' | 'discovery';
+
+/**
+ * Integration types for project creation
+ */
+export type IntegrationType = 'github' | 'youtube' | 'upload' | 'url';
+
+/**
+ * Integration context for project creation
+ */
+export interface IntegrationContext {
+  type: IntegrationType;
+  url?: string;
+  files?: File[];
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Extended chat context with mode and integration support
+ */
+export interface IntelligentChatContext extends ChatContext {
+  mode: ChatMode;
+  integration?: IntegrationContext;
+}

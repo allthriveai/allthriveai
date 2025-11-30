@@ -35,6 +35,8 @@ BACKEND_URL_DEFAULT = f'http://{BACKEND_HOST}:{BACKEND_PORT}'
 # Application definition
 
 INSTALLED_APPS = [
+    'django_prometheus',  # Must be first for accurate metrics
+    'daphne',  # ASGI server - must be before django.contrib.staticfiles
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -43,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'django.contrib.sitemaps',
+    'channels',  # WebSocket support
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
@@ -62,6 +65,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',  # Must be first
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'csp.middleware.CSPMiddleware',
@@ -74,6 +78,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',  # Must be last
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -299,6 +304,25 @@ CELERY_TIMEZONE = TIME_ZONE
 # Redis Configuration for LangChain State
 REDIS_URL = config('REDIS_URL', default='redis://redis:6379/1')  # Use DB 1 for LangChain
 CHAT_SESSION_TTL = config('CHAT_SESSION_TTL', default=1800, cast=int)  # 30 minutes
+
+# Django Channels Configuration
+ASGI_APPLICATION = 'config.asgi.application'
+
+# Get Redis URL from environment, preferring env vars over .env file
+import os as _os
+
+_redis_url = _os.environ.get('REDIS_URL') or config('REDIS_URL', default='redis://localhost:6379/3')
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [_redis_url],  # Use DB 3 for Channels
+            'capacity': 1500,  # Max messages to store per channel
+            'expiry': 10,  # Message expiry in seconds
+        },
+    },
+}
 
 # Cache Configuration
 # Use Redis for caching (DB 2 for cache)

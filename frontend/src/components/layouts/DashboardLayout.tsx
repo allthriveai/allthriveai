@@ -5,7 +5,7 @@ import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightChatPanel } from '@/components/chat/RightChatPanel';
 import { RightAboutPanel } from '@/components/about';
 import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalendarPanel';
-import { RightAddProjectChat } from '@/components/projects/RightAddProjectChat';
+import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
 
 interface DashboardLayoutProps {
   children: ReactNode | ((props: { openChat: (menuItem: string) => void; openAddProject: () => void }) => ReactNode);
@@ -152,10 +152,11 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           onClose={handleCloseEvents}
         />
 
-        {/* Right Add Project Chat */}
-        <RightAddProjectChat
+        {/* Intelligent Chat Panel */}
+        <IntelligentChatPanel
           isOpen={addProjectOpen}
           onClose={handleCloseAddProject}
+          conversationId={`project-${Date.now()}`}
         />
 
         {/* Overlay when chat is open */}

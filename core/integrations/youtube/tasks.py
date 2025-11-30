@@ -23,6 +23,10 @@ from core.projects.models import Project
 
 logger = logging.getLogger(__name__)
 
+# Configuration constants
+AI_ANALYSIS_BULK_THRESHOLD = 10  # Skip AI analysis for bulk imports > this many videos (cost optimization)
+MAX_TAGS_PER_VIDEO = 10  # Limit tags extracted from YouTube to prevent spam
+
 
 @shared_task(
     bind=True,
@@ -217,6 +221,8 @@ def import_youtube_channel_task(self, user_id: int, channel_id: str, max_videos:
         # Get channel info
         channel_info = service.get_channel_info(channel_id)
         logger.info(f'Channel: {channel_info["title"]} ({channel_info["video_count"]} videos)')
+        # Track quota for channel info fetch (approx 1 unit)
+        _increment_quota(user_id, units=1)
 
         # Create ContentSource for auto-sync
         content_source, created = ContentSource.objects.get_or_create(
@@ -238,6 +244,8 @@ def import_youtube_channel_task(self, user_id: int, channel_id: str, max_videos:
 
         # Get all videos
         result = service.get_channel_videos(channel_id, max_results=max_videos)
+        # Track quota for channel listing (approx 1 unit)
+        _increment_quota(user_id, units=1)
         video_ids = result['videos']
         logger.info(f'Found {len(video_ids)} videos to import')
 
@@ -251,7 +259,7 @@ def import_youtube_channel_task(self, user_id: int, channel_id: str, max_videos:
                     args=[user_id, video_id],
                     kwargs={
                         'content_source_id': content_source.id,
-                        'skip_ai_analysis': len(video_ids) > 10,  # Skip AI for bulk
+                        'skip_ai_analysis': len(video_ids) > AI_ANALYSIS_BULK_THRESHOLD,
                         **kwargs,
                     },
                 )
@@ -295,6 +303,8 @@ def sync_content_sources():
     cutoff = now - timedelta(hours=2)  # For EVERY_2_HOURS frequency
 
     # Get sources that need syncing (SCALABLE QUERY)
+    # Increased from 1000 to 5000 to handle 50K+ users
+    # With 15-min window: 5000 sources = ~50 min processing = 80% capacity
     sources_to_sync = (
         ContentSource.objects.filter(
             sync_enabled=True,
@@ -305,8 +315,8 @@ def sync_content_sources():
             user__last_login__gte=now - timedelta(days=30),  # Active in last 30 days
         )
         .select_related('user')
-        .order_by('last_synced_at')[:1000]
-    )  # LIMIT 1000
+        .order_by('last_synced_at')[:5000]
+    )  # LIMIT 5000
 
     logger.info(f'Syncing {len(sources_to_sync)} content sources')
 
@@ -374,6 +384,8 @@ def sync_single_content_source(self, source_id: int):
         published_after = source.last_synced_at.isoformat() if source.last_synced_at else None
 
         result = service.get_channel_videos(source.source_identifier, published_after=published_after, etag=etag)
+        # Track quota for channel listing (approx 1 unit)
+        _increment_quota(source.user_id, units=1)
 
         video_ids = result.get('videos', [])
         new_etag = result.get('etag')
@@ -388,7 +400,7 @@ def sync_single_content_source(self, source_id: int):
                     args=[source.user_id, video_id],
                     kwargs={
                         'content_source_id': source.id,
-                        'skip_ai_analysis': True,  # Skip expensive AI on auto-sync
+                        'skip_ai_analysis': True,  # Skip expensive AI on auto-sync to save costs
                     },
                     queue='youtube_import',
                 )
