@@ -17,6 +17,7 @@ from django.contrib.auth import get_user_model
 from services.ai_provider import AIProvider
 from services.auth_agent.checkpointer import cache_checkpoint
 
+from .intent_detection import get_intent_service
 from .metrics import MetricsCollector, llm_response_time, timed_metric
 from .security import PromptInjectionFilter
 
@@ -75,6 +76,15 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
             },
         )
 
+        # Detect user intent
+        intent_service = get_intent_service()
+        intent = intent_service.detect_intent(
+            user_message=sanitized_message,
+            conversation_history=None,  # TODO: wire up actual history
+            integration_type=None,  # TODO: extract from conversation context
+        )
+        logger.info(f'Detected intent: {intent} for conversation {conversation_id}')
+
         # Get conversation state (two-tier caching: Redis → PostgreSQL)
         # conversation_state = get_cached_checkpoint(conversation_id)
 
@@ -92,18 +102,14 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         # Get user object for context (for future personalization/cost tracking)
         # user = User.objects.get(id=user_id)
 
+        # Build system prompt based on detected intent
+        system_message = _get_system_prompt_for_intent(intent)
+
         # Stream AI response using the centralized AIProvider (bypassing LangGraph
         # for now to avoid compatibility issues with the current OpenAI/Azure
         # client libraries).
         with timed_metric(llm_response_time, provider=provider_name, model=model or 'default'):
             ai = AIProvider(provider=provider_name, user_id=user_id)
-
-            system_message = (
-                'You are a helpful AI agent inside AllThrive AI. '
-                'Assist the user with describing and refining their AI projects '
-                'in clear, friendly language. Keep responses concise and '
-                'practical, and avoid mentioning internal implementation details.'
-            )
 
             try:
                 for chunk in ai.stream_complete(
@@ -151,8 +157,8 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         # TODO: Get actual state from LangGraph after integration
         cache_checkpoint(conversation_id, {'last_message': sanitized_message}, ttl=900)
 
-        # Record metrics
-        MetricsCollector.record_message('support', user_id)
+        # Record metrics with detected intent
+        MetricsCollector.record_message(intent, user_id)
 
         logger.info(f'Message processed successfully: conversation={conversation_id}, user={user_id}')
 
@@ -183,3 +189,43 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
 
         # Retry the task
         raise self.retry(exc=e) from e
+
+
+def _get_system_prompt_for_intent(intent: str) -> str:
+    """
+    Get appropriate system prompt based on detected intent.
+
+    Args:
+        intent: Detected intent (support, project-creation, discovery)
+
+    Returns:
+        System prompt string
+    """
+    if intent == 'project-creation':
+        return (
+            'You are an AI project creation assistant in AllThrive AI. '
+            'Help users describe, structure, and create AI/ML projects. '
+            'Ask clarifying questions about project goals, tech stack, data sources, '
+            'and key features. Guide them through providing GitHub repos, YouTube videos, '
+            'or detailed descriptions. Be encouraging and provide concrete suggestions '
+            'for project structure and next steps.'
+        )
+
+    if intent == 'discovery':
+        return (
+            'You are an AI discovery assistant in AllThrive AI. '
+            'Help users explore, find, and discover interesting AI/ML projects. '
+            'Suggest relevant topics, explain emerging trends, recommend projects '
+            'based on their interests, and help them understand different AI domains. '
+            "Be enthusiastic about showcasing the community's work and making connections "
+            'between similar projects.'
+        )
+
+    # Default: support
+    return (
+        'You are a helpful support assistant for AllThrive AI, a platform for '
+        'managing and showcasing AI/ML projects. Help users understand features, '
+        'troubleshoot issues, learn how to use the platform, and answer questions '
+        'about functionality. Be patient, clear, and provide step-by-step guidance. '
+        'Keep responses concise and practical.'
+    )
