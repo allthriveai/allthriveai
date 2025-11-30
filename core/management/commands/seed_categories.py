@@ -38,7 +38,7 @@ class Command(BaseCommand):
                 'name': 'Images & Video',
                 'slug': 'images-video',
                 'description': 'Visual content: AI-generated images, videos, illustrations, and animations.',
-                'color': 'purple',
+                'color': 'sky',
             },
             {
                 'name': 'Design (Mockups & UI)',
@@ -46,25 +46,25 @@ class Command(BaseCommand):
                 'description': (
                     'UI/UX design work: mockups, prototypes, brand systems, and interface concepts (e.g. Figma).'
                 ),
-                'color': 'pink',
+                'color': 'turquoise',
             },
             {
                 'name': 'Audio & Multimodal',
                 'slug': 'audio-multimodal',
                 'description': 'Audio, music, speech synthesis, and complex multimodal experiences.',
-                'color': 'red',
+                'color': 'aqua',
             },
             {
                 'name': 'Podcasts & Education',
                 'slug': 'podcasts-education',
                 'description': 'AI-related podcasts, interviews, lecture series, tutorials, and learning journeys.',
-                'color': 'amber',
+                'color': 'teal',
             },
             {
                 'name': 'Games & Interactive',
                 'slug': 'games-interactive',
                 'description': 'Playable and interactive projects: story games, simulations, quizzes, challenges.',
-                'color': 'pink',
+                'color': 'mint',
             },
             {
                 'name': 'Workflows & Automation',
@@ -88,13 +88,13 @@ class Command(BaseCommand):
                 'name': 'Prompt Collections & Templates',
                 'slug': 'prompts-templates',
                 'description': 'Reusable prompts and frameworks: prompt packs, templates, scripts, prompt systems.',
-                'color': 'teal',
+                'color': 'ocean',
             },
             {
                 'name': 'Thought Experiments',
                 'slug': 'thought-experiments',
                 'description': 'Creative outlets, ideas, and AI exploration.',
-                'color': 'fuchsia',
+                'color': 'green',
             },
             {
                 'name': 'Wellness & Personal Growth',
@@ -106,19 +106,19 @@ class Command(BaseCommand):
                 'name': 'AI Agents & Multi-Tool Systems',
                 'slug': 'ai-agents-multitool',
                 'description': 'AI agents that reason, call tools, and coordinate multi-step work.',
-                'color': 'violet',
+                'color': 'turquoise',
             },
             {
                 'name': 'AI Models & Research',
                 'slug': 'ai-models-research',
                 'description': 'Custom models, fine-tuning, research, and ML experiments.',
-                'color': 'orange',
+                'color': 'cyan',
             },
             {
                 'name': 'Data & Analytics',
                 'slug': 'data-analytics',
                 'description': 'Data visualization, analytics dashboards, and insights projects.',
-                'color': 'yellow',
+                'color': 'sky',
             },
         ]
 

@@ -302,7 +302,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
 # Redis Configuration for LangChain State
-REDIS_URL = config('REDIS_URL', default='redis://redis:6379/1')  # Use DB 1 for LangChain
+REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/1')  # Use DB 1 for LangChain
 CHAT_SESSION_TTL = config('CHAT_SESSION_TTL', default=1800, cast=int)  # 30 minutes
 
 # Django Channels Configuration
@@ -338,7 +338,7 @@ else:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': config('CACHE_URL', default='redis://redis:6379/2'),
+            'LOCATION': config('CACHE_URL', default='redis://localhost:6379/2'),
             'KEY_PREFIX': 'allthrive',
             'TIMEOUT': 300,  # 5 minutes default
         }

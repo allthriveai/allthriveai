@@ -1,5 +1,9 @@
 """
 LangChain tools for project creation agent.
+
+Note: Tools that need user context (create_project, import_github_project) receive
+a `state` dict injected by the custom tool_node in agent.py. This works around
+LangGraph's InjectedState issues with Pydantic args_schema.
 """
 
 import logging
@@ -7,7 +11,6 @@ import logging
 import requests
 from django.core.cache import cache
 from langchain.tools import tool
-from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -16,7 +19,7 @@ from services.project_service import ProjectService
 logger = logging.getLogger(__name__)
 
 
-# Tool Input Schemas
+# Tool Input Schemas (state is injected by custom tool_node, not by LLM)
 class CreateProjectInput(BaseModel):
     """Input for create_project tool."""
 
@@ -24,6 +27,11 @@ class CreateProjectInput(BaseModel):
     project_type: str = Field(description='Type of project: github_repo, image_collection, prompt, or other')
     description: str = Field(default='', description='Description of the project (optional)')
     is_showcase: bool = Field(default=False, description='Whether to add to showcase (optional)')
+    external_url: str = Field(default='', description='External URL for the project (e.g., GitHub repo URL)')
+    language: str = Field(default='', description='Primary programming language (for GitHub repos)')
+    topics: list[str] = Field(default_factory=list, description='Topics/tags for the project')
+    stars: int = Field(default=0, description='GitHub star count (for display)')
+    forks: int = Field(default=0, description='GitHub fork count (for display)')
 
 
 class FetchGitHubMetadataInput(BaseModel):
@@ -53,7 +61,12 @@ def create_project(
     project_type: str,
     description: str = '',
     is_showcase: bool = False,
-    config: RunnableConfig | None = None,
+    external_url: str = '',
+    language: str = '',
+    topics: list[str] | None = None,
+    stars: int = 0,
+    forks: int = 0,
+    state: dict | None = None,
 ) -> dict:
     """
     Create a new project for the user.
@@ -61,22 +74,63 @@ def create_project(
     Use this tool when the user has provided all necessary information
     and confirmed they want to create the project.
 
+    IMPORTANT: When creating from GitHub metadata, pass ALL the fields:
+    - external_url: The GitHub repository URL
+    - language: Primary programming language
+    - topics: Repository topics/tags
+    - stars: Star count
+    - forks: Fork count
+
     Returns:
         Dictionary with project details or error message
     """
-    # Get user_id from config context
-    if not config or 'user_id' not in config.get('configurable', {}):
+    # Debug logging
+    logger.info(f'create_project called with state: {state}')
+
+    # Get user_id from injected graph state
+    if not state or 'user_id' not in state:
+        logger.error(f'User not authenticated - state: {state}')
         return {'success': False, 'error': 'User not authenticated'}
 
-    user_id = config['configurable']['user_id']
+    user_id = state['user_id']
+
+    # Build content dict with GitHub metadata
+    content = {}
+    if external_url or language or stars or forks:
+        content['github'] = {
+            'url': external_url,
+            'language': language,
+            'stars': stars,
+            'forks': forks,
+        }
 
     # Create project via service
+    logger.info(
+        f'Calling ProjectService.create_project: user_id={user_id}, title={title}, '
+        f'project_type={project_type}, is_showcase={is_showcase}, external_url={external_url}'
+    )
     project, error = ProjectService.create_project(
-        user_id=user_id, title=title, project_type=project_type, description=description, is_showcase=is_showcase
+        user_id=user_id,
+        title=title,
+        project_type=project_type,
+        description=description,
+        is_showcase=is_showcase,
+        external_url=external_url,
+        content=content,
     )
 
     if error:
+        logger.error(f'ProjectService.create_project failed: {error}')
         return {'success': False, 'error': error}
+
+    # Update project with topics if provided
+    if topics and project:
+        try:
+            project.topics = topics[:10]  # Limit to 10 topics
+            project.save(update_fields=['topics'])
+            logger.info(f'Added topics to project: {topics[:10]}')
+        except Exception as e:
+            logger.warning(f'Failed to add topics: {e}')
 
     return {
         'success': True,
@@ -100,15 +154,21 @@ def fetch_github_metadata(url: str) -> dict:
     Returns:
         Dictionary with repository metadata or error message
     """
+    logger.info(f'fetch_github_metadata called with url: {url}')
+
     # Validate GitHub URL
     if not ProjectService.is_github_url(url):
+        logger.warning(f'Invalid GitHub URL: {url}')
         return {'success': False, 'error': 'Invalid GitHub URL'}
 
     # Cache key for this repo
     cache_key = f'project_agent:github:{url}'
-    cached = cache.get(cache_key)
-    if cached:
-        return cached
+    try:
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
+    except Exception as cache_error:
+        logger.warning(f'Cache lookup failed (will proceed without cache): {cache_error}')
 
     try:
         # Extract owner and repo from URL
@@ -143,17 +203,21 @@ def fetch_github_metadata(url: str) -> dict:
         result = {
             'success': True,
             'title': data.get('name', ''),
-            'description': data.get('description', ''),
-            'language': data.get('language', ''),
+            'description': data.get('description', '') or '',
+            'language': data.get('language', '') or '',
             'stars': data.get('stargazers_count', 0),
             'forks': data.get('forks_count', 0),
             'topics': data.get('topics', []),
             'homepage': data.get('homepage', ''),
             'project_type': 'github_repo',
+            'external_url': url,  # Include original URL for create_project
         }
 
-        # Cache successful result for 1 hour
-        cache.set(cache_key, result, 3600)
+        # Cache successful result for 1 hour (graceful - don't fail if cache is down)
+        try:
+            cache.set(cache_key, result, 3600)
+        except Exception as cache_error:
+            logger.warning(f'Cache set failed (continuing anyway): {cache_error}')
         return result
 
     except requests.RequestException as e:
@@ -201,7 +265,7 @@ def import_github_project(
     url: str,
     is_showcase: bool = True,
     is_private: bool = False,
-    config: RunnableConfig | None = None,
+    state: dict | None = None,
 ) -> dict:
     """
     Import a GitHub repository as a portfolio project with full AI analysis.
@@ -229,11 +293,11 @@ def import_github_project(
 
     User = get_user_model()
 
-    # Validate config / user context
-    if not config or 'configurable' not in config or 'user_id' not in config['configurable']:
+    # Validate state / user context
+    if not state or 'user_id' not in state:
         return {'success': False, 'error': 'User not authenticated'}
 
-    user_id = config['configurable']['user_id']
+    user_id = state['user_id']
 
     try:
         user = User.objects.get(id=user_id)

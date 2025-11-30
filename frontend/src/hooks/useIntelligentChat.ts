@@ -28,6 +28,17 @@ export interface WebSocketMessage {
   chunk?: string;
   error?: string;
   timestamp?: string;
+  // Tool-related fields
+  tool?: string;
+  output?: {
+    success?: boolean;
+    project_id?: number;
+    slug?: string;
+    url?: string;
+    title?: string;
+    message?: string;
+    error?: string;
+  };
 }
 
 export interface ChatMessage {
@@ -40,12 +51,14 @@ export interface ChatMessage {
 interface UseIntelligentChatOptions {
   conversationId: string;
   onError?: (error: string) => void;
+  onProjectCreated?: (projectUrl: string, projectTitle: string) => void;
   autoReconnect?: boolean;
 }
 
 export function useIntelligentChat({
   conversationId,
   onError,
+  onProjectCreated,
   autoReconnect = true
 }: UseIntelligentChatOptions) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -267,6 +280,20 @@ export function useIntelligentChat({
                     return newMessages.slice(-MAX_MESSAGES);
                   }
                 });
+              }
+              break;
+
+            case 'tool_start':
+              // Tool execution started - could show a loading indicator
+              console.log(`[WebSocket] Tool started: ${data.tool}`);
+              break;
+
+            case 'tool_end':
+              // Tool execution completed - check for project creation
+              console.log(`[WebSocket] Tool ended: ${data.tool}`, data.output);
+              if (data.tool === 'create_project' && data.output?.success && data.output?.url) {
+                // Project was created successfully - trigger callback
+                onProjectCreated?.(data.output.url, data.output.title || 'Project');
               }
               break;
 

@@ -1,6 +1,6 @@
 # Intelligent Chat Architecture - Source of Truth
 
-**Last Updated:** 2025-11-29
+**Last Updated:** 2025-11-30
 **Status:** Design Document
 **Purpose:** Complete end-to-end specification for how the IntelligentChatPanel should work
 
@@ -2520,9 +2520,10 @@ This document describes the complete architecture of the IntelligentChatPanel sy
 - ✅ WebSocket connection working
 - ✅ Frontend UI complete
 - ✅ Intent detection integrated in `tasks.py`
-- ✅ Using AIProvider for streaming responses
 - ✅ Intent-specific system prompts implemented
-- ⚠️  Using AIProvider directly instead of LangGraph agent
+- ✅ **LangGraph agent active for `project-creation` intent** (as of 2025-11-30)
+- ✅ **AIProvider used for `support` and `discovery` intents** (simpler, faster)
+- ✅ **30 unit tests for project agent** (tools + streaming + graph)
 - ❌ Conversation history not wired up yet
 - ❌ Integration type detection not implemented
 - ❌ LangGraph state management not fully integrated
@@ -2531,56 +2532,73 @@ This document describes the complete architecture of the IntelligentChatPanel sy
 
 The current implementation in `/core/agents/tasks.py` includes:
 
-1. **Intent Detection** (Line 79-86):
+1. **Intent Detection** (Line 79-88):
    - Uses `IntentDetectionService.detect_intent()`
    - Returns: `project-creation`, `support`, or `discovery`
    - TODO: Wire up actual conversation history (currently `None`)
    - TODO: Extract integration type from conversation context (currently `None`)
 
-2. **System Prompt Routing** (Line 106):
-   - Helper function `_get_system_prompt_for_intent()` returns different prompts based on intent
-   - `project-creation`: Guides users through project creation
-   - `discovery`: Helps users explore AI/ML projects
-   - `support`: Provides platform help and troubleshooting
+2. **Intent-Based Routing** (Line 90-115):
+   - `project-creation` intent → `_process_with_langgraph_agent()` (full agent with tools)
+   - `support` / `discovery` intents → `_process_with_ai_provider()` (simple streaming)
 
-3. **Streaming with AIProvider** (Line 111-130):
+3. **LangGraph Agent Processing** (Line 161-277):
+   - Uses `services/project_agent/agent.py` `stream_agent_response()`
+   - Streams token events as `chunk` to WebSocket
+   - Sends `tool_start` and `tool_end` events for tool calls
+   - Tracks `project_created` flag for successful creations
+   - Handles errors gracefully with fallback messages
+
+4. **AIProvider Fallback** (Line 280-353):
    - Uses centralized `AIProvider` for streaming completions
-   - Bypasses LangGraph temporarily to avoid compatibility issues
-   - Streams chunks via Redis Pub/Sub to WebSocket
+   - Used for `support` and `discovery` intents
+   - Used when `LANGGRAPH_AGENT_ENABLED=false`
    - Includes timing metrics and error handling
 
-4. **State Management** (Line 158):
+5. **State Management** (Line 128-129):
    - Currently using mock state: `{'last_message': sanitized_message}`
    - TODO: Integrate actual LangGraph checkpointer
    - TODO: Replace with proper conversation state from `get_cached_checkpoint()`
 
+**Project Agent Tests** (as of 2025-11-30):
+
+Located in `services/project_agent/tests/`:
+- `test_tools.py`: 14 tests for tools (create_project, fetch_github_metadata, extract_url_info)
+- `test_agent.py`: 16 tests for agent (state, routing, streaming, error handling)
+- All 30 tests passing
+
 **Next Steps:**
 
-1. **Wire Up Conversation History**
+1. **Test Project Creation Flow E2E**
+   - Test project creation via WebSocket in browser
+   - Verify tool calls work correctly (fetch_github_metadata, create_project)
+   - Add frontend handling for `tool_start` / `tool_end` events
+
+2. **Wire Up Conversation History**
    - Fetch message history from database
    - Pass to intent detection for better context
    - Store in format compatible with LangGraph
 
-2. **Extract Integration Type**
+3. **Extract Integration Type**
    - Get integration type from conversation/project context
    - Use for specialized responses (GitHub, YouTube, etc.)
 
-3. **Integrate LangGraph State**
+4. **Integrate LangGraph State**
    - Implement `get_cached_checkpoint()` function
    - Replace mock state with actual LangGraph state
    - Enable proper conversation memory/context
 
-4. **Add Intent-Specific Features**
+5. **Add Intent-Specific Features**
    - **Project Creation**: Form-based setup, GitHub/YouTube parsing
    - **Discovery**: Search integration, recommendation system
    - **Support**: FAQ integration, documentation links
 
-5. **Persist Messages**
+6. **Persist Messages**
    - Save user message and AI response to database
    - Link to conversation and project (if applicable)
    - Track timestamps and metadata
 
-6. **Transition to LangGraph Agent** (Future):
-   - Replace AIProvider with full LangGraph agent
-   - Enable tool calling for project creation
-   - Implement human-in-the-loop confirmations
+7. **Frontend Tool Call UI**
+   - Handle `tool_start` and `tool_end` events in frontend
+   - Show loading indicators during tool execution
+   - Display tool results (e.g., GitHub repo info)

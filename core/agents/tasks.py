@@ -42,12 +42,14 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         Dict with processing results
     """
     channel_layer = get_channel_layer()
-    # circuit_breaker = CircuitBreaker(name='langgraph_agent')
 
     try:
-        # Validate user exists
-        if not User.objects.filter(id=user_id).exists():
-            raise User.DoesNotExist
+        # Validate user exists and get user object
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            logger.error(f'User not found: user_id={user_id}')
+            return {'status': 'error', 'reason': 'user_not_found'}
 
         # Sanitize input
         prompt_filter = PromptInjectionFilter()
@@ -76,72 +78,44 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
             },
         )
 
-        # Detect user intent
-        intent_service = get_intent_service()
-        intent = intent_service.detect_intent(
-            user_message=sanitized_message,
-            conversation_history=None,  # TODO: wire up actual history
-            integration_type=None,  # TODO: extract from conversation context
-        )
-        logger.info(f'Detected intent: {intent} for conversation {conversation_id}')
+        # Determine routing based on conversation context
+        # If conversation_id starts with "project-", it was opened via "+ Add Project"
+        # so we always use the LangGraph agent for the entire conversation
+        is_project_conversation = conversation_id.startswith('project-')
 
-        # Get conversation state (two-tier caching: Redis → PostgreSQL)
-        # conversation_state = get_cached_checkpoint(conversation_id)
-
-        # Get dynamic provider and model from settings
-        from django.conf import settings
-
-        provider_name = getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
-        if provider_name == 'azure':
-            model = getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
-        elif provider_name == 'openai':
-            model = 'gpt-4'
+        if is_project_conversation:
+            intent = 'project-creation'
+            logger.info(f'Project conversation detected: {conversation_id}')
         else:
-            model = None  # Let AIProvider pick a sensible default
+            # Detect user intent for non-project conversations
+            intent_service = get_intent_service()
+            intent = intent_service.detect_intent(
+                user_message=sanitized_message,
+                conversation_history=None,  # TODO: wire up actual history
+                integration_type=None,  # TODO: extract from conversation context
+            )
+            logger.info(f'Detected intent: {intent} for conversation {conversation_id}')
 
-        # Get user object for context (for future personalization/cost tracking)
-        # user = User.objects.get(id=user_id)
-
-        # Build system prompt based on detected intent
-        system_message = _get_system_prompt_for_intent(intent)
-
-        # Stream AI response using the centralized AIProvider (bypassing LangGraph
-        # for now to avoid compatibility issues with the current OpenAI/Azure
-        # client libraries).
-        with timed_metric(llm_response_time, provider=provider_name, model=model or 'default'):
-            ai = AIProvider(provider=provider_name, user_id=user_id)
-
-            try:
-                for chunk in ai.stream_complete(
-                    prompt=sanitized_message,
-                    model=model,
-                    temperature=0.7,
-                    max_tokens=None,
-                    system_message=system_message,
-                ):
-                    async_to_sync(channel_layer.group_send)(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'chunk',
-                            'chunk': chunk,
-                            'conversation_id': conversation_id,
-                        },
-                    )
-
-            except Exception as agent_error:
-                logger.error(f'AI provider error: {agent_error}', exc_info=True)
-                # Fall back to simple response on error
-                async_to_sync(channel_layer.group_send)(
-                    channel_name,
-                    {
-                        'type': 'chat.message',
-                        'event': 'chunk',
-                        'chunk': "I'm here to help! However, I encountered an issue processing your request. "
-                        'Please try again.',
-                        'conversation_id': conversation_id,
-                    },
-                )
+        # Route to appropriate processor based on intent
+        if intent == 'project-creation':
+            # Use LangGraph agent with tools for project creation
+            result = _process_with_langgraph_agent(
+                conversation_id=conversation_id,
+                message=sanitized_message,
+                user=user,
+                channel_name=channel_name,
+                channel_layer=channel_layer,
+            )
+        else:
+            # Use simple AIProvider streaming (fallback)
+            result = _process_with_ai_provider(
+                conversation_id=conversation_id,
+                message=sanitized_message,
+                user_id=user_id,
+                intent=intent,
+                channel_name=channel_name,
+                channel_layer=channel_layer,
+            )
 
         # Send completion event
         async_to_sync(channel_layer.group_send)(
@@ -150,11 +124,11 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
                 'type': 'chat.message',
                 'event': 'completed',
                 'conversation_id': conversation_id,
+                'project_created': result.get('project_created', False),
             },
         )
 
         # Cache updated conversation state
-        # TODO: Get actual state from LangGraph after integration
         cache_checkpoint(conversation_id, {'last_message': sanitized_message}, ttl=900)
 
         # Record metrics with detected intent
@@ -163,10 +137,6 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         logger.info(f'Message processed successfully: conversation={conversation_id}, user={user_id}')
 
         return {'status': 'success', 'conversation_id': conversation_id}
-
-    except User.DoesNotExist:
-        logger.error(f'User not found: user_id={user_id}')
-        return {'status': 'error', 'reason': 'user_not_found'}
 
     except Exception as e:
         logger.error(f'Failed to process message: {e}', exc_info=True)
@@ -189,6 +159,220 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
 
         # Retry the task
         raise self.retry(exc=e) from e
+
+
+def _process_with_langgraph_agent(
+    conversation_id: str,
+    message: str,
+    user,
+    channel_name: str,
+    channel_layer,
+) -> dict:
+    """
+    Process message using the LangGraph project agent with tools.
+
+    This enables tool calling for project creation (GitHub import, etc.)
+
+    Args:
+        conversation_id: Unique conversation identifier
+        message: Sanitized user message
+        user: User object
+        channel_name: Redis channel for WebSocket
+        channel_layer: Django Channels layer
+
+    Returns:
+        Dict with processing results including project_created flag
+    """
+    import asyncio
+
+    from services.project_agent.agent import stream_agent_response
+
+    logger.info(f'Processing with LangGraph agent: conversation={conversation_id}')
+
+    project_created = False
+
+    async def run_agent():
+        """Async function to stream agent response and send to WebSocket."""
+        nonlocal project_created
+
+        try:
+            async for event in stream_agent_response(
+                user_message=message,
+                user_id=user.id,
+                username=user.username,
+                session_id=conversation_id,
+            ):
+                event_type = event.get('type')
+
+                if event_type == 'token':
+                    # Stream text chunk to WebSocket
+                    await channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'chunk',
+                            'chunk': event.get('content', ''),
+                            'conversation_id': conversation_id,
+                        },
+                    )
+
+                elif event_type == 'tool_start':
+                    # Notify frontend that a tool is being called
+                    await channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'tool_start',
+                            'tool': event.get('tool', ''),
+                            'conversation_id': conversation_id,
+                        },
+                    )
+                    logger.info(f'Tool started: {event.get("tool")}')
+
+                elif event_type == 'tool_end':
+                    # Notify frontend that tool completed
+                    tool_output = event.get('output', {})
+                    await channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'tool_end',
+                            'tool': event.get('tool', ''),
+                            'output': tool_output,
+                            'conversation_id': conversation_id,
+                        },
+                    )
+                    logger.info(f'Tool ended: {event.get("tool")} - output: {tool_output}')
+
+                elif event_type == 'complete':
+                    project_created = event.get('project_created', False)
+                    logger.info(f'Agent completed: project_created={project_created}')
+
+                elif event_type == 'error':
+                    error_msg = event.get('message', 'Unknown error')
+                    logger.error(f'Agent error: {error_msg}')
+                    await channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'chunk',
+                            'chunk': f'I encountered an issue: {error_msg}. Please try again.',
+                            'conversation_id': conversation_id,
+                        },
+                    )
+
+        except Exception as e:
+            logger.error(f'Agent streaming error: {e}', exc_info=True)
+            await channel_layer.group_send(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'chunk',
+                    'chunk': "I'm here to help! However, I encountered an issue processing your request. "
+                    'Please try again.',
+                    'conversation_id': conversation_id,
+                },
+            )
+
+    # Run the async function - create new event loop since we're in sync context
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(run_agent())
+        finally:
+            loop.close()
+    except Exception as e:
+        logger.error(f'LangGraph agent error: {e}', exc_info=True)
+        # Send error message to user (sync context, use async_to_sync)
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'chunk',
+                'chunk': "I'm here to help! However, I encountered an issue processing your request. "
+                'Please try again.',
+                'conversation_id': conversation_id,
+            },
+        )
+
+    return {'project_created': project_created}
+
+
+def _process_with_ai_provider(
+    conversation_id: str,
+    message: str,
+    user_id: int,
+    intent: str,
+    channel_name: str,
+    channel_layer,
+) -> dict:
+    """
+    Process message using simple AIProvider streaming (fallback).
+
+    Used for support and discovery intents, or when LangGraph is disabled.
+
+    Args:
+        conversation_id: Unique conversation identifier
+        message: Sanitized user message
+        user_id: User ID
+        intent: Detected intent
+        channel_name: Redis channel for WebSocket
+        channel_layer: Django Channels layer
+
+    Returns:
+        Dict with processing results
+    """
+    from django.conf import settings
+
+    provider_name = getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
+    if provider_name == 'azure':
+        model = getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
+    elif provider_name == 'openai':
+        model = 'gpt-4'
+    else:
+        model = None  # Let AIProvider pick a sensible default
+
+    # Build system prompt based on detected intent
+    system_message = _get_system_prompt_for_intent(intent)
+
+    # Stream AI response
+    with timed_metric(llm_response_time, provider=provider_name, model=model or 'default'):
+        ai = AIProvider(provider=provider_name, user_id=user_id)
+
+        try:
+            for chunk in ai.stream_complete(
+                prompt=message,
+                model=model,
+                temperature=0.7,
+                max_tokens=None,
+                system_message=system_message,
+            ):
+                async_to_sync(channel_layer.group_send)(
+                    channel_name,
+                    {
+                        'type': 'chat.message',
+                        'event': 'chunk',
+                        'chunk': chunk,
+                        'conversation_id': conversation_id,
+                    },
+                )
+
+        except Exception as agent_error:
+            logger.error(f'AI provider error: {agent_error}', exc_info=True)
+            # Fall back to simple response on error
+            async_to_sync(channel_layer.group_send)(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'chunk',
+                    'chunk': "I'm here to help! However, I encountered an issue processing your request. "
+                    'Please try again.',
+                    'conversation_id': conversation_id,
+                },
+            )
+
+    return {'project_created': False}
 
 
 def _get_system_prompt_for_intent(intent: str) -> str:

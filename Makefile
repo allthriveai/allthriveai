@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-frontend restart-backend build logs shell-frontend shell-backend test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-all reset-db
+.PHONY: help up down restart restart-all restart-frontend restart-backend build logs shell-frontend shell-backend test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-all reset-db
 
 help:
 	@echo "Available commands:"
@@ -6,6 +6,7 @@ help:
 	@echo "  make up              - Start all services"
 	@echo "  make down            - Stop all services"
 	@echo "  make restart         - Restart all services"
+	@echo "  make restart-all     - Shut down and restart all services (including Celery)"
 	@echo "  make restart-frontend - Restart frontend only"
 	@echo "  make restart-backend  - Restart backend only"
 	@echo "  make build           - Build all services"
@@ -38,6 +39,13 @@ down:
 
 restart:
 	docker-compose restart
+
+restart-all:
+	@echo "Shutting down all services..."
+	docker-compose down
+	@echo "Starting all services..."
+	docker-compose up -d
+	@echo "✓ All services restarted successfully!"
 
 restart-frontend:
 	docker-compose restart frontend

@@ -3,6 +3,9 @@
 from django.conf import settings
 from django.db import models
 
+# Import Reddit models so Django discovers them
+from core.integrations.reddit_models import RedditCommunityBot, RedditThread  # noqa: F401
+
 
 class ContentSource(models.Model):
     """Track content sources for automatic syncing (YouTube channels, RSS feeds, etc.)."""

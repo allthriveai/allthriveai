@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { ChatInterface } from './ChatInterface';
 import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
@@ -26,12 +27,25 @@ export function IntelligentChatPanel({
   onClose,
   conversationId = 'default-conversation',
 }: IntelligentChatPanelProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [error, setError] = useState<string | undefined>();
+
+  // Handle project creation - redirect to the new project page
+  const handleProjectCreated = useCallback((projectUrl: string, projectTitle: string) => {
+    console.log(`[Chat] Project created: ${projectTitle} at ${projectUrl}`);
+    // Close the chat panel and navigate to the project
+    onClose();
+    // Small delay to allow the chat to close smoothly
+    setTimeout(() => {
+      navigate(projectUrl);
+    }, 300);
+  }, [navigate, onClose]);
 
   const { messages, isConnected, isLoading, sendMessage, connect, reconnectAttempts } = useIntelligentChat({
     conversationId,
     onError: (err) => setError(err),
+    onProjectCreated: handleProjectCreated,
   });
 
   const handleSendMessage = (content: string) => {

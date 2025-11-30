@@ -19,8 +19,9 @@ from langgraph.checkpoint.postgres import PostgresSaver
 
 logger = logging.getLogger(__name__)
 
-# Global checkpointer instance
+# Global checkpointer instances
 _checkpointer = None
+_async_checkpointer = None
 
 
 def get_postgres_connection_string() -> str:
@@ -107,6 +108,45 @@ def get_checkpointer(use_postgres: bool = True):
         _checkpointer = MemorySaver()
 
     return _checkpointer
+
+
+async def get_async_checkpointer():
+    """
+    Get async checkpointer for use with async LangGraph operations.
+    Uses AsyncPostgresSaver for persistent conversation memory.
+
+    NOTE: We create a fresh connection pool each time because Celery
+    creates a new event loop per task, and connection pools are bound
+    to the event loop they were created in.
+
+    Returns:
+        AsyncPostgresSaver instance or MemorySaver fallback
+    """
+    try:
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+        from psycopg_pool import AsyncConnectionPool
+
+        conn_string = get_postgres_connection_string()
+
+        # Create async connection pool for this event loop
+        pool = AsyncConnectionPool(conninfo=conn_string, min_size=1, max_size=5)
+        await pool.open()
+
+        # Create async checkpointer
+        checkpointer = AsyncPostgresSaver(pool)
+
+        # Setup tables (creates if not exist) - safe to call multiple times
+        await checkpointer.setup()
+
+        logger.debug('AsyncPostgresSaver ready for this request')
+        return checkpointer
+
+    except Exception as e:
+        logger.error(f'Failed to initialize AsyncPostgresSaver: {e}', exc_info=True)
+        logger.warning('Falling back to MemorySaver')
+        from langgraph.checkpoint.memory import MemorySaver
+
+        return MemorySaver()
 
 
 def get_redis_cache_key(thread_id: str) -> str:

@@ -18,6 +18,7 @@ import { GitHubProjectLayout } from '@/components/projects/github/GitHubProjectL
 import { GitHubProjectPendingView } from '@/components/projects/github/GitHubProjectPendingView';
 import { FigmaProjectLayout } from '@/components/projects/figma/FigmaProjectLayout';
 import { FigmaProjectPendingView } from '@/components/projects/figma/FigmaProjectPendingView';
+import { RedditThreadLayout } from '@/components/projects/reddit/RedditThreadLayout';
 import mermaid from 'mermaid';
 import { marked } from 'marked';
 import {
@@ -45,6 +46,7 @@ const typeIcons = {
   figma_design: PhotoIcon,
   image_collection: PhotoIcon,
   prompt: ChatBubbleLeftRightIcon,
+  reddit_thread: ChatBubbleLeftRightIcon,
   other: DocumentTextIcon,
 };
 
@@ -53,6 +55,7 @@ const typeLabels = {
   figma_design: 'Figma Design',
   image_collection: 'Image Collection',
   prompt: 'Prompt',
+  reddit_thread: 'Reddit Discussion',
   other: 'Project',
 };
 
@@ -533,6 +536,24 @@ export default function ProjectDetailPage() {
     }
   }
 
+  // Render Reddit thread layout
+  if (project.type === 'reddit_thread') {
+    return (
+      <DashboardLayout autoCollapseSidebar>
+        <SEO
+          title={project.title}
+          description={project.description || `${project.title} - Reddit Discussion`}
+          image={project.featuredImageUrl || 'https://allthrive.ai/og-image.jpg'}
+          url={`https://allthrive.ai/${username}/${projectSlug}`}
+          type="article"
+        />
+        <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto">
+          <RedditThreadLayout project={project} />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   // Default layout for all projects (GitHub repos, prompts, etc.)
   return (
     <DashboardLayout autoCollapseSidebar>
@@ -653,9 +674,12 @@ export default function ProjectDetailPage() {
                 {project.description && (
                   <div className="relative p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl overflow-hidden">
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-primary-400 to-secondary-400 opacity-80" />
-                    <p className="text-lg md:text-xl text-white/90 leading-relaxed font-light pl-2">
-                      {project.description}
-                    </p>
+                    <div
+                      className="prose prose-lg prose-invert max-w-none pl-2"
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeHtml(marked.parse(project.description) as string)
+                      }}
+                    />
                   </div>
                 )}
 

@@ -200,6 +200,25 @@ class ProjectSerializer(serializers.ModelSerializer):
         """Convert snake_case field names to camelCase for frontend compatibility."""
         data = super().to_representation(instance)
 
+        # Add Reddit-specific data to content if this is a Reddit thread
+        if instance.type == 'reddit_thread' and hasattr(instance, 'reddit_thread'):
+            reddit_thread = instance.reddit_thread
+            if 'content' not in data or data['content'] is None:
+                data['content'] = {}
+            elif not isinstance(data['content'], dict):
+                data['content'] = {}
+
+            data['content']['reddit'] = {
+                'subreddit': reddit_thread.subreddit,
+                'author': reddit_thread.author,
+                'permalink': reddit_thread.permalink,
+                'score': reddit_thread.score,
+                'num_comments': reddit_thread.num_comments,
+                'thumbnail_url': reddit_thread.thumbnail_url,
+                'created_utc': reddit_thread.created_utc.isoformat() if reddit_thread.created_utc else None,
+                'reddit_post_id': reddit_thread.reddit_post_id,
+            }
+
         # Map snake_case to camelCase for fields that need it
         field_mapping = {
             'user_avatar_url': 'userAvatarUrl',

@@ -390,3 +390,49 @@ class AIProvider:
     def client(self):
         """Get the underlying client for advanced usage."""
         return self._client
+
+    def get_langchain_llm(self, temperature: float = 0.7, **kwargs):
+        """
+        Get a LangChain-compatible LLM instance for use with LangGraph agents.
+
+        This provides a consistent way to get LLMs for agent workflows while
+        respecting the centralized AI provider configuration.
+
+        Args:
+            temperature: Sampling temperature (0-1)
+            **kwargs: Additional LLM configuration options
+
+        Returns:
+            LangChain BaseChatModel instance (AzureChatOpenAI, ChatOpenAI, or ChatAnthropic)
+        """
+        if self._provider == AIProviderType.AZURE:
+            from langchain_openai import AzureChatOpenAI
+
+            return AzureChatOpenAI(
+                azure_deployment=getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4'),
+                azure_endpoint=getattr(settings, 'AZURE_OPENAI_ENDPOINT', ''),
+                api_key=getattr(settings, 'AZURE_OPENAI_API_KEY', ''),
+                api_version=getattr(settings, 'AZURE_OPENAI_API_VERSION', '2024-02-15-preview'),
+                temperature=temperature,
+                **kwargs,
+            )
+
+        elif self._provider == AIProviderType.OPENAI:
+            from langchain_openai import ChatOpenAI
+
+            return ChatOpenAI(
+                model=kwargs.pop('model', 'gpt-4'),
+                api_key=getattr(settings, 'OPENAI_API_KEY', ''),
+                temperature=temperature,
+                **kwargs,
+            )
+
+        elif self._provider == AIProviderType.ANTHROPIC:
+            from langchain_anthropic import ChatAnthropic
+
+            return ChatAnthropic(
+                model=kwargs.pop('model', 'claude-3-5-sonnet-20241022'),
+                api_key=getattr(settings, 'ANTHROPIC_API_KEY', ''),
+                temperature=temperature,
+                **kwargs,
+            )

@@ -61,8 +61,9 @@ class ProjectService:
         project_type: str,
         description: str = '',
         is_showcase: bool = False,
-        thumbnail_url: str | None = None,
+        featured_image_url: str | None = None,
         content: dict | None = None,
+        external_url: str = '',
     ) -> tuple[Project | None, str | None]:
         """
         Create a new project.
@@ -87,20 +88,24 @@ class ProjectService:
                 user=user,
                 title=title.strip(),
                 description=description.strip() if description else '',
-                project_type=project_type,
+                type=project_type,  # Model field is 'type', not 'project_type'
                 is_showcase=is_showcase,
-                thumbnail_url=thumbnail_url,
+                featured_image_url=featured_image_url or '',
                 content=content or {},
+                external_url=external_url or '',
             )
 
             logger.info(f'Created project {project.id} for user {user.id}: {title}')
             return project, None
 
         except ValidationError as e:
-            logger.error(f'Validation error creating project: {e}')
+            logger.error(f'Validation error creating project: {e}', exc_info=True)
             return None, str(e)
         except Exception as e:
-            logger.error(f'Error creating project: {e}', exc_info=True)
+            logger.error(
+                f'Error creating project for user_id={user_id}, title={title}, ' f'type={project_type}: {e}',
+                exc_info=True,
+            )
             return None, f'Failed to create project: {str(e)}'
 
     @classmethod

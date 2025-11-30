@@ -34,6 +34,7 @@ Pillow>=10.0.0
 python-magic>=0.4.27
 markdown>=3.5.0
 requests>=2.31.0
+defusedxml>=0.7.1
 better-profanity==0.7.0
 ruff>=0.6.4
 bandit[toml]>=1.7.6
@@ -55,3 +56,4 @@ django-prometheus>=2.4.1
 pytest==9.0.1
 pytest-django==4.11.1
 pytest-cov==6.0.0
+pytest-asyncio>=1.0.0  # Async test support for LangGraph agent tests
