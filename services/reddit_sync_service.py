@@ -152,9 +152,7 @@ class RedditSyncService:
     USER_AGENT = 'Mozilla/5.0 (compatible; AllThrive/1.0; +https://allthrive.ai)'
 
     @classmethod
-    def _moderate_content(
-        cls, title: str, selftext: str, image_url: str, subreddit: str
-    ) -> tuple[bool, str, dict]:
+    def _moderate_content(cls, title: str, selftext: str, image_url: str, subreddit: str) -> tuple[bool, str, dict]:
         """Moderate Reddit post content (text and image).
 
         Args:
@@ -178,8 +176,7 @@ class RedditSyncService:
 
         if not text_result['approved']:
             logger.info(
-                f'Reddit post text rejected by moderation: '
-                f'subreddit=r/{subreddit}, reason={text_result["reason"]}'
+                f'Reddit post text rejected by moderation: ' f'subreddit=r/{subreddit}, reason={text_result["reason"]}'
             )
             return False, text_result['reason'], moderation_results
 
@@ -434,16 +431,30 @@ class RedditSyncService:
 
     @classmethod
     def _auto_tag_project(cls, project: Project, metrics: dict, subreddit: str, bot: RedditCommunityBot):
-        """Automatically tag a Reddit project with tools, categories, and topics."""
+        """Automatically tag a Reddit project with tools, categories, and topics using AI."""
         from core.taxonomy.models import Taxonomy
         from core.tools.models import Tool
+        from services.topic_extraction_service import TopicExtractionService
 
-        # Extract topics from link flair and subreddit
-        topics = []
+        link_flair = metrics.get('link_flair_text', '')
+        selftext = metrics.get('selftext', '')
 
-        # Add subreddit as a topic
-        if subreddit:
-            topics.append(subreddit.lower())
+        # Use AI-powered topic extraction
+        try:
+            topic_service = TopicExtractionService()
+            topics = topic_service.extract_topics_from_reddit_post(
+                title=project.title,
+                selftext=selftext,
+                subreddit=subreddit,
+                link_flair=link_flair,
+                max_topics=15,
+            )
+        except Exception as e:
+            logger.warning(f'Error using AI topic extraction, falling back to basic: {e}')
+            # Fallback to basic topic extraction
+            topics = [subreddit.lower()] if subreddit else []
+            if link_flair and link_flair.lower() not in ['discussion', 'question', 'showcase']:
+                topics.append(link_flair.lower())
 
         # Get default tools from bot settings
         default_tool_slugs = bot.settings.get('default_tools', [])
@@ -455,85 +466,60 @@ class RedditSyncService:
                 tool = Tool.objects.filter(slug=tool_slug).first()
                 if tool and tool not in detected_tools:
                     detected_tools.append(tool)
-                    # Also add tool name as topic
-                    topics.append(tool.name.lower())
             except Exception as e:
                 logger.debug(f'Error adding default tool {tool_slug}: {e}')
 
-        # Add link flair as topic if available
-        link_flair = metrics.get('link_flair_text', '')
-        if link_flair and link_flair.lower() not in ['discussion', 'question', 'showcase']:
-            topics.append(link_flair.lower())
-
-        # Try to identify additional tools mentioned in title/selftext (if not already added)
-        text_to_analyze = (project.title + ' ' + metrics.get('selftext', '')).lower()
-
-        # Common AI tools to look for
-        tool_keywords = {
-            'claude': 'claude',
-            'chatgpt': 'chatgpt',
-            'gpt-4': 'gpt-4',
-            'copilot': 'github-copilot',
-            'midjourney': 'midjourney',
-            'stable diffusion': 'stable-diffusion',
-            'dall-e': 'dall-e',
-            'langchain': 'langchain',
-            'openai': 'openai',
-            'anthropic': 'claude',
-        }
-
-        for keyword, tool_slug in tool_keywords.items():
-            if keyword in text_to_analyze:
-                try:
-                    tool = Tool.objects.filter(slug=tool_slug).first()
-                    if tool and tool not in detected_tools:
-                        detected_tools.append(tool)
-                        if keyword not in topics:
-                            topics.append(keyword)
-                except Exception as e:
-                    logger.debug(f'Error detecting tool {tool_slug}: {e}')
+        # Match topics to existing tools using the service
+        try:
+            topic_service = TopicExtractionService()
+            matched_tools = topic_service.match_tools(topics)
+            for tool in matched_tools:
+                if tool not in detected_tools:
+                    detected_tools.append(tool)
+        except Exception as e:
+            logger.debug(f'Error matching tools from topics: {e}')
 
         # Assign tools to project
         if detected_tools:
             project.tools.set(detected_tools)
+            logger.info(f'Assigned {len(detected_tools)} tools to project: {[t.name for t in detected_tools]}')
+
+        # Get default categories from bot settings
+        default_category_slugs = bot.settings.get('default_categories', [])
+        detected_categories = []
 
         # Add default categories from bot settings first
-        default_category_slugs = bot.settings.get('default_categories', [])
         for cat_slug in default_category_slugs:
             try:
                 category = Taxonomy.objects.filter(slug=cat_slug, taxonomy_type='category').first()
-                if category:
-                    project.categories.add(category)
+                if category and category not in detected_categories:
+                    detected_categories.append(category)
             except Exception as e:
                 logger.debug(f'Error adding default category {cat_slug}: {e}')
 
-        # Try to assign category based on flair or content
-        category_mapping = {
-            'showcase': 'showcase',  # Try 'showcase' category first
-            'question': 'ai-learning',
-            'tutorial': 'ai-learning',
-            'discussion': 'ai-discussion',
-            'help': 'ai-learning',
-            'news': 'ai-news',
-            'project': 'showcase',
-        }
+        # Match topics to existing categories using the service
+        try:
+            topic_service = TopicExtractionService()
+            matched_categories = topic_service.match_categories(topics, link_flair)
+            for category in matched_categories:
+                if category not in detected_categories:
+                    detected_categories.append(category)
+        except Exception as e:
+            logger.debug(f'Error matching categories from topics: {e}')
 
-        category_slug = None
-        if link_flair:
-            category_slug = category_mapping.get(link_flair.lower())
+        # Assign categories to project
+        if detected_categories:
+            project.categories.set(detected_categories)
+            logger.info(
+                f'Assigned {len(detected_categories)} categories to project: {[c.name for c in detected_categories]}'
+            )
 
-        if category_slug:
-            try:
-                category = Taxonomy.objects.filter(slug=category_slug, taxonomy_type='category').first()
-                if category:
-                    project.categories.add(category)
-            except Exception as e:
-                logger.debug(f'Error assigning category {category_slug}: {e}')
-
-        # Clean and assign topics (limit to 10)
-        topics = list(set(topics))[:10]  # Remove duplicates and limit
+        # Clean and assign topics (limit to 15)
+        topics = list(set(topics))[:15]  # Remove duplicates and limit
         project.topics = topics
         project.save()
+
+        logger.info(f'Assigned {len(topics)} topics to project: {topics}')
 
     @classmethod
     def _create_thread(cls, bot: RedditCommunityBot, post_data: dict):
@@ -551,9 +537,7 @@ class RedditSyncService:
 
         # Skip NSFW content marked by Reddit
         if metrics.get('over_18', False):
-            logger.info(
-                f'Skipping post {post_data["reddit_post_id"]} - marked as NSFW (over_18) by Reddit'
-            )
+            logger.info(f'Skipping post {post_data["reddit_post_id"]} - marked as NSFW (over_18) by Reddit')
             return  # Skip NSFW posts
 
         # Moderate content (text + image) before creating
@@ -571,9 +555,7 @@ class RedditSyncService:
         )
 
         if not approved:
-            logger.warning(
-                f'Skipping post {post_data["reddit_post_id"]} - failed moderation: {reason}'
-            )
+            logger.warning(f'Skipping post {post_data["reddit_post_id"]} - failed moderation: {reason}')
             return  # Skip posts that fail moderation
 
         # Prioritize gallery images, then full-size image, then RSS thumbnail

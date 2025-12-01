@@ -20,9 +20,11 @@ import {
   type ExploreParams,
 } from '@/services/explore';
 import { getQuizzes } from '@/services/quiz';
+import { useAuth } from '@/hooks/useAuth';
 
 export function ExplorePage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
 
   // State from URL params
   const [activeTab, setActiveTab] = useState<ExploreTab>(
@@ -223,7 +225,7 @@ export function ExplorePage() {
           }
         }
       },
-      { 
+      {
         threshold: 0.1,
         rootMargin: '400px' // Start loading before user reaches the bottom
       }
@@ -374,6 +376,7 @@ export function ExplorePage() {
                               project={item.data}
                               variant="masonry"
                               userAvatarUrl={item.data.userAvatarUrl}
+                              isOwner={user?.username === item.data.username}
                             />
                           )}
                         </div>

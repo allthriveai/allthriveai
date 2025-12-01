@@ -8,11 +8,16 @@ from core.taxonomy.models import Taxonomy
 
 class Tool(models.Model):
     """
-    Comprehensive model for AI tools in the directory.
-    Each tool gets its own row with rich content capabilities.
+    Comprehensive model for AI tools and technologies in the directory.
+    Supports both AI tools (ChatGPT, Claude) and technologies (React, Python).
     """
 
+    class ToolType(models.TextChoices):
+        AI_TOOL = 'ai_tool', 'AI Tool'
+        TECHNOLOGY = 'technology', 'Technology'
+
     class ToolCategory(models.TextChoices):
+        # AI Tool categories
         CHAT = 'chat', 'Chat & Conversational AI'
         CODE = 'code', 'Code & Development'
         IMAGE = 'image', 'Image Generation'
@@ -23,6 +28,14 @@ class Tool(models.Model):
         PRODUCTIVITY = 'productivity', 'Productivity & Workflow'
         DATA = 'data', 'Data & Analytics'
         DESIGN = 'design', 'Design & Creative'
+        # Technology categories
+        LANGUAGE = 'language', 'Programming Language'
+        FRAMEWORK = 'framework', 'Framework & Library'
+        DATABASE = 'database', 'Database'
+        INFRASTRUCTURE = 'infrastructure', 'Infrastructure & DevOps'
+        CLOUD = 'cloud', 'Cloud Platform'
+        TESTING = 'testing', 'Testing & QA'
+        # General
         OTHER = 'other', 'Other'
 
     class PricingModel(models.TextChoices):
@@ -39,7 +52,14 @@ class Tool(models.Model):
     tagline = models.CharField(max_length=300, help_text="Short tagline (e.g., 'AI-powered conversational assistant')")
     description = models.TextField(help_text='Detailed description of what the tool does')
 
-    # Categorization
+    # Type & Categorization
+    tool_type = models.CharField(
+        max_length=20,
+        choices=ToolType.choices,
+        default=ToolType.AI_TOOL,
+        db_index=True,
+        help_text='Whether this is an AI tool or a technology',
+    )
     category = models.CharField(max_length=20, choices=ToolCategory.choices, default=ToolCategory.OTHER, db_index=True)
     tags = models.JSONField(
         default=list, blank=True, help_text="List of tags for filtering (e.g., ['NLP', 'GPT', 'OpenAI'])"
@@ -133,6 +153,8 @@ class Tool(models.Model):
     class Meta:
         ordering = ['-is_featured', '-popularity_score', 'name']
         indexes = [
+            models.Index(fields=['tool_type', 'is_active']),
+            models.Index(fields=['tool_type', 'category', 'is_active']),
             models.Index(fields=['category', 'is_active']),
             models.Index(fields=['is_active', '-popularity_score']),
             models.Index(fields=['is_active', '-created_at']),

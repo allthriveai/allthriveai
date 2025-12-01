@@ -6,6 +6,7 @@ from .models import Tool, ToolBookmark, ToolComparison, ToolReview
 class ToolListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for tool list/directory view."""
 
+    tool_type_display = serializers.CharField(source='get_tool_type_display', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     pricing_model_display = serializers.CharField(source='get_pricing_model_display', read_only=True)
 
@@ -17,6 +18,8 @@ class ToolListSerializer(serializers.ModelSerializer):
             'slug',
             'tagline',
             'description',
+            'tool_type',
+            'tool_type_display',
             'category',
             'category_display',
             'tags',
@@ -39,6 +42,7 @@ class ToolListSerializer(serializers.ModelSerializer):
 class ToolDetailSerializer(serializers.ModelSerializer):
     """Full serializer for tool detail page with all content."""
 
+    tool_type_display = serializers.CharField(source='get_tool_type_display', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     pricing_model_display = serializers.CharField(source='get_pricing_model_display', read_only=True)
     average_rating = serializers.SerializerMethodField()
@@ -54,7 +58,9 @@ class ToolDetailSerializer(serializers.ModelSerializer):
             'slug',
             'tagline',
             'description',
-            # Categorization
+            # Type & Categorization
+            'tool_type',
+            'tool_type_display',
             'category',
             'category_display',
             'tags',

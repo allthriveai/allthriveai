@@ -43,6 +43,7 @@ class Command(BaseCommand):
                         last_name='Reddit Bot',
                         role=UserRole.BOT,
                         bio=f'Automated curation bot for r/{subreddit} - featuring top posts with 2000+ upvotes',
+                        avatar_url='/Reddit-logo.svg',
                         is_active=True,
                     )
                     bot_user.set_unusable_password()

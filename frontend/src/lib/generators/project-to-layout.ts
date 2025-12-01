@@ -24,14 +24,11 @@ export function convertGitHubProjectToLayout(project: Project): ProjectComponent
   const githubData = project.content?.github;
   const analysis = githubData?.analysis;
 
-  if (!githubData) {
-    return null;
-  }
-
+  // Always create a layout - even without github data we can show the hero
   const components: ProjectComponent[] = [];
   let order = 0;
 
-  // 1. Hero component
+  // 1. Hero component (always present)
   components.push(
     createComponent('hero', {
       id: generateId(),
@@ -52,6 +49,23 @@ export function convertGitHubProjectToLayout(project: Project): ProjectComponent
       },
     })
   );
+
+  // If no github data, return minimal layout
+  if (!githubData) {
+    return {
+      version: '1.0',
+      integration: 'github',
+      sourceUrl: project.externalUrl,
+      generatedAt: new Date().toISOString(),
+      components,
+      metadata: {
+        sourceData: {
+          projectId: project.id,
+          projectSlug: project.slug,
+        },
+      },
+    };
+  }
 
   // 2. Stats component (if we have GitHub stats)
   if (githubData.stars !== undefined || githubData.forks !== undefined) {
@@ -241,6 +255,25 @@ export function getProjectComponentLayout(project: Project): ProjectComponentLay
     // case 'figma_design':
     //   return convertFigmaProjectToLayout(project);
     default:
-      return null;
+      // For unknown types, create a minimal layout with just the hero
+      return {
+        version: '1.0',
+        integration: 'custom',
+        sourceUrl: project.externalUrl,
+        generatedAt: new Date().toISOString(),
+        components: [
+          createComponent('hero', {
+            id: generateId(),
+            order: 0,
+            data: {
+              title: project.title,
+              subtitle: project.description || '',
+              variant: 'gradient',
+              gradientFrom: 'violet-600',
+              gradientTo: 'indigo-600',
+            },
+          }),
+        ],
+      };
   }
 }

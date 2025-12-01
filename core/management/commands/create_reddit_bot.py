@@ -53,6 +53,7 @@ class Command(BaseCommand):
                         last_name='Reddit Bot',
                         role=UserRole.BOT,
                         bio=f'Automated curation bot for r/{subreddit}',
+                        avatar_url='/Reddit-logo.svg',
                         is_active=True,
                     )
                     # Bots don't need passwords

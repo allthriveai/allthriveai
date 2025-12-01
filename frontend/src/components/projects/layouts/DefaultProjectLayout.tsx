@@ -20,6 +20,7 @@ import {
 } from '../shared/InlineEditable';
 import { EditableBlocksContainer } from '../shared/EditableBlocksContainer';
 import { ProjectSections } from '../sections';
+import type { ProjectSection } from '@/types/sections';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ProjectEditTray } from '../ProjectEditTray';
@@ -106,6 +107,29 @@ export function DefaultProjectLayout() {
       console.error('Failed to update description:', error);
     }
   }, [project.id, setProject]);
+
+  // Handle section content update (auto-save)
+  const handleSectionUpdate = useCallback(async (sectionId: string, content: ProjectSection['content']) => {
+    if (!project.content?.sections) return;
+
+    try {
+      // Update the section content locally first for immediate feedback
+      const updatedSections = project.content.sections.map((section: ProjectSection) =>
+        section.id === sectionId ? { ...section, content } : section
+      );
+
+      // Update project with new sections
+      const updatedContent = {
+        ...project.content,
+        sections: updatedSections,
+      };
+
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update section:', error);
+    }
+  }, [project.id, project.content, setProject]);
 
   // Filter out placeholder/empty blocks
   const visibleBlocks = project.content?.blocks?.filter(
@@ -321,7 +345,11 @@ export function DefaultProjectLayout() {
 
       {/* Project Details Section - show for owners even if empty (so they can add blocks) */}
       {hasTemplateSections ? (
-        <ProjectSections sections={project.content.sections} />
+        <ProjectSections
+          sections={project.content.sections}
+          isEditing={isOwner}
+          onSectionUpdate={handleSectionUpdate}
+        />
       ) : (visibleBlocks.length > 0 || isOwner) && (
         <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 md:py-24">
           <div className="flex items-center gap-4 mb-12">

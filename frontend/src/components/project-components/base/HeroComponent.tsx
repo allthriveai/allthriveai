@@ -1,9 +1,18 @@
 /**
  * HeroComponent - Project introduction with visual impact
+ *
+ * Supports inline editing when used within a ProjectProvider context.
  */
 
+import { useCallback } from 'react';
 import type { HeroComponent as HeroComponentType } from '@/types/components';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import { useProjectContext } from '@/contexts/ProjectContext';
+import { updateProject } from '@/services/projects';
+import {
+  InlineEditableTitle,
+  InlineEditableText,
+} from '@/components/projects/shared/InlineEditable';
 
 interface HeroComponentProps {
   component: HeroComponentType;
@@ -12,6 +21,79 @@ interface HeroComponentProps {
 export function HeroComponent({ component }: HeroComponentProps) {
   const { data } = component;
   const { title, subtitle, description, variant, badges, primaryCta, secondaryCta } = data;
+
+  // Try to get project context for inline editing (optional)
+  let isOwner = false;
+  let project: any = null;
+  let setProject: any = null;
+
+  try {
+    const context = useProjectContext();
+    isOwner = context.isOwner;
+    project = context.project;
+    setProject = context.setProject;
+  } catch {
+    // Not within a ProjectProvider - render as read-only
+  }
+
+  // Handle title change
+  const handleTitleChange = useCallback(async (newTitle: string) => {
+    if (!project || !setProject) return;
+    try {
+      const updated = await updateProject(project.id, { title: newTitle });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update title:', error);
+    }
+  }, [project, setProject]);
+
+  // Handle description change (subtitle maps to project.description)
+  const handleDescriptionChange = useCallback(async (newDescription: string) => {
+    if (!project || !setProject) return;
+    try {
+      const updated = await updateProject(project.id, { description: newDescription });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update description:', error);
+    }
+  }, [project, setProject]);
+
+  // Render title - editable or static
+  const renderTitle = (className: string) => {
+    if (isOwner && project) {
+      return (
+        <InlineEditableTitle
+          value={project.title || title}
+          isEditable={isOwner}
+          onChange={handleTitleChange}
+          placeholder="Enter project title..."
+          className={className}
+          as="h1"
+        />
+      );
+    }
+    return <h1 className={className}>{title}</h1>;
+  };
+
+  // Render subtitle/description - editable or static
+  const renderSubtitle = (className: string) => {
+    const displayValue = project?.description || subtitle || '';
+    if (isOwner && project) {
+      return (
+        <InlineEditableText
+          value={displayValue}
+          isEditable={isOwner}
+          onChange={handleDescriptionChange}
+          placeholder="Add a description for your project..."
+          className={className}
+          multiline
+          rows={3}
+        />
+      );
+    }
+    if (!displayValue) return null;
+    return <p className={className}>{displayValue}</p>;
+  };
 
   // Gradient variant
   if (variant === 'gradient') {
@@ -37,13 +119,8 @@ export function HeroComponent({ component }: HeroComponentProps) {
               </div>
             )}
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
-              {title}
-            </h1>
-
-            {subtitle && (
-              <p className="text-xl md:text-2xl text-white/90 mb-4">{subtitle}</p>
-            )}
+            {renderTitle('text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4')}
+            {renderSubtitle('text-xl md:text-2xl text-white/90 mb-4')}
 
             {description && (
               <p className="text-lg text-white/80 mb-8 max-w-2xl">{description}</p>
@@ -114,13 +191,8 @@ export function HeroComponent({ component }: HeroComponentProps) {
               </div>
             )}
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
-              {title}
-            </h1>
-
-            {subtitle && (
-              <p className="text-xl md:text-2xl text-white/90 mb-4">{subtitle}</p>
-            )}
+            {renderTitle('text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4')}
+            {renderSubtitle('text-xl md:text-2xl text-white/90 mb-4')}
 
             {description && (
               <p className="text-lg text-white/80 mb-8 max-w-2xl">{description}</p>
@@ -175,13 +247,8 @@ export function HeroComponent({ component }: HeroComponentProps) {
 
         <div className="relative z-10 px-8 py-24 md:px-16 md:py-32">
           <div className="max-w-4xl">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
-              {title}
-            </h1>
-
-            {subtitle && (
-              <p className="text-xl md:text-2xl text-white/90 mb-4">{subtitle}</p>
-            )}
+            {renderTitle('text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4')}
+            {renderSubtitle('text-xl md:text-2xl text-white/90 mb-4')}
 
             {description && (
               <p className="text-lg text-white/80 mb-8 max-w-2xl">{description}</p>
@@ -235,15 +302,8 @@ export function HeroComponent({ component }: HeroComponentProps) {
           </div>
         )}
 
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-          {title}
-        </h1>
-
-        {subtitle && (
-          <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-4">
-            {subtitle}
-          </p>
-        )}
+        {renderTitle('text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4')}
+        {renderSubtitle('text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-4')}
 
         {description && (
           <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">

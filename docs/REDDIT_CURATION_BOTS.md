@@ -137,7 +137,7 @@ On subsequent runs:
 - `first_name`: Subreddit display name
 - `last_name`: "Reddit Bot"
 - `bio`: "Automated curation bot for r/{subreddit}"
-- `avatar_url`: Can be set to any URL (bots bypass domain validation)
+- `avatar_url`: `/Reddit-logo.svg` (all Reddit bots use the Reddit logo)
 
 ## Project Structure
 

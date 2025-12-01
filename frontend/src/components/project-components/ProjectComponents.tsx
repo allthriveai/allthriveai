@@ -3,10 +3,17 @@
  *
  * This component takes a ProjectComponentLayout and renders all components
  * in the correct order with proper spacing and layout.
+ *
+ * Features:
+ * - Renders component layouts generated from integrations (GitHub, Figma, etc.)
+ * - Supports inline editing when used within a ProjectProvider context
+ * - Responsive design with proper spacing
  */
 
-import type { ProjectComponentLayout, ProjectComponent } from '@/types/components';
-import { ComponentRenderer, ComponentList } from './ComponentRenderer';
+import type { ProjectComponentLayout } from '@/types/components';
+import { ComponentList } from './ComponentRenderer';
+import { useProjectContext } from '@/contexts/ProjectContext';
+import { EditModeIndicator } from '@/components/projects/shared/InlineEditable';
 
 interface ProjectComponentsProps {
   layout: ProjectComponentLayout;
@@ -17,7 +24,16 @@ interface ProjectComponentsProps {
  * Main container for rendering a project's component-based layout
  */
 export function ProjectComponents({ layout, className }: ProjectComponentsProps) {
-  const { components, integration, sourceUrl } = layout;
+  const { components } = layout;
+
+  // Try to get project context for edit mode indicator
+  let isOwner = false;
+  try {
+    const context = useProjectContext();
+    isOwner = context.isOwner;
+  } catch {
+    // Not within a ProjectProvider
+  }
 
   if (!components || components.length === 0) {
     return (
@@ -28,8 +44,14 @@ export function ProjectComponents({ layout, className }: ProjectComponentsProps)
   }
 
   return (
-    <div className={`project-components space-y-6 ${className || ''}`}>
-      <ComponentList components={components} />
+    <div className={`project-components max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 ${className || ''}`}>
+      {/* Edit Mode Indicator for Owners */}
+      <EditModeIndicator isOwner={isOwner} />
+
+      {/* Component Layout */}
+      <div className="space-y-12">
+        <ComponentList components={components} />
+      </div>
     </div>
   );
 }

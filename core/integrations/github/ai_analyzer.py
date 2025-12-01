@@ -43,11 +43,7 @@ Generate structured sections for a visually appealing project portfolio. Return 
 {{
   "overview": {{
     "headline": "One compelling sentence hook (max 100 chars)",
-    "description": "2-3 sentence explanation of what this does and why it matters",
-    "metrics": [
-      {{"icon": "star", "label": "Stars", "value": "{stars}"}},
-      {{"icon": "code", "label": "Language", "value": "{language}"}}
-    ]
+    "description": "2-3 sentence explanation of what this does and why it matters"
   }},
   "features": [
     {{"icon": "🚀", "title": "Feature Name", "description": "1-2 sentence description"}},
@@ -370,7 +366,6 @@ def _generate_fallback_template(
     description = repo_data.get('description', '')
     language = repo_data.get('language', '')
     github_topics = repo_data.get('topics', [])
-    stars = repo_data.get('stargazers_count', 0)
     owner = repo_data.get('owner', '')
     github_url = repo_data.get('html_url', f'https://github.com/{owner}/{name}')
     tech_stack = repo_data.get('tech_stack', {})
@@ -388,10 +383,6 @@ def _generate_fallback_template(
             'content': {
                 'headline': name.replace('-', ' ').replace('_', ' ').title(),
                 'description': description or f'A {language} project' if language else 'A software project',
-                'metrics': [
-                    {'icon': 'star', 'label': 'Stars', 'value': str(stars)},
-                    {'icon': 'code', 'label': 'Language', 'value': language or 'Unknown'},
-                ],
             },
         }
     )
