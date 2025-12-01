@@ -68,6 +68,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
   const [slideUpExpanded, setSlideUpExpanded] = useState(false);
   const [imageIsPortrait, setImageIsPortrait] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const Icon = typeIcons[project.type] || DocumentTextIcon;
   const projectUrl = `/${project.username}/${project.slug}`;
 
@@ -277,7 +278,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         {...(cardProps as React.ComponentProps<typeof Link>)}
         className={`block relative rounded overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 group ${
           isSelected ? 'ring-4 ring-primary-500' : ''
-        } ${dynamicHeightClass} ${dynamicWidthClass}`}
+        } ${dynamicHeightClass} ${dynamicWidthClass} ${!imageLoaded && (heroElement.type === 'image' || heroElement.type === 'slideshow') ? 'min-h-[400px]' : ''}`}
       >
 
         {/* Selection checkbox */}
@@ -296,16 +297,24 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         {/* BACKGROUND LAYER */}
         <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''}`}>
             {heroElement.type === 'image' && (
-              <img
-                src={heroElement.url}
-                alt={project.title}
-                className={`w-full h-auto object-cover ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''}`}
-                loading="lazy"
-                onLoad={(e) => {
-                  const img = e.currentTarget;
-                  setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
-                }}
-              />
+              <div className="relative w-full" style={{ minHeight: imageLoaded ? 'auto' : '400px' }}>
+                {/* Loading placeholder */}
+                {!imageLoaded && (
+                  <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800" style={{ backgroundSize: '200% 200%' }} />
+                )}
+                <img
+                  src={heroElement.url}
+                  alt={project.title}
+                  className={`w-full h-auto object-cover ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
+                  loading="lazy"
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
+                    // Small delay to ensure smooth transition
+                    setTimeout(() => setImageLoaded(true), 50);
+                  }}
+                />
+              </div>
             )}
 
             {isGradient && heroElement.type === 'gradient' && (
@@ -368,15 +377,24 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
             })()}
 
             {heroElement.type === 'slideshow' && (
-              <img
-                src={heroElement.images[0]}
-                alt={project.title}
-                className={`w-full h-auto block ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''}`}
-                onLoad={(e) => {
-                  const img = e.currentTarget;
-                  setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
-                }}
-              />
+              <div className="relative w-full" style={{ minHeight: imageLoaded ? 'auto' : '400px' }}>
+                {/* Loading placeholder */}
+                {!imageLoaded && (
+                  <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800" style={{ backgroundSize: '200% 200%' }} />
+                )}
+                <img
+                  src={heroElement.images[0]}
+                  alt={project.title}
+                  className={`w-full h-auto block ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
+                  loading="lazy"
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
+                    // Small delay to ensure smooth transition
+                    setTimeout(() => setImageLoaded(true), 50);
+                  }}
+                />
+              </div>
             )}
 
             {isQuote && (

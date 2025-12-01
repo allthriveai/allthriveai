@@ -187,6 +187,7 @@ export default {
         'scale-in': 'scaleIn 0.2s ease-out',
         'blob': 'blob 7s infinite',
         'gradient-shift': 'gradientShift 3s ease infinite',
+        'shimmer': 'shimmer 2s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -225,6 +226,17 @@ export default {
           },
           '50%': {
             backgroundPosition: '100% 50%',
+          },
+        },
+        shimmer: {
+          '0%': {
+            backgroundPosition: '0% 50%',
+          },
+          '50%': {
+            backgroundPosition: '100% 50%',
+          },
+          '100%': {
+            backgroundPosition: '0% 50%',
           },
         },
       },

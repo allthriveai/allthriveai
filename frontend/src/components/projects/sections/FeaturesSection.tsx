@@ -1,12 +1,30 @@
 /**
- * FeaturesSection - Visual grid of key features with icons
+ * FeaturesSection - Visual grid of key features with FontAwesome icons
  *
  * Supports inline editing when isEditing=true for owners.
+ * Features can be reordered via drag-and-drop in edit mode.
  */
 
-import { useCallback } from 'react';
-import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { InlineEditableTitle, InlineEditableText } from '../shared/InlineEditable';
+import { useCallback, useState } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { PlusIcon } from '@heroicons/react/24/outline';
+import { IconCard, type IconCardData } from '../shared/IconCard';
 import type { FeaturesSectionContent, Feature } from '@/types/sections';
 
 interface FeaturesSectionProps {
@@ -15,127 +33,116 @@ interface FeaturesSectionProps {
   onUpdate?: (content: FeaturesSectionContent) => void;
 }
 
-interface FeatureCardProps {
+// ============================================================================
+// Sortable Feature Card Wrapper
+// ============================================================================
+
+interface SortableFeatureCardProps {
+  id: string;
   feature: Feature;
-  index: number;
-  isEditing?: boolean;
-  onUpdate?: (index: number, feature: Feature) => void;
-  onDelete?: (index: number) => void;
+  isEditing: boolean;
+  onUpdate: (feature: Feature) => void;
+  onDelete: () => void;
 }
 
-function FeatureCard({ feature, index, isEditing, onUpdate, onDelete }: FeatureCardProps) {
-  const { icon, title, description } = feature;
+function SortableFeatureCard({
+  id,
+  feature,
+  isEditing,
+  onUpdate,
+  onDelete,
+}: SortableFeatureCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
 
-  // Check if icon is an emoji (starts with common emoji ranges)
-  const isEmoji = /^\p{Emoji}/u.test(icon);
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
-  const handleIconChange = useCallback(
-    async (newIcon: string) => {
-      if (onUpdate) {
-        onUpdate(index, { ...feature, icon: newIcon });
-      }
+  const handleChange = useCallback(
+    (data: IconCardData) => {
+      onUpdate({
+        icon: data.icon,
+        title: data.title,
+        description: data.description,
+      });
     },
-    [index, feature, onUpdate]
-  );
-
-  const handleTitleChange = useCallback(
-    async (newTitle: string) => {
-      if (onUpdate) {
-        onUpdate(index, { ...feature, title: newTitle });
-      }
-    },
-    [index, feature, onUpdate]
-  );
-
-  const handleDescriptionChange = useCallback(
-    async (newDescription: string) => {
-      if (onUpdate) {
-        onUpdate(index, { ...feature, description: newDescription });
-      }
-    },
-    [index, feature, onUpdate]
+    [onUpdate]
   );
 
   return (
-    <div className="group relative bg-white dark:bg-gray-800/50 rounded-xl p-6 border border-gray-200 dark:border-gray-700/50 hover:border-primary-500/50 dark:hover:border-primary-500/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-      {/* Delete button for editing mode */}
-      {isEditing && onDelete && (
-        <button
-          onClick={() => onDelete(index)}
-          className="absolute -top-2 -right-2 z-10 p-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Delete feature"
-        >
-          <TrashIcon className="w-4 h-4" />
-        </button>
-      )}
-
-      {/* Icon */}
-      <div className="mb-4">
-        {isEditing ? (
-          <InlineEditableText
-            value={icon}
-            isEditable={true}
-            onChange={handleIconChange}
-            placeholder="🚀"
-            className="text-4xl"
-            showEditIcon={false}
-          />
-        ) : isEmoji ? (
-          <span className="text-4xl" role="img" aria-label={title}>
-            {icon}
-          </span>
-        ) : (
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500/20 to-secondary-500/20 flex items-center justify-center">
-            <span className="text-2xl text-primary-600 dark:text-primary-400">{icon}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Title */}
-      {isEditing ? (
-        <InlineEditableTitle
-          value={title}
-          isEditable={true}
-          onChange={handleTitleChange}
-          placeholder="Feature title..."
-          className="text-lg font-semibold text-gray-900 dark:text-white mb-2"
-          as="h4"
-        />
-      ) : (
-        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-          {title}
-        </h4>
-      )}
-
-      {/* Description */}
-      {isEditing ? (
-        <InlineEditableText
-          value={description}
-          isEditable={true}
-          onChange={handleDescriptionChange}
-          placeholder="Describe this feature..."
-          className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed"
-          multiline
-          rows={2}
-        />
-      ) : (
-        <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-          {description}
-        </p>
-      )}
-
-      {/* Hover Accent */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-b-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+    <div ref={setNodeRef} style={style}>
+      <IconCard
+        data={{
+          icon: feature.icon,
+          title: feature.title,
+          description: feature.description,
+        }}
+        isEditing={isEditing}
+        onChange={handleChange}
+        onDelete={onDelete}
+        dragHandleProps={{ ...attributes, ...listeners }}
+        isDragging={isDragging}
+      />
     </div>
   );
 }
 
 export function FeaturesSection({ content, isEditing, onUpdate }: FeaturesSectionProps) {
   const { features } = content;
+  const [activeFeature, setActiveFeature] = useState<Feature | null>(null);
+
+  // Generate stable IDs for features (using index as fallback)
+  const featureIds = features?.map((_, index) => `feature-${index}`) || [];
+
+  // Drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const index = featureIds.indexOf(active.id as string);
+    if (index !== -1 && features) {
+      setActiveFeature(features[index]);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveFeature(null);
+
+    if (over && active.id !== over.id && onUpdate && features) {
+      const oldIndex = featureIds.indexOf(active.id as string);
+      const newIndex = featureIds.indexOf(over.id as string);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newFeatures = [...features];
+        const [movedFeature] = newFeatures.splice(oldIndex, 1);
+        newFeatures.splice(newIndex, 0, movedFeature);
+        onUpdate({ features: newFeatures });
+      }
+    }
+  };
 
   const handleFeatureUpdate = useCallback(
     (index: number, updatedFeature: Feature) => {
-      if (onUpdate) {
+      if (onUpdate && features) {
         const newFeatures = [...features];
         newFeatures[index] = updatedFeature;
         onUpdate({ features: newFeatures });
@@ -146,7 +153,7 @@ export function FeaturesSection({ content, isEditing, onUpdate }: FeaturesSectio
 
   const handleFeatureDelete = useCallback(
     (index: number) => {
-      if (onUpdate) {
+      if (onUpdate && features) {
         const newFeatures = features.filter((_, i) => i !== index);
         onUpdate({ features: newFeatures });
       }
@@ -155,15 +162,18 @@ export function FeaturesSection({ content, isEditing, onUpdate }: FeaturesSectio
   );
 
   const handleAddFeature = useCallback(() => {
+    console.log('Add Feature clicked, onUpdate:', !!onUpdate, 'isEditing:', isEditing);
     if (onUpdate) {
       const newFeature: Feature = {
-        icon: '✨',
+        icon: 'FaRocket',
         title: 'New Feature',
         description: 'Describe this feature...',
       };
-      onUpdate({ features: [...features, newFeature] });
+      const updatedFeatures = [...(features || []), newFeature];
+      console.log('Adding new feature, total features:', updatedFeatures.length);
+      onUpdate({ features: updatedFeatures });
     }
-  }, [features, onUpdate]);
+  }, [features, onUpdate, isEditing]);
 
   // Allow empty features in edit mode so users can add them
   if ((!features || features.length === 0) && !isEditing) {
@@ -178,6 +188,32 @@ export function FeaturesSection({ content, isEditing, onUpdate }: FeaturesSectio
     featureCount === 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' :
     'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
 
+  // Read-only mode (no drag-and-drop needed)
+  if (!isEditing) {
+    return (
+      <section className="project-section" data-section-type="features">
+        <div className="flex items-center gap-4 mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Key Features</h2>
+          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+        </div>
+        <div className={`grid ${gridCols} gap-6`}>
+          {features?.map((feature, index) => (
+            <IconCard
+              key={index}
+              data={{
+                icon: feature.icon,
+                title: feature.title,
+                description: feature.description,
+              }}
+              isEditing={false}
+            />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  // Edit mode with drag-and-drop
   return (
     <section className="project-section" data-section-type="features">
       {/* Section Header */}
@@ -186,30 +222,53 @@ export function FeaturesSection({ content, isEditing, onUpdate }: FeaturesSectio
         <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
       </div>
 
-      {/* Feature Grid */}
-      <div className={`grid ${gridCols} gap-6`}>
-        {features?.map((feature, index) => (
-          <FeatureCard
-            key={index}
-            feature={feature}
-            index={index}
-            isEditing={isEditing}
-            onUpdate={handleFeatureUpdate}
-            onDelete={handleFeatureDelete}
-          />
-        ))}
+      {/* Feature Grid with Drag-and-Drop */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={featureIds} strategy={rectSortingStrategy}>
+          <div className={`grid ${gridCols} gap-6`}>
+            {features?.map((feature, index) => (
+              <SortableFeatureCard
+                key={featureIds[index]}
+                id={featureIds[index]}
+                feature={feature}
+                isEditing={true}
+                onUpdate={(updatedFeature) => handleFeatureUpdate(index, updatedFeature)}
+                onDelete={() => handleFeatureDelete(index)}
+              />
+            ))}
 
-        {/* Add Feature Card (editing mode only) */}
-        {isEditing && (
-          <button
-            onClick={handleAddFeature}
-            className="flex flex-col items-center justify-center min-h-[160px] rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary-500 dark:hover:border-primary-500 text-gray-400 hover:text-primary-500 transition-colors"
-          >
-            <PlusIcon className="w-8 h-8 mb-2" />
-            <span className="text-sm font-medium">Add Feature</span>
-          </button>
-        )}
-      </div>
+            {/* Add Feature Card */}
+            <button
+              onClick={handleAddFeature}
+              className="flex flex-col items-center justify-center min-h-[160px] rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary-500 dark:hover:border-primary-500 text-gray-400 hover:text-primary-500 transition-colors"
+            >
+              <PlusIcon className="w-8 h-8 mb-2" />
+              <span className="text-sm font-medium">Add Feature</span>
+            </button>
+          </div>
+        </SortableContext>
+
+        {/* Drag Overlay */}
+        <DragOverlay>
+          {activeFeature ? (
+            <div className="opacity-90 transform scale-105">
+              <IconCard
+                data={{
+                  icon: activeFeature.icon,
+                  title: activeFeature.title,
+                  description: activeFeature.description,
+                }}
+                isEditing={false}
+              />
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </section>
   );
 }

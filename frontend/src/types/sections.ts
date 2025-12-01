@@ -34,6 +34,7 @@ export interface OverviewSectionContent {
   headline: string;        // One-liner hook (bold, large text)
   description: string;     // 2-3 sentences max (markdown supported)
   metrics?: Metric[];      // Optional stats like stars, downloads
+  previewImage?: string;   // Optional preview image URL (from README or repo)
 }
 
 // ============================================================================
@@ -355,3 +356,67 @@ export const SECTION_METADATA: Record<SectionType, SectionMetadata> = {
     defaultEnabled: false,
   },
 };
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Create default content for a new section based on its type.
+ */
+export function createDefaultSectionContent(type: SectionType): SectionContent {
+  switch (type) {
+    case 'overview':
+      return {
+        headline: '',
+        description: '',
+        metrics: [],
+      } as OverviewSectionContent;
+    case 'features':
+      return {
+        features: [
+          { icon: 'FaRocket', title: 'Feature 1', description: 'Describe this feature...' },
+        ],
+      } as FeaturesSectionContent;
+    case 'tech_stack':
+      return {
+        categories: [],
+      } as TechStackSectionContent;
+    case 'gallery':
+      return {
+        images: [],
+        layout: 'grid',
+      } as GallerySectionContent;
+    case 'architecture':
+      return {
+        diagram: '',
+        description: '',
+      } as ArchitectureSectionContent;
+    case 'demo':
+      return {
+        ctas: [],
+      } as DemoSectionContent;
+    case 'challenges':
+      return {
+        items: [],
+      } as ChallengesSectionContent;
+    case 'links':
+      return {
+        links: [],
+      } as LinksSectionContent;
+    case 'custom':
+      return {
+        title: 'Custom Section',
+        blocks: [],
+      } as CustomSectionContent;
+    default:
+      return { blocks: [] } as CustomSectionContent;
+  }
+}
+
+/**
+ * Generate a unique section ID.
+ */
+export function generateSectionId(type: SectionType): string {
+  return `section-${type}-${Math.random().toString(36).substr(2, 9)}`;
+}

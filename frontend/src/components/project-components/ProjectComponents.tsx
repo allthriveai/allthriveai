@@ -10,6 +10,7 @@
  * - Responsive design with proper spacing
  */
 
+import { useState, useCallback } from 'react';
 import type { ProjectComponentLayout } from '@/types/components';
 import { ComponentList } from './ComponentRenderer';
 import { useProjectContext } from '@/contexts/ProjectContext';
@@ -25,6 +26,8 @@ interface ProjectComponentsProps {
  */
 export function ProjectComponents({ layout, className }: ProjectComponentsProps) {
   const { components } = layout;
+  const [isEditMode, setIsEditMode] = useState(true);
+  const toggleEditMode = useCallback(() => setIsEditMode(prev => !prev), []);
 
   // Try to get project context for edit mode indicator
   let isOwner = false;
@@ -45,8 +48,8 @@ export function ProjectComponents({ layout, className }: ProjectComponentsProps)
 
   return (
     <div className={`project-components max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 ${className || ''}`}>
-      {/* Edit Mode Indicator for Owners */}
-      <EditModeIndicator isOwner={isOwner} />
+      {/* Edit Mode Toggle for Owners */}
+      <EditModeIndicator isOwner={isOwner} isEditMode={isEditMode} onToggle={toggleEditMode} />
 
       {/* Component Layout */}
       <div className="space-y-12">

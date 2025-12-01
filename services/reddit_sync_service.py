@@ -151,6 +151,14 @@ class RedditSyncService:
 
     USER_AGENT = 'Mozilla/5.0 (compatible; AllThrive/1.0; +https://allthrive.ai)'
 
+    # Subreddits that require stricter moderation
+    STRICT_MODERATION_SUBREDDITS = [
+        'chatgpt',  # Frequently has NSFW "jailbreak" posts
+        'openai',
+        'artificialintelligence',
+        'chatgptprompts',
+    ]
+
     @classmethod
     def _moderate_content(cls, title: str, selftext: str, image_url: str, subreddit: str) -> tuple[bool, str, dict]:
         """Moderate Reddit post content (text and image).
@@ -164,12 +172,29 @@ class RedditSyncService:
         Returns:
             Tuple of (approved, reason, moderation_data)
         """
-        moderation_results = {'text': None, 'image': None}
+        from services.moderation.keyword_filter import KeywordFilter
+
+        moderation_results = {'text': None, 'image': None, 'keyword': None}
         context = f'Reddit post from r/{subreddit}'
+        combined_text = f'{title}\n\n{selftext}' if selftext else title
+
+        # 0. Fast keyword filter check (runs locally, no API calls)
+        # Use strict mode for subreddits known to have problematic content
+        strict_mode = subreddit.lower() in [s.lower() for s in cls.STRICT_MODERATION_SUBREDDITS]
+        keyword_filter = KeywordFilter(strict_mode=strict_mode)
+        keyword_result = keyword_filter.check(combined_text, context=context)
+        moderation_results['keyword'] = keyword_result
+
+        if keyword_result['flagged']:
+            logger.info(
+                f'Reddit post rejected by keyword filter: '
+                f'subreddit=r/{subreddit}, reason={keyword_result["reason"]}, '
+                f'matched={len(keyword_result["matched_keywords"])} terms'
+            )
+            return False, keyword_result['reason'], moderation_results
 
         # 1. Moderate text content (title + selftext)
         text_moderator = ContentModerator()
-        combined_text = f'{title}\n\n{selftext}' if selftext else title
 
         text_result = text_moderator.moderate(combined_text, context=context)
         moderation_results['text'] = text_result

@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { renderContent } from '@/utils/markdown';
 import { useProjectContext } from '@/contexts/ProjectContext';
 import { updateProject } from '@/services/projects';
@@ -20,7 +20,8 @@ import {
 } from '../shared/InlineEditable';
 import { EditableBlocksContainer } from '../shared/EditableBlocksContainer';
 import { ProjectSections } from '../sections';
-import type { ProjectSection } from '@/types/sections';
+import type { ProjectSection, SectionType } from '@/types/sections';
+import { createDefaultSectionContent, generateSectionId } from '@/types/sections';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ProjectEditTray } from '../ProjectEditTray';
@@ -31,6 +32,7 @@ import {
   TrashIcon,
   EyeIcon,
   EyeSlashIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 
 /**
@@ -84,9 +86,19 @@ export function DefaultProjectLayout() {
     isAuthenticated,
   } = useProjectContext();
 
+  const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
   const [showToolTray, setShowToolTray] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(true); // Default to edit mode for owners
+
+  // Toggle between edit and published view
+  const toggleEditMode = useCallback(() => {
+    setIsEditMode(prev => !prev);
+  }, []);
+
+  // Computed editing state - must be owner AND in edit mode
+  const isEditing = isOwner && isEditMode;
 
   // Handle inline title change
   const handleTitleChange = useCallback(async (newTitle: string) => {
@@ -108,28 +120,162 @@ export function DefaultProjectLayout() {
     }
   }, [project.id, setProject]);
 
+  // Helper to filter content keys to only allowed ones
+  const filterContentKeys = useCallback((contentObj: Record<string, unknown> | undefined): Record<string, unknown> => {
+    const allowedKeys = [
+      'blocks', 'cover', 'tags', 'metadata',
+      'heroDisplayMode', 'heroQuote', 'heroVideoUrl', 'heroSlideshowImages',
+      'heroSlideUpElement1', 'heroSlideUpElement2',
+      'templateVersion', 'sections', 'github', 'figma'
+    ];
+    const filtered: Record<string, unknown> = {};
+    if (contentObj) {
+      for (const key of allowedKeys) {
+        if (key in contentObj) {
+          filtered[key] = contentObj[key];
+        }
+      }
+    }
+    return filtered;
+  }, []);
+
   // Handle section content update (auto-save)
   const handleSectionUpdate = useCallback(async (sectionId: string, content: ProjectSection['content']) => {
     if (!project.content?.sections) return;
 
+    // Update the section content locally first for immediate feedback
+    const updatedSections = project.content.sections.map((section: ProjectSection) =>
+      section.id === sectionId ? { ...section, content } : section
+    );
+
+    // Update project with new sections (filter out read-only keys)
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      sections: updatedSections,
+    };
+
+    // Optimistic update - show changes immediately
+    setProject({ ...project, content: updatedContent });
+
     try {
-      // Update the section content locally first for immediate feedback
-      const updatedSections = project.content.sections.map((section: ProjectSection) =>
-        section.id === sectionId ? { ...section, content } : section
-      );
-
-      // Update project with new sections
-      const updatedContent = {
-        ...project.content,
-        sections: updatedSections,
-      };
-
+      // Save to backend
       const updated = await updateProject(project.id, { content: updatedContent });
       setProject(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update section:', error);
+      console.error('Error details:', error?.response?.data || error?.message || error);
+      // Revert on error - restore original project state
+      // For now, we'll keep the optimistic update even on failure
+      // to allow users to keep working
     }
-  }, [project.id, project.content, setProject]);
+  }, [project, setProject, filterContentKeys]);
+
+  // Handle adding a new section
+  const handleAddSection = useCallback(async (type: SectionType, afterSectionId?: string) => {
+    // Ensure we have a valid project content with sections
+    const currentSections = project.content?.sections || [];
+
+    const newSection: ProjectSection = {
+      id: generateSectionId(type),
+      type,
+      enabled: true,
+      order: 0,
+      content: createDefaultSectionContent(type),
+    };
+
+    // Determine insertion index
+    // - If afterSectionId is undefined, insert at the beginning (index 0)
+    // - If afterSectionId is provided, insert after that section
+    let insertIndex = 0; // Default to beginning
+    if (afterSectionId) {
+      const afterIndex = currentSections.findIndex(s => s.id === afterSectionId);
+      if (afterIndex !== -1) {
+        insertIndex = afterIndex + 1;
+      } else {
+        // Section not found, add at end
+        insertIndex = currentSections.length;
+      }
+    }
+
+    // Insert and reorder
+    const newSections = [...currentSections];
+    newSections.splice(insertIndex, 0, newSection);
+
+    // Update order values
+    const reorderedSections = newSections.map((s, idx) => ({ ...s, order: idx }));
+
+    // Use helper to filter out read-only keys
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      templateVersion: 2 as const,
+      sections: reorderedSections,
+    };
+
+    // Store original for rollback
+    const originalProject = project;
+
+    // Optimistic update
+    setProject({ ...project, content: updatedContent });
+
+    try {
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
+    } catch (error: any) {
+      console.error('Failed to add section:', error?.response?.data || error);
+      // Rollback on error
+      setProject(originalProject);
+    }
+  }, [project, setProject, filterContentKeys]);
+
+  // Handle deleting a section
+  const handleDeleteSection = useCallback(async (sectionId: string) => {
+    if (!project.content?.sections) return;
+
+    const newSections = project.content.sections
+      .filter(s => s.id !== sectionId)
+      .map((s, idx) => ({ ...s, order: idx }));
+
+    // Use helper to filter out read-only keys
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      sections: newSections,
+    };
+
+    // Optimistic update
+    setProject({ ...project, content: updatedContent });
+
+    try {
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
+    } catch (error: any) {
+      console.error('Failed to delete section:', error);
+    }
+  }, [project, setProject, filterContentKeys]);
+
+  // Handle reordering sections (drag-and-drop)
+  const handleReorderSections = useCallback(async (reorderedSections: ProjectSection[]) => {
+    // Use helper to filter out read-only keys
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      templateVersion: 2 as const,
+      sections: reorderedSections,
+    };
+
+    // Store original for rollback
+    const originalProject = project;
+
+    // Optimistic update
+    setProject({ ...project, content: updatedContent });
+
+    try {
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
+    } catch (error: any) {
+      console.error('Failed to reorder sections:', error?.response?.data || error);
+      // Rollback on error
+      setProject(originalProject);
+    }
+  }, [project, setProject, filterContentKeys]);
 
   // Filter out placeholder/empty blocks
   const visibleBlocks = project.content?.blocks?.filter(
@@ -141,8 +287,8 @@ export function DefaultProjectLayout() {
 
   return (
     <>
-      {/* Edit Mode Indicator for Owners */}
-      <EditModeIndicator isOwner={isOwner} />
+      {/* Edit Mode Toggle for Owners */}
+      <EditModeIndicator isOwner={isOwner} isEditMode={isEditMode} onToggle={toggleEditMode} />
 
       {/* Full Height Hero Section */}
       <div className="relative min-h-screen w-full flex items-center overflow-hidden bg-gray-900">
@@ -191,6 +337,16 @@ export function DefaultProjectLayout() {
                         Quick Edit
                       </div>
                       <kbd className="px-2 py-0.5 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">E</kbd>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        navigate(`/${project.username}/${project.slug}/edit`);
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 flex items-center gap-3 transition-colors"
+                    >
+                      <Squares2X2Icon className="w-4 h-4" />
+                      Edit Sections
                     </button>
                     <button
                       onClick={() => {
@@ -248,7 +404,7 @@ export function DefaultProjectLayout() {
                 {/* Title - Inline Editable for Owners */}
                 <InlineEditableTitle
                   value={project.title}
-                  isEditable={isOwner}
+                  isEditable={isEditing}
                   onChange={handleTitleChange}
                   placeholder="Enter project title..."
                   className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/70 tracking-tight leading-tight drop-shadow-2xl"
@@ -260,10 +416,10 @@ export function DefaultProjectLayout() {
               {(project.description || isOwner) && (
                 <div className="relative p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl overflow-hidden">
                   <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-primary-400 to-secondary-400 opacity-80" />
-                  {isOwner ? (
+                  {isEditing ? (
                     <InlineEditableText
                       value={project.description || ''}
-                      isEditable={isOwner}
+                      isEditable={isEditing}
                       onChange={handleDescriptionChange}
                       placeholder="Add a description for your project..."
                       className="prose prose-lg prose-invert max-w-none pl-2"
@@ -347,8 +503,11 @@ export function DefaultProjectLayout() {
       {hasTemplateSections ? (
         <ProjectSections
           sections={project.content.sections}
-          isEditing={isOwner}
+          isEditing={isEditing}
           onSectionUpdate={handleSectionUpdate}
+          onAddSection={handleAddSection}
+          onDeleteSection={handleDeleteSection}
+          onReorderSections={handleReorderSections}
         />
       ) : (visibleBlocks.length > 0 || isOwner) && (
         <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 md:py-24">
@@ -360,7 +519,7 @@ export function DefaultProjectLayout() {
           {/* Content Blocks - full CRUD with add/remove/reorder */}
           <EditableBlocksContainer
             project={project}
-            isOwner={isOwner}
+            isOwner={isEditing}
             onProjectUpdate={setProject}
           />
         </div>

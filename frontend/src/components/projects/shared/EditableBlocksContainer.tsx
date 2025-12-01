@@ -63,10 +63,33 @@ function ensureBlockIds(blocks: ProjectBlock[]): ProjectBlock[] {
 // Types
 // ============================================================================
 
-interface EditableBlocksContainerProps {
+// Mode 1: Full project mode - for use in DefaultProjectLayout
+interface ProjectModeProps {
   project: Project;
   isOwner: boolean;
   onProjectUpdate: (project: Project) => void;
+  // Not present in project mode
+  blocks?: never;
+  onBlocksChange?: never;
+  isEditing?: never;
+}
+
+// Mode 2: Standalone blocks mode - for use in CustomSection
+interface BlocksModeProps {
+  blocks: ProjectBlock[];
+  onBlocksChange: (blocks: ProjectBlock[]) => void;
+  isEditing: boolean;
+  // Not present in blocks mode
+  project?: never;
+  isOwner?: never;
+  onProjectUpdate?: never;
+}
+
+type EditableBlocksContainerProps = ProjectModeProps | BlocksModeProps;
+
+// Type guard to check which mode we're in
+function isProjectMode(props: EditableBlocksContainerProps): props is ProjectModeProps {
+  return 'project' in props && props.project !== undefined;
 }
 
 // ============================================================================
@@ -324,22 +347,34 @@ function AddBlockButton({ onAdd, position, isAdding }: AddBlockButtonProps) {
 // Main Container Component
 // ============================================================================
 
-export function EditableBlocksContainer({
-  project,
-  isOwner,
-  onProjectUpdate,
-}: EditableBlocksContainerProps) {
+export function EditableBlocksContainer(props: EditableBlocksContainerProps) {
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Determine which mode we're in
+  const projectMode = isProjectMode(props);
+
+  // Get blocks from either mode
+  const rawBlocks = projectMode
+    ? props.project?.content?.blocks || []
+    : props.blocks || [];
+
   // Ensure all blocks have stable IDs
   const blocks = useMemo(
-    () => ensureBlockIds(project.content?.blocks || []),
-    [project.content?.blocks]
+    () => ensureBlockIds(rawBlocks),
+    [rawBlocks]
   );
+
+  // Determine if we can edit
+  const canEdit = projectMode ? props.isOwner : props.isEditing;
+
+  // Early return if in project mode and project is undefined
+  if (projectMode && !props.project) {
+    return null;
+  }
 
   // Get block IDs for sortable context
   const sortableIds = useMemo(
@@ -365,6 +400,24 @@ export function EditableBlocksContainer({
     })
   );
 
+  // Helper to update blocks - handles both project mode and blocks mode
+  const updateBlocks = useCallback(
+    async (newBlocks: ProjectBlock[]) => {
+      if (projectMode) {
+        const { project, onProjectUpdate } = props as ProjectModeProps;
+        const updated = await updateProject(project.id, {
+          content: { ...project.content, blocks: newBlocks },
+        });
+        onProjectUpdate(updated);
+      } else {
+        const { onBlocksChange } = props as BlocksModeProps;
+        // In blocks mode, just update synchronously (parent handles persistence)
+        onBlocksChange(newBlocks);
+      }
+    },
+    [projectMode, props]
+  );
+
   // Handle drag start
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveBlockId(event.active.id.toString());
@@ -386,10 +439,7 @@ export function EditableBlocksContainer({
           newBlocks.splice(newIndex, 0, movedBlock);
 
           try {
-            const updated = await updateProject(project.id, {
-              content: { ...project.content, blocks: newBlocks },
-            });
-            onProjectUpdate(updated);
+            await updateBlocks(newBlocks);
           } catch (err) {
             setError('Failed to reorder blocks');
             console.error('Failed to reorder blocks:', err);
@@ -397,7 +447,7 @@ export function EditableBlocksContainer({
         }
       }
     },
-    [blocks, project.id, project.content, onProjectUpdate]
+    [blocks, updateBlocks]
   );
 
   // Add a new block
@@ -442,10 +492,7 @@ export function EditableBlocksContainer({
       newBlocks.splice(afterIndex + 1, 0, newBlock);
 
       try {
-        const updated = await updateProject(project.id, {
-          content: { ...project.content, blocks: newBlocks },
-        });
-        onProjectUpdate(updated);
+        await updateBlocks(newBlocks);
       } catch (err) {
         setError('Failed to add block');
         console.error('Failed to add block:', err);
@@ -453,7 +500,7 @@ export function EditableBlocksContainer({
         setIsAdding(false);
       }
     },
-    [blocks, project.id, project.content, onProjectUpdate]
+    [blocks, updateBlocks]
   );
 
   // Delete a block
@@ -466,10 +513,7 @@ export function EditableBlocksContainer({
     const newBlocks = blocks.filter((b) => b.id !== deleteTarget);
 
     try {
-      const updated = await updateProject(project.id, {
-        content: { ...project.content, blocks: newBlocks },
-      });
-      onProjectUpdate(updated);
+      await updateBlocks(newBlocks);
       setDeleteTarget(null);
     } catch (err) {
       setError('Failed to delete block');
@@ -477,10 +521,23 @@ export function EditableBlocksContainer({
     } finally {
       setIsDeleting(false);
     }
-  }, [deleteTarget, blocks, project.id, project.content, onProjectUpdate]);
+  }, [deleteTarget, blocks, updateBlocks]);
 
-  // If not owner, just render blocks without editing controls
-  if (!isOwner) {
+  // Create mock project/handlers for child components when in blocks mode
+  const childProject = projectMode
+    ? (props as ProjectModeProps).project
+    : ({ id: 0, content: { blocks } } as unknown as Project);
+
+  const childOnProjectUpdate = projectMode
+    ? (props as ProjectModeProps).onProjectUpdate
+    : (updated: Project) => {
+        // Extract blocks from the mock project update and pass to parent
+        const { onBlocksChange } = props as BlocksModeProps;
+        onBlocksChange(updated.content?.blocks || []);
+      };
+
+  // If not editable, just render blocks without editing controls
+  if (!canEdit) {
     return (
       <div className="space-y-8">
         {blocks.map((block, index) => (
@@ -488,9 +545,9 @@ export function EditableBlocksContainer({
             key={block.id}
             block={block}
             index={index}
-            project={project}
+            project={childProject}
             isOwner={false}
-            onProjectUpdate={onProjectUpdate}
+            onProjectUpdate={childOnProjectUpdate}
           />
         ))}
       </div>
@@ -537,9 +594,9 @@ export function EditableBlocksContainer({
                     block={block}
                     blockId={block.id!}
                     index={index}
-                    project={project}
-                    isOwner={isOwner}
-                    onProjectUpdate={onProjectUpdate}
+                    project={childProject}
+                    isOwner={canEdit}
+                    onProjectUpdate={childOnProjectUpdate}
                     onDelete={setDeleteTarget}
                   />
                   {/* Add Block Button after each block */}
@@ -560,7 +617,7 @@ export function EditableBlocksContainer({
                 <EditableContentBlock
                   block={activeBlock}
                   index={-1}
-                  project={project}
+                  project={childProject}
                   isOwner={false}
                   onProjectUpdate={() => {}}
                 />

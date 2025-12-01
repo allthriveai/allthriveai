@@ -82,23 +82,33 @@ class ProjectSerializer(serializers.ModelSerializer):
 
         # Define allowed structure - only accept known keys
         allowed_keys = {
+            # Legacy block-based content
             'blocks',
             'cover',
             'tags',
             'metadata',
+            # Hero display settings
             'heroDisplayMode',
             'heroQuote',
             'heroVideoUrl',
             'heroSlideshowImages',
             'heroSlideUpElement1',
             'heroSlideUpElement2',
+            # Template v2 section-based content
+            'templateVersion',
+            'sections',
+            # Integration data (GitHub, Figma analysis)
+            'github',
+            'figma',
         }
         provided_keys = set(value.keys())
 
         if not provided_keys.issubset(allowed_keys):
             invalid_keys = provided_keys - allowed_keys
+            invalid_keys_str = ', '.join(invalid_keys)
+            allowed_keys_str = ', '.join(sorted(allowed_keys))
             raise serializers.ValidationError(
-                f'Content contains invalid keys: {", ".join(invalid_keys)}. Allowed keys: {", ".join(allowed_keys)}'
+                f'Content contains invalid keys: {invalid_keys_str}. Allowed keys: {allowed_keys_str}'
             )
 
         # Sanitize text content in blocks to prevent XSS
@@ -138,6 +148,26 @@ class ProjectSerializer(serializers.ModelSerializer):
         # Validate metadata structure
         if 'metadata' in value and not isinstance(value['metadata'], dict):
             raise serializers.ValidationError("'metadata' must be a JSON object.")
+
+        # Validate sections structure (template v2)
+        if 'sections' in value:
+            if not isinstance(value['sections'], list):
+                raise serializers.ValidationError("'sections' must be a list.")
+
+            for i, section in enumerate(value['sections']):
+                if not isinstance(section, dict):
+                    raise serializers.ValidationError(f'Section at index {i} must be a JSON object.')
+
+                # Required section fields
+                required_fields = ['id', 'type', 'enabled', 'order', 'content']
+                for field in required_fields:
+                    if field not in section:
+                        raise serializers.ValidationError(f"Section at index {i} missing required field '{field}'.")
+
+        # Validate templateVersion
+        if 'templateVersion' in value:
+            if value['templateVersion'] not in [1, 2]:
+                raise serializers.ValidationError("'templateVersion' must be 1 or 2.")
 
         # Check size limit AFTER sanitization
         content_str = json.dumps(value)

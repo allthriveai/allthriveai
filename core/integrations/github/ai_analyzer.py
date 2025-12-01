@@ -35,6 +35,10 @@ Language: {language}
 Topics: {topics}
 Stars: {stars}
 Tech Stack: {tech_stack}
+
+Directory Structure:
+{directory_structure}
+
 README content (first 2000 chars):
 {readme_excerpt}
 
@@ -46,7 +50,7 @@ Generate structured sections for a visually appealing project portfolio. Return 
     "description": "2-3 sentence explanation of what this does and why it matters"
   }},
   "features": [
-    {{"icon": "🚀", "title": "Feature Name", "description": "1-2 sentence description"}},
+    {{"icon": "FaRocket", "title": "Feature Name", "description": "1-2 sentence description"}},
     ... (3-6 features based on README/repo)
   ],
   "tech_stack": {{
@@ -57,7 +61,7 @@ Generate structured sections for a visually appealing project portfolio. Return 
     ]
   }},
   "architecture": {{
-    "diagram": "graph TB\\n    A[Input] --> B[Processing]\\n    B --> C[Output]",
+    "diagram": "graph TD\\n    A[Component] --> B[Component]",
     "description": "Brief explanation of how the system works"
   }},
   "challenges": [
@@ -86,8 +90,20 @@ Generate structured sections for a visually appealing project portfolio. Return 
 }}
 
 IMPORTANT:
-- For features: Use emojis as icons (🚀, 🔒, ⚡, 🧠, 💡, 🎯, etc.)
-- For architecture: Generate a valid Mermaid diagram showing key components
+- For features: Use FontAwesome icon names (react-icons/fa format). Choose from:
+  FaRocket (speed/launch), FaShieldAlt (security), FaBolt (performance/fast),
+  FaCode (development), FaDatabase (data/storage), FaCog (settings/config),
+  FaChartLine (analytics/growth), FaUsers (collaboration), FaLock (privacy),
+  FaMobile (mobile/responsive), FaCloud (cloud), FaPlug (integrations/api),
+  FaBrain (AI/ML), FaSearch (search), FaSync (sync/realtime), FaGlobe (global),
+  FaClock (time/scheduling), FaFileAlt (documents), FaCheck (validation),
+  FaLayerGroup (modular), FaTools (utilities), FaPalette (customization)
+- For architecture: CRITICAL - Base the Mermaid diagram on the ACTUAL directory structure above!
+  * Identify real components from folder names (api/, models/, services/, handlers/, etc.)
+  * Show how these actual components connect
+  * Use graph TD format with 4-8 nodes
+  * Label nodes based on actual folder/file names
+  * DO NOT use generic "Input -> Processing -> Output" patterns
 - For tech_stack: Group by Frontend, Backend, Database, Infrastructure, AI/ML as appropriate
 - For challenges: Only include if README mentions specific problems solved
 - For links: Extract any documentation/demo URLs from README
@@ -96,6 +112,63 @@ IMPORTANT:
 
 Return ONLY valid JSON, no markdown code blocks."""
 )
+
+
+def _format_tree_for_prompt(tree: list) -> str:
+    """Format the GitHub API tree into a readable directory structure.
+
+    Args:
+        tree: List of tree items from GitHub API
+
+    Returns:
+        Formatted string showing directory structure
+    """
+    if not tree:
+        return 'Not available'
+
+    # Filter to only show directories and important files at root/first level
+    lines = []
+    dirs = set()
+    important_files = []
+
+    for item in tree:
+        path = item.get('path', '')
+        item_type = item.get('type', '')
+
+        # Skip hidden files/dirs and common noise
+        if path.startswith('.') or path.startswith('__'):
+            continue
+
+        parts = path.split('/')
+
+        # Track top-level directories
+        if item_type == 'tree' and len(parts) == 1:
+            dirs.add(path)
+        elif item_type == 'blob' and len(parts) == 1:
+            # Keep important root files
+            important_extensions = ('.py', '.js', '.ts', '.go', '.rs', '.java', '.yml', '.yaml', '.json', '.toml')
+            if path.endswith(important_extensions) or path in ('Dockerfile', 'Makefile', 'README.md'):
+                important_files.append(path)
+
+        # Track second-level directories
+        if len(parts) == 2 and item_type == 'tree':
+            parent = parts[0]
+            child = parts[1]
+            if parent in dirs:
+                dirs.add(f'{parent}/{child}')
+
+    # Build output
+    for d in sorted(dirs):
+        if '/' in d:
+            lines.append(f'  {d}/')
+        else:
+            lines.append(f'{d}/')
+
+    # Add important root files
+    for f in sorted(important_files)[:10]:  # Limit files
+        lines.append(f)
+
+    return '\n'.join(lines[:30]) if lines else 'Not available'  # Limit total lines
 
 
 def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '') -> dict:
@@ -119,6 +192,7 @@ def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '') 
     owner = repo_data.get('owner', '')
     github_url = repo_data.get('html_url', f'https://github.com/{owner}/{name}')
     tech_stack = repo_data.get('tech_stack', {})
+    tree = repo_data.get('tree', [])
 
     # Get hero image
     hero_image = repo_data.get('open_graph_image_url')
@@ -126,7 +200,15 @@ def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '') 
         hero_image = f'https://opengraph.githubassets.com/1/{owner}/{name}'
 
     # Scan for visual assets
-    visual_assets = BaseParser.scan_repository_for_images(tree=repo_data.get('tree', []), owner=owner, repo=name)
+    visual_assets = BaseParser.scan_repository_for_images(tree=tree, owner=owner, repo=name)
+
+    # Parse README to extract images
+    readme_hero_image = None
+    if readme_content:
+        readme_parsed = BaseParser.parse(readme_content, repo_data)
+        readme_hero_image = readme_parsed.get('hero_image')
+        if readme_hero_image:
+            logger.info(f'📷 Found README hero image: {readme_hero_image}')
 
     if not repo_data.get('open_graph_image_url'):
         if visual_assets.get('logo'):
@@ -137,6 +219,10 @@ def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '') 
     # Format tech stack for prompt
     tech_stack_str = json.dumps(tech_stack) if tech_stack else 'Not detected'
 
+    # Format directory structure for prompt
+    directory_structure = _format_tree_for_prompt(tree)
+    logger.info(f'📁 Directory structure for {name}:\n{directory_structure}')
+
     # Build prompt
     prompt = SECTION_TEMPLATE_PROMPT.format(
         name=name,
@@ -145,6 +231,7 @@ def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '') 
         topics=', '.join(github_topics) if github_topics else 'None',
         stars=stars,
         tech_stack=tech_stack_str,
+        directory_structure=directory_structure,
         readme_excerpt=readme_content[:2000] if readme_content else 'No README available',
         github_url=github_url,
     )
@@ -179,17 +266,29 @@ def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '') 
         # Overview section
         if result.get('overview'):
             overview = result['overview']
+            # Get preview image: prefer first screenshot, then README hero image
+            preview_image = None
+            if visual_assets.get('screenshots'):
+                preview_image = visual_assets['screenshots'][0]
+            elif readme_hero_image:
+                preview_image = readme_hero_image
+
+            overview_content = {
+                'headline': overview.get('headline', ''),
+                'description': overview.get('description', description or ''),
+                'metrics': overview.get('metrics', []),
+            }
+            if preview_image:
+                overview_content['previewImage'] = preview_image
+                logger.info(f'📷 Added preview image to overview: {preview_image}')
+
             sections.append(
                 {
                     'id': f'section-overview-{name[:8]}',
                     'type': 'overview',
                     'enabled': True,
                     'order': section_order,
-                    'content': {
-                        'headline': overview.get('headline', ''),
-                        'description': overview.get('description', description or ''),
-                        'metrics': overview.get('metrics', []),
-                    },
+                    'content': overview_content,
                 }
             )
             section_order += 1

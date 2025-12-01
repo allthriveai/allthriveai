@@ -430,7 +430,7 @@ class GitHubRepositoryAnalyzer:
         Returns:
             Mermaid diagram code or None
         """
-        # First try to generate from docker-compose.yml
+        # First try to generate from docker-compose.yml (most accurate)
         docker_compose = self._fetch_file('docker-compose.yml')
         if not docker_compose:
             docker_compose = self._fetch_file('docker-compose.yaml')
@@ -440,8 +440,11 @@ class GitHubRepositoryAnalyzer:
             if diagram:
                 return diagram
 
-        # Fallback: Use AI to generate from tech stack
-        return self._diagram_from_tech_stack(tech_stack)
+        # Get directory structure for better context
+        directory_tree = self.get_directory_tree(max_depth=2)
+
+        # Fallback: Use AI to generate from tech stack + directory structure
+        return self._diagram_from_structure(tech_stack, directory_tree)
 
     def _diagram_from_docker_compose(self, docker_compose_content: str) -> str | None:
         """Generate Mermaid diagram from docker-compose.yml using AI."""
@@ -480,23 +483,82 @@ Return only the Mermaid code."""
             return None
 
     def _diagram_from_tech_stack(self, tech_stack: dict) -> str | None:
-        """Generate Mermaid diagram from tech stack using AI."""
+        """Generate Mermaid diagram from tech stack using AI (deprecated, use _diagram_from_structure)."""
+        return self._diagram_from_structure(tech_stack, None)
+
+    def _format_directory_tree(self, tree: dict, indent: int = 0) -> str:
+        """Format directory tree as a readable string for the AI prompt."""
+        if not tree:
+            return ''
+
+        lines = []
+        prefix = '  ' * indent
+
+        if indent == 0 and tree.get('name'):
+            lines.append(f"{tree['name']}/")
+
+        for child in tree.get('children', []):
+            if child.get('type') == 'directory':
+                lines.append(f"{prefix}{child['name']}/")
+                # Recursively format children
+                for subchild in child.get('children', []):
+                    if subchild.get('type') == 'directory':
+                        lines.append(f"{prefix}  {subchild['name']}/")
+                    else:
+                        lines.append(f"{prefix}  {subchild['name']}")
+            else:
+                lines.append(f"{prefix}{child['name']}")
+
+        return '\n'.join(lines)
+
+    def _diagram_from_structure(self, tech_stack: dict, directory_tree: dict | None) -> str | None:
+        """Generate Mermaid diagram from tech stack AND directory structure using AI."""
         try:
-            system_message = """You are an expert at creating Mermaid architecture diagrams.
-Generate a clean, professional Mermaid diagram (graph TD format) showing a typical architecture for this tech stack.
-Show frontend, backend, database, and infrastructure components.
-Use clear node labels and appropriate arrows.
-Return ONLY the Mermaid code, no explanation."""
+            system_message = """You are an expert at creating accurate Mermaid architecture diagrams.
+Your task is to analyze the ACTUAL project structure and create a diagram that reflects what the code really does.
 
-            stack_description = json.dumps(tech_stack, indent=2)
+IMPORTANT RULES:
+1. Base your diagram on the ACTUAL directory structure and files, not generic patterns
+2. Identify real components from folder names (e.g., 'api/', 'models/', 'services/', 'handlers/')
+3. Show data flow between actual components
+4. Use graph TD (top-down) format
+5. Keep it simple: 4-8 nodes maximum
+6. Use descriptive labels based on actual folder/file names
+7. Return ONLY the Mermaid code, no explanation
 
-            prompt = f"""Create a Mermaid architecture diagram for a project with this tech stack:
+Example for a project with src/api/, src/models/, src/services/:
+graph TD
+    A[API Routes] --> B[Services]
+    B --> C[Models]
+    C --> D[Database]"""
 
-```json
+            stack_description = json.dumps(tech_stack, indent=2) if tech_stack else 'Unknown'
+
+            # Format directory tree for the prompt
+            tree_description = ''
+            if directory_tree:
+                tree_description = self._format_directory_tree(directory_tree)
+
+            prompt = f"""Analyze this project's ACTUAL structure and create an accurate Mermaid architecture diagram.
+
+PROJECT DIRECTORY STRUCTURE:
+{tree_description if tree_description else 'Not available'}
+
+TECH STACK:
 {stack_description}
-```
 
-Return only the Mermaid code."""
+Based on the directory structure above, identify the main components and their relationships.
+Look for patterns like:
+- api/, routes/, handlers/ = API layer
+- services/, controllers/, logic/ = Business logic
+- models/, entities/, schemas/ = Data models
+- db/, database/, repositories/ = Data access
+- utils/, helpers/, common/ = Utilities
+- frontend/, client/, web/ = Frontend
+- worker/, jobs/, tasks/ = Background processing
+
+Create a diagram showing how these ACTUAL components connect.
+Return only the Mermaid code starting with "graph TD"."""
 
             diagram = self.ai_provider.complete(
                 prompt=prompt, system_message=system_message, temperature=0.3, max_tokens=1000
@@ -514,7 +576,7 @@ Return only the Mermaid code."""
             return diagram.strip()
 
         except Exception as e:
-            logger.error(f'Failed to generate diagram from tech stack: {e}')
+            logger.error(f'Failed to generate diagram from structure: {e}')
             return None
 
     def _extract_quick_start(self) -> list[dict]:

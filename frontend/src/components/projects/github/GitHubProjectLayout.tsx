@@ -14,7 +14,7 @@
  * - Changes auto-save via ProjectContext
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import type { Project } from '@/types/models';
 import { useProjectContext } from '@/contexts/ProjectContext';
 import { updateProject } from '@/services/projects';
@@ -43,6 +43,10 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
   const { isOwner, setProject } = useProjectContext();
   const analysis = project.content?.github?.analysis;
   const githubData = project.content?.github;
+
+  const [isEditMode, setIsEditMode] = useState(true);
+  const toggleEditMode = useCallback(() => setIsEditMode(prev => !prev), []);
+  const isEditing = isOwner && isEditMode;
 
   // Handle title change
   const handleTitleChange = useCallback(async (newTitle: string) => {
@@ -73,15 +77,15 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Edit Mode Indicator for Owners */}
-      <EditModeIndicator isOwner={isOwner} />
+      {/* Edit Mode Toggle for Owners */}
+      <EditModeIndicator isOwner={isOwner} isEditMode={isEditMode} onToggle={toggleEditMode} />
 
       {/* Hero Section */}
       <div className="mb-12">
         <div className="flex items-start justify-between mb-4">
           <InlineEditableTitle
             value={project.title}
-            isEditable={isOwner}
+            isEditable={isEditing}
             onChange={handleTitleChange}
             placeholder="Enter project title..."
             className="text-4xl font-bold text-gray-900 dark:text-white"
@@ -97,7 +101,7 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
 
         <InlineEditableText
           value={project.description || ''}
-          isEditable={isOwner}
+          isEditable={isEditing}
           onChange={handleDescriptionChange}
           placeholder="Add a description for your project..."
           className="text-xl text-gray-600 dark:text-gray-400 mb-6"

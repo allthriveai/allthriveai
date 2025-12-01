@@ -14,6 +14,7 @@ export async function getTools(params?: {
   is_verified?: boolean;
   search?: string;
   ordering?: string;
+  page_size?: number;
 }): Promise<PaginatedResponse<Tool>> {
   try {
     const response = await api.get('/tools/', { params });

@@ -36,7 +36,9 @@ import type {
   ProjectSection,
   SectionType,
   SectionContent,
+  FeaturesSectionContent,
 } from '@/types/sections';
+import { FeaturesSection } from '../sections/FeaturesSection';
 
 // ============================================================================
 // Section Icon Map
@@ -270,7 +272,13 @@ function SectionContentEditor({ type, content, onChange, enabled }: SectionConte
     case 'overview':
       return <OverviewEditorPlaceholder content={content} onChange={onChange} enabled={enabled} />;
     case 'features':
-      return <FeaturesEditorPlaceholder content={content} onChange={onChange} enabled={enabled} />;
+      return (
+        <FeaturesSection
+          content={content as FeaturesSectionContent}
+          isEditing={true}
+          onUpdate={onChange}
+        />
+      );
     case 'tech_stack':
       return <TechStackEditorPlaceholder content={content} onChange={onChange} enabled={enabled} />;
     case 'gallery':
@@ -316,21 +324,7 @@ function OverviewEditorPlaceholder({ enabled }: PlaceholderProps) {
   );
 }
 
-function FeaturesEditorPlaceholder({ enabled }: PlaceholderProps) {
-  return (
-    <div className={`p-6 text-center border-2 border-dashed rounded-lg ${
-      enabled ? 'border-gray-200 dark:border-gray-700' : 'border-gray-300 dark:border-gray-600'
-    }`}>
-      <SparklesIcon className="w-10 h-10 mx-auto mb-2 text-gray-400" />
-      <p className="text-sm text-gray-500 dark:text-gray-400">
-        Features editor coming in Phase 2
-      </p>
-      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-        Icon cards with drag-and-drop
-      </p>
-    </div>
-  );
-}
+// FeaturesSection is now used directly from ../sections/FeaturesSection
 
 function TechStackEditorPlaceholder({ enabled }: PlaceholderProps) {
   return (

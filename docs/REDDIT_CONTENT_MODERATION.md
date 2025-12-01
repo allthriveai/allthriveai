@@ -6,15 +6,32 @@ The Reddit bot integration includes comprehensive content moderation to prevent 
 
 ## Moderation Layers
 
-### 1. Reddit Native Filters
+### 1. Keyword Filter (NEW - Local Pre-screening)
 
-The system first checks Reddit's own content flags:
+Fast, local keyword-based filter that catches obviously inappropriate content before making expensive API calls:
+
+- **🚨 Child Safety (ZERO TOLERANCE)**: Always flags content involving minors - jailbait, CP, underage content, etc.
+- **Explicit Sexual Content**: Detects NSFW keywords, explicit language, sexual content
+- **Violent/Graphic Content**: Detects gore, violence, disturbing imagery keywords
+- **Hate Speech**: Detects slurs and discriminatory language
+- **Strict Mode**: Subreddit-specific - stricter filtering for known problematic subreddits (r/chatgpt, r/openai, etc.)
+- **Smart Thresholds**: Requires multiple keywords in normal mode to reduce false positives
+
+**Key Benefits:**
+- No API costs for obviously bad content
+- Instant rejection (no latency)
+- Catches content that external APIs might miss
+- Configurable per-subreddit
+
+### 2. Reddit Native Filters
+
+The system checks Reddit's own content flags:
 
 - **NSFW Content**: Posts marked as `over_18` by Reddit are automatically skipped
 - **Spoiler Content**: Available in metadata for filtering
 - **Minimum Score**: Configurable threshold to filter low-quality content
 
-### 2. Text Content Moderation
+### 3. Text Content Moderation
 
 Uses OpenAI's Moderation API to analyze:
 
@@ -29,7 +46,7 @@ Uses OpenAI's Moderation API to analyze:
 - Sexual content
 - Violence and graphic content
 
-### 3. Image Content Moderation
+### 4. Image Content Moderation
 
 Uses GPT-4 Vision API to analyze:
 
@@ -52,28 +69,33 @@ Uses GPT-4 Vision API to analyze:
 ```
 1. Reddit Bot fetches new posts via RSS feed
    ↓
-2. Check Reddit's NSFW flag (over_18)
+2. Fetch full post metrics from Reddit API
+   ↓
+3. Check Reddit's NSFW flag (over_18)
    ↓ (if safe)
-3. Fetch full post metrics from Reddit API
-   ↓
-4. Moderate text content (title + selftext)
+4. Check minimum score threshold
+   ↓ (if meets threshold)
+5. KEYWORD FILTER: Local check for explicit content (NEW)
    ↓ (if approved)
-5. Moderate image content (if present)
+6. Moderate text content with OpenAI API (title + selftext)
    ↓ (if approved)
-6. Create Project and RedditThread
+7. Moderate image content with GPT-4 Vision (if present)
+   ↓ (if approved)
+8. Create Project and RedditThread
    ↓
-7. Store moderation results in database
+9. Store moderation results in database
 ```
 
 ### Skipped Content
 
 Posts are skipped (not imported) if:
 
-1. Marked as NSFW by Reddit (`over_18: true`)
-2. Text content fails moderation (hate speech, violence, etc.)
-3. Image content fails moderation (explicit content, violence, etc.)
-4. Score below configured minimum threshold
-5. Moderation API errors (fail-closed for safety)
+1. Score below configured minimum threshold
+2. Marked as NSFW by Reddit (`over_18: true`)
+3. **Keyword filter flags explicit content (NEW)** - Fast local check
+4. Text content fails OpenAI moderation (hate speech, violence, etc.)
+5. Image content fails GPT-4 Vision moderation (explicit content, violence, etc.)
+6. Moderation API errors (fail-closed for safety)
 
 ### Stored Moderation Data
 
@@ -81,7 +103,7 @@ Each Reddit thread stores:
 
 - `moderation_status`: `approved`, `rejected`, `pending`, or `skipped`
 - `moderation_reason`: Human-readable explanation
-- `moderation_data`: Full results from text and image moderation
+- `moderation_data`: Full results from keyword filter, text, and image moderation
 - `moderated_at`: Timestamp when moderation occurred
 
 ## Configuration
@@ -164,6 +186,12 @@ class RedditThread(models.Model):
 
 ```json
 {
+  "keyword": {
+    "flagged": false,
+    "categories": [],
+    "matched_keywords": [],
+    "reason": "Content passed keyword filter"
+  },
   "text": {
     "approved": true,
     "flagged": false,
@@ -187,10 +215,12 @@ class RedditThread(models.Model):
 
 For each new Reddit post:
 1. **Reddit API**: Fetch post metrics (~200ms)
-2. **OpenAI Moderation**: Check text content (~300ms)
-3. **GPT-4 Vision**: Check image if present (~1-2s)
+2. **Keyword Filter**: Local check (< 1ms) - NEW, no API cost
+3. **OpenAI Moderation**: Check text content (~300ms) - only if passes keyword filter
+4. **GPT-4 Vision**: Check image if present (~1-2s) - only if passes text checks
 
 **Total**: ~1.5-2.5 seconds per post with images
+**Cost Savings**: Keyword filter eliminates API calls for obviously bad content
 
 ### Optimization Strategies
 
@@ -240,7 +270,12 @@ pytest services/tests/test_reddit_moderation.py -v
 ### Manual Testing
 
 ```python
-from services.moderation import ContentModerator, ImageModerator
+from services.moderation import ContentModerator, ImageModerator, KeywordFilter
+
+# Test keyword filter (NEW)
+keyword_filter = KeywordFilter(strict_mode=True)
+result = keyword_filter.check("Test content here", context="Reddit post from r/chatgpt")
+print(result)
 
 # Test text moderation
 moderator = ContentModerator()

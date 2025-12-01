@@ -227,7 +227,7 @@ export function ExplorePage() {
       },
       {
         threshold: 0.1,
-        rootMargin: '400px' // Start loading before user reaches the bottom
+        rootMargin: '200px' // Reduced from 400px for smoother loading
       }
     );
 
@@ -250,7 +250,7 @@ export function ExplorePage() {
     <>
     <DashboardLayout>
       {() => (
-        <div className="h-full overflow-y-auto">
+        <div className="h-full overflow-y-auto scrollbar-thin" style={{ scrollBehavior: 'smooth' }}>
           <div className="px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
             <div className="mb-6">
@@ -293,21 +293,21 @@ export function ExplorePage() {
                   <LoadingSkeleton type="profile" count={9} />
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
                       {allProfiles.map((user) => (
                         <UserProfileCard key={user.id} user={user} />
                       ))}
                     </div>
 
-                    {/* Loading skeletons for next page */}
-                    {isFetchingNextProfiles && (
-                      <div className="mt-6">
-                        <LoadingSkeleton type="profile" count={3} />
-                      </div>
-                    )}
+                {/* Infinite scroll trigger */}
+                {hasNextProfiles && <div ref={observerTarget} className="h-4 mt-8" />}
 
-                    {/* Infinite scroll trigger */}
-                    {hasNextProfiles && <div ref={observerTarget} className="h-4 mt-8" />}
+                {/* Loading skeletons for next page - shown inline during fetch */}
+                {isFetchingNextProfiles && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 mt-4">
+                    <LoadingSkeleton type="profile" count={4} />
+                  </div>
+                )}
                   </>
                 )}
               </div>
@@ -352,7 +352,7 @@ export function ExplorePage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
+                  <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2" style={{ columnFill: 'balance' }}>
                     {/* Interleave quizzes and projects */}
                     {(() => {
                       const items: Array<{ type: 'quiz' | 'project'; data: any }> = [
@@ -385,15 +385,15 @@ export function ExplorePage() {
                   </div>
                 )}
 
-                {/* Loading skeletons for next page */}
+                {/* Infinite scroll trigger */}
+                {hasNextPage && <div ref={observerTarget} className="h-4 mt-8" />}
+
+                {/* Loading skeletons for next page - shown inline during fetch */}
                 {isFetchingNextPage && (
-                  <div className="mt-6">
+                  <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2 mt-2">
                     <LoadingSkeleton type="project" count={6} />
                   </div>
                 )}
-
-                {/* Infinite scroll trigger */}
-                {hasNextPage && <div ref={observerTarget} className="h-4 mt-8" />}
               </>
             )}
           </div>

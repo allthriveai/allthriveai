@@ -50,7 +50,10 @@ export default function ToolDirectoryPage() {
         if (debouncedSearch.trim()) {
           params.search = debouncedSearch.trim();
         }
-        const response = await getTools(params);
+
+        // Fetch all tools at once (no pagination limit) for directory view
+        // This ensures users see all companies, tools, and technologies by default
+        const response = await getTools({ ...params, page_size: 1000 });
         const toolsList = response.results;
         // Sort alphabetically
         toolsList.sort((a, b) => a.name.localeCompare(b.name));

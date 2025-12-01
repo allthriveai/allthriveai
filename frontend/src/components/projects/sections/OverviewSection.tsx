@@ -1,10 +1,10 @@
 /**
- * OverviewSection - Quick project summary with headline and metrics
+ * OverviewSection - Quick project summary with headline, metrics, and preview image
  *
  * Supports inline editing when isEditing=true for owners.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { marked } from 'marked';
 import { sanitizeHtml } from '@/utils/sanitize';
 import {
@@ -14,6 +14,8 @@ import {
   CodeBracketIcon,
   EyeIcon,
   ClockIcon,
+  PhotoIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { InlineEditableTitle, InlineEditableText } from '../shared/InlineEditable';
@@ -36,7 +38,8 @@ const metricIcons: Record<Metric['icon'], React.ComponentType<{ className?: stri
 };
 
 export function OverviewSection({ content, isEditing, onUpdate }: OverviewSectionProps) {
-  const { headline, description, metrics } = content;
+  const { headline, description, metrics, previewImage } = content;
+  const [imageError, setImageError] = useState(false);
 
   // Handle inline updates
   const handleHeadlineChange = useCallback(
@@ -57,8 +60,24 @@ export function OverviewSection({ content, isEditing, onUpdate }: OverviewSectio
     [content, onUpdate]
   );
 
+  const handleImageUrlChange = useCallback(
+    (url: string) => {
+      if (onUpdate) {
+        onUpdate({ ...content, previewImage: url || undefined });
+        setImageError(false);
+      }
+    },
+    [content, onUpdate]
+  );
+
+  const handleRemoveImage = useCallback(() => {
+    if (onUpdate) {
+      onUpdate({ ...content, previewImage: undefined });
+    }
+  }, [content, onUpdate]);
+
   // Allow empty content in edit mode so users can add content
-  if (!headline && !description && !isEditing) {
+  if (!headline && !description && !previewImage && !isEditing) {
     return null;
   }
 
@@ -130,6 +149,62 @@ export function OverviewSection({ content, isEditing, onUpdate }: OverviewSectio
           </div>
         )}
       </div>
+
+      {/* Preview Image */}
+      {(previewImage || isEditing) && (
+        <div className="mt-8">
+          {previewImage && !imageError ? (
+            <div className="relative group rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-lg">
+              <img
+                src={previewImage}
+                alt="Project preview"
+                className="w-full h-auto max-h-[500px] object-contain bg-gray-100 dark:bg-gray-800"
+                onError={() => setImageError(true)}
+              />
+              {/* Edit overlay */}
+              {isEditing && (
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                  <button
+                    onClick={handleRemoveImage}
+                    className="p-3 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
+                    title="Remove image"
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : isEditing ? (
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-8">
+              <div className="flex flex-col items-center justify-center text-center">
+                <PhotoIcon className="w-12 h-12 text-gray-400 mb-4" />
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Add a preview image from a URL
+                </p>
+                <input
+                  type="url"
+                  placeholder="Paste image URL..."
+                  className="w-full max-w-md px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const input = e.target as HTMLInputElement;
+                      handleImageUrlChange(input.value);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value) {
+                      handleImageUrlChange(e.target.value);
+                    }
+                  }}
+                />
+                <p className="text-xs text-gray-400 mt-2">
+                  Press Enter or click outside to add
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
     </section>
   );
 }
