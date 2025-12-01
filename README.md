@@ -77,37 +77,43 @@ The application will be available at:
 
 ## Make Commands
 
-For your convenience, we provide Make commands to manage the development environment:
+Run `make help` to see all available commands. Here are the most commonly used:
+
+### Quick Start
+- `make up` - Start all services
+- `make down` - Stop all services
+- `make logs` - View all logs
+- `make help` - Show all available commands
 
 ### Development
-- `make help` - Show all available commands
-- `make up` - Start all services (backend + frontend)
-- `make down` - Stop all services
-- `make build` - Build all services
-- `make restart` - Restart all services
-- `make frontend` - Run frontend dev server locally
+- `make restart-backend` - Restart backend after code changes
+- `make restart-frontend` - Restart frontend
+- `make shell-backend` - Open backend shell for debugging
+- `make django-shell` - Open Django Python shell
+- `make lint` - Run linting (backend + frontend)
+- `make format` - Auto-format code
+- `make test` - Run all tests
 
-### Service Management
-- `make restart-frontend` - Restart frontend only
-- `make restart-backend` - Restart backend only
-- `make logs` - View logs for all services
-- `make logs-frontend` - View frontend logs
-- `make logs-backend` - View backend logs
-- `make shell-frontend` - Open shell in frontend container
-- `make shell-backend` - Open shell in backend container
+### Database & Migrations
+- `make migrate` - Run migrations
+- `make makemigrations` - Create migrations
+- `make createsuperuser` - Create admin user
+- `make seed-all` - Seed all initial data
+- `make reset-db` - ⚠️ DANGER: Flush and reseed database
 
-### Testing
-- `make test` - Run all tests (backend + frontend)
-- `make test-backend` - Run all backend tests
-- `make test-frontend` - Run all frontend tests
+### Code Quality
+- `make lint` - Lint all code
+- `make format` - Format all code
+- `make type-check` - TypeScript type checking
+- `make security-check` - Run security checks
+- `make pre-commit` - Run pre-commit hooks
 
-### Database & Data Seeding
-- `make reset-db` - **DANGER**: Flush database, migrate, and seed all initial data
-- `make seed-all` - Seed all initial data (topics, taxonomies, tools, quizzes)
-- `make seed-quizzes` - Seed initial quiz data only
-- `make create-pip` - Create Pip bot user
+### Cleanup
+- `make clean` - Clean cache and build files
+- `make clean-cache` - Clean cache only
+- `make clean-all` - ⚠️ Remove everything
 
-See [Database Seeding Guide](docs/DATABASE_SEEDING_GUIDE.md) for detailed instructions.
+**See [Makefile Reference](docs/MAKEFILE_REFERENCE.md) for complete command list.**
 
 ## Documentation
 
@@ -116,6 +122,9 @@ See [Database Seeding Guide](docs/DATABASE_SEEDING_GUIDE.md) for detailed instru
 - [Database Seeding Guide](docs/DATABASE_SEEDING_GUIDE.md) - How to seed initial data
 - [Quiz Seeding](docs/QUIZ_SEEDING.md) - Quiz data seeding guide
 - [Public Info](docs/PUBLIC_INFO.md) - Comprehensive platform description
+- [Makefile Reference](docs/MAKEFILE_REFERENCE.md) - Complete make command reference
+- [Docker Volume Sync](docs/DOCKER_VOLUME_SYNC.md) - Troubleshooting Docker file syncing issues
+- [Docker Sync Quick Reference](docs/DOCKER_SYNC_QUICK_REFERENCE.md) - Quick commands for Docker sync
 
 ## Manual Setup (Alternative)
 

@@ -7,7 +7,7 @@ import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import ProfilePage from '@/pages/ProfilePage';
 import ProjectDetailPage from '@/pages/ProjectDetailPage';
-import ProjectEditorPage from '@/pages/ProjectEditorPage';
+import SectionEditorPage from '@/pages/SectionEditorPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
 import PasswordSettingsPage from '@/pages/settings/PasswordSettingsPage';
 import IntegrationsSettingsPage from '@/pages/settings/IntegrationsSettingsPage';
@@ -188,7 +188,7 @@ export function AppRoutes() {
         path="/:username/:projectSlug/edit"
         element={
           <ProtectedRoute>
-            <ProjectEditorPage />
+            <SectionEditorPage />
           </ProtectedRoute>
         }
       />

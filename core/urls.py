@@ -37,6 +37,7 @@ from .projects.comment_views import ProjectCommentViewSet
 from .projects.topic_suggestions import get_topic_suggestions
 from .projects.views import (
     ProjectViewSet,
+    delete_project_by_id,
     explore_projects,
     get_project_by_slug,
     public_user_projects,
@@ -107,6 +108,7 @@ urlpatterns = [
     # Explore endpoints (public)
     path('projects/explore/', explore_projects, name='explore_projects'),
     path('projects/topic-suggestions/', get_topic_suggestions, name='topic_suggestions'),
+    path('projects/<int:project_id>/delete/', delete_project_by_id, name='delete_project_by_id'),
     path('search/semantic/', semantic_search, name='semantic_search'),
     path('users/explore/', explore_users, name='explore_users'),
     # Public user endpoints

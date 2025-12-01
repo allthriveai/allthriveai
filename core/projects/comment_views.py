@@ -236,17 +236,22 @@ class ProjectCommentViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def delete_comment(request, project_pk, comment_id):
     """
-    Delete a comment (only owner or staff can delete).
+    Delete a comment (only owner or admin can delete).
     """
+    from core.users.models import UserRole
+    
     start_time = time.time()
     comment = get_object_or_404(ProjectComment, id=comment_id, project_id=project_pk)
 
-    # Check permissions
-    if comment.user != request.user and not request.user.is_staff:
+    # Check permissions: owner or admin can delete
+    is_owner = comment.user == request.user
+    is_admin = request.user.role == UserRole.ADMIN
+    
+    if not is_owner and not is_admin:
         StructuredLogger.log_validation_error(
             message='Unauthorized comment deletion attempt',
             user=request.user,
-            errors={'comment_id': comment_id, 'reason': 'Not owner or staff'},
+            errors={'comment_id': comment_id, 'reason': 'Not owner or admin'},
             logger_instance=logger,
         )
         return Response(

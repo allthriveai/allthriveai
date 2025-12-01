@@ -5,9 +5,10 @@ Content moderation service using OpenAI's Moderation API and custom AI logic.
 import logging
 from typing import Any
 
-from django.conf import settings
-from openai import APIConnectionError, APIError, APITimeoutError, OpenAI, RateLimitError
+from openai import APIConnectionError, APIError, APITimeoutError, RateLimitError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+from services.ai_provider import AIProvider
 
 logger = logging.getLogger(__name__)
 
@@ -16,14 +17,15 @@ class ContentModerator:
     """
     Content moderation service that checks user-generated content
     for safety, toxicity, and appropriateness.
+    
+    Uses the centralized AIProvider for client management.
     """
 
     def __init__(self):
-        self.client = OpenAI(
-            api_key=settings.OPENAI_API_KEY,
-            timeout=10.0,  # 10 second timeout
-            max_retries=0,  # We handle retries ourselves
-        )
+        # Get OpenAI-compatible client from AIProvider
+        # Uses DEFAULT_AI_PROVIDER from settings (supports Azure OpenAI or OpenAI)
+        ai_provider = AIProvider()  # Uses default provider from settings
+        self.client = ai_provider.client
 
     @retry(
         stop=stop_after_attempt(3),

@@ -1,6 +1,6 @@
 """Service for syncing Reddit threads via RSS feeds."""
 
-import html
+import html as html_module
 import logging
 import re
 from datetime import datetime
@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from core.integrations.reddit_models import RedditCommunityBot, RedditThread
 from core.projects.models import Project
+from services.moderation import ContentModerator, ImageModerator
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ def clean_html(text: str) -> str:
     if not text:
         return ''
     # Decode HTML entities first
-    text = html.unescape(text)
+    text = html_module.unescape(text)
     # Remove HTML tags
     text = re.sub(r'<[^>]+>', '', text)
     # Clean up extra whitespace
@@ -151,6 +152,54 @@ class RedditSyncService:
     USER_AGENT = 'Mozilla/5.0 (compatible; AllThrive/1.0; +https://allthrive.ai)'
 
     @classmethod
+    def _moderate_content(
+        cls, title: str, selftext: str, image_url: str, subreddit: str
+    ) -> tuple[bool, str, dict]:
+        """Moderate Reddit post content (text and image).
+
+        Args:
+            title: Post title
+            selftext: Post body text
+            image_url: URL of post image/thumbnail
+            subreddit: Subreddit name for context
+
+        Returns:
+            Tuple of (approved, reason, moderation_data)
+        """
+        moderation_results = {'text': None, 'image': None}
+        context = f'Reddit post from r/{subreddit}'
+
+        # 1. Moderate text content (title + selftext)
+        text_moderator = ContentModerator()
+        combined_text = f'{title}\n\n{selftext}' if selftext else title
+
+        text_result = text_moderator.moderate(combined_text, context=context)
+        moderation_results['text'] = text_result
+
+        if not text_result['approved']:
+            logger.info(
+                f'Reddit post text rejected by moderation: '
+                f'subreddit=r/{subreddit}, reason={text_result["reason"]}'
+            )
+            return False, text_result['reason'], moderation_results
+
+        # 2. Moderate image if present
+        if image_url and image_url not in ['self', 'default', 'nsfw', 'spoiler']:
+            image_moderator = ImageModerator()
+            image_result = image_moderator.moderate_image(image_url, context=context)
+            moderation_results['image'] = image_result
+
+            if not image_result['approved']:
+                logger.info(
+                    f'Reddit post image rejected by moderation: '
+                    f'subreddit=r/{subreddit}, reason={image_result["reason"]}, url={image_url}'
+                )
+                return False, image_result['reason'], moderation_results
+
+        # All checks passed
+        return True, 'Content approved', moderation_results
+
+    @classmethod
     def fetch_post_metrics(cls, permalink: str) -> dict:
         """Fetch score, comment count, and full-size image from Reddit's JSON API.
 
@@ -226,13 +275,18 @@ class RedditSyncService:
                             if img_url:
                                 gallery_images.append(img_url.replace('&amp;', '&'))
 
+            # Decode HTML entities in selftext_html
+            selftext_html = post_data.get('selftext_html', '')
+            if selftext_html:
+                selftext_html = html_module.unescape(selftext_html)
+
             return {
                 'score': post_data.get('score', 0),
                 'num_comments': post_data.get('num_comments', 0),
                 'upvote_ratio': post_data.get('upvote_ratio', 0),
                 'image_url': image_url,
                 'selftext': post_data.get('selftext', ''),
-                'selftext_html': post_data.get('selftext_html', ''),
+                'selftext_html': selftext_html,
                 'post_hint': post_data.get('post_hint', ''),
                 'link_flair_text': post_data.get('link_flair_text', ''),
                 'link_flair_background_color': post_data.get('link_flair_background_color', ''),
@@ -379,13 +433,155 @@ class RedditSyncService:
             return True, False
 
     @classmethod
+    def _auto_tag_project(cls, project: Project, metrics: dict, subreddit: str, bot: RedditCommunityBot):
+        """Automatically tag a Reddit project with tools, categories, and topics."""
+        from core.taxonomy.models import Taxonomy
+        from core.tools.models import Tool
+
+        # Extract topics from link flair and subreddit
+        topics = []
+
+        # Add subreddit as a topic
+        if subreddit:
+            topics.append(subreddit.lower())
+
+        # Get default tools from bot settings
+        default_tool_slugs = bot.settings.get('default_tools', [])
+        detected_tools = []
+
+        # Add default tools from bot settings first
+        for tool_slug in default_tool_slugs:
+            try:
+                tool = Tool.objects.filter(slug=tool_slug).first()
+                if tool and tool not in detected_tools:
+                    detected_tools.append(tool)
+                    # Also add tool name as topic
+                    topics.append(tool.name.lower())
+            except Exception as e:
+                logger.debug(f'Error adding default tool {tool_slug}: {e}')
+
+        # Add link flair as topic if available
+        link_flair = metrics.get('link_flair_text', '')
+        if link_flair and link_flair.lower() not in ['discussion', 'question', 'showcase']:
+            topics.append(link_flair.lower())
+
+        # Try to identify additional tools mentioned in title/selftext (if not already added)
+        text_to_analyze = (project.title + ' ' + metrics.get('selftext', '')).lower()
+
+        # Common AI tools to look for
+        tool_keywords = {
+            'claude': 'claude',
+            'chatgpt': 'chatgpt',
+            'gpt-4': 'gpt-4',
+            'copilot': 'github-copilot',
+            'midjourney': 'midjourney',
+            'stable diffusion': 'stable-diffusion',
+            'dall-e': 'dall-e',
+            'langchain': 'langchain',
+            'openai': 'openai',
+            'anthropic': 'claude',
+        }
+
+        for keyword, tool_slug in tool_keywords.items():
+            if keyword in text_to_analyze:
+                try:
+                    tool = Tool.objects.filter(slug=tool_slug).first()
+                    if tool and tool not in detected_tools:
+                        detected_tools.append(tool)
+                        if keyword not in topics:
+                            topics.append(keyword)
+                except Exception as e:
+                    logger.debug(f'Error detecting tool {tool_slug}: {e}')
+
+        # Assign tools to project
+        if detected_tools:
+            project.tools.set(detected_tools)
+
+        # Add default categories from bot settings first
+        default_category_slugs = bot.settings.get('default_categories', [])
+        for cat_slug in default_category_slugs:
+            try:
+                category = Taxonomy.objects.filter(slug=cat_slug, taxonomy_type='category').first()
+                if category:
+                    project.categories.add(category)
+            except Exception as e:
+                logger.debug(f'Error adding default category {cat_slug}: {e}')
+
+        # Try to assign category based on flair or content
+        category_mapping = {
+            'showcase': 'showcase',  # Try 'showcase' category first
+            'question': 'ai-learning',
+            'tutorial': 'ai-learning',
+            'discussion': 'ai-discussion',
+            'help': 'ai-learning',
+            'news': 'ai-news',
+            'project': 'showcase',
+        }
+
+        category_slug = None
+        if link_flair:
+            category_slug = category_mapping.get(link_flair.lower())
+
+        if category_slug:
+            try:
+                category = Taxonomy.objects.filter(slug=category_slug, taxonomy_type='category').first()
+                if category:
+                    project.categories.add(category)
+            except Exception as e:
+                logger.debug(f'Error assigning category {category_slug}: {e}')
+
+        # Clean and assign topics (limit to 10)
+        topics = list(set(topics))[:10]  # Remove duplicates and limit
+        project.topics = topics
+        project.save()
+
+    @classmethod
     def _create_thread(cls, bot: RedditCommunityBot, post_data: dict):
         """Create a new Project and RedditThread."""
         # Fetch current metrics (score, comments, full-size image) from Reddit
         metrics = cls.fetch_post_metrics(post_data['permalink'])
 
-        # Use full-size image if available, fallback to RSS thumbnail
-        image_url = metrics.get('image_url') or post_data['thumbnail_url']
+        # Check if post meets minimum score threshold from bot settings
+        min_score = bot.settings.get('min_score', 0)
+        if metrics['score'] < min_score:
+            logger.info(
+                f'Skipping post {post_data["reddit_post_id"]} - score {metrics["score"]} below minimum {min_score}'
+            )
+            return  # Skip this post
+
+        # Skip NSFW content marked by Reddit
+        if metrics.get('over_18', False):
+            logger.info(
+                f'Skipping post {post_data["reddit_post_id"]} - marked as NSFW (over_18) by Reddit'
+            )
+            return  # Skip NSFW posts
+
+        # Moderate content (text + image) before creating
+        image_url = post_data['thumbnail_url']
+        if metrics.get('is_gallery') and metrics.get('gallery_images'):
+            image_url = metrics['gallery_images'][0]
+        elif metrics.get('image_url'):
+            image_url = metrics['image_url']
+
+        approved, reason, moderation_data = cls._moderate_content(
+            title=post_data['title'],
+            selftext=metrics.get('selftext', ''),
+            image_url=image_url,
+            subreddit=post_data.get('subreddit', ''),
+        )
+
+        if not approved:
+            logger.warning(
+                f'Skipping post {post_data["reddit_post_id"]} - failed moderation: {reason}'
+            )
+            return  # Skip posts that fail moderation
+
+        # Prioritize gallery images, then full-size image, then RSS thumbnail
+        image_url = post_data['thumbnail_url']
+        if metrics.get('is_gallery') and metrics.get('gallery_images'):
+            image_url = metrics['gallery_images'][0]  # Use first gallery image
+        elif metrics.get('image_url'):
+            image_url = metrics['image_url']
 
         # Create project
         project = Project.objects.create(
@@ -400,6 +596,9 @@ class RedditSyncService:
             is_private=False,
         )
 
+        # Auto-tag the project
+        cls._auto_tag_project(project, metrics, post_data.get('subreddit', ''), bot)
+
         # Prepare metadata with all Reddit data
         metadata = {
             **post_data,
@@ -409,7 +608,7 @@ class RedditSyncService:
         if metadata.get('published_utc'):
             metadata['published_utc'] = metadata['published_utc'].isoformat()
 
-        # Create Reddit thread metadata with fetched metrics
+        # Create Reddit thread metadata with fetched metrics and moderation data
         RedditThread.objects.create(
             project=project,
             bot=bot,
@@ -422,6 +621,10 @@ class RedditSyncService:
             thumbnail_url=image_url,
             created_utc=post_data['published_utc'] or timezone.now(),
             reddit_metadata=metadata,
+            moderation_status=RedditThread.ModerationStatus.APPROVED,
+            moderation_reason=reason,
+            moderation_data=moderation_data,
+            moderated_at=timezone.now(),
         )
 
         logger.info(
@@ -435,13 +638,21 @@ class RedditSyncService:
         # Fetch current metrics (score, comments, full-size image) from Reddit
         metrics = cls.fetch_post_metrics(post_data['permalink'])
 
-        # Use full-size image if available, fallback to RSS thumbnail
-        image_url = metrics.get('image_url') or post_data['thumbnail_url']
+        # Prioritize gallery images, then full-size image, then RSS thumbnail
+        image_url = post_data['thumbnail_url']
+        if metrics.get('is_gallery') and metrics.get('gallery_images'):
+            image_url = metrics['gallery_images'][0]  # Use first gallery image
+        elif metrics.get('image_url'):
+            image_url = metrics['image_url']
 
         # Update project fields that might change
         project = thread.project
         project.featured_image_url = image_url
         project.save(update_fields=['featured_image_url'])
+
+        # Update tags if project doesn't have any yet
+        if not project.tools.exists() and not project.topics:
+            cls._auto_tag_project(project, metrics, post_data.get('subreddit', ''), thread.bot)
 
         # Prepare metadata with all Reddit data
         metadata = {

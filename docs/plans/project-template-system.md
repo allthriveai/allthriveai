@@ -19,9 +19,51 @@ Instead of free-form blocks, use a **structured section template** where:
 
 ---
 
-## Proposed Section Types
+## Implementation Status
 
-### 1. Hero Section (Already Exists)
+### ✅ Phase 1: New Schema + Renderers (COMPLETE)
+- [x] TypeScript interfaces for all section types - `src/types/sections.ts`
+- [x] `OverviewSection.tsx` - Summary with metrics
+- [x] `FeaturesSection.tsx` - Feature cards grid
+- [x] `TechStackSection.tsx` - Technology badges by category
+- [x] `GallerySection.tsx` - Image carousel/grid
+- [x] `ArchitectureSection.tsx` - Mermaid diagram
+- [x] `DemoSection.tsx` - Video embed + CTAs
+- [x] `ChallengesSection.tsx` - Problem/solution cards
+- [x] `LinksSection.tsx` - Resource links
+- [x] `CustomSection.tsx` - Free-form blocks
+- [x] `SectionRenderer.tsx` - Routes section type to component
+- [x] `ProjectSections.tsx` - Container that renders enabled sections
+- [x] Type guards for section content
+- [x] Default section order and metadata
+
+### ✅ Phase 2: Editor Components (COMPLETE)
+- [x] `SectionEditor.tsx` - Edit individual section content
+- [x] `SectionsEditorCanvas.tsx` - Full section management
+- [x] `SectionTypePicker.tsx` - Add new sections
+
+### 🔄 Phase 3: Integration with Inline Editing (IN PROGRESS)
+- [x] Sections render on project view page via `ProjectSections`
+- [x] `DefaultProjectLayout` supports both blocks and sections
+- [ ] Add inline section editing (reuse `useInlineEditable` pattern)
+- [ ] Section toggle/reorder on view page for owners
+
+### ⏳ Phase 4: AI Generation (PENDING)
+- [ ] Create `analyze_for_template()` function in backend
+- [ ] Section-specific prompts for AI generation
+- [ ] Update `import_github_project` to generate sections
+- [ ] Map AI output to section content structure
+
+### ⏳ Phase 5: Migration (PENDING)
+- [ ] Migration command for existing projects
+- [ ] Regenerate sections for GitHub projects
+- [ ] Deprecate raw `blocks` for new projects
+
+---
+
+## Section Types (All Implemented)
+
+### 1. Hero Section (Separate from template)
 **Purpose:** First impression - project identity and hook
 - Title + tagline
 - Author badge
@@ -29,184 +71,193 @@ Instead of free-form blocks, use a **structured section template** where:
 - CTA buttons (GitHub, Demo, etc.)
 - Tools used badges
 
-### 2. Overview Section (NEW)
+### 2. Overview Section ✅
 **Purpose:** Quick "what is this?" - scannable summary
 ```typescript
-interface OverviewSection {
+interface OverviewSectionContent {
   headline: string;      // One-liner hook (bold, large text)
   description: string;   // 2-3 sentences max (markdown)
   metrics?: Metric[];    // Optional: Stars, downloads, etc.
 }
-interface Metric {
-  icon: string;   // "star" | "download" | "user" | "code"
-  label: string;  // "GitHub Stars"
-  value: string;  // "1.2k"
-}
 ```
-**Visual:** Clean card with optional metric pills
 
-### 3. Features Section (NEW)
+### 3. Features Section ✅
 **Purpose:** What makes this project special - visual highlight grid
 ```typescript
-interface FeaturesSection {
-  features: Feature[];
-}
-interface Feature {
-  icon: string;         // emoji or icon name
-  title: string;        // "Blazing Fast"
-  description: string;  // 1-2 sentences
+interface FeaturesSectionContent {
+  features: Feature[];   // Icon + title + description cards
 }
 ```
-**Visual:** 2-3 column grid of icon cards
 
-### 4. Tech Stack Section (NEW)
+### 4. Tech Stack Section ✅
 **Purpose:** Technologies used - credibility and searchability
 ```typescript
-interface TechStackSection {
-  categories: TechCategory[];
-}
-interface TechCategory {
-  name: string;           // "Frontend" | "Backend" | "Infrastructure"
-  technologies: Tech[];
-}
-interface Tech {
-  name: string;    // "React"
-  icon?: string;   // URL or icon name (SimpleIcons)
-  version?: string;
+interface TechStackSectionContent {
+  categories: TechCategory[];  // Grouped by Frontend/Backend/etc.
 }
 ```
-**Visual:** Horizontal badges grouped by category, with logos
 
-### 5. Gallery Section (NEW)
+### 5. Gallery Section ✅
 **Purpose:** Visual proof - screenshots and demos
 ```typescript
-interface GallerySection {
+interface GallerySectionContent {
   images: GalleryImage[];
   layout: 'carousel' | 'grid' | 'masonry';
 }
-interface GalleryImage {
-  url: string;
-  caption?: string;
-  thumbnail?: string;
-}
 ```
-**Visual:** Interactive carousel or responsive grid
 
-### 6. Architecture Section (Enhanced)
+### 6. Architecture Section ✅
 **Purpose:** Technical depth - how it works
 ```typescript
-interface ArchitectureSection {
+interface ArchitectureSectionContent {
   diagram: string;         // Mermaid code
   description?: string;    // Brief explanation
-  title?: string;          // "System Architecture"
+  title?: string;          // Custom title
 }
 ```
-**Visual:** Centered diagram with caption, dark/light mode support
 
-### 7. Demo Section (NEW)
+### 7. Demo Section ✅
 **Purpose:** Try it out - reduce friction to engagement
 ```typescript
-interface DemoSection {
+interface DemoSectionContent {
   video?: VideoEmbed;      // YouTube, Vimeo, Loom, or uploaded
   liveUrl?: string;        // Link to live demo
   ctas: DemoCTA[];
 }
-interface DemoCTA {
-  label: string;   // "Try Demo"
-  url: string;
-  style: 'primary' | 'secondary';
-}
 ```
-**Visual:** Embedded video or prominent CTA buttons
 
-### 8. Challenges & Learnings Section (NEW)
+### 8. Challenges Section ✅
 **Purpose:** Storytelling - demonstrates growth and problem-solving
 ```typescript
-interface ChallengesSection {
-  items: Challenge[];
-}
-interface Challenge {
-  challenge: string;   // "Handling 10k concurrent users"
-  solution: string;    // "Implemented Redis caching..."
-  outcome?: string;    // "Reduced response time by 80%"
+interface ChallengesSectionContent {
+  items: Challenge[];      // challenge + solution + outcome
 }
 ```
-**Visual:** Before/after cards or accordion
 
-### 9. Links Section (NEW)
+### 9. Links Section ✅
 **Purpose:** Resources and references
 ```typescript
-interface LinksSection {
-  links: ResourceLink[];
-}
-interface ResourceLink {
-  label: string;       // "Documentation"
-  url: string;
-  icon?: string;       // "book" | "video" | "github"
-  description?: string;
+interface LinksSectionContent {
+  links: ResourceLink[];   // label + url + icon
 }
 ```
-**Visual:** Compact link list with icons
 
-### 10. Custom Section (Flexibility)
+### 10. Custom Section ✅
 **Purpose:** Free-form blocks for anything else
 ```typescript
-interface CustomSection {
+interface CustomSectionContent {
   title?: string;
   blocks: ProjectBlock[];  // Existing block types
 }
 ```
-**Visual:** Current block rendering
 
 ---
 
-## Data Structure
+## File Structure (Current)
 
-### New Project Content Schema
-```typescript
-interface ProjectContent {
-  // Template version for migrations
-  templateVersion: 2;
-
-  // Section configuration
-  sections: ProjectSection[];
-
-  // Legacy support
-  blocks?: ProjectBlock[];  // For backwards compatibility
-
-  // Hero settings (already exist)
-  heroDisplayMode: 'image' | 'video' | 'slideshow' | 'quote' | 'slideup';
-  heroQuote?: string;
-  heroVideoUrl?: string;
-  heroSlideshowImages?: string[];
-
-  // Raw data (for regeneration)
-  github?: GitHubRepoData;
-}
-
-interface ProjectSection {
-  id: string;
-  type: SectionType;
-  enabled: boolean;
-  order: number;
-  content: SectionContent;  // Type-specific content
-}
-
-type SectionType =
-  | 'overview'
-  | 'features'
-  | 'tech_stack'
-  | 'gallery'
-  | 'architecture'
-  | 'demo'
-  | 'challenges'
-  | 'links'
-  | 'custom';
+```
+frontend/src/
+├── types/
+│   └── sections.ts              # ✅ All section types defined
+│
+├── components/projects/
+│   ├── sections/
+│   │   ├── SectionRenderer.tsx  # ✅ Routes to correct section
+│   │   ├── OverviewSection.tsx  # ✅
+│   │   ├── FeaturesSection.tsx  # ✅
+│   │   ├── TechStackSection.tsx # ✅
+│   │   ├── GallerySection.tsx   # ✅
+│   │   ├── ArchitectureSection.tsx # ✅
+│   │   ├── DemoSection.tsx      # ✅
+│   │   ├── ChallengesSection.tsx # ✅
+│   │   ├── LinksSection.tsx     # ✅
+│   │   └── CustomSection.tsx    # ✅
+│   │
+│   ├── editor/
+│   │   ├── SectionEditor.tsx        # ✅ Edit single section
+│   │   ├── SectionsEditorCanvas.tsx # ✅ Full sections editor
+│   │   └── SectionTypePicker.tsx    # ✅ Add new section
+│   │
+│   └── layouts/
+│       └── DefaultProjectLayout.tsx  # ✅ Uses ProjectSections
 ```
 
 ---
 
-## AI Generation Changes
+## Integration with Reusable Components
+
+The template system should leverage the shared component library:
+
+### Inline Editing for Sections
+Sections should support inline editing using the same patterns:
+
+```typescript
+// Example: Inline editable overview section
+import { InlineEditableText } from '../shared/InlineEditable';
+
+function OverviewSection({ content, isOwner, onUpdate }) {
+  return (
+    <div>
+      <InlineEditableText
+        value={content.headline}
+        isEditable={isOwner}
+        onChange={(v) => onUpdate({ ...content, headline: v })}
+        className="text-3xl font-bold"
+      />
+      <InlineEditableText
+        value={content.description}
+        isEditable={isOwner}
+        onChange={(v) => onUpdate({ ...content, description: v })}
+        multiline
+        rows={3}
+      />
+    </div>
+  );
+}
+```
+
+### Section Reordering
+Use drag-and-drop similar to `EditableBlocksContainer`:
+
+```typescript
+// Sections can be reordered with @dnd-kit
+import { DndContext, SortableContext } from '@dnd-kit/sortable';
+```
+
+---
+
+## Data Flow
+
+### View Mode (Current)
+```
+Project API Response
+    → project.content.sections (templateVersion: 2)
+    → ProjectSections component
+    → SectionRenderer for each enabled section
+    → Individual section components render content
+```
+
+### Edit Mode (Current)
+```
+ProjectEditor page
+    → SectionsEditorCanvas
+    → SectionEditor for each section
+    → Form-based editing
+    → Save to API
+```
+
+### Inline Edit Mode (Future)
+```
+Project View Page (owner)
+    → ProjectSections with isOwner=true
+    → Each section has inline editing
+    → useInlineEditable for text fields
+    → Save to API on blur/enter
+```
+
+---
+
+## AI Generation Changes (Pending)
 
 ### Current Flow (Problems)
 1. Parse README into markdown blocks
@@ -220,11 +271,10 @@ type SectionType =
 3. Each section type has its own AI prompt and output schema
 4. Result: Consistent, visually appealing sections
 
-### New AI Prompt Structure
+### Backend Implementation Needed
 ```python
 def analyze_for_template(repo_data: dict, readme: str) -> dict:
     """Generate section-specific content for template."""
-
     return {
         "overview": {
             "headline": "AI-generated one-liner...",
@@ -245,7 +295,6 @@ def analyze_for_template(repo_data: dict, readme: str) -> dict:
             "diagram": "graph TB...",
             "description": "..."
         },
-        "challenges": [...],
         # Only populated if README has relevant content
         "demo": {...} if has_demo else None,
         "gallery": [...] if has_screenshots else None,
@@ -254,206 +303,53 @@ def analyze_for_template(repo_data: dict, readme: str) -> dict:
 
 ---
 
-## Frontend Implementation
+## Next Steps
 
-### Section Renderers
-Create dedicated components for each section type:
+### Immediate
+1. [ ] Verify sections render correctly on project view page
+2. [ ] Test section editor in ProjectEditor
 
-```
-frontend/src/components/projects/sections/
-├── OverviewSection.tsx
-├── FeaturesSection.tsx
-├── TechStackSection.tsx
-├── GallerySection.tsx
-├── ArchitectureSection.tsx
-├── DemoSection.tsx
-├── ChallengesSection.tsx
-├── LinksSection.tsx
-├── CustomSection.tsx
-└── SectionRenderer.tsx  # Routes to correct component
-```
+### Short-term
+3. [ ] Add inline editing to section components (reuse `InlineEditableText`)
+4. [ ] Add section toggle/reorder for owners on view page
+5. [ ] Connect sections to the shared component library pattern
 
-### Section Rendering
-```tsx
-function ProjectSections({ sections }: { sections: ProjectSection[] }) {
-  return (
-    <div className="space-y-16">
-      {sections
-        .filter(s => s.enabled)
-        .sort((a, b) => a.order - b.order)
-        .map(section => (
-          <SectionRenderer key={section.id} section={section} />
-        ))}
-    </div>
-  );
-}
-```
+### Medium-term
+6. [ ] Implement AI generation for sections (backend)
+7. [ ] Update GitHub import to generate sections
+8. [ ] Migration for existing projects
 
-### Editing Experience
-- Toggle sections on/off
-- Drag to reorder
-- Edit section content in forms (not raw blocks)
-- "Add custom section" for free-form
-
----
-
-## Migration Strategy
-
-### Phase 1: New Schema + Renderers
-1. Define TypeScript interfaces for all section types
-2. Create section renderer components
-3. Update `ProjectDetailPage` to use new renderers
-4. Keep backwards compatibility with `blocks` array
-
-### Phase 2: AI Generation
-1. Create new `analyze_for_template()` function
-2. Add template-specific prompts for each section
-3. Update `import_github_project` to use new generator
-4. Map AI output to section content
-
-### Phase 3: Editor Updates
-1. Add section toggle/reorder UI
-2. Create section-specific edit forms
-3. Update `ProjectEditor` to handle sections
-4. Allow adding custom sections
-
-### Phase 4: Migration + Cleanup
-1. Add migration command for existing projects
-2. Regenerate sections for GitHub projects
-3. Deprecate raw `blocks` for new projects
-4. Update documentation
-
----
-
-## Visual Design Guidelines
-
-### Consistent Section Styling
-```css
-/* Each section has consistent spacing and borders */
-.project-section {
-  padding: 3rem 0;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.project-section:last-child {
-  border-bottom: none;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.section-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.section-divider {
-  flex: 1;
-  height: 1px;
-  background: var(--border-color);
-}
-```
-
-### Feature Cards
-- Subtle shadow on hover
-- Icon with brand color background
-- Title bold, description muted
-- Even spacing, consistent heights
-
-### Tech Stack Badges
-- Horizontal scrolling on mobile
-- Category labels as subtle headings
-- Technology logos from SimpleIcons
-- Hover to show version/details
-
-### Gallery
-- Lightbox on click
-- Keyboard navigation
-- Touch gestures on mobile
-- Lazy loading
+### Long-term
+9. [ ] Section analytics (which sections get engagement)
+10. [ ] Section templates/presets
+11. [ ] Per-section regeneration with AI
 
 ---
 
 ## Success Metrics
 
-1. **Visual Consistency**: All projects have same section structure
-2. **Engagement**: Time on page, scroll depth
-3. **Editing**: Users can easily toggle/edit sections
-4. **Load Time**: No regression from new renderers
-5. **AI Quality**: Sections are accurately populated
+1. ✅ **Schema defined**: All section types have TypeScript interfaces
+2. ✅ **Renderers implemented**: All section components exist
+3. ✅ **Editor exists**: SectionEditor and canvas work
+4. ⏳ **Visual Consistency**: All projects have same section structure
+5. ⏳ **AI Quality**: Sections are accurately populated
+6. ⏳ **Engagement**: Time on page, scroll depth improvements
 
 ---
 
-## Example: Redis Wellness Project
+## Open Questions (Resolved)
 
-### Current (Free-form blocks)
-```
-[badgeRow] Python | TypeScript | Redis | FastAPI
-[text] Comparing stateless and stateful...
-[text] **Unlock the power of agentic AI**...
-[columns] Feature list...
-[text] More text...
-[mermaid] graph TB...
-```
-
-### New (Structured sections)
-```yaml
-sections:
-  - type: overview
-    headline: "AI-powered wellness insights from your health data"
-    description: "Compare stateless vs stateful RAG approaches..."
-    metrics:
-      - {icon: "star", label: "Stars", value: "42"}
-      - {icon: "code", label: "Language", value: "Python"}
-
-  - type: features
-    features:
-      - {icon: "🔒", title: "100% Private", description: "Runs locally..."}
-      - {icon: "🧠", title: "Agentic RAG", description: "Compare approaches..."}
-      - {icon: "❤️", title: "Apple Health", description: "Import your data..."}
-
-  - type: tech_stack
-    categories:
-      - name: "Backend"
-        technologies: ["Python", "FastAPI", "Redis", "LangChain"]
-      - name: "AI"
-        technologies: ["Ollama", "RedisVL"]
-      - name: "Infrastructure"
-        technologies: ["Docker", "Docker Compose"]
-
-  - type: architecture
-    diagram: "graph TB..."
-    description: "Data flows from Apple Health..."
-
-  - type: gallery
-    images:
-      - {url: "screenshot1.png", caption: "Dashboard view"}
-      - {url: "screenshot2.png", caption: "RAG comparison"}
-```
+1. **Default Section Order**: Defined in `DEFAULT_SECTION_ORDER` constant
+2. **Required Sections**: None mandatory, all have `defaultEnabled` flag
+3. **Custom Section Limit**: No hard limit currently
+4. **Template Presets**: Future feature - different defaults per project type
+5. **Regeneration**: Future feature - per-section AI regeneration
 
 ---
 
-## Open Questions
+## Relationship to Other Plans
 
-1. **Default Section Order**: What's the optimal default order?
-2. **Required Sections**: Should any sections be mandatory?
-3. **Custom Section Limit**: How many custom sections allowed?
-4. **Template Presets**: Different templates for GitHub vs other types?
-5. **Regeneration**: Can users regenerate AI content for individual sections?
-
----
-
-## Next Steps
-
-1. [ ] Review and approve this plan
-2. [ ] Define TypeScript interfaces for all section types
-3. [ ] Create mock designs for each section renderer
-4. [ ] Implement section renderers (read-only first)
-5. [ ] Update AI analyzer for template generation
-6. [ ] Add section editing UI
-7. [ ] Test with real projects
-8. [ ] Migrate existing projects
+This plan works together with:
+- **project-detail-refactor.md**: Provides the layout architecture that sections plug into
+- **Reusable component library**: Sections should use `InlineEditable`, `EditableBlocksContainer` patterns
+- **Direct imports**: Section components import shared components directly (no barrel files)

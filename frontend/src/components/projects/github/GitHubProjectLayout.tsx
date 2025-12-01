@@ -1,7 +1,31 @@
+/**
+ * GitHubProjectLayout - Display layout for GitHub repository projects
+ *
+ * Features:
+ * - Hero section with title, description, and stats
+ * - Quick Start commands
+ * - Tech Stack grid
+ * - Architecture diagram
+ * - Key Features cards
+ * - Project structure tree
+ *
+ * Inline Editing (for owners):
+ * - Title and description are editable inline
+ * - Changes auto-save via ProjectContext
+ */
+
+import { useCallback } from 'react';
 import type { Project } from '@/types/models';
+import { useProjectContext } from '@/contexts/ProjectContext';
+import { updateProject } from '@/services/projects';
 import { TechStackGrid } from './TechStackGrid';
 import { DirectoryTree } from './DirectoryTree';
-import { MermaidDiagram } from '../shared';
+import { MermaidDiagram } from '../shared/MermaidDiagram';
+import {
+  InlineEditableTitle,
+  InlineEditableText,
+  EditModeIndicator,
+} from '../shared/InlineEditable';
 import {
   CodeBracketIcon,
   CubeIcon,
@@ -16,8 +40,29 @@ interface GitHubProjectLayoutProps {
 }
 
 export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
+  const { isOwner, setProject } = useProjectContext();
   const analysis = project.content?.github?.analysis;
   const githubData = project.content?.github;
+
+  // Handle title change
+  const handleTitleChange = useCallback(async (newTitle: string) => {
+    try {
+      const updated = await updateProject(project.id, { title: newTitle });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update title:', error);
+    }
+  }, [project.id, setProject]);
+
+  // Handle description change
+  const handleDescriptionChange = useCallback(async (newDescription: string) => {
+    try {
+      const updated = await updateProject(project.id, { description: newDescription });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update description:', error);
+    }
+  }, [project.id, setProject]);
 
   if (!analysis) {
     return null;
@@ -28,21 +73,37 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Edit Mode Indicator for Owners */}
+      <EditModeIndicator isOwner={isOwner} />
+
       {/* Hero Section */}
       <div className="mb-12">
         <div className="flex items-start justify-between mb-4">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">{project.title}</h1>
+          <InlineEditableTitle
+            value={project.title}
+            isEditable={isOwner}
+            onChange={handleTitleChange}
+            placeholder="Enter project title..."
+            className="text-4xl font-bold text-gray-900 dark:text-white"
+            as="h1"
+          />
           {githubData?.stars !== undefined && githubData.stars > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg flex-shrink-0 ml-4">
               <StarIcon className="w-5 h-5 text-yellow-500" />
               <span className="font-semibold text-gray-900 dark:text-white">{githubData.stars.toLocaleString()}</span>
             </div>
           )}
         </div>
 
-        {project.description && (
-          <p className="text-xl text-gray-600 dark:text-gray-400 mb-6">{project.description}</p>
-        )}
+        <InlineEditableText
+          value={project.description || ''}
+          isEditable={isOwner}
+          onChange={handleDescriptionChange}
+          placeholder="Add a description for your project..."
+          className="text-xl text-gray-600 dark:text-gray-400 mb-6"
+          multiline
+          rows={3}
+        />
 
         {/* Project Type Badge */}
         {analysis.project_type && (
@@ -79,7 +140,7 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
               <div className="space-y-4">
-                {analysis.quick_start.map((cmd, index) => (
+                {analysis.quick_start.map((cmd: { label: string; command: string }, index: number) => (
                   <div key={index} className="flex items-start gap-4">
                     <div className="flex-shrink-0 w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold">
                       {index + 1}
@@ -123,7 +184,7 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
           <section>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Key Features</h2>
             <div className="grid gap-6 md:grid-cols-2">
-              {analysis.features_discovered.map((feature, index) => (
+              {analysis.features_discovered.map((feature: { title: string; tech: string; files?: string[] }, index: number) => (
                 <div
                   key={index}
                   className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow"

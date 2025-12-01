@@ -182,6 +182,39 @@ class RedditThread(models.Model):
         help_text='Additional metadata from Reddit RSS feed',
     )
 
+    # Content moderation tracking
+    class ModerationStatus(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+        SKIPPED = 'skipped', 'Skipped'
+
+    moderation_status = models.CharField(
+        max_length=20,
+        choices=ModerationStatus.choices,
+        default=ModerationStatus.APPROVED,
+        db_index=True,
+        help_text='Content moderation status',
+    )
+
+    moderation_reason = models.TextField(
+        blank=True,
+        default='',
+        help_text='Reason for moderation decision',
+    )
+
+    moderation_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Full moderation results from text and image checks',
+    )
+
+    moderated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When content was moderated',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

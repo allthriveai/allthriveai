@@ -62,9 +62,11 @@ export const TOOL_DISPLAY = {
 } as const;
 
 // Project type labels
-export const PROJECT_TYPE_LABELS = {
+export const PROJECT_TYPE_LABELS: Record<string, string> = {
   github_repo: 'GitHub Repo',
+  figma_design: 'Figma Design',
   image_collection: 'Image Collection',
   prompt: 'Prompt',
+  reddit_thread: 'Reddit Thread',
   other: 'Project',
-} as const;
+};
