@@ -24,9 +24,9 @@ function transformProject(data: any): Project {
     bannerUrl: data.bannerUrl,
     featuredImageUrl: data.featuredImageUrl || '',
     externalUrl: data.externalUrl || '',
-    tools: data.tools || [],
+    tools: data.toolsDetails || data.tools || [],  // Use toolsDetails (full objects) first
     toolsDetails: data.toolsDetails || [],
-    categories: data.categories || [],
+    categories: data.categoriesDetails || data.categories || [],  // Use categoriesDetails (full objects) first
     categoriesDetails: data.categoriesDetails || [],
     topics: data.topics || [],
     heartCount: data.heartCount || 0,
@@ -90,10 +90,17 @@ export async function updateProject(id: number, payload: Partial<ProjectPayload>
 }
 
 /**
- * Delete a project
+ * Delete a project (owner only)
  */
 export async function deleteProject(id: number): Promise<void> {
   await api.delete(`/me/projects/${id}/`);
+}
+
+/**
+ * Delete a project by ID (admins can delete any project)
+ */
+export async function deleteProjectById(id: number): Promise<void> {
+  await api.delete(`/projects/${id}/delete/`);
 }
 
 /**

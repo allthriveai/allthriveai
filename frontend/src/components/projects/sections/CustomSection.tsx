@@ -3,10 +3,15 @@
  *
  * This section renders the legacy block types for backwards compatibility
  * and for content that doesn't fit into structured sections.
+ *
+ * Supports inline editing when isEditing=true for owners.
  */
 
+import { useCallback } from 'react';
 import { marked } from 'marked';
 import { sanitizeHtml } from '@/utils/sanitize';
+import { InlineEditableTitle } from '../shared/InlineEditable';
+import { EditableBlocksContainer } from '../shared/EditableBlocksContainer';
 import type { CustomSectionContent } from '@/types/sections';
 import type { ProjectBlock } from '@/types/models';
 
@@ -198,8 +203,54 @@ function renderBlock(block: ProjectBlock, index: number) {
 export function CustomSection({ content, isEditing, onUpdate }: CustomSectionProps) {
   const { title, blocks } = content;
 
-  if (!blocks || blocks.length === 0) {
+  const handleTitleChange = useCallback(
+    async (newTitle: string) => {
+      if (onUpdate) {
+        onUpdate({ ...content, title: newTitle });
+      }
+    },
+    [content, onUpdate]
+  );
+
+  const handleBlocksChange = useCallback(
+    (newBlocks: ProjectBlock[]) => {
+      if (onUpdate) {
+        onUpdate({ ...content, blocks: newBlocks });
+      }
+    },
+    [content, onUpdate]
+  );
+
+  // Allow empty in edit mode
+  if ((!blocks || blocks.length === 0) && !isEditing) {
     return null;
+  }
+
+  // In edit mode, use EditableBlocksContainer for full block editing
+  if (isEditing) {
+    return (
+      <section className="project-section" data-section-type="custom">
+        {/* Section Header with editable title */}
+        <div className="flex items-center gap-4 mb-8">
+          <InlineEditableTitle
+            value={title || 'Custom Section'}
+            isEditable={true}
+            onChange={handleTitleChange}
+            placeholder="Section title..."
+            className="text-2xl font-bold text-gray-900 dark:text-white"
+            as="h2"
+          />
+          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+        </div>
+
+        {/* Editable Blocks */}
+        <EditableBlocksContainer
+          blocks={blocks || []}
+          onBlocksChange={handleBlocksChange}
+          isEditing={true}
+        />
+      </section>
+    );
   }
 
   return (
@@ -214,7 +265,7 @@ export function CustomSection({ content, isEditing, onUpdate }: CustomSectionPro
 
       {/* Blocks */}
       <div className="space-y-8">
-        {blocks.map((block, index) => renderBlock(block, index))}
+        {blocks?.map((block, index) => renderBlock(block, index))}
       </div>
     </section>
   );

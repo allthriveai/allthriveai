@@ -5,14 +5,20 @@
  * Renders the full-height hero section with project details below.
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { marked } from 'marked';
-import { sanitizeHtml } from '@/utils/sanitize';
 import { renderContent } from '@/utils/markdown';
 import { useProjectContext } from '@/contexts/ProjectContext';
+import { updateProject } from '@/services/projects';
 import { ProjectHero } from '../hero';
-import { ProjectActions, ShareModal, MermaidDiagram } from '../shared';
+import { ProjectActions } from '../shared/ProjectActions';
+import { ShareModal } from '../shared/ShareModal';
+import {
+  InlineEditableTitle,
+  InlineEditableText,
+  EditModeIndicator,
+} from '../shared/InlineEditable';
+import { EditableBlocksContainer } from '../shared/EditableBlocksContainer';
 import { ProjectSections } from '../sections';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
@@ -25,12 +31,6 @@ import {
   EyeIcon,
   EyeSlashIcon,
 } from '@heroicons/react/24/outline';
-
-// Configure marked
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-});
 
 /**
  * Strip HTML tags and normalize text for comparison.
@@ -87,6 +87,26 @@ export function DefaultProjectLayout() {
   const [showToolTray, setShowToolTray] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string | null>(null);
 
+  // Handle inline title change
+  const handleTitleChange = useCallback(async (newTitle: string) => {
+    try {
+      const updated = await updateProject(project.id, { title: newTitle });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update title:', error);
+    }
+  }, [project.id, setProject]);
+
+  // Handle inline description change
+  const handleDescriptionChange = useCallback(async (newDescription: string) => {
+    try {
+      const updated = await updateProject(project.id, { description: newDescription });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update description:', error);
+    }
+  }, [project.id, setProject]);
+
   // Filter out placeholder/empty blocks
   const visibleBlocks = project.content?.blocks?.filter(
     (block, index) => !isPlaceholderBlock(block, index, project.title)
@@ -97,6 +117,9 @@ export function DefaultProjectLayout() {
 
   return (
     <>
+      {/* Edit Mode Indicator for Owners */}
+      <EditModeIndicator isOwner={isOwner} />
+
       {/* Full Height Hero Section */}
       <div className="relative min-h-screen w-full flex items-center overflow-hidden bg-gray-900">
         {/* Background Layer */}
@@ -198,22 +221,39 @@ export function DefaultProjectLayout() {
                   </span>
                 </div>
 
-                {/* Title */}
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/70 tracking-tight leading-tight drop-shadow-2xl">
-                  {project.title}
-                </h1>
+                {/* Title - Inline Editable for Owners */}
+                <InlineEditableTitle
+                  value={project.title}
+                  isEditable={isOwner}
+                  onChange={handleTitleChange}
+                  placeholder="Enter project title..."
+                  className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/70 tracking-tight leading-tight drop-shadow-2xl"
+                  as="h1"
+                />
               </div>
 
-              {/* Description */}
-              {project.description && (
+              {/* Description - Inline Editable for Owners */}
+              {(project.description || isOwner) && (
                 <div className="relative p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl overflow-hidden">
                   <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-primary-400 to-secondary-400 opacity-80" />
-                  <div
-                    className="prose prose-lg prose-invert max-w-none pl-2"
-                    dangerouslySetInnerHTML={{
-                      __html: renderContent(project.description)
-                    }}
-                  />
+                  {isOwner ? (
+                    <InlineEditableText
+                      value={project.description || ''}
+                      isEditable={isOwner}
+                      onChange={handleDescriptionChange}
+                      placeholder="Add a description for your project..."
+                      className="prose prose-lg prose-invert max-w-none pl-2"
+                      multiline
+                      rows={4}
+                    />
+                  ) : (
+                    <div
+                      className="prose prose-lg prose-invert max-w-none pl-2"
+                      dangerouslySetInnerHTML={{
+                        __html: renderContent(project.description || '')
+                      }}
+                    />
+                  )}
                 </div>
               )}
 
@@ -279,82 +319,22 @@ export function DefaultProjectLayout() {
         </div>
       </div>
 
-      {/* Project Details Section */}
+      {/* Project Details Section - show for owners even if empty (so they can add blocks) */}
       {hasTemplateSections ? (
         <ProjectSections sections={project.content.sections} />
-      ) : visibleBlocks.length > 0 && (
+      ) : (visibleBlocks.length > 0 || isOwner) && (
         <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 md:py-24">
           <div className="flex items-center gap-4 mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Project Details</h2>
             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
           </div>
 
-          {/* Content Blocks */}
-          <div className="space-y-8">
-            {project.content?.blocks?.map((block, index) => {
-              // Skip placeholder headings
-              if (isPlaceholderBlock(block, index, project.title)) return null;
-
-              return (
-                <div key={index}>
-                  {block.type === 'text' && (
-                    <div
-                      className={`prose dark:prose-invert max-w-none ${
-                        block.style === 'heading' ? 'text-2xl font-bold' :
-                        block.style === 'quote' ? 'border-l-4 border-primary-500 pl-6 italic' :
-                        ''
-                      }`}
-                      dangerouslySetInnerHTML={{
-                        __html: sanitizeHtml(marked.parse(block.content) as string)
-                      }}
-                    />
-                  )}
-
-                  {block.type === 'image' && (
-                    <figure className="flex flex-col items-center">
-                      <img
-                        src={block.url}
-                        alt={block.caption || ''}
-                        className="max-w-full lg:max-w-3xl h-auto rounded-xl shadow-lg"
-                      />
-                      {block.caption && (
-                        <figcaption className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
-                          {block.caption}
-                        </figcaption>
-                      )}
-                    </figure>
-                  )}
-
-                  {block.type === 'mermaid' && block.code && (
-                    <div className="my-8">
-                      <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg overflow-x-auto">
-                        <MermaidDiagram code={block.code} caption={block.caption} />
-                      </div>
-                    </div>
-                  )}
-
-                  {block.type === 'video' && block.url && (
-                    <figure>
-                      <video
-                        src={block.url}
-                        controls
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className="w-full rounded-xl"
-                      />
-                      {block.caption && (
-                        <figcaption className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
-                          {block.caption}
-                        </figcaption>
-                      )}
-                    </figure>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {/* Content Blocks - full CRUD with add/remove/reorder */}
+          <EditableBlocksContainer
+            project={project}
+            isOwner={isOwner}
+            onProjectUpdate={setProject}
+          />
         </div>
       )}
 

@@ -1,9 +1,12 @@
 /**
  * GallerySection - Screenshot carousel or grid with lightbox
+ *
+ * Supports inline editing when isEditing=true for owners.
  */
 
-import { useState } from 'react';
-import { XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { useState, useCallback } from 'react';
+import { XMarkIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { InlineEditableTitle, InlineEditableText } from '../shared/InlineEditable';
 import type { GallerySectionContent, GalleryImage } from '@/types/sections';
 
 interface GallerySectionProps {
@@ -12,13 +15,107 @@ interface GallerySectionProps {
   onUpdate?: (content: GallerySectionContent) => void;
 }
 
+interface ImageThumbnailProps {
+  image: GalleryImage;
+  index: number;
+  onClick: () => void;
+  isEditing?: boolean;
+  onUpdate?: (index: number, image: GalleryImage) => void;
+  onDelete?: (index: number) => void;
+}
+
 function ImageThumbnail({
   image,
+  index,
   onClick,
-}: {
-  image: GalleryImage;
-  onClick: () => void;
-}) {
+  isEditing,
+  onUpdate,
+  onDelete,
+}: ImageThumbnailProps) {
+  const handleUrlChange = useCallback(
+    async (newUrl: string) => {
+      if (onUpdate) {
+        onUpdate(index, { ...image, url: newUrl });
+      }
+    },
+    [index, image, onUpdate]
+  );
+
+  const handleCaptionChange = useCallback(
+    async (newCaption: string) => {
+      if (onUpdate) {
+        onUpdate(index, { ...image, caption: newCaption });
+      }
+    },
+    [index, image, onUpdate]
+  );
+
+  const handleAltChange = useCallback(
+    async (newAlt: string) => {
+      if (onUpdate) {
+        onUpdate(index, { ...image, alt: newAlt });
+      }
+    },
+    [index, image, onUpdate]
+  );
+
+  if (isEditing) {
+    return (
+      <div className="group relative rounded-xl bg-gray-100 dark:bg-gray-800 overflow-hidden border border-gray-200 dark:border-gray-700">
+        {/* Delete button */}
+        {onDelete && (
+          <button
+            onClick={() => onDelete(index)}
+            className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Delete image"
+          >
+            <TrashIcon className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Image preview */}
+        <div className="aspect-video">
+          {image.url ? (
+            <img
+              src={image.thumbnail || image.url}
+              alt={image.alt || image.caption || 'Gallery image'}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              No image URL
+            </div>
+          )}
+        </div>
+
+        {/* Edit fields */}
+        <div className="p-3 space-y-2 bg-white dark:bg-gray-900">
+          <InlineEditableText
+            value={image.url}
+            isEditable={true}
+            onChange={handleUrlChange}
+            placeholder="Image URL..."
+            className="text-xs text-gray-500 dark:text-gray-400 font-mono"
+          />
+          <InlineEditableText
+            value={image.caption || ''}
+            isEditable={true}
+            onChange={handleCaptionChange}
+            placeholder="Caption (optional)..."
+            className="text-sm text-gray-700 dark:text-gray-300"
+          />
+          <InlineEditableText
+            value={image.alt || ''}
+            isEditable={true}
+            onChange={handleAltChange}
+            placeholder="Alt text (optional)..."
+            className="text-xs text-gray-500 dark:text-gray-400"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <button
       onClick={onClick}
@@ -138,43 +235,138 @@ function Lightbox({
 }
 
 export function GallerySection({ content, isEditing, onUpdate }: GallerySectionProps) {
-  const { images, layout = 'grid' } = content;
+  const { images, layout = 'grid', title } = content;
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  if (!images || images.length === 0) {
+  const handleTitleChange = useCallback(
+    async (newTitle: string) => {
+      if (onUpdate) {
+        onUpdate({ ...content, title: newTitle });
+      }
+    },
+    [content, onUpdate]
+  );
+
+  const handleImageUpdate = useCallback(
+    (index: number, updatedImage: GalleryImage) => {
+      if (onUpdate) {
+        const newImages = [...(images || [])];
+        newImages[index] = updatedImage;
+        onUpdate({ ...content, images: newImages });
+      }
+    },
+    [content, images, onUpdate]
+  );
+
+  const handleImageDelete = useCallback(
+    (index: number) => {
+      if (onUpdate) {
+        const newImages = (images || []).filter((_, i) => i !== index);
+        onUpdate({ ...content, images: newImages });
+      }
+    },
+    [content, images, onUpdate]
+  );
+
+  const handleAddImage = useCallback(() => {
+    if (onUpdate) {
+      const newImage: GalleryImage = {
+        url: '',
+        caption: '',
+        alt: '',
+      };
+      onUpdate({ ...content, images: [...(images || []), newImage] });
+    }
+  }, [content, images, onUpdate]);
+
+  const handleLayoutChange = useCallback(
+    (newLayout: 'grid' | 'carousel' | 'masonry') => {
+      if (onUpdate) {
+        onUpdate({ ...content, layout: newLayout });
+      }
+    },
+    [content, onUpdate]
+  );
+
+  // Allow empty in edit mode
+  if ((!images || images.length === 0) && !isEditing) {
     return null;
   }
 
   const openLightbox = (index: number) => setLightboxIndex(index);
   const closeLightbox = () => setLightboxIndex(null);
-  const prevImage = () => setLightboxIndex((i) => (i === null ? null : (i - 1 + images.length) % images.length));
-  const nextImage = () => setLightboxIndex((i) => (i === null ? null : (i + 1) % images.length));
+  const prevImage = () => setLightboxIndex((i) => (i === null ? null : (i - 1 + (images?.length || 1)) % (images?.length || 1)));
+  const nextImage = () => setLightboxIndex((i) => (i === null ? null : (i + 1) % (images?.length || 1)));
 
   // Determine grid columns based on image count
+  const imageCount = images?.length || 0;
   const gridCols =
-    images.length === 1 ? 'grid-cols-1' :
-    images.length === 2 ? 'grid-cols-1 md:grid-cols-2' :
-    images.length === 4 ? 'grid-cols-2' :
+    imageCount === 1 ? 'grid-cols-1' :
+    imageCount === 2 ? 'grid-cols-1 md:grid-cols-2' :
+    imageCount === 4 ? 'grid-cols-2' :
     'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
 
   return (
     <section className="project-section" data-section-type="gallery">
       {/* Section Header */}
       <div className="flex items-center gap-4 mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Gallery</h2>
+        {isEditing ? (
+          <InlineEditableTitle
+            value={title || 'Gallery'}
+            isEditable={true}
+            onChange={handleTitleChange}
+            placeholder="Section title..."
+            className="text-2xl font-bold text-gray-900 dark:text-white"
+            as="h2"
+          />
+        ) : (
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {title || 'Gallery'}
+          </h2>
+        )}
         <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
       </div>
+
+      {/* Layout selector (editing mode only) */}
+      {isEditing && (
+        <div className="mb-6 flex items-center gap-4">
+          <span className="text-sm text-gray-500 dark:text-gray-400">Layout:</span>
+          <select
+            value={layout}
+            onChange={(e) => handleLayoutChange(e.target.value as 'grid' | 'carousel' | 'masonry')}
+            className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+          >
+            <option value="grid">Grid</option>
+            <option value="carousel">Carousel</option>
+            <option value="masonry">Masonry</option>
+          </select>
+        </div>
+      )}
 
       {/* Grid Layout */}
       {layout === 'grid' && (
         <div className={`grid ${gridCols} gap-4`}>
-          {images.map((image, index) => (
+          {images?.map((image, index) => (
             <ImageThumbnail
               key={index}
               image={image}
+              index={index}
               onClick={() => openLightbox(index)}
+              isEditing={isEditing}
+              onUpdate={handleImageUpdate}
+              onDelete={handleImageDelete}
             />
           ))}
+          {/* Add Image button */}
+          {isEditing && (
+            <button
+              onClick={handleAddImage}
+              className="flex flex-col items-center justify-center aspect-video rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary-500 dark:hover:border-primary-500 text-gray-400 hover:text-primary-500 transition-colors"
+            >
+              <PlusIcon className="w-8 h-8 mb-2" />
+              <span className="text-sm font-medium">Add Image</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -182,17 +374,31 @@ export function GallerySection({ content, isEditing, onUpdate }: GallerySectionP
       {layout === 'carousel' && (
         <div className="relative">
           <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
-            {images.map((image, index) => (
+            {images?.map((image, index) => (
               <div
                 key={index}
                 className="flex-shrink-0 w-[300px] md:w-[400px] snap-center"
               >
                 <ImageThumbnail
                   image={image}
+                  index={index}
                   onClick={() => openLightbox(index)}
+                  isEditing={isEditing}
+                  onUpdate={handleImageUpdate}
+                  onDelete={handleImageDelete}
                 />
               </div>
             ))}
+            {/* Add Image button */}
+            {isEditing && (
+              <button
+                onClick={handleAddImage}
+                className="flex-shrink-0 w-[300px] md:w-[400px] flex flex-col items-center justify-center aspect-video rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary-500 dark:hover:border-primary-500 text-gray-400 hover:text-primary-500 transition-colors"
+              >
+                <PlusIcon className="w-8 h-8 mb-2" />
+                <span className="text-sm font-medium">Add Image</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -200,19 +406,35 @@ export function GallerySection({ content, isEditing, onUpdate }: GallerySectionP
       {/* Masonry Layout */}
       {layout === 'masonry' && (
         <div className="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
-          {images.map((image, index) => (
+          {images?.map((image, index) => (
             <div key={index} className="break-inside-avoid">
               <ImageThumbnail
                 image={image}
+                index={index}
                 onClick={() => openLightbox(index)}
+                isEditing={isEditing}
+                onUpdate={handleImageUpdate}
+                onDelete={handleImageDelete}
               />
             </div>
           ))}
+          {/* Add Image button */}
+          {isEditing && (
+            <div className="break-inside-avoid">
+              <button
+                onClick={handleAddImage}
+                className="w-full flex flex-col items-center justify-center aspect-video rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary-500 dark:hover:border-primary-500 text-gray-400 hover:text-primary-500 transition-colors"
+              >
+                <PlusIcon className="w-8 h-8 mb-2" />
+                <span className="text-sm font-medium">Add Image</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Lightbox */}
-      {lightboxIndex !== null && (
+      {/* Lightbox (view mode only) */}
+      {!isEditing && lightboxIndex !== null && images && images.length > 0 && (
         <Lightbox
           images={images}
           currentIndex={lightboxIndex}

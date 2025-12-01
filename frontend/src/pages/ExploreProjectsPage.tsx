@@ -2,15 +2,8 @@ import { useState, useEffect } from 'react';
 import { ExploreTemplate, FilterGroup } from '@/components/layouts/ExploreTemplate';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { PhotoIcon } from '@heroicons/react/24/outline';
+import { exploreProjects } from '@/services/explore';
 import type { Project } from '@/types/models';
-
-// Example: You would replace this with actual API call
-const fetchProjects = async (): Promise<Project[]> => {
-  // TODO: Replace with actual API endpoint
-  // const response = await fetch('/api/v1/projects/explore/');
-  // return response.json();
-  return [];
-};
 
 export default function ExploreProjectsPage() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
@@ -31,8 +24,8 @@ export default function ExploreProjectsPage() {
   async function loadProjects() {
     try {
       setIsLoading(true);
-      const projects = await fetchProjects();
-      setAllProjects(projects);
+      const response = await exploreProjects({ tab: 'all', page_size: 100 });
+      setAllProjects(response.results || []);
     } catch (err: any) {
       console.error('Failed to load projects:', err);
       setError(err?.message || 'Failed to load projects');
@@ -87,8 +80,10 @@ export default function ExploreProjectsPage() {
       multiSelect: true,
       options: [
         { id: 'type-github', label: 'GitHub Repo', value: 'github_repo', count: allProjects.filter(p => p.type === 'github_repo').length },
+        { id: 'type-figma', label: 'Figma Design', value: 'figma_design', count: allProjects.filter(p => p.type === 'figma_design').length },
         { id: 'type-image', label: 'Image Collection', value: 'image_collection', count: allProjects.filter(p => p.type === 'image_collection').length },
         { id: 'type-prompt', label: 'Prompt', value: 'prompt', count: allProjects.filter(p => p.type === 'prompt').length },
+        { id: 'type-reddit', label: 'Reddit Thread', value: 'reddit_thread', count: allProjects.filter(p => p.type === 'reddit_thread').length },
         { id: 'type-other', label: 'Other', value: 'other', count: allProjects.filter(p => p.type === 'other').length },
       ],
     },

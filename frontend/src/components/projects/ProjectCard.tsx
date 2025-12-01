@@ -19,10 +19,12 @@ import {
   EyeIcon,
   HeartIcon,
   ChevronUpIcon,
-  ChatBubbleLeftIcon
+  ChatBubbleLeftIcon,
+  SwatchIcon,
+  ChatBubbleOvalLeftEllipsisIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
-import { toggleProjectLike } from '@/services/projects';
+import { toggleProjectLike, deleteProjectById } from '@/services/projects';
 import { ProjectModal } from './ProjectModal';
 import { CommentTray } from './CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
@@ -42,10 +44,12 @@ interface ProjectCardProps {
   userAvatarUrl?: string;  // Owner's avatar URL
 }
 
-const typeIcons = {
+const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   github_repo: CodeBracketIcon,
+  figma_design: SwatchIcon,
   image_collection: PhotoIcon,
   prompt: ChatBubbleLeftRightIcon,
+  reddit_thread: ChatBubbleOvalLeftEllipsisIcon,
   other: DocumentTextIcon,
 };
 
@@ -53,7 +57,7 @@ const typeLabels = PROJECT_TYPE_LABELS;
 
 export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl }: ProjectCardProps) {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
   const [isLiked, setIsLiked] = useState(project.isLikedByUser);
   const [heartCount, setHeartCount] = useState(project.heartCount);
@@ -63,8 +67,13 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const [showToolTray, setShowToolTray] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
   const [slideUpExpanded, setSlideUpExpanded] = useState(false);
-  const Icon = typeIcons[project.type];
+  const Icon = typeIcons[project.type] || DocumentTextIcon;
   const projectUrl = `/${project.username}/${project.slug}`;
+  
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin';
+  // User can delete if they're the owner OR if they're an admin
+  const canDelete = isOwner || isAdmin;
 
   // React Rewards for project likes
   const { reward: rewardLike } = useReward(`likeReward-${project.id}`, 'emoji', {
@@ -105,6 +114,31 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       console.error('Failed to toggle like:', error);
     } finally {
       setIsLiking(false);
+    }
+  };
+  
+  const handleDeleteClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!confirm('Are you sure you want to delete this project?')) {
+      return;
+    }
+    
+    try {
+      // Use the admin delete endpoint that works with any project
+      await deleteProjectById(project.id);
+      
+      // Call onDelete callback if provided
+      if (onDelete) {
+        onDelete(project.id);
+      }
+      
+      // Optionally reload the page or update the UI
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      alert('Failed to delete project. Please try again.');
     }
   };
 
@@ -522,6 +556,18 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                     <ChevronUpIcon className="w-4 h-4 text-white group-hover/more:scale-110 transition-transform drop-shadow-sm" />
                   </button>
                 )}
+                
+                {/* Admin Delete Button */}
+                {canDelete && !selectionMode && (
+                  <button
+                    onClick={handleDeleteClick}
+                    className="p-1.5 rounded-full transition-all hover:scale-105 group/delete bg-red-500/20 backdrop-blur-md border border-red-500/30 hover:bg-red-500/30"
+                    aria-label="Delete project"
+                    title={isAdmin && !isOwner ? "Delete project (Admin)" : "Delete project"}
+                  >
+                    <TrashIcon className="w-4 h-4 text-red-400 group-hover/delete:scale-110 transition-transform drop-shadow-sm" />
+                  </button>
+                )}
               </div>
 
               {/* Right side - Tools */}
@@ -608,9 +654,9 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
 
-        {/* Type badge and Menu button */}
+          {/* Type badge and Menu button */}
         <div className="absolute top-3 right-3 flex items-center gap-2">
-          {isOwner && !selectionMode && (
+          {canDelete && !selectionMode && (
             <div className="relative">
               <button
                 onClick={(e) => {

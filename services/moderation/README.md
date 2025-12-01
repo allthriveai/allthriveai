@@ -118,11 +118,23 @@ All errors result in content rejection (fail-closed).
 
 ## Configuration
 
-Required settings:
+The moderation service uses the centralized AIProvider, which supports:
+- OpenAI (direct)
+- Azure OpenAI
+
+Required settings (one of):
 ```python
 # settings.py
+# Option 1: Direct OpenAI
 OPENAI_API_KEY = env('OPENAI_API_KEY')
+
+# Option 2: Azure OpenAI (AI Gateway)
+AZURE_OPENAI_API_KEY = env('AZURE_OPENAI_API_KEY')
+AZURE_OPENAI_ENDPOINT = env('AZURE_OPENAI_ENDPOINT')
+AZURE_OPENAI_API_VERSION = env('AZURE_OPENAI_API_VERSION')
 ```
+
+The moderation services automatically use the `DEFAULT_AI_PROVIDER` setting (defaults to `'azure'` in production).
 
 ## Performance
 

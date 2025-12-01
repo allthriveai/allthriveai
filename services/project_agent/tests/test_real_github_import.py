@@ -125,9 +125,9 @@ class TestRealGitHubImportFlow:
         # Note: banner_url is intentionally left empty (frontend renders gradient)
         assert project.featured_image_url, 'Project must have a featured_image_url for cards/sharing'
         # Should be a valid URL
-        assert project.featured_image_url.startswith(
-            'http'
-        ), f'Invalid featured_image_url: {project.featured_image_url}'
+        assert project.featured_image_url.startswith('http'), (
+            f'Invalid featured_image_url: {project.featured_image_url}'
+        )
         logger.info(f'Featured image: {project.featured_image_url}')
         logger.info(f'Banner URL: {project.banner_url or "(empty - gradient)"}')
 
@@ -404,9 +404,9 @@ class TestAgentStreamingWithRealImport:
 
         # Should have called import_github_project
         import_calls = [e for e in tool_starts if e.get('tool') == 'import_github_project']
-        assert (
-            len(import_calls) >= 1
-        ), f'Agent should call import_github_project. Tool calls: {[e.get("tool") for e in tool_starts]}'
+        assert len(import_calls) >= 1, (
+            f'Agent should call import_github_project. Tool calls: {[e.get("tool") for e in tool_starts]}'
+        )
 
         # Project should be created
         assert project_created, 'Project should be created by import_github_project'

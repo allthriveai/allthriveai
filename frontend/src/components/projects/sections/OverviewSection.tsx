@@ -1,7 +1,10 @@
 /**
  * OverviewSection - Quick project summary with headline and metrics
+ *
+ * Supports inline editing when isEditing=true for owners.
  */
 
+import { useCallback } from 'react';
 import { marked } from 'marked';
 import { sanitizeHtml } from '@/utils/sanitize';
 import {
@@ -13,6 +16,7 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
+import { InlineEditableTitle, InlineEditableText } from '../shared/InlineEditable';
 import type { OverviewSectionContent, Metric } from '@/types/sections';
 
 interface OverviewSectionProps {
@@ -34,7 +38,27 @@ const metricIcons: Record<Metric['icon'], React.ComponentType<{ className?: stri
 export function OverviewSection({ content, isEditing, onUpdate }: OverviewSectionProps) {
   const { headline, description, metrics } = content;
 
-  if (!headline && !description) {
+  // Handle inline updates
+  const handleHeadlineChange = useCallback(
+    async (newHeadline: string) => {
+      if (onUpdate) {
+        onUpdate({ ...content, headline: newHeadline });
+      }
+    },
+    [content, onUpdate]
+  );
+
+  const handleDescriptionChange = useCallback(
+    async (newDescription: string) => {
+      if (onUpdate) {
+        onUpdate({ ...content, description: newDescription });
+      }
+    },
+    [content, onUpdate]
+  );
+
+  // Allow empty content in edit mode so users can add content
+  if (!headline && !description && !isEditing) {
     return null;
   }
 
@@ -51,22 +75,41 @@ export function OverviewSection({ content, isEditing, onUpdate }: OverviewSectio
         {/* Accent Line */}
         <div className="absolute top-0 left-8 right-8 h-1 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full" />
 
-        {/* Headline */}
-        {headline && (
+        {/* Headline - Inline editable for owners */}
+        {isEditing ? (
+          <InlineEditableTitle
+            value={headline || ''}
+            isEditable={true}
+            onChange={handleHeadlineChange}
+            placeholder="Add a headline..."
+            className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4 leading-tight"
+            as="h3"
+          />
+        ) : headline ? (
           <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">
             {headline}
           </h3>
-        )}
+        ) : null}
 
-        {/* Description */}
-        {description && (
+        {/* Description - Inline editable for owners */}
+        {isEditing ? (
+          <InlineEditableText
+            value={description || ''}
+            isEditable={true}
+            onChange={handleDescriptionChange}
+            placeholder="Add a description..."
+            className="prose prose-lg dark:prose-invert max-w-none text-gray-600 dark:text-gray-300"
+            multiline
+            rows={4}
+          />
+        ) : description ? (
           <div
             className="prose prose-lg dark:prose-invert max-w-none text-gray-600 dark:text-gray-300"
             dangerouslySetInnerHTML={{
               __html: sanitizeHtml(marked.parse(description) as string)
             }}
           />
-        )}
+        ) : null}
 
         {/* Metrics */}
         {metrics && metrics.length > 0 && (
