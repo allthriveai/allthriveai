@@ -6,6 +6,64 @@ from django.utils.text import slugify
 from core.taxonomy.models import Taxonomy
 
 
+class Company(models.Model):
+    """
+    Company/vendor that creates tools and technologies.
+
+    Examples: Anthropic, OpenAI, Google, Meta, Redis Labs, Vercel
+    Groups related products under a parent organization.
+    """
+
+    name = models.CharField(max_length=200, unique=True, db_index=True)
+    slug = models.SlugField(max_length=200, unique=True, db_index=True)
+    description = models.TextField(blank=True, help_text='About the company')
+    tagline = models.CharField(max_length=300, blank=True, help_text='Short company tagline')
+
+    # Branding
+    logo_url = models.URLField(blank=True, help_text='Company logo')
+    banner_url = models.URLField(blank=True, help_text='Company banner image')
+
+    # Links
+    website_url = models.URLField(blank=True)
+    careers_url = models.URLField(blank=True)
+    github_url = models.URLField(blank=True)
+    twitter_handle = models.CharField(max_length=100, blank=True)
+    linkedin_url = models.URLField(blank=True)
+
+    # Company info
+    founded_year = models.PositiveIntegerField(null=True, blank=True)
+    headquarters = models.CharField(max_length=200, blank=True, help_text='e.g., San Francisco, CA')
+    company_size = models.CharField(max_length=50, blank=True, help_text='e.g., 100-500 employees')
+
+    # Status
+    is_active = models.BooleanField(default=True, db_index=True)
+    is_featured = models.BooleanField(default=False, help_text='Featured companies appear prominently')
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = 'Companies'
+        ordering = ['name']
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return f'/companies/{self.slug}'
+
+    @property
+    def tool_count(self):
+        """Count of tools/technologies from this company."""
+        return self.tools.filter(is_active=True).count()
+
+
 class Tool(models.Model):
     """
     Comprehensive model for AI tools and technologies in the directory.
@@ -61,6 +119,14 @@ class Tool(models.Model):
         help_text='Whether this is an AI tool or a technology',
     )
     category = models.CharField(max_length=20, choices=ToolCategory.choices, default=ToolCategory.OTHER, db_index=True)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tools',
+        help_text='Parent company/vendor (e.g., Anthropic for Claude)',
+    )
     tags = models.JSONField(
         default=list, blank=True, help_text="List of tags for filtering (e.g., ['NLP', 'GPT', 'OpenAI'])"
     )

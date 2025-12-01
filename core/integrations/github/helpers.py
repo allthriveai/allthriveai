@@ -11,6 +11,7 @@ import httpx
 
 from core.integrations.github.constants import GITHUB_API_TIMEOUT
 from core.social.models import SocialConnection, SocialProvider
+from core.tools.models import Tool
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +220,73 @@ def normalize_github_repo_data(owner: str, repo: str, url: str, repo_files: dict
     }
 
 
-def apply_ai_metadata(project, analysis: dict) -> None:
+def match_or_create_technology(name: str) -> 'Tool | None':
+    """
+    Match an existing technology or create a minimal one if not found.
+
+    This allows tech stack items detected from GitHub repos to be linked to
+    the Tool directory, enabling the same tray experience as AI tools.
+
+    Args:
+        name: Technology name (e.g., "React", "Python", "Docker")
+
+    Returns:
+        Tool instance or None if matching failed
+    """
+    from django.utils.text import slugify
+
+    # Normalize name for matching
+    normalized_name = name.strip()
+    if not normalized_name:
+        return None
+
+    # Strategy 1: Exact case-insensitive match
+    tool = Tool.objects.filter(name__iexact=normalized_name).first()
+    if tool:
+        return tool
+
+    # Strategy 2: Slug match
+    slug_guess = slugify(normalized_name)
+    tool = Tool.objects.filter(slug__iexact=slug_guess).first()
+    if tool:
+        return tool
+
+    # Strategy 3: Common aliases
+    aliases = {
+        'js': 'JavaScript',
+        'ts': 'TypeScript',
+        'py': 'Python',
+        'rb': 'Ruby',
+        'go': 'Go',
+        'rs': 'Rust',
+        'node': 'Node.js',
+        'nodejs': 'Node.js',
+        'postgres': 'PostgreSQL',
+        'mongo': 'MongoDB',
+        'k8s': 'Kubernetes',
+        'tailwind': 'Tailwind CSS',
+        'nextjs': 'Next.js',
+        'vuejs': 'Vue.js',
+        'expressjs': 'Express.js',
+        'gcp': 'Google Cloud',
+    }
+    if normalized_name.lower() in aliases:
+        tool = Tool.objects.filter(name__iexact=aliases[normalized_name.lower()]).first()
+        if tool:
+            return tool
+
+    # Strategy 4: Partial match (for things like "react" matching "React")
+    tool = Tool.objects.filter(name__icontains=normalized_name, tool_type='technology').first()
+    if tool:
+        return tool
+
+    # Don't auto-create technologies - only match seeded ones
+    # This prevents garbage entries from AI hallucinations
+    logger.debug(f'Technology "{normalized_name}" not found in database')
+    return None
+
+
+def apply_ai_metadata(project, analysis: dict, content: dict = None) -> None:
     """
     Apply AI-suggested categories, topics, and tools to a project.
 
@@ -231,6 +298,7 @@ def apply_ai_metadata(project, analysis: dict) -> None:
     Args:
         project: Project instance to update
         analysis: Dictionary with category_ids, topics, tool_names from AI analysis
+        content: Optional project content dict containing tech_stack sections
     """
     from core.taxonomy.models import Taxonomy
     from core.tools.models import Tool
@@ -266,7 +334,7 @@ def apply_ai_metadata(project, analysis: dict) -> None:
         project.save(update_fields=['topics'])
         logger.info(f'Applied {len(topics[:20])} topics to project {project.id}')
 
-    # Apply tools - try multiple matching strategies
+    # Apply AI tools (ChatGPT, Claude, etc.) - try multiple matching strategies
     tools_added = 0
     for tool_name in analysis.get('tool_names', []):
         # Strategy 1: Exact case-insensitive match
@@ -288,4 +356,27 @@ def apply_ai_metadata(project, analysis: dict) -> None:
         else:
             logger.debug(f'Tool "{tool_name}" not found in database')
 
-    logger.info(f'AI metadata applied: {categories_added} categories, {len(topics)} topics, {tools_added} tools')
+    # Apply technologies from tech_stack sections
+    tech_added = 0
+    if content:
+        # Extract technologies from templateVersion 2 sections
+        sections = content.get('sections', [])
+        for section in sections:
+            if section.get('type') == 'tech_stack':
+                categories = section.get('content', {}).get('categories', [])
+                for category in categories:
+                    technologies = category.get('technologies', [])
+                    for tech in technologies:
+                        # Handle both string and dict formats
+                        tech_name = tech.get('name') if isinstance(tech, dict) else tech
+                        if tech_name:
+                            tool = match_or_create_technology(tech_name)
+                            if tool and tool not in project.tools.all():
+                                project.tools.add(tool)
+                                tech_added += 1
+                                logger.info(f'Added technology "{tool.name}" to project {project.id}')
+
+    logger.info(
+        f'AI metadata applied: {categories_added} categories, {len(topics)} topics, '
+        f'{tools_added} AI tools, {tech_added} technologies'
+    )

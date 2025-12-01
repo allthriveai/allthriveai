@@ -1,6 +1,53 @@
 from rest_framework import serializers
 
-from .models import Tool, ToolBookmark, ToolComparison, ToolReview
+from .models import Company, Tool, ToolBookmark, ToolComparison, ToolReview
+
+
+class CompanyListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for company in tool listings."""
+
+    tool_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Company
+        fields = [
+            'id',
+            'name',
+            'slug',
+            'logo_url',
+            'website_url',
+            'tool_count',
+        ]
+
+
+class CompanyDetailSerializer(serializers.ModelSerializer):
+    """Full serializer for company detail page."""
+
+    tool_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Company
+        fields = [
+            'id',
+            'name',
+            'slug',
+            'description',
+            'tagline',
+            'logo_url',
+            'banner_url',
+            'website_url',
+            'careers_url',
+            'github_url',
+            'twitter_handle',
+            'linkedin_url',
+            'founded_year',
+            'headquarters',
+            'company_size',
+            'is_featured',
+            'tool_count',
+            'created_at',
+            'updated_at',
+        ]
 
 
 class ToolListSerializer(serializers.ModelSerializer):
@@ -9,6 +56,8 @@ class ToolListSerializer(serializers.ModelSerializer):
     tool_type_display = serializers.CharField(source='get_tool_type_display', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     pricing_model_display = serializers.CharField(source='get_pricing_model_display', read_only=True)
+    company_name = serializers.CharField(source='company.name', read_only=True, allow_null=True)
+    company_slug = serializers.CharField(source='company.slug', read_only=True, allow_null=True)
 
     class Meta:
         model = Tool
@@ -22,6 +71,9 @@ class ToolListSerializer(serializers.ModelSerializer):
             'tool_type_display',
             'category',
             'category_display',
+            'company',
+            'company_name',
+            'company_slug',
             'tags',
             'logo_url',
             'website_url',
@@ -45,6 +97,7 @@ class ToolDetailSerializer(serializers.ModelSerializer):
     tool_type_display = serializers.CharField(source='get_tool_type_display', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     pricing_model_display = serializers.CharField(source='get_pricing_model_display', read_only=True)
+    company_details = CompanyListSerializer(source='company', read_only=True)
     average_rating = serializers.SerializerMethodField()
     review_count = serializers.SerializerMethodField()
     bookmark_count = serializers.SerializerMethodField()
@@ -63,6 +116,8 @@ class ToolDetailSerializer(serializers.ModelSerializer):
             'tool_type_display',
             'category',
             'category_display',
+            'company',
+            'company_details',
             'tags',
             # Media
             'logo_url',

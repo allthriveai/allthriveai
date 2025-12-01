@@ -1,57 +1,62 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { getTools } from '@/services/tools';
+import { getTools, getToolCategories, getToolCompanies } from '@/services/tools';
+import { ToolSearchBar, type ToolFilters } from '@/components/tools/ToolSearchBar';
 import type { Tool } from '@/types/models';
-import { MagnifyingGlassIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 
 export default function ToolDirectoryPage() {
   const [tools, setTools] = useState<Tool[]>([]);
-  const [filteredTools, setFilteredTools] = useState<Tool[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<ToolFilters>({});
+  const [categories, setCategories] = useState<Array<{ value: string; label: string; count: number }>>([]);
+  const [companies, setCompanies] = useState<Array<{ id: number; name: string; slug: string; count: number }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load categories and companies on mount
   useEffect(() => {
-    loadTools();
+    getToolCategories().then(setCategories).catch(console.error);
+    getToolCompanies().then(setCompanies).catch(console.error);
   }, []);
 
+  // Debounce search input
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredTools(tools);
-      return;
-    }
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-    const query = searchQuery.toLowerCase();
-    const filtered = tools.filter(
-      (tool) =>
-        tool.name.toLowerCase().includes(query) ||
-        tool.description.toLowerCase().includes(query)
-    );
-    setFilteredTools(filtered);
-  }, [searchQuery, tools]);
-
-  async function loadTools() {
-    try {
-      setIsLoading(true);
-      const response = await getTools();
-      const toolsList = response.results;
-      // Sort alphabetically
-      toolsList.sort((a, b) => a.name.localeCompare(b.name));
-      setTools(toolsList);
-      setFilteredTools(toolsList);
-    } catch (err: any) {
-      console.error('Failed to load tools:', err);
-      setError(err?.error || 'Failed to load tool directory');
-    } finally {
-      setIsLoading(false);
+  // Load tools when filters or debounced search change
+  useEffect(() => {
+    async function loadTools() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const params: any = { ...filters };
+        if (debouncedSearch.trim()) {
+          params.search = debouncedSearch.trim();
+        }
+        const response = await getTools(params);
+        const toolsList = response.results;
+        // Sort alphabetically
+        toolsList.sort((a, b) => a.name.localeCompare(b.name));
+        setTools(toolsList);
+      } catch (err: any) {
+        console.error('Failed to load tools:', err);
+        setError(err?.error || 'Failed to load tool directory');
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }
+    loadTools();
+  }, [filters, debouncedSearch]);
 
   // Group tools by first letter for dictionary-style layout (memoized for performance)
   const groupedTools = useMemo(() => {
     const groups: Record<string, Tool[]> = {};
-    filteredTools.forEach((tool) => {
+    tools.forEach((tool) => {
       const firstLetter = tool.name[0].toUpperCase();
       if (!groups[firstLetter]) {
         groups[firstLetter] = [];
@@ -59,7 +64,7 @@ export default function ToolDirectoryPage() {
       groups[firstLetter].push(tool);
     });
     return groups;
-  }, [filteredTools]);
+  }, [tools]);
 
   const letters = useMemo(() => Object.keys(groupedTools).sort(), [groupedTools]);
 
@@ -73,32 +78,32 @@ export default function ToolDirectoryPage() {
               <div className="flex items-center gap-3 mb-4">
                 <SparklesIcon className="w-8 h-8 text-primary-600 dark:text-primary-400" />
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-                  AI Tool Directory
+                  Tool Directory
                 </h1>
               </div>
               <p className="text-lg text-gray-600 dark:text-gray-400">
-                Explore {tools.length} AI tools and platforms to enhance your workflow
+                Explore AI tools and technologies to enhance your workflow
               </p>
             </div>
 
-            {/* Search Bar */}
-            <div className="mb-8">
-              <div className="relative max-w-2xl">
-                <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search AI tools..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 text-lg"
-                />
-              </div>
-              {searchQuery && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  Found {filteredTools.length} tool{filteredTools.length !== 1 ? 's' : ''}
-                </p>
-              )}
+            {/* Search Bar with Filters */}
+            <div className="mb-6">
+              <ToolSearchBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                filters={filters}
+                onFiltersChange={setFilters}
+                categories={categories}
+                companies={companies}
+              />
             </div>
+
+            {/* Results count */}
+            {!isLoading && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                {tools.length} tool{tools.length !== 1 ? 's' : ''} found
+              </p>
+            )}
 
             {/* Loading State */}
             {isLoading && (
@@ -129,8 +134,8 @@ export default function ToolDirectoryPage() {
                 {letters.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-gray-500 dark:text-gray-400 text-lg">
-                      {searchQuery
-                        ? `No tools found matching "${searchQuery}"`
+                      {searchQuery || Object.keys(filters).length > 0
+                        ? 'No tools found matching your criteria'
                         : 'No tools available'}
                     </p>
                   </div>
@@ -184,8 +189,8 @@ export default function ToolDirectoryPage() {
                   </div>
                 )}
 
-                {/* Alphabet Navigation (if more than 3 letters) */}
-                {letters.length > 3 && !searchQuery && (
+                {/* Alphabet Navigation (if more than 3 letters and no active search/filters) */}
+                {letters.length > 3 && !searchQuery && Object.keys(filters).length === 0 && (
                   <div className="fixed bottom-8 right-8 glass-strong rounded-xl p-3 shadow-2xl border border-gray-200 dark:border-gray-800">
                     <div className="flex flex-col gap-1">
                       {letters.map((letter) => (

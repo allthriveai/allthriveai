@@ -386,8 +386,8 @@ def import_github_project(
         is_published=not is_private,  # Published unless marked as private
     )
 
-    # Apply AI-suggested categories, topics, tools
-    apply_ai_metadata(project, analysis)
+    # Apply AI-suggested categories, topics, tools, and technologies from sections
+    apply_ai_metadata(project, analysis, content=content)
 
     logger.info(
         f'Successfully imported {owner}/{repo} as project {project.id} with {len(content.get("sections", []))} sections'

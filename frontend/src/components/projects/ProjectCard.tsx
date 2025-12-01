@@ -67,9 +67,10 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const [showToolTray, setShowToolTray] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
   const [slideUpExpanded, setSlideUpExpanded] = useState(false);
+  const [imageIsPortrait, setImageIsPortrait] = useState(false);
   const Icon = typeIcons[project.type] || DocumentTextIcon;
   const projectUrl = `/${project.username}/${project.slug}`;
-  
+
   // Check if user is admin
   const isAdmin = user?.role === 'admin';
   // User can delete if they're the owner OR if they're an admin
@@ -116,24 +117,24 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       setIsLiking(false);
     }
   };
-  
+
   const handleDeleteClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!confirm('Are you sure you want to delete this project?')) {
       return;
     }
-    
+
     try {
       // Use the admin delete endpoint that works with any project
       await deleteProjectById(project.id);
-      
+
       // Call onDelete callback if provided
       if (onDelete) {
         onDelete(project.id);
       }
-      
+
       // Optionally reload the page or update the UI
       window.location.reload();
     } catch (error) {
@@ -298,13 +299,17 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
               <img
                 src={heroElement.url}
                 alt={project.title}
-                className="w-full h-auto object-cover"
+                className={`w-full h-auto object-cover ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''}`}
                 loading="lazy"
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
+                }}
               />
             )}
 
             {isGradient && heroElement.type === 'gradient' && (
-              <div className={`w-full aspect-[4/3] bg-gradient-to-br ${heroElement.gradient} flex items-center justify-center p-8`}>
+              <div className={`w-full aspect-[4/3] bg-gradient-to-br ${heroElement.gradient} flex items-center justify-center p-8 pb-48 md:pb-8`}>
                 <div className="text-center">
                   <h3 className="text-3xl font-bold text-white drop-shadow-lg">
                     {heroElement.title}
@@ -342,7 +347,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
               const isEmbedUrl = embedUrl !== heroElement.url;
 
               return isEmbedUrl ? (
-                <div className="relative w-full aspect-video bg-black">
+                <div className="relative w-full aspect-video bg-black pb-40 md:pb-0">
                   <iframe
                     src={embedUrl}
                     className="absolute inset-0 w-full h-full"
@@ -353,7 +358,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
               ) : (
                 <video
                   src={heroElement.url}
-                  className="w-full h-auto block"
+                  className="w-full h-auto block pb-40 md:pb-0"
                   autoPlay
                   loop
                   muted
@@ -366,7 +371,11 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
               <img
                 src={heroElement.images[0]}
                 alt={project.title}
-                className="w-full h-auto block"
+                className={`w-full h-auto block ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''}`}
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
+                }}
               />
             )}
 
@@ -440,9 +449,10 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
 
         {/* GRADIENT OVERLAY & FOOTER */}
         {/* Always render footer absolute at bottom for seamless overlay look */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        {/* Show by default on mobile (md:opacity-0), show on hover on desktop (md:group-hover:opacity-100) */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
           {/* Gradient Background for smooth overlay fade */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent -top-40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent -top-64 md:-top-40" />
 
           <div className="relative p-5 pt-2">
             <h3 className="text-xl font-bold mb-1 line-clamp-2 leading-tight text-white drop-shadow-md">
@@ -556,7 +566,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                     <ChevronUpIcon className="w-4 h-4 text-white group-hover/more:scale-110 transition-transform drop-shadow-sm" />
                   </button>
                 )}
-                
+
                 {/* Admin Delete Button */}
                 {canDelete && !selectionMode && (
                   <button

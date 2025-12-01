@@ -83,7 +83,7 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
     videoUrl,
     video_url,
   } = redditData;
-  
+
   // Handle both snake_case and camelCase
   const thumbnailImage = thumbnailUrl || thumbnail_url;
   const postSelftext = selftext || '';
@@ -183,19 +183,12 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => navigate('/projects/explore')}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-all backdrop-blur-md"
-              >
-                <HomeIcon className="w-5 h-5" />
-                <span className="hidden sm:inline">Explore</span>
-              </button>
-              <Link
-                to={`/${localProject.username}`}
+                onClick={() => navigate(-1)}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-all backdrop-blur-md"
               >
                 <ArrowLeftIcon className="w-5 h-5" />
-                <span className="hidden sm:inline">@{localProject.username}</span>
-              </Link>
+                <span className="hidden sm:inline">Back</span>
+              </button>
             </div>
 
             {/* Action Buttons */}
@@ -289,7 +282,7 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                   <span className="font-semibold text-orange-300">r/{subreddit}</span>
                 </div>
 
-                <a 
+                <a
                   href={`https://www.reddit.com/user/${cleanAuthor}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -300,7 +293,7 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                 </a>
 
                 {linkFlair && (
-                  <div 
+                  <div
                     className="px-4 py-2 rounded-xl font-semibold text-sm border backdrop-blur-md"
                     style={{
                       backgroundColor: linkFlairBgColor ? `${linkFlairBgColor}40` : 'rgba(99, 102, 241, 0.2)',
@@ -337,7 +330,7 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
               <div className="mb-6">
                 <div className="prose prose-lg prose-invert max-w-none p-6 rounded-xl bg-white/5 border border-white/10">
                   {postSelftextHtml ? (
-                    <div 
+                    <div
                       dangerouslySetInnerHTML={{
                         __html: sanitizeHtml(postSelftextHtml)
                       }}
@@ -379,7 +372,7 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
               </div>
               <div className="flex justify-between items-center pb-4 border-b border-white/10 bg-white/5 -mx-8 px-8 py-4">
                 <span className="text-white/60">Original Author</span>
-                <a 
+                <a
                   href={`https://www.reddit.com/user/${cleanAuthor}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -409,8 +402,8 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                 <span className="text-xl">⚠️</span> Disclaimer
               </h3>
               <p className="text-orange-200/80 text-sm leading-relaxed">
-                This content was originally posted on Reddit by <strong>u/{cleanAuthor}</strong> and is not created, owned, or affiliated with AllThrive. 
-                We curate these discussions to help our community find valuable AI insights. 
+                This content was originally posted on Reddit by <strong>u/{cleanAuthor}</strong> and is not created, owned, or affiliated with AllThrive.
+                We curate these discussions to help our community find valuable AI insights.
                 All credit belongs to the original authors.
               </p>
             </div>
