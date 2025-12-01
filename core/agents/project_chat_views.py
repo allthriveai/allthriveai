@@ -15,6 +15,8 @@ from langchain_core.messages import HumanMessage
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
+from core.agents.circuit_breaker import CircuitBreakerOpenError, get_cached_faq_response, langraph_circuit_breaker
+from core.agents.security import output_validator, validate_chat_input
 from services.project_agent.agent import project_agent
 
 logger = logging.getLogger(__name__)
@@ -51,8 +53,14 @@ def project_chat_stream_v2(request):
         session_id = body.get('session_id') or str(uuid.uuid4())
         user_message = body.get('message', '').strip()
 
-        if not user_message:
-            return JsonResponse({'error': 'Message is required'}, status=400)
+        # Security: Validate and sanitize input
+        is_valid, error_msg, sanitized_message = validate_chat_input(user_message, request.user.id)
+        if not is_valid:
+            logger.warning(f'[PROJECT_CHAT_V2] Invalid input from user {request.user.id}: {error_msg}')
+            return JsonResponse({'error': error_msg}, status=400)
+
+        # Use sanitized message for processing
+        user_message = sanitized_message
 
         logger.info(f'[PROJECT_CHAT_V2] Session: {session_id}, Message: {user_message[:100]}')
 
@@ -78,32 +86,54 @@ def project_chat_stream_v2(request):
                 project_id = None
                 project_slug = None
 
-                async for chunk in project_agent.astream(input_state, config):
-                    # Extract messages from chunk
-                    if 'agent' in chunk:
-                        agent_messages = chunk['agent'].get('messages', [])
-                        for msg in agent_messages:
-                            if hasattr(msg, 'content') and msg.content:
-                                # Stream content token by token
-                                words = msg.content.split()
-                                for word in words:
-                                    yield f'data: {json.dumps({"type": "token", "content": word + " "})}\n\n'
-                                full_response += msg.content
+                try:
+                    # Wrap agent call with circuit breaker
+                    async for chunk in langraph_circuit_breaker.call(project_agent.astream, input_state, config):
+                        # Extract messages from chunk
+                        if 'agent' in chunk:
+                            agent_messages = chunk['agent'].get('messages', [])
+                            for msg in agent_messages:
+                                if hasattr(msg, 'content') and msg.content:
+                                    # Security: Validate output before streaming
+                                    is_safe, violations = output_validator.validate_output(msg.content)
+                                    if not is_safe:
+                                        logger.error(f'[SECURITY] Output validation failed: {violations}')
+                                        # Sanitize sensitive data
+                                        content = output_validator.sanitize_output(msg.content)
+                                    else:
+                                        content = msg.content
 
-                    # Check for tool results
-                    if 'tools' in chunk:
-                        tool_messages = chunk['tools'].get('messages', [])
-                        for msg in tool_messages:
-                            if hasattr(msg, 'content'):
-                                try:
-                                    # Try to parse tool result
-                                    result = json.loads(msg.content) if isinstance(msg.content, str) else msg.content
-                                    if isinstance(result, dict) and result.get('success'):
-                                        project_id = result.get('project_id')
-                                        project_slug = result.get('slug')
-                                except (json.JSONDecodeError, KeyError, ValueError, TypeError):
-                                    # Ignore parsing errors
-                                    pass
+                                    # Stream content token by token
+                                    words = content.split()
+                                    for word in words:
+                                        yield f'data: {json.dumps({"type": "token", "content": word + " "})}\n\n'
+                                    full_response += content
+
+                        # Check for tool results
+                        if 'tools' in chunk:
+                            tool_messages = chunk['tools'].get('messages', [])
+                            for msg in tool_messages:
+                                if hasattr(msg, 'content'):
+                                    try:
+                                        # Try to parse tool result
+                                        result = (
+                                            json.loads(msg.content) if isinstance(msg.content, str) else msg.content
+                                        )
+                                        if isinstance(result, dict) and result.get('success'):
+                                            project_id = result.get('project_id')
+                                            project_slug = result.get('slug')
+                                    except (json.JSONDecodeError, KeyError, ValueError, TypeError):
+                                        # Ignore parsing errors
+                                        pass
+
+                except CircuitBreakerOpenError:
+                    # Circuit breaker is open - use fallback
+                    logger.warning('[PROJECT_CHAT_V2] Circuit breaker open, using fallback')
+                    fallback_response = get_cached_faq_response()
+                    yield f'data: {json.dumps({"type": "token", "content": fallback_response})}\n\n'.encode()
+                    msg = json.dumps({'type': 'fallback', 'message': 'Using cached response due to high load'})
+                    yield f'data: {msg}\n\n'.encode()
+                    return
 
                 logger.info('[PROJECT_CHAT_V2] Agent completed')
 

@@ -30,6 +30,20 @@ export default defineConfig({
           });
         },
       },
+      '/ws': {
+        target: process.env.VITE_WS_PROXY_TARGET || 'ws://localhost:8000',
+        ws: true,
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('WebSocket proxy error', err);
+          });
+          proxy.on('proxyReqWs', (proxyReq, req, socket, options, head) => {
+            console.log('Sending WebSocket Request to the Target:', req.url);
+          });
+        },
+      },
     },
   },
 })

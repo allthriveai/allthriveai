@@ -200,6 +200,44 @@ class ProjectSerializer(serializers.ModelSerializer):
         """Convert snake_case field names to camelCase for frontend compatibility."""
         data = super().to_representation(instance)
 
+        # Add Reddit-specific data to content if this is a Reddit thread
+        if instance.type == 'reddit_thread' and hasattr(instance, 'reddit_thread'):
+            reddit_thread = instance.reddit_thread
+            if 'content' not in data or data['content'] is None:
+                data['content'] = {}
+            elif not isinstance(data['content'], dict):
+                data['content'] = {}
+
+            # Get enriched data from metadata
+            metadata = reddit_thread.reddit_metadata or {}
+
+            data['content']['reddit'] = {
+                'subreddit': reddit_thread.subreddit,
+                'author': reddit_thread.author,
+                'permalink': reddit_thread.permalink,
+                'score': reddit_thread.score,
+                'num_comments': reddit_thread.num_comments,
+                'thumbnail_url': reddit_thread.thumbnail_url,
+                'created_utc': reddit_thread.created_utc.isoformat() if reddit_thread.created_utc else None,
+                'reddit_post_id': reddit_thread.reddit_post_id,
+                # Enriched data from JSON API
+                'upvote_ratio': metadata.get('upvote_ratio', 0),
+                'selftext': metadata.get('selftext', ''),
+                'selftext_html': metadata.get('selftext_html', ''),
+                'post_hint': metadata.get('post_hint', ''),
+                'link_flair_text': metadata.get('link_flair_text', ''),
+                'link_flair_background_color': metadata.get('link_flair_background_color', ''),
+                'is_video': metadata.get('is_video', False),
+                'video_url': metadata.get('video_url', ''),
+                'video_duration': metadata.get('video_duration', 0),
+                'is_gallery': metadata.get('is_gallery', False),
+                'gallery_images': metadata.get('gallery_images', []),
+                'domain': metadata.get('domain', ''),
+                'url': metadata.get('url', ''),
+                'over_18': metadata.get('over_18', False),
+                'spoiler': metadata.get('spoiler', False),
+            }
+
         # Map snake_case to camelCase for fields that need it
         field_mapping = {
             'user_avatar_url': 'userAvatarUrl',

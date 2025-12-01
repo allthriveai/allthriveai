@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, SparklesIcon, XMarkIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import type { Taxonomy } from '@/types/models';
+import { getCategoryColorClasses } from '@/utils/categoryColors';
 
 interface SearchBarWithFiltersProps {
   onSearch: (query: string) => void;
@@ -154,16 +155,18 @@ export function SearchBarWithFilters({
           {/* Active Topic Pills */}
           {selectedTopics.map(topicSlug => {
             const topic = topics.find(t => t.slug === topicSlug);
-            return topic ? (
+            if (!topic) return null;
+            const colorClasses = getCategoryColorClasses(topic.color, true);
+            return (
               <button
                 key={topicSlug}
                 onClick={() => toggleTopic(topicSlug)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-full text-xs font-medium hover:bg-teal-200 dark:hover:bg-teal-900/50 transition-colors"
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${colorClasses.background}`}
               >
                 {topic.name}
                 <XMarkIcon className="w-3 h-3" />
               </button>
-            ) : null;
+            );
           })}
 
           {/* Active Tool Pills */}
@@ -212,22 +215,19 @@ export function SearchBarWithFilters({
                   Topics
                 </h4>
                 <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
-                  {topics.map((topic) => (
-                    <button
-                      key={topic.slug}
-                      onClick={() => toggleTopic(topic.slug)}
-                      className={`
-                        px-3 py-1.5 rounded-md text-sm font-medium transition-all
-                        ${
-                          selectedTopics.includes(topic.slug)
-                            ? 'bg-teal-500 text-white shadow-sm'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        }
-                      `}
-                    >
-                      {topic.name}
-                    </button>
-                  ))}
+                  {topics.map((topic) => {
+                    const isSelected = selectedTopics.includes(topic.slug);
+                    const colorClasses = getCategoryColorClasses(topic.color, isSelected);
+                    return (
+                      <button
+                        key={topic.slug}
+                        onClick={() => toggleTopic(topic.slug)}
+                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${colorClasses.background} ${colorClasses.hover}`}
+                      >
+                        {topic.name}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

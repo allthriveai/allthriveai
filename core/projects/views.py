@@ -45,7 +45,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return (
             Project.objects.filter(user=self.request.user)
             .select_related('user')
-            .prefetch_related('tools', 'likes')
+            .prefetch_related('tools', 'likes', 'reddit_thread')
             .order_by('-created_at')
         )
 
@@ -176,7 +176,11 @@ def get_project_by_slug(request, username, slug):
 
     # Try to find the project
     try:
-        project = Project.objects.select_related('user').prefetch_related('tools', 'likes').get(user=user, slug=slug)
+        project = (
+            Project.objects.select_related('user')
+            .prefetch_related('tools', 'likes', 'reddit_thread')
+            .get(user=user, slug=slug)
+        )
     except Project.DoesNotExist:
         return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
 

@@ -43,6 +43,7 @@ class Project(models.Model):
         IMAGE_COLLECTION = 'image_collection', 'Image Collection'
         PROMPT = 'prompt', 'Prompt / Conversation'
         VIDEO = 'video', 'Video'
+        REDDIT_THREAD = 'reddit_thread', 'Reddit Thread'
         OTHER = 'other', 'Other'
 
     objects = ProjectQuerySet.as_manager()

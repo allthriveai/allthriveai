@@ -38,6 +38,9 @@ class AIProviderTestCase(TestCase):
             ai.set_provider('anthropic')
             self.assertEqual(ai.current_provider, 'anthropic')
 
+            ai.set_provider('gemini')
+            self.assertEqual(ai.current_provider, 'gemini')
+
     def test_invalid_provider(self):
         """Test that invalid provider raises ValueError."""
         with patch('services.ai_provider.AIProvider._initialize_client'):
@@ -72,6 +75,14 @@ class AIProviderTestCase(TestCase):
                 AIProvider(provider='anthropic')
 
             self.assertIn('Anthropic API key not configured', str(context.exception))
+
+    def test_gemini_initialization_missing_credentials(self):
+        """Test Gemini initialization fails without credentials."""
+        with patch.object(settings, 'GOOGLE_API_KEY', None):
+            with self.assertRaises(ValueError) as context:
+                AIProvider(provider='gemini')
+
+            self.assertIn('Google API key not configured', str(context.exception))
 
     @patch('openai.AzureOpenAI')
     def test_azure_complete(self, mock_azure_client):
@@ -119,6 +130,8 @@ class AIProviderTestCase(TestCase):
         mock_response = Mock()
         mock_response.content = [Mock()]
         mock_response.content[0].text = 'Test response'
+        mock_response.usage.input_tokens = 10
+        mock_response.usage.output_tokens = 20
 
         mock_client_instance = Mock()
         mock_client_instance.messages.create.return_value = mock_response
@@ -130,6 +143,35 @@ class AIProviderTestCase(TestCase):
 
             self.assertEqual(response, 'Test response')
             mock_client_instance.messages.create.assert_called_once()
+
+    @patch('google.generativeai.GenerativeModel')
+    @patch('google.generativeai.configure')
+    def test_gemini_complete(self, mock_configure, mock_generative_model):
+        """Test Gemini completion."""
+        # Mock response
+        mock_response = Mock()
+        mock_response.text = 'Test response'
+        # Mock usage metadata
+        mock_usage = Mock()
+        mock_usage.prompt_token_count = 10
+        mock_usage.candidates_token_count = 20
+        mock_usage.total_token_count = 30
+        mock_response.usage_metadata = mock_usage
+
+        mock_model_instance = Mock()
+        mock_model_instance.generate_content.return_value = mock_response
+        mock_generative_model.return_value = mock_model_instance
+
+        with patch.object(settings, 'GOOGLE_API_KEY', 'test-key'):
+            ai = AIProvider(provider='gemini')
+            response = ai.complete('Test prompt')
+
+            self.assertEqual(response, 'Test response')
+            mock_configure.assert_called_with(api_key='test-key')
+            mock_model_instance.generate_content.assert_called_once()
+
+            # Check usage tracking
+            self.assertEqual(ai.last_usage['total_tokens'], 30)
 
     @patch('openai.AzureOpenAI')
     def test_complete_with_system_message(self, mock_azure_client):

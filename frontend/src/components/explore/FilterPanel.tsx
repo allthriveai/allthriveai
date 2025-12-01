@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FunnelIcon, XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import type { Taxonomy } from '@/types/models';
+import { getCategoryColorClasses } from '@/utils/categoryColors';
 
 interface FilterPanelProps {
   topics: Taxonomy[];
@@ -89,22 +90,19 @@ export function FilterPanel({
           {topics.length > 0 && (
             <div>
               <div className="flex flex-wrap gap-1.5">
-                {visibleTopics.map((topic) => (
-                  <button
-                    key={topic.id}
-                    onClick={() => toggleTopic(topic.id)}
-                    className={`
-                      px-2.5 py-1 rounded-md text-xs font-medium transition-all
-                      ${
-                        selectedTopics.includes(topic.id)
-                          ? 'bg-teal-500 text-white shadow-sm'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                      }
-                    `}
-                  >
-                    {topic.name}
-                  </button>
-                ))}
+                {visibleTopics.map((topic) => {
+                  const isSelected = selectedTopics.includes(topic.id);
+                  const colorClasses = getCategoryColorClasses(topic.color, isSelected);
+                  return (
+                    <button
+                      key={topic.id}
+                      onClick={() => toggleTopic(topic.id)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${colorClasses.background} ${colorClasses.hover}`}
+                    >
+                      {topic.name}
+                    </button>
+                  );
+                })}
                 {topics.length > maxInitialItems && (
                   <button
                     onClick={() => setShowAllTopics(!showAllTopics)}

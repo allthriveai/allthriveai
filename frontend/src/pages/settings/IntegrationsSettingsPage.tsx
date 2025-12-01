@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faGitlab, faFigma, faInstagram, faTiktok, faYoutube } from '@fortawesome/free-brands-svg-icons';
 import { VideoPickerModal } from '@/components/integrations/VideoPickerModal';
+import { YouTubeImportProgressModal } from '@/components/integrations/YouTubeImportProgressModal';
 import { getUserFriendlyError, type UserFriendlyError } from '@/utils/errorMessages';
 
 console.log('[IntegrationsSettingsPage] MODULE LOADED - File imported successfully');
@@ -88,6 +89,13 @@ export default function IntegrationsSettingsPage() {
   const [youtubeChannelId, setYoutubeChannelId] = useState<string | null>(null);
   const [youtubeChannelName, setYoutubeChannelName] = useState<string | null>(null);
   const [youtubeNeedsReconnect, setYoutubeNeedsReconnect] = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState<string | null>(null);
+  const [channelInfo, setChannelInfo] = useState<any>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showImportProgress, setShowImportProgress] = useState(false);
+  const [importSourceId, setImportSourceId] = useState<number | null>(null);
+  const [importVideoCount, setImportVideoCount] = useState(0);
 
   // Fetch connection status on mount
   useEffect(() => {
@@ -262,10 +270,7 @@ export default function IntegrationsSettingsPage() {
   };
 
   const handleDisconnect = async (integrationId: string, integrationName: string) => {
-    if (!confirm(`Are you sure you want to disconnect ${integrationName}?`)) {
-      return;
-    }
-
+    setShowDisconnectModal(null);
     setErrorMessage(null);
     setSuccessMessage('');
 
@@ -310,6 +315,8 @@ export default function IntegrationsSettingsPage() {
           )
         );
 
+        setChannelInfo(null);
+        setLastSyncedAt(null);
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
         console.error('Failed to disconnect YouTube:', error);
@@ -363,6 +370,11 @@ export default function IntegrationsSettingsPage() {
       });
 
       if (response.data.success) {
+        // Show progress modal
+        setImportSourceId(response.data.content_source_id);
+        setImportVideoCount(50);
+        setShowImportProgress(true);
+
         setSuccessMessage(
           'Your channel is being imported! This may take a few minutes. ' +
           'Auto-sync is now enabled for new uploads.'
@@ -393,10 +405,54 @@ export default function IntegrationsSettingsPage() {
               : integration
           )
         );
+
+        // Update last synced time if available
+        if (response.data.lastSyncedAt) {
+          setLastSyncedAt(response.data.lastSyncedAt);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch sync status:', error);
     }
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    setErrorMessage(null);
+    setSuccessMessage('');
+
+    try {
+      const response = await api.post('/integrations/youtube/sync/');
+
+      if (response.data.success) {
+        setLastSyncedAt(new Date().toISOString());
+        setSuccessMessage(response.data.message || `Found ${response.data.videosFound || 0} new videos. Syncing in progress...`);
+      }
+    } catch (error: any) {
+      console.error('Failed to sync:', error);
+      const friendlyError = getUserFriendlyError(error, 'youtube');
+      setErrorMessage(friendlyError);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const formatLastSyncedTime = (timestamp: string | null) => {
+    if (!timestamp) return 'Never';
+
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+
+    return date.toLocaleDateString();
   };
 
   // Video picker modal handlers
@@ -687,11 +743,27 @@ export default function IntegrationsSettingsPage() {
                     </div>
                   )}
 
+                  {/* YouTube Sync Status */}
+                  {integration.id === 'youtube' && integration.isConnected && (
+                    <div className="mb-4 p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+                        Last synced: <span className="font-medium text-slate-700 dark:text-slate-300">{formatLastSyncedTime(lastSyncedAt)}</span>
+                      </p>
+                      <button
+                        onClick={handleManualSync}
+                        disabled={isSyncing}
+                        className="w-full px-3 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSyncing ? '⏳ Syncing...' : '🔄 Sync Now'}
+                      </button>
+                    </div>
+                  )}
+
                   {/* Action button */}
                   <div className="mt-auto">
                     {integration.isConnected ? (
                       <button
-                        onClick={() => handleDisconnect(integration.id, integration.name)}
+                        onClick={() => setShowDisconnectModal(integration.id)}
                         className="w-full px-4 py-2 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors text-sm font-medium"
                       >
                         Disconnect
@@ -752,6 +824,54 @@ export default function IntegrationsSettingsPage() {
           selectedVideoIds={videoPickerState.selectedVideoIds}
           onSelectionChange={handleSelectionChange}
         />
+
+        {/* Import Progress Modal */}
+        <YouTubeImportProgressModal
+          isOpen={showImportProgress}
+          onClose={() => setShowImportProgress(false)}
+          sourceId={importSourceId}
+          videoCount={importVideoCount}
+        />
+
+        {/* Disconnect Confirmation Modal */}
+        {showDisconnectModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg max-w-md w-full mx-4 p-6">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="text-3xl">⚠️</div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                    Disconnect {showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : 'Integration'}?
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    {showDisconnectModal === 'youtube'
+                      ? 'Auto-sync will stop, but your imported videos will remain on your profile. You can reconnect anytime.'
+                      : 'This will stop syncing content from this platform. Existing projects will remain.'
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDisconnectModal(null)}
+                  className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-medium text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const integrationName = showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : 'Integration';
+                    handleDisconnect(showDisconnectModal, integrationName);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium text-sm"
+                >
+                  Keep Videos & Disconnect
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </SettingsLayout>
     </DashboardLayout>
   );

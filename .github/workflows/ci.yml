@@ -96,10 +96,24 @@ jobs:
           # Ensure no model changes are pending
           python manage.py makemigrations --check --dry-run
 
-      - name: Run tests
+      - name: Run Django tests
         run: |
           . venv/bin/activate
-          python manage.py test --verbosity=2
+          python manage.py test --verbosity=2 --keepdb
+
+      - name: Run security tests (pytest)
+        run: |
+          . venv/bin/activate
+          pytest core/agents/tests/test_security_comprehensive.py -v --cov=core.agents.security --cov-report=term --cov-report=html
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./htmlcov/coverage.xml
+          flags: security-tests
+          name: security-coverage
+        continue-on-error: true
 
       - name: DB health endpoint smoke test
         run: |

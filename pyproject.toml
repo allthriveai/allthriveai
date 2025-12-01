@@ -15,7 +15,12 @@ quote-style = "single"
 indent-style = "space"
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["S105", "S106", "F841", "B017", "B018"]
+"**/tests/**" = ["S105", "S106", "F841", "B017", "B018", "S101"]
+"**/*test*.py" = ["S101", "E402", "B007"]
+"load_testing/locustfile.py" = ["S311", "E501"]
+"scripts/test_websocket.py" = ["S105"]
+"config/asgi.py" = ["E402"]
+"config/settings.py" = ["E402"]
 "core/migrations/**" = ["E501", "F401", "F403", "DJ001"]
 "core/points/migrations/**" = ["E501"]
 "examples/**" = ["E402"]

@@ -5,7 +5,7 @@ from rest_framework.routers import DefaultRouter
 from .achievements.views import AchievementViewSet
 from .agents.auth_chat_views import auth_chat_finalize, auth_chat_state, auth_chat_stream
 from .agents.project_chat_views import project_chat_stream_v2
-from .agents.views import ConversationViewSet, MessageViewSet
+from .agents.views import ConversationViewSet, MessageViewSet, detect_intent
 from .auth.views import (
     UserProfileView,
     csrf_token,
@@ -18,6 +18,7 @@ from .auth.views import (
     user_activity,
     username_profile_view,
 )
+from .auth.views_token import generate_ws_connection_token
 from .battles.views import (
     BattleInvitationViewSet,
     PromptBattleViewSet,
@@ -141,12 +142,15 @@ urlpatterns = [
     path('auth/logout/', logout_view, name='logout'),
     path('auth/urls/', oauth_urls, name='oauth_urls'),
     path('auth/callback/', oauth_callback, name='oauth_callback'),  # Fallback redirect
+    path('auth/ws-connection-token/', generate_ws_connection_token, name='ws_connection_token'),
     # Auth chat endpoints
     path('auth/chat/stream/', auth_chat_stream, name='auth_chat_stream'),
     path('auth/chat/state/', auth_chat_state, name='auth_chat_state'),
     path('auth/chat/finalize/', auth_chat_finalize, name='auth_chat_finalize'),
     # Project chat endpoint
     path('project/chat/stream/', project_chat_stream_v2, name='project_chat_stream'),
+    # Agent endpoints
+    path('agents/detect-intent/', detect_intent, name='detect_intent'),
     # User-scoped /me endpoints
     path('me/profile/', UserProfileView.as_view(), name='me_profile'),
     path('me/activity/', user_activity, name='user_activity'),

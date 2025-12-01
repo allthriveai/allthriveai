@@ -19,6 +19,7 @@ class AIProviderType(Enum):
     AZURE = 'azure'
     OPENAI = 'openai'
     ANTHROPIC = 'anthropic'
+    GEMINI = 'gemini'
 
 
 class AIProvider:
@@ -53,6 +54,7 @@ class AIProvider:
         self._client = None
         self._config = kwargs
         self.user_id = user_id
+        self.last_usage = None  # Track last request token usage
 
         # Set provider (uses default from settings if not specified)
         provider_type = provider or getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
@@ -81,6 +83,8 @@ class AIProvider:
             return self._initialize_openai_client()
         elif self._provider == AIProviderType.ANTHROPIC:
             return self._initialize_anthropic_client()
+        elif self._provider == AIProviderType.GEMINI:
+            return self._initialize_gemini_client()
 
     def _initialize_azure_client(self):
         """Initialize Azure OpenAI client."""
@@ -133,6 +137,23 @@ class AIProvider:
 
         return Anthropic(api_key=api_key)
 
+    def _initialize_gemini_client(self):
+        """Initialize Google Gemini client."""
+        try:
+            import google.generativeai as genai
+        except ImportError:
+            raise ImportError(
+                'Google Generative AI library not installed. Install with: pip install google-generativeai'
+            )
+
+        api_key = getattr(settings, 'GOOGLE_API_KEY', None)
+
+        if not api_key:
+            raise ValueError('Google API key not configured. Set GOOGLE_API_KEY in settings.')
+
+        genai.configure(api_key=api_key)
+        return genai
+
     @traceable(name='ai_provider_complete', run_type='llm')
     def complete(
         self,
@@ -163,6 +184,8 @@ class AIProvider:
             return self._complete_openai(prompt, model, temperature, max_tokens, system_message, **kwargs)
         elif self._provider == AIProviderType.ANTHROPIC:
             return self._complete_anthropic(prompt, model, temperature, max_tokens, system_message, **kwargs)
+        elif self._provider == AIProviderType.GEMINI:
+            return self._complete_gemini(prompt, model, temperature, max_tokens, system_message, **kwargs)
 
     def _complete_azure(
         self,
@@ -184,6 +207,14 @@ class AIProvider:
         response = self._client.chat.completions.create(
             model=deployment_name, messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
         )
+
+        # Store token usage for tracking
+        if hasattr(response, 'usage'):
+            self.last_usage = {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
+                'total_tokens': response.usage.total_tokens,
+            }
 
         return response.choices[0].message.content
 
@@ -207,6 +238,14 @@ class AIProvider:
         response = self._client.chat.completions.create(
             model=model_name, messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
         )
+
+        # Store token usage for tracking
+        if hasattr(response, 'usage'):
+            self.last_usage = {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
+                'total_tokens': response.usage.total_tokens,
+            }
 
         return response.choices[0].message.content
 
@@ -232,7 +271,52 @@ class AIProvider:
             **kwargs,
         )
 
+        # Store token usage for tracking (Anthropic uses different field names)
+        if hasattr(response, 'usage'):
+            self.last_usage = {
+                'prompt_tokens': response.usage.input_tokens,
+                'completion_tokens': response.usage.output_tokens,
+                'total_tokens': response.usage.input_tokens + response.usage.output_tokens,
+            }
+
         return response.content[0].text
+
+    def _complete_gemini(
+        self,
+        prompt: str,
+        model: str | None,
+        temperature: float,
+        max_tokens: int | None,
+        system_message: str | None,
+        **kwargs,
+    ) -> str:
+        """Google Gemini completion."""
+        model_name = model or getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
+
+        generation_config = {
+            'temperature': temperature,
+        }
+        if max_tokens:
+            generation_config['max_output_tokens'] = max_tokens
+
+        # Handle system message if provided
+        model_kwargs = {}
+        if system_message:
+            model_kwargs['system_instruction'] = system_message
+
+        model_instance = self._client.GenerativeModel(model_name=model_name, **model_kwargs)
+
+        response = model_instance.generate_content(prompt, generation_config=generation_config, **kwargs)
+
+        # Store token usage for tracking (Gemini provides usage metadata)
+        if hasattr(response, 'usage_metadata'):
+            self.last_usage = {
+                'prompt_tokens': response.usage_metadata.prompt_token_count,
+                'completion_tokens': response.usage_metadata.candidates_token_count,
+                'total_tokens': response.usage_metadata.total_token_count,
+            }
+
+        return response.text
 
     def stream_complete(
         self,
@@ -263,6 +347,8 @@ class AIProvider:
             yield from self._stream_openai(prompt, model, temperature, max_tokens, system_message, **kwargs)
         elif self._provider == AIProviderType.ANTHROPIC:
             yield from self._stream_anthropic(prompt, model, temperature, max_tokens, system_message, **kwargs)
+        elif self._provider == AIProviderType.GEMINI:
+            yield from self._stream_gemini(prompt, model, temperature, max_tokens, system_message, **kwargs)
 
     def _stream_azure(
         self,
@@ -345,12 +431,112 @@ class AIProvider:
             for text in stream.text_stream:
                 yield text
 
+    def _stream_gemini(
+        self,
+        prompt: str,
+        model: str | None,
+        temperature: float,
+        max_tokens: int | None,
+        system_message: str | None,
+        **kwargs,
+    ):
+        """Google Gemini streaming completion."""
+        model_name = model or getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
+
+        generation_config = {
+            'temperature': temperature,
+        }
+        if max_tokens:
+            generation_config['max_output_tokens'] = max_tokens
+
+        # Handle system message if provided
+        model_kwargs = {}
+        if system_message:
+            model_kwargs['system_instruction'] = system_message
+
+        model_instance = self._client.GenerativeModel(model_name=model_name, **model_kwargs)
+
+        response = model_instance.generate_content(prompt, generation_config=generation_config, stream=True, **kwargs)
+
+        for chunk in response:
+            if chunk.text:
+                yield chunk.text
+
     @property
     def current_provider(self) -> str:
         """Get the current provider name."""
         return self._provider.value if self._provider else None
 
     @property
+    def current_model(self) -> str:
+        """Get the default model name for the current provider."""
+        if self._provider == AIProviderType.AZURE:
+            return getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
+        elif self._provider == AIProviderType.OPENAI:
+            return 'gpt-4'
+        elif self._provider == AIProviderType.ANTHROPIC:
+            return 'claude-3-5-sonnet-20241022'
+        elif self._provider == AIProviderType.GEMINI:
+            return getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
+        return 'unknown'
+
+    @property
     def client(self):
         """Get the underlying client for advanced usage."""
         return self._client
+
+    def get_langchain_llm(self, temperature: float = 0.7, **kwargs):
+        """
+        Get a LangChain-compatible LLM instance for use with LangGraph agents.
+
+        This provides a consistent way to get LLMs for agent workflows while
+        respecting the centralized AI provider configuration.
+
+        Args:
+            temperature: Sampling temperature (0-1)
+            **kwargs: Additional LLM configuration options
+
+        Returns:
+            LangChain BaseChatModel instance (AzureChatOpenAI, ChatOpenAI, or ChatAnthropic)
+        """
+        if self._provider == AIProviderType.AZURE:
+            from langchain_openai import AzureChatOpenAI
+
+            return AzureChatOpenAI(
+                azure_deployment=getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4'),
+                azure_endpoint=getattr(settings, 'AZURE_OPENAI_ENDPOINT', ''),
+                api_key=getattr(settings, 'AZURE_OPENAI_API_KEY', ''),
+                api_version=getattr(settings, 'AZURE_OPENAI_API_VERSION', '2024-02-15-preview'),
+                temperature=temperature,
+                **kwargs,
+            )
+
+        elif self._provider == AIProviderType.OPENAI:
+            from langchain_openai import ChatOpenAI
+
+            return ChatOpenAI(
+                model=kwargs.pop('model', 'gpt-4'),
+                api_key=getattr(settings, 'OPENAI_API_KEY', ''),
+                temperature=temperature,
+                **kwargs,
+            )
+
+        elif self._provider == AIProviderType.ANTHROPIC:
+            from langchain_anthropic import ChatAnthropic
+
+            return ChatAnthropic(
+                model=kwargs.pop('model', 'claude-3-5-sonnet-20241022'),
+                api_key=getattr(settings, 'ANTHROPIC_API_KEY', ''),
+                temperature=temperature,
+                **kwargs,
+            )
+
+        elif self._provider == AIProviderType.GEMINI:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+
+            return ChatGoogleGenerativeAI(
+                model=kwargs.pop('model', getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')),
+                google_api_key=getattr(settings, 'GOOGLE_API_KEY', ''),
+                temperature=temperature,
+                **kwargs,
+            )

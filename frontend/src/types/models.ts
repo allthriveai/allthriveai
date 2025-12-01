@@ -91,7 +91,7 @@ export const StorageKeys = {
 } as const;
 
 // Project types
-export type ProjectType = 'github_repo' | 'image_collection' | 'prompt' | 'other';
+export type ProjectType = 'github_repo' | 'figma_design' | 'image_collection' | 'prompt' | 'reddit_thread' | 'other';
 
 // Project redirect
 export interface ProjectRedirect {
@@ -158,6 +158,27 @@ export interface ProjectContent {
     content: string; // URL for image/video, text content for text
     caption?: string;
   };
+  // Reddit thread data
+  reddit?: {
+    subreddit: string;
+    author: string;
+    permalink: string;
+    score: number;
+    num_comments: number;
+    thumbnail_url: string;
+    created_utc: string;
+    reddit_post_id: string;
+  };
+  // GitHub project data
+  github?: {
+    analysis_status?: 'pending' | 'complete' | 'failed';
+    analysis?: any; // GitHub analysis data
+  };
+  // Figma project data
+  figma?: {
+    analysis_status?: 'pending' | 'complete' | 'failed';
+    analysis?: any; // Figma analysis data
+  };
 }
 
 // Base block interface
@@ -219,10 +240,11 @@ export type TaxonomyCategory = 'interest' | 'skill' | 'goal' | 'topic' | 'indust
 export interface Taxonomy {
   id: number;
   name: string;
+  slug: string;
   taxonomyType: TaxonomyType;
   taxonomyTypeDisplay: string;
   description: string;
-  color?: string; // For topics
+  color?: string; // For topics and categories
   isActive: boolean;
   websiteUrl?: string;
   logoUrl?: string;
