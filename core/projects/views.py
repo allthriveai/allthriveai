@@ -42,20 +42,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Admin users can see all projects, regular users only see their own
         from core.users.models import UserRole
-        
+
         if self.request.user.role == UserRole.ADMIN:
             # Admins can manage all projects
             queryset = Project.objects.all()
         else:
             # Only return projects for the current user
             queryset = Project.objects.filter(user=self.request.user)
-        
+
         # Optimize with select_related for user and prefetch_related for tools to prevent N+1 queries
         return (
-            queryset
-            .select_related('user')
-            .prefetch_related('tools', 'likes', 'reddit_thread')
-            .order_by('-created_at')
+            queryset.select_related('user').prefetch_related('tools', 'likes', 'reddit_thread').order_by('-created_at')
         )
 
     def perform_create(self, serializer):
@@ -120,16 +117,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         """Called when deleting a project.
-        
+
         Admins can delete any project, regular users can only delete their own.
         """
         from core.users.models import UserRole
-        
+
         # Check permissions
         if self.request.user.role != UserRole.ADMIN and instance.user != self.request.user:
             from rest_framework.exceptions import PermissionDenied
+
             raise PermissionDenied('You do not have permission to delete this project.')
-        
+
         user = instance.user
         instance.delete()
         # Invalidate cache after delete
@@ -152,7 +150,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         Admins can delete any projects, regular users can only delete their own.
         """
         from core.users.models import UserRole
-        
+
         project_ids = request.data.get('project_ids', [])
 
         if not project_ids:
@@ -172,15 +170,16 @@ class ProjectViewSet(viewsets.ModelViewSet):
             queryset = Project.objects.filter(id__in=project_ids)
         else:
             queryset = Project.objects.filter(id__in=project_ids, user=request.user)
-        
+
         # Get affected users for cache invalidation
         affected_users = set(queryset.values_list('user', flat=True))
-        
+
         deleted_count, _ = queryset.delete()
 
         # Invalidate cache for all affected users
         if deleted_count > 0:
             from core.users.models import User
+
             for user_id in affected_users:
                 try:
                     user = User.objects.get(id=user_id)
@@ -543,37 +542,36 @@ def explore_projects(request):
 @permission_classes([IsAuthenticated])
 def delete_project_by_id(request, project_id):
     """Delete a project by ID.
-    
+
     Admins can delete any project, regular users can only delete their own.
     """
+    from rest_framework.exceptions import NotFound, PermissionDenied
+
     from core.users.models import UserRole
-    from rest_framework.exceptions import PermissionDenied, NotFound
-    
+
     try:
         project = Project.objects.select_related('user').get(id=project_id)
     except Project.DoesNotExist:
-        raise NotFound('Project not found')
-    
+        raise NotFound('Project not found') from None
+
     # Check permissions
     if request.user.role != UserRole.ADMIN and project.user != request.user:
         raise PermissionDenied('You do not have permission to delete this project.')
-    
+
     # Store user for cache invalidation
     user = project.user
     username_lower = user.username.lower()
-    
+
     # Delete the project
     project.delete()
-    
+
     # Invalidate cache
     from django.core.cache import cache
+
     cache.delete(f'projects:v2:{username_lower}:own')
     cache.delete(f'projects:v2:{username_lower}:public')
-    
-    return Response(
-        {'message': 'Project deleted successfully'},
-        status=status.HTTP_200_OK
-    )
+
+    return Response({'message': 'Project deleted successfully'}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

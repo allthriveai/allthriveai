@@ -22,7 +22,7 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
-  
+
   // Check if user is admin
   const isAdmin = user?.role === 'admin';
 
@@ -110,22 +110,22 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
       alert(errorInfo.message);
     }
   };
-  
+
   const handleDeleteComment = async (commentId: number, commentUsername: string) => {
     if (!project) return;
-    
+
     const isOwnComment = user?.username === commentUsername;
     const confirmMessage = isAdmin && !isOwnComment
       ? 'Are you sure you want to delete this comment? (Admin action)'
       : 'Are you sure you want to delete your comment?';
-    
+
     if (!confirm(confirmMessage)) {
       return;
     }
-    
+
     try {
       await deleteComment(project.id, commentId);
-      
+
       // Remove comment from list
       setComments(comments.filter(comment => comment.id !== commentId));
     } catch (error) {
@@ -283,7 +283,7 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
                               </p>
                             </div>
                           </div>
-                          
+
                           {/* Delete Button (for owner or admin) */}
                           {isAuthenticated && (user?.username === comment.username || isAdmin) && (
                             <button

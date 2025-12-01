@@ -239,14 +239,14 @@ def delete_comment(request, project_pk, comment_id):
     Delete a comment (only owner or admin can delete).
     """
     from core.users.models import UserRole
-    
+
     start_time = time.time()
     comment = get_object_or_404(ProjectComment, id=comment_id, project_id=project_pk)
 
     # Check permissions: owner or admin can delete
     is_owner = comment.user == request.user
     is_admin = request.user.role == UserRole.ADMIN
-    
+
     if not is_owner and not is_admin:
         StructuredLogger.log_validation_error(
             message='Unauthorized comment deletion attempt',

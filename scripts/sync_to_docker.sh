@@ -16,53 +16,53 @@ NC='\033[0m' # No Color
 
 sync_backend() {
     echo -e "${YELLOW}Syncing backend files...${NC}"
-    
+
     # Core Django app
     if [ -d "./core" ]; then
         echo "  - Copying core/"
         docker cp ./core "$BACKEND_CONTAINER:/app/"
     fi
-    
+
     # Services
     if [ -d "./services" ]; then
         echo "  - Copying services/"
         docker cp ./services "$BACKEND_CONTAINER:/app/"
     fi
-    
+
     # Config
     if [ -d "./config" ]; then
         echo "  - Copying config/"
         docker cp ./config "$BACKEND_CONTAINER:/app/"
     fi
-    
+
     # Templates
     if [ -d "./templates" ]; then
         echo "  - Copying templates/"
         docker cp ./templates "$BACKEND_CONTAINER:/app/"
     fi
-    
+
     # Restart backend services
     echo -e "${YELLOW}Restarting backend services...${NC}"
     docker-compose restart web celery
-    
+
     echo -e "${GREEN}✓ Backend synced and restarted${NC}"
 }
 
 sync_frontend() {
     echo -e "${YELLOW}Syncing frontend files...${NC}"
-    
+
     # Source files
     if [ -d "./frontend/src" ]; then
         echo "  - Copying frontend/src/"
         docker cp ./frontend/src "$FRONTEND_CONTAINER:/app/"
     fi
-    
+
     # Public files
     if [ -d "./frontend/public" ]; then
         echo "  - Copying frontend/public/"
         docker cp ./frontend/public "$FRONTEND_CONTAINER:/app/"
     fi
-    
+
     # Config files
     for file in vite.config.ts tsconfig.json index.html; do
         if [ -f "./frontend/$file" ]; then
@@ -70,18 +70,18 @@ sync_frontend() {
             docker cp "./frontend/$file" "$FRONTEND_CONTAINER:/app/"
         fi
     done
-    
+
     echo -e "${GREEN}✓ Frontend synced (hot-reload should pick up changes)${NC}"
 }
 
 sync_file() {
     local file_path="$1"
-    
+
     if [ ! -f "$file_path" ]; then
         echo -e "${RED}Error: File not found: $file_path${NC}"
         exit 1
     fi
-    
+
     # Determine if it's a frontend or backend file
     if [[ "$file_path" == frontend/* ]]; then
         local container_path="/app/${file_path#frontend/}"
@@ -99,12 +99,12 @@ sync_file() {
 
 sync_directory() {
     local dir_path="$1"
-    
+
     if [ ! -d "$dir_path" ]; then
         echo -e "${RED}Error: Directory not found: $dir_path${NC}"
         exit 1
     fi
-    
+
     # Determine if it's a frontend or backend directory
     if [[ "$dir_path" == frontend/* ]]; then
         local container_path="/app/${dir_path#frontend/}"

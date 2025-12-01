@@ -17,7 +17,7 @@ class ContentModerator:
     """
     Content moderation service that checks user-generated content
     for safety, toxicity, and appropriateness.
-    
+
     Uses the centralized AIProvider for client management.
     """
 

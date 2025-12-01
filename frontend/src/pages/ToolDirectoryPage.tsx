@@ -17,8 +17,20 @@ export default function ToolDirectoryPage() {
 
   // Load categories and companies on mount
   useEffect(() => {
-    getToolCategories().then(setCategories).catch(console.error);
-    getToolCompanies().then(setCompanies).catch(console.error);
+    async function loadFilters() {
+      try {
+        const [categoriesData, companiesData] = await Promise.all([
+          getToolCategories(),
+          getToolCompanies(),
+        ]);
+        setCategories(categoriesData);
+        setCompanies(companiesData);
+      } catch (err) {
+        console.error('Failed to load filter options:', err);
+        // Filters are non-critical - tools will still load without them
+      }
+    }
+    loadFilters();
   }, []);
 
   // Debounce search input

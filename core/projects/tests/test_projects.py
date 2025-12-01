@@ -209,54 +209,45 @@ class ProjectAPITest(APITestCase):
     def test_admin_can_delete_any_project(self):
         """Test that admin users can delete any project."""
         from core.users.models import UserRole
-        
+
         # Create admin user
         admin_user = User.objects.create_user(
-            username='admin',
-            email='admin@example.com',
-            password='pass123',
-            role=UserRole.ADMIN
+            username='admin', email='admin@example.com', password='pass123', role=UserRole.ADMIN
         )
-        
+
         # Create project owned by user2
         project = Project.objects.create(user=self.user2, title='User2 Project')
         project_id = project.id
-        
+
         # Admin deletes user2's project using the delete_by_id endpoint
         self.client.force_authenticate(user=admin_user)
         response = self.client.delete(f'/api/v1/projects/{project_id}/delete/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
+
         # Verify project was deleted
         self.assertFalse(Project.objects.filter(id=project_id).exists())
 
     def test_admin_can_delete_bot_project(self):
         """Test that admin users can delete projects created by bots."""
         from core.users.models import UserRole
-        
+
         # Create admin and bot users
         admin_user = User.objects.create_user(
-            username='admin',
-            email='admin@example.com',
-            password='pass123',
-            role=UserRole.ADMIN
+            username='admin', email='admin@example.com', password='pass123', role=UserRole.ADMIN
         )
         bot_user = User.objects.create_user(
-            username='bot',
-            email='bot@example.com',
-            password='pass123',
-            role=UserRole.BOT
+            username='bot', email='bot@example.com', password='pass123', role=UserRole.BOT
         )
-        
+
         # Create project owned by bot
         project = Project.objects.create(user=bot_user, title='Bot Project')
         project_id = project.id
-        
+
         # Admin deletes bot's project
         self.client.force_authenticate(user=admin_user)
         response = self.client.delete(f'/api/v1/projects/{project_id}/delete/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
+
         # Verify project was deleted
         self.assertFalse(Project.objects.filter(id=project_id).exists())
 
@@ -265,41 +256,35 @@ class ProjectAPITest(APITestCase):
         # Create project owned by user2
         project = Project.objects.create(user=self.user2, title='User2 Project')
         project_id = project.id
-        
+
         # user1 tries to delete user2's project using delete_by_id endpoint
         self.client.force_authenticate(user=self.user1)
         response = self.client.delete(f'/api/v1/projects/{project_id}/delete/')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        
+
         # Verify project still exists
         self.assertTrue(Project.objects.filter(id=project_id).exists())
 
     def test_admin_bulk_delete_any_projects(self):
         """Test that admins can bulk delete any projects."""
         from core.users.models import UserRole
-        
+
         # Create admin user
         admin_user = User.objects.create_user(
-            username='admin',
-            email='admin@example.com',
-            password='pass123',
-            role=UserRole.ADMIN
+            username='admin', email='admin@example.com', password='pass123', role=UserRole.ADMIN
         )
-        
+
         # Create projects for different users
         p1 = Project.objects.create(user=self.user1, title='User1 Project')
         p2 = Project.objects.create(user=self.user2, title='User2 Project')
         p3 = Project.objects.create(user=admin_user, title='Admin Project')
-        
+
         # Admin bulk deletes all projects
         self.client.force_authenticate(user=admin_user)
-        response = self.client.post(
-            '/api/v1/me/projects/bulk-delete/',
-            {'project_ids': [p1.id, p2.id, p3.id]}
-        )
+        response = self.client.post('/api/v1/me/projects/bulk-delete/', {'project_ids': [p1.id, p2.id, p3.id]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['deleted_count'], 3)
-        
+
         # Verify all projects were deleted
         self.assertFalse(Project.objects.filter(id__in=[p1.id, p2.id, p3.id]).exists())
 
@@ -310,7 +295,7 @@ class CommentPermissionsTest(APITestCase):
     def setUp(self):
         self.user1 = User.objects.create_user(username='user1', email='user1@example.com', password='pass123')
         self.user2 = User.objects.create_user(username='user2', email='user2@example.com', password='pass123')
-        
+
         # Create a project
         self.project = Project.objects.create(user=self.user1, title='Test Project')
 
@@ -318,17 +303,14 @@ class CommentPermissionsTest(APITestCase):
         """Test that comment owner can delete their own comment."""
         # Create comment as user1
         comment = ProjectComment.objects.create(
-            user=self.user1,
-            project=self.project,
-            content='Test comment',
-            moderation_status='approved'
+            user=self.user1, project=self.project, content='Test comment', moderation_status='approved'
         )
-        
+
         # user1 deletes their own comment
         self.client.force_authenticate(user=self.user1)
         response = self.client.delete(f'/api/v1/projects/{self.project.id}/comments/{comment.id}/')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        
+
         # Verify comment was deleted
         self.assertFalse(ProjectComment.objects.filter(id=comment.id).exists())
 
@@ -336,79 +318,61 @@ class CommentPermissionsTest(APITestCase):
         """Test that non-owner cannot delete another user's comment."""
         # Create comment as user1
         comment = ProjectComment.objects.create(
-            user=self.user1,
-            project=self.project,
-            content='Test comment',
-            moderation_status='approved'
+            user=self.user1, project=self.project, content='Test comment', moderation_status='approved'
         )
-        
+
         # user2 tries to delete user1's comment
         self.client.force_authenticate(user=self.user2)
         response = self.client.delete(f'/api/v1/projects/{self.project.id}/comments/{comment.id}/')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        
+
         # Verify comment still exists
         self.assertTrue(ProjectComment.objects.filter(id=comment.id).exists())
 
     def test_admin_can_delete_any_comment(self):
         """Test that admin users can delete any comment."""
         from core.users.models import UserRole
-        
+
         # Create admin user
         admin_user = User.objects.create_user(
-            username='admin',
-            email='admin@example.com',
-            password='pass123',
-            role=UserRole.ADMIN
+            username='admin', email='admin@example.com', password='pass123', role=UserRole.ADMIN
         )
-        
+
         # Create comment as user1
         comment = ProjectComment.objects.create(
-            user=self.user1,
-            project=self.project,
-            content='Test comment',
-            moderation_status='approved'
+            user=self.user1, project=self.project, content='Test comment', moderation_status='approved'
         )
-        
+
         # Admin deletes user1's comment
         self.client.force_authenticate(user=admin_user)
         response = self.client.delete(f'/api/v1/projects/{self.project.id}/comments/{comment.id}/')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        
+
         # Verify comment was deleted
         self.assertFalse(ProjectComment.objects.filter(id=comment.id).exists())
 
     def test_admin_can_delete_bot_comment(self):
         """Test that admin users can delete comments from bots."""
         from core.users.models import UserRole
-        
+
         # Create admin and bot users
         admin_user = User.objects.create_user(
-            username='admin',
-            email='admin@example.com',
-            password='pass123',
-            role=UserRole.ADMIN
+            username='admin', email='admin@example.com', password='pass123', role=UserRole.ADMIN
         )
         bot_user = User.objects.create_user(
-            username='bot',
-            email='bot@example.com',
-            password='pass123',
-            role=UserRole.BOT
+            username='bot', email='bot@example.com', password='pass123', role=UserRole.BOT
         )
-        
+
         # Create comment as bot
         comment = ProjectComment.objects.create(
-            user=bot_user,
-            project=self.project,
-            content='Bot comment',
-            moderation_status='approved'
+            user=bot_user, project=self.project, content='Bot comment', moderation_status='approved'
         )
-        
+
         # Admin deletes bot's comment
         self.client.force_authenticate(user=admin_user)
         response = self.client.delete(f'/api/v1/projects/{self.project.id}/comments/{comment.id}/')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        
+
         # Verify comment was deleted
         self.assertFalse(ProjectComment.objects.filter(id=comment.id).exists())
 
@@ -416,16 +380,13 @@ class CommentPermissionsTest(APITestCase):
         """Test that unauthenticated users cannot delete comments."""
         # Create comment
         comment = ProjectComment.objects.create(
-            user=self.user1,
-            project=self.project,
-            content='Test comment',
-            moderation_status='approved'
+            user=self.user1, project=self.project, content='Test comment', moderation_status='approved'
         )
-        
+
         # Try to delete without authentication
         response = self.client.delete(f'/api/v1/projects/{self.project.id}/comments/{comment.id}/')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        
+
         # Verify comment still exists
         self.assertTrue(ProjectComment.objects.filter(id=comment.id).exists())
 
