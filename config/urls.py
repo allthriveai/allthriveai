@@ -26,6 +26,8 @@ sitemaps = {
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('db/health/', db_health, name='db-health-root'),
+    # Prometheus metrics endpoint
+    path('metrics', include('django_prometheus.urls')),
     # SEO and Privacy
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path(

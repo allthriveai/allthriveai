@@ -5,13 +5,16 @@ import type { ChatMessage, ChatConfig } from '@/types/chat';
 interface ChatInterfaceProps {
   isOpen: boolean;
   onClose: () => void;
-  config: ChatConfig;
+  config?: ChatConfig;
   messages: ChatMessage[];
   isLoading: boolean;
   onSendMessage: (content: string) => void;
+  header?: React.ReactNode;
   headerContent?: React.ReactNode;
   inputPlaceholder?: string;
   customMessageRenderer?: (message: ChatMessage) => React.ReactNode;
+  customInputPrefix?: React.ReactNode;
+  error?: string;
 }
 
 export function ChatInterface({
@@ -21,9 +24,12 @@ export function ChatInterface({
   messages,
   isLoading,
   onSendMessage,
+  header,
   headerContent,
   inputPlaceholder = 'Type a message...',
   customMessageRenderer,
+  customInputPrefix,
+  error,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,7 +51,6 @@ export function ChatInterface({
     const input = inputRef.current;
     if (!input?.value.trim()) return;
 
-    console.log('ChatInterface: sending message:', input.value);
     onSendMessage(input.value);
     input.value = '';
   };
@@ -87,12 +92,14 @@ export function ChatInterface({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-          {headerContent ? (
+          {header ? (
+            header
+          ) : headerContent ? (
             headerContent
           ) : (
             <>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {config.agentName}
+                {config?.agentName || 'Chat'}
               </h2>
               <button
                 onClick={onClose}
@@ -105,7 +112,7 @@ export function ChatInterface({
         </div>
 
         {/* Description */}
-        {config.agentDescription && (
+        {config?.agentDescription && (
           <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
             <p className="text-xs text-gray-600 dark:text-gray-400">
               {config.agentDescription}
@@ -113,9 +120,16 @@ export function ChatInterface({
           </div>
         )}
 
+        {/* Error Display */}
+        {error && (
+          <div className="mx-4 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+          </div>
+        )}
+
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 && config.initialMessage && (
+          {messages.length === 0 && config?.initialMessage && (
             <div className="flex justify-start">
               <div className="max-w-xs px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                 {config.initialMessage}
@@ -146,13 +160,20 @@ export function ChatInterface({
 
         {/* Input Area */}
         <div className="border-t border-gray-200 dark:border-gray-800 p-4 flex-shrink-0 bg-white dark:bg-gray-900">
-          <form onSubmit={handleSubmit} className="flex gap-2">
+          <form onSubmit={handleSubmit} className="flex gap-2 items-center">
+            {/* Custom Input Prefix (e.g., + button) */}
+            {customInputPrefix && (
+              <div className="flex-shrink-0">
+                {customInputPrefix}
+              </div>
+            )}
+
             <input
               ref={inputRef}
               type="text"
               placeholder={inputPlaceholder}
               disabled={isLoading}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all chat-input"
             />
             <button
               type="submit"

@@ -133,29 +133,49 @@ Respond in this exact JSON format:
 
 
 def _match_tools(tool_names: list[str]) -> list[Tool]:
-    """Match extracted tool names against database tools."""
-    matched_tools = []
+    """Match extracted tool names against database tools.
+
+    Optimized to prevent N+1 queries by loading all active tools once.
+    """
+    if not tool_names:
+        return []
+
+    # Load all active tools once to prevent N+1 queries
+    all_active_tools = Tool.objects.filter(is_active=True).values_list('name', 'slug', 'id')
+
+    # Create lookup dicts (case-insensitive for name, case-sensitive for slug)
+    tools_by_name = {name.lower(): tool_id for name, slug, tool_id in all_active_tools}
+    tools_by_slug = {slug: tool_id for name, slug, tool_id in all_active_tools}
+
+    # Fetch tool objects by ID
+    tool_ids = set()
 
     for tool_name in tool_names:
-        # Case-insensitive match
-        tool = Tool.objects.filter(name__iexact=tool_name.strip(), is_active=True).first()
+        tool_name_lower = tool_name.strip().lower()
 
-        if tool:
-            matched_tools.append(tool)
+        # Try exact match by name first
+        if tool_name_lower in tools_by_name:
+            tool_ids.add(tools_by_name[tool_name_lower])
         else:
             # Try fuzzy match by slug
-            slug = tool_name.lower().replace(' ', '-').replace('.', '-')
-            tool = Tool.objects.filter(slug__icontains=slug, is_active=True).first()
+            slug = tool_name_lower.replace(' ', '-').replace('.', '-')
+            if slug in tools_by_slug:
+                tool_ids.add(tools_by_slug[slug])
 
-            if tool:
-                matched_tools.append(tool)
+    # Fetch all matched tools in one query
+    if tool_ids:
+        return list(Tool.objects.filter(id__in=tool_ids, is_active=True))
 
-    return matched_tools
+    return []
 
 
 def _match_categories(category_names: list[str]) -> list[Taxonomy]:
-    """Match extracted categories against taxonomy."""
-    matched_categories = []
+    """Match extracted categories against taxonomy.
+
+    Optimized to prevent N+1 queries by loading active categories once.
+    """
+    if not category_names:
+        return []
 
     # Mapping of common variations to canonical names
     category_mapping = {
@@ -178,15 +198,18 @@ def _match_categories(category_names: list[str]) -> list[Taxonomy]:
         'project showcase': 'Project Showcase',
     }
 
-    for category_name in category_names:
-        # Normalize to canonical name
-        canonical_name = category_mapping.get(category_name.lower(), category_name)
+    # Compute canonical names to match
+    canonical_names = {category_mapping.get(name.lower(), name).lower() for name in category_names}
 
-        # Look up in taxonomy
-        category = Taxonomy.objects.filter(
-            name__iexact=canonical_name, taxonomy_type='category', is_active=True
-        ).first()
+    # Load all active categories once and build lookup by lower(name)
+    categories_by_name = {}
+    for category in Taxonomy.objects.filter(taxonomy_type='category', is_active=True).only('id', 'name'):
+        categories_by_name[category.name.lower()] = category
 
+    # Map inputs to taxonomy objects
+    matched_categories = []
+    for name in canonical_names:
+        category = categories_by_name.get(name)
         if category:
             matched_categories.append(category)
 
@@ -216,18 +239,14 @@ def _clean_topics(topics: list[str]) -> list[str]:
 def _fallback_analysis(video_data: dict[str, Any]) -> dict[str, Any]:
     """
     Fallback analysis using YouTube tags when AI fails.
-    Simple keyword matching without AI.
+    Simple keyword matching without AI, optimized to prevent N+1 queries.
     """
     logger.info('Using fallback analysis (YouTube tags only)')
 
     youtube_tags = video_data.get('tags', [])
 
-    # Try to match tools from YouTube tags
-    tools = []
-    for tag in youtube_tags[:10]:
-        tool = Tool.objects.filter(name__iexact=tag.strip(), is_active=True).first()
-        if tool:
-            tools.append(tool)
+    # Use optimized tool matching (prevents N+1)
+    tools = _match_tools(youtube_tags[:10])
 
     # Extract topics from YouTube tags
     topics = _clean_topics(youtube_tags[:8])

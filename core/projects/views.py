@@ -40,13 +40,19 @@ class ProjectViewSet(viewsets.ModelViewSet):
     pagination_class = ProjectPagination
 
     def get_queryset(self):
-        # Only return projects for the current user
+        # Admin users can see all projects, regular users only see their own
+        from core.users.models import UserRole
+
+        if self.request.user.role == UserRole.ADMIN:
+            # Admins can manage all projects
+            queryset = Project.objects.all()
+        else:
+            # Only return projects for the current user
+            queryset = Project.objects.filter(user=self.request.user)
+
         # Optimize with select_related for user and prefetch_related for tools to prevent N+1 queries
         return (
-            Project.objects.filter(user=self.request.user)
-            .select_related('user')
-            .prefetch_related('tools', 'likes')
-            .order_by('-created_at')
+            queryset.select_related('user').prefetch_related('tools', 'likes', 'reddit_thread').order_by('-created_at')
         )
 
     def perform_create(self, serializer):
@@ -110,7 +116,18 @@ class ProjectViewSet(viewsets.ModelViewSet):
         self._invalidate_user_cache(self.request.user)
 
     def perform_destroy(self, instance):
-        """Called when deleting a project."""
+        """Called when deleting a project.
+
+        Admins can delete any project, regular users can only delete their own.
+        """
+        from core.users.models import UserRole
+
+        # Check permissions
+        if self.request.user.role != UserRole.ADMIN and instance.user != self.request.user:
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied('You do not have permission to delete this project.')
+
         user = instance.user
         instance.delete()
         # Invalidate cache after delete
@@ -125,13 +142,15 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='bulk-delete')
     def bulk_delete(self, request):
-        """Bulk delete projects for the authenticated user.
+        """Bulk delete projects.
 
         Expects a JSON payload with a list of project IDs:
         {"project_ids": [1, 2, 3]}
 
-        Only deletes projects owned by the authenticated user.
+        Admins can delete any projects, regular users can only delete their own.
         """
+        from core.users.models import UserRole
+
         project_ids = request.data.get('project_ids', [])
 
         if not project_ids:
@@ -146,12 +165,27 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Only delete projects owned by the authenticated user
-        deleted_count, _ = Project.objects.filter(id__in=project_ids, user=request.user).delete()
+        # Admin can delete any projects, regular users only their own
+        if request.user.role == UserRole.ADMIN:
+            queryset = Project.objects.filter(id__in=project_ids)
+        else:
+            queryset = Project.objects.filter(id__in=project_ids, user=request.user)
 
-        # Invalidate cache after bulk delete
+        # Get affected users for cache invalidation
+        affected_users = set(queryset.values_list('user', flat=True))
+
+        deleted_count, _ = queryset.delete()
+
+        # Invalidate cache for all affected users
         if deleted_count > 0:
-            self._invalidate_user_cache(request.user)
+            from core.users.models import User
+
+            for user_id in affected_users:
+                try:
+                    user = User.objects.get(id=user_id)
+                    self._invalidate_user_cache(user)
+                except User.DoesNotExist:
+                    pass
 
         return Response(
             {'deleted_count': deleted_count, 'message': f'Successfully deleted {deleted_count} project(s)'},
@@ -176,7 +210,11 @@ def get_project_by_slug(request, username, slug):
 
     # Try to find the project
     try:
-        project = Project.objects.select_related('user').prefetch_related('tools', 'likes').get(user=user, slug=slug)
+        project = (
+            Project.objects.select_related('user')
+            .prefetch_related('tools', 'likes', 'reddit_thread')
+            .get(user=user, slug=slug)
+        )
     except Project.DoesNotExist:
         return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -498,6 +536,42 @@ def explore_projects(request):
     serializer = ProjectSerializer(page, many=True)
 
     return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_project_by_id(request, project_id):
+    """Delete a project by ID.
+
+    Admins can delete any project, regular users can only delete their own.
+    """
+    from rest_framework.exceptions import NotFound, PermissionDenied
+
+    from core.users.models import UserRole
+
+    try:
+        project = Project.objects.select_related('user').get(id=project_id)
+    except Project.DoesNotExist:
+        raise NotFound('Project not found') from None
+
+    # Check permissions
+    if request.user.role != UserRole.ADMIN and project.user != request.user:
+        raise PermissionDenied('You do not have permission to delete this project.')
+
+    # Store user for cache invalidation
+    user = project.user
+    username_lower = user.username.lower()
+
+    # Delete the project
+    project.delete()
+
+    # Invalidate cache
+    from django.core.cache import cache
+
+    cache.delete(f'projects:v2:{username_lower}:own')
+    cache.delete(f'projects:v2:{username_lower}:public')
+
+    return Response({'message': 'Project deleted successfully'}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

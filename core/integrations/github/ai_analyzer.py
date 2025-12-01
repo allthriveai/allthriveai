@@ -21,6 +21,552 @@ from services.ai_provider import AIProvider
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# SECTION-BASED TEMPLATE GENERATION
+# ============================================================================
+
+SECTION_TEMPLATE_PROMPT = (
+    """Analyze this GitHub repository and generate structured content """
+    """for a portfolio project page.
+
+Repository: {name}
+Description: {description}
+Language: {language}
+Topics: {topics}
+Stars: {stars}
+Tech Stack: {tech_stack}
+
+Directory Structure:
+{directory_structure}
+
+README content (first 2000 chars):
+{readme_excerpt}
+
+Generate structured sections for a visually appealing project portfolio. Return valid JSON with these sections:
+
+{{
+  "overview": {{
+    "headline": "One compelling sentence hook (max 100 chars)",
+    "description": "2-3 sentence explanation of what this does and why it matters"
+  }},
+  "features": [
+    {{"icon": "FaRocket", "title": "Feature Name", "description": "1-2 sentence description"}},
+    ... (3-6 features based on README/repo)
+  ],
+  "tech_stack": {{
+    "categories": [
+      {{"name": "Backend", "technologies": ["Python", "FastAPI"]}},
+      {{"name": "Frontend", "technologies": ["React", "TypeScript"]}},
+      {{"name": "Infrastructure", "technologies": ["Docker", "Redis"]}}
+    ]
+  }},
+  "architecture": {{
+    "diagram": "graph TD\\n    A[Component] --> B[Component]",
+    "description": "Brief explanation of how the system works"
+  }},
+  "challenges": [
+    {{
+      "challenge": "The problem faced",
+      "solution": "How it was solved",
+      "outcome": "The result (optional)"
+    }}
+  ],
+  "gallery": {{
+    "images": [],
+    "layout": "grid"
+  }},
+  "demo": {{
+    "ctas": [
+      {{"label": "View on GitHub", "url": "{github_url}", "style": "primary"}}
+    ]
+  }},
+  "links": [
+    {{"label": "Documentation", "url": "...", "icon": "book"}},
+    {{"label": "Live Demo", "url": "...", "icon": "external"}}
+  ],
+  "category_ids": [9],
+  "topics": ["python", "api", "redis"],
+  "tool_names": ["ChatGPT", "GitHub Copilot"]
+}}
+
+IMPORTANT:
+- For features: Use FontAwesome icon names (react-icons/fa format). Choose from:
+  FaRocket (speed/launch), FaShieldAlt (security), FaBolt (performance/fast),
+  FaCode (development), FaDatabase (data/storage), FaCog (settings/config),
+  FaChartLine (analytics/growth), FaUsers (collaboration), FaLock (privacy),
+  FaMobile (mobile/responsive), FaCloud (cloud), FaPlug (integrations/api),
+  FaBrain (AI/ML), FaSearch (search), FaSync (sync/realtime), FaGlobe (global),
+  FaClock (time/scheduling), FaFileAlt (documents), FaCheck (validation),
+  FaLayerGroup (modular), FaTools (utilities), FaPalette (customization)
+- For architecture: CRITICAL - Base the Mermaid diagram on the ACTUAL directory structure above!
+  * Identify real components from folder names (api/, models/, services/, handlers/, etc.)
+  * Show how these actual components connect
+  * Use graph TD format with 4-8 nodes
+  * Label nodes based on actual folder/file names
+  * DO NOT use generic "Input -> Processing -> Output" patterns
+- For tech_stack: Group by Frontend, Backend, Database, Infrastructure, AI/ML as appropriate
+- For challenges: Only include if README mentions specific problems solved
+- For links: Extract any documentation/demo URLs from README
+- Category IDs: 1-15 (9=Developer & Coding is common for code projects)
+- Topics: lowercase, specific, 3-8 keywords
+
+Return ONLY valid JSON, no markdown code blocks."""
+)
+
+
+def _format_tree_for_prompt(tree: list) -> str:
+    """Format the GitHub API tree into a readable directory structure.
+
+    Args:
+        tree: List of tree items from GitHub API
+
+    Returns:
+        Formatted string showing directory structure
+    """
+    if not tree:
+        return 'Not available'
+
+    # Filter to only show directories and important files at root/first level
+    lines = []
+    dirs = set()
+    important_files = []
+
+    for item in tree:
+        path = item.get('path', '')
+        item_type = item.get('type', '')
+
+        # Skip hidden files/dirs and common noise
+        if path.startswith('.') or path.startswith('__'):
+            continue
+
+        parts = path.split('/')
+
+        # Track top-level directories
+        if item_type == 'tree' and len(parts) == 1:
+            dirs.add(path)
+        elif item_type == 'blob' and len(parts) == 1:
+            # Keep important root files
+            important_extensions = ('.py', '.js', '.ts', '.go', '.rs', '.java', '.yml', '.yaml', '.json', '.toml')
+            if path.endswith(important_extensions) or path in ('Dockerfile', 'Makefile', 'README.md'):
+                important_files.append(path)
+
+        # Track second-level directories
+        if len(parts) == 2 and item_type == 'tree':
+            parent = parts[0]
+            child = parts[1]
+            if parent in dirs:
+                dirs.add(f'{parent}/{child}')
+
+    # Build output
+    for d in sorted(dirs):
+        if '/' in d:
+            lines.append(f'  {d}/')
+        else:
+            lines.append(f'{d}/')
+
+    # Add important root files
+    for f in sorted(important_files)[:10]:  # Limit files
+        lines.append(f)
+
+    return '\n'.join(lines[:30]) if lines else 'Not available'  # Limit total lines
+
+
+def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '') -> dict:
+    """Generate section-based template content for a GitHub repo.
+
+    This is the new template-based analyzer that generates structured sections
+    instead of free-form blocks.
+
+    Args:
+        repo_data: Repository data from GitHub API
+        readme_content: README content (optional)
+
+    Returns:
+        dict with sections array and metadata for template v2 format
+    """
+    name = repo_data.get('name', '')
+    description = repo_data.get('description', '')
+    language = repo_data.get('language', '')
+    github_topics = repo_data.get('topics', [])
+    stars = repo_data.get('stargazers_count', 0)
+    owner = repo_data.get('owner', '')
+    github_url = repo_data.get('html_url', f'https://github.com/{owner}/{name}')
+    tech_stack = repo_data.get('tech_stack', {})
+    tree = repo_data.get('tree', [])
+
+    # Get hero image
+    hero_image = repo_data.get('open_graph_image_url')
+    if not hero_image and owner and name:
+        hero_image = f'https://opengraph.githubassets.com/1/{owner}/{name}'
+
+    # Scan for visual assets
+    visual_assets = BaseParser.scan_repository_for_images(tree=tree, owner=owner, repo=name)
+
+    # Parse README to extract images
+    readme_hero_image = None
+    if readme_content:
+        readme_parsed = BaseParser.parse(readme_content, repo_data)
+        readme_hero_image = readme_parsed.get('hero_image')
+        if readme_hero_image:
+            logger.info(f'📷 Found README hero image: {readme_hero_image}')
+
+    if not repo_data.get('open_graph_image_url'):
+        if visual_assets.get('logo'):
+            hero_image = visual_assets['logo']
+        elif visual_assets.get('banner'):
+            hero_image = visual_assets['banner']
+
+    # Format tech stack for prompt
+    tech_stack_str = json.dumps(tech_stack) if tech_stack else 'Not detected'
+
+    # Format directory structure for prompt
+    directory_structure = _format_tree_for_prompt(tree)
+    logger.info(f'📁 Directory structure for {name}:\n{directory_structure}')
+
+    # Build prompt
+    prompt = SECTION_TEMPLATE_PROMPT.format(
+        name=name,
+        description=description or 'No description provided',
+        language=language or 'Unknown',
+        topics=', '.join(github_topics) if github_topics else 'None',
+        stars=stars,
+        tech_stack=tech_stack_str,
+        directory_structure=directory_structure,
+        readme_excerpt=readme_content[:2000] if readme_content else 'No README available',
+        github_url=github_url,
+    )
+
+    logger.info(f'🔍 Starting template analysis for {name}')
+
+    try:
+        ai = AIProvider()
+        response = ai.complete(
+            prompt=prompt,
+            model=None,
+            temperature=0.7,
+            max_tokens=2000,
+        )
+
+        logger.info(f'✅ Template AI response received for {name}')
+
+        # Clean response - remove markdown code blocks if present
+        clean_response = response.strip()
+        if clean_response.startswith('```'):
+            clean_response = clean_response.split('\n', 1)[1]
+        if clean_response.endswith('```'):
+            clean_response = clean_response.rsplit('```', 1)[0]
+        clean_response = clean_response.strip()
+
+        result = json.loads(clean_response)
+
+        # Build sections array from AI response
+        sections = []
+        section_order = 0
+
+        # Overview section
+        if result.get('overview'):
+            overview = result['overview']
+            # Get preview image: prefer first screenshot, then README hero image
+            preview_image = None
+            if visual_assets.get('screenshots'):
+                preview_image = visual_assets['screenshots'][0]
+            elif readme_hero_image:
+                preview_image = readme_hero_image
+
+            overview_content = {
+                'headline': overview.get('headline', ''),
+                'description': overview.get('description', description or ''),
+                'metrics': overview.get('metrics', []),
+            }
+            if preview_image:
+                overview_content['previewImage'] = preview_image
+                logger.info(f'📷 Added preview image to overview: {preview_image}')
+
+            sections.append(
+                {
+                    'id': f'section-overview-{name[:8]}',
+                    'type': 'overview',
+                    'enabled': True,
+                    'order': section_order,
+                    'content': overview_content,
+                }
+            )
+            section_order += 1
+
+        # Features section
+        if result.get('features') and len(result['features']) > 0:
+            sections.append(
+                {
+                    'id': f'section-features-{name[:8]}',
+                    'type': 'features',
+                    'enabled': True,
+                    'order': section_order,
+                    'content': {
+                        'features': result['features'][:6],  # Limit to 6
+                    },
+                }
+            )
+            section_order += 1
+
+        # Demo section (if CTAs provided)
+        if result.get('demo') and result['demo'].get('ctas'):
+            sections.append(
+                {
+                    'id': f'section-demo-{name[:8]}',
+                    'type': 'demo',
+                    'enabled': True,
+                    'order': section_order,
+                    'content': {
+                        'ctas': result['demo']['ctas'],
+                        'liveUrl': result['demo'].get('liveUrl'),
+                        'video': result['demo'].get('video'),
+                    },
+                }
+            )
+            section_order += 1
+
+        # Gallery section (add screenshots if found)
+        gallery_images = []
+        if visual_assets.get('screenshots'):
+            gallery_images = [{'url': url} for url in visual_assets['screenshots'][:6]]
+        if result.get('gallery', {}).get('images'):
+            gallery_images.extend(result['gallery']['images'])
+
+        if gallery_images:
+            sections.append(
+                {
+                    'id': f'section-gallery-{name[:8]}',
+                    'type': 'gallery',
+                    'enabled': True,
+                    'order': section_order,
+                    'content': {
+                        'images': gallery_images,
+                        'layout': result.get('gallery', {}).get('layout', 'grid'),
+                    },
+                }
+            )
+            section_order += 1
+
+        # Tech stack section
+        if result.get('tech_stack', {}).get('categories'):
+            sections.append(
+                {
+                    'id': f'section-tech-{name[:8]}',
+                    'type': 'tech_stack',
+                    'enabled': True,
+                    'order': section_order,
+                    'content': {
+                        'categories': result['tech_stack']['categories'],
+                    },
+                }
+            )
+            section_order += 1
+
+        # Architecture section
+        if result.get('architecture', {}).get('diagram'):
+            sections.append(
+                {
+                    'id': f'section-arch-{name[:8]}',
+                    'type': 'architecture',
+                    'enabled': True,
+                    'order': section_order,
+                    'content': {
+                        'diagram': result['architecture']['diagram'],
+                        'description': result['architecture'].get('description', ''),
+                        'title': 'System Architecture',
+                    },
+                }
+            )
+            section_order += 1
+
+        # Challenges section
+        if result.get('challenges') and len(result['challenges']) > 0:
+            sections.append(
+                {
+                    'id': f'section-challenges-{name[:8]}',
+                    'type': 'challenges',
+                    'enabled': True,
+                    'order': section_order,
+                    'content': {
+                        'title': 'Challenges & Solutions',
+                        'items': result['challenges'][:4],  # Limit to 4
+                    },
+                }
+            )
+            section_order += 1
+
+        # Links section
+        if result.get('links') and len(result['links']) > 0:
+            sections.append(
+                {
+                    'id': f'section-links-{name[:8]}',
+                    'type': 'links',
+                    'enabled': True,
+                    'order': section_order,
+                    'content': {
+                        'links': result['links'],
+                    },
+                }
+            )
+            section_order += 1
+
+        # Validate metadata
+        validated = {
+            'templateVersion': 2,
+            'sections': sections,
+            'description': result.get('overview', {}).get('description', description or ''),
+            'category_ids': [],
+            'topics': [],
+            'tool_names': [],
+            'hero_image': hero_image,
+        }
+
+        # Validate category_ids
+        if 'category_ids' in result and isinstance(result['category_ids'], list):
+            validated['category_ids'] = [
+                int(c)
+                for c in result['category_ids']
+                if isinstance(c, int | str) and MIN_CATEGORY_ID <= int(c) <= MAX_CATEGORY_ID
+            ][:MAX_CATEGORIES_PER_PROJECT]
+
+        # Validate topics
+        if 'topics' in result and isinstance(result['topics'], list):
+            validated['topics'] = [
+                str(t).lower()[:MAX_TOPIC_LENGTH] for t in result['topics'] if t and isinstance(t, str)
+            ][:MAX_TOPICS_PER_PROJECT]
+
+        # Validate tool_names
+        if 'tool_names' in result and isinstance(result['tool_names'], list):
+            validated['tool_names'] = [str(t) for t in result['tool_names'] if t and isinstance(t, str)][
+                :MAX_TOOLS_PER_PROJECT
+            ]
+
+        logger.info(f'✅ Template analysis complete for {name}: {len(sections)} sections generated')
+        return validated
+
+    except json.JSONDecodeError as e:
+        logger.warning(f'AI returned invalid JSON for template {name}: {e}')
+    except Exception as e:
+        logger.error(f'Template analysis error for {name}: {e}', exc_info=True)
+
+    # Fallback: Generate basic sections from repo data
+    logger.info(f'📦 Using fallback template generation for {name}')
+    return _generate_fallback_template(repo_data, readme_content, hero_image, visual_assets)
+
+
+def _generate_fallback_template(
+    repo_data: dict,
+    readme_content: str,
+    hero_image: str,
+    visual_assets: dict,
+) -> dict:
+    """Generate fallback template sections when AI fails."""
+    name = repo_data.get('name', '')
+    description = repo_data.get('description', '')
+    language = repo_data.get('language', '')
+    github_topics = repo_data.get('topics', [])
+    owner = repo_data.get('owner', '')
+    github_url = repo_data.get('html_url', f'https://github.com/{owner}/{name}')
+    tech_stack = repo_data.get('tech_stack', {})
+
+    sections = []
+    section_order = 0
+
+    # Overview section
+    sections.append(
+        {
+            'id': f'section-overview-{name[:8]}',
+            'type': 'overview',
+            'enabled': True,
+            'order': section_order,
+            'content': {
+                'headline': name.replace('-', ' ').replace('_', ' ').title(),
+                'description': description or f'A {language} project' if language else 'A software project',
+            },
+        }
+    )
+    section_order += 1
+
+    # Tech stack section from detected technologies
+    if tech_stack:
+        categories = []
+        if tech_stack.get('languages'):
+            categories.append(
+                {
+                    'name': 'Languages',
+                    'technologies': [{'name': lang} for lang in tech_stack['languages'].keys()],
+                }
+            )
+        if tech_stack.get('frameworks'):
+            categories.append(
+                {
+                    'name': 'Frameworks',
+                    'technologies': [{'name': fw} for fw in tech_stack['frameworks']],
+                }
+            )
+        if tech_stack.get('tools'):
+            categories.append(
+                {
+                    'name': 'Tools',
+                    'technologies': [{'name': tool} for tool in tech_stack['tools']],
+                }
+            )
+
+        if categories:
+            sections.append(
+                {
+                    'id': f'section-tech-{name[:8]}',
+                    'type': 'tech_stack',
+                    'enabled': True,
+                    'order': section_order,
+                    'content': {'categories': categories},
+                }
+            )
+            section_order += 1
+
+    # Gallery section with screenshots
+    if visual_assets.get('screenshots'):
+        sections.append(
+            {
+                'id': f'section-gallery-{name[:8]}',
+                'type': 'gallery',
+                'enabled': True,
+                'order': section_order,
+                'content': {
+                    'images': [{'url': url} for url in visual_assets['screenshots'][:6]],
+                    'layout': 'grid',
+                },
+            }
+        )
+        section_order += 1
+
+    # Demo section with GitHub link
+    sections.append(
+        {
+            'id': f'section-demo-{name[:8]}',
+            'type': 'demo',
+            'enabled': True,
+            'order': section_order,
+            'content': {
+                'ctas': [
+                    {'label': 'View on GitHub', 'url': github_url, 'style': 'primary'},
+                ],
+            },
+        }
+    )
+    section_order += 1
+
+    return {
+        'templateVersion': 2,
+        'sections': sections,
+        'description': description or f'A {language} project' if language else 'A software project',
+        'category_ids': [9] if language else [],  # Default to Developer & Coding
+        'topics': [t.lower() for t in github_topics[:8]] if github_topics else [],
+        'tool_names': [],
+        'hero_image': hero_image,
+    }
+
+
 def generate_blocks_from_repo_structure(repo_data: dict) -> list:
     """Generate content blocks from repository structure when no README exists.
 

@@ -43,10 +43,15 @@ export function RichTextEditor({ content, onChange, placeholder, className = '' 
     },
   });
 
-  // Update content when prop changes (e.g., loading saved content)
+  // Update content when prop changes (e.g., loading saved content or switching modes)
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
+      // Use queueMicrotask to avoid potential race conditions
+      queueMicrotask(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.setContent(content || '');
+        }
+      });
     }
   }, [content, editor]);
 
@@ -62,7 +67,7 @@ export function RichTextEditor({ content, onChange, placeholder, className = '' 
   };
 
   return (
-    <div className={`rich-text-editor ${className}`}>
+    <div className={`rich-text-editor bg-white dark:bg-gray-800 p-4 rounded-lg ${className}`}>
       {/* Toolbar */}
       <div className="flex items-center gap-1 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
         <button

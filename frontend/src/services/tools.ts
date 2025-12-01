@@ -5,13 +5,16 @@ import { api } from './api';
  * Get list of all tools with optional filters
  */
 export async function getTools(params?: {
+  tool_type?: string;
   category?: string;
+  company?: number;
   pricing_model?: string;
   has_free_tier?: boolean;
   is_featured?: boolean;
   is_verified?: boolean;
   search?: string;
   ordering?: string;
+  page_size?: number;
 }): Promise<PaginatedResponse<Tool>> {
   try {
     const response = await api.get('/tools/', { params });
@@ -48,6 +51,14 @@ export async function getFeaturedTools(): Promise<Tool[]> {
  */
 export async function getToolCategories(): Promise<Array<{ value: string; label: string; count: number }>> {
   const response = await api.get('/tools/categories/');
+  return response.data;
+}
+
+/**
+ * Get available companies with tool counts
+ */
+export async function getToolCompanies(): Promise<Array<{ id: number; name: string; slug: string; count: number }>> {
+  const response = await api.get('/tools/companies/');
   return response.data;
 }
 

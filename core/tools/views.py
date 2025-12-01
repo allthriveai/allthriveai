@@ -27,7 +27,15 @@ class ToolViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tool.objects.filter(is_active=True)
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'pricing_model', 'has_free_tier', 'is_featured', 'is_verified']
+    filterset_fields = [
+        'tool_type',
+        'category',
+        'company',
+        'pricing_model',
+        'has_free_tier',
+        'is_featured',
+        'is_verified',
+    ]
     search_fields = ['name', 'tagline', 'description', 'tags']
     ordering_fields = ['name', 'popularity_score', 'view_count', 'created_at']
     ordering = ['-is_featured', '-popularity_score']
@@ -71,6 +79,23 @@ class ToolViewSet(viewsets.ReadOnlyModelViewSet):
             if tool:
                 result.append({'value': cat['category'], 'label': tool.get_category_display(), 'count': cat['count']})
 
+        return Response(result)
+
+    @action(detail=False, methods=['get'])
+    def companies(self, request):
+        """Get available companies with tool counts."""
+        from django.db.models import Count
+
+        from .models import Company
+
+        companies = (
+            Company.objects.filter(is_active=True)
+            .annotate(tool_count=Count('tools', filter=Q(tools__is_active=True)))
+            .filter(tool_count__gt=0)
+            .order_by('name')
+        )
+
+        result = [{'id': c.id, 'name': c.name, 'slug': c.slug, 'count': c.tool_count} for c in companies]
         return Response(result)
 
     @action(detail=True, methods=['get'])

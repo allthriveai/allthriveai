@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { XMarkIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowUpIcon, ArrowDownIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { FaStar } from 'react-icons/fa';
 import { useReward } from 'react-rewards';
 import type { Project } from '@/types/models';
-import { getProjectComments, createProjectComment, voteOnComment, type Comment } from '@/services/comments';
+import { getProjectComments, createProjectComment, voteOnComment, deleteComment, type Comment } from '@/services/comments';
 import { parseApiError } from '@/utils/errorHandler';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CommentTrayProps {
   isOpen: boolean;
@@ -14,12 +15,16 @@ interface CommentTrayProps {
 }
 
 export function CommentTray({ isOpen, onClose, project, isAuthenticated }: CommentTrayProps) {
+  const { user } = useAuth();
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin';
 
   // React Rewards for comment submission celebration
   const { reward: rewardComment } = useReward('commentRewardTray', 'confetti', {
@@ -100,6 +105,29 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
       setComments(comments.map(comment =>
         comment.id === commentId ? result.comment : comment
       ));
+    } catch (error) {
+      const errorInfo = parseApiError(error);
+      alert(errorInfo.message);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number, commentUsername: string) => {
+    if (!project) return;
+
+    const isOwnComment = user?.username === commentUsername;
+    const confirmMessage = isAdmin && !isOwnComment
+      ? 'Are you sure you want to delete this comment? (Admin action)'
+      : 'Are you sure you want to delete your comment?';
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      await deleteComment(project.id, commentId);
+
+      // Remove comment from list
+      setComments(comments.filter(comment => comment.id !== commentId));
     } catch (error) {
       const errorInfo = parseApiError(error);
       alert(errorInfo.message);
@@ -255,6 +283,17 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
                               </p>
                             </div>
                           </div>
+
+                          {/* Delete Button (for owner or admin) */}
+                          {isAuthenticated && (user?.username === comment.username || isAdmin) && (
+                            <button
+                              onClick={() => handleDeleteComment(comment.id, comment.username)}
+                              className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                              title={isAdmin && user?.username !== comment.username ? "Delete comment (Admin)" : "Delete your comment"}
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
 
                         {/* Comment Content */}

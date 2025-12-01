@@ -12,7 +12,7 @@ app.autodiscover_tasks()
 
 # Manually discover tasks from modules not in INSTALLED_APPS
 # These apps have models under 'core' app but tasks need explicit discovery
-app.autodiscover_tasks(['core.projects', 'core.integrations', 'core.integrations.youtube'])
+app.autodiscover_tasks(['core.projects', 'core.integrations', 'core.integrations.youtube', 'core.agents'])
 
 # Task execution settings for scalability
 app.conf.task_default_rate_limit = '100/m'  # 100 tasks per minute per worker (prevents broker overload)
@@ -28,8 +28,11 @@ app.conf.task_queues = (
     Queue('youtube_import', routing_key='youtube.import'),
 )
 
-# Route YouTube tasks to specific queues
+# Route tasks to specific queues
 app.conf.task_routes = {
+    # WebSocket chat tasks
+    'core.agents.tasks.process_chat_message_task': {'queue': 'default'},
+    # YouTube tasks
     'core.integrations.youtube.tasks.sync_single_content_source': {'queue': 'youtube_sync'},
     'core.integrations.youtube.tasks.sync_content_sources': {'queue': 'youtube_sync'},
     'core.integrations.youtube.tasks.import_youtube_video_task': {'queue': 'youtube_import'},

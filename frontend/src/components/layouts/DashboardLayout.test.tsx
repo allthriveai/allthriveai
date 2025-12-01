@@ -30,9 +30,9 @@ vi.mock('@/components/events/RightEventsCalendarPanel', () => ({
     isOpen ? <div data-testid="right-events-panel">Events Panel</div> : null,
 }));
 
-vi.mock('@/components/projects/RightAddProjectChat', () => ({
-  RightAddProjectChat: ({ isOpen }: any) =>
-    isOpen ? <div data-testid="right-add-project-chat">Add Project Chat</div> : null,
+vi.mock('@/components/chat/IntelligentChatPanel', () => ({
+  IntelligentChatPanel: ({ isOpen }: any) =>
+    isOpen ? <div data-testid="intelligent-chat-panel">Intelligent Chat Panel</div> : null,
 }));
 
 // Mock useAuth hook
@@ -75,23 +75,23 @@ describe('DashboardLayout', () => {
       // Render component
       renderDashboardLayout();
 
-      // Wait for the Add Project panel to open
+      // Wait for the WebSocket Chat panel to open
       await waitFor(() => {
-        const addProjectPanel = screen.getByTestId('right-add-project-chat');
-        expect(addProjectPanel).toBeInTheDocument();
+        const chatPanel = screen.getByTestId('intelligent-chat-panel');
+        expect(chatPanel).toBeInTheDocument();
       });
 
       // Verify the panel is displayed
-      expect(screen.getByText('Add Project Chat')).toBeInTheDocument();
+      expect(screen.getByText('Intelligent Chat Panel')).toBeInTheDocument();
     });
 
     it('should not open Add Project panel when github_oauth_return is not set', () => {
       // No localStorage flag set
       renderDashboardLayout();
 
-      // Add Project panel should not be visible
-      const addProjectPanel = screen.queryByTestId('right-add-project-chat');
-      expect(addProjectPanel).not.toBeInTheDocument();
+      // WebSocket Chat panel should not be visible
+      const chatPanel = screen.queryByTestId('intelligent-chat-panel');
+      expect(chatPanel).not.toBeInTheDocument();
     });
 
     it('should not open Add Project panel when github_oauth_return has different value', () => {
@@ -100,9 +100,9 @@ describe('DashboardLayout', () => {
 
       renderDashboardLayout();
 
-      // Add Project panel should not be visible
-      const addProjectPanel = screen.queryByTestId('right-add-project-chat');
-      expect(addProjectPanel).not.toBeInTheDocument();
+      // WebSocket Chat panel should not be visible
+      const chatPanel = screen.queryByTestId('intelligent-chat-panel');
+      expect(chatPanel).not.toBeInTheDocument();
     });
 
     it('should only check OAuth return on mount', async () => {
@@ -131,7 +131,7 @@ describe('DashboardLayout', () => {
       );
 
       // Panel should still be open (useEffect only runs on mount)
-      expect(screen.getByTestId('right-add-project-chat')).toBeInTheDocument();
+      expect(screen.getByTestId('intelligent-chat-panel')).toBeInTheDocument();
     });
   });
 
@@ -142,9 +142,9 @@ describe('DashboardLayout', () => {
 
       renderDashboardLayout({ openAboutPanel: true });
 
-      // Wait for Add Project panel to open
+      // Wait for WebSocket Chat panel to open
       await waitFor(() => {
-        expect(screen.getByTestId('right-add-project-chat')).toBeInTheDocument();
+        expect(screen.getByTestId('intelligent-chat-panel')).toBeInTheDocument();
       });
 
       // About panel should be closed

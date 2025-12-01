@@ -13,6 +13,13 @@ export default {
           blue: '#4991e5',
           cyan: '#39bdd6',
           teal: '#3bd4cb',
+          // Neon Cyberpunk Palette
+          neon: {
+            teal: '#00FFA3',
+            cyan: '#00F0FF',
+            green: '#39FF14',
+            purple: '#BC13FE',
+          },
           dark: '#080b12',
           light: '#F2F5FA',
           'gradient-start': 'rgb(0, 164, 189)',
@@ -47,6 +54,9 @@ export default {
         },
         // UI Colors
         background: '#080b12', // brand dark
+        // Cyberpunk Backgrounds
+        void: '#05070A',
+        obsidian: '#0F1115',
         foreground: '#ffffff',
         card: '#1a1a1a',
         muted: {
@@ -136,6 +146,8 @@ export default {
       },
       backgroundImage: {
         'gradient-primary': 'linear-gradient(86deg, rgb(0, 164, 189) -3.28%, rgb(0, 189, 165) 97.8%)',
+        'holo-surface': 'linear-gradient(135deg, rgba(0, 240, 255, 0.1), rgba(188, 19, 254, 0.1), rgba(0, 255, 163, 0.1))',
+        'neon-flow': 'linear-gradient(to right, #00FFA3, #00F0FF)',
       },
       textWrap: {
         'balance': 'balance',
@@ -150,6 +162,10 @@ export default {
         // Brand shadows - teal
         'brand': '0 4px 14px 0 rgba(0, 164, 189, 0.35)',
         'brand-lg': '0 10px 40px 0 rgba(0, 189, 165, 0.25)',
+        // Neon Glows
+        'neon-text': '0 0 10px rgba(0, 255, 163, 0.5)',
+        'neon-box': '0 0 20px rgba(0, 240, 255, 0.3)',
+        'hyper-glass': '0 4px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 255, 163, 0.05)',
       },
       backdropBlur: {
         'xs': '2px',
@@ -171,6 +187,7 @@ export default {
         'scale-in': 'scaleIn 0.2s ease-out',
         'blob': 'blob 7s infinite',
         'gradient-shift': 'gradientShift 3s ease infinite',
+        'shimmer': 'shimmer 2s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -209,6 +226,17 @@ export default {
           },
           '50%': {
             backgroundPosition: '100% 50%',
+          },
+        },
+        shimmer: {
+          '0%': {
+            backgroundPosition: '0% 50%',
+          },
+          '50%': {
+            backgroundPosition: '100% 50%',
+          },
+          '100%': {
+            backgroundPosition: '0% 50%',
           },
         },
       },

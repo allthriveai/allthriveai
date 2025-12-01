@@ -7,7 +7,7 @@ import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import ProfilePage from '@/pages/ProfilePage';
 import ProjectDetailPage from '@/pages/ProjectDetailPage';
-import ProjectEditorPage from '@/pages/ProjectEditorPage';
+import SectionEditorPage from '@/pages/SectionEditorPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
 import PasswordSettingsPage from '@/pages/settings/PasswordSettingsPage';
 import IntegrationsSettingsPage from '@/pages/settings/IntegrationsSettingsPage';
@@ -19,6 +19,7 @@ import TeamsSettingsPage from '@/pages/settings/TeamsSettingsPage';
 import ReferralsPage from '@/pages/settings/ReferralsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
+import StyleGuide2 from '@/pages/StyleGuide2';
 import QuizListPage from '@/pages/quizzes/QuizListPage';
 import QuizPage from '@/pages/quizzes/QuizPage';
 import LearnPage from '@/pages/LearnPage';
@@ -38,6 +39,7 @@ export function AppRoutes() {
       <Route path="/about" element={<AboutPage />} />
       <Route path="/about-us" element={<AboutPage />} />
       <Route path="/styleguide" element={<StyleGuidePage />} />
+      <Route path="/styleguide2" element={<StyleGuide2 />} />
 
       {/* Learn route */}
       <Route path="/learn" element={<LearnPage />} />
@@ -186,7 +188,7 @@ export function AppRoutes() {
         path="/:username/:projectSlug/edit"
         element={
           <ProtectedRoute>
-            <ProjectEditorPage />
+            <SectionEditorPage />
           </ProtectedRoute>
         }
       />

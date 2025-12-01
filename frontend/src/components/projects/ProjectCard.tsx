@@ -19,10 +19,12 @@ import {
   EyeIcon,
   HeartIcon,
   ChevronUpIcon,
-  ChatBubbleLeftIcon
+  ChatBubbleLeftIcon,
+  SwatchIcon,
+  ChatBubbleOvalLeftEllipsisIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
-import { toggleProjectLike } from '@/services/projects';
+import { toggleProjectLike, deleteProjectById } from '@/services/projects';
 import { ProjectModal } from './ProjectModal';
 import { CommentTray } from './CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
@@ -42,10 +44,12 @@ interface ProjectCardProps {
   userAvatarUrl?: string;  // Owner's avatar URL
 }
 
-const typeIcons = {
+const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   github_repo: CodeBracketIcon,
+  figma_design: SwatchIcon,
   image_collection: PhotoIcon,
   prompt: ChatBubbleLeftRightIcon,
+  reddit_thread: ChatBubbleOvalLeftEllipsisIcon,
   other: DocumentTextIcon,
 };
 
@@ -53,7 +57,7 @@ const typeLabels = PROJECT_TYPE_LABELS;
 
 export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl }: ProjectCardProps) {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
   const [isLiked, setIsLiked] = useState(project.isLikedByUser);
   const [heartCount, setHeartCount] = useState(project.heartCount);
@@ -63,8 +67,15 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const [showToolTray, setShowToolTray] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
   const [slideUpExpanded, setSlideUpExpanded] = useState(false);
-  const Icon = typeIcons[project.type];
+  const [imageIsPortrait, setImageIsPortrait] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const Icon = typeIcons[project.type] || DocumentTextIcon;
   const projectUrl = `/${project.username}/${project.slug}`;
+
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin';
+  // User can delete if they're the owner OR if they're an admin
+  const canDelete = isOwner || isAdmin;
 
   // React Rewards for project likes
   const { reward: rewardLike } = useReward(`likeReward-${project.id}`, 'emoji', {
@@ -105,6 +116,31 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       console.error('Failed to toggle like:', error);
     } finally {
       setIsLiking(false);
+    }
+  };
+
+  const handleDeleteClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!confirm('Are you sure you want to delete this project?')) {
+      return;
+    }
+
+    try {
+      // Use the admin delete endpoint that works with any project
+      await deleteProjectById(project.id);
+
+      // Call onDelete callback if provided
+      if (onDelete) {
+        onDelete(project.id);
+      }
+
+      // Optionally reload the page or update the UI
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      alert('Failed to delete project. Please try again.');
     }
   };
 
@@ -242,7 +278,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         {...(cardProps as React.ComponentProps<typeof Link>)}
         className={`block relative rounded overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 group ${
           isSelected ? 'ring-4 ring-primary-500' : ''
-        } ${dynamicHeightClass} ${dynamicWidthClass}`}
+        } ${dynamicHeightClass} ${dynamicWidthClass} ${!imageLoaded && (heroElement.type === 'image' || heroElement.type === 'slideshow') ? 'min-h-[400px]' : ''}`}
       >
 
         {/* Selection checkbox */}
@@ -261,16 +297,28 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         {/* BACKGROUND LAYER */}
         <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''}`}>
             {heroElement.type === 'image' && (
-              <img
-                src={heroElement.url}
-                alt={project.title}
-                className="w-full h-auto object-cover"
-                loading="lazy"
-              />
+              <div className="relative w-full" style={{ minHeight: imageLoaded ? 'auto' : '400px' }}>
+                {/* Loading placeholder */}
+                {!imageLoaded && (
+                  <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800" style={{ backgroundSize: '200% 200%' }} />
+                )}
+                <img
+                  src={heroElement.url}
+                  alt={project.title}
+                  className={`w-full h-auto object-cover ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
+                  loading="lazy"
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
+                    // Small delay to ensure smooth transition
+                    setTimeout(() => setImageLoaded(true), 50);
+                  }}
+                />
+              </div>
             )}
 
             {isGradient && heroElement.type === 'gradient' && (
-              <div className={`w-full aspect-[4/3] bg-gradient-to-br ${heroElement.gradient} flex items-center justify-center p-8`}>
+              <div className={`w-full aspect-[4/3] bg-gradient-to-br ${heroElement.gradient} flex items-center justify-center p-8 pb-48 md:pb-8`}>
                 <div className="text-center">
                   <h3 className="text-3xl font-bold text-white drop-shadow-lg">
                     {heroElement.title}
@@ -308,7 +356,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
               const isEmbedUrl = embedUrl !== heroElement.url;
 
               return isEmbedUrl ? (
-                <div className="relative w-full aspect-video bg-black">
+                <div className="relative w-full aspect-video bg-black pb-40 md:pb-0">
                   <iframe
                     src={embedUrl}
                     className="absolute inset-0 w-full h-full"
@@ -319,7 +367,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
               ) : (
                 <video
                   src={heroElement.url}
-                  className="w-full h-auto block"
+                  className="w-full h-auto block pb-40 md:pb-0"
                   autoPlay
                   loop
                   muted
@@ -329,11 +377,24 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
             })()}
 
             {heroElement.type === 'slideshow' && (
-              <img
-                src={heroElement.images[0]}
-                alt={project.title}
-                className="w-full h-auto block"
-              />
+              <div className="relative w-full" style={{ minHeight: imageLoaded ? 'auto' : '400px' }}>
+                {/* Loading placeholder */}
+                {!imageLoaded && (
+                  <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800" style={{ backgroundSize: '200% 200%' }} />
+                )}
+                <img
+                  src={heroElement.images[0]}
+                  alt={project.title}
+                  className={`w-full h-auto block ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
+                  loading="lazy"
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
+                    // Small delay to ensure smooth transition
+                    setTimeout(() => setImageLoaded(true), 50);
+                  }}
+                />
+              </div>
             )}
 
             {isQuote && (
@@ -406,9 +467,10 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
 
         {/* GRADIENT OVERLAY & FOOTER */}
         {/* Always render footer absolute at bottom for seamless overlay look */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        {/* Show by default on mobile (md:opacity-0), show on hover on desktop (md:group-hover:opacity-100) */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
           {/* Gradient Background for smooth overlay fade */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent -top-40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent -top-64 md:-top-40" />
 
           <div className="relative p-5 pt-2">
             <h3 className="text-xl font-bold mb-1 line-clamp-2 leading-tight text-white drop-shadow-md">
@@ -522,6 +584,18 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                     <ChevronUpIcon className="w-4 h-4 text-white group-hover/more:scale-110 transition-transform drop-shadow-sm" />
                   </button>
                 )}
+
+                {/* Admin Delete Button */}
+                {canDelete && !selectionMode && (
+                  <button
+                    onClick={handleDeleteClick}
+                    className="p-1.5 rounded-full transition-all hover:scale-105 group/delete bg-red-500/20 backdrop-blur-md border border-red-500/30 hover:bg-red-500/30"
+                    aria-label="Delete project"
+                    title={isAdmin && !isOwner ? "Delete project (Admin)" : "Delete project"}
+                  >
+                    <TrashIcon className="w-4 h-4 text-red-400 group-hover/delete:scale-110 transition-transform drop-shadow-sm" />
+                  </button>
+                )}
               </div>
 
               {/* Right side - Tools */}
@@ -608,9 +682,9 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
 
-        {/* Type badge and Menu button */}
+          {/* Type badge and Menu button */}
         <div className="absolute top-3 right-3 flex items-center gap-2">
-          {isOwner && !selectionMode && (
+          {canDelete && !selectionMode && (
             <div className="relative">
               <button
                 onClick={(e) => {

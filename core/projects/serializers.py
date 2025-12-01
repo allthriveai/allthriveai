@@ -82,23 +82,33 @@ class ProjectSerializer(serializers.ModelSerializer):
 
         # Define allowed structure - only accept known keys
         allowed_keys = {
+            # Legacy block-based content
             'blocks',
             'cover',
             'tags',
             'metadata',
+            # Hero display settings
             'heroDisplayMode',
             'heroQuote',
             'heroVideoUrl',
             'heroSlideshowImages',
             'heroSlideUpElement1',
             'heroSlideUpElement2',
+            # Template v2 section-based content
+            'templateVersion',
+            'sections',
+            # Integration data (GitHub, Figma analysis)
+            'github',
+            'figma',
         }
         provided_keys = set(value.keys())
 
         if not provided_keys.issubset(allowed_keys):
             invalid_keys = provided_keys - allowed_keys
+            invalid_keys_str = ', '.join(invalid_keys)
+            allowed_keys_str = ', '.join(sorted(allowed_keys))
             raise serializers.ValidationError(
-                f'Content contains invalid keys: {", ".join(invalid_keys)}. Allowed keys: {", ".join(allowed_keys)}'
+                f'Content contains invalid keys: {invalid_keys_str}. Allowed keys: {allowed_keys_str}'
             )
 
         # Sanitize text content in blocks to prevent XSS
@@ -138,6 +148,26 @@ class ProjectSerializer(serializers.ModelSerializer):
         # Validate metadata structure
         if 'metadata' in value and not isinstance(value['metadata'], dict):
             raise serializers.ValidationError("'metadata' must be a JSON object.")
+
+        # Validate sections structure (template v2)
+        if 'sections' in value:
+            if not isinstance(value['sections'], list):
+                raise serializers.ValidationError("'sections' must be a list.")
+
+            for i, section in enumerate(value['sections']):
+                if not isinstance(section, dict):
+                    raise serializers.ValidationError(f'Section at index {i} must be a JSON object.')
+
+                # Required section fields
+                required_fields = ['id', 'type', 'enabled', 'order', 'content']
+                for field in required_fields:
+                    if field not in section:
+                        raise serializers.ValidationError(f"Section at index {i} missing required field '{field}'.")
+
+        # Validate templateVersion
+        if 'templateVersion' in value:
+            if value['templateVersion'] not in [1, 2]:
+                raise serializers.ValidationError("'templateVersion' must be 1 or 2.")
 
         # Check size limit AFTER sanitization
         content_str = json.dumps(value)
@@ -199,6 +229,44 @@ class ProjectSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """Convert snake_case field names to camelCase for frontend compatibility."""
         data = super().to_representation(instance)
+
+        # Add Reddit-specific data to content if this is a Reddit thread
+        if instance.type == 'reddit_thread' and hasattr(instance, 'reddit_thread'):
+            reddit_thread = instance.reddit_thread
+            if 'content' not in data or data['content'] is None:
+                data['content'] = {}
+            elif not isinstance(data['content'], dict):
+                data['content'] = {}
+
+            # Get enriched data from metadata
+            metadata = reddit_thread.reddit_metadata or {}
+
+            data['content']['reddit'] = {
+                'subreddit': reddit_thread.subreddit,
+                'author': reddit_thread.author,
+                'permalink': reddit_thread.permalink,
+                'score': reddit_thread.score,
+                'num_comments': reddit_thread.num_comments,
+                'thumbnail_url': reddit_thread.thumbnail_url,
+                'created_utc': reddit_thread.created_utc.isoformat() if reddit_thread.created_utc else None,
+                'reddit_post_id': reddit_thread.reddit_post_id,
+                # Enriched data from JSON API
+                'upvote_ratio': metadata.get('upvote_ratio', 0),
+                'selftext': metadata.get('selftext', ''),
+                'selftext_html': metadata.get('selftext_html', ''),
+                'post_hint': metadata.get('post_hint', ''),
+                'link_flair_text': metadata.get('link_flair_text', ''),
+                'link_flair_background_color': metadata.get('link_flair_background_color', ''),
+                'is_video': metadata.get('is_video', False),
+                'video_url': metadata.get('video_url', ''),
+                'video_duration': metadata.get('video_duration', 0),
+                'is_gallery': metadata.get('is_gallery', False),
+                'gallery_images': metadata.get('gallery_images', []),
+                'domain': metadata.get('domain', ''),
+                'url': metadata.get('url', ''),
+                'over_18': metadata.get('over_18', False),
+                'spoiler': metadata.get('spoiler', False),
+            }
 
         # Map snake_case to camelCase for fields that need it
         field_mapping = {

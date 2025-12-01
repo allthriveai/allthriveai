@@ -71,7 +71,7 @@ export const getMenuSections = (
       { label: 'Learning Paths', path: '#', icon: faGraduationCap },
       { label: 'Quizzes', path: '/quick-quizzes', icon: faBrain },
       { label: 'Mentorship Program', path: '#', icon: faUsers },
-      { label: 'AI Tool Directory', path: '/tools', icon: faWrench },
+      { label: 'Tool Directory', path: '/tools', icon: faWrench },
     ],
   },
   {
@@ -141,7 +141,7 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
   'Activity & Points': (path, search, username) =>
     username ? path === `/${username}` && search.includes('tab=activity') : false,
   'Your Thrive Circle': (path) => path === '/thrive-circle',
-  'AI Tool Directory': (path) => path === '/tools',
+  'Tool Directory': (path) => path === '/tools',
 };
 
 // Timing constants

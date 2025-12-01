@@ -149,16 +149,24 @@ class YouTubeService:
         return params
 
     def _check_quota(self) -> None:
-        """Check if we're approaching quota limit."""
-        quota_key = f'youtube_quota:{self.oauth_token[:10] if self.oauth_token else "api_key"}'
+        """Check if we're approaching quota limit.
+
+        Uses atomic operations to prevent race conditions with multiple workers.
+        """
+        # OAuth quota is tracked per-user in helpers with atomic operations
+        # This is a fallback check for API-key quota which is global
+        if self.oauth_token:
+            # OAuth quota is tracked per-user, skip service-level check
+            return
+
+        # API key quota is shared, use simpler check
+        # Note: This is rough - consider migrating to per-user OAuth for scale
+        quota_key = 'youtube_quota:shared_api_key'
         current_quota = cache.get(quota_key, 0)
 
         if current_quota > 9000:  # Approaching 10,000 limit
-            logger.warning(f'YouTube API quota near limit: {current_quota}/10000')
+            logger.warning(f'YouTube API key quota near limit: {current_quota}/10000')
             raise QuotaExceededError('YouTube API quota exceeded')
-
-        # Increment quota usage (rough estimate)
-        cache.set(quota_key, current_quota + 3, timeout=86400)  # 24 hours
 
     def get_video_info(self, video_id: str) -> dict[str, Any]:
         """
@@ -195,7 +203,10 @@ class YouTubeService:
 
         logger.debug(f'Fetching video info for {video_id}')
 
+        response = None  # Track response for quota tracking
+
         def _make_request():
+            nonlocal response
             client = get_http_client()
             response = client.get(
                 f'{self.BASE_URL}/videos',
@@ -207,6 +218,11 @@ class YouTubeService:
 
         try:
             data = _circuit_breaker.call(_make_request)
+
+            # Track actual quota usage from API response
+            if response and self.oauth_token:
+                self._track_quota_from_response(response)
+
         except CircuitBreakerError:
             raise
         except httpx.HTTPStatusError as e:

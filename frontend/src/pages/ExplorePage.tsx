@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import type { Taxonomy } from '@/types/models';
 import { api } from '@/services/api';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
@@ -11,6 +11,7 @@ import { UserProfileCard } from '@/components/explore/UserProfileCard';
 import { QuizPreviewCard } from '@/components/quiz/QuizPreviewCard';
 import { QuizOverlay } from '@/components/quiz/QuizOverlay';
 import { ProjectCard } from '@/components/projects/ProjectCard';
+import { LoadingSkeleton } from '@/components/explore/LoadingSkeleton';
 import {
   exploreProjects,
   semanticSearch,
@@ -19,9 +20,11 @@ import {
   type ExploreParams,
 } from '@/services/explore';
 import { getQuizzes } from '@/services/quiz';
+import { useAuth } from '@/hooks/useAuth';
 
 export function ExplorePage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
 
   // State from URL params
   const [activeTab, setActiveTab] = useState<ExploreTab>(
@@ -34,11 +37,13 @@ export function ExplorePage() {
   const [selectedToolSlugs, setSelectedToolSlugs] = useState<string[]>(
     searchParams.getAll('tools').filter(Boolean)
   );
-  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
 
   // Quiz overlay state
   const [quizOverlayOpen, setQuizOverlayOpen] = useState(false);
   const [selectedQuizSlug, setSelectedQuizSlug] = useState<string>('');
+
+  // Intersection observer ref for infinite scroll
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   // Sync state to URL
   useEffect(() => {
@@ -47,9 +52,8 @@ export function ExplorePage() {
     if (searchQuery) params.set('q', searchQuery);
     selectedCategorySlugs.forEach(slug => params.append('categories', slug));
     selectedToolSlugs.forEach(slug => params.append('tools', slug));
-    if (page > 1) params.set('page', String(page));
     setSearchParams(params, { replace: true });
-  }, [activeTab, searchQuery, selectedCategorySlugs, selectedToolSlugs, page, setSearchParams]);
+  }, [activeTab, searchQuery, selectedCategorySlugs, selectedToolSlugs, setSearchParams]);
 
   // Fetch filter options (tools)
   const { data: filterOptions } = useQuery({
@@ -89,29 +93,34 @@ export function ExplorePage() {
     filterOptions: filterOptions?.tools.map(t => ({ id: t.id, slug: t.slug, name: t.name })),
   });
 
-  // Fetch projects (for most tabs)
-  const exploreParams: ExploreParams = {
+  // Fetch projects with infinite scroll (for most tabs)
+  const exploreParamsBase = {
     tab: activeTab === 'for-you' ? 'for-you' : activeTab === 'trending' ? 'trending' : 'all',
     search: searchQuery || undefined,
     categories: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
     tools: selectedToolIds.length > 0 ? selectedToolIds : undefined,
-    page,
     page_size: 30,
-  };
+  } as const;
 
-  console.log('[ExplorePage] exploreParams:', exploreParams);
+  console.log('[ExplorePage] exploreParamsBase:', exploreParamsBase);
 
   const {
     data: projectsData,
     isLoading: isLoadingProjects,
-    refetch: refetchProjects,
-  } = useQuery({
-    queryKey: ['exploreProjects', exploreParams],
-    queryFn: () => exploreProjects(exploreParams),
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['exploreProjects', exploreParamsBase],
+    queryFn: ({ pageParam = 1 }) => exploreProjects({ ...exploreParamsBase, page: pageParam }),
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.next ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
     // Only run query if:
     // 1. Not on profiles tab
     // 2. If tools are selected, filterOptions must be loaded
-    // 3. If categories are selected, taxonomyCategories must be loaded (IDs might be empty if no match, which is ok - we want to show 0 results)
+    // 3. If categories are selected, taxonomyCategories must be loaded
     enabled:
       activeTab !== 'profiles' &&
       (selectedToolSlugs.length === 0 || !!filterOptions) &&
@@ -128,13 +137,20 @@ export function ExplorePage() {
     enabled: !!searchQuery && activeTab !== 'profiles',
   });
 
-  // Fetch profiles
+  // Fetch profiles with infinite scroll
   const {
     data: profilesData,
     isLoading: isLoadingProfiles,
-  } = useQuery({
-    queryKey: ['exploreProfiles', page],
-    queryFn: () => exploreProfiles(page, 30),
+    isFetchingNextPage: isFetchingNextProfiles,
+    hasNextPage: hasNextProfiles,
+    fetchNextPage: fetchNextProfiles,
+  } = useInfiniteQuery({
+    queryKey: ['exploreProfiles'],
+    queryFn: ({ pageParam = 1 }) => exploreProfiles(pageParam, 30),
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.next ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
     enabled: activeTab === 'profiles',
   });
 
@@ -155,37 +171,36 @@ export function ExplorePage() {
     (selectedCategorySlugs.length > 0 && !taxonomyCategories) ||
     (selectedToolSlugs.length > 0 && !filterOptions);
 
-  const displayProjects = searchQuery && semanticResults ? semanticResults : projectsData?.results || [];
+  // Flatten paginated results for infinite scroll
+  const allProjects = projectsData?.pages.flatMap(page => page.results) || [];
+  const allProfiles = profilesData?.pages.flatMap(page => page.results) || [];
+
+  const displayProjects = searchQuery && semanticResults ? semanticResults : allProjects;
   const displayQuizzes = quizzesData?.results || [];
   const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isWaitingForFilters;
 
   // Handle tab change
   const handleTabChange = (tab: ExploreTab) => {
     setActiveTab(tab);
-    setPage(1);
   };
 
   // Handle search
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setPage(1);
   };
 
   // Handle filter changes
   const handleCategoriesChange = (categorySlugs: string[]) => {
     setSelectedCategorySlugs(categorySlugs);
-    setPage(1);
   };
 
   const handleToolsChange = (slugs: string[]) => {
     setSelectedToolSlugs(slugs);
-    setPage(1);
   };
 
   const handleClearFilters = () => {
     setSelectedCategorySlugs([]);
     setSelectedToolSlugs([]);
-    setPage(1);
   };
 
   const handleOpenQuiz = (quizSlug: string) => {
@@ -198,6 +213,36 @@ export function ExplorePage() {
     setSelectedQuizSlug('');
   };
 
+  // Intersection observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          if (activeTab === 'profiles' && hasNextProfiles && !isFetchingNextProfiles) {
+            fetchNextProfiles();
+          } else if (activeTab !== 'profiles' && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }
+      },
+      {
+        threshold: 0.1,
+        rootMargin: '200px' // Reduced from 400px for smoother loading
+      }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [activeTab, hasNextPage, hasNextProfiles, isFetchingNextPage, isFetchingNextProfiles, fetchNextPage, fetchNextProfiles]);
+
   // Show filters only for certain tabs
   const showFilters = activeTab === 'categories' || activeTab === 'tools';
 
@@ -205,7 +250,7 @@ export function ExplorePage() {
     <>
     <DashboardLayout>
       {() => (
-        <div className="h-full overflow-y-auto">
+        <div className="h-full overflow-y-auto scrollbar-thin" style={{ scrollBehavior: 'smooth' }}>
           <div className="px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
             <div className="mb-6">
@@ -245,53 +290,32 @@ export function ExplorePage() {
               // Profiles Grid
               <div>
                 {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400"></div>
-                      <p className="mt-4 text-gray-600 dark:text-gray-400">Loading profiles...</p>
-                    </div>
-                  </div>
+                  <LoadingSkeleton type="profile" count={9} />
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {profilesData?.results.map((user) => (
-                      <UserProfileCard key={user.id} user={user} />
-                    ))}
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+                      {allProfiles.map((user) => (
+                        <UserProfileCard key={user.id} user={user} />
+                      ))}
+                    </div>
+
+                {/* Infinite scroll trigger */}
+                {hasNextProfiles && <div ref={observerTarget} className="h-4 mt-8" />}
+
+                {/* Loading skeletons for next page - shown inline during fetch */}
+                {isFetchingNextProfiles && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 mt-4">
+                    <LoadingSkeleton type="profile" count={4} />
                   </div>
                 )}
-
-                {/* Pagination for profiles */}
-                {profilesData && profilesData.count > 30 && (
-                  <div className="mt-8 flex items-center justify-center gap-4">
-                    <button
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-gray-600 dark:text-gray-400">
-                      Page {page} of {Math.ceil(profilesData.count / 30)}
-                    </span>
-                    <button
-                      onClick={() => setPage(p => p + 1)}
-                      disabled={!profilesData.next}
-                      className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Next
-                    </button>
-                  </div>
+                  </>
                 )}
               </div>
             ) : (
               // Mixed Projects and Quizzes Grid
               <>
                 {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400"></div>
-                      <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
-                    </div>
-                  </div>
+                  <LoadingSkeleton type="project" count={9} />
                 ) : displayProjects.length === 0 && displayQuizzes.length === 0 ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center max-w-md mx-auto">
@@ -328,7 +352,7 @@ export function ExplorePage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-2">
+                  <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2" style={{ columnFill: 'balance' }}>
                     {/* Interleave quizzes and projects */}
                     {(() => {
                       const items: Array<{ type: 'quiz' | 'project'; data: any }> = [
@@ -352,6 +376,7 @@ export function ExplorePage() {
                               project={item.data}
                               variant="masonry"
                               userAvatarUrl={item.data.userAvatarUrl}
+                              isOwner={user?.username === item.data.username}
                             />
                           )}
                         </div>
@@ -360,26 +385,13 @@ export function ExplorePage() {
                   </div>
                 )}
 
-                {/* Pagination for projects */}
-                {projectsData && projectsData.count > 30 && !searchQuery && (
-                  <div className="mt-8 flex items-center justify-center gap-4">
-                    <button
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-gray-600 dark:text-gray-400">
-                      Page {page} of {Math.ceil(projectsData.count / 30)}
-                    </span>
-                    <button
-                      onClick={() => setPage(p => p + 1)}
-                      disabled={!projectsData.next}
-                      className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Next
-                    </button>
+                {/* Infinite scroll trigger */}
+                {hasNextPage && <div ref={observerTarget} className="h-4 mt-8" />}
+
+                {/* Loading skeletons for next page - shown inline during fetch */}
+                {isFetchingNextPage && (
+                  <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2 mt-2">
+                    <LoadingSkeleton type="project" count={6} />
                   </div>
                 )}
               </>
