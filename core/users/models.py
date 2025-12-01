@@ -68,6 +68,14 @@ class User(AbstractUser):
         default=False,  # Opt-in by default for privacy
         help_text='Allow AI models (like ChatGPT) to use profile data for training',
     )
+    allow_similarity_matching = models.BooleanField(
+        default=True,  # Opt-out: default to enabled for better recommendations
+        help_text=(
+            'Allow your preferences to be used for finding users with similar interests '
+            '(collaborative filtering). Your specific interests are never shared, only used '
+            'anonymously for recommendations.'
+        ),
+    )
 
     # Gamification System - Single Source of Truth
     # Tier choices and thresholds

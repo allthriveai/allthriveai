@@ -34,16 +34,17 @@ Unlike time-bound implementation docs (which go in `/docs/archived/`), these doc
 | Document | Status | Description |
 |----------|--------|-------------|
 | [07-WEBSOCKET-IMPLEMENTATION.md](./07-WEBSOCKET-IMPLEMENTATION.md) | ✅ Complete | WebSocket architecture, auth flow, debugging guide |
-| 08-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
-| 09-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
-| 10-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
+| [08-ONBOARDING-ARCHITECTURE.md](./08-ONBOARDING-ARCHITECTURE.md) | ✅ Complete | Auth chat, welcome flow, unified chat onboarding |
+| 09-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
+| 10-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
+| 11-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
 
 ### Design & UX
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| 11-DESIGN-SYSTEM.md | 📝 Planned | Color palette, typography, components, patterns |
-| 12-UX-PRINCIPLES.md | 📝 Planned | Interaction patterns, accessibility, mobile-first |
+| 12-DESIGN-SYSTEM.md | 📝 Planned | Color palette, typography, components, patterns |
+| 13-UX-PRINCIPLES.md | 📝 Planned | Interaction patterns, accessibility, mobile-first |
 
 ---
 
@@ -148,4 +149,4 @@ They do NOT answer:
 
 **Maintained by**: Engineering Team  
 **Review Cycle**: Quarterly  
-**Last Review**: 2025-11-29
+**Last Review**: 2025-12-01

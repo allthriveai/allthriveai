@@ -52,7 +52,8 @@ export default function AuthPage() {
   // Redirect if authenticated and flow complete
   useEffect(() => {
     if (isAuthenticated && state.step === 'complete' && user?.username) {
-      navigate(`/${user.username}`);
+      // Redirect to explore page with welcome flag to trigger onboarding chat
+      navigate('/explore?welcome=true');
     }
   }, [isAuthenticated, state.step, user?.username, navigate]);
 

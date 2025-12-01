@@ -1,6 +1,6 @@
 # Core Features
 
-**Source of Truth** | **Last Updated**: 2025-11-29
+**Source of Truth** | **Last Updated**: 2025-12-01
 
 This document defines the core features of AllThrive AI. These features represent the fundamental value proposition and should remain stable across iterations.
 
@@ -42,11 +42,18 @@ AllThrive AI
 
 **Components**:
 - Tool catalog with categories and tags
+- Technology and company information
 - Example projects for each tool
 - Tool comparisons and recommendations
 - Integration status indicators
+- Advanced filtering and search
 
-**Key Models**: `Tool`, `ToolCategory`, `ToolTag`, `ToolExample`
+**Key Models**: `Tool`, `ToolCategory`, `ToolTag`, `ToolExample`, `Technology`, `Company`
+
+**Recent Enhancements**:
+- Added technology taxonomy for better categorization
+- Company profiles for tool providers
+- Improved tool discovery via explore page integration
 
 ---
 
@@ -78,15 +85,26 @@ AllThrive AI
 **Components**:
 - Project CRUD operations
 - Rich markdown descriptions with Mermaid diagram support
+- Section-based content organization (Overview, Features, Technical Details, etc.)
 - Media attachments (images, videos via YouTube)
-- Tool tagging
+- Tool tagging with technology relationships
 - Topic categorization
 - Comments and likes
-- Privacy controls
+- Privacy controls (public/private/unlisted)
+- Inline editing capabilities
+- Moderation features
 
-**Key Models**: `Project`, `ProjectMedia`, `ProjectTool`, `Comment`, `Like`
+**Key Models**: `Project`, `ProjectMedia`, `ProjectTool`, `Comment`, `Like`, `ProjectSection`
 
 **URL Structure**: `/{username}/{project-slug}`
+
+**Recent Enhancements**:
+- Section-based project structure for better organization
+- Inline editing for seamless content updates
+- Improved Mermaid diagram generation and rendering
+- Reusable project field components
+- Enhanced moderation tools
+- Better YouTube integration with scaling and error handling
 
 ---
 
@@ -208,21 +226,35 @@ AllThrive AI
 
 ## 5. AI Agents & Automation
 
-### 5.1 Project Chat Agent
-**Purpose**: AI-powered assistant for project creation and management.
+### 5.1 Intelligent Chat Panel (Unified AI Agent)
+**Purpose**: AI-powered assistant for project creation, management, and user support.
 
 **Capabilities**:
-- Project ideation
+- Project ideation and creation guidance
 - Structured data extraction from conversations
-- Markdown generation
-- Tool recommendations
+- Markdown and Mermaid diagram generation
+- Tool and technology recommendations
 - Import assistance (GitHub, YouTube)
+- Welcome/onboarding flow for new users
+- Context-aware responses based on user journey
+- ChatGPT-style menu with integration options
 
-**Architecture**: LangGraph multi-agent system
+**Architecture**: LangGraph multi-agent system with WebSocket streaming
 
-**Key Components**: `ChatConsumer`, `process_chat_message_task`, `project_agent`
+**Key Components**: 
+- `IntelligentChatPanel` (frontend)
+- `ChatConsumer` (WebSocket handler)
+- `process_chat_message_task` (Celery task)
+- `project_agent` (LangGraph agent)
 
-**Communication**: WebSocket (real-time streaming)
+**Communication**: WebSocket (real-time streaming with markdown rendering)
+
+**Recent Enhancements**:
+- Unified chat interface replacing separate RightChatPanel
+- Welcome mode for new user onboarding
+- Improved agent conversation flow
+- Better integration menu UX
+- Enhanced markdown and diagram support
 
 ---
 

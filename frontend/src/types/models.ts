@@ -314,6 +314,9 @@ export interface Tool {
   // Categorization
   category: ToolCategory;
   categoryDisplay: string;
+  company?: number; // Company ID
+  companyName?: string; // Company name
+  companySlug?: string; // Company slug
   tags: string[];
 
   // Media

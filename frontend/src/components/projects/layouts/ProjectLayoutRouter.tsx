@@ -10,7 +10,7 @@
  */
 
 import type { Project } from '@/types/models';
-import { useProjectContext } from '@/contexts/ProjectContext';
+import { useProjectContext } from '@/context/ProjectContext';
 import { GitHubProjectLayout } from '../github/GitHubProjectLayout';
 import { GitHubProjectPendingView } from '../github/GitHubProjectPendingView';
 import { FigmaProjectLayout } from '../figma/FigmaProjectLayout';

@@ -359,8 +359,10 @@ export function useIntelligentChat({
     }
   }, [conversationId, isAuthenticated, authLoading, isConnecting, onError, startHeartbeat, scheduleReconnect, clearTimers]);
 
-  // Store connect function in ref to prevent useEffect dependency issues
-  connectFnRef.current = connect;
+  // Store connect function in ref via effect to avoid assignment during render
+  useEffect(() => {
+    connectFnRef.current = connect;
+  }, [connect]);
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {

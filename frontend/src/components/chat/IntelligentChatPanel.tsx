@@ -10,6 +10,7 @@ interface IntelligentChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
   conversationId?: string;
+  welcomeMode?: boolean; // Show onboarding welcome message for new users
 }
 
 /**
@@ -26,10 +27,12 @@ export function IntelligentChatPanel({
   isOpen,
   onClose,
   conversationId = 'default-conversation',
+  welcomeMode = false,
 }: IntelligentChatPanelProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [error, setError] = useState<string | undefined>();
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   // Handle project creation - redirect to the new project page
   const handleProjectCreated = useCallback((projectUrl: string, projectTitle: string) => {
@@ -51,7 +54,24 @@ export function IntelligentChatPanel({
   const handleSendMessage = (content: string) => {
     if (!content.trim() || isLoading) return;
     setError(undefined);
+    setHasInteracted(true);
     sendMessage(content);
+  };
+
+  // Onboarding button handlers - send messages to the AI agent
+  const handlePlayGame = () => {
+    setHasInteracted(true);
+    sendMessage('Play a game to help personalize my experience');
+  };
+
+  const handleAddFirstProject = () => {
+    setHasInteracted(true);
+    sendMessage('I want to add my first project to my portfolio');
+  };
+
+  const handleMakeSomethingNew = () => {
+    setHasInteracted(true);
+    sendMessage("I don't know where to start - let's make something new together");
   };
 
   const handleRetry = () => {
@@ -83,8 +103,88 @@ export function IntelligentChatPanel({
 
   // Empty state when no messages
   const renderEmptyState = () => {
-    if (messages.length > 0) return null;
+    if (messages.length > 0 || hasInteracted) return null;
 
+    // Welcome mode for new users after onboarding
+    if (welcomeMode) {
+      return (
+        <div className="flex flex-col items-start justify-start h-full px-4 pt-4">
+          <div className="max-w-md">
+            <div className="mb-4 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+              <p className="text-sm mb-1 flex items-center gap-2">
+                🎉 Glad you're here{user?.first_name ? `, ${user.first_name}` : ''}!
+              </p>
+              <p className="text-sm">Let's get you started. What would you like to do?</p>
+            </div>
+
+            {/* 3 Onboarding Options */}
+            <div className="space-y-2">
+              <button
+                onClick={handlePlayGame}
+                disabled={isLoading}
+                className="w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center flex-shrink-0">
+                    <span className="text-lg">🎮</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900 dark:text-slate-100 text-sm">
+                      Play a game
+                    </div>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                      Help us personalize your experience
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={handleAddFirstProject}
+                disabled={isLoading}
+                className="w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center flex-shrink-0">
+                    <span className="text-lg">➕</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900 dark:text-slate-100 text-sm">
+                      Add your first project
+                    </div>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                      Paste a link, connect an integration, or describe it
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={handleMakeSomethingNew}
+                disabled={isLoading}
+                className="w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center flex-shrink-0">
+                    <span className="text-lg">✨</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900 dark:text-slate-100 text-sm">
+                      Don't know where to start?
+                    </div>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                      Let's make something new together
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Default empty state
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-8">
         <div className="mb-4">

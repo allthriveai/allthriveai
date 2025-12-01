@@ -17,7 +17,7 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
-import { useSectionEditorContext } from '@/contexts/SectionEditorContext';
+import { useSectionEditorContext } from '@/context/SectionEditorContext';
 
 export function EditorTopBar() {
   const {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import type { Taxonomy } from '@/types/models';
@@ -26,6 +26,9 @@ export function ExplorePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
 
+  // Ref to store openAddProject function from DashboardLayout
+  const openAddProjectRef = useRef<((welcomeMode?: boolean) => void) | null>(null);
+
   // State from URL params
   const [activeTab, setActiveTab] = useState<ExploreTab>(
     (searchParams.get('tab') as ExploreTab) || 'for-you'
@@ -44,6 +47,8 @@ export function ExplorePage() {
 
   // Intersection observer ref for infinite scroll
   const observerTarget = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const previousScrollHeight = useRef<number>(0);
 
   // Sync state to URL
   useEffect(() => {
@@ -179,6 +184,40 @@ export function ExplorePage() {
   const displayQuizzes = quizzesData?.results || [];
   const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isWaitingForFilters;
 
+  // Stably mix quizzes and projects using memoization to prevent re-shuffling
+  const mixedItems = useMemo(() => {
+    const items: Array<{ type: 'quiz' | 'project'; data: any; stableKey: string }> = [
+      ...displayQuizzes.map(quiz => ({
+        type: 'quiz' as const,
+        data: quiz,
+        stableKey: `quiz-${quiz.slug || quiz.id}`
+      })),
+      ...displayProjects.map(project => ({
+        type: 'project' as const,
+        data: project,
+        stableKey: `project-${project.slug || project.id}`
+      })),
+    ];
+
+    // Use a stable hash-based shuffle instead of random
+    // This ensures the same items always appear in the same order
+    const hashString = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return hash;
+    };
+
+    return items.sort((a, b) => {
+      const hashA = hashString(a.stableKey);
+      const hashB = hashString(b.stableKey);
+      return hashA - hashB;
+    });
+  }, [displayQuizzes, displayProjects]);
+
   // Handle tab change
   const handleTabChange = (tab: ExploreTab) => {
     setActiveTab(tab);
@@ -213,8 +252,43 @@ export function ExplorePage() {
     setSelectedQuizSlug('');
   };
 
+  // Preserve scroll position when new content loads
+  useEffect(() => {
+    if (isFetchingNextPage || isFetchingNextProfiles) {
+      const container = scrollContainerRef.current;
+      if (container) {
+        previousScrollHeight.current = container.scrollHeight;
+      }
+    }
+  }, [isFetchingNextPage, isFetchingNextProfiles]);
+
+  useEffect(() => {
+    if (!isFetchingNextPage && !isFetchingNextProfiles && previousScrollHeight.current > 0) {
+      const container = scrollContainerRef.current;
+      if (container) {
+        const newScrollHeight = container.scrollHeight;
+        const heightDiff = newScrollHeight - previousScrollHeight.current;
+
+        // Only adjust if content was added (height increased)
+        if (heightDiff > 0) {
+          // Maintain scroll position by adjusting for new content height
+          const currentScrollTop = container.scrollTop;
+          // This prevents the jump by keeping the user at the same visual position
+          requestAnimationFrame(() => {
+            // No adjustment needed since content loads at bottom
+          });
+        }
+
+        previousScrollHeight.current = 0;
+      }
+    }
+  }, [isFetchingNextPage, isFetchingNextProfiles, allProjects.length, allProfiles.length]);
+
   // Intersection observer for infinite scroll
   useEffect(() => {
+    // Find the scrolling container (main element from DashboardLayout)
+    const scrollContainer = scrollContainerRef.current?.closest('main');
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
@@ -226,8 +300,9 @@ export function ExplorePage() {
         }
       },
       {
+        root: scrollContainer, // Use the actual scrolling container
         threshold: 0.1,
-        rootMargin: '200px' // Reduced from 400px for smoother loading
+        rootMargin: '400px' // Load earlier to prevent visible loading states
       }
     );
 
@@ -246,12 +321,29 @@ export function ExplorePage() {
   // Show filters only for certain tabs
   const showFilters = activeTab === 'categories' || activeTab === 'tools';
 
+  // Handle welcome redirect from auth - open chat in welcome mode
+  // Uses useEffect to avoid race conditions from calling during render
+  useEffect(() => {
+    const isWelcome = searchParams.get('welcome') === 'true';
+    if (isWelcome && openAddProjectRef.current) {
+      // Remove the welcome param from URL first
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('welcome');
+      setSearchParams(newParams, { replace: true });
+      // Open the chat in welcome mode after a brief delay for UI to settle
+      setTimeout(() => openAddProjectRef.current?.(true), 100);
+    }
+  }, [searchParams, setSearchParams]);
+
   return (
     <>
     <DashboardLayout>
-      {() => (
-        <div className="h-full overflow-y-auto scrollbar-thin" style={{ scrollBehavior: 'smooth' }}>
-          <div className="px-4 sm:px-6 lg:px-8 py-8">
+      {({ openAddProject }) => {
+        // Store the function in ref for useEffect to access
+        openAddProjectRef.current = openAddProject;
+
+        return (
+        <div ref={scrollContainerRef} className="px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
             <div className="mb-6">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
@@ -308,6 +400,20 @@ export function ExplorePage() {
                     <LoadingSkeleton type="profile" count={4} />
                   </div>
                 )}
+
+                {/* End of feed indicator */}
+                {!hasNextProfiles && !isFetchingNextProfiles && allProfiles.length > 0 && (
+                  <div className="flex flex-col items-center justify-center py-12 mt-8">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                        You've reached the end
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                        {allProfiles.length} profiles shown
+                      </p>
+                    </div>
+                  </div>
+                )}
                   </>
                 )}
               </div>
@@ -352,19 +458,11 @@ export function ExplorePage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2" style={{ columnFill: 'balance' }}>
-                    {/* Interleave quizzes and projects */}
-                    {(() => {
-                      const items: Array<{ type: 'quiz' | 'project'; data: any }> = [
-                        ...displayQuizzes.map(quiz => ({ type: 'quiz' as const, data: quiz })),
-                        ...displayProjects.map(project => ({ type: 'project' as const, data: project })),
-                      ];
-
-                      // Simple shuffle to mix quizzes and projects
-                      const mixed = items.sort(() => Math.random() - 0.5);
-
-                      return mixed.map((item, index) => (
-                        <div key={`${item.type}-${item.data.id || item.data.slug}-${index}`} className="break-inside-avoid mb-2">
+                  <>
+                    <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2">
+                      {/* Interleave quizzes and projects with stable ordering */}
+                      {mixedItems.map((item) => (
+                        <div key={item.stableKey} className="break-inside-avoid mb-2">
                           {item.type === 'quiz' ? (
                             <QuizPreviewCard
                               quiz={item.data}
@@ -380,25 +478,41 @@ export function ExplorePage() {
                             />
                           )}
                         </div>
-                      ));
-                    })()}
-                  </div>
-                )}
+                      ))}
+                    </div>
 
-                {/* Infinite scroll trigger */}
-                {hasNextPage && <div ref={observerTarget} className="h-4 mt-8" />}
+                    {/* Infinite scroll trigger - placed outside columns for reliability */}
+                    {hasNextPage && (
+                      <div ref={observerTarget} className="h-20 w-full mt-8" style={{ clear: 'both' }} />
+                    )}
 
-                {/* Loading skeletons for next page - shown inline during fetch */}
-                {isFetchingNextPage && (
-                  <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2 mt-2">
-                    <LoadingSkeleton type="project" count={6} />
-                  </div>
+                    {/* Loading skeletons for next page - shown inline during fetch */}
+                    {isFetchingNextPage && (
+                      <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2 mt-2">
+                        <LoadingSkeleton type="project" count={6} />
+                      </div>
+                    )}
+
+                    {/* End of feed indicator */}
+                    {!hasNextPage && !isFetchingNextPage && displayProjects.length > 0 && (
+                      <div className="flex flex-col items-center justify-center py-12 mt-8">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                            You've reached the end
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
+                            {displayProjects.length} projects shown
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
           </div>
-        </div>
-      )}
+        );
+      }}
     </DashboardLayout>
 
     {/* Quiz Overlay */}

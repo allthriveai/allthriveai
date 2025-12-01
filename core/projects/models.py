@@ -105,6 +105,21 @@ class Project(models.Model):
         related_name='projects',
         help_text='Content source that created this project (if auto-synced)',
     )
+    # Personalization metrics (updated by Celery tasks)
+    engagement_velocity = models.FloatField(
+        default=0.0,
+        db_index=True,
+        help_text='Engagement velocity score for trending algorithm',
+    )
+    view_count = models.PositiveIntegerField(
+        default=0,
+        help_text='Total view count for analytics',
+    )
+    last_velocity_update = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When engagement velocity was last calculated',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

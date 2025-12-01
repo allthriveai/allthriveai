@@ -8,7 +8,7 @@
 import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { renderContent } from '@/utils/markdown';
-import { useProjectContext } from '@/contexts/ProjectContext';
+import { useProjectContext } from '@/context/ProjectContext';
 import { updateProject } from '@/services/projects';
 import { ProjectHero } from '../hero';
 import { ProjectActions } from '../shared/ProjectActions';

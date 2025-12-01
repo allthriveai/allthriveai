@@ -20,7 +20,7 @@ import {
   LinkIcon,
 } from '@heroicons/react/24/outline';
 import { FaStar, FaLock, FaEye } from 'react-icons/fa';
-import { useSectionEditorContext } from '@/contexts/SectionEditorContext';
+import { useSectionEditorContext } from '@/context/SectionEditorContext';
 import { updateProject, deleteProjectRedirect } from '@/services/projects';
 import { generateSlug } from '@/utils/slug';
 import { ToolSelector } from '@/components/projects/ToolSelector';

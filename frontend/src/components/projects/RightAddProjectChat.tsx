@@ -11,9 +11,10 @@ import { fetchGitHubRepos, checkGitHubConnection, importGitHubRepoAsync, type Gi
 interface RightAddProjectChatProps {
   isOpen: boolean;
   onClose: () => void;
+  welcomeMode?: boolean;  // Show onboarding welcome message instead of add project
 }
 
-type ChatStep = 'welcome' | 'github_loading' | 'github_repos' | 'github_connect' | 'github_importing';
+type ChatStep = 'onboarding' | 'welcome' | 'github_loading' | 'github_repos' | 'github_connect' | 'github_importing';
 
 interface ChatMessage {
   id: string;
@@ -22,24 +23,31 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProps) {
+export function RightAddProjectChat({ isOpen, onClose, welcomeMode = false }: RightAddProjectChatProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [step, setStep] = useState<ChatStep>('welcome');
+  const [step, setStep] = useState<ChatStep>(welcomeMode ? 'onboarding' : 'welcome');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [repos, setRepos] = useState<GitHubRepository[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Reset when modal closes
+  // Reset when modal closes or welcomeMode changes
   useEffect(() => {
     if (!isOpen) {
-      setStep('welcome');
+      setStep(welcomeMode ? 'onboarding' : 'welcome');
       setMessages([]);
       setRepos([]);
       setSearchQuery('');
     }
-  }, [isOpen]);
+  }, [isOpen, welcomeMode]);
+
+  // Handle welcome mode initialization
+  useEffect(() => {
+    if (isOpen && welcomeMode) {
+      setStep('onboarding');
+    }
+  }, [isOpen, welcomeMode]);
 
   const addMessage = (type: 'agent' | 'user', content: React.ReactNode) => {
     setMessages((prev) => {
@@ -221,6 +229,24 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
     addMessage('agent', 'AI-assisted project builder coming soon! ⚡');
   };
 
+  // Onboarding handlers
+  const handlePlayGame = () => {
+    addMessage('user', 'Play a game');
+    addMessage('agent', '🎮 Personalization game coming soon! We\'re building something fun to help us learn your preferences.');
+  };
+
+  const handleAddFirstProject = () => {
+    // Transition to the normal add project flow
+    setStep('welcome');
+    addMessage('user', 'Add my first project');
+    addMessage('agent', 'Great choice! Let\'s add your first project to your portfolio. How would you like to get started?');
+  };
+
+  const handleMakeSomethingNew = () => {
+    addMessage('user', 'Let\'s make something new together');
+    addMessage('agent', '✨ Guided project creation coming soon! We\'ll help you brainstorm and build something amazing together.');
+  };
+
   const handleManual = async () => {
     addMessage('user', 'Create project page manually');
     addMessage('agent', 'Creating your project...');
@@ -262,7 +288,81 @@ export function RightAddProjectChat({ isOpen, onClose }: RightAddProjectChatProp
 
         {/* Chat Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Welcome Message */}
+          {/* Onboarding Welcome Message */}
+          {step === 'onboarding' && (
+            <div className="flex justify-start">
+              <div className="max-w-md">
+                <div className="mb-3 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                  <p className="text-sm mb-1 flex items-center gap-2">
+                    🎉 Glad you're here{user?.first_name ? `, ${user.first_name}` : ''}!
+                  </p>
+                  <p className="text-sm">Let's get you started. What would you like to do?</p>
+                </div>
+
+                {/* 3 Onboarding Options */}
+                <div className="space-y-2">
+                  <button
+                    onClick={handlePlayGame}
+                    className="w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg">🎮</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-slate-900 dark:text-slate-100 text-sm">
+                          Play a game
+                        </div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400">
+                          Help us personalize your experience
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={handleAddFirstProject}
+                    className="w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg">➕</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-slate-900 dark:text-slate-100 text-sm">
+                          Add your first project
+                        </div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400">
+                          Paste a link, connect an integration, or describe it
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={handleMakeSomethingNew}
+                    className="w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg">✨</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-slate-900 dark:text-slate-100 text-sm">
+                          Don't know where to start?
+                        </div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400">
+                          Let's make something new together
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Add Project Welcome Message */}
           {step === 'welcome' && (
             <div className="flex justify-start">
               <div className="max-w-md">

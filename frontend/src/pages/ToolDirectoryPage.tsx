@@ -187,6 +187,11 @@ export default function ToolDirectoryPage() {
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                                       {tool.name}
                                     </h3>
+                                    {tool.companyName && (
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        by {tool.companyName}
+                                      </p>
+                                    )}
                                   </div>
                                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                                     {tool.tagline}

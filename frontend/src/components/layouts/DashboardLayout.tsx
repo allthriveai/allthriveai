@@ -2,52 +2,64 @@ import { useState, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/hooks/useTheme';
 import { TopNavigation } from '@/components/navigation/TopNavigation';
-import { RightChatPanel } from '@/components/chat/RightChatPanel';
 import { RightAboutPanel } from '@/components/about';
 import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalendarPanel';
 import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
 
 interface DashboardLayoutProps {
-  children: ReactNode | ((props: { openChat: (menuItem: string) => void; openAddProject: () => void }) => ReactNode);
+  children: ReactNode | ((props: { openChat: (menuItem: string) => void; openAddProject: (welcomeMode?: boolean) => void }) => ReactNode);
   openAboutPanel?: boolean;
 }
 
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
   const { theme } = useTheme();
-  const [chatOpen, setChatOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
-  const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
+  const [addProjectWelcomeMode, setAddProjectWelcomeMode] = useState(false);
 
   // Auto-open about panel when prop is true
   useEffect(() => {
     if (openAboutPanel) {
       setAboutOpen(true);
-      setChatOpen(false);
-      setSelectedMenuItem(null);
     }
   }, [openAboutPanel]);
 
   // Check for GitHub OAuth return and auto-open Add Project panel
   useEffect(() => {
     const oauthReturn = localStorage.getItem('github_oauth_return');
-    console.log('🔍 DashboardLayout checking OAuth return:', { oauthReturn });
+    const oauthTimestamp = localStorage.getItem('github_oauth_timestamp');
 
-    if (oauthReturn === 'add_project_chat') {
-      console.log('✅ Opening Add Project panel after OAuth return');
-      // Open the Add Project panel automatically
-      handleOpenAddProject();
+    // Validate return value is expected
+    const validReturnValues = ['add_project_chat'] as const;
+    if (!oauthReturn || !validReturnValues.includes(oauthReturn as typeof validReturnValues[number])) {
+      return;
     }
+
+    // Check for timestamp to prevent stale data (5 minute expiry)
+    if (oauthTimestamp) {
+      const age = Date.now() - parseInt(oauthTimestamp, 10);
+      if (isNaN(age) || age > 5 * 60 * 1000) {
+        // Expired or invalid - clean up and exit
+        localStorage.removeItem('github_oauth_return');
+        localStorage.removeItem('github_oauth_timestamp');
+        return;
+      }
+    }
+
+    // Clear immediately to prevent re-triggering on subsequent renders
+    localStorage.removeItem('github_oauth_return');
+    localStorage.removeItem('github_oauth_timestamp');
+
+    console.log('✅ Opening Add Project panel after OAuth return');
+    handleOpenAddProject();
   }, []);
 
   const handleMenuClick = (menuItem: string) => {
     if (menuItem === 'About Us') {
       const wasOpen = aboutOpen;
       setAboutOpen(true);
-      setChatOpen(false);
       setEventsOpen(false);
-      setSelectedMenuItem(null);
       // Scroll to About Us section
       setTimeout(() => {
         const element = document.getElementById('about-us');
@@ -57,9 +69,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       }, wasOpen ? 50 : 150); // Shorter delay if already open
     } else if (menuItem === 'Our Values') {
       setAboutOpen(true);
-      setChatOpen(false);
       setEventsOpen(false);
-      setSelectedMenuItem(null);
       // Wait for panel to open and then scroll to the element
       setTimeout(() => {
         const element = document.getElementById('our-values');
@@ -69,20 +79,8 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       }, 100);
     } else if (menuItem === 'Events Calendar') {
       setEventsOpen(true);
-      setChatOpen(false);
       setAboutOpen(false);
-      setSelectedMenuItem(null);
-    } else {
-      setSelectedMenuItem(menuItem);
-      setChatOpen(true);
-      setAboutOpen(false);
-      setEventsOpen(false);
     }
-  };
-
-  const handleCloseChat = () => {
-    setChatOpen(false);
-    setSelectedMenuItem(null);
   };
 
   const handleCloseAbout = () => {
@@ -93,17 +91,17 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setEventsOpen(false);
   };
 
-  const handleOpenAddProject = () => {
-    // Open Add Project panel with 4 options
+  const handleOpenAddProject = (welcomeMode: boolean = false) => {
+    // Open Add Project panel with 4 options (or welcome mode for new users)
     setAddProjectOpen(true);
-    setChatOpen(false);
+    setAddProjectWelcomeMode(welcomeMode);
     setAboutOpen(false);
     setEventsOpen(false);
-    setSelectedMenuItem(null);
   };
 
   const handleCloseAddProject = () => {
     setAddProjectOpen(false);
+    setAddProjectWelcomeMode(false);
   };
 
   const backgroundImage = theme === 'dark' ? '/dark.jpeg' : '/light.jpeg';
@@ -133,13 +131,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           </div>
         </main>
 
-        {/* Right Chat Panel */}
-        <RightChatPanel
-          isOpen={chatOpen}
-          onClose={handleCloseChat}
-          selectedMenuItem={selectedMenuItem}
-        />
-
         {/* Right About Panel */}
         <RightAboutPanel
           isOpen={aboutOpen}
@@ -157,15 +148,8 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           isOpen={addProjectOpen}
           onClose={handleCloseAddProject}
           conversationId={`project-${Date.now()}`}
+          welcomeMode={addProjectWelcomeMode}
         />
-
-        {/* Overlay when chat is open */}
-        {chatOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 z-30 md:hidden"
-            onClick={handleCloseChat}
-          />
-        )}
 
         {/* Overlay when about is open */}
         {aboutOpen && (

@@ -18,7 +18,7 @@ import { getProjectBySlug, deleteProject, updateProject } from '@/services/proje
 import type { Project } from '@/types/models';
 import { useAuth } from '@/hooks/useAuth';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { ProjectProvider } from '@/contexts/ProjectContext';
+import { ProjectProvider } from '@/context/ProjectContext';
 import { ProjectLayoutRouter } from '@/components/projects/layouts';
 
 /** Polling interval for analysis status (GitHub/Figma projects) */

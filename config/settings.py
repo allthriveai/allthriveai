@@ -227,7 +227,7 @@ REST_FRAMEWORK = {
         'quiz_start': '10/hour',
         'quiz_answer': '100/minute',
     },
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomPageNumberPagination',
     'PAGE_SIZE': 10,
 }
 
@@ -236,6 +236,15 @@ OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
 GEMINI_MODEL_NAME = config('GEMINI_MODEL_NAME', default='gemini-1.5-flash')
+
+# Weaviate Vector Database Configuration
+WEAVIATE_HOST = config('WEAVIATE_HOST', default='localhost')
+WEAVIATE_PORT = config('WEAVIATE_PORT', default=8080, cast=int)
+WEAVIATE_URL = config('WEAVIATE_URL', default=f'http://{WEAVIATE_HOST}:{WEAVIATE_PORT}')
+WEAVIATE_API_KEY = config('WEAVIATE_API_KEY', default='')  # Optional for local dev
+WEAVIATE_EMBEDDING_MODEL = config('WEAVIATE_EMBEDDING_MODEL', default='text-embedding-3-small')
+WEAVIATE_BATCH_SIZE = config('WEAVIATE_BATCH_SIZE', default=100, cast=int)
+WEAVIATE_TIMEOUT = config('WEAVIATE_TIMEOUT', default=30, cast=int)  # seconds
 
 # GitHub API Token (for project agent)
 GITHUB_API_TOKEN = config('GITHUB_API_TOKEN', default='')  # Optional, increases rate limit

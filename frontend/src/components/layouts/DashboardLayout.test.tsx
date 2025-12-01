@@ -5,21 +5,6 @@ import { DashboardLayout } from './DashboardLayout';
 import { ThemeProvider } from '@/context/ThemeContext';
 
 // Mock child components
-vi.mock('@/components/navigation/LeftSidebar', () => ({
-  LeftSidebar: ({ onAddProject }: any) => (
-    <div data-testid="left-sidebar">
-      <button onClick={onAddProject} data-testid="add-project-button">
-        Add Project
-      </button>
-    </div>
-  ),
-}));
-
-vi.mock('@/components/chat/RightChatPanel', () => ({
-  RightChatPanel: ({ isOpen }: any) =>
-    isOpen ? <div data-testid="right-chat-panel">Chat Panel</div> : null,
-}));
-
 vi.mock('@/components/about', () => ({
   RightAboutPanel: ({ isOpen }: any) =>
     isOpen ? <div data-testid="right-about-panel">About Panel</div> : null,

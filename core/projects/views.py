@@ -470,54 +470,149 @@ def explore_projects(request):
         except (ValueError, IndexError):
             pass  # Invalid topics, ignore
 
-    # Apply sorting or personalization
-    if tab == 'for-you' and request.user.is_authenticated:
-        # Personalized feed based on user's auto-detected preferences
-        from core.taxonomy.models import UserTag
+    # Apply sorting or personalization based on tab
+    if tab == 'for-you':
+        # Use new personalization engine for "For You" feed
+        from services.personalization import ColdStartService, PersonalizationEngine
 
-        # Get user's tool preferences
-        user_tool_tags = UserTag.objects.filter(user=request.user, taxonomy__taxonomy_type='tool').select_related(
-            'taxonomy'
-        )
+        page_num = int(request.GET.get('page', 1))
+        page_size = min(int(request.GET.get('page_size', 30)), 100)
 
-        if user_tool_tags.exists():
-            # Score each project based on tool matches
-            scored_projects = []
-            for project in queryset:
-                score = 0
-                project_tools = set(project.tools.values_list('id', flat=True))
+        if request.user.is_authenticated:
+            cold_start = ColdStartService()
 
-                # Calculate match score (40% weight for tools)
-                for tag in user_tool_tags:
-                    if tag.taxonomy and hasattr(tag.taxonomy, 'tool_entity'):
-                        tool = tag.taxonomy.tool_entity
-                        if tool and tool.id in project_tools:
-                            # Weighted by confidence score
-                            score += tag.confidence_score * 0.40
+            if cold_start.has_sufficient_data(request.user):
+                # Use full personalization engine
+                try:
+                    engine = PersonalizationEngine()
+                    result = engine.get_for_you_feed(
+                        user=request.user,
+                        page=page_num,
+                        page_size=page_size,
+                    )
+                    # Return directly with personalization metadata
+                    serializer = ProjectSerializer(result['projects'], many=True)
+                    return Response(
+                        {
+                            'count': result['metadata'].get('total_candidates', len(result['projects'])),
+                            'results': serializer.data,
+                            'personalization': result['metadata'],
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f'Personalization engine error: {e}', exc_info=True)
+                    # Fall through to cold start
 
-                # Diversity bonus for newer projects (10% weight)
-                from django.utils import timezone
+            # Cold start or personalization failed
+            result = cold_start.get_cold_start_feed(
+                user=request.user,
+                page=page_num,
+                page_size=page_size,
+            )
+            serializer = ProjectSerializer(result['projects'], many=True)
 
-                days_old = (timezone.now() - project.created_at).days
-                if days_old < 7:
-                    score += 0.10
-                elif days_old < 30:
-                    score += 0.05
+            # Calculate pagination info
+            total_count = result['metadata'].get('total_candidates', 0)
+            has_next = page_num * page_size < total_count
 
-                # Popularity bonus (small weight to avoid echo chamber)
-                like_count = project.likes.count() if hasattr(project, 'likes') else 0
-                if like_count > 10:
-                    score += 0.05
-
-                scored_projects.append((project, score))
-
-            # Sort by score descending
-            scored_projects.sort(key=lambda x: x[1], reverse=True)
-            queryset = [p[0] for p in scored_projects]
+            next_url = (
+                f'/api/v1/projects/explore/?tab=for-you&page={page_num + 1}' f'&page_size={page_size}'
+                if has_next
+                else None
+            )
+            previous_url = (
+                f'/api/v1/projects/explore/?tab=for-you&page={page_num - 1}' f'&page_size={page_size}'
+                if page_num > 1
+                else None
+            )
+            return Response(
+                {
+                    'count': total_count,
+                    'next': next_url,
+                    'previous': previous_url,
+                    'results': serializer.data,
+                    'personalization': result['metadata'],
+                }
+            )
         else:
-            # No preferences yet, fall back to newest
-            queryset = queryset.order_by('-created_at')
-    elif sort == 'trending':
+            # Anonymous user - show popular
+            cold_start = ColdStartService()
+            result = cold_start.get_cold_start_feed(
+                user=None,
+                page=page_num,
+                page_size=page_size,
+            )
+            serializer = ProjectSerializer(result['projects'], many=True)
+
+            # Calculate pagination info
+            total_count = result['metadata'].get('total_candidates', 0)
+            has_next = page_num * page_size < total_count
+
+            next_url = (
+                f'/api/v1/projects/explore/?tab=for-you&page={page_num + 1}' f'&page_size={page_size}'
+                if has_next
+                else None
+            )
+            previous_url = (
+                f'/api/v1/projects/explore/?tab=for-you&page={page_num - 1}' f'&page_size={page_size}'
+                if page_num > 1
+                else None
+            )
+            return Response(
+                {
+                    'count': total_count,
+                    'next': next_url,
+                    'previous': previous_url,
+                    'results': serializer.data,
+                    'personalization': result['metadata'],
+                }
+            )
+
+    elif tab == 'trending':
+        # Use trending engine for engagement velocity-based feed
+        from services.personalization import TrendingEngine
+
+        page_num = int(request.GET.get('page', 1))
+        page_size = min(int(request.GET.get('page_size', 30)), 100)
+
+        try:
+            engine = TrendingEngine()
+            result = engine.get_trending_feed(
+                user=request.user if request.user.is_authenticated else None,
+                page=page_num,
+                page_size=page_size,
+            )
+            serializer = ProjectSerializer(result['projects'], many=True)
+
+            # Calculate pagination info
+            total_count = result['metadata'].get('total_trending', 0)
+            has_next = page_num * page_size < total_count
+
+            next_url = (
+                f'/api/v1/projects/explore/?tab=trending&page={page_num + 1}' f'&page_size={page_size}'
+                if has_next
+                else None
+            )
+            previous_url = (
+                f'/api/v1/projects/explore/?tab=trending&page={page_num - 1}' f'&page_size={page_size}'
+                if page_num > 1
+                else None
+            )
+            return Response(
+                {
+                    'count': total_count,
+                    'next': next_url,
+                    'previous': previous_url,
+                    'results': serializer.data,
+                    'trending': result['metadata'],
+                }
+            )
+        except Exception as e:
+            logger.error(f'Trending engine error: {e}', exc_info=True)
+            # Fall through to default sorting
+
+    # Default sorting for 'all' tab or fallback
+    if sort == 'trending':
         # Trending: most likes in the last 7 days
         queryset = queryset.annotate(recent_likes=Count('likes')).order_by('-recent_likes', '-created_at')
     elif sort == 'popular':
@@ -536,6 +631,117 @@ def explore_projects(request):
     serializer = ProjectSerializer(page, many=True)
 
     return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def semantic_search(request):
+    """Semantic search using Weaviate vector similarity.
+
+    Request body:
+    - query: Search query text (required)
+    - limit: Maximum results (default: 50, max: 100)
+    - alpha: Weight for vector vs keyword (0=keyword, 1=vector, default: 0.7)
+
+    Returns projects matching the semantic query.
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    query = request.data.get('query', '').strip()
+    if not query:
+        return Response({'error': 'Query is required'}, status=400)
+
+    limit = min(int(request.data.get('limit', 50)), 100)
+    alpha = float(request.data.get('alpha', 0.7))
+
+    try:
+        from services.weaviate import get_embedding_service, get_weaviate_client
+        from services.weaviate.schema import WeaviateSchema
+
+        client = get_weaviate_client()
+
+        if not client.is_available():
+            # Fallback to basic text search
+            logger.warning('Weaviate unavailable, falling back to text search')
+            from django.db.models import Q
+
+            queryset = (
+                Project.objects.filter(
+                    is_private=False,
+                    is_archived=False,
+                )
+                .filter(Q(title__icontains=query) | Q(description__icontains=query))
+                .select_related('user')
+                .prefetch_related('tools', 'categories', 'likes')
+                .order_by('-created_at')[:limit]
+            )
+            serializer = ProjectSerializer(queryset, many=True)
+            return Response(
+                {
+                    'results': serializer.data,
+                    'search_type': 'text_fallback',
+                }
+            )
+
+        # Generate query embedding
+        embedding_service = get_embedding_service()
+        query_vector = embedding_service.generate_embedding(query)
+
+        # Perform hybrid search
+        results = client.hybrid_search(
+            collection=WeaviateSchema.PROJECT_COLLECTION,
+            query=query,
+            vector=query_vector if query_vector else None,
+            alpha=alpha,
+            limit=limit,
+        )
+
+        # Get Django objects in order
+        project_ids = [r.get('project_id') for r in results if r.get('project_id')]
+        projects = (
+            Project.objects.filter(id__in=project_ids)
+            .select_related('user')
+            .prefetch_related('tools', 'categories', 'likes')
+        )
+
+        # Maintain search order
+        project_map = {p.id: p for p in projects}
+        ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
+
+        serializer = ProjectSerializer(ordered_projects, many=True)
+        return Response(
+            {
+                'results': serializer.data,
+                'search_type': 'semantic',
+                'alpha': alpha,
+            }
+        )
+
+    except Exception as e:
+        logger.error(f'Semantic search error: {e}', exc_info=True)
+        return Response({'error': 'Search failed'}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def personalization_status(request):
+    """Get user's personalization status and cold-start info.
+
+    Returns:
+    - is_cold_start: Whether user is in cold-start state
+    - has_sufficient_data: Whether personalization can be used
+    - has_onboarding: Whether user completed onboarding
+    - data_score: Completion percentage (0-1)
+    - stats: Current interaction counts
+    """
+    from services.personalization import ColdStartService
+
+    cold_start = ColdStartService()
+    status = cold_start.get_onboarding_status(request.user)
+
+    return Response(status)
 
 
 @api_view(['DELETE'])
@@ -572,41 +778,3 @@ def delete_project_by_id(request, project_id):
     cache.delete(f'projects:v2:{username_lower}:public')
 
     return Response({'message': 'Project deleted successfully'}, status=status.HTTP_200_OK)
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def semantic_search(request):
-    """Semantic search for projects using Weaviate (AI-powered).
-
-    Request body:
-    {
-        "query": "search query text",
-        "filters": {optional filters}
-    }
-
-    Returns list of projects matching the semantic query.
-
-    TODO: Integrate with Weaviate vector database for true semantic search.
-    For now, falls back to basic text search as a placeholder.
-    """
-    from django.db.models import Q
-
-    query = request.data.get('query', '')
-
-    if not query:
-        return Response({'results': []})
-
-    # TODO: Replace this with Weaviate semantic search
-    # For now, use basic text search as fallback
-    queryset = (
-        Project.objects.filter(is_private=False, is_archived=False)
-        .filter(Q(title__icontains=query) | Q(description__icontains=query))
-        .select_related('user')
-        .prefetch_related('tools', 'likes')
-        .order_by('-created_at')[:30]
-    )
-
-    serializer = ProjectSerializer(queryset, many=True)
-
-    return Response({'results': serializer.data})

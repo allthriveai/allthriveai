@@ -24,7 +24,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import {
   SectionEditorProvider,
   useSectionEditorContext,
-} from '@/contexts/SectionEditorContext';
+} from '@/context/SectionEditorContext';
 import { EditorTopBar } from '@/components/projects/editor/EditorTopBar';
 import { EditorSidebar } from '@/components/projects/editor/EditorSidebar';
 import { BannerEditor } from '@/components/projects/editor/BannerEditor';
