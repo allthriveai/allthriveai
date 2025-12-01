@@ -1,324 +1,220 @@
 import { useState } from 'react';
 
 /**
- * StyleguideDemo Component
+ * StyleguideDemo Component - Neon Glass Edition
  *
- * Comprehensive showcase of the All Thrive AI design system
- * Demonstrates glassmorphism, light/dark themes, and all global CSS classes
+ * Showcase for the new AllThrive AI aesthetic:
+ * - Dark futuristic theme
+ * - Neon lights (teal, cyan, electric blue, pink)
+ * - Glassmorphism panels
+ * - Soft radial glows
  */
 export default function StyleguideDemo() {
-  const [isDark, setIsDark] = useState(false);
-
-  // Toggle dark mode
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    if (!isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
+  const [activeTab, setActiveTab] = useState('overview');
 
   return (
-    <div className="min-h-screen">
-      {/* Theme Toggle - Fixed Position */}
-      <button
-        onClick={toggleTheme}
-        className="fixed top-4 right-4 z-50 btn-ghost"
-        aria-label="Toggle theme"
-      >
-        {isDark ? '☀️ Light' : '🌙 Dark'}
-      </button>
+    <div className="min-h-screen bg-background relative overflow-hidden font-sans text-white selection:bg-cyan-neon/30">
+      {/* Ambient Background Effects */}
+      <div className="fixed inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
+      <div className="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-pink-500/5 blur-[120px] pointer-events-none" />
 
-      {/* Main Content */}
-      <div className="content-container py-12">
-        <div className="mb-12">
-          <h1 className="text-gradient mb-4">
-            All Thrive AI Styleguide
+      <div className="max-w-7xl mx-auto px-6 py-12 relative z-10">
+
+        {/* Header Section */}
+        <header className="mb-16 text-center relative">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-neon text-xs font-medium mb-6 tracking-wider uppercase">
+            <span className="luminous-dot animate-pulse" />
+            Design System v2.0
+          </div>
+
+          <h1 className="mb-6">
+            Neon <span className="text-gradient-cyan">Glass</span>
           </h1>
-          <p className="text-muted text-xl">
-            Glassmorphism design system with light/dark theme support
+
+          <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            A futuristic UI language featuring deep navy gradients, translucent glass panels,
+            and electric cyan accents.
           </p>
+        </header>
+
+        {/* Navigation Tabs */}
+        <div className="flex justify-center mb-12">
+          <div className="glass-subtle p-1 inline-flex rounded-xl">
+            {['overview', 'components', 'typography', 'colors'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 capitalize ${
+                  activeTab === tab
+                    ? 'bg-cyan-500/20 text-cyan-bright shadow-neon border border-cyan-500/30'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="divider" />
+        <div className="space-y-24">
 
-        {/* Glassmorphism Showcase */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-semibold mb-6">Glassmorphism Levels</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="glass-subtle p-6 rounded-2xl">
-              <h3 className="text-xl font-semibold mb-2">Subtle Glass</h3>
-              <p className="text-muted">50-60% opacity, 8px blur</p>
-              <p className="text-sm mt-2">Navigation, background trays</p>
+          {/* === GLASS PANELS SECTION === */}
+          <section>
+            <div className="flex items-center gap-4 mb-8">
+              <h2 className="text-3xl font-bold">Glass Surfaces</h2>
+              <div className="h-[1px] flex-1 bg-gradient-to-r from-cyan-500/50 to-transparent opacity-30" />
             </div>
-            <div className="glass p-6 rounded-2xl">
-              <h3 className="text-xl font-semibold mb-2">Standard Glass</h3>
-              <p className="text-muted">70% opacity, 12px blur</p>
-              <p className="text-sm mt-2">Content cards, modals</p>
-            </div>
-            <div className="glass-strong p-6 rounded-2xl">
-              <h3 className="text-xl font-semibold mb-2">Strong Glass</h3>
-              <p className="text-muted">85-90% opacity, 16px blur</p>
-              <p className="text-sm mt-2">Overlays, chat panels</p>
-            </div>
-          </div>
-        </section>
 
-        {/* Cards */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-semibold mb-6">Cards</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="card">
-              <h3 className="text-xl font-semibold mb-2">Standard Card</h3>
-              <p className="text-muted">Glass card with standard opacity</p>
-            </div>
-            <div className="card-hover">
-              <h3 className="text-xl font-semibold mb-2">Hoverable Card</h3>
-              <p className="text-muted">Hover me for lift effect</p>
-            </div>
-            <div className="card-solid">
-              <h3 className="text-xl font-semibold mb-2">Solid Card</h3>
-              <p className="text-muted">For text-heavy content</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Buttons */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-semibold mb-6">Buttons</h2>
-          <div className="flex flex-wrap gap-4">
-            <button className="btn-primary">Primary</button>
-            <button className="btn-secondary">Secondary</button>
-            <button className="btn-outline">Outline</button>
-            <button className="btn-ghost">Ghost</button>
-            <button className="btn-primary btn-sm">Small</button>
-            <button className="btn-primary btn-lg">Large</button>
-          </div>
-        </section>
-
-        {/* Forms */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-semibold mb-6">Forms</h2>
-          <div className="card-solid max-w-2xl">
-            <div className="mb-4">
-              <label className="label">Email Address</label>
-              <input
-                type="email"
-                className="input"
-                placeholder="you@example.com"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="label">Password</label>
-              <input
-                type="password"
-                className="input"
-                placeholder="••••••••"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="label">Message</label>
-              <textarea
-                className="textarea"
-                rows={4}
-                placeholder="Enter your message..."
-              />
-            </div>
-            <div className="mb-4">
-              <label className="label">Error State</label>
-              <input
-                type="text"
-                className="input input-error"
-                placeholder="This field has an error"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="label">Success State</label>
-              <input
-                type="text"
-                className="input input-success"
-                placeholder="This field is valid"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Badges */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-semibold mb-6">Badges</h2>
-          <div className="flex flex-wrap gap-3">
-            <span className="badge-primary">Primary</span>
-            <span className="badge-success">Success</span>
-            <span className="badge-warning">Warning</span>
-            <span className="badge-error">Error</span>
-            <span className="badge-info">Info</span>
-          </div>
-        </section>
-
-        {/* Typography */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-semibold mb-6">Typography</h2>
-          <div className="card-solid space-y-6">
-            <div>
-              <h1 className="mb-2">Heading 1 - Display</h1>
-              <h2 className="mb-2">Heading 2 - Page Title</h2>
-              <h3 className="mb-2">Heading 3 - Section</h3>
-              <h4 className="mb-2">Heading 4 - Subsection</h4>
-              <h5 className="mb-2">Heading 5 - Small Heading</h5>
-              <h6 className="mb-2">Heading 6 - Tiny Heading</h6>
-            </div>
-            <div>
-              <h3 className="text-gradient mb-2">Gradient Text</h3>
-              <p className="text-body mb-2">
-                Body text with optimal line height and color for readability
-              </p>
-              <p className="text-muted mb-2">Muted text for secondary info</p>
-              <a href="#" className="link">This is a link</a>
-            </div>
-          </div>
-        </section>
-
-        {/* Navigation Links */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-semibold mb-6">Navigation</h2>
-          <div className="glass-subtle p-6 rounded-2xl max-w-md">
-            <nav className="space-y-2">
-              <a href="#" className="nav-link">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-                <span>Home</span>
-              </a>
-              <a href="#" className="nav-link-active">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <span>Dashboard (Active)</span>
-              </a>
-              <a href="#" className="nav-link">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span>Settings</span>
-              </a>
-            </nav>
-          </div>
-        </section>
-
-        {/* Loading States */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-semibold mb-6">Loading States</h2>
-          <div className="card space-y-6">
-            <div>
-              <h4 className="text-lg font-semibold mb-3">Spinner</h4>
-              <div className="spinner" />
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-3">Skeleton Loaders</h4>
-              <div className="skeleton h-8 w-64 mb-4" />
-              <div className="skeleton h-4 w-full mb-2" />
-              <div className="skeleton h-4 w-3/4" />
-            </div>
-          </div>
-        </section>
-
-        {/* Animations */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-semibold mb-6">Animations</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="card animate-fade-in">
-              <h3 className="text-xl font-semibold mb-2">Fade In</h3>
-              <p className="text-muted">animate-fade-in</p>
-            </div>
-            <div className="card animate-scale-in">
-              <h3 className="text-xl font-semibold mb-2">Scale In</h3>
-              <p className="text-muted">animate-scale-in</p>
-            </div>
-          </div>
-          <div className="mt-6">
-            <h4 className="text-lg font-semibold mb-3">Staggered Children</h4>
-            <ul className="stagger-children space-y-2">
-              <li className="card">Item 1 (0ms delay)</li>
-              <li className="card">Item 2 (50ms delay)</li>
-              <li className="card">Item 3 (100ms delay)</li>
-              <li className="card">Item 4 (150ms delay)</li>
-            </ul>
-          </div>
-        </section>
-
-        {/* Color Showcase */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-semibold mb-6">Color Palette</h2>
-          <div className="space-y-6">
-            <div>
-              <h4 className="text-lg font-semibold mb-3">Primary (Indigo)</h4>
-              <div className="flex gap-2">
-                <div className="w-16 h-16 bg-primary-500 rounded-lg" />
-                <div className="w-16 h-16 bg-primary-400 rounded-lg" />
-                <div className="w-16 h-16 bg-primary-600 rounded-lg" />
-              </div>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-3">Accent (Purple)</h4>
-              <div className="flex gap-2">
-                <div className="w-16 h-16 bg-accent-500 rounded-lg" />
-                <div className="w-16 h-16 bg-accent-400 rounded-lg" />
-                <div className="w-16 h-16 bg-accent-600 rounded-lg" />
-              </div>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-3">Semantic Colors</h4>
-              <div className="flex gap-2">
-                <div className="w-16 h-16 bg-success-500 rounded-lg" />
-                <div className="w-16 h-16 bg-warning-500 rounded-lg" />
-                <div className="w-16 h-16 bg-error-500 rounded-lg" />
-                <div className="w-16 h-16 bg-info-500 rounded-lg" />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Complete Example */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-semibold mb-6">Complete Card Example</h2>
-          <div className="card-hover max-w-xl">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-accent-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                AI
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold mb-1">AI Content Generator</h3>
-                <p className="text-muted text-sm mb-3">
-                  Created 2 hours ago by John Doe
-                </p>
-                <p className="text-body mb-4">
-                  A powerful AI tool for generating high-quality content at scale.
-                  Perfect for blog posts, social media, and more.
-                </p>
-                <div className="flex gap-2 mb-4">
-                  <span className="badge-primary">AI</span>
-                  <span className="badge-success">Active</span>
-                  <span className="badge-info">New</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="glass-subtle p-8 h-64 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold mb-2 text-white">Subtle Glass</h3>
+                  <p className="text-slate-400 text-sm">.glass-subtle</p>
                 </div>
-                <div className="flex gap-3">
-                  <button className="btn-primary btn-sm">Try Now</button>
-                  <button className="btn-ghost btn-sm">Learn More</button>
+                <div className="text-slate-500 text-sm">
+                  Low opacity background for secondary containers and subtle framing.
+                </div>
+              </div>
+
+              <div className="glass-card h-64 flex flex-col justify-between relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl pointer-events-none" />
+                <div>
+                  <h3 className="text-xl font-semibold mb-2 text-cyan-bright">Standard Card</h3>
+                  <p className="text-slate-400 text-sm">.glass-card</p>
+                </div>
+                <div className="text-slate-400 text-sm">
+                  The primary container with backdrop blur, inner borders, and hover glow effects.
+                </div>
+              </div>
+
+              <div className="glass-card neon-border h-64 flex flex-col justify-between relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-cyan-bright shadow-neon opacity-50" />
+                <div>
+                  <h3 className="text-xl font-semibold mb-2 text-white">Neon Active</h3>
+                  <p className="text-slate-400 text-sm">.glass-card .neon-border</p>
+                </div>
+                <div className="text-slate-400 text-sm">
+                  High visibility state for active items, selections, or featured content.
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Footer */}
-        <div className="divider" />
-        <footer className="text-center text-muted">
-          <p>All Thrive AI Design System v1.0</p>
-          <p className="text-sm mt-2">
-            Built with Tailwind CSS &amp; Glassmorphism
-          </p>
-        </footer>
+          {/* === INTERACTIVE ELEMENTS === */}
+          <section>
+            <div className="flex items-center gap-4 mb-8">
+              <h2 className="text-3xl font-bold">Interactive</h2>
+              <div className="h-[1px] flex-1 bg-gradient-to-r from-pink-500/50 to-transparent opacity-30" />
+            </div>
+
+            <div className="glass-panel p-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+                {/* Buttons */}
+                <div className="space-y-8">
+                  <h3 className="text-xl text-slate-300 mb-6">Buttons</h3>
+                  <div className="flex flex-wrap gap-4 items-center">
+                    <button className="btn-primary">
+                      Primary Action
+                    </button>
+                    <button className="btn-secondary">
+                      Secondary
+                    </button>
+                    <button className="btn-outline">
+                      Outline
+                    </button>
+                    <button className="btn-ghost">
+                      Ghost
+                    </button>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-black/20 border border-white/5 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-400">Primary Glow</span>
+                      <button className="btn-primary shadow-neon-strong">Glowing</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Elements */}
+                <div className="space-y-6">
+                  <h3 className="text-xl text-slate-300 mb-2">Inputs</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-cyan-bright mb-2 uppercase tracking-wider">System Access Code</label>
+                      <input type="text" placeholder="ENTER CODE..." className="input-glass" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2 uppercase tracking-wider">Encrypted Message</label>
+                      <textarea placeholder="Type your secure message..." rows={3} className="input-glass resize-none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* === TYPOGRAPHY & ACCENTS === */}
+          <section>
+            <div className="flex items-center gap-4 mb-8">
+              <h2 className="text-3xl font-bold">Typography & Accents</h2>
+              <div className="h-[1px] flex-1 bg-gradient-to-r from-cyan-500/50 to-transparent opacity-30" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="glass-card relative">
+                <h1 className="mb-4">Display Heading</h1>
+                <h2 className="text-white mb-2">Section Title</h2>
+                <p className="text-slate-400 leading-relaxed mb-6">
+                  Body text should be legible with high contrast. We use <span className="text-cyan-bright">Inter</span> for maximum readability.
+                  Accents like the <span className="text-gradient-cyan font-bold">gradient text</span> add futuristic flair.
+                </p>
+
+                <div className="flex gap-4 mt-8">
+                  <div className="bg-cyan-500/10 border border-cyan-500/30 px-4 py-2 rounded-lg text-cyan-bright text-sm font-mono">
+                    font-mono
+                  </div>
+                  <div className="bg-pink-500/10 border border-pink-500/30 px-4 py-2 rounded-lg text-pink-400 text-sm font-mono">
+                    accent-pink
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Circuit Effect */}
+                <div className="glass-panel p-8 relative overflow-hidden">
+                  <div className="circuit-connector top-8" />
+                  <div className="circuit-connector top-24 opacity-50" />
+                  <div className="circuit-connector bottom-8 opacity-30" />
+
+                  <div className="relative z-10 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className="luminous-dot" />
+                      <span className="text-cyan-bright font-medium">System Online</span>
+                    </div>
+                    <div className="text-xs font-mono text-slate-500">
+                      STATUS: OPERATIONAL
+                    </div>
+                  </div>
+                </div>
+
+                {/* Glow Effects */}
+                <div className="glass-panel p-8 flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-radial from-cyan-500/20 to-transparent opacity-50" />
+                  <div className="relative z-10 text-center">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 mx-auto mb-4 shadow-neon flex items-center justify-center">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-white font-bold">Energy Core</h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
       </div>
     </div>
   );

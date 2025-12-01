@@ -41,6 +41,7 @@ import {
   ExclamationCircleIcon,
   ViewColumnsIcon,
   Squares2X2Icon,
+  StarIcon,
 } from '@heroicons/react/24/outline';
 import { updateProject } from '@/services/projects';
 import { EditableContentBlock } from './EditableContentBlock';
@@ -103,6 +104,7 @@ const BLOCK_TYPES = [
   { type: 'image', label: 'Image', icon: PhotoIcon },
   { type: 'video', label: 'Video', icon: FilmIcon },
   { type: 'mermaid', label: 'Diagram', icon: ChartBarIcon },
+  { type: 'icon_card', label: 'Icon Card', icon: StarIcon },
   { type: 'columns', label: '2 Columns', icon: ViewColumnsIcon, columnCount: 2 },
   { type: 'columns', label: '3 Columns', icon: Squares2X2Icon, columnCount: 3 },
 ] as const;
@@ -484,6 +486,10 @@ export function EditableBlocksContainer(props: EditableBlocksContainerProps) {
           ...(type === 'mermaid' && {
             code: 'graph TD\n    A[Start] --> B[End]',
             caption: '',
+          }),
+          ...(type === 'icon_card' && {
+            icon: 'fas:star',
+            text: '',
           }),
         } as ProjectBlock;
       }

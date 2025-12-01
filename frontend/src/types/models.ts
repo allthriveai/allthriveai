@@ -201,6 +201,7 @@ export type ProjectBlock = BaseBlock & (
   | { type: 'imageGrid'; images: Array<{ url: string; caption?: string }>; caption?: string }
   | { type: 'mermaid'; code: string; caption?: string }
   | { type: 'code_snippet'; code: string; language: string; filename?: string; highlightLines?: number[] }
+  | { type: 'icon_card'; icon: string; text: string }
 );
 
 // Project creation/update payload
