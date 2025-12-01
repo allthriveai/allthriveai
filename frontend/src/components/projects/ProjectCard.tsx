@@ -147,6 +147,8 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const handleCommentClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Close other trays first
+    setShowToolTray(false);
     setShowCommentTray(true);
   };
 
@@ -156,9 +158,14 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     setShowModal(true);
   };
 
-  const handleToolClick = (e: React.MouseEvent) => {
+  const handleToolClick = (e: React.MouseEvent, toolSlug?: string) => {
     e.preventDefault();
     e.stopPropagation();
+    // Close other trays first
+    setShowCommentTray(false);
+    if (toolSlug) {
+      setSelectedToolSlug(toolSlug);
+    }
     setShowToolTray(true);
   };
 
@@ -415,6 +422,8 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                   element2={heroElement.element2}
                   tools={project.toolsDetails}
                   onToolClick={(slug) => {
+                    // Close other trays first
+                    setShowCommentTray(false);
                     setSelectedToolSlug(slug);
                     setShowToolTray(true);
                   }}
@@ -722,7 +731,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                     }}
                     className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
-                    {project.isShowcase ? (
+                    {project.isShowcased ? (
                       <>
                         <EyeSlashIcon className="w-4 h-4" />
                         Remove from Showcase

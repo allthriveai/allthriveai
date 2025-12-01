@@ -133,8 +133,7 @@ class APIPrivacyTests(TestCase):
             user=self.public_gamer,
             title='Public Showcase Project',
             slug='public-showcase',
-            is_showcase=True,
-            is_published=True,
+            is_showcased=True,
             is_private=False,
             is_archived=False,
         )
@@ -143,8 +142,7 @@ class APIPrivacyTests(TestCase):
             user=self.private_gamer,
             title='Private Showcase Project',
             slug='private-showcase',
-            is_showcase=True,
-            is_published=True,
+            is_showcased=True,
             is_private=False,
             is_archived=False,
         )

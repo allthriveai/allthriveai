@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { getTools, getToolCategories, getToolCompanies } from '@/services/tools';
 import { ToolSearchBar, type ToolFilters } from '@/components/tools/ToolSearchBar';
@@ -14,6 +14,11 @@ export default function ToolDirectoryPage() {
   const [companies, setCompanies] = useState<Array<{ id: number; name: string; slug: string; count: number }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if a tool tray is currently open (via nested route)
+  // When path is /tools/:slug, a tray is open
+  const location = useLocation();
+  const isToolTrayOpen = location.pathname !== '/tools' && location.pathname.startsWith('/tools/');
 
   // Load categories and companies on mount
   useEffect(() => {
@@ -172,6 +177,7 @@ export default function ToolDirectoryPage() {
                             <Link
                               key={tool.id}
                               to={`/tools/${tool.slug}`}
+                              replace={isToolTrayOpen}
                               className="block text-left glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800 hover:border-primary-300 dark:hover:border-primary-700 transition-all hover:shadow-lg"
                             >
                               <div className="flex items-start gap-4">

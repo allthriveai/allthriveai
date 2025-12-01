@@ -590,6 +590,25 @@ class RedditSyncService:
         elif metrics.get('image_url'):
             image_url = metrics['image_url']
 
+        # Build project content - check for video hero display mode
+        project_content = {}
+        hero_display_mode = bot.settings.get('hero_display_mode', '')
+
+        # If bot is configured for video hero and post has a video, set video hero
+        if hero_display_mode == 'video' and metrics.get('is_video') and metrics.get('video_url'):
+            project_content = {
+                'heroDisplayMode': 'video',
+                'heroVideoUrl': metrics['video_url'],
+            }
+            logger.info(f'Setting video hero display for post {post_data["reddit_post_id"]}')
+        # Also check for external video URLs (e.g., v.redd.it links)
+        elif hero_display_mode == 'video' and metrics.get('url', '').startswith('https://v.redd.it/'):
+            project_content = {
+                'heroDisplayMode': 'video',
+                'heroVideoUrl': metrics['url'],
+            }
+            logger.info(f'Setting video hero display (v.redd.it) for post {post_data["reddit_post_id"]}')
+
         # Create project
         project = Project.objects.create(
             user=bot.bot_user,
@@ -598,8 +617,8 @@ class RedditSyncService:
             type=Project.ProjectType.REDDIT_THREAD,
             external_url=post_data['permalink'],
             featured_image_url=image_url,
-            is_showcase=True,
-            is_published=True,
+            content=project_content if project_content else None,
+            is_showcased=True,
             is_private=False,
         )
 
@@ -655,7 +674,29 @@ class RedditSyncService:
         # Update project fields that might change
         project = thread.project
         project.featured_image_url = image_url
-        project.save(update_fields=['featured_image_url'])
+
+        # Check if we should set video hero display (if not already set)
+        hero_display_mode = thread.bot.settings.get('hero_display_mode', '')
+        update_fields = ['featured_image_url']
+
+        if hero_display_mode == 'video' and not project.content:
+            # Set video hero if post has a video
+            if metrics.get('is_video') and metrics.get('video_url'):
+                project.content = {
+                    'heroDisplayMode': 'video',
+                    'heroVideoUrl': metrics['video_url'],
+                }
+                update_fields.append('content')
+                logger.info(f'Setting video hero display for existing thread {thread.reddit_post_id}')
+            elif metrics.get('url', '').startswith('https://v.redd.it/'):
+                project.content = {
+                    'heroDisplayMode': 'video',
+                    'heroVideoUrl': metrics['url'],
+                }
+                update_fields.append('content')
+                logger.info(f'Setting video hero display (v.redd.it) for existing thread {thread.reddit_post_id}')
+
+        project.save(update_fields=update_fields)
 
         # Update tags if project doesn't have any yet
         if not project.tools.exists() and not project.topics:

@@ -95,10 +95,23 @@ let isRedirectingToAuth = false;
 // Response interceptor - transform data to camelCase, handle retries, and handle errors
 api.interceptors.response.use(
   (response) => {
+    // Debug: log pagination fields before transformation
+    if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+      console.log('[API Interceptor] BEFORE transform - keys:', Object.keys(response.data));
+      console.log('[API Interceptor] BEFORE transform - next:', response.data.next);
+    }
+
     // Transform response data from snake_case to camelCase
     if (response.data && typeof response.data === 'object') {
       response.data = keysToCamel(response.data);
     }
+
+    // Debug: log pagination fields after transformation
+    if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+      console.log('[API Interceptor] AFTER transform - keys:', Object.keys(response.data));
+      console.log('[API Interceptor] AFTER transform - next:', response.data.next);
+    }
+
     return response;
   },
   async (error: AxiosError) => {

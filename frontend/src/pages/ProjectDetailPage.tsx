@@ -145,7 +145,7 @@ export default function ProjectDetailPage() {
 
     try {
       const updatedProject = await updateProject(project.id, {
-        isShowcase: !project.isShowcase,
+        isShowcased: !project.isShowcased,
       });
       setProject(updatedProject);
     } catch (error) {

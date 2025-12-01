@@ -46,9 +46,7 @@ def track_project_visibility_change(sender, instance, **kwargs):
         try:
             from core.projects.models import Project
 
-            old_instance = (
-                Project.objects.filter(pk=instance.pk).values('is_published', 'is_private', 'is_archived').first()
-            )
+            old_instance = Project.objects.filter(pk=instance.pk).values('is_private', 'is_archived').first()
             if old_instance:
                 _project_visibility_cache[instance.pk] = old_instance
         except Exception as e:
@@ -76,16 +74,12 @@ def sync_project_on_save(sender, instance, created, **kwargs):
         # Check for visibility change
         old_visibility = _project_visibility_cache.pop(instance.pk, None)
 
-        # Determine if project should be in Weaviate (public + published + not archived)
-        should_be_searchable = instance.is_published and not instance.is_private and not instance.is_archived
+        # Determine if project should be in Weaviate (public + not archived)
+        should_be_searchable = not instance.is_private and not instance.is_archived
 
         was_searchable = False
         if old_visibility:
-            was_searchable = (
-                old_visibility.get('is_published', False)
-                and not old_visibility.get('is_private', True)
-                and not old_visibility.get('is_archived', True)
-            )
+            was_searchable = not old_visibility.get('is_private', True) and not old_visibility.get('is_archived', True)
 
         if was_searchable and not should_be_searchable:
             # Project became non-searchable - REMOVE from Weaviate immediately

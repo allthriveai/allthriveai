@@ -76,7 +76,6 @@ def sync_project_to_weaviate(self, project_id: int):
             'like_count': project.likes.count(),
             'view_count': 0,  # TODO: Add view tracking
             # Visibility flags - critical for search isolation
-            'is_published': project.is_published,
             'is_private': project.is_private,
             'is_archived': project.is_archived,
             'created_at': project.created_at.isoformat(),
@@ -318,7 +317,6 @@ def update_engagement_metrics():
     try:
         # Count total projects
         total_projects = Project.objects.filter(
-            is_published=True,
             is_private=False,
             is_archived=False,
         ).count()
@@ -392,7 +390,6 @@ def update_engagement_metrics_chunk(self, offset: int, limit: int):
     # This replaces the N+1 pattern of querying per project
     projects = (
         Project.objects.filter(
-            is_published=True,
             is_private=False,
             is_archived=False,
         )
@@ -509,7 +506,6 @@ def full_reindex_projects():
 
         # Count total projects
         total = Project.objects.filter(
-            is_published=True,
             is_private=False,
             is_archived=False,
         ).count()
@@ -585,7 +581,6 @@ def reindex_projects_chunk(self, offset: int, limit: int):
         # Get projects for this chunk
         projects = (
             Project.objects.filter(
-                is_published=True,
                 is_private=False,
                 is_archived=False,
             )
@@ -621,7 +616,6 @@ def reindex_projects_chunk(self, offset: int, limit: int):
                     'like_count': project.likes.count(),
                     'view_count': project.view_count or 0,
                     # Visibility flags - critical for search isolation
-                    'is_published': project.is_published,
                     'is_private': project.is_private,
                     'is_archived': project.is_archived,
                     'created_at': project.created_at.isoformat(),

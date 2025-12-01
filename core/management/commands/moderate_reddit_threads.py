@@ -93,10 +93,10 @@ class Command(BaseCommand):
                             update_fields=['moderation_status', 'moderation_reason', 'moderation_data', 'moderated_at']
                         )
 
-                        # If rejected, unpublish the project
+                        # If rejected, make the project private
                         if not approved:
-                            thread.project.is_published = False
-                            thread.project.save(update_fields=['is_published'])
+                            thread.project.is_private = True
+                            thread.project.save(update_fields=['is_private'])
 
                     stats['processed'] += 1
                     if approved:

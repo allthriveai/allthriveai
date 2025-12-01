@@ -228,7 +228,6 @@ class ThriveCircleViewSet(viewsets.ReadOnlyModelViewSet):
         projects = (
             Project.objects.filter(
                 user_id__in=same_tier_users,
-                is_published=True,
                 is_archived=False,
             )
             .select_related('user')

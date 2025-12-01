@@ -16,13 +16,20 @@ class ProjectQuerySet(models.QuerySet):
         """Return projects accessible to the given user."""
         if user.is_staff:
             return self.all()
-        # User's own projects (published or draft) + public showcase projects from others
-        # Note: Explore pages now show all public projects regardless of is_published status
-        return self.filter(models.Q(user=user) | models.Q(is_showcase=True, is_archived=False, is_private=False))
+        # User's own projects + all public projects from others
+        return self.filter(models.Q(user=user) | models.Q(is_archived=False, is_private=False))
 
-    def public_showcase(self):
-        """Return only public showcase projects (not private, not archived)."""
-        return self.filter(is_showcase=True, is_archived=False, is_private=False)
+    def public(self):
+        """Return all public projects (not private, not archived).
+
+        This is the primary filter for the explore feed.
+        All public projects show in explore, regardless of is_showcased status.
+        """
+        return self.filter(is_archived=False, is_private=False)
+
+    def showcased(self):
+        """Return only public showcased projects (featured on user profiles)."""
+        return self.filter(is_showcased=True, is_archived=False, is_private=False)
 
     def by_user(self, username):
         """Return projects by username."""
@@ -57,14 +64,27 @@ class Project(models.Model):
         choices=ProjectType.choices,
         default=ProjectType.OTHER,
     )
-    is_showcase = models.BooleanField(default=True, help_text='Display in showcase section')
-    is_highlighted = models.BooleanField(
-        default=False, db_index=True, help_text='Featured at top of profile (only one per user)'
+    # Visibility fields:
+    # - is_private: Controls explore feed visibility. Private projects only visible to owner.
+    # - is_showcased: Featured on user's main profile showcase section.
+    # - is_archived: Soft delete - hidden from all views.
+    is_showcased = models.BooleanField(
+        default=True,
+        help_text='Featured on user profile showcase section',
     )
-    is_private = models.BooleanField(default=False, help_text='Hidden from public, only visible to owner')
-    is_archived = models.BooleanField(default=False)
-    is_published = models.BooleanField(default=True, help_text='Whether project is publicly visible')
-    published_at = models.DateTimeField(null=True, blank=True, help_text='When project was first published')
+    is_highlighted = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Featured at top of profile (only one per user)',
+    )
+    is_private = models.BooleanField(
+        default=False,
+        help_text='Hidden from explore feed and public views. Only visible to owner.',
+    )
+    is_archived = models.BooleanField(
+        default=False,
+        help_text='Soft delete - hidden from all views',
+    )
     # CharField supports both full URLs and relative paths (e.g., /path/to/image)
     banner_url = models.CharField(max_length=500, blank=True, default='', help_text='Banner image URL')
     # Featured image for cards and social sharing
@@ -139,9 +159,9 @@ class Project(models.Model):
         indexes = [
             models.Index(fields=['user', 'slug']),
             models.Index(fields=['user', 'external_url']),  # For duplicate detection
-            models.Index(fields=['is_showcase', 'is_archived', '-created_at']),
+            models.Index(fields=['is_private', 'is_archived', '-created_at']),  # Primary explore filter
             models.Index(fields=['user', '-created_at']),
-            models.Index(fields=['is_published', '-published_at']),  # For browse/explore pages
+            models.Index(fields=['is_showcased', 'is_archived', '-created_at']),  # Profile showcase
         ]
 
     def __str__(self):
@@ -202,12 +222,6 @@ class Project(models.Model):
                 Project.objects.filter(user=self.user, is_highlighted=True).exclude(pk=self.pk).update(
                     is_highlighted=False
                 )
-
-        # Set published_at timestamp when first published
-        if self.is_published and not self.published_at:
-            from django.utils import timezone
-
-            self.published_at = timezone.now()
 
         super().save(*args, **kwargs)
 

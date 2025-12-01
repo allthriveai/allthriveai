@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.utils import timezone
 
 if TYPE_CHECKING:
@@ -111,7 +111,7 @@ class TrendingEngine:
             if self.weaviate_client.is_available():
                 return self._get_trending_from_weaviate(user, page, page_size)
 
-            # Fallback to real-time calculation
+            # Fallback to real-time calculation (includes ALL projects)
             return self._calculate_trending_realtime(user, page, page_size, time_window_hours)
 
         except Exception as e:
@@ -127,8 +127,9 @@ class TrendingEngine:
         """Get trending projects from Weaviate pre-computed velocities."""
         from core.projects.models import Project
 
+        # Fetch more to support pagination
         trending = self.weaviate_client.get_trending_projects(
-            limit=page * page_size + page_size,  # Get enough for pagination
+            limit=1000,  # Get many for endless scroll support
             min_velocity=0.0,
         )
 
@@ -152,12 +153,19 @@ class TrendingEngine:
         project_map = {p.id: p for p in projects}
         ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
 
+        # Get true total count from database for pagination
+        total_available = Project.objects.filter(
+            is_private=False,
+            is_archived=False,
+        ).count()
+
         return {
             'projects': ordered_projects,
             'metadata': {
                 'page': page,
                 'page_size': page_size,
-                'total_trending': len(trending),
+                'total_trending': total_available,
+                'weaviate_trending': len(trending),
                 'algorithm': 'weaviate_velocity',
                 'scores': [
                     {
@@ -177,7 +185,11 @@ class TrendingEngine:
         page_size: int,
         time_window_hours: int,
     ) -> dict:
-        """Calculate trending scores in real-time from database."""
+        """Calculate trending scores in real-time from database.
+
+        Returns ALL projects with trending/engaged ones at the top, then the rest
+        sorted by newest. Nothing is filtered out - all projects are included.
+        """
         from django.db.models import Case, IntegerField, Sum, When
 
         from core.projects.models import Project
@@ -185,18 +197,13 @@ class TrendingEngine:
         now = timezone.now()
         recent_cutoff = now - timedelta(hours=self.RECENT_WINDOW_HOURS)
         prev_cutoff = now - timedelta(hours=self.PREVIOUS_WINDOW_HOURS)
-        window_cutoff = now - timedelta(hours=time_window_hours)
 
-        # Get projects with recent activity, annotated with like counts in ONE query
-        # This replaces the N+1 pattern that was doing 3 queries per project
-        projects_with_activity = (
+        # Get ALL public projects with like count annotations
+        all_projects = (
             Project.objects.filter(
-                is_published=True,
                 is_private=False,
                 is_archived=False,
             )
-            .filter(Q(updated_at__gte=window_cutoff) | Q(likes__created_at__gte=window_cutoff))
-            .distinct()
             .select_related('user')
             .prefetch_related('tools', 'categories')
             .annotate(
@@ -231,50 +238,46 @@ class TrendingEngine:
 
         trending_projects = []
 
-        for project in projects_with_activity:
-            # Use annotated values instead of per-project queries
+        for project in all_projects:
             recent_likes = project.recent_likes_count or 0
             prev_likes = project.prev_likes_count or 0
 
             like_velocity = (recent_likes - prev_likes) / max(prev_likes, 1)
-
-            # View velocity would go here if view tracking existed
             view_velocity = 0.0
-
-            # Combined velocity
             velocity = (like_velocity * self.LIKE_WEIGHT) + (view_velocity * self.VIEW_WEIGHT)
 
-            # Apply recency factor
             days_old = (now - project.created_at).days
             recency_factor = 1.0 / (1 + days_old * self.RECENCY_DECAY)
 
             trending_score = velocity * recency_factor
 
-            # Only include projects with positive trending
-            if trending_score > 0 or recent_likes > 0:
-                trending_projects.append(
-                    TrendingProject(
-                        project_id=project.id,
-                        trending_score=trending_score,
-                        like_velocity=like_velocity,
-                        view_velocity=view_velocity,
-                        recency_factor=recency_factor,
-                        recent_likes=recent_likes,
-                        total_likes=project.total_likes_count or 0,
-                    )
+            # Include ALL projects - those with engagement get their score,
+            # those without get score of 0 and will be sorted by recency
+            trending_projects.append(
+                TrendingProject(
+                    project_id=project.id,
+                    trending_score=trending_score,
+                    like_velocity=like_velocity,
+                    view_velocity=view_velocity,
+                    recency_factor=recency_factor,
+                    recent_likes=recent_likes,
+                    total_likes=project.total_likes_count or 0,
                 )
+            )
 
-        # Sort by trending score
-        trending_projects.sort(key=lambda x: x.trending_score, reverse=True)
+        # Sort by trending score first, then by recency for tie-breaking
+        # This puts engaged projects at top, then newest projects below
+        trending_projects.sort(key=lambda x: (x.trending_score, x.recency_factor), reverse=True)
 
         # Paginate
+        total_count = len(trending_projects)
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size
         page_results = trending_projects[start_idx:end_idx]
 
         # Get project objects in order
         project_ids = [tp.project_id for tp in page_results]
-        project_map = {p.id: p for p in projects_with_activity if p.id in project_ids}
+        project_map = {p.id: p for p in all_projects if p.id in project_ids}
         ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
 
         return {
@@ -282,31 +285,33 @@ class TrendingEngine:
             'metadata': {
                 'page': page,
                 'page_size': page_size,
-                'total_trending': len(trending_projects),
+                'total_trending': total_count,
                 'algorithm': 'realtime_velocity',
                 'scores': [tp.to_dict() for tp in page_results],
             },
         }
 
     def _get_fallback_trending(self, page: int, page_size: int) -> dict:
-        """Fallback to recent popular projects."""
-        from core.projects.models import Project
+        """Fallback when realtime trending calculation fails.
 
-        # Get recently published projects with most likes
-        cutoff = timezone.now() - timedelta(days=7)
+        Shows liked projects first (by like count), then all remaining projects
+        by newest. Nothing is filtered out - all projects are included.
+        """
+        from core.projects.models import Project
 
         projects = (
             Project.objects.filter(
-                is_published=True,
                 is_private=False,
                 is_archived=False,
-                published_at__gte=cutoff,
             )
             .annotate(like_count=Count('likes'))
-            .order_by('-like_count', '-published_at')
+            .order_by('-like_count', '-created_at')
             .select_related('user')
             .prefetch_related('tools', 'categories', 'likes')
         )
+
+        # Get total count for pagination
+        total_count = projects.count()
 
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size
@@ -316,7 +321,8 @@ class TrendingEngine:
             'metadata': {
                 'page': page,
                 'page_size': page_size,
-                'algorithm': 'recent_popular_fallback',
+                'total_trending': total_count,
+                'algorithm': 'popular_then_newest',
             },
         }
 

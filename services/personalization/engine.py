@@ -78,7 +78,8 @@ class PersonalizationEngine:
     }
 
     # Number of candidate projects to fetch from Weaviate
-    CANDIDATE_LIMIT = 200
+    # Set high enough to support endless scrolling (will be supplemented by DB fallback if exhausted)
+    CANDIDATE_LIMIT = 1000
 
     # Number of similar users to consider for collaborative filtering
     SIMILAR_USERS_LIMIT = 10
@@ -206,12 +207,20 @@ class PersonalizationEngine:
             project_map = {p.id: p for p in projects}
             ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
 
+            # Get true total count from database for pagination
+            # (Weaviate candidates are limited, but we want endless scroll)
+            total_available = Project.objects.filter(
+                is_private=False,
+                is_archived=False,
+            ).count()
+
             return {
                 'projects': ordered_projects,
                 'metadata': {
                     'page': page,
                     'page_size': page_size,
-                    'total_candidates': len(scored_projects),
+                    'total_candidates': total_available,
+                    'weaviate_candidates': len(scored_projects),
                     'algorithm': 'hybrid_personalization',
                     'scores': [sp.to_dict() for sp in page_results],
                 },
@@ -612,14 +621,18 @@ class PersonalizationEngine:
         """Fallback to popular projects when personalization fails."""
         from core.projects.models import Project
 
+        # Note: Don't filter by is_published to include playground projects in explore
         projects = (
-            Project.objects.filter(is_published=True, is_private=False, is_archived=False)
+            Project.objects.filter(is_private=False, is_archived=False)
             .exclude(id__in=exclude_ids)
             .annotate(like_count=Count('likes'))
             .order_by('-like_count', '-created_at')
             .select_related('user')
             .prefetch_related('tools', 'categories', 'likes')
         )
+
+        # Get total count for pagination
+        total_count = projects.count()
 
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size
@@ -629,6 +642,7 @@ class PersonalizationEngine:
             'metadata': {
                 'page': page,
                 'page_size': page_size,
+                'total_candidates': total_count,
                 'algorithm': 'popular_fallback',
             },
         }

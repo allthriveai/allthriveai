@@ -1,0 +1,1371 @@
+# =============================================================================
+# AllThrive AI Tool Directory - Source of Truth
+# =============================================================================
+# This file is the canonical source for all tool and company data.
+#
+# USAGE:
+#   - Load tools: docker compose exec web python manage.py seed_tools
+#   - Export admin changes: docker compose exec web python manage.py export_tools
+#
+# CONVENTIONS:
+#   - Tools are organized by category for readability
+#   - Each tool MUST have: name, tagline, description, category, website_url
+#   - Optional fields will use sensible defaults if omitted
+#   - Company references use the company name (must exist in companies section)
+#
+# EDITABLE FIELDS (preserved during seed, exportable from admin):
+#   - whats_new: Recent updates/changelog
+#   - All other fields are synced from this file
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# COMPANIES
+# -----------------------------------------------------------------------------
+companies:
+  - name: Anthropic
+    tagline: AI safety company building reliable AI systems
+    description: >
+      Anthropic is an AI safety company working to build reliable, interpretable,
+      and steerable AI systems. Founded by former OpenAI researchers.
+    website_url: https://anthropic.com
+    logo_url: https://mintlify.s3-us-west-1.amazonaws.com/anthropic/logo/light.svg
+    founded_year: 2021
+    headquarters: San Francisco, CA
+    twitter_handle: AnthropicAI
+
+  - name: OpenAI
+    tagline: Creating safe AGI that benefits all of humanity
+    description: >
+      OpenAI is an AI research and deployment company.
+      Known for GPT models, ChatGPT, DALL-E, and the OpenAI API.
+    website_url: https://openai.com
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg
+    founded_year: 2015
+    headquarters: San Francisco, CA
+    twitter_handle: OpenAI
+
+  - name: Google
+    tagline: Organizing the world's information
+    description: >
+      Google is a multinational technology company specializing in Internet-related
+      services including search, cloud computing, AI, and software.
+    website_url: https://google.com
+    logo_url: https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg
+    founded_year: 1998
+    headquarters: Mountain View, CA
+    twitter_handle: Google
+
+  - name: Google DeepMind
+    tagline: Solving intelligence to advance science and benefit humanity
+    description: >
+      Google DeepMind is an AI research laboratory that combines the best of
+      DeepMind and Google Brain. Known for AlphaGo, Gemini, and Veo.
+    website_url: https://deepmind.google
+    logo_url: https://www.gstatic.com/lamda/images/favicon_v1_150160cddff7f294ce30.svg
+    founded_year: 2010
+    headquarters: London, UK
+    twitter_handle: GoogleDeepMind
+
+  - name: Meta
+    tagline: Building technology that helps people connect
+    description: >
+      Meta Platforms (formerly Facebook) develops technologies for social connection,
+      VR/AR, and open-source AI research including PyTorch and Llama.
+    website_url: https://meta.com
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/7/7b/Meta_Platforms_Inc._logo.svg
+    founded_year: 2004
+    headquarters: Menlo Park, CA
+    twitter_handle: Meta
+    github_url: https://github.com/facebook
+
+  - name: Microsoft
+    tagline: Empowering every person and organization on the planet
+    description: >
+      Microsoft develops software, cloud services, and AI tools.
+      Known for Windows, Azure, GitHub, and TypeScript.
+    website_url: https://microsoft.com
+    logo_url: https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg
+    founded_year: 1975
+    headquarters: Redmond, WA
+    twitter_handle: Microsoft
+    github_url: https://github.com/microsoft
+
+  - name: Midjourney
+    tagline: An independent research lab exploring new mediums of thought
+    description: >
+      Midjourney is an independent research lab that produces an AI image generation
+      program under the same name.
+    website_url: https://midjourney.com
+    logo_url: https://cdn.worldvectorlogo.com/logos/midjourney.svg
+    founded_year: 2022
+    headquarters: San Francisco, CA
+    twitter_handle: midaborney
+
+  - name: Stability AI
+    tagline: AI by the people, for the people
+    description: >
+      Stability AI develops open-source AI models for image, language, audio, and video generation.
+      Known for Stable Diffusion.
+    website_url: https://stability.ai
+    logo_url: https://images.squarespace-cdn.com/content/v1/6213c340453c3f502425776e/6c9c4c25-5410-4547-b75b-b16e1ce87500/stability-ai-logo.png
+    founded_year: 2020
+    headquarters: London, UK
+    twitter_handle: StabilityAI
+    github_url: https://github.com/Stability-AI
+
+  - name: Runway
+    tagline: Advancing creativity with artificial intelligence
+    description: >
+      Runway is an applied AI research company building the next generation of
+      creative tools powered by AI.
+    website_url: https://runwayml.com
+    logo_url: https://assets-global.website-files.com/6502af467b2a8c4792ea2975/6502af467b2a8c4792ea2a05_icon.svg
+    founded_year: 2018
+    headquarters: New York, NY
+    twitter_handle: runwayml
+    github_url: https://github.com/runwayml
+
+  - name: ElevenLabs
+    tagline: The most realistic AI voice platform
+    description: >
+      ElevenLabs develops AI voice technology for text-to-speech, voice cloning,
+      and audio content creation.
+    website_url: https://elevenlabs.io
+    logo_url: https://elevenlabs.io/favicon.ico
+    founded_year: 2022
+    headquarters: New York, NY
+    twitter_handle: elevaboratorylabs
+
+  - name: Notion
+    tagline: The all-in-one workspace
+    description: >
+      Notion is a productivity and note-taking application that provides
+      components such as databases, kanban boards, wikis, and calendars.
+    website_url: https://notion.so
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg
+    founded_year: 2013
+    headquarters: San Francisco, CA
+    twitter_handle: NotionHQ
+
+  - name: Perplexity AI
+    tagline: The answer engine
+    description: >
+      Perplexity AI builds AI-powered search and answer engines that provide
+      accurate, cited responses to complex questions.
+    website_url: https://perplexity.ai
+    logo_url: https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/perplexity-ai-icon.png
+    founded_year: 2022
+    headquarters: San Francisco, CA
+    twitter_handle: peraboratylexity_ai
+
+  - name: Cursor
+    tagline: The AI-first code editor
+    description: >
+      Cursor is an AI-powered code editor built on VS Code, designed to help
+      developers write code faster with AI assistance.
+    website_url: https://cursor.sh
+    logo_url: https://cursor.sh/brand/icon.svg
+    founded_year: 2023
+    headquarters: San Francisco, CA
+    twitter_handle: cursor_ai
+
+  - name: Vercel
+    tagline: Develop. Preview. Ship.
+    description: >
+      Vercel is the platform for frontend developers, providing the speed and reliability
+      innovators need to create at the moment of inspiration.
+    website_url: https://vercel.com
+    logo_url: https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vercel/vercel-original.svg
+    founded_year: 2015
+    headquarters: San Francisco, CA
+    twitter_handle: vercel
+    github_url: https://github.com/vercel
+
+  - name: Hugging Face
+    tagline: The AI community building the future
+    description: >
+      Hugging Face is the platform where the machine learning community collaborates
+      on models, datasets, and applications.
+    website_url: https://huggingface.co
+    logo_url: https://huggingface.co/front/assets/huggingface_logo-noborder.svg
+    founded_year: 2016
+    headquarters: New York, NY
+    twitter_handle: huggingface
+    github_url: https://github.com/huggingface
+
+  - name: Replicate
+    tagline: Run AI with an API
+    description: >
+      Replicate lets you run machine learning models with a cloud API,
+      without having to understand the intricacies of machine learning.
+    website_url: https://replicate.com
+    logo_url: https://replicate.com/favicon.ico
+    founded_year: 2019
+    headquarters: San Francisco, CA
+    twitter_handle: replaborateicate
+    github_url: https://github.com/replicate
+
+  - name: Jasper
+    tagline: AI copilot for enterprise marketing teams
+    description: >
+      Jasper is an AI content platform that helps marketing teams create
+      on-brand content at scale.
+    website_url: https://jasper.ai
+    logo_url: https://www.jasper.ai/hubfs/jasper-logo-purple.svg
+    founded_year: 2021
+    headquarters: Austin, TX
+    twitter_handle: heyjasperai
+
+  - name: Suno
+    tagline: Make any song you can imagine
+    description: >
+      Suno is an AI music generation platform that creates original songs
+      with vocals, instruments, and lyrics from text prompts.
+    website_url: https://suno.ai
+    logo_url: https://suno.ai/favicon.ico
+    founded_year: 2023
+    headquarters: Cambridge, MA
+    twitter_handle: saboratuno_ai_
+
+  - name: Udio
+    tagline: Create music with AI
+    description: >
+      Udio is an AI music generation platform that creates high-quality
+      songs with realistic vocals and production.
+    website_url: https://udio.com
+    logo_url: https://udio.com/favicon.ico
+    founded_year: 2024
+    headquarters: New York, NY
+    twitter_handle: aboratudio_music
+
+  - name: Pika Labs
+    tagline: Create and edit videos with AI
+    description: >
+      Pika Labs develops AI-powered video generation and editing tools
+      that turn ideas into stunning videos.
+    website_url: https://pika.art
+    logo_url: https://pika.art/favicon.ico
+    founded_year: 2023
+    headquarters: Palo Alto, CA
+    twitter_handle: paboratika_labs
+
+  - name: Luma AI
+    tagline: Capture the world in 3D
+    description: >
+      Luma AI creates AI-powered 3D capture and video generation technology,
+      including Dream Machine for video generation.
+    website_url: https://lumalabs.ai
+    logo_url: https://lumalabs.ai/favicon.ico
+    founded_year: 2021
+    headquarters: Palo Alto, CA
+    twitter_handle: LumaLabsAI
+
+  - name: Ideogram
+    tagline: AI that brings your ideas to life
+    description: >
+      Ideogram is an AI image generation platform known for its ability
+      to accurately render text in images.
+    website_url: https://ideogram.ai
+    logo_url: https://ideogram.ai/favicon.ico
+    founded_year: 2022
+    headquarters: Toronto, Canada
+    twitter_handle: ideaboratorygram
+
+  - name: Leonardo AI
+    tagline: Create production-quality visual assets
+    description: >
+      Leonardo AI is a generative AI platform for creating production-quality
+      visual assets for games, design, and creative projects.
+    website_url: https://leonardo.ai
+    logo_url: https://leonardo.ai/favicon.ico
+    founded_year: 2022
+    headquarters: Sydney, Australia
+    twitter_handle: LeonardoAi_
+
+  - name: Grammarly
+    tagline: Responsible AI that ensures your writing and reputation shine
+    description: >
+      Grammarly is an AI-powered writing assistant that helps users improve
+      their grammar, spelling, style, and tone.
+    website_url: https://grammarly.com
+    logo_url: https://static.grammarly.com/assets/files/cb6ce17d281d15f2c819035bcd430b0e/grammarly_logo.svg
+    founded_year: 2009
+    headquarters: San Francisco, CA
+    twitter_handle: Grammarly
+
+  - name: Replit
+    tagline: Build software faster with AI
+    description: >
+      Replit is a collaborative browser-based IDE that allows users to write,
+      run, and share code. Features built-in AI assistance for coding.
+    website_url: https://replit.com
+    logo_url: https://replit.com/public/icons/favicon-196.png
+    founded_year: 2016
+    headquarters: San Francisco, CA
+    twitter_handle: Replit
+    github_url: https://github.com/replit
+
+
+# -----------------------------------------------------------------------------
+# TOOLS - Chat & Conversational AI
+# -----------------------------------------------------------------------------
+tools:
+  # === CHAT & CONVERSATIONAL AI ===
+  - name: ChatGPT
+    company: OpenAI
+    tagline: AI-powered conversational assistant
+    description: >
+      ChatGPT by OpenAI provides natural language interactions powered by GPT models.
+      Ideal for conversations, content creation, coding help, and more.
+    category: chat
+    tool_type: ai_tool
+    website_url: https://chat.openai.com
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - NLP
+      - OpenAI
+      - Conversation
+      - GPT
+      - ChatBot
+    key_features:
+      - title: Natural Conversations
+        description: Engage in human-like dialogue with context awareness
+      - title: Code Generation
+        description: Generate, debug, and explain code in multiple languages
+      - title: Content Creation
+        description: Write articles, emails, stories, and more
+      - title: Image Understanding
+        description: Analyze and discuss images with GPT-4 Vision
+      - title: Web Browsing
+        description: Access real-time information from the web
+    usage_tips:
+      - Be specific and detailed in your prompts for better results
+      - Use iterative refinement to improve responses
+      - Break complex tasks into smaller steps
+      - Provide examples of your desired output format
+      - Use system prompts to set context and behavior
+    best_practices:
+      - Provide context for more relevant responses
+      - Use system messages to customize behavior
+      - Verify factual information independently
+      - Review and edit AI-generated code before use
+      - Keep conversations focused for better coherence
+
+  - name: Claude
+    company: Anthropic
+    tagline: AI assistant by Anthropic
+    description: >
+      Claude is an AI assistant created by Anthropic with a focus on being helpful,
+      harmless, and honest. Strong at analysis, coding, and creative writing.
+    category: chat
+    tool_type: ai_tool
+    website_url: https://claude.ai
+    logo_url: https://mintlify.s3-us-west-1.amazonaws.com/anthropic/logo/light.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - NLP
+      - Anthropic
+      - Conversation
+      - Claude
+      - Analysis
+      - Coding
+    key_features:
+      - title: Extended Context
+        description: Handle up to 200K tokens for long documents and conversations
+      - title: Code Understanding
+        description: Analyze, generate, and debug complex codebases
+      - title: Nuanced Responses
+        description: Thoughtful, detailed, and well-reasoned answers
+      - title: Document Analysis
+        description: Upload and analyze PDFs, code files, and documents
+      - title: Artifacts
+        description: Create and iterate on code, documents, and visualizations
+    usage_tips:
+      - Leverage the long context window for document analysis
+      - Use for detailed code review and refactoring suggestions
+      - Great for ethical reasoning and nuanced discussions
+      - Upload files directly for comprehensive analysis
+      - Use artifacts for iterative document creation
+    best_practices:
+      - Provide full context upfront for complex tasks
+      - Use for research synthesis and summarization
+      - Excellent for technical writing and documentation
+      - Ask for reasoning and explanations
+      - Use for brainstorming and ideation
+
+  - name: Gemini
+    company: Google
+    tagline: Google's most capable AI model
+    description: >
+      Gemini is Google's most capable and general AI model, built to be multimodal
+      from the ground up. It can understand and combine text, code, audio, image, and video.
+    category: chat
+    tool_type: ai_tool
+    website_url: https://gemini.google.com
+    logo_url: https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - NLP
+      - Google
+      - Multimodal
+      - Gemini
+      - DeepMind
+    key_features:
+      - title: Native Multimodality
+        description: Process text, images, audio, and video seamlessly
+      - title: Google Integration
+        description: Deep integration with Google Workspace and Search
+      - title: Code Execution
+        description: Run Python code directly in conversations
+      - title: Long Context
+        description: Up to 1M token context window with Gemini 1.5
+      - title: Real-time Information
+        description: Access to current information via Google Search
+    usage_tips:
+      - Use for tasks requiring multiple types of media
+      - Leverage Google Workspace integration for productivity
+      - Great for research with real-time web access
+      - Use code execution for data analysis
+      - Combine with Google services for enhanced capabilities
+    best_practices:
+      - Take advantage of multimodal capabilities
+      - Use for tasks requiring current information
+      - Leverage Google ecosystem integration
+      - Good for collaborative work with Google Docs
+      - Use for visual analysis and understanding
+
+  - name: Perplexity
+    company: Perplexity AI
+    tagline: AI-powered answer engine
+    description: >
+      Perplexity is an AI-powered search engine that provides direct answers with sources,
+      combining real-time web search with conversational AI.
+    category: research
+    tool_type: ai_tool
+    website_url: https://perplexity.ai
+    logo_url: https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/perplexity-ai-icon.png
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Search
+      - Research
+      - Citations
+      - Web
+      - AI Search
+    key_features:
+      - title: Cited Answers
+        description: Every response includes verifiable source citations
+      - title: Real-time Search
+        description: Access current information from across the web
+      - title: Follow-up Questions
+        description: Dig deeper with conversational follow-ups
+      - title: Focus Modes
+        description: Search specific sources like academic papers or Reddit
+      - title: Collections
+        description: Save and organize research for later reference
+    usage_tips:
+      - Use for research that needs citations
+      - Ask follow-up questions to explore topics deeper
+      - Use Focus modes for specialized searches
+      - Check the sources provided for verification
+      - Save important searches to collections
+    best_practices:
+      - Always verify sources for critical information
+      - Use Academic focus for scholarly research
+      - Combine with other tools for comprehensive research
+      - Great for current events and news
+      - Use for quick fact-checking
+
+  # === IMAGE GENERATION ===
+  - name: Midjourney
+    company: Midjourney
+    tagline: AI art generation platform
+    description: >
+      Midjourney creates stunning AI-generated images from text prompts.
+      Known for artistic, photorealistic, and stylized imagery.
+    category: image
+    tool_type: ai_tool
+    website_url: https://midjourney.com
+    logo_url: https://cdn.worldvectorlogo.com/logos/midjourney.svg
+    pricing_model: subscription
+    has_free_tier: false
+    tags:
+      - Image Generation
+      - Art
+      - Creative
+      - Design
+      - AI Art
+    key_features:
+      - title: High-Quality Images
+        description: Professional-grade AI art and illustrations
+      - title: Style Variety
+        description: From photorealistic to abstract and artistic
+      - title: Community Gallery
+        description: Browse and learn from millions of creations
+      - title: Variations
+        description: Generate variations and upscale images
+      - title: Style References
+        description: Use reference images to guide style
+    usage_tips:
+      - Study prompt engineering for better results
+      - Use style references for consistent aesthetics
+      - Iterate with variations to refine output
+      - Use aspect ratio flags for different formats
+      - Explore the community gallery for inspiration
+    best_practices:
+      - Be descriptive and specific in prompts
+      - Use aspect ratios appropriately for use case
+      - Leverage community knowledge and examples
+      - Combine artistic styles creatively
+      - Use negative prompts to exclude unwanted elements
+
+  - name: DALL-E
+    company: OpenAI
+    tagline: AI system that creates realistic images from text
+    description: >
+      DALL-E by OpenAI generates realistic images and art from natural language descriptions.
+      Known for creative interpretations and photorealistic capabilities.
+    category: image
+    tool_type: ai_tool
+    website_url: https://openai.com/dall-e-3
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Image Generation
+      - OpenAI
+      - Creative
+      - DALL-E
+      - Text-to-Image
+    key_features:
+      - title: Natural Language Understanding
+        description: Generates images from detailed text descriptions
+      - title: ChatGPT Integration
+        description: Create images directly within ChatGPT
+      - title: Editing Capabilities
+        description: Edit and modify existing images
+      - title: High Resolution
+        description: Generate images up to 1024x1024 pixels
+      - title: Safety Features
+        description: Built-in content moderation and safety measures
+    usage_tips:
+      - Use detailed, descriptive prompts
+      - Specify style, lighting, and composition
+      - Leverage ChatGPT for prompt refinement
+      - Use inpainting for targeted edits
+      - Combine with other OpenAI tools
+    best_practices:
+      - Be specific about desired style and mood
+      - Include details about perspective and framing
+      - Use iterative prompting for refinement
+      - Review and edit prompts for clarity
+      - Understand content policy limitations
+
+  - name: Stable Diffusion
+    company: Stability AI
+    tagline: Open-source AI image generation
+    description: >
+      Stable Diffusion is an open-source AI model for generating images from text.
+      Known for flexibility, community models, and local deployment options.
+    category: image
+    tool_type: ai_tool
+    website_url: https://stability.ai
+    logo_url: https://images.squarespace-cdn.com/content/v1/6213c340453c3f502425776e/6c9c4c25-5410-4547-b75b-b16e1ce87500/stability-ai-logo.png
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - Image Generation
+      - Open Source
+      - Stable Diffusion
+      - Creative
+      - Self-hosted
+    key_features:
+      - title: Open Source
+        description: Run locally or use cloud services
+      - title: Community Models
+        description: Thousands of fine-tuned models available
+      - title: Customization
+        description: Train custom models on your own data
+      - title: ControlNet
+        description: Precise control over image composition
+      - title: Inpainting/Outpainting
+        description: Edit and extend existing images
+    usage_tips:
+      - Explore community models on Civitai and Hugging Face
+      - Use ControlNet for precise control
+      - Experiment with different samplers
+      - Adjust CFG scale for prompt adherence
+      - Use negative prompts effectively
+    best_practices:
+      - Start with proven prompt templates
+      - Use appropriate models for your style
+      - Understand sampling parameters
+      - Leverage community resources and guides
+      - Consider local deployment for privacy
+
+  - name: Ideogram
+    company: Ideogram
+    tagline: AI that renders text beautifully
+    description: >
+      Ideogram is an AI image generation platform known for its exceptional ability
+      to accurately render text within images, solving a common AI image challenge.
+    category: image
+    tool_type: ai_tool
+    website_url: https://ideogram.ai
+    logo_url: https://ideogram.ai/favicon.ico
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Image Generation
+      - Text in Images
+      - Typography
+      - Design
+      - AI Art
+    key_features:
+      - title: Text Rendering
+        description: Industry-leading text accuracy in generated images
+      - title: Typography
+        description: Create logos, posters, and designs with text
+      - title: Style Variety
+        description: Multiple artistic styles and rendering options
+      - title: High Quality
+        description: Detailed, production-ready outputs
+      - title: Remix Feature
+        description: Modify and iterate on existing creations
+    usage_tips:
+      - Perfect for designs requiring text
+      - Use for logo concepts and typography
+      - Great for social media graphics
+      - Specify font styles in prompts
+      - Use for mockups and presentations
+    best_practices:
+      - Keep text concise for best results
+      - Specify text placement in prompts
+      - Use for branding and marketing materials
+      - Combine with design tools for finishing
+      - Iterate with remix for refinement
+
+  - name: Leonardo AI
+    company: Leonardo AI
+    tagline: Create production-quality visual assets with AI
+    description: >
+      Leonardo AI is a generative AI platform for creating production-quality
+      visual assets for games, design, and creative projects with fine-tuned control.
+    category: image
+    tool_type: ai_tool
+    website_url: https://leonardo.ai
+    logo_url: https://leonardo.ai/favicon.ico
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Image Generation
+      - Game Assets
+      - Design
+      - Production Quality
+      - Creative
+    key_features:
+      - title: Fine-tuned Models
+        description: Specialized models for different asset types
+      - title: AI Canvas
+        description: Real-time collaborative editing canvas
+      - title: Character Consistency
+        description: Maintain character appearance across images
+      - title: Texture Generation
+        description: Create seamless textures for 3D and games
+      - title: Motion Generation
+        description: Add motion to static images
+    usage_tips:
+      - Use specialized models for asset types
+      - Leverage AI Canvas for editing
+      - Great for game development assets
+      - Use for consistent character designs
+      - Perfect for texture and material creation
+    best_practices:
+      - Choose appropriate model for your use case
+      - Use reference images for consistency
+      - Leverage community fine-tunes
+      - Iterate with canvas editing
+      - Export at appropriate resolutions
+
+  # === VIDEO GENERATION ===
+  - name: Veo 3
+    company: Google DeepMind
+    tagline: State-of-the-art AI video generation
+    description: >
+      Veo 3 is Google DeepMind's advanced AI video generation model that creates
+      high-quality, realistic videos from text prompts with impressive temporal
+      consistency and visual fidelity.
+    category: video
+    tool_type: ai_tool
+    website_url: https://deepmind.google/technologies/veo/
+    logo_url: https://www.gstatic.com/lamda/images/favicon_v1_150160cddff7f294ce30.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Video Generation
+      - Text-to-Video
+      - AI Video
+      - Google
+      - DeepMind
+    key_features:
+      - title: High Fidelity
+        description: Generate detailed, realistic video content
+      - title: Temporal Consistency
+        description: Smooth motion and coherent sequences
+      - title: Multiple Styles
+        description: Support for various artistic and realistic styles
+      - title: Camera Control
+        description: Specify camera movements and angles
+      - title: Long Duration
+        description: Generate extended video sequences
+    usage_tips:
+      - Be specific about motion and action
+      - Describe camera movements explicitly
+      - Specify style and mood in prompts
+      - Use for concept visualization
+      - Iterate on prompts for best results
+    best_practices:
+      - Start with clear, simple prompts
+      - Build complexity incrementally
+      - Specify temporal aspects of scenes
+      - Use for prototyping video concepts
+      - Combine with video editing tools
+
+  - name: Runway
+    company: Runway
+    tagline: AI-powered creative suite for video
+    description: >
+      Runway provides AI-powered video editing, generation, and effects
+      with cutting-edge generative AI models for creative professionals.
+    category: video
+    tool_type: ai_tool
+    website_url: https://runwayml.com
+    logo_url: https://assets-global.website-files.com/6502af467b2a8c4792ea2975/6502af467b2a8c4792ea2a05_icon.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Video Generation
+      - Video Editing
+      - Creative
+      - Gen-2
+      - AI Video
+    key_features:
+      - title: Gen-3 Alpha
+        description: Latest text-to-video generation model
+      - title: Video-to-Video
+        description: Transform existing video with AI
+      - title: Motion Brush
+        description: Control motion in specific areas
+      - title: Inpainting
+        description: Remove or modify video elements
+      - title: Green Screen
+        description: AI-powered background removal
+    usage_tips:
+      - Use text-to-video for concept visualization
+      - Apply video-to-video for style transfer
+      - Use motion brush for targeted animation
+      - Great for social media content
+      - Combine tools for complex effects
+    best_practices:
+      - Start with clear creative vision
+      - Use reference images for style
+      - Iterate on generations
+      - Combine multiple AI tools
+      - Export at appropriate quality
+
+  - name: Pika
+    company: Pika Labs
+    tagline: Create and edit videos with AI
+    description: >
+      Pika is an AI video generation platform that transforms ideas into
+      stunning videos with simple text prompts and image inputs.
+    category: video
+    tool_type: ai_tool
+    website_url: https://pika.art
+    logo_url: https://pika.art/favicon.ico
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Video Generation
+      - Text-to-Video
+      - Image-to-Video
+      - Creative
+      - AI Video
+    key_features:
+      - title: Text-to-Video
+        description: Generate videos from text descriptions
+      - title: Image-to-Video
+        description: Animate static images into videos
+      - title: Video Editing
+        description: Modify and enhance existing videos
+      - title: Lip Sync
+        description: Add realistic lip movements to characters
+      - title: Style Transfer
+        description: Apply artistic styles to videos
+    usage_tips:
+      - Use descriptive prompts for best results
+      - Animate images for quick video content
+      - Great for social media clips
+      - Experiment with different styles
+      - Use for creative storytelling
+    best_practices:
+      - Start with high-quality input images
+      - Specify motion and camera movement
+      - Use for concept visualization
+      - Iterate on prompts
+      - Combine with editing tools
+
+  - name: Luma Dream Machine
+    company: Luma AI
+    tagline: AI video generation that brings imagination to life
+    description: >
+      Luma Dream Machine is an AI model that generates high-quality,
+      realistic videos from text and images with impressive speed.
+    category: video
+    tool_type: ai_tool
+    website_url: https://lumalabs.ai/dream-machine
+    logo_url: https://lumalabs.ai/favicon.ico
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Video Generation
+      - Text-to-Video
+      - AI Video
+      - Dream Machine
+      - Luma
+    key_features:
+      - title: Fast Generation
+        description: Generate videos in seconds
+      - title: High Quality
+        description: Detailed, realistic video output
+      - title: Image Animation
+        description: Transform images into videos
+      - title: Camera Control
+        description: Specify camera movements
+      - title: Consistent Characters
+        description: Maintain character appearance
+    usage_tips:
+      - Use for rapid video prototyping
+      - Animate product images
+      - Great for social content
+      - Specify cinematic techniques
+      - Combine with other tools
+    best_practices:
+      - Clear, specific prompts work best
+      - Use quality source images
+      - Describe motion explicitly
+      - Iterate for best results
+      - Export at appropriate resolution
+
+  # === AUDIO & MUSIC ===
+  - name: ElevenLabs
+    company: ElevenLabs
+    tagline: AI voice generation and cloning
+    description: >
+      ElevenLabs offers the most realistic AI voice generation platform
+      for text-to-speech, voice cloning, and audio content creation.
+    category: audio
+    tool_type: ai_tool
+    website_url: https://elevenlabs.io
+    logo_url: https://elevenlabs.io/favicon.ico
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Voice AI
+      - Text-to-Speech
+      - Voice Cloning
+      - Audio
+      - Speech Synthesis
+    key_features:
+      - title: Realistic Voices
+        description: Natural-sounding AI-generated speech
+      - title: Voice Cloning
+        description: Clone any voice from audio samples
+      - title: Multiple Languages
+        description: Support for 29+ languages
+      - title: Voice Library
+        description: Thousands of pre-made voices
+      - title: Speech-to-Speech
+        description: Transform voice recordings
+    usage_tips:
+      - Use for audiobook narration
+      - Create voiceovers for videos
+      - Clone voices for consistency
+      - Adjust emotion and style
+      - Use for accessibility content
+    best_practices:
+      - Provide clean audio for cloning
+      - Match voice to content tone
+      - Review and edit generated audio
+      - Use SSML for fine control
+      - Respect voice cloning ethics
+
+  - name: Suno
+    company: Suno
+    tagline: Make any song you can imagine
+    description: >
+      Suno is an AI music generation platform that creates original songs
+      with vocals, instruments, and lyrics from simple text prompts.
+    category: audio
+    tool_type: ai_tool
+    website_url: https://suno.ai
+    logo_url: https://suno.ai/favicon.ico
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Music Generation
+      - AI Music
+      - Vocals
+      - Song Creation
+      - Audio
+    key_features:
+      - title: Full Songs
+        description: Generate complete songs with vocals
+      - title: Genre Variety
+        description: Create music in any genre or style
+      - title: Custom Lyrics
+        description: Write your own lyrics or let AI create them
+      - title: Instrumental Tracks
+        description: Generate music without vocals
+      - title: Extend Feature
+        description: Continue and extend generated songs
+    usage_tips:
+      - Specify genre and mood clearly
+      - Write custom lyrics for personal songs
+      - Use for content background music
+      - Experiment with style combinations
+      - Extend songs for longer tracks
+    best_practices:
+      - Be specific about musical style
+      - Include emotional tone in prompts
+      - Iterate on generations
+      - Use for demos and prototypes
+      - Understand licensing terms
+
+  - name: Udio
+    company: Udio
+    tagline: Create music with AI
+    description: >
+      Udio is an AI music generation platform that creates high-quality
+      songs with realistic vocals and professional production quality.
+    category: audio
+    tool_type: ai_tool
+    website_url: https://udio.com
+    logo_url: https://udio.com/favicon.ico
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Music Generation
+      - AI Music
+      - Audio Production
+      - Vocals
+      - Song Creation
+    key_features:
+      - title: High-Quality Audio
+        description: Professional production quality output
+      - title: Realistic Vocals
+        description: Natural-sounding AI-generated singing
+      - title: Genre Flexibility
+        description: Create in virtually any musical style
+      - title: Lyrics Input
+        description: Use custom or AI-generated lyrics
+      - title: Audio Conditioning
+        description: Guide generation with reference audio
+    usage_tips:
+      - Use detailed genre descriptions
+      - Provide custom lyrics for control
+      - Great for music demos
+      - Experiment with unique styles
+      - Use for creative exploration
+    best_practices:
+      - Specify instrumentation preferences
+      - Include mood and energy level
+      - Review multiple generations
+      - Understand usage rights
+      - Use for inspiration and prototyping
+
+  # === CODE & DEVELOPMENT ===
+  - name: GitHub Copilot
+    company: Microsoft
+    tagline: AI pair programmer
+    description: >
+      GitHub Copilot suggests code and entire functions in real-time from your editor,
+      trained on billions of lines of code to help you write code faster.
+    category: code
+    tool_type: ai_tool
+    website_url: https://github.com/features/copilot
+    logo_url: https://github.githubassets.com/assets/copilot-logo.svg
+    pricing_model: subscription
+    has_free_tier: false
+    tags:
+      - Code
+      - Development
+      - GitHub
+      - Productivity
+      - AI Coding
+    key_features:
+      - title: Code Completion
+        description: AI-powered real-time code suggestions
+      - title: Multi-Language
+        description: Supports dozens of programming languages
+      - title: Context-Aware
+        description: Understands your codebase and patterns
+      - title: Copilot Chat
+        description: Conversational coding assistance
+      - title: IDE Integration
+        description: Works with VS Code, JetBrains, and more
+    usage_tips:
+      - Write clear function names and comments
+      - Use comments to guide suggestions
+      - Review all generated code carefully
+      - Use chat for complex questions
+      - Accept suggestions with Tab
+    best_practices:
+      - Verify security implications
+      - Understand generated code before using
+      - Use as a learning tool
+      - Combine with code review
+      - Keep suggestions contextual
+
+  - name: Cursor
+    company: Cursor
+    tagline: AI-first code editor
+    description: >
+      Cursor is a code editor built from the ground up with AI at its core,
+      featuring AI chat, codebase-wide understanding, and natural language editing.
+    category: code
+    tool_type: ai_tool
+    website_url: https://cursor.sh
+    logo_url: https://cursor.sh/brand/icon.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Code
+      - Editor
+      - AI
+      - Development
+      - IDE
+    key_features:
+      - title: AI Chat
+        description: Chat with your entire codebase
+      - title: Cmd+K
+        description: Natural language code editing
+      - title: Codebase Context
+        description: AI understands your entire project
+      - title: Multi-file Editing
+        description: Edit across multiple files at once
+      - title: VS Code Compatible
+        description: Use your existing extensions
+    usage_tips:
+      - Use Cmd+K for quick edits
+      - Chat with @codebase for project questions
+      - Leverage AI for refactoring
+      - Index your codebase fully
+      - Use specific prompts for best results
+    best_practices:
+      - Keep codebase indexed
+      - Review AI suggestions
+      - Use for understanding unfamiliar code
+      - Combine with manual coding
+      - Maintain code quality standards
+
+  - name: Claude Code
+    company: Anthropic
+    tagline: Agentic coding tool by Anthropic
+    description: >
+      Claude Code is an agentic command-line coding tool that understands your codebase,
+      executes commands, and helps with complex development tasks autonomously.
+    category: code
+    tool_type: ai_tool
+    website_url: https://docs.anthropic.com/en/docs/claude-code
+    logo_url: https://mintlify.s3-us-west-1.amazonaws.com/anthropic/logo/light.svg
+    pricing_model: pay_per_use
+    has_free_tier: false
+    tags:
+      - Code
+      - CLI
+      - Anthropic
+      - Claude
+      - Agentic
+      - Development
+    key_features:
+      - title: Codebase Understanding
+        description: Comprehends entire project structure and context
+      - title: Autonomous Execution
+        description: Runs commands and makes changes independently
+      - title: Multi-step Tasks
+        description: Handles complex development workflows
+      - title: Git Integration
+        description: Manages version control operations
+      - title: Terminal Access
+        description: Full command-line capabilities
+    usage_tips:
+      - Use for complex refactoring tasks
+      - Let it explore the codebase first
+      - Provide clear task descriptions
+      - Review changes before committing
+      - Use for debugging and investigation
+    best_practices:
+      - Start with focused tasks
+      - Review all changes carefully
+      - Use git for safety
+      - Provide context about project
+      - Iterate on complex tasks
+
+  - name: Replit
+    company: Replit
+    tagline: Build software faster with AI
+    description: >
+      Replit is a collaborative browser-based IDE with built-in AI features
+      for code generation, explanation, and debugging.
+    category: code
+    tool_type: ai_tool
+    website_url: https://replit.com
+    logo_url: https://replit.com/public/icons/favicon-196.png
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Code
+      - IDE
+      - Collaboration
+      - AI
+      - Browser-based
+    key_features:
+      - title: Replit AI
+        description: Built-in AI coding assistant
+      - title: Multiplayer
+        description: Real-time collaboration
+      - title: Instant Hosting
+        description: Deploy directly from the IDE
+      - title: Templates
+        description: Start from pre-built templates
+      - title: Mobile App
+        description: Code from any device
+    usage_tips:
+      - Use AI for code generation
+      - Collaborate in real-time
+      - Deploy instantly for testing
+      - Use templates for quick starts
+      - Great for learning and prototyping
+    best_practices:
+      - Use for rapid prototyping
+      - Leverage community templates
+      - Collaborate for pair programming
+      - Deploy for quick demos
+      - Use for coding education
+
+  # === PRODUCTIVITY & WRITING ===
+  - name: Notion AI
+    company: Notion
+    tagline: AI-powered knowledge workspace
+    description: >
+      Notion AI brings AI directly into your workspace for writing, brainstorming,
+      summarizing, and organizing information seamlessly.
+    category: productivity
+    tool_type: ai_tool
+    website_url: https://notion.so/product/ai
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Productivity
+      - Writing
+      - Organization
+      - Knowledge Management
+      - Workspace
+    key_features:
+      - title: AI Writing
+        description: Generate and improve content inline
+      - title: Summarization
+        description: Condense long documents instantly
+      - title: Database Integration
+        description: AI works with your structured data
+      - title: Q&A
+        description: Ask questions about your workspace
+      - title: Translation
+        description: Translate content to multiple languages
+    usage_tips:
+      - Use AI blocks inline while writing
+      - Summarize meeting notes automatically
+      - Generate content outlines
+      - Ask questions about your docs
+      - Use for drafting and editing
+    best_practices:
+      - Organize with databases first
+      - Use templates for consistency
+      - Combine AI with structured data
+      - Review AI-generated content
+      - Use for brainstorming sessions
+
+  - name: Grammarly
+    company: Grammarly
+    tagline: AI writing assistant for clarity and correctness
+    description: >
+      Grammarly is an AI-powered writing assistant that helps improve grammar,
+      spelling, style, and tone across all your writing.
+    category: writing
+    tool_type: ai_tool
+    website_url: https://grammarly.com
+    logo_url: https://static.grammarly.com/assets/files/cb6ce17d281d15f2c819035bcd430b0e/grammarly_logo.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Writing
+      - Grammar
+      - Editing
+      - Productivity
+      - Communication
+    key_features:
+      - title: Grammar & Spelling
+        description: Catch errors and typos automatically
+      - title: Tone Detection
+        description: Understand how your writing sounds
+      - title: Style Suggestions
+        description: Improve clarity and engagement
+      - title: Plagiarism Check
+        description: Ensure originality of content
+      - title: Browser Extension
+        description: Works everywhere you write
+    usage_tips:
+      - Set goals for audience and formality
+      - Use tone detection for appropriate voice
+      - Review clarity suggestions
+      - Check plagiarism for important content
+      - Use across all writing platforms
+    best_practices:
+      - Configure for your writing style
+      - Review suggestions, don't auto-accept
+      - Use for professional communication
+      - Combine with human editing
+      - Customize for your domain
+
+  - name: Jasper
+    company: Jasper
+    tagline: AI copilot for enterprise marketing teams
+    description: >
+      Jasper is an AI content platform designed for marketing teams to create
+      on-brand content at scale with AI assistance.
+    category: writing
+    tool_type: ai_tool
+    website_url: https://jasper.ai
+    logo_url: https://www.jasper.ai/hubfs/jasper-logo-purple.svg
+    pricing_model: subscription
+    has_free_tier: false
+    tags:
+      - Marketing
+      - Content
+      - Writing
+      - Copywriting
+      - Enterprise
+    key_features:
+      - title: Brand Voice
+        description: Train AI on your brand's tone and style
+      - title: Templates
+        description: Pre-built templates for content types
+      - title: Campaigns
+        description: Organize content by marketing campaigns
+      - title: Team Collaboration
+        description: Work together on content creation
+      - title: AI Art
+        description: Generate images alongside copy
+    usage_tips:
+      - Train AI on your brand voice
+      - Use templates for specific content
+      - Leverage campaigns for organization
+      - Create content briefs first
+      - Review and refine AI output
+    best_practices:
+      - Define brand voice clearly
+      - Use for first drafts
+      - Combine with human editing
+      - Maintain consistency across content
+      - Track performance of AI content
+
+  # === RESEARCH & DATA ===
+  - name: Hugging Face
+    company: Hugging Face
+    tagline: The AI community building the future
+    description: >
+      Hugging Face is the platform where the machine learning community collaborates
+      on models, datasets, and applications, hosting thousands of open-source models.
+    category: research
+    tool_type: ai_tool
+    website_url: https://huggingface.co
+    logo_url: https://huggingface.co/front/assets/huggingface_logo-noborder.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Machine Learning
+      - Models
+      - Datasets
+      - Open Source
+      - Community
+    key_features:
+      - title: Model Hub
+        description: Host and discover ML models
+      - title: Datasets
+        description: Access thousands of datasets
+      - title: Spaces
+        description: Deploy ML apps easily
+      - title: Transformers Library
+        description: State-of-the-art NLP library
+      - title: Inference API
+        description: Run models via API
+    usage_tips:
+      - Explore model cards for usage
+      - Use Spaces for demos
+      - Leverage community models
+      - Contribute to open source
+      - Use for ML experimentation
+    best_practices:
+      - Check model licenses
+      - Review model performance metrics
+      - Use appropriate model sizes
+      - Contribute improvements back
+      - Follow community guidelines
+
+  - name: Replicate
+    company: Replicate
+    tagline: Run AI with an API
+    description: >
+      Replicate lets you run machine learning models with a cloud API,
+      without managing infrastructure or understanding ML intricacies.
+    category: research
+    tool_type: ai_tool
+    website_url: https://replicate.com
+    logo_url: https://replicate.com/favicon.ico
+    pricing_model: pay_per_use
+    has_free_tier: true
+    tags:
+      - Machine Learning
+      - API
+      - Models
+      - Cloud
+      - Infrastructure
+    key_features:
+      - title: Simple API
+        description: Run any model with one API call
+      - title: Model Library
+        description: Thousands of ready-to-use models
+      - title: Custom Models
+        description: Deploy your own models easily
+      - title: Pay Per Use
+        description: Only pay for compute you use
+      - title: Scalability
+        description: Automatic scaling for demand
+    usage_tips:
+      - Browse models for your use case
+      - Use prediction API for inference
+      - Deploy custom models
+      - Monitor usage and costs
+      - Cache predictions when possible
+    best_practices:
+      - Choose models appropriate for task
+      - Optimize for cost efficiency
+      - Use webhooks for async tasks
+      - Monitor API usage
+      - Version your model deployments

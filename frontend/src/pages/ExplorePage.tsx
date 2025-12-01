@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, memo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import type { Taxonomy } from '@/types/models';
+import type { Taxonomy, Project } from '@/types/models';
+import type { Quiz } from '@/components/quiz/types';
 import { api } from '@/services/api';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SearchBarWithFilters } from '@/components/explore/SearchBarWithFilters';
@@ -21,6 +22,38 @@ import {
 } from '@/services/explore';
 import { getQuizzes } from '@/services/quiz';
 import { useAuth } from '@/hooks/useAuth';
+
+// Memoized wrapper for smooth fade-in animation on new items
+const FadeInItem = memo(function FadeInItem({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    // Small delay to ensure DOM is ready, then trigger animation
+    const timer = requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+    return () => cancelAnimationFrame(timer);
+  }, []);
+
+  return (
+    <div
+      className={`break-inside-avoid mb-2 transition-all duration-300 ease-out ${
+        isVisible
+          ? 'opacity-100 translate-y-0'
+          : 'opacity-0 translate-y-4'
+      }`}
+      style={{
+        willChange: isVisible ? 'auto' : 'opacity, transform',
+      }}
+    >
+      {children}
+    </div>
+  );
+});
 
 export function ExplorePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -48,7 +81,6 @@ export function ExplorePage() {
   // Intersection observer ref for infinite scroll
   const observerTarget = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const previousScrollHeight = useRef<number>(0);
 
   // Sync state to URL
   useEffect(() => {
@@ -119,11 +151,31 @@ export function ExplorePage() {
     refetch: refetchProjects,
   } = useInfiniteQuery({
     queryKey: ['exploreProjects', exploreParamsBase],
-    queryFn: ({ pageParam = 1 }) => exploreProjects({ ...exploreParamsBase, page: pageParam }),
+    queryFn: async ({ pageParam = 1 }) => {
+      console.log('[useInfiniteQuery] queryFn called with pageParam:', pageParam);
+      const result = await exploreProjects({ ...exploreParamsBase, page: pageParam });
+      console.log('[useInfiniteQuery] queryFn result:', {
+        count: result.count,
+        next: result.next,
+        resultsLength: result.results?.length,
+        keys: Object.keys(result)
+      });
+      return result;
+    },
     getNextPageParam: (lastPage, allPages) => {
-      return lastPage.next ? allPages.length + 1 : undefined;
+      const nextPage = lastPage.next ? allPages.length + 1 : undefined;
+      console.log('[useInfiniteQuery] getNextPageParam:', {
+        lastPageNext: lastPage.next,
+        allPagesLength: allPages.length,
+        nextPage,
+        lastPageCount: lastPage.count,
+        lastPageResultsLength: lastPage.results?.length
+      });
+      return nextPage;
     },
     initialPageParam: 1,
+    staleTime: 0, // Disable caching for debugging
+    gcTime: 0, // Disable garbage collection time (formerly cacheTime)
     // Only run query if:
     // 1. Not on profiles tab
     // 2. If tools are selected, filterOptions must be loaded
@@ -195,38 +247,52 @@ export function ExplorePage() {
     : (projectsError as any)?.error || 'Failed to load projects';
   const handleRetry = activeTab === 'profiles' ? refetchProfiles : refetchProjects;
 
-  // Stably mix quizzes and projects using memoization to prevent re-shuffling
+  // Mix quizzes into projects while preserving backend sort order
+  // Projects maintain their order from the API (sorted by recency/trending/relevance)
+  // Quizzes are interleaved at regular intervals for variety
+  type MixedItem =
+    | { type: 'quiz'; data: Quiz; stableKey: string }
+    | { type: 'project'; data: Project; stableKey: string };
+
   const mixedItems = useMemo(() => {
-    const items: Array<{ type: 'quiz' | 'project'; data: any; stableKey: string }> = [
-      ...displayQuizzes.map(quiz => ({
-        type: 'quiz' as const,
-        data: quiz,
-        stableKey: `quiz-${quiz.slug || quiz.id}`
-      })),
-      ...displayProjects.map(project => ({
+    const QUIZ_INTERVAL = 8; // Insert a quiz every N projects
+    const result: MixedItem[] = [];
+
+    let quizIndex = 0;
+
+    // Iterate through projects in their original order from backend
+    displayProjects.forEach((project, projectIndex) => {
+      // Insert a quiz before every QUIZ_INTERVAL projects (if quizzes available)
+      if (projectIndex > 0 && projectIndex % QUIZ_INTERVAL === 0 && quizIndex < displayQuizzes.length) {
+        const quiz = displayQuizzes[quizIndex];
+        result.push({
+          type: 'quiz' as const,
+          data: quiz,
+          stableKey: `quiz-${quiz.slug || quiz.id}`
+        });
+        quizIndex++;
+      }
+
+      // Add the project in its original order
+      result.push({
         type: 'project' as const,
         data: project,
         stableKey: `project-${project.slug || project.id}`
-      })),
-    ];
-
-    // Use a stable hash-based shuffle instead of random
-    // This ensures the same items always appear in the same order
-    const hashString = (str: string) => {
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-      }
-      return hash;
-    };
-
-    return items.sort((a, b) => {
-      const hashA = hashString(a.stableKey);
-      const hashB = hashString(b.stableKey);
-      return hashA - hashB;
+      });
     });
+
+    // Add any remaining quizzes at the end
+    while (quizIndex < displayQuizzes.length) {
+      const quiz = displayQuizzes[quizIndex];
+      result.push({
+        type: 'quiz' as const,
+        data: quiz,
+        stableKey: `quiz-${quiz.slug || quiz.id}`
+      });
+      quizIndex++;
+    }
+
+    return result;
   }, [displayQuizzes, displayProjects]);
 
   // Handle tab change
@@ -263,57 +329,29 @@ export function ExplorePage() {
     setSelectedQuizSlug('');
   };
 
-  // Preserve scroll position when new content loads
-  useEffect(() => {
-    if (isFetchingNextPage || isFetchingNextProfiles) {
-      const container = scrollContainerRef.current;
-      if (container) {
-        previousScrollHeight.current = container.scrollHeight;
-      }
-    }
-  }, [isFetchingNextPage, isFetchingNextProfiles]);
-
-  useEffect(() => {
-    if (!isFetchingNextPage && !isFetchingNextProfiles && previousScrollHeight.current > 0) {
-      const container = scrollContainerRef.current;
-      if (container) {
-        const newScrollHeight = container.scrollHeight;
-        const heightDiff = newScrollHeight - previousScrollHeight.current;
-
-        // Only adjust if content was added (height increased)
-        if (heightDiff > 0) {
-          // Maintain scroll position by adjusting for new content height
-          const currentScrollTop = container.scrollTop;
-          // This prevents the jump by keeping the user at the same visual position
-          requestAnimationFrame(() => {
-            // No adjustment needed since content loads at bottom
-          });
-        }
-
-        previousScrollHeight.current = 0;
-      }
-    }
-  }, [isFetchingNextPage, isFetchingNextProfiles, allProjects.length, allProfiles.length]);
-
   // Intersection observer for infinite scroll
   useEffect(() => {
-    // Find the scrolling container (main element from DashboardLayout)
-    const scrollContainer = scrollContainerRef.current?.closest('main');
-
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          if (activeTab === 'profiles' && hasNextProfiles && !isFetchingNextProfiles) {
-            fetchNextProfiles();
-          } else if (activeTab !== 'profiles' && hasNextPage && !isFetchingNextPage) {
-            fetchNextPage();
+          console.log('[InfiniteScroll] Observer triggered, hasNextPage:', hasNextPage, 'isFetching:', isFetchingNextPage);
+          if (activeTab === 'profiles') {
+            if (hasNextProfiles && !isFetchingNextProfiles) {
+              console.log('[InfiniteScroll] Fetching next profiles page');
+              fetchNextProfiles();
+            }
+          } else {
+            if (hasNextPage && !isFetchingNextPage) {
+              console.log('[InfiniteScroll] Fetching next projects page');
+              fetchNextPage();
+            }
           }
         }
       },
       {
-        root: scrollContainer, // Use the actual scrolling container
-        threshold: 0.1,
-        rootMargin: '400px' // Load earlier to prevent visible loading states
+        root: null, // Use viewport
+        threshold: 0,
+        rootMargin: '400px' // Load when within 400px of viewport
       }
     );
 
@@ -423,31 +461,32 @@ export function ExplorePage() {
                 ) : (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
-                      {allProfiles.map((user) => (
-                        <UserProfileCard key={user.id} user={user} />
+                      {allProfiles.map((profile) => (
+                        <div
+                          key={profile.id}
+                          className="animate-fade-in-up"
+                          style={{
+                            animationDelay: '0ms',
+                            animationFillMode: 'backwards',
+                          }}
+                        >
+                          <UserProfileCard user={profile} />
+                        </div>
                       ))}
                     </div>
 
-                {/* Infinite scroll trigger */}
-                {hasNextProfiles && <div ref={observerTarget} className="h-4 mt-8" />}
+                {/* Infinite scroll trigger - always present for continuous loading */}
+                <div ref={observerTarget} className="h-20 mt-8" aria-hidden="true" />
 
-                {/* Loading skeletons for next page - shown inline during fetch */}
+                {/* Loading indicator for next page */}
                 {isFetchingNextProfiles && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 mt-4">
-                    <LoadingSkeleton type="profile" count={4} />
-                  </div>
-                )}
-
-                {/* End of feed indicator */}
-                {!hasNextProfiles && !isFetchingNextProfiles && allProfiles.length > 0 && (
-                  <div className="flex flex-col items-center justify-center py-12 mt-8">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                        You've reached the end
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
-                        {allProfiles.length} profiles shown
-                      </p>
+                  <div className="flex justify-center py-8">
+                    <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span className="text-sm">Loading more profiles...</span>
                     </div>
                   </div>
                 )}
@@ -499,7 +538,7 @@ export function ExplorePage() {
                     <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2">
                       {/* Interleave quizzes and projects with stable ordering */}
                       {mixedItems.map((item) => (
-                        <div key={item.stableKey} className="break-inside-avoid mb-2">
+                        <FadeInItem key={item.stableKey}>
                           {item.type === 'quiz' ? (
                             <QuizPreviewCard
                               quiz={item.data}
@@ -514,35 +553,43 @@ export function ExplorePage() {
                               isOwner={user?.username === item.data.username}
                             />
                           )}
-                        </div>
+                        </FadeInItem>
                       ))}
                     </div>
 
-                    {/* Infinite scroll trigger - placed outside columns for reliability */}
-                    {hasNextPage && (
-                      <div ref={observerTarget} className="h-20 w-full mt-8" style={{ clear: 'both' }} />
-                    )}
+                    {/* Infinite scroll trigger */}
+                    <div
+                      ref={observerTarget}
+                      className="h-20 w-full mt-8"
+                      style={{ clear: 'both' }}
+                      aria-hidden="true"
+                    />
 
-                    {/* Loading skeletons for next page - shown inline during fetch */}
-                    {isFetchingNextPage && (
-                      <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2 mt-2">
-                        <LoadingSkeleton type="project" count={6} />
-                      </div>
-                    )}
-
-                    {/* End of feed indicator */}
-                    {!hasNextPage && !isFetchingNextPage && displayProjects.length > 0 && (
-                      <div className="flex flex-col items-center justify-center py-12 mt-8">
-                        <div className="text-center">
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                            You've reached the end
-                          </p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500">
-                            {displayProjects.length} projects shown
-                          </p>
+                    {/* Loading indicator or Load More button */}
+                    {isFetchingNextPage ? (
+                      <div className="flex justify-center py-8">
+                        <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="text-sm">Loading more projects...</span>
                         </div>
                       </div>
-                    )}
+                    ) : hasNextPage ? (
+                      <div className="flex justify-center py-8">
+                        <button
+                          onClick={() => fetchNextPage()}
+                          className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                        >
+                          Load More Projects
+                        </button>
+                      </div>
+                    ) : allProjects.length > 0 ? (
+                      <div className="flex justify-center py-8 text-gray-500 dark:text-gray-400 text-sm">
+                        You've reached the end ({allProjects.length} projects)
+                      </div>
+                    ) : null}
                   </>
                 )}
               </>

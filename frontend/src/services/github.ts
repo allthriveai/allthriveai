@@ -128,7 +128,7 @@ export interface TaskStatus {
  */
 export async function importGitHubRepoAsync(
   url: string,
-  isShowcase: boolean = false,
+  isShowcased: boolean = false,
   onProgress?: (status: string) => void
 ): Promise<{
   project_id: number;
@@ -151,7 +151,7 @@ export async function importGitHubRepoAsync(
       project?: Project;
     }>('/integrations/import-from-url/', {
       url,
-      is_showcase: isShowcase,
+      is_showcase: isShowcased,
     });
 
     if (!response.data.success) {

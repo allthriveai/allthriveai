@@ -96,7 +96,7 @@ describe('RightAddProjectChat', () => {
           title: 'Untitled Project',
           description: '',
           type: 'other',
-          isShowcase: true,
+          isShowcased: true,
           content: { blocks: [] },
         });
       });

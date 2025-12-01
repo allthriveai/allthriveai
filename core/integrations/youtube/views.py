@@ -461,7 +461,7 @@ class YouTubeViewSet(viewsets.ViewSet):
                 task = import_youtube_video_task.delay(
                     user_id=user_id,
                     video_id=video_id,
-                    is_showcase=data.get('is_showcase', True),
+                    is_showcased=data.get('is_showcase', True),
                     is_private=data.get('is_private', False),
                 )
 

@@ -79,11 +79,6 @@ class WeaviateClient:
             'operator': 'And',
             'operands': [
                 {
-                    'path': ['is_published'],
-                    'operator': 'Equal',
-                    'valueBoolean': True,
-                },
-                {
                     'path': ['is_private'],
                     'operator': 'Equal',
                     'valueBoolean': False,

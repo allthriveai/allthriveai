@@ -55,7 +55,12 @@ export async function exploreProjects(params: ExploreParams): Promise<PaginatedR
 
   console.log('[exploreProjects] URL:', url);
   const response = await api.get<PaginatedResponse<any>>(url);
-  console.log('[exploreProjects] Response:', { count: response.data.count, resultsLength: response.data.results?.length });
+
+  // Log the raw response to see all fields
+  console.log('[exploreProjects] RAW response.data keys:', Object.keys(response.data));
+  console.log('[exploreProjects] RAW response.data.next:', response.data.next);
+  console.log('[exploreProjects] Full response.data:', JSON.stringify(response.data, null, 2).substring(0, 500));
+
   return response.data;
 }
 

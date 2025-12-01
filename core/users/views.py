@@ -33,7 +33,7 @@ def explore_users(request):
     queryset = (
         User.objects.filter(
             is_active=True,
-            projects__is_showcase=True,
+            projects__is_showcased=True,
             projects__is_archived=False,
         )
         .annotate(

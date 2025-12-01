@@ -76,14 +76,14 @@ export function ProjectSettingsSection({
             </div>
             <input
               type="checkbox"
-              checked={project.isShowcase}
+              checked={project.isShowcased}
               onChange={async () => {
                 if (editorProps.handleToggleShowcase) {
                   await editorProps.handleToggleShowcase();
                 } else {
                   try {
                     const updated = await updateProject(project.id, {
-                      isShowcase: !project.isShowcase,
+                      isShowcased: !project.isShowcased,
                     });
                     onProjectUpdate(updated);
                   } catch (error) {

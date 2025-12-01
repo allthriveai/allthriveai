@@ -55,8 +55,7 @@ class Command(BaseCommand):
                 title=f'Test Project {i + 1}',
                 description=f'This is a test project #{i + 1} with a thumbnail for development purposes.',
                 type=Project.ProjectType.OTHER,
-                is_showcase=False,  # Playground project
-                is_published=True,
+                is_showcased=False,  # Playground project
                 thumbnail_url=thumbnail_options[i % len(thumbnail_options)],
                 content={
                     'blocks': [

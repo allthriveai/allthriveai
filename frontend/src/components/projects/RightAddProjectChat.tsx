@@ -256,7 +256,7 @@ export function RightAddProjectChat({ isOpen, onClose, welcomeMode = false }: Ri
         title: 'Untitled Project',
         description: '',
         type: 'other',
-        isShowcase: true,
+        isShowcased: true,
         content: { blocks: [] },
       });
       onClose();

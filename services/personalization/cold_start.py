@@ -136,8 +136,8 @@ class ColdStartService:
                     category_preferences.extend(response.selected_options)
 
             # Build query based on preferences
+            # Note: Don't filter by is_published to include playground projects in explore
             query = Project.objects.filter(
-                is_published=True,
                 is_private=False,
                 is_archived=False,
             )
@@ -156,6 +156,9 @@ class ColdStartService:
                 .prefetch_related('tools', 'categories', 'likes')
             )
 
+            # Get total count for pagination
+            total_count = projects.count()
+
             start_idx = (page - 1) * page_size
             end_idx = start_idx + page_size
 
@@ -164,6 +167,7 @@ class ColdStartService:
                 'metadata': {
                     'page': page,
                     'page_size': page_size,
+                    'total_candidates': total_count,
                     'algorithm': 'onboarding_preferences',
                     'tool_preferences': tool_preferences,
                     'category_preferences': category_preferences,
@@ -174,12 +178,18 @@ class ColdStartService:
             return self._get_popular_feed(page, page_size)
 
     def _get_popular_feed(self, page: int, page_size: int) -> dict:
-        """Get popular projects as cold-start fallback."""
+        """Get feed for cold-start users.
+
+        Shows liked projects first (by like count), then all remaining projects
+        by newest. This ensures popular content surfaces at the top while still
+        showing all projects - nothing is filtered out.
+        """
         from core.projects.models import Project
 
+        # Sort by like count (popular first), then by newest
+        # Projects with 0 likes will appear after liked projects, sorted by recency
         projects = (
             Project.objects.filter(
-                is_published=True,
                 is_private=False,
                 is_archived=False,
             )
@@ -189,6 +199,9 @@ class ColdStartService:
             .prefetch_related('tools', 'categories', 'likes')
         )
 
+        # Get total count for pagination
+        total_count = projects.count()
+
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size
 
@@ -197,7 +210,8 @@ class ColdStartService:
             'metadata': {
                 'page': page,
                 'page_size': page_size,
-                'algorithm': 'popular_fallback',
+                'total_candidates': total_count,
+                'algorithm': 'popular_then_newest',
             },
         }
 

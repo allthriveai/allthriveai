@@ -108,13 +108,6 @@ class WeaviateSchema:
                     'indexSearchable': False,
                 },
                 {
-                    'name': 'is_published',
-                    'dataType': ['boolean'],
-                    'description': 'Whether project is published',
-                    'indexFilterable': True,
-                    'indexSearchable': False,
-                },
-                {
                     'name': 'is_private',
                     'dataType': ['boolean'],
                     'description': 'Whether project is private (only owner can see)',

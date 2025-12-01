@@ -94,8 +94,8 @@ class ProjectModelTest(TestCase):
 
     def test_project_showcase_flag(self):
         """Test is_showcase flag."""
-        project = Project.objects.create(user=self.user, title='Showcase Project', is_showcase=True)
-        self.assertTrue(project.is_showcase)
+        project = Project.objects.create(user=self.user, title='Showcase Project', is_showcased=True)
+        self.assertTrue(project.is_showcasedd)
 
     def test_project_content_json(self):
         """Test that content field stores JSON correctly."""

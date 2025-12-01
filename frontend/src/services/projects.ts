@@ -11,12 +11,10 @@ interface ProjectApiResponse {
   slug: string;
   description?: string;
   type: ProjectType;
-  isShowcase: boolean;
+  isShowcased: boolean;
   isHighlighted?: boolean;
   isPrivate?: boolean;
   isArchived: boolean;
-  isPublished?: boolean;
-  publishedAt?: string;
   bannerUrl?: string;
   featuredImageUrl?: string;
   externalUrl?: string;
@@ -45,12 +43,10 @@ function transformProject(data: ProjectApiResponse): Project {
     slug: data.slug,
     description: data.description || '',
     type: data.type,
-    isShowcase: data.isShowcase,
+    isShowcased: data.isShowcased,
     isHighlighted: data.isHighlighted ?? false,
     isPrivate: data.isPrivate ?? false,
     isArchived: data.isArchived,
-    isPublished: data.isPublished ?? false,
-    publishedAt: data.publishedAt,
     bannerUrl: data.bannerUrl,
     featuredImageUrl: data.featuredImageUrl || '',
     externalUrl: data.externalUrl || '',

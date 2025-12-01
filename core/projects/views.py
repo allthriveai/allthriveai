@@ -223,7 +223,7 @@ def get_project_by_slug(request, username, slug):
 
     # Allow access if:
     # 1. User is the owner
-    # 2. Project is not private and not archived (regardless of is_published status)
+    # 2. Project is not private and not archived
     if not is_owner:
         if project.is_private or project.is_archived:
             return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -237,8 +237,8 @@ def get_project_by_slug(request, username, slug):
 def public_user_projects(request, username):
     """Get projects for a user by username.
 
-    For public/other users: Returns only showcase projects (is_showcase=True, not archived)
-    For the user viewing their own profile: Returns showcase + all projects in playground
+    For public/other users: Returns only showcased projects (is_showcased=True, not archived)
+    For the user viewing their own profile: Returns showcased + all projects in playground
 
     This endpoint is accessible to everyone, including logged-out users.
 
@@ -285,7 +285,7 @@ def public_user_projects(request, username):
     # The serializer accesses user.username, so we fetch user data upfront
     showcase_projects = (
         Project.objects.select_related('user')
-        .filter(user=user, is_showcase=True, is_archived=False)
+        .filter(user=user, is_showcased=True, is_archived=False)
         .order_by('-created_at')
     )
 
@@ -401,7 +401,6 @@ def explore_projects(request):
     sort = request.GET.get('sort', 'newest')
 
     # Build base queryset - all public projects (not private, not archived)
-    # Show all projects regardless of is_published status so playground projects appear in explore
     queryset = (
         Project.objects.filter(is_private=False, is_archived=False)
         .select_related('user')
@@ -490,11 +489,28 @@ def explore_projects(request):
                         page=page_num,
                         page_size=page_size,
                     )
-                    # Return directly with personalization metadata
                     serializer = ProjectSerializer(result['projects'], many=True)
+
+                    # Calculate pagination info
+                    total_count = result['metadata'].get('total_candidates', len(result['projects']))
+                    has_next = page_num * page_size < total_count
+
+                    next_url = (
+                        f'/api/v1/projects/explore/?tab=for-you&page={page_num + 1}&page_size={page_size}'
+                        if has_next
+                        else None
+                    )
+                    previous_url = (
+                        f'/api/v1/projects/explore/?tab=for-you&page={page_num - 1}&page_size={page_size}'
+                        if page_num > 1
+                        else None
+                    )
+
                     return Response(
                         {
-                            'count': result['metadata'].get('total_candidates', len(result['projects'])),
+                            'count': total_count,
+                            'next': next_url,
+                            'previous': previous_url,
                             'results': serializer.data,
                             'personalization': result['metadata'],
                         }

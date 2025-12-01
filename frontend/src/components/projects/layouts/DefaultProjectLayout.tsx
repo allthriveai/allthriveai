@@ -81,6 +81,10 @@ export function DefaultProjectLayout() {
     isEditTrayOpen,
     openEditTray,
     closeEditTray,
+    isToolTrayOpen,
+    selectedToolSlug,
+    openToolTray,
+    closeToolTray,
     handleDelete,
     handleToggleShowcase,
     isAuthenticated,
@@ -88,8 +92,6 @@ export function DefaultProjectLayout() {
 
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
-  const [showToolTray, setShowToolTray] = useState(false);
-  const [selectedToolSlug, setSelectedToolSlug] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(true); // Default to edit mode for owners
 
   // Toggle between edit and published view
@@ -355,7 +357,7 @@ export function DefaultProjectLayout() {
                       }}
                       className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 flex items-center gap-3 transition-colors"
                     >
-                      {project.isShowcase ? (
+                      {project.isShowcased ? (
                         <>
                           <EyeSlashIcon className="w-4 h-4" />
                           Remove from Showcase
@@ -445,10 +447,7 @@ export function DefaultProjectLayout() {
                     {project.toolsDetails.map((tool) => (
                       <button
                         key={tool.id}
-                        onClick={() => {
-                          setSelectedToolSlug(tool.slug);
-                          setShowToolTray(true);
-                        }}
+                        onClick={() => openToolTray(tool.slug)}
                         className="group flex items-center gap-2.5 px-4 py-2 bg-white/5 hover:bg-white/15 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/30 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                       >
                         {tool.logoUrl ? (
@@ -484,10 +483,7 @@ export function DefaultProjectLayout() {
             <div className="flex items-center justify-center perspective-1000">
               <ProjectHero
                 project={project}
-                onToolClick={(slug) => {
-                  setSelectedToolSlug(slug);
-                  setShowToolTray(true);
-                }}
+                onToolClick={openToolTray}
                 onLikeToggle={toggleLike}
                 onCommentClick={openCommentTray}
                 isLiked={isLiked}
@@ -545,11 +541,8 @@ export function DefaultProjectLayout() {
       {/* Tool Tray */}
       {selectedToolSlug && (
         <ToolTray
-          isOpen={showToolTray}
-          onClose={() => {
-            setShowToolTray(false);
-            setSelectedToolSlug(null);
-          }}
+          isOpen={isToolTrayOpen}
+          onClose={closeToolTray}
           toolSlug={selectedToolSlug}
         />
       )}

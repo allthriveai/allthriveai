@@ -22,7 +22,7 @@ def get_topic_suggestions(request):
     limit = int(request.GET.get('limit', 20))
 
     # Get all topics from published projects
-    projects = Project.objects.filter(is_published=True, is_archived=False).exclude(topics=[])
+    projects = Project.objects.filter(is_private=False, is_archived=False).exclude(topics=[])
 
     # Flatten all topics and count occurrences
     topic_counts = {}

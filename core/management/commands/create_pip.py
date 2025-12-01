@@ -139,8 +139,7 @@ class Command(BaseCommand):
         for proj_data in showcase_projects:
             Project.objects.create(
                 user=pip,
-                is_showcase=True,
-                is_published=True,
+                is_showcased=True,
                 published_at=timezone.now(),
                 **proj_data,
             )
@@ -149,8 +148,8 @@ class Command(BaseCommand):
         for proj_data in playground_projects:
             Project.objects.create(
                 user=pip,
-                is_showcase=False,
-                is_published=True,  # Public in playground
+                is_showcased=False,
+                # Public in playground
                 published_at=timezone.now(),
                 **proj_data,
             )

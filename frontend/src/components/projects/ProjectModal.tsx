@@ -52,11 +52,16 @@ export function ProjectModal({
   }, [isOpen, onClose]);
 
   const handleToolClick = (toolSlug: string) => {
+    // Close comment section when opening tool tray
+    setShowCommentSection(false);
     setSelectedToolSlug(toolSlug);
     setShowToolTray(true);
   };
 
   const handleCommentClick = () => {
+    // Close tool tray when opening comments
+    setShowToolTray(false);
+    setSelectedToolSlug(null);
     setShowCommentSection(!showCommentSection);
   };
 

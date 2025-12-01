@@ -89,7 +89,7 @@ class ProjectService:
                 title=title.strip(),
                 description=description.strip() if description else '',
                 type=project_type,  # Model field is 'type', not 'project_type'
-                is_showcase=is_showcase,
+                is_showcased=is_showcase,
                 featured_image_url=featured_image_url or '',
                 content=content or {},
                 external_url=external_url or '',

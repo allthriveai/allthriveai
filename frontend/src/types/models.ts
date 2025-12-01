@@ -109,13 +109,11 @@ export interface Project {
   slug: string;
   description: string;
   type: ProjectType;
-  isShowcase: boolean;
-  isHighlighted: boolean;
-  isPrivate: boolean;
-  isArchived: boolean;
-  isPublished: boolean;
-  publishedAt?: string;
-  bannerUrl?: string; // Banner/cover image (renamed from bannerUrl for clarity)
+  isShowcased: boolean; // Featured on user profile showcase section
+  isHighlighted: boolean; // Featured at top of profile (only one per user)
+  isPrivate: boolean; // Hidden from explore feed and public views
+  isArchived: boolean; // Soft delete - hidden from all views
+  bannerUrl?: string; // Banner/cover image
   featuredImageUrl?: string;
   externalUrl?: string;
   tools: number[]; // Tool IDs
@@ -211,11 +209,10 @@ export interface ProjectPayload {
   slug?: string;
   description?: string;
   type?: ProjectType;
-  isShowcase?: boolean;
+  isShowcased?: boolean;
   isHighlighted?: boolean;
   isPrivate?: boolean;
   isArchived?: boolean;
-  isPublished?: boolean;
   bannerUrl?: string;
   featuredImageUrl?: string;
   externalUrl?: string;

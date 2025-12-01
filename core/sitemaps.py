@@ -72,14 +72,12 @@ class ProjectSitemap(Sitemap):
             from core.projects.models import Project
 
             # Only include truly public projects
-            # Note: Using actual model fields (is_published, is_private, is_archived)
-            # instead of non-existent 'is_public' field
+            # Only include public showcased projects in sitemap
             projects = list(
                 Project.objects.filter(
-                    is_published=True,
                     is_private=False,
                     is_archived=False,
-                    is_showcase=True,
+                    is_showcased=True,
                 )
                 .select_related(
                     'user'  # Optimize N+1 queries

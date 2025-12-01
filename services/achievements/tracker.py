@@ -228,7 +228,7 @@ class AchievementTracker:
 
         # Get counts of various activities
         project_count = Project.objects.filter(user=user).count()
-        published_count = Project.objects.filter(user=user, is_published=True).count()
+        published_count = Project.objects.filter(user=user, is_private=False).count()
 
         # Track project-related achievements
         if project_count > 0:

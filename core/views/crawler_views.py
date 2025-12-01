@@ -387,7 +387,7 @@ def profile_view(request, username):
             try:
                 # Get user's public projects for crawlers
                 projects = (
-                    Project.objects.filter(user=user, is_showcase=True, is_private=False, is_archived=False)
+                    Project.objects.filter(user=user, is_showcased=True, is_private=False, is_archived=False)
                     .select_related('user')
                     .prefetch_related('tools', 'categories')
                     .order_by('-published_at')
