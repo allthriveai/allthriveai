@@ -29,7 +29,6 @@ class KeywordFilter:
         r'\bcumshot',
         r'\bgangbang',
         r'\bnsfw\b',
-        r'\bporn',
         r'\bxxx\b',
         r'\bfuck\b',
         r'\bsex\b',
@@ -48,6 +47,20 @@ class KeywordFilter:
         r'\bbdsm\b',
         r'\bdirty\s+fantasies',
         r'\bfilthiest\s+shit',
+    ]
+
+    # Legitimate uses of "porn" as metaphor (e.g., "food porn", "success porn")
+    # These should be checked BEFORE flagging content with "porn" in it
+    PORN_EXCEPTIONS = [
+        r'\b(success|failure|food|earth|map|room|design|architecture|data|career)\s+porn\b',
+        r'\bporn\s+(addiction|industry)\b',  # Discussing the topic, not promoting it
+    ]
+
+    # Explicit porn patterns (only match when not in exception list)
+    # This will be checked after exceptions are ruled out
+    EXPLICIT_PORN_PATTERNS = [
+        r'\bporn\b(?!\s+(addiction|industry))',  # "porn" not followed by discussion terms
+        r'\bpornography\b',
     ]
 
     # Violent/graphic content keywords
@@ -103,6 +116,8 @@ class KeywordFilter:
         self.violent_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in self.VIOLENT_GRAPHIC]
         self.hate_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in self.HATE_SPEECH]
         self.child_safety_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in self.CHILD_SAFETY]
+        self.porn_exception_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in self.PORN_EXCEPTIONS]
+        self.explicit_porn_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in self.EXPLICIT_PORN_PATTERNS]
 
     def check(self, content: str, context: str = '') -> dict[str, Any]:
         """
@@ -130,12 +145,27 @@ class KeywordFilter:
         matched_categories = []
         matched_keywords = []
 
+        # First, check if content contains legitimate "porn" metaphors
+        # If it does, we'll skip porn-specific checks
+        has_porn_exception = False
+        for pattern in self.porn_exception_patterns:
+            if pattern.search(content):
+                has_porn_exception = True
+                break
+
         # Check sexual content
         sexual_matches = []
         for pattern in self.sexual_patterns:
             match = pattern.search(content)
             if match:
                 sexual_matches.append(match.group(0))
+
+        # Check explicit porn patterns (only if no exception found)
+        if not has_porn_exception:
+            for pattern in self.explicit_porn_patterns:
+                match = pattern.search(content)
+                if match:
+                    sexual_matches.append(match.group(0))
 
         if sexual_matches:
             matched_categories.append('sexual')

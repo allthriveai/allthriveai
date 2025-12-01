@@ -274,6 +274,46 @@ class TestKeywordFilter:
             # These specific phrases should be flagged
             assert 'sexual' in result['categories']
 
+    def test_porn_metaphor_not_flagged(self):
+        """Test that legitimate metaphorical uses of 'porn' are not flagged."""
+        filter = KeywordFilter(strict_mode=False)
+
+        legitimate_texts = [
+            "I'm sick of founder success porn—we're running an open mic dedicated ONLY to raw failure stories",
+            'This food porn on Instagram is making me hungry',
+            'Check out this earth porn subreddit for beautiful landscapes',
+            'The architecture porn in this city is amazing',
+            'Data porn: beautiful visualizations of complex information',
+            'Discussion about porn addiction and recovery',
+            'Analysis of the porn industry and its impact',
+        ]
+
+        for text in legitimate_texts:
+            result = filter.check(text)
+            # These should NOT be flagged - they use "porn" metaphorically
+            assert not result['flagged'], f'Metaphorical use of porn should not be flagged: {text}'
+            # Even if it matches a pattern, it shouldn't be in the matched keywords
+            if 'sexual' in result['categories']:
+                # If somehow flagged, it shouldn't be because of "porn"
+                assert 'porn' not in [kw.lower() for kw in result['matched_keywords']]
+
+    def test_explicit_porn_is_flagged(self):
+        """Test that actual explicit porn references are still flagged."""
+        filter = KeywordFilter(strict_mode=True)
+
+        explicit_texts = [
+            'Looking for porn videos',
+            'Download free porn here',
+            'Best porn sites 2025',
+            'Watch pornography online',
+        ]
+
+        for text in explicit_texts:
+            result = filter.check(text)
+            # These SHOULD be flagged - actual porn content
+            assert result['flagged'], f'Explicit porn reference should be flagged: {text}'
+            assert 'sexual' in result['categories']
+
 
 class TestKeywordFilterIntegration:
     """Integration tests for KeywordFilter with Reddit moderation."""
