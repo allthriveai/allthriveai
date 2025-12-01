@@ -53,20 +53,30 @@ class ProjectAgentState(TypedDict):
     username: Annotated[str | None, keep_latest_str_or_existing]
 
 
-# Initialize LLM via centralized AI Gateway
+# Initialize LLM via centralized AI Gateway (lazy initialization for CI compatibility)
+_llm_instance = None
+_llm_with_tools_instance = None
+
+
 def get_llm():
     """Get configured LLM instance from AIProvider."""
-    ai_provider = AIProvider()
-    return ai_provider.get_langchain_llm(
-        temperature=0.7,
-        timeout=30,
-        max_retries=2,
-    )
+    global _llm_instance
+    if _llm_instance is None:
+        ai_provider = AIProvider()
+        _llm_instance = ai_provider.get_langchain_llm(
+            temperature=0.7,
+            timeout=30,
+            max_retries=2,
+        )
+    return _llm_instance
 
 
-# Bind tools to LLM
-llm = get_llm()
-llm_with_tools = llm.bind_tools(PROJECT_TOOLS)
+def get_llm_with_tools():
+    """Get LLM instance with tools bound (lazy initialization)."""
+    global _llm_with_tools_instance
+    if _llm_with_tools_instance is None:
+        _llm_with_tools_instance = get_llm().bind_tools(PROJECT_TOOLS)
+    return _llm_with_tools_instance
 
 
 # Agent node
@@ -81,8 +91,8 @@ async def agent_node(state: ProjectAgentState) -> ProjectAgentState:
     if not any(isinstance(m, SystemMessage) for m in messages):
         messages = [SystemMessage(content=SYSTEM_PROMPT)] + list(messages)
 
-    # Invoke LLM with tools (async)
-    response = await llm_with_tools.ainvoke(messages)
+    # Invoke LLM with tools (async) - use lazy getter for CI compatibility
+    response = await get_llm_with_tools().ainvoke(messages)
 
     return {'messages': [response]}
 
