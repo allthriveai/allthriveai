@@ -24,9 +24,9 @@ function transformProject(data: any): Project {
     bannerUrl: data.bannerUrl,
     featuredImageUrl: data.featuredImageUrl || '',
     externalUrl: data.externalUrl || '',
-    tools: data.tools || [],
+    tools: data.toolsDetails || data.tools || [],  // Use toolsDetails (full objects) first
     toolsDetails: data.toolsDetails || [],
-    categories: data.categories || [],
+    categories: data.categoriesDetails || data.categories || [],  // Use categoriesDetails (full objects) first
     categoriesDetails: data.categoriesDetails || [],
     topics: data.topics || [],
     heartCount: data.heartCount || 0,

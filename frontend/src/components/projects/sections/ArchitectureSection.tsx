@@ -3,7 +3,7 @@
  */
 
 import type { ArchitectureSectionContent } from '@/types/sections';
-import { MermaidDiagram } from '../shared';
+import { MermaidDiagram } from '../shared/MermaidDiagram';
 
 interface ArchitectureSectionProps {
   content: ArchitectureSectionContent;

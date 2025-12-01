@@ -1,0 +1,71 @@
+# Python cache files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation (exclude from build, but still in repo)
+*.md
+!README.md
+
+# Logs
+*.log
+
+# Database
+*.db
+*.sqlite3
+
+# Node modules (these are in a separate volume)
+node_modules/
+frontend/node_modules/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Static files (collected at runtime)
+staticfiles/
+
+# Linting/formatting cache
+.ruff_cache/
+.mypy_cache/
+.pre-commit-cache/
+
+# Monitoring data
+monitoring/data/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

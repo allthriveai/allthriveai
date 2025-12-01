@@ -38,6 +38,8 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
   console.log('RedditThreadLayout - redditData:', redditData);
   console.log('RedditThreadLayout - thumbnail_url:', redditData?.thumbnail_url);
   console.log('RedditThreadLayout - thumbnailUrl:', redditData?.thumbnailUrl);
+  console.log('RedditThreadLayout - selftext:', redditData?.selftext?.substring(0, 100));
+  console.log('RedditThreadLayout - selftext_html:', redditData?.selftext_html?.substring(0, 200));
 
   // React Rewards for project likes
   const { reward: rewardLike } = useReward('likeReward', 'emoji', {
@@ -59,14 +61,32 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
     author,
     permalink,
     score,
+    numComments,
     num_comments,
+    createdUtc,
     created_utc,
-    thumbnail_url,
     thumbnailUrl,
+    thumbnail_url,
+    selftext,
+    selftextHtml,
+    selftext_html,
+    upvoteRatio,
+    upvote_ratio,
+    linkFlairText,
+    link_flair_text,
+    linkFlairBackgroundColor,
+    link_flair_background_color,
   } = redditData;
-
+  
   // Handle both snake_case and camelCase
-  const thumbnailImage = thumbnail_url || thumbnailUrl;
+  const thumbnailImage = thumbnailUrl || thumbnail_url;
+  const postSelftext = selftext || '';
+  const postSelftextHtml = selftextHtml || selftext_html || '';
+  const upvotePercentage = upvoteRatio || upvote_ratio || 0;
+  const linkFlair = linkFlairText || link_flair_text || '';
+  const linkFlairBgColor = linkFlairBackgroundColor || link_flair_background_color || '';
+  const commentCount = numComments || num_comments || 0;
+  const postScore = score || 0;
 
   // Clean author name (remove /u/ prefix if present)
   const cleanAuthor = author?.replace(/^\/u\//, '') || 'unknown';
@@ -93,8 +113,9 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
   const postContentHtml = postContent ? marked.parse(postContent) as string : '';
 
   // Format the date
-  const formattedDate = created_utc
-    ? new Date(created_utc).toLocaleDateString('en-US', {
+  const postDate = createdUtc || created_utc;
+  const formattedDate = postDate
+    ? new Date(postDate).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -217,7 +238,7 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
           <div className="relative backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
             {/* Thumbnail Hero Image */}
             {thumbnailImage && thumbnailImage !== 'self' && thumbnailImage !== 'default' && (
-              <div className="w-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center min-h-[300px] relative overflow-hidden">
+              <div className="w-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center min-h-[400px] relative overflow-hidden">
                 {/* Blurred background */}
                 <div
                   className="absolute inset-0 blur-2xl opacity-40"
@@ -231,34 +252,43 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                 <img
                   src={thumbnailImage}
                   alt={localProject.title}
-                  className="relative z-10 max-w-full max-h-[400px] object-contain shadow-2xl"
+                  className="relative z-10 max-w-full max-h-[800px] w-auto object-contain shadow-2xl"
                   onError={(e) => {
                     // Hide image if it fails to load
-                    e.currentTarget.parentElement.style.display = 'none';
+                    e.currentTarget.parentElement?.style?.setProperty('display', 'none');
                   }}
                 />
               </div>
             )}
 
             <div className="p-8">
-              {/* Reddit Badge */}
-              <div className="flex items-center gap-3 mb-6">
+              {/* Subreddit, Flair, and Author */}
+              <div className="flex flex-wrap items-center gap-3 mb-6">
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500/20 border border-orange-400/30 backdrop-blur-md">
                   <ChatBubbleLeftRightIcon className="w-5 h-5 text-orange-400" />
                   <span className="font-semibold text-orange-300">r/{subreddit}</span>
                 </div>
 
-                {score > 0 && (
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-500/20 border border-green-400/30 backdrop-blur-md">
-                    <ArrowUpIcon className="w-5 h-5 text-green-400" />
-                    <span className="font-semibold text-green-300">{score.toLocaleString()}</span>
-                  </div>
-                )}
+                <a 
+                  href={`https://www.reddit.com/user/${cleanAuthor}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-400/30 backdrop-blur-md hover:bg-blue-500/30 transition-colors"
+                >
+                  <UserIcon className="w-5 h-5 text-blue-400" />
+                  <span className="font-semibold text-blue-300">u/{cleanAuthor}</span>
+                </a>
 
-                {num_comments > 0 && (
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-400/30 backdrop-blur-md">
-                    <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-400" />
-                    <span className="font-semibold text-blue-300">{num_comments.toLocaleString()}</span>
+                {linkFlair && (
+                  <div 
+                    className="px-4 py-2 rounded-xl font-semibold text-sm border backdrop-blur-md"
+                    style={{
+                      backgroundColor: linkFlairBgColor ? `${linkFlairBgColor}40` : 'rgba(99, 102, 241, 0.2)',
+                      borderColor: linkFlairBgColor ? `${linkFlairBgColor}60` : 'rgba(99, 102, 241, 0.3)',
+                      color: '#e0e7ff',
+                    }}
+                  >
+                    {linkFlair}
                   </div>
                 )}
               </div>
@@ -282,15 +312,22 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
               )}
             </div>
 
-            {/* Post Content */}
-            {postContent && (
+            {/* Post Selftext Content */}
+            {(postSelftextHtml || postSelftext) && (
               <div className="mb-6">
-                <div
-                  className="prose prose-lg prose-invert max-w-none p-6 rounded-xl bg-white/5 border border-white/10"
-                  dangerouslySetInnerHTML={{
-                    __html: sanitizeHtml(postContentHtml)
-                  }}
-                />
+                <div className="prose prose-lg prose-invert max-w-none p-6 rounded-xl bg-white/5 border border-white/10">
+                  {postSelftextHtml ? (
+                    <div 
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeHtml(postSelftextHtml)
+                      }}
+                    />
+                  ) : (
+                    <div className="whitespace-pre-wrap">
+                      {postSelftext}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -320,29 +357,102 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                 <span className="text-white/60">Community</span>
                 <span className="text-white font-semibold">r/{subreddit}</span>
               </div>
-              <div className="flex justify-between items-center pb-4 border-b border-white/10">
-                <span className="text-white/60">Posted by</span>
-                <span className="text-white font-semibold">u/{cleanAuthor}</span>
+              <div className="flex justify-between items-center pb-4 border-b border-white/10 bg-white/5 -mx-8 px-8 py-4">
+                <span className="text-white/60">Original Author</span>
+                <a 
+                  href={`https://www.reddit.com/user/${cleanAuthor}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-white font-bold hover:text-orange-400 transition-colors"
+                >
+                  <UserIcon className="w-5 h-5" />
+                  <span>u/{cleanAuthor}</span>
+                </a>
               </div>
-              {score !== undefined && (
+              {postScore > 0 && (
                 <div className="flex justify-between items-center pb-4 border-b border-white/10">
                   <span className="text-white/60">Reddit Score</span>
-                  <span className="text-white font-semibold">{score.toLocaleString()} upvotes</span>
+                  <span className="text-white font-semibold">{postScore.toLocaleString()} upvotes</span>
                 </div>
               )}
-              {num_comments !== undefined && (
+              {commentCount > 0 && (
                 <div className="flex justify-between items-center">
                   <span className="text-white/60">Reddit Comments</span>
-                  <span className="text-white font-semibold">{num_comments.toLocaleString()}</span>
+                  <span className="text-white font-semibold">{commentCount.toLocaleString()}</span>
                 </div>
               )}
             </div>
 
-            {/* Notice */}
-            <div className="mt-8 p-6 rounded-xl bg-blue-500/10 border border-blue-400/30 backdrop-blur-md">
-              <p className="text-blue-200 text-sm">
-                💡 This is a curated thread from Reddit. Click the button above to view the full discussion, read all comments, and participate in the conversation on Reddit.
+            {/* Disclaimer */}
+            <div className="mt-8 p-6 rounded-xl bg-orange-500/10 border border-orange-400/30 backdrop-blur-md">
+              <h3 className="text-orange-300 font-semibold mb-2 flex items-center gap-2">
+                <span className="text-xl">⚠️</span> Disclaimer
+              </h3>
+              <p className="text-orange-200/80 text-sm leading-relaxed">
+                This content was originally posted on Reddit by <strong>u/{cleanAuthor}</strong> and is not created, owned, or affiliated with AllThrive. 
+                We curate these discussions to help our community find valuable AI insights. 
+                All credit belongs to the original authors.
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* AllThrive Metadata Card */}
+        <div className="relative mt-8">
+          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-8 shadow-xl">
+            <h2 className="text-2xl font-bold text-white mb-6">AllThrive</h2>
+
+            <div className="space-y-6">
+              {/* Tools */}
+              {localProject.tools && localProject.tools.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-white/60 mb-3">Tools</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {localProject.tools.map((tool) => (
+                      <span
+                        key={tool.id}
+                        className="px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-sm font-medium"
+                      >
+                        {tool.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Categories */}
+              {localProject.categories && localProject.categories.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-white/60 mb-3">Category</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {localProject.categories.map((category) => (
+                      <span
+                        key={category.id}
+                        className="px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-400/30 text-blue-200 text-sm font-medium"
+                      >
+                        {category.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Topics */}
+              {localProject.topics && localProject.topics.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-white/60 mb-3">Topics</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {localProject.topics.map((topic, idx) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-400/30 text-purple-200 text-sm font-medium"
+                      >
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
