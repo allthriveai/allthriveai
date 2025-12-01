@@ -3,9 +3,13 @@ Embedding generation service for Weaviate personalization.
 
 Uses OpenAI text-embedding-3-small for generating embeddings from
 project content, user preferences, and tool descriptions.
+
+Includes circuit breaker pattern for resilience against OpenAI outages.
 """
 
 import logging
+import threading
+import time
 from typing import TYPE_CHECKING
 
 from django.conf import settings
@@ -20,6 +24,89 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class CircuitBreaker:
+    """
+    Circuit breaker for external API calls.
+
+    States:
+    - CLOSED: Normal operation, requests pass through
+    - OPEN: Failures exceeded threshold, requests fail fast
+    - HALF_OPEN: Testing if service recovered
+
+    After failure_threshold consecutive failures, circuit opens for
+    recovery_timeout seconds. Then it enters half-open state where
+    a single success closes the circuit, or a failure re-opens it.
+    """
+
+    CLOSED = 'closed'
+    OPEN = 'open'
+    HALF_OPEN = 'half_open'
+
+    def __init__(
+        self,
+        failure_threshold: int = 5,
+        recovery_timeout: int = 60,
+        name: str = 'circuit',
+    ):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.name = name
+        self._state = self.CLOSED
+        self._failure_count = 0
+        self._last_failure_time: float | None = None
+        self._lock = threading.Lock()
+
+    @property
+    def state(self) -> str:
+        with self._lock:
+            if self._state == self.OPEN:
+                # Check if recovery timeout has passed
+                if self._last_failure_time and time.time() - self._last_failure_time > self.recovery_timeout:
+                    self._state = self.HALF_OPEN
+                    logger.info(f'Circuit breaker {self.name}: OPEN -> HALF_OPEN')
+            return self._state
+
+    def record_success(self) -> None:
+        """Record a successful call."""
+        with self._lock:
+            self._failure_count = 0
+            if self._state != self.CLOSED:
+                logger.info(f'Circuit breaker {self.name}: {self._state} -> CLOSED')
+                self._state = self.CLOSED
+
+    def record_failure(self) -> None:
+        """Record a failed call."""
+        with self._lock:
+            self._failure_count += 1
+            self._last_failure_time = time.time()
+
+            if self._state == self.HALF_OPEN:
+                # Single failure in half-open state re-opens circuit
+                self._state = self.OPEN
+                logger.warning(f'Circuit breaker {self.name}: HALF_OPEN -> OPEN (failure in test)')
+            elif self._failure_count >= self.failure_threshold:
+                if self._state != self.OPEN:
+                    logger.warning(f'Circuit breaker {self.name}: CLOSED -> OPEN ' f'(failures={self._failure_count})')
+                    self._state = self.OPEN
+
+    def can_execute(self) -> bool:
+        """Check if a call should be allowed."""
+        state = self.state  # Property handles OPEN -> HALF_OPEN transition
+        return state in (self.CLOSED, self.HALF_OPEN)
+
+
+class EmbeddingServiceError(Exception):
+    """Base exception for embedding service errors."""
+
+    pass
+
+
+class CircuitOpenError(EmbeddingServiceError):
+    """Raised when circuit breaker is open."""
+
+    pass
+
+
 class EmbeddingService:
     """
     Service for generating text embeddings using OpenAI.
@@ -28,7 +115,17 @@ class EmbeddingService:
     - Projects (title + description + topics + tools + categories)
     - User profiles (tags + bio + behavioral summary)
     - Tools (name + description + use cases)
+
+    Uses circuit breaker pattern to fail fast when OpenAI is unavailable,
+    preventing cascading failures and wasted API calls.
     """
+
+    # Shared circuit breaker for all embedding requests
+    _circuit_breaker = CircuitBreaker(
+        failure_threshold=5,  # Open after 5 consecutive failures
+        recovery_timeout=60,  # Try again after 60 seconds
+        name='openai_embeddings',
+    )
 
     def __init__(self):
         self.model = getattr(settings, 'WEAVIATE_EMBEDDING_MODEL', 'text-embedding-3-small')
@@ -46,6 +143,11 @@ class EmbeddingService:
             self._client = OpenAI(api_key=api_key)
         return self._client
 
+    @property
+    def circuit_state(self) -> str:
+        """Get current circuit breaker state for monitoring."""
+        return self._circuit_breaker.state
+
     def generate_embedding(self, text: str) -> list[float]:
         """
         Generate embedding vector for text.
@@ -55,32 +157,53 @@ class EmbeddingService:
 
         Returns:
             List of floats representing the embedding vector
+
+        Raises:
+            CircuitOpenError: If circuit breaker is open (API unavailable)
+            EmbeddingServiceError: If embedding generation fails
         """
         if not text or not text.strip():
             logger.warning('Attempted to generate embedding for empty text')
             return []
 
+        # Check circuit breaker before making API call
+        if not self._circuit_breaker.can_execute():
+            logger.warning(
+                f'Circuit breaker OPEN for embeddings, failing fast '
+                f'(recovery in {self._circuit_breaker.recovery_timeout}s)'
+            )
+            raise CircuitOpenError('OpenAI embedding API circuit breaker is open')
+
         try:
             # Truncate text if too long (max ~8000 tokens for embedding models)
             truncated_text = text[:30000]  # Rough character limit
+            if len(text) > 30000:
+                logger.info(f'Truncated embedding text from {len(text)} to 30000 chars')
 
             response = self.client.embeddings.create(
                 model=self.model,
                 input=truncated_text,
             )
 
+            # Success - record it
+            self._circuit_breaker.record_success()
             return response.data[0].embedding
 
+        except CircuitOpenError:
+            raise  # Re-raise circuit open errors
         except Exception as e:
+            # Record failure for circuit breaker
+            self._circuit_breaker.record_failure()
             logger.error(
                 f'Failed to generate embedding: {e}',
                 extra={
                     'model': self.model,
                     'text_length': len(text) if text else 0,
+                    'circuit_state': self._circuit_breaker.state,
                 },
                 exc_info=True,
             )
-            raise RuntimeError(f'Embedding generation failed: {e}') from e
+            raise EmbeddingServiceError(f'Embedding generation failed: {e}') from e
 
     def generate_batch_embeddings(self, texts: list[str]) -> list[list[float]]:
         """
@@ -91,9 +214,18 @@ class EmbeddingService:
 
         Returns:
             List of embedding vectors
+
+        Raises:
+            CircuitOpenError: If circuit breaker is open (API unavailable)
+            EmbeddingServiceError: If embedding generation fails
         """
         if not texts:
             return []
+
+        # Check circuit breaker before making API call
+        if not self._circuit_breaker.can_execute():
+            logger.warning('Circuit breaker OPEN for batch embeddings, failing fast')
+            raise CircuitOpenError('OpenAI embedding API circuit breaker is open')
 
         try:
             # Filter out empty texts and track indices
@@ -112,6 +244,9 @@ class EmbeddingService:
                 input=valid_texts,
             )
 
+            # Success - record it
+            self._circuit_breaker.record_success()
+
             # Map embeddings back to original indices
             result = [[] for _ in texts]
             for i, embedding_data in enumerate(response.data):
@@ -120,17 +255,22 @@ class EmbeddingService:
 
             return result
 
+        except CircuitOpenError:
+            raise  # Re-raise circuit open errors
         except Exception as e:
+            # Record failure for circuit breaker
+            self._circuit_breaker.record_failure()
             logger.error(
                 f'Failed to generate batch embeddings: {e}',
                 extra={
                     'model': self.model,
                     'batch_size': len(texts),
                     'valid_texts': len(valid_texts) if 'valid_texts' in dir() else 0,
+                    'circuit_state': self._circuit_breaker.state,
                 },
                 exc_info=True,
             )
-            raise RuntimeError(f'Batch embedding generation failed: {e}') from e
+            raise EmbeddingServiceError(f'Batch embedding generation failed: {e}') from e
 
     def generate_project_embedding_text(self, project: 'Project') -> str:
         """

@@ -1,6 +1,19 @@
 import type { Tool, ToolReview, PaginatedResponse } from '@/types/models';
 import { api } from './api';
 
+// Bookmark response interfaces
+export interface ToolBookmark {
+  id: number;
+  toolId: number;
+  tool: Tool;
+  createdAt: string;
+}
+
+export interface ToggleBookmarkResponse {
+  bookmarked: boolean;
+  bookmark?: ToolBookmark;
+}
+
 /**
  * Get list of all tools with optional filters
  */
@@ -111,7 +124,7 @@ export async function markReviewHelpful(reviewId: number): Promise<{ helpful_cou
 /**
  * Toggle bookmark for a tool
  */
-export async function toggleToolBookmark(toolId: number): Promise<{ bookmarked: boolean; bookmark?: any }> {
+export async function toggleToolBookmark(toolId: number): Promise<ToggleBookmarkResponse> {
   const response = await api.post('/tool-bookmarks/toggle/', { tool_id: toolId });
   return response.data;
 }
@@ -119,7 +132,7 @@ export async function toggleToolBookmark(toolId: number): Promise<{ bookmarked: 
 /**
  * Get user's bookmarked tools
  */
-export async function getMyToolBookmarks(): Promise<any[]> {
+export async function getMyToolBookmarks(): Promise<ToolBookmark[]> {
   const response = await api.get('/tool-bookmarks/');
   return response.data;
 }

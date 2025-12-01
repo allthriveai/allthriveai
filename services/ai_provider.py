@@ -12,6 +12,9 @@ from langsmith.run_helpers import traceable
 
 logger = logging.getLogger(__name__)
 
+# Default timeout for AI API calls (in seconds)
+DEFAULT_AI_TIMEOUT = 60
+
 
 class AIProviderType(Enum):
     """Supported AI provider types."""
@@ -162,6 +165,7 @@ class AIProvider:
         temperature: float = 0.7,
         max_tokens: int | None = None,
         system_message: str | None = None,
+        timeout: int | None = None,
         **kwargs,
     ) -> str:
         """
@@ -173,19 +177,41 @@ class AIProvider:
             temperature: Sampling temperature (0-1)
             max_tokens: Maximum tokens to generate
             system_message: System message/instructions
+            timeout: Request timeout in seconds (default: 60)
             **kwargs: Additional provider-specific parameters
 
         Returns:
             Generated text response
+
+        Raises:
+            TimeoutError: If the request times out
+            Exception: If the API call fails
         """
-        if self._provider == AIProviderType.AZURE:
-            return self._complete_azure(prompt, model, temperature, max_tokens, system_message, **kwargs)
-        elif self._provider == AIProviderType.OPENAI:
-            return self._complete_openai(prompt, model, temperature, max_tokens, system_message, **kwargs)
-        elif self._provider == AIProviderType.ANTHROPIC:
-            return self._complete_anthropic(prompt, model, temperature, max_tokens, system_message, **kwargs)
-        elif self._provider == AIProviderType.GEMINI:
-            return self._complete_gemini(prompt, model, temperature, max_tokens, system_message, **kwargs)
+        timeout = timeout or DEFAULT_AI_TIMEOUT
+
+        try:
+            if self._provider == AIProviderType.AZURE:
+                return self._complete_azure(prompt, model, temperature, max_tokens, system_message, timeout, **kwargs)
+            elif self._provider == AIProviderType.OPENAI:
+                return self._complete_openai(prompt, model, temperature, max_tokens, system_message, timeout, **kwargs)
+            elif self._provider == AIProviderType.ANTHROPIC:
+                return self._complete_anthropic(
+                    prompt, model, temperature, max_tokens, system_message, timeout, **kwargs
+                )
+            elif self._provider == AIProviderType.GEMINI:
+                return self._complete_gemini(prompt, model, temperature, max_tokens, system_message, timeout, **kwargs)
+        except Exception as e:
+            logger.error(
+                f'{self._provider.value} completion failed: {e}',
+                extra={
+                    'provider': self._provider.value,
+                    'model': model or self.current_model,
+                    'user_id': self.user_id,
+                    'error_type': type(e).__name__,
+                },
+                exc_info=True,
+            )
+            raise
 
     def _complete_azure(
         self,
@@ -194,9 +220,10 @@ class AIProvider:
         temperature: float,
         max_tokens: int | None,
         system_message: str | None,
+        timeout: int,
         **kwargs,
     ) -> str:
-        """Azure OpenAI completion."""
+        """Azure OpenAI completion with timeout."""
         deployment_name = model or getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
 
         messages = []
@@ -205,7 +232,12 @@ class AIProvider:
         messages.append({'role': 'user', 'content': prompt})
 
         response = self._client.chat.completions.create(
-            model=deployment_name, messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
+            model=deployment_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=timeout,
+            **kwargs,
         )
 
         # Store token usage for tracking
@@ -225,9 +257,10 @@ class AIProvider:
         temperature: float,
         max_tokens: int | None,
         system_message: str | None,
+        timeout: int,
         **kwargs,
     ) -> str:
-        """OpenAI completion."""
+        """OpenAI completion with timeout."""
         model_name = model or 'gpt-4'
 
         messages = []
@@ -236,7 +269,12 @@ class AIProvider:
         messages.append({'role': 'user', 'content': prompt})
 
         response = self._client.chat.completions.create(
-            model=model_name, messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
+            model=model_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=timeout,
+            **kwargs,
         )
 
         # Store token usage for tracking
@@ -256,18 +294,22 @@ class AIProvider:
         temperature: float,
         max_tokens: int | None,
         system_message: str | None,
+        timeout: int,
         **kwargs,
     ) -> str:
-        """Anthropic completion."""
+        """Anthropic completion with timeout."""
         model_name = model or 'claude-3-5-sonnet-20241022'
         max_tokens = max_tokens or 1024  # Anthropic requires max_tokens
 
+        # Anthropic client uses httpx which accepts timeout via client config
+        # Pass timeout through kwargs for the request
         response = self._client.messages.create(
             model=model_name,
             max_tokens=max_tokens,
             temperature=temperature,
             system=system_message or '',
             messages=[{'role': 'user', 'content': prompt}],
+            timeout=timeout,
             **kwargs,
         )
 
@@ -288,9 +330,10 @@ class AIProvider:
         temperature: float,
         max_tokens: int | None,
         system_message: str | None,
+        timeout: int,
         **kwargs,
     ) -> str:
-        """Google Gemini completion."""
+        """Google Gemini completion with timeout."""
         model_name = model or getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
 
         generation_config = {
@@ -306,7 +349,14 @@ class AIProvider:
 
         model_instance = self._client.GenerativeModel(model_name=model_name, **model_kwargs)
 
-        response = model_instance.generate_content(prompt, generation_config=generation_config, **kwargs)
+        # Gemini uses request_options for timeout
+        request_options = {'timeout': timeout}
+        response = model_instance.generate_content(
+            prompt,
+            generation_config=generation_config,
+            request_options=request_options,
+            **kwargs,
+        )
 
         # Store token usage for tracking (Gemini provides usage metadata)
         if hasattr(response, 'usage_metadata'):

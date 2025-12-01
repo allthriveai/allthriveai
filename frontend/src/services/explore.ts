@@ -59,13 +59,20 @@ export async function exploreProjects(params: ExploreParams): Promise<PaginatedR
   return response.data;
 }
 
+export interface SemanticSearchFilters {
+  categories?: number[];
+  topics?: string[];
+  tools?: number[];
+  projectType?: string;
+}
+
 /**
  * Semantic search with Weaviate
  *
  * Note: Currently uses basic text search. Will be upgraded to Weaviate vector search.
  */
-export async function semanticSearch(query: string, filters?: any): Promise<Project[]> {
-  const response = await api.post<{ results: any[] }>('/search/semantic/', {
+export async function semanticSearch(query: string, filters?: SemanticSearchFilters): Promise<Project[]> {
+  const response = await api.post<{ results: Project[] }>('/search/semantic/', {
     query,
     filters
   });
@@ -76,7 +83,7 @@ export async function semanticSearch(query: string, filters?: any): Promise<Proj
  * Explore top user profiles
  */
 export async function exploreProfiles(page: number = 1, page_size: number = 20): Promise<PaginatedResponse<User>> {
-  const response = await api.get<PaginatedResponse<any>>('/users/explore/', {
+  const response = await api.get<PaginatedResponse<User>>('/users/explore/', {
     params: { page, page_size }
   });
   return response.data;

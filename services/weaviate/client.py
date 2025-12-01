@@ -352,16 +352,23 @@ class WeaviateClient:
         limit: int = 20,
         filters: dict | None = None,
         return_properties: list[str] | None = None,
+        enforce_visibility: bool = True,
     ) -> list[dict]:
         """
         Search for similar objects using vector similarity.
+
+        SECURITY: For Project collection, visibility filters are automatically
+        applied unless explicitly disabled. This prevents accidental exposure
+        of private/unpublished/archived projects.
 
         Args:
             collection: Collection to search
             vector: Query vector
             limit: Maximum results to return
-            filters: Optional Weaviate where filters
+            filters: Optional Weaviate where filters (merged with visibility filter)
             return_properties: Properties to return (all if None)
+            enforce_visibility: If True (default), auto-apply visibility filter for projects.
+                               Set to False only for admin/internal operations.
 
         Returns:
             List of matching objects with similarity scores
@@ -375,6 +382,18 @@ class WeaviateClient:
                     return_properties = ['user_id', 'tool_interests', 'category_interests']
                 else:
                     return_properties = []
+
+            # SECURITY: Auto-apply visibility filter for project searches
+            if collection == WeaviateSchema.PROJECT_COLLECTION and enforce_visibility:
+                visibility_filter = self._get_public_project_filter()
+                if filters:
+                    # Merge user filters with visibility filter
+                    filters = {
+                        'operator': 'And',
+                        'operands': [visibility_filter, filters],
+                    }
+                else:
+                    filters = visibility_filter
 
             # Add distance to results
             return_properties_with_meta = return_properties + ['_additional { distance id }']
@@ -398,6 +417,7 @@ class WeaviateClient:
                     'vector_dim': len(vector) if vector else 0,
                     'limit': limit,
                     'has_filters': bool(filters),
+                    'enforce_visibility': enforce_visibility,
                 },
                 exc_info=True,
             )
@@ -413,9 +433,13 @@ class WeaviateClient:
         limit: int = 20,
         filters: dict | None = None,
         return_properties: list[str] | None = None,
+        enforce_visibility: bool = True,
     ) -> list[dict]:
         """
         Hybrid search combining vector similarity and keyword matching.
+
+        SECURITY: For Project collection, visibility filters are automatically
+        applied unless explicitly disabled.
 
         Args:
             collection: Collection to search
@@ -423,8 +447,9 @@ class WeaviateClient:
             vector: Optional query vector for similarity
             alpha: Weight for vector vs keyword (0=keyword, 1=vector)
             limit: Maximum results
-            filters: Optional Weaviate where filters
+            filters: Optional Weaviate where filters (merged with visibility filter)
             return_properties: Properties to return
+            enforce_visibility: If True (default), auto-apply visibility filter for projects.
 
         Returns:
             List of matching objects with scores
@@ -436,6 +461,17 @@ class WeaviateClient:
                     return_properties = ['project_id', 'title', 'combined_text', 'tool_names']
                 else:
                     return_properties = []
+
+            # SECURITY: Auto-apply visibility filter for project searches
+            if collection == WeaviateSchema.PROJECT_COLLECTION and enforce_visibility:
+                visibility_filter = self._get_public_project_filter()
+                if filters:
+                    filters = {
+                        'operator': 'And',
+                        'operands': [visibility_filter, filters],
+                    }
+                else:
+                    filters = visibility_filter
 
             return_properties_with_meta = return_properties + ['_additional { score id }']
 
@@ -464,6 +500,7 @@ class WeaviateClient:
                     'alpha': alpha,
                     'has_vector': bool(vector),
                     'limit': limit,
+                    'enforce_visibility': enforce_visibility,
                 },
                 exc_info=True,
             )

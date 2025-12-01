@@ -41,10 +41,11 @@ def sync_project_to_weaviate(self, project_id: int):
         logger.warning(f'Project {project_id} not found, skipping Weaviate sync')
         return {'status': 'skipped', 'reason': 'not_found'}
 
-    # Skip private/archived projects
+    # Skip private/archived projects - queue removal task instead
     if project.is_private or project.is_archived:
-        logger.info(f'Project {project_id} is private/archived, removing from Weaviate')
-        return _remove_project_from_weaviate(project_id)
+        logger.info(f'Project {project_id} is private/archived, queueing removal from Weaviate')
+        remove_project_from_weaviate.delay(project_id)
+        return {'status': 'queued_removal', 'reason': 'private_or_archived'}
 
     try:
         client = WeaviateClient()
@@ -114,24 +115,83 @@ def sync_project_to_weaviate(self, project_id: int):
         return {'status': 'error', 'error': str(e)}
 
 
-def _remove_project_from_weaviate(project_id: int) -> dict:
-    """Remove a project from Weaviate."""
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def remove_project_from_weaviate(self, project_id: int) -> dict:
+    """
+    Remove a project from Weaviate.
+
+    Called when:
+    - Project is deleted
+    - Project visibility changes to private/archived/unpublished
+
+    This is critical for privacy - ensures private content is not searchable.
+    """
     try:
         client = WeaviateClient()
         if not client.is_available():
-            return {'status': 'skipped', 'reason': 'weaviate_unavailable'}
+            logger.warning(f'Weaviate unavailable, retrying project removal {project_id}')
+            raise self.retry(exc=WeaviateClientError('Weaviate unavailable'))
 
         existing = client.get_by_property(WeaviateSchema.PROJECT_COLLECTION, 'project_id', project_id)
-
         if existing:
             uuid = existing['_additional']['id']
             client.delete_object(WeaviateSchema.PROJECT_COLLECTION, uuid)
             logger.info(f'Removed project {project_id} from Weaviate')
+            return {'status': 'removed', 'project_id': project_id}
+        else:
+            logger.debug(f'Project {project_id} not found in Weaviate, nothing to remove')
+            return {'status': 'not_found', 'project_id': project_id}
 
-        return {'status': 'removed', 'project_id': project_id}
-
+    except WeaviateClientError as e:
+        logger.error(f'Weaviate error removing project {project_id}: {e}')
+        raise self.retry(exc=e) from e
     except Exception as e:
-        logger.error(f'Error removing project {project_id} from Weaviate: {e}')
+        logger.error(f'Error removing project {project_id} from Weaviate: {e}', exc_info=True)
+        return {'status': 'error', 'error': str(e)}
+
+
+@shared_task(bind=True, max_retries=5, default_retry_delay=10)
+def remove_user_profile_from_weaviate(self, user_id: int) -> dict:
+    """
+    GDPR Compliance: Remove a user's profile from Weaviate.
+
+    Called when:
+    - User account is deleted
+    - User requests data deletion (GDPR right to erasure)
+
+    This task has extra retries because GDPR deletion is legally required.
+    """
+    try:
+        client = WeaviateClient()
+        if not client.is_available():
+            logger.warning(f'Weaviate unavailable, retrying user profile removal {user_id}')
+            raise self.retry(exc=WeaviateClientError('Weaviate unavailable'))
+
+        existing = client.get_by_property(WeaviateSchema.USER_PROFILE_COLLECTION, 'user_id', user_id)
+        if existing:
+            uuid = existing['_additional']['id']
+            client.delete_object(WeaviateSchema.USER_PROFILE_COLLECTION, uuid)
+            logger.info(
+                f'GDPR: Removed user profile {user_id} from Weaviate',
+                extra={'user_id': user_id, 'gdpr_action': 'delete_complete'},
+            )
+            return {'status': 'removed', 'user_id': user_id}
+        else:
+            logger.debug(f'User profile {user_id} not found in Weaviate')
+            return {'status': 'not_found', 'user_id': user_id}
+
+    except WeaviateClientError as e:
+        logger.error(
+            f'GDPR: Weaviate error removing user {user_id}, will retry: {e}',
+            extra={'user_id': user_id, 'gdpr_action': 'delete_retry'},
+        )
+        raise self.retry(exc=e) from e
+    except Exception as e:
+        logger.error(
+            f'GDPR CRITICAL: Failed to remove user {user_id} from Weaviate: {e}',
+            extra={'user_id': user_id, 'gdpr_action': 'delete_failed'},
+            exc_info=True,
+        )
         return {'status': 'error', 'error': str(e)}
 
 

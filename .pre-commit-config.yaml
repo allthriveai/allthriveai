@@ -110,3 +110,34 @@ repos:
             core/users/models\.py$|\
             scripts/pre-commit-hooks/.*\
           )$
+
+      # DRY violation checker for Python
+      - id: check-dry-violations-python
+        name: Check DRY Violations (Python)
+        entry: python scripts/pre-commit-hooks/check_dry_violations.py
+        language: python
+        files: \.py$
+        exclude: |
+          (?x)^(\
+            .*/tests/.*|\
+            .*/migrations/.*|\
+            scripts/pre-commit-hooks/.*|\
+            .*/conftest\.py$\
+          )$
+        verbose: true
+
+      # DRY violation checker for TypeScript/JavaScript
+      - id: check-dry-violations-frontend
+        name: Check DRY Violations (Frontend)
+        entry: node scripts/pre-commit-hooks/check_dry_violations.js
+        language: node
+        files: \.(ts|tsx|js|jsx)$
+        exclude: |
+          (?x)^(\
+            .*/tests/.*|\
+            .*\.test\.(ts|tsx|js|jsx)$|\
+            .*\.spec\.(ts|tsx|js|jsx)$|\
+            .*/node_modules/.*|\
+            scripts/pre-commit-hooks/.*\
+          )$
+        verbose: true

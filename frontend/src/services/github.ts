@@ -1,5 +1,23 @@
 import { api } from './api';
 import type { ApiResponse } from '@/types/api';
+import type { Project } from '@/types/models';
+
+/**
+ * Enhanced error with additional context for imports
+ */
+export class ImportError extends Error {
+  errorCode?: string;
+  suggestion?: string;
+  project?: Project;
+
+  constructor(message: string, options?: { errorCode?: string; suggestion?: string; project?: Project }) {
+    super(message);
+    this.name = 'ImportError';
+    this.errorCode = options?.errorCode;
+    this.suggestion = options?.suggestion;
+    this.project = options?.project;
+  }
+}
 
 /**
  * GitHub Repository type
@@ -76,22 +94,29 @@ export interface GitHubError {
 /**
  * Task status response type
  */
+export interface TaskResultProject {
+  id: number;
+  title: string;
+  slug: string;
+  url: string;
+}
+
+export interface TaskResult {
+  success: boolean;
+  message?: string;
+  project?: TaskResultProject;
+  project_id?: number;
+  slug?: string;
+  url?: string;
+  error?: string;
+  error_code?: string;
+  suggestion?: string;
+}
+
 export interface TaskStatus {
   task_id: string;
   status: 'PENDING' | 'STARTED' | 'SUCCESS' | 'FAILURE' | 'RETRY';
-  result?: {
-    success: boolean;
-    message?: string;
-    project?: {
-      id: number;
-      title: string;
-      slug: string;
-      url: string;
-    };
-    error?: string;
-    error_code?: string;
-    suggestion?: string;
-  };
+  result?: TaskResult;
   error?: string;
 }
 
@@ -123,7 +148,7 @@ export async function importGitHubRepoAsync(
       error?: string;
       errorCode?: string;
       suggestion?: string;
-      project?: any;
+      project?: Project;
     }>('/integrations/import-from-url/', {
       url,
       is_showcase: isShowcase,
@@ -132,11 +157,11 @@ export async function importGitHubRepoAsync(
     if (!response.data.success) {
       // Extract enhanced error information from response
       const errorData = response.data;
-      const error: any = new Error(errorData.error || 'Failed to start import');
-      if (errorData.errorCode) error.errorCode = errorData.errorCode;
-      if (errorData.suggestion) error.suggestion = errorData.suggestion;
-      if (errorData.project) error.project = errorData.project;
-      throw error;
+      throw new ImportError(errorData.error || 'Failed to start import', {
+        errorCode: errorData.errorCode,
+        suggestion: errorData.suggestion,
+        project: errorData.project,
+      });
     }
 
     const taskId = response.data.taskId;  // Fields are at root level
@@ -152,11 +177,11 @@ export async function importGitHubRepoAsync(
     const result = await pollTaskStatus(taskId, onProgress);
 
     if (!result.success) {
-      const error: any = new Error(result.error || 'Import failed');
-      if (result.suggestion) error.suggestion = result.suggestion;
-      if (result.project) error.project = result.project;
-      if (result.error_code) error.errorCode = result.error_code;
-      throw error;
+      throw new ImportError(result.error || 'Import failed', {
+        suggestion: result.suggestion,
+        project: result.project,
+        errorCode: result.error_code,
+      });
     }
 
     return {
@@ -165,35 +190,34 @@ export async function importGitHubRepoAsync(
       url: result.project!.url,
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to import GitHub repo (async):', error);
 
-    // If error already has enhanced properties (from manual throw), re-throw it
-    if (error.errorCode || error.suggestion || error.project) {
+    // If error is already an ImportError, re-throw it
+    if (error instanceof ImportError) {
       throw error;
     }
 
+    // Handle axios errors
+    const axiosError = error as { response?: { status?: number; data?: GitHubError }; message?: string };
+
     // Handle rate limiting (429) specially
-    if (error.response?.status === 429) {
-      const enhancedError: any = new Error('You\'ve reached the import limit');
-      enhancedError.suggestion = 'You can import up to 20 projects per hour. Please wait a few minutes and try again.';
-      enhancedError.errorCode = 'RATE_LIMIT_EXCEEDED';
-      throw enhancedError;
+    if (axiosError.response?.status === 429) {
+      throw new ImportError("You've reached the import limit", {
+        suggestion: 'You can import up to 20 projects per hour. Please wait a few minutes and try again.',
+        errorCode: 'RATE_LIMIT_EXCEEDED',
+      });
     }
 
     // Extract enhanced error information from axios response
-    const errorData: GitHubError = error.response?.data || {};
-    const errorMessage = errorData.error || error.message || 'Failed to import repository';
-    const suggestion = errorData.suggestion;
-    const project = errorData.project;
+    const errorData: GitHubError = axiosError.response?.data || {};
+    const errorMessage = errorData.error || axiosError.message || 'Failed to import repository';
 
-    // Create enhanced error with additional context
-    const enhancedError: any = new Error(errorMessage);
-    if (suggestion) enhancedError.suggestion = suggestion;
-    if (project) enhancedError.project = project;
-    if (errorData.error_code) enhancedError.errorCode = errorData.error_code;
-
-    throw enhancedError;
+    throw new ImportError(errorMessage, {
+      suggestion: errorData.suggestion,
+      project: errorData.project,
+      errorCode: errorData.error_code,
+    });
   }
 }
 
@@ -205,13 +229,7 @@ async function pollTaskStatus(
   onProgress?: (status: string) => void,
   maxAttempts: number = 60,
   intervalMs: number = 2000
-): Promise<{
-  success: boolean;
-  project_id: number;
-  slug: string;
-  url: string;
-  error?: string;
-}> {
+): Promise<TaskResult> {
   let attempts = 0;
   let lastStatus = '';
 
@@ -226,15 +244,11 @@ async function pollTaskStatus(
       }
 
       if (status.status === 'FAILURE') {
-        const error = status.result?.error || status.error || 'Import failed';
-        const suggestion = status.result?.suggestion;
-
-        // Throw enhanced error with all context
-        const enhancedError: any = new Error(error);
-        if (suggestion) enhancedError.suggestion = suggestion;
-        if (status.result?.error_code) enhancedError.errorCode = status.result.error_code;
-        if (status.result?.project) enhancedError.project = status.result.project;
-        throw enhancedError;
+        const errorMessage = status.result?.error || status.error || 'Import failed';
+        throw new ImportError(errorMessage, {
+          suggestion: status.result?.suggestion,
+          errorCode: status.result?.error_code,
+        });
       }
 
       // Determine status message based on task state
@@ -258,8 +272,14 @@ async function pollTaskStatus(
       await new Promise(resolve => setTimeout(resolve, intervalMs));
       attempts++;
 
-    } catch (error: any) {
-      if (error.response?.status === 404) {
+    } catch (error: unknown) {
+      // Re-throw ImportError as-is
+      if (error instanceof ImportError) {
+        throw error;
+      }
+
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 404) {
         // Task not found yet, wait and retry
         const initMessage = '⚡ Starting import...';
         if (initMessage !== lastStatus) {
@@ -275,7 +295,8 @@ async function pollTaskStatus(
   }
 
   // Timeout after maxAttempts
-  const timeoutError: any = new Error('Import is taking longer than expected. The project may still complete - please check your projects page.');
-  timeoutError.suggestion = 'If this keeps happening, try a smaller repository first.';
-  throw timeoutError;
+  throw new ImportError('Import is taking longer than expected. The project may still complete - please check your projects page.', {
+    suggestion: 'If this keeps happening, try a smaller repository first.',
+    errorCode: 'TIMEOUT',
+  });
 }

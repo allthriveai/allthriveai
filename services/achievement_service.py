@@ -226,26 +226,38 @@ class AchievementService:
         return data
 
     @staticmethod
+    @transaction.atomic
     def reset_user_achievements(user: User) -> int:
         """
         Reset all achievements for a user (admin only).
+
+        This operation is atomic - either all deletions succeed or none do.
 
         Args:
             user (User): The user
 
         Returns:
             int: Number of achievements removed
+
+        Raises:
+            Exception: If database operations fail (transaction will be rolled back)
         """
+        # Delete achievements and progress in single transaction
         count, _ = UserAchievement.objects.filter(user=user).delete()
         AchievementProgress.objects.filter(user=user).delete()
 
+        # Update user stats
         user.total_achievements_unlocked = 0
         user.last_achievement_earned_at = None
         user.save(update_fields=['total_achievements_unlocked', 'last_achievement_earned_at'])
 
         logger.warning(
             f'Reset achievements for user {user.username}',
-            extra={'user_id': user.id, 'achievement_count': count},
+            extra={
+                'user_id': user.id,
+                'achievement_count': count,
+                'operation': 'reset_achievements',
+            },
         )
 
         return count

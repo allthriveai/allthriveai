@@ -115,6 +115,8 @@ export function ExplorePage() {
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
+    error: projectsError,
+    refetch: refetchProjects,
   } = useInfiniteQuery({
     queryKey: ['exploreProjects', exploreParamsBase],
     queryFn: ({ pageParam = 1 }) => exploreProjects({ ...exploreParamsBase, page: pageParam }),
@@ -149,6 +151,8 @@ export function ExplorePage() {
     isFetchingNextPage: isFetchingNextProfiles,
     hasNextPage: hasNextProfiles,
     fetchNextPage: fetchNextProfiles,
+    error: profilesError,
+    refetch: refetchProfiles,
   } = useInfiniteQuery({
     queryKey: ['exploreProfiles'],
     queryFn: ({ pageParam = 1 }) => exploreProfiles(pageParam, 30),
@@ -183,6 +187,13 @@ export function ExplorePage() {
   const displayProjects = searchQuery && semanticResults ? semanticResults : allProjects;
   const displayQuizzes = quizzesData?.results || [];
   const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isWaitingForFilters;
+
+  // Determine if there's an error to display
+  const hasError = activeTab === 'profiles' ? !!profilesError : !!projectsError;
+  const errorMessage = activeTab === 'profiles'
+    ? (profilesError as any)?.error || 'Failed to load profiles'
+    : (projectsError as any)?.error || 'Failed to load projects';
+  const handleRetry = activeTab === 'profiles' ? refetchProfiles : refetchProjects;
 
   // Stably mix quizzes and projects using memoization to prevent re-shuffling
   const mixedItems = useMemo(() => {
@@ -377,8 +388,34 @@ export function ExplorePage() {
               </div>
             </div>
 
+            {/* Error State */}
+            {hasError && !isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center max-w-md mx-auto">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    Something went wrong
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    {errorMessage}
+                  </p>
+                  <button
+                    onClick={() => handleRetry()}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Content */}
-            {activeTab === 'profiles' ? (
+            {!hasError && (
+              activeTab === 'profiles' ? (
               // Profiles Grid
               <div>
                 {isLoading ? (
@@ -509,6 +546,7 @@ export function ExplorePage() {
                   </>
                 )}
               </>
+            )
             )}
           </div>
         );

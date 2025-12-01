@@ -181,7 +181,8 @@ class PersonalizationEngine:
                 return self._get_popular_fallback(page, page_size, exclude_project_ids)
 
             # Step 3: Score all candidates
-            scored_projects = self._score_candidates(user, candidates)
+            # Pass user_vector to avoid redundant computation in collaborative filtering
+            scored_projects = self._score_candidates(user, candidates, user_vector=user_vector)
 
             # Step 4: Apply diversity boost
             scored_projects = self._apply_diversity_boost(scored_projects)
@@ -225,38 +226,41 @@ class PersonalizationEngine:
         from services.weaviate.schema import WeaviateSchema
 
         try:
-            # Try to get from Weaviate
-            if not self.weaviate_client.is_available():
-                logger.warning(
-                    f'Weaviate unavailable for user vector lookup user_id={user.id}, ' 'will generate on-the-fly'
-                )
-            else:
-                result = (
-                    self.weaviate_client.client.query.get(
-                        WeaviateSchema.USER_PROFILE_COLLECTION,
-                        ['user_id'],
+            # Try to get from Weaviate using connection pool
+            with self._get_client() as client:
+                if not client.is_available():
+                    logger.warning(
+                        f'Weaviate unavailable for user vector lookup user_id={user.id}, ' 'will generate on-the-fly'
                     )
-                    .with_where(
-                        {
-                            'path': ['user_id'],
-                            'operator': 'Equal',
-                            'valueInt': user.id,
-                        }
+                else:
+                    # Note: client.client accesses the underlying weaviate.Client
+                    # First 'client' is our WeaviateClient wrapper, second is weaviate lib
+                    result = (
+                        client.client.query.get(
+                            WeaviateSchema.USER_PROFILE_COLLECTION,
+                            ['user_id'],
+                        )
+                        .with_where(
+                            {
+                                'path': ['user_id'],
+                                'operator': 'Equal',
+                                'valueInt': user.id,
+                            }
+                        )
+                        .with_additional(['vector'])
+                        .with_limit(1)
+                        .do()
                     )
-                    .with_additional(['vector'])
-                    .with_limit(1)
-                    .do()
-                )
 
-                profiles = result.get('data', {}).get('Get', {}).get(WeaviateSchema.USER_PROFILE_COLLECTION, [])
+                    profiles = result.get('data', {}).get('Get', {}).get(WeaviateSchema.USER_PROFILE_COLLECTION, [])
 
-                if profiles:
-                    vector = profiles[0].get('_additional', {}).get('vector')
-                    if vector:
-                        logger.debug(f'Retrieved user vector from Weaviate user_id={user.id}')
-                        return vector
-                    else:
-                        logger.warning(f'User profile in Weaviate has no vector user_id={user.id}')
+                    if profiles:
+                        vector = profiles[0].get('_additional', {}).get('vector')
+                        if vector:
+                            logger.debug(f'Retrieved user vector from Weaviate user_id={user.id}')
+                            return vector
+                        else:
+                            logger.warning(f'User profile in Weaviate has no vector user_id={user.id}')
 
             # Generate on-the-fly if not in Weaviate
             logger.info(f'Generating user vector on-the-fly user_id={user.id}')
@@ -288,37 +292,45 @@ class PersonalizationEngine:
         from services.weaviate.schema import WeaviateSchema
 
         try:
-            # Use standard visibility filter (published, not private, not archived)
-            # This is critical for security - prevents private project leakage
-            filters = self.weaviate_client._get_public_project_filter()
-
-            # Add exclusions if any
+            # Build exclusion filters if any
+            additional_filters = None
             if exclude_ids:
+                # Build exclusion operands
+                exclusion_operands = []
                 for pid in exclude_ids[:50]:  # Limit exclusions to avoid query issues
-                    filters['operands'].append(
+                    exclusion_operands.append(
                         {
                             'path': ['project_id'],
                             'operator': 'NotEqual',
                             'valueInt': pid,
                         }
                     )
+                if exclusion_operands:
+                    additional_filters = {
+                        'operator': 'And',
+                        'operands': exclusion_operands,
+                    }
 
-            candidates = self.weaviate_client.near_vector_search(
-                collection=WeaviateSchema.PROJECT_COLLECTION,
-                vector=user_vector,
-                limit=self.CANDIDATE_LIMIT,
-                filters=filters,
-                return_properties=[
-                    'project_id',
-                    'title',
-                    'tool_names',
-                    'category_names',
-                    'topics',
-                    'engagement_velocity',
-                    'like_count',
-                    'owner_id',
-                ],
-            )
+            # Use connection pool for the search
+            # Note: near_vector_search now auto-applies visibility filter for projects
+            with self._get_client() as client:
+                candidates = client.near_vector_search(
+                    collection=WeaviateSchema.PROJECT_COLLECTION,
+                    vector=user_vector,
+                    limit=self.CANDIDATE_LIMIT,
+                    filters=additional_filters,  # Visibility filter applied automatically
+                    return_properties=[
+                        'project_id',
+                        'title',
+                        'tool_names',
+                        'category_names',
+                        'topics',
+                        'engagement_velocity',
+                        'like_count',
+                        'owner_id',
+                    ],
+                    enforce_visibility=True,  # Explicit for clarity
+                )
 
             logger.info(
                 f'Retrieved {len(candidates)} vector candidates from Weaviate '
@@ -347,8 +359,16 @@ class PersonalizationEngine:
         self,
         user: 'User',
         candidates: list[dict],
+        user_vector: list[float] | None = None,
     ) -> list[ScoredProject]:
-        """Score all candidate projects using hybrid algorithm."""
+        """
+        Score all candidate projects using hybrid algorithm.
+
+        Args:
+            user: User to score for
+            candidates: List of candidate projects from Weaviate
+            user_vector: Pre-computed user preference vector (avoids redundant computation)
+        """
         from core.projects.models import ProjectLike
         from core.taxonomy.models import UserInteraction, UserTag
 
@@ -374,7 +394,8 @@ class PersonalizationEngine:
         )
 
         # Get collaborative filtering data (what similar users liked)
-        collaborative_scores = self._get_collaborative_scores(user)
+        # Pass user_vector to avoid redundant _get_user_vector call
+        collaborative_scores = self._get_collaborative_scores(user, user_vector=user_vector)
 
         # BATCH QUERY: Get like counts for all candidate owners in ONE query
         # This prevents N+1 queries in the scoring loop below
@@ -464,28 +485,40 @@ class PersonalizationEngine:
 
         return scored_projects
 
-    def _get_collaborative_scores(self, user: 'User') -> dict[int, float]:
+    def _get_collaborative_scores(
+        self,
+        user: 'User',
+        user_vector: list[float] | None = None,
+    ) -> dict[int, float]:
         """
         Get collaborative filtering scores based on similar users.
 
-        Returns dict mapping project_id -> collaborative score.
+        Args:
+            user: User to get scores for
+            user_vector: Pre-computed user vector (avoids redundant computation)
+
+        Returns:
+            Dict mapping project_id -> collaborative score
         """
         from core.projects.models import ProjectLike
         from services.weaviate.client import WeaviateClientError
 
         try:
-            # Get user's vector
-            user_vector = self._get_user_vector(user)
+            # Use provided vector or fetch if not provided
+            if user_vector is None:
+                user_vector = self._get_user_vector(user)
+
             if not user_vector:
                 logger.debug(f'No user vector for collaborative filtering user_id={user.id}')
                 return {}
 
-            # Find similar users
-            similar_users = self.weaviate_client.find_similar_users(
-                user_vector=user_vector,
-                exclude_user_id=user.id,
-                limit=self.SIMILAR_USERS_LIMIT,
-            )
+            # Find similar users using connection pool
+            with self._get_client() as client:
+                similar_users = client.find_similar_users(
+                    user_vector=user_vector,
+                    exclude_user_id=user.id,
+                    limit=self.SIMILAR_USERS_LIMIT,
+                )
 
             if not similar_users:
                 logger.debug(f'No similar users found for collaborative filtering user_id={user.id}')

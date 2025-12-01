@@ -1,6 +1,79 @@
 import { useState, useRef, useEffect, DragEvent, ChangeEvent } from 'react';
 import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { api } from '@/services/api';
+import type { ApiError } from '@/types/api';
+
+// File signature (magic bytes) mapping for image validation
+const FILE_SIGNATURES: Record<string, number[][]> = {
+  'image/jpeg': [
+    [0xFF, 0xD8, 0xFF], // JPEG/JFIF
+  ],
+  'image/png': [
+    [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A], // PNG
+  ],
+  'image/gif': [
+    [0x47, 0x49, 0x46, 0x38, 0x37, 0x61], // GIF87a
+    [0x47, 0x49, 0x46, 0x38, 0x39, 0x61], // GIF89a
+  ],
+  'image/webp': [
+    [0x52, 0x49, 0x46, 0x46], // RIFF (WebP starts with RIFF, then size, then WEBP)
+  ],
+};
+
+// Check if file bytes match expected signature
+function matchesSignature(bytes: Uint8Array, signature: number[]): boolean {
+  if (bytes.length < signature.length) return false;
+  return signature.every((byte, index) => bytes[index] === byte);
+}
+
+// Validate file signature (magic bytes)
+async function validateFileSignature(file: File, acceptedFormats: string[]): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const arrayBuffer = e.target?.result as ArrayBuffer;
+      if (!arrayBuffer) {
+        resolve('Could not read file');
+        return;
+      }
+
+      const bytes = new Uint8Array(arrayBuffer);
+
+      // Check if file matches any accepted format's signature
+      for (const format of acceptedFormats) {
+        const signatures = FILE_SIGNATURES[format];
+        if (signatures) {
+          for (const signature of signatures) {
+            if (matchesSignature(bytes, signature)) {
+              // Additional check for WebP (must have WEBP after RIFF header)
+              if (format === 'image/webp') {
+                // WebP format: RIFF <size> WEBP
+                const webpMarker = [0x57, 0x45, 0x42, 0x50]; // "WEBP"
+                if (bytes.length >= 12 && matchesSignature(bytes.slice(8), webpMarker)) {
+                  resolve(null);
+                  return;
+                }
+              } else {
+                resolve(null);
+                return;
+              }
+            }
+          }
+        }
+      }
+
+      resolve('File content does not match declared file type. Please upload a valid image file.');
+    };
+
+    reader.onerror = () => {
+      resolve('Could not read file');
+    };
+
+    // Read first 12 bytes (enough for all signatures we check)
+    reader.readAsArrayBuffer(file.slice(0, 12));
+  });
+}
 
 interface ImageUploadProps {
   currentImage?: string;
@@ -63,8 +136,9 @@ export function ImageUpload({
       const { url } = response.data;
       setPreview(url);
       onImageUploaded(url);
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.error || 'Failed to upload image. Please try again.';
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      const errorMsg = apiError.error || 'Failed to upload image. Please try again.';
       setError(errorMsg);
       console.error('Upload error:', err);
     } finally {
@@ -72,14 +146,22 @@ export function ImageUpload({
     }
   };
 
-  const handleFiles = (files: FileList | null) => {
+  const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
     const file = files[0];
-    const validationError = validateFile(file);
 
+    // Basic validation (type and size)
+    const validationError = validateFile(file);
     if (validationError) {
       setError(validationError);
+      return;
+    }
+
+    // Validate file signature (magic bytes) to prevent spoofed extensions
+    const signatureError = await validateFileSignature(file, acceptedFormats);
+    if (signatureError) {
+      setError(signatureError);
       return;
     }
 

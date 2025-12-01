@@ -1,13 +1,43 @@
 import { api } from './api';
-import type { Project, ProjectPayload, PaginatedResponse } from '@/types/models';
+import type { Project, ProjectPayload, PaginatedResponse, ProjectContent, ProjectType, Tool, Taxonomy } from '@/types/models';
 import type { ApiResponse } from '@/types/api';
+
+// Backend project response (before camelCase transform is applied)
+interface ProjectApiResponse {
+  id: number;
+  username: string;
+  userAvatarUrl?: string;
+  title: string;
+  slug: string;
+  description?: string;
+  type: ProjectType;
+  isShowcase: boolean;
+  isHighlighted?: boolean;
+  isPrivate?: boolean;
+  isArchived: boolean;
+  isPublished?: boolean;
+  publishedAt?: string;
+  bannerUrl?: string;
+  featuredImageUrl?: string;
+  externalUrl?: string;
+  tools?: number[];
+  toolsDetails?: Tool[];
+  categories?: number[];
+  categoriesDetails?: Taxonomy[];
+  topics?: string[];
+  heartCount?: number;
+  isLikedByUser?: boolean;
+  content?: ProjectContent;
+  createdAt: string;
+  updatedAt: string;
+}
 
 /**
  * Transform backend data to frontend Project type
  * Note: API interceptor already converts snake_case to camelCase,
  * so we just need to normalize the data structure
  */
-function transformProject(data: any): Project {
+function transformProject(data: ProjectApiResponse): Project {
   return {
     id: data.id,
     username: data.username,
@@ -42,7 +72,7 @@ function transformProject(data: any): Project {
  * Note: API interceptor automatically converts camelCase to snake_case,
  * so we can just return the payload as-is
  */
-function transformPayload(payload: ProjectPayload): any {
+function transformPayload(payload: ProjectPayload): ProjectPayload {
   return payload;
 }
 
@@ -50,7 +80,7 @@ function transformPayload(payload: ProjectPayload): any {
  * Get all projects for the current user
  */
 export async function listProjects(): Promise<Project[]> {
-  const response = await api.get<PaginatedResponse<any>>('/me/projects/');
+  const response = await api.get<PaginatedResponse<ProjectApiResponse>>('/me/projects/');
   return response.data.results.map(transformProject);
 }
 
@@ -58,7 +88,7 @@ export async function listProjects(): Promise<Project[]> {
  * Get a single project by ID
  */
 export async function getProject(id: number): Promise<Project> {
-  const response = await api.get<any>(`/me/projects/${id}/`);
+  const response = await api.get<ProjectApiResponse>(`/me/projects/${id}/`);
   return transformProject(response.data);
 }
 
@@ -67,7 +97,7 @@ export async function getProject(id: number): Promise<Project> {
  * Uses the direct project detail endpoint
  */
 export async function getProjectBySlug(username: string, slug: string): Promise<Project> {
-  const response = await api.get<any>(`/users/${username}/projects/${slug}/`);
+  const response = await api.get<ProjectApiResponse>(`/users/${username}/projects/${slug}/`);
   return transformProject(response.data);
 }
 
@@ -76,7 +106,7 @@ export async function getProjectBySlug(username: string, slug: string): Promise<
  */
 export async function createProject(payload: ProjectPayload): Promise<Project> {
   const backendPayload = transformPayload(payload);
-  const response = await api.post<any>('/me/projects/', backendPayload);
+  const response = await api.post<ProjectApiResponse>('/me/projects/', backendPayload);
   return transformProject(response.data);
 }
 
@@ -85,7 +115,7 @@ export async function createProject(payload: ProjectPayload): Promise<Project> {
  */
 export async function updateProject(id: number, payload: Partial<ProjectPayload>): Promise<Project> {
   const backendPayload = transformPayload(payload as ProjectPayload);
-  const response = await api.patch<any>(`/me/projects/${id}/`, backendPayload);
+  const response = await api.patch<ProjectApiResponse>(`/me/projects/${id}/`, backendPayload);
   return transformProject(response.data);
 }
 
@@ -125,8 +155,8 @@ export async function getUserProjects(username: string): Promise<{
   // Use the public endpoint that returns showcase for everyone,
   // and all projects for authenticated users viewing their own profile
   const response = await api.get<{
-    showcase: any[];
-    playground: any[];
+    showcase: ProjectApiResponse[];
+    playground: ProjectApiResponse[];
   }>(`/users/${username}/projects/`);
 
   return {
