@@ -1,10 +1,10 @@
 import type { TopicSlug } from '@/config/topics';
 
 // User roles
-export type UserRole = 'explorer' | 'learner' | 'expert' | 'creator' | 'mentor' | 'patron' | 'admin' | 'bot';
+export type UserRole = 'explorer' | 'learner' | 'expert' | 'creator' | 'mentor' | 'patron' | 'admin' | 'agent';
 
 // Thrive Circle tier names
-export type TierName = 'seedling' | 'sprout' | 'blossom' | 'bloom' | 'evergreen';
+export type TierName = 'seedling' | 'sprout' | 'blossom' | 'bloom' | 'evergreen' | 'curation';
 
 // User model
 export interface User {

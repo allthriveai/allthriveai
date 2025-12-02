@@ -65,6 +65,47 @@
     --radius-xl: 4px;
     --radius-2xl: 6px;
     --radius-3xl: 8px;
+
+    /* === JEWEL TONES - Rich gemstone colors === */
+    --jewel-sapphire: #0F52BA;
+    --jewel-sapphire-light: #1a65d4;
+    --jewel-sapphire-dark: #0a3d8a;
+
+    --jewel-tanzanite: #4B0082;
+    --jewel-tanzanite-light: #5c109a;
+    --jewel-tanzanite-dark: #3a0066;
+
+    --jewel-amethyst: #5a175d;
+    --jewel-amethyst-light: #7a2080;
+    --jewel-amethyst-dark: #420f44;
+
+    --jewel-rose-quartz: #AA336A;
+    --jewel-rose-quartz-light: #c44080;
+    --jewel-rose-quartz-dark: #8a2856;
+
+    --jewel-emerald: #046307;
+    --jewel-emerald-light: #068009;
+    --jewel-emerald-dark: #034a05;
+
+    --jewel-morganite: #C46480;
+    --jewel-morganite-light: #d4809a;
+    --jewel-morganite-dark: #a85068;
+
+    --jewel-jade: #00A86B;
+    --jewel-jade-light: #00c47e;
+    --jewel-jade-dark: #008c5a;
+
+    --jewel-ruby: #9B111E;
+    --jewel-ruby-light: #b81525;
+    --jewel-ruby-dark: #7a0d18;
+
+    --jewel-topaz: #E27D12;
+    --jewel-topaz-light: #f59020;
+    --jewel-topaz-dark: #c56a0e;
+
+    --jewel-peridot: #5E8C31;
+    --jewel-peridot-light: #72a63c;
+    --jewel-peridot-dark: #4a7026;
   }
 
   /* === LIGHT THEME === */
@@ -1057,5 +1098,298 @@
       opacity: 1;
       transform: scale(1);
     }
+  }
+}
+
+/* =============================================================================
+   REDDIT PROSE - Enhanced Typography for Reddit Discussion Content
+   ============================================================================= */
+
+@layer components {
+  .reddit-prose {
+    @apply text-base leading-relaxed;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  /* Paragraphs - Generous spacing for readability */
+  .reddit-prose p {
+    @apply mb-5 leading-[1.8];
+  }
+
+  .reddit-prose p:last-child {
+    @apply mb-0;
+  }
+
+  /* Headers - Clear hierarchy with jewel accent */
+  .reddit-prose h1,
+  .reddit-prose h2,
+  .reddit-prose h3,
+  .reddit-prose h4,
+  .reddit-prose h5,
+  .reddit-prose h6 {
+    @apply font-bold tracking-tight text-white;
+    margin-top: 2em;
+    margin-bottom: 0.75em;
+  }
+
+  .reddit-prose h1 { @apply text-3xl; }
+  .reddit-prose h2 { @apply text-2xl; }
+  .reddit-prose h3 { @apply text-xl; }
+  .reddit-prose h4 { @apply text-lg font-semibold; }
+
+  .reddit-prose h1:first-child,
+  .reddit-prose h2:first-child,
+  .reddit-prose h3:first-child,
+  .reddit-prose h4:first-child {
+    margin-top: 0;
+  }
+
+  /* Blockquotes - Elegant quote styling with jewel accent */
+  .reddit-prose blockquote {
+    @apply relative my-6 py-4 px-6 italic;
+    background: linear-gradient(135deg, rgba(15, 82, 186, 0.08), rgba(75, 0, 130, 0.08));
+    border-left: 4px solid;
+    border-image: linear-gradient(180deg, var(--jewel-sapphire), var(--jewel-tanzanite)) 1;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .reddit-prose blockquote::before {
+    content: '"';
+    @apply absolute text-6xl font-serif opacity-20;
+    top: -0.25rem;
+    left: 0.75rem;
+    color: var(--jewel-sapphire);
+  }
+
+  .reddit-prose blockquote p {
+    @apply mb-0;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .reddit-prose blockquote blockquote {
+    @apply mt-4 ml-4;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  /* Lists - Clean styling with proper spacing */
+  .reddit-prose ul,
+  .reddit-prose ol {
+    @apply my-5 pl-6 space-y-2;
+  }
+
+  .reddit-prose ul {
+    list-style-type: none;
+  }
+
+  .reddit-prose ul li {
+    @apply relative pl-5;
+  }
+
+  .reddit-prose ul li::before {
+    content: '•';
+    @apply absolute left-0 font-bold;
+    color: var(--jewel-jade);
+  }
+
+  .reddit-prose ol {
+    @apply list-decimal;
+  }
+
+  .reddit-prose ol li {
+    @apply pl-1;
+  }
+
+  .reddit-prose ol li::marker {
+    color: var(--jewel-jade);
+    font-weight: 600;
+  }
+
+  .reddit-prose li {
+    @apply leading-relaxed;
+  }
+
+  /* Nested lists */
+  .reddit-prose li ul,
+  .reddit-prose li ol {
+    @apply mt-2 mb-0;
+  }
+
+  /* Links - Subtle underline with neon accent */
+  .reddit-prose a {
+    @apply font-medium transition-all duration-200;
+    color: var(--neon-teal);
+    text-decoration: underline;
+    text-decoration-color: rgba(34, 211, 238, 0.4);
+    text-underline-offset: 3px;
+  }
+
+  .reddit-prose a:hover {
+    text-decoration-color: var(--neon-teal);
+    text-shadow: 0 0 8px rgba(34, 211, 238, 0.3);
+  }
+
+  /* Inline code */
+  .reddit-prose code:not(pre code) {
+    @apply px-1.5 py-0.5 text-sm font-mono;
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius);
+    color: var(--neon-bright);
+  }
+
+  /* Code blocks */
+  .reddit-prose pre {
+    @apply my-6 p-5 overflow-x-auto text-sm font-mono;
+    background-color: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius);
+  }
+
+  .reddit-prose pre code {
+    @apply p-0 bg-transparent border-0;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  /* Bold & Italic */
+  .reddit-prose strong {
+    @apply font-bold;
+    color: white;
+  }
+
+  .reddit-prose em {
+    @apply italic;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  /* Horizontal rules */
+  .reddit-prose hr {
+    @apply my-8 border-0 h-px;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.15), transparent);
+  }
+
+  /* Tables */
+  .reddit-prose table {
+    @apply w-full my-6 text-sm;
+    border-collapse: collapse;
+  }
+
+  .reddit-prose th {
+    @apply px-4 py-3 text-left font-semibold;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
+  .reddit-prose td {
+    @apply px-4 py-3;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .reddit-prose tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* Images */
+  .reddit-prose img {
+    @apply rounded-lg my-6 max-w-full h-auto;
+  }
+
+  /* Strikethrough */
+  .reddit-prose del,
+  .reddit-prose s {
+    @apply opacity-60 line-through;
+  }
+
+  /* Superscript (common in Reddit for footnotes) */
+  .reddit-prose sup {
+    @apply text-xs align-super;
+    color: var(--neon-teal);
+  }
+
+  /* Reddit-specific: Spoiler text styling */
+  .reddit-prose .spoiler,
+  .reddit-prose .md-spoiler-text {
+    @apply px-2 py-0.5 cursor-pointer transition-all duration-300;
+    background-color: rgba(255, 255, 255, 0.9);
+    color: transparent;
+    border-radius: var(--radius);
+  }
+
+  .reddit-prose .spoiler:hover,
+  .reddit-prose .md-spoiler-text:hover,
+  .reddit-prose .spoiler.revealed,
+  .reddit-prose .md-spoiler-text.revealed {
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+/* Light mode adjustments for Reddit prose */
+@layer components {
+  .light .reddit-prose {
+    color: rgba(15, 23, 42, 0.9);
+  }
+
+  .light .reddit-prose h1,
+  .light .reddit-prose h2,
+  .light .reddit-prose h3,
+  .light .reddit-prose h4,
+  .light .reddit-prose h5,
+  .light .reddit-prose h6 {
+    color: #0f172a;
+  }
+
+  .light .reddit-prose blockquote {
+    background: linear-gradient(135deg, rgba(15, 82, 186, 0.06), rgba(75, 0, 130, 0.04));
+  }
+
+  .light .reddit-prose blockquote p {
+    color: rgba(15, 23, 42, 0.85);
+  }
+
+  .light .reddit-prose a {
+    color: var(--neon-cyan);
+    text-decoration-color: rgba(14, 165, 233, 0.4);
+  }
+
+  .light .reddit-prose a:hover {
+    text-decoration-color: var(--neon-cyan);
+  }
+
+  .light .reddit-prose code:not(pre code) {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #0891b2;
+  }
+
+  .light .reddit-prose pre {
+    background-color: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .light .reddit-prose pre code {
+    color: #0f172a;
+  }
+
+  .light .reddit-prose strong {
+    color: #0f172a;
+  }
+
+  .light .reddit-prose em {
+    color: rgba(15, 23, 42, 0.95);
+  }
+
+  .light .reddit-prose th {
+    background-color: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #0f172a;
+  }
+
+  .light .reddit-prose td {
+    border-color: rgba(0, 0, 0, 0.06);
+  }
+
+  .light .reddit-prose sup {
+    color: var(--neon-cyan);
   }
 }

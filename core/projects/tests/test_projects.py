@@ -7,6 +7,7 @@ from rest_framework.test import APITestCase
 
 from core.projects.constants import DEFAULT_BANNER_IMAGE
 from core.projects.models import Project, ProjectComment
+from core.users.models import UserRole
 
 User = get_user_model()
 
@@ -120,6 +121,8 @@ class ProjectModelTest(TestCase):
 class ProjectAPITest(APITestCase):
     """Test Project API endpoints with authentication and user isolation."""
 
+    PROJECT_API_ENDPOINT = '/api/v1/me/projects/'
+
     def setUp(self):
         self.user1 = User.objects.create_user(username='user1', email='user1@example.com', password='pass123')
         self.user2 = User.objects.create_user(username='user2', email='user2@example.com', password='pass123')
@@ -128,7 +131,7 @@ class ProjectAPITest(APITestCase):
         """Test that authenticated user can create a project."""
         self.client.force_authenticate(user=self.user1)
         data = {'title': 'My API Project', 'description': 'Created via API', 'type': 'github_repo'}
-        response = self.client.post('/api/v1/me/projects/', data)
+        response = self.client.post(self.PROJECT_API_ENDPOINT, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['title'], 'My API Project')
         self.assertEqual(response.data['slug'], 'my-api-project')
@@ -137,7 +140,7 @@ class ProjectAPITest(APITestCase):
     def test_create_project_unauthenticated(self):
         """Test that unauthenticated requests are rejected."""
         data = {'title': 'Test'}
-        response = self.client.post('/api/v1/me/projects/', data)
+        response = self.client.post(self.PROJECT_API_ENDPOINT, data)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_cannot_set_user_id(self):
@@ -148,7 +151,7 @@ class ProjectAPITest(APITestCase):
             'user': self.user2.id,  # Attempt to set different user
             'user_id': self.user2.id,
         }
-        response = self.client.post('/api/v1/me/projects/', data)
+        response = self.client.post(self.PROJECT_API_ENDPOINT, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # Should be created for user1, not user2
         project = Project.objects.get(id=response.data['id'])
@@ -163,7 +166,7 @@ class ProjectAPITest(APITestCase):
 
         # Login as user1
         self.client.force_authenticate(user=self.user1)
-        response = self.client.get('/api/v1/me/projects/')
+        response = self.client.get(self.PROJECT_API_ENDPOINT)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Handle paginated response
         results = response.data.get('results', response.data)
@@ -208,8 +211,6 @@ class ProjectAPITest(APITestCase):
 
     def test_admin_can_delete_any_project(self):
         """Test that admin users can delete any project."""
-        from core.users.models import UserRole
-
         # Create admin user
         admin_user = User.objects.create_user(
             username='admin', email='admin@example.com', password='pass123', role=UserRole.ADMIN
@@ -227,23 +228,21 @@ class ProjectAPITest(APITestCase):
         # Verify project was deleted
         self.assertFalse(Project.objects.filter(id=project_id).exists())
 
-    def test_admin_can_delete_bot_project(self):
-        """Test that admin users can delete projects created by bots."""
-        from core.users.models import UserRole
-
-        # Create admin and bot users
+    def test_admin_can_delete_agent_project(self):
+        """Test that admin users can delete projects created by agents."""
+        # Create admin and agent users
         admin_user = User.objects.create_user(
             username='admin', email='admin@example.com', password='pass123', role=UserRole.ADMIN
         )
-        bot_user = User.objects.create_user(
-            username='bot', email='bot@example.com', password='pass123', role=UserRole.BOT
+        agent_user = User.objects.create_user(
+            username='agent', email='agent@example.com', password='pass123', role=UserRole.AGENT
         )
 
-        # Create project owned by bot
-        project = Project.objects.create(user=bot_user, title='Bot Project')
+        # Create project owned by agent
+        project = Project.objects.create(user=agent_user, title='Agent Project')
         project_id = project.id
 
-        # Admin deletes bot's project
+        # Admin deletes agent's project
         self.client.force_authenticate(user=admin_user)
         response = self.client.delete(f'/api/v1/projects/{project_id}/delete/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -269,8 +268,6 @@ class ProjectAPITest(APITestCase):
         """Test that admins can bulk delete any projects."""
         # TODO: Fix bulk delete endpoint - currently returns 400
         self.skipTest('Bulk delete endpoint needs fixing')
-        from core.users.models import UserRole
-
         # Create admin user
         admin_user = User.objects.create_user(
             username='admin', email='admin@example.com', password='pass123', role=UserRole.ADMIN
@@ -335,8 +332,6 @@ class CommentPermissionsTest(APITestCase):
 
     def test_admin_can_delete_any_comment(self):
         """Test that admin users can delete any comment."""
-        from core.users.models import UserRole
-
         # Create admin user
         admin_user = User.objects.create_user(
             username='admin', email='admin@example.com', password='pass123', role=UserRole.ADMIN
@@ -355,24 +350,22 @@ class CommentPermissionsTest(APITestCase):
         # Verify comment was deleted
         self.assertFalse(ProjectComment.objects.filter(id=comment.id).exists())
 
-    def test_admin_can_delete_bot_comment(self):
-        """Test that admin users can delete comments from bots."""
-        from core.users.models import UserRole
-
-        # Create admin and bot users
+    def test_admin_can_delete_agent_comment(self):
+        """Test that admin users can delete comments from agents."""
+        # Create admin and agent users
         admin_user = User.objects.create_user(
             username='admin', email='admin@example.com', password='pass123', role=UserRole.ADMIN
         )
-        bot_user = User.objects.create_user(
-            username='bot', email='bot@example.com', password='pass123', role=UserRole.BOT
+        agent_user = User.objects.create_user(
+            username='agent', email='agent@example.com', password='pass123', role=UserRole.AGENT
         )
 
-        # Create comment as bot
+        # Create comment as agent
         comment = ProjectComment.objects.create(
-            user=bot_user, project=self.project, content='Bot comment', moderation_status='approved'
+            user=agent_user, project=self.project, content='Agent comment', moderation_status='approved'
         )
 
-        # Admin deletes bot's comment
+        # Admin deletes agent's comment
         self.client.force_authenticate(user=admin_user)
         response = self.client.delete(f'/api/v1/projects/{self.project.id}/comments/{comment.id}/')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -419,7 +412,7 @@ class CommentPermissionsTest(APITestCase):
         """Test that content must be a JSON object."""
         self.client.force_authenticate(user=self.user1)
         data = {'title': 'Test', 'content': 'not a dict'}
-        response = self.client.post('/api/v1/me/projects/', data, format='json')
+        response = self.client.post(self.PROJECT_API_ENDPOINT, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('content', response.data)
 
@@ -429,7 +422,7 @@ class CommentPermissionsTest(APITestCase):
         # Create content larger than 100KB
         large_content = {'blocks': [{'type': 'text', 'content': 'x' * 101000}]}
         data = {'title': 'Large Project', 'content': large_content}
-        response = self.client.post('/api/v1/me/projects/', data, format='json')
+        response = self.client.post(self.PROJECT_API_ENDPOINT, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('content', response.data)
 
@@ -437,7 +430,7 @@ class CommentPermissionsTest(APITestCase):
         """Test that invalid banner URLs are rejected."""
         self.client.force_authenticate(user=self.user1)
         data = {'title': 'Test', 'banner_url': 'not-a-valid-url'}
-        response = self.client.post('/api/v1/me/projects/', data, format='json')
+        response = self.client.post(self.PROJECT_API_ENDPOINT, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('banner_url', response.data)
 
@@ -450,7 +443,7 @@ class CommentPermissionsTest(APITestCase):
         p2 = Project.objects.create(user=self.user1, title='Second')
         p3 = Project.objects.create(user=self.user1, title='Third')
 
-        response = self.client.get('/api/v1/me/projects/')
+        response = self.client.get(self.PROJECT_API_ENDPOINT)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Handle paginated response
@@ -467,7 +460,7 @@ class CommentPermissionsTest(APITestCase):
             'username': 'hacker',  # Readonly field
             'created_at': '2020-01-01T00:00:00Z',  # Readonly field
         }
-        response = self.client.post('/api/v1/me/projects/', data, format='json')
+        response = self.client.post(self.PROJECT_API_ENDPOINT, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # username should be from auth user, not the provided value
         self.assertEqual(response.data['username'], 'user1')
@@ -480,7 +473,7 @@ class CommentPermissionsTest(APITestCase):
             'description': 'This project should get a default banner',
             'type': 'other',
         }
-        response = self.client.post('/api/v1/me/projects/', data, format='json')
+        response = self.client.post(self.PROJECT_API_ENDPOINT, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # Should have the default banner image (camelCase in response)
         self.assertEqual(response.data['bannerUrl'], DEFAULT_BANNER_IMAGE)
@@ -498,7 +491,7 @@ class CommentPermissionsTest(APITestCase):
             'type': 'other',
             'banner_url': custom_url,
         }
-        response = self.client.post('/api/v1/me/projects/', data, format='json')
+        response = self.client.post(self.PROJECT_API_ENDPOINT, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # Should preserve the custom banner (camelCase in response)
         self.assertEqual(response.data['bannerUrl'], custom_url)
@@ -517,7 +510,7 @@ class CommentPermissionsTest(APITestCase):
             'heroSlideshowImages': [],
         }
         data = {'title': 'Hero Test Project', 'content': content}
-        response = self.client.post('/api/v1/me/projects/', data, format='json')
+        response = self.client.post(self.PROJECT_API_ENDPOINT, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # Verify hero fields are preserved
         self.assertEqual(response.data['content']['heroDisplayMode'], 'quote')

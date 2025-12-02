@@ -1,5 +1,4 @@
-import { Fragment, useState } from 'react';
-import { Menu, Transition } from '@headlessui/react';
+import { useEffect, useRef, useState } from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 
 export type IntegrationType = 'github' | 'youtube' | 'upload' | 'url';
@@ -7,6 +6,10 @@ export type IntegrationType = 'github' | 'youtube' | 'upload' | 'url';
 interface ChatPlusMenuProps {
   onIntegrationSelect: (type: IntegrationType) => void;
   disabled?: boolean;
+  /** Controlled open state - lifted to parent to survive re-renders */
+  isOpen: boolean;
+  /** Callback when open state should change */
+  onOpenChange: (open: boolean) => void;
 }
 
 interface IntegrationOption {
@@ -55,51 +58,123 @@ const comingSoonIntegrations = [
   { label: 'Dribbble', icon: '🏀' },
 ];
 
-export function ChatPlusMenu({ onIntegrationSelect, disabled = false }: ChatPlusMenuProps) {
+export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, onOpenChange }: ChatPlusMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  // Debug: log state changes
+  console.log('[ChatPlusMenu] isOpen:', isOpen);
+
+  // Click-outside handler to close menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onOpenChange(false);
+        setFocusedIndex(0);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onOpenChange]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      switch (event.key) {
+        case 'Escape':
+          onOpenChange(false);
+          setFocusedIndex(0);
+          break;
+        case 'ArrowDown':
+          event.preventDefault();
+          setFocusedIndex((prev) =>
+            prev < integrationOptions.length - 1 ? prev + 1 : 0
+          );
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          setFocusedIndex((prev) =>
+            prev > 0 ? prev - 1 : integrationOptions.length - 1
+          );
+          break;
+        case 'Enter':
+          if (focusedIndex >= 0 && focusedIndex < integrationOptions.length) {
+            handleSelect(integrationOptions[focusedIndex].type);
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, focusedIndex, onOpenChange]);
+
+  const handleSelect = (type: IntegrationType) => {
+    onOpenChange(false);
+    setFocusedIndex(0);
+    onIntegrationSelect(type);
+  };
+
+  const toggleMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('[ChatPlusMenu] toggleMenu called, disabled:', disabled, 'current isOpen:', isOpen);
+    if (disabled) return;
+    console.log('[ChatPlusMenu] calling onOpenChange with:', !isOpen);
+    onOpenChange(!isOpen);
+    setFocusedIndex(0);
+  };
+
   return (
-    <Menu as="div" className="relative">
-      <Menu.Button
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
         disabled={disabled}
+        onClick={toggleMenu}
+        onMouseDown={(e) => {
+          // Prevent the click-outside handler from firing on the same event
+          e.stopPropagation();
+        }}
         className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label="Add integration"
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
       >
         <PlusIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-      </Menu.Button>
+      </button>
 
-      <Transition
-        as={Fragment}
-        enter="transition ease-out duration-100"
-        enterFrom="transform opacity-0 scale-95"
-        enterTo="transform opacity-100 scale-100"
-        leave="transition ease-in duration-75"
-        leaveFrom="transform opacity-100 scale-100"
-        leaveTo="transform opacity-0 scale-95"
-      >
-        <Menu.Items className="absolute left-0 bottom-full mb-2 w-64 origin-bottom-left bg-white dark:bg-slate-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+      {isOpen && (
+        <div
+          role="menu"
+          className="absolute left-0 bottom-full mb-2 w-64 origin-bottom-left bg-white dark:bg-slate-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+        >
           <div className="p-2">
             {/* Available integrations */}
-            {integrationOptions.map((option) => (
-              <Menu.Item key={option.type}>
-                {({ active }) => (
-                  <button
-                    onClick={() => onIntegrationSelect(option.type)}
-                    className={`
-                      w-full flex items-start gap-3 px-3 py-2 rounded-md text-left transition-colors
-                      ${active ? 'bg-slate-100 dark:bg-slate-700' : ''}
-                    `}
-                  >
-                    <span className="text-2xl flex-shrink-0">{option.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {option.label}
-                      </div>
-                      <div className="text-xs text-slate-600 dark:text-slate-400">
-                        {option.description}
-                      </div>
-                    </div>
-                  </button>
-                )}
-              </Menu.Item>
+            {integrationOptions.map((option, index) => (
+              <button
+                key={option.type}
+                role="menuitem"
+                onClick={() => handleSelect(option.type)}
+                onMouseEnter={() => setFocusedIndex(index)}
+                className={`
+                  w-full flex items-start gap-3 px-3 py-2 rounded-md text-left transition-colors
+                  ${focusedIndex === index ? 'bg-slate-100 dark:bg-slate-700' : ''}
+                `}
+              >
+                <span className="text-2xl flex-shrink-0">{option.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {option.label}
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    {option.description}
+                  </div>
+                </div>
+              </button>
             ))}
 
             {/* Divider */}
@@ -125,8 +200,8 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false }: ChatPlus
               </div>
             </div>
           </div>
-        </Menu.Items>
-      </Transition>
-    </Menu>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,13 +1,13 @@
-"""Models for Reddit curation bot integration."""
+"""Models for Reddit curation agent integration."""
 
 from django.conf import settings
 from django.db import models
 
 
-class RedditCommunityBot(models.Model):
-    """Configuration for a Reddit community curation bot.
+class RedditCommunityAgent(models.Model):
+    """Configuration for a Reddit community curation agent.
 
-    Each bot represents one subreddit and automatically creates projects
+    Each agent represents one subreddit and automatically creates projects
     for Reddit threads using RSS feeds.
     """
 
@@ -16,17 +16,17 @@ class RedditCommunityBot(models.Model):
         PAUSED = 'paused', 'Paused'
         ERROR = 'error', 'Error'
 
-    bot_user = models.OneToOneField(
+    agent_user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='reddit_bot_config',
-        help_text='Bot user account (role=BOT) that owns the projects',
-        limit_choices_to={'role': 'bot'},
+        related_name='reddit_agent_config',
+        help_text='Agent user account (role=AGENT) that owns the projects',
+        limit_choices_to={'role': 'agent'},
     )
 
     name = models.CharField(
         max_length=255,
-        help_text='Display name (e.g., "ClaudeCode Reddit Bot")',
+        help_text='Display name (e.g., "ClaudeCode Reddit Agent")',
     )
 
     subreddit = models.CharField(
@@ -41,14 +41,14 @@ class RedditCommunityBot(models.Model):
         choices=Status.choices,
         default=Status.ACTIVE,
         db_index=True,
-        help_text='Bot status (active/paused/error)',
+        help_text='Agent status (active/paused/error)',
     )
 
     # Sync settings stored as JSON
     settings = models.JSONField(
         default=dict,
         blank=True,
-        help_text='Bot configuration: min_score, min_comments, sync_interval_minutes, etc.',
+        help_text='Agent configuration: min_score, min_comments, sync_interval_minutes, etc.',
     )
 
     # Sync tracking
@@ -75,9 +75,9 @@ class RedditCommunityBot(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'reddit_community_bots'
-        verbose_name = 'Reddit Community Bot'
-        verbose_name_plural = 'Reddit Community Bots'
+        db_table = 'reddit_community_agents'
+        verbose_name = 'Reddit Community Agent'
+        verbose_name_plural = 'Reddit Community Agents'
         indexes = [
             models.Index(fields=['status', 'last_synced_at']),
             models.Index(fields=['subreddit']),
@@ -116,11 +116,11 @@ class RedditThread(models.Model):
         help_text='Associated Project (type=reddit_thread)',
     )
 
-    bot = models.ForeignKey(
-        RedditCommunityBot,
+    agent = models.ForeignKey(
+        RedditCommunityAgent,
         on_delete=models.CASCADE,
         related_name='threads',
-        help_text='Bot that created this thread',
+        help_text='Agent that created this thread',
     )
 
     reddit_post_id = models.CharField(
@@ -224,7 +224,7 @@ class RedditThread(models.Model):
         verbose_name_plural = 'Reddit Threads'
         indexes = [
             models.Index(fields=['subreddit', '-created_utc']),
-            models.Index(fields=['bot', '-created_utc']),
+            models.Index(fields=['agent', '-created_utc']),
             models.Index(fields=['-score']),
             models.Index(fields=['-num_comments']),
             models.Index(fields=['reddit_post_id']),

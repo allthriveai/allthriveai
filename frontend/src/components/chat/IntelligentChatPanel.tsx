@@ -1,10 +1,19 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faGithub } from '@fortawesome/free-brands-svg-icons';
+import { faStar, faCodeBranch, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { ChatInterface } from './ChatInterface';
 import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
 import { useIntelligentChat } from '@/hooks/useIntelligentChat';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  fetchGitHubRepos,
+  checkGitHubConnection,
+  importGitHubRepoAsync,
+  type GitHubRepository,
+} from '@/services/github';
 
 // Constants
 const ONBOARDING_BUTTON_BASE = 'w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50';
@@ -39,6 +48,12 @@ export function IntelligentChatPanel({
   const { user } = useAuth();
   const [error, setError] = useState<string | undefined>();
   const [hasInteracted, setHasInteracted] = useState(false);
+
+  // GitHub integration state
+  const [githubStep, setGithubStep] = useState<'idle' | 'loading' | 'connect' | 'repos' | 'importing'>('idle');
+  const [githubRepos, setGithubRepos] = useState<GitHubRepository[]>([]);
+  const [githubSearchQuery, setGithubSearchQuery] = useState('');
+  const [githubMessage, setGithubMessage] = useState<string>('');
 
   // Handle project creation - redirect to the new project page
   const handleProjectCreated = useCallback((projectUrl: string, projectTitle: string) => {
@@ -85,26 +100,218 @@ export function IntelligentChatPanel({
     connect();
   };
 
-  const handleIntegrationSelect = (type: IntegrationType) => {
-    // Send a message to the AI about the selected integration
-    let message = '';
+  // GitHub integration handlers
+  const handleGitHubImport = useCallback(async () => {
+    setGithubStep('loading');
+    setGithubMessage('Checking your GitHub connection...');
+    setHasInteracted(true);
+
+    try {
+      const isConnected = await checkGitHubConnection();
+
+      if (!isConnected) {
+        setGithubStep('connect');
+        setGithubMessage('You need to connect your GitHub account first.');
+        return;
+      }
+
+      // Fetch repos
+      setGithubMessage('Loading your GitHub repositories...');
+
+      try {
+        const fetchedRepos = await fetchGitHubRepos();
+        setGithubRepos(fetchedRepos);
+        setGithubStep('repos');
+        setGithubMessage(`Found ${fetchedRepos.length} repositories!`);
+      } catch (repoError: any) {
+        console.error('Failed to fetch GitHub repos:', repoError);
+        setGithubMessage(repoError.message || 'Failed to load repositories. Please try again.');
+        setGithubStep('idle');
+      }
+    } catch (error) {
+      console.error('GitHub import error:', error);
+      setGithubMessage('Something went wrong. Please try again.');
+      setGithubStep('idle');
+    }
+  }, []);
+
+  const handleConnectGitHub = () => {
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const frontendUrl = window.location.origin;
+    const returnPath = window.location.pathname + window.location.search;
+
+    // Redirect to django-allauth GitHub OAuth
+    const redirectUrl = `${backendUrl}/accounts/github/login/?process=connect&next=${encodeURIComponent(frontendUrl + returnPath)}`;
+    window.location.href = redirectUrl;
+  };
+
+  const handleSelectRepo = async (repo: GitHubRepository) => {
+    setGithubStep('importing');
+    setGithubMessage(`Importing "${repo.name}"...`);
+
+    try {
+      const result = await importGitHubRepoAsync(
+        repo.htmlUrl,
+        false,
+        (status) => {
+          setGithubMessage(status);
+        }
+      );
+
+      setGithubMessage(`✅ Successfully imported "${repo.name}"! Redirecting...`);
+
+      // Close panel and navigate to the project
+      setTimeout(() => {
+        onClose();
+        navigate(result.url);
+      }, 1500);
+    } catch (error: any) {
+      console.error('Failed to import repo:', error);
+
+      // Handle duplicate imports with link to existing project
+      if (error.errorCode === 'DUPLICATE_IMPORT' && error.project) {
+        setGithubMessage(`This repository is already imported.`);
+        setTimeout(() => {
+          onClose();
+          navigate(error.project.url);
+        }, 1500);
+      } else {
+        setGithubMessage(error.message || 'Failed to import repository.');
+        setGithubStep('repos');
+      }
+    }
+  };
+
+  const handleCancelGitHub = () => {
+    setGithubStep('idle');
+    setGithubMessage('');
+    setGithubRepos([]);
+    setGithubSearchQuery('');
+  };
+
+  const handleIntegrationSelect = useCallback(async (type: IntegrationType) => {
     switch (type) {
       case 'github':
-        message = 'I want to add a GitHub repository to my project';
+        // Use direct GitHub integration flow instead of AI
+        handleGitHubImport();
         break;
       case 'youtube':
-        message = 'I want to add a YouTube video to my project';
+        sendMessage('I want to add a YouTube video to my project');
         break;
       case 'upload':
-        message = 'I want to upload files to my project';
+        sendMessage('I want to upload files to my project');
         break;
       case 'url':
-        message = 'I want to add content from a URL to my project';
+        sendMessage('I want to add content from a URL to my project');
         break;
     }
-    if (message) {
-      sendMessage(message);
-    }
+  }, [handleGitHubImport, sendMessage]);
+
+  // Render GitHub integration UI
+  const renderGitHubUI = () => {
+    if (githubStep === 'idle') return null;
+
+    return (
+      <div className="flex flex-col items-start justify-start px-4 pt-4">
+        <div className="w-full max-w-md">
+          {/* Status message */}
+          {githubMessage && (
+            <div className="mb-4 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+              <p className="text-sm">{githubMessage}</p>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {(githubStep === 'loading' || githubStep === 'importing') && (
+            <div className="flex justify-center py-8">
+              <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-primary-500 animate-spin" />
+            </div>
+          )}
+
+          {/* Connect GitHub button */}
+          {githubStep === 'connect' && (
+            <div className="space-y-3">
+              <button
+                onClick={handleConnectGitHub}
+                className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                <FontAwesomeIcon icon={faGithub} />
+                Connect GitHub
+              </button>
+              <button
+                onClick={handleCancelGitHub}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {/* Repository list */}
+          {githubStep === 'repos' && githubRepos.length > 0 && (
+            <div className="space-y-3">
+              {/* Search */}
+              <input
+                type="text"
+                placeholder="Search repositories..."
+                value={githubSearchQuery}
+                onChange={(e) => setGithubSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+              />
+
+              {/* Repo list */}
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {githubRepos
+                  .filter((repo) =>
+                    githubSearchQuery.trim() === ''
+                      ? true
+                      : repo.name.toLowerCase().includes(githubSearchQuery.toLowerCase()) ||
+                        repo.description?.toLowerCase().includes(githubSearchQuery.toLowerCase())
+                  )
+                  .slice(0, 20)
+                  .map((repo) => (
+                    <button
+                      key={repo.fullName}
+                      onClick={() => handleSelectRepo(repo)}
+                      className="w-full text-left px-3 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-500 transition-all text-sm"
+                    >
+                      <div className="font-medium text-gray-900 dark:text-white">{repo.name}</div>
+                      {repo.description && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                          {repo.description}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-500">
+                        {repo.language && <span>{repo.language}</span>}
+                        {repo.stars > 0 && (
+                          <span className="flex items-center gap-1">
+                            <FontAwesomeIcon icon={faStar} className="w-3 h-3" />
+                            {repo.stars}
+                          </span>
+                        )}
+                        {repo.forks > 0 && (
+                          <span className="flex items-center gap-1">
+                            <FontAwesomeIcon icon={faCodeBranch} className="w-3 h-3" />
+                            {repo.forks}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+              </div>
+
+              {/* Cancel button */}
+              <button
+                onClick={handleCancelGitHub}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   // Empty state when no messages
@@ -249,6 +456,11 @@ export function IntelligentChatPanel({
     );
   };
 
+  // State for the ChatPlusMenu dropdown - lifted to parent to prevent state loss
+  // when component re-renders due to WebSocket connection changes
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  console.log('[IntelligentChatPanel] plusMenuOpen:', plusMenuOpen);
+
   return (
     <ChatInterface
       isOpen={isOpen}
@@ -261,6 +473,8 @@ export function IntelligentChatPanel({
         <ChatPlusMenu
           onIntegrationSelect={handleIntegrationSelect}
           disabled={isLoading}
+          isOpen={plusMenuOpen}
+          onOpenChange={setPlusMenuOpen}
         />
       }
       header={
@@ -309,29 +523,8 @@ export function IntelligentChatPanel({
         </div>
       }
       inputPlaceholder="Ask me anything..."
-      customMessageRenderer={(message) => {
-        // Show empty state before any messages
-        if (messages.length === 0) {
-          return renderEmptyState();
-        }
-
-        // Default message rendering
-        return (
-          <div
-            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-xs px-4 py-2 rounded-lg whitespace-pre-wrap ${
-                message.sender === 'user'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-              }`}
-            >
-              {message.content}
-            </div>
-          </div>
-        );
-      }}
+      customEmptyState={renderEmptyState()}
+      customContent={githubStep !== 'idle' ? renderGitHubUI() : undefined}
     />
   );
 }

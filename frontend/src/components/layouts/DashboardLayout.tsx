@@ -1,5 +1,5 @@
-import { useState, ReactNode, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, ReactNode, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightAboutPanel } from '@/components/about';
 import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalendarPanel';
@@ -23,6 +23,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
@@ -30,12 +31,26 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const [commentPanelOpen, setCommentPanelOpen] = useState(false);
   const [commentPanelProject, setCommentPanelProject] = useState<Project | null>(null);
 
+  // Stable conversationId that doesn't change on every render
+  // This prevents the IntelligentChatPanel from reinitializing on parent re-renders
+  const conversationId = useMemo(() => `project-${Date.now()}`, []);
+
   // Auto-open about panel when prop is true
   useEffect(() => {
     if (openAboutPanel) {
       setAboutOpen(true);
     }
   }, [openAboutPanel]);
+
+  // Close all panels when location changes (user navigates to a different page)
+  useEffect(() => {
+    setAboutOpen(false);
+    setEventsOpen(false);
+    setAddProjectOpen(false);
+    setAddProjectWelcomeMode(false);
+    setCommentPanelOpen(false);
+    setCommentPanelProject(null);
+  }, [location.pathname]);
 
   // Check for GitHub OAuth return and auto-open Add Project panel
   useEffect(() => {
@@ -165,7 +180,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         <IntelligentChatPanel
           isOpen={addProjectOpen}
           onClose={handleCloseAddProject}
-          conversationId={`project-${Date.now()}`}
+          conversationId={conversationId}
           welcomeMode={addProjectWelcomeMode}
         />
 

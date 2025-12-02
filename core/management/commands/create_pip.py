@@ -41,7 +41,7 @@ class Command(BaseCommand):
             first_name='Pip',
             last_name='',  # Pip is mononymous
             is_active=True,
-            role=UserRole.BOT,  # Mark as bot
+            role=UserRole.AGENT,  # Mark as agent
             avatar_url=avatar_url,
             bio=(
                 "<p>Hey there! I'm Pip, your friendly AI agent who lives for prompt battles! 🤖✨</p>"

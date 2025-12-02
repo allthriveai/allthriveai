@@ -1,160 +1,215 @@
 /**
  * Utility functions for category color management
- * Ocean-inspired color palette (greens and blues)
+ * Jewel-tone color palette - rich, saturated gemstone colors
  */
 
 type ColorName =
-  | 'teal' | 'cyan' | 'blue' | 'sky' | 'emerald'
-  | 'green' | 'lime' | 'mint' | 'turquoise' | 'aqua'
-  | 'slate' | 'indigo' | 'ocean';
+  | 'sapphire' | 'tanzanite' | 'amethyst' | 'rose-quartz' | 'emerald'
+  | 'morganite' | 'jade' | 'ruby' | 'topaz' | 'peridot'
+  // Legacy colors for backwards compatibility
+  | 'teal' | 'cyan' | 'blue' | 'green' | 'purple' | 'pink' | 'red' | 'orange' | 'lime';
 
-interface ColorClasses {
+interface JewelColorClasses {
+  // For category pills/badges
   bg: string;
   bgHover: string;
   text: string;
   bgSelected: string;
   textSelected: string;
-  bgDark: string;
-  textDark: string;
+  // For gradients (text-only cards)
+  gradientFrom: string;
+  gradientTo: string;
 }
 
 /**
- * Maps color name to Tailwind color classes for category pills
- * Ocean color palette: blues, teals, cyans, and greens
+ * True jewel tone colors - rich, saturated gemstone colors
+ * Using CSS custom properties defined in index.css
  */
-const colorMap: Record<ColorName, ColorClasses> = {
-  // Deep ocean blues
-  blue: {
-    bg: 'bg-blue-100',
-    bgHover: 'hover:bg-blue-200',
-    text: 'text-blue-700',
-    bgSelected: 'bg-blue-500',
+const jewelColorMap: Record<ColorName, JewelColorClasses> = {
+  // Primary jewel tones
+  sapphire: {
+    bg: 'bg-[#0F52BA]/15',
+    bgHover: 'hover:bg-[#0F52BA]/25',
+    text: 'text-[#0F52BA] dark:text-[#5a8fe8]',
+    bgSelected: 'bg-[#0F52BA]',
     textSelected: 'text-white',
-    bgDark: 'dark:bg-blue-900/30',
-    textDark: 'dark:text-blue-300',
+    gradientFrom: '#0F52BA',
+    gradientTo: '#0a3d8a',
   },
-  indigo: {
-    bg: 'bg-indigo-100',
-    bgHover: 'hover:bg-indigo-200',
-    text: 'text-indigo-700',
-    bgSelected: 'bg-indigo-500',
+  tanzanite: {
+    bg: 'bg-[#4B0082]/15',
+    bgHover: 'hover:bg-[#4B0082]/25',
+    text: 'text-[#4B0082] dark:text-[#9966CC]',
+    bgSelected: 'bg-[#4B0082]',
     textSelected: 'text-white',
-    bgDark: 'dark:bg-indigo-900/30',
-    textDark: 'dark:text-indigo-300',
+    gradientFrom: '#4B0082',
+    gradientTo: '#3a0066',
   },
-  sky: {
-    bg: 'bg-sky-100',
-    bgHover: 'hover:bg-sky-200',
-    text: 'text-sky-700',
-    bgSelected: 'bg-sky-500',
+  amethyst: {
+    bg: 'bg-[#5a175d]/15',
+    bgHover: 'hover:bg-[#5a175d]/25',
+    text: 'text-[#5a175d] dark:text-[#b366b8]',
+    bgSelected: 'bg-[#5a175d]',
     textSelected: 'text-white',
-    bgDark: 'dark:bg-sky-900/30',
-    textDark: 'dark:text-sky-300',
+    gradientFrom: '#5a175d',
+    gradientTo: '#420f44',
   },
-  // Tropical waters
-  cyan: {
-    bg: 'bg-cyan-100',
-    bgHover: 'hover:bg-cyan-200',
-    text: 'text-cyan-700',
-    bgSelected: 'bg-cyan-500',
+  'rose-quartz': {
+    bg: 'bg-[#AA336A]/15',
+    bgHover: 'hover:bg-[#AA336A]/25',
+    text: 'text-[#AA336A] dark:text-[#e880a8]',
+    bgSelected: 'bg-[#AA336A]',
     textSelected: 'text-white',
-    bgDark: 'dark:bg-cyan-900/30',
-    textDark: 'dark:text-cyan-300',
+    gradientFrom: '#AA336A',
+    gradientTo: '#8a2856',
   },
-  teal: {
-    bg: 'bg-teal-100',
-    bgHover: 'hover:bg-teal-200',
-    text: 'text-teal-700',
-    bgSelected: 'bg-teal-500',
-    textSelected: 'text-white',
-    bgDark: 'dark:bg-teal-900/30',
-    textDark: 'dark:text-teal-300',
-  },
-  turquoise: {
-    bg: 'bg-cyan-50',
-    bgHover: 'hover:bg-cyan-100',
-    text: 'text-cyan-600',
-    bgSelected: 'bg-cyan-400',
-    textSelected: 'text-white',
-    bgDark: 'dark:bg-cyan-800/30',
-    textDark: 'dark:text-cyan-200',
-  },
-  aqua: {
-    bg: 'bg-teal-50',
-    bgHover: 'hover:bg-teal-100',
-    text: 'text-teal-600',
-    bgSelected: 'bg-teal-400',
-    textSelected: 'text-white',
-    bgDark: 'dark:bg-teal-800/30',
-    textDark: 'dark:text-teal-200',
-  },
-  // Ocean greens and kelp
   emerald: {
-    bg: 'bg-emerald-100',
-    bgHover: 'hover:bg-emerald-200',
-    text: 'text-emerald-700',
-    bgSelected: 'bg-emerald-500',
+    bg: 'bg-[#046307]/15',
+    bgHover: 'hover:bg-[#046307]/25',
+    text: 'text-[#046307] dark:text-[#4ade80]',
+    bgSelected: 'bg-[#046307]',
     textSelected: 'text-white',
-    bgDark: 'dark:bg-emerald-900/30',
-    textDark: 'dark:text-emerald-300',
+    gradientFrom: '#046307',
+    gradientTo: '#034a05',
+  },
+  morganite: {
+    bg: 'bg-[#C46480]/15',
+    bgHover: 'hover:bg-[#C46480]/25',
+    text: 'text-[#C46480] dark:text-[#f0a0b8]',
+    bgSelected: 'bg-[#C46480]',
+    textSelected: 'text-white',
+    gradientFrom: '#C46480',
+    gradientTo: '#a85068',
+  },
+  jade: {
+    bg: 'bg-[#00A86B]/15',
+    bgHover: 'hover:bg-[#00A86B]/25',
+    text: 'text-[#00A86B] dark:text-[#4dd8a0]',
+    bgSelected: 'bg-[#00A86B]',
+    textSelected: 'text-white',
+    gradientFrom: '#00A86B',
+    gradientTo: '#008c5a',
+  },
+  ruby: {
+    bg: 'bg-[#9B111E]/15',
+    bgHover: 'hover:bg-[#9B111E]/25',
+    text: 'text-[#9B111E] dark:text-[#e85a66]',
+    bgSelected: 'bg-[#9B111E]',
+    textSelected: 'text-white',
+    gradientFrom: '#9B111E',
+    gradientTo: '#7a0d18',
+  },
+  topaz: {
+    bg: 'bg-[#E27D12]/15',
+    bgHover: 'hover:bg-[#E27D12]/25',
+    text: 'text-[#E27D12] dark:text-[#f5a855]',
+    bgSelected: 'bg-[#E27D12]',
+    textSelected: 'text-white',
+    gradientFrom: '#E27D12',
+    gradientTo: '#c56a0e',
+  },
+  peridot: {
+    bg: 'bg-[#5E8C31]/15',
+    bgHover: 'hover:bg-[#5E8C31]/25',
+    text: 'text-[#5E8C31] dark:text-[#98c860]',
+    bgSelected: 'bg-[#5E8C31]',
+    textSelected: 'text-white',
+    gradientFrom: '#5E8C31',
+    gradientTo: '#4a7026',
+  },
+  // Legacy color mappings (map to closest jewel tone)
+  teal: {
+    bg: 'bg-[#00A86B]/15',
+    bgHover: 'hover:bg-[#00A86B]/25',
+    text: 'text-[#00A86B] dark:text-[#4dd8a0]',
+    bgSelected: 'bg-[#00A86B]',
+    textSelected: 'text-white',
+    gradientFrom: '#00A86B',
+    gradientTo: '#008c5a',
+  },
+  cyan: {
+    bg: 'bg-[#0F52BA]/15',
+    bgHover: 'hover:bg-[#0F52BA]/25',
+    text: 'text-[#0F52BA] dark:text-[#5a8fe8]',
+    bgSelected: 'bg-[#0F52BA]',
+    textSelected: 'text-white',
+    gradientFrom: '#0F52BA',
+    gradientTo: '#0a3d8a',
+  },
+  blue: {
+    bg: 'bg-[#0F52BA]/15',
+    bgHover: 'hover:bg-[#0F52BA]/25',
+    text: 'text-[#0F52BA] dark:text-[#5a8fe8]',
+    bgSelected: 'bg-[#0F52BA]',
+    textSelected: 'text-white',
+    gradientFrom: '#0F52BA',
+    gradientTo: '#0a3d8a',
   },
   green: {
-    bg: 'bg-green-100',
-    bgHover: 'hover:bg-green-200',
-    text: 'text-green-700',
-    bgSelected: 'bg-green-500',
+    bg: 'bg-[#046307]/15',
+    bgHover: 'hover:bg-[#046307]/25',
+    text: 'text-[#046307] dark:text-[#4ade80]',
+    bgSelected: 'bg-[#046307]',
     textSelected: 'text-white',
-    bgDark: 'dark:bg-green-900/30',
-    textDark: 'dark:text-green-300',
+    gradientFrom: '#046307',
+    gradientTo: '#034a05',
+  },
+  purple: {
+    bg: 'bg-[#5a175d]/15',
+    bgHover: 'hover:bg-[#5a175d]/25',
+    text: 'text-[#5a175d] dark:text-[#b366b8]',
+    bgSelected: 'bg-[#5a175d]',
+    textSelected: 'text-white',
+    gradientFrom: '#5a175d',
+    gradientTo: '#420f44',
+  },
+  pink: {
+    bg: 'bg-[#AA336A]/15',
+    bgHover: 'hover:bg-[#AA336A]/25',
+    text: 'text-[#AA336A] dark:text-[#e880a8]',
+    bgSelected: 'bg-[#AA336A]',
+    textSelected: 'text-white',
+    gradientFrom: '#AA336A',
+    gradientTo: '#8a2856',
+  },
+  red: {
+    bg: 'bg-[#9B111E]/15',
+    bgHover: 'hover:bg-[#9B111E]/25',
+    text: 'text-[#9B111E] dark:text-[#e85a66]',
+    bgSelected: 'bg-[#9B111E]',
+    textSelected: 'text-white',
+    gradientFrom: '#9B111E',
+    gradientTo: '#7a0d18',
+  },
+  orange: {
+    bg: 'bg-[#E27D12]/15',
+    bgHover: 'hover:bg-[#E27D12]/25',
+    text: 'text-[#E27D12] dark:text-[#f5a855]',
+    bgSelected: 'bg-[#E27D12]',
+    textSelected: 'text-white',
+    gradientFrom: '#E27D12',
+    gradientTo: '#c56a0e',
   },
   lime: {
-    bg: 'bg-lime-100',
-    bgHover: 'hover:bg-lime-200',
-    text: 'text-lime-700',
-    bgSelected: 'bg-lime-600',
+    bg: 'bg-[#5E8C31]/15',
+    bgHover: 'hover:bg-[#5E8C31]/25',
+    text: 'text-[#5E8C31] dark:text-[#98c860]',
+    bgSelected: 'bg-[#5E8C31]',
     textSelected: 'text-white',
-    bgDark: 'dark:bg-lime-900/30',
-    textDark: 'dark:text-lime-300',
-  },
-  mint: {
-    bg: 'bg-emerald-50',
-    bgHover: 'hover:bg-emerald-100',
-    text: 'text-emerald-600',
-    bgSelected: 'bg-emerald-400',
-    textSelected: 'text-white',
-    bgDark: 'dark:bg-emerald-800/30',
-    textDark: 'dark:text-emerald-200',
-  },
-  // Deep sea and neutral
-  ocean: {
-    bg: 'bg-blue-50',
-    bgHover: 'hover:bg-blue-100',
-    text: 'text-blue-600',
-    bgSelected: 'bg-blue-600',
-    textSelected: 'text-white',
-    bgDark: 'dark:bg-blue-950/30',
-    textDark: 'dark:text-blue-200',
-  },
-  slate: {
-    bg: 'bg-slate-100',
-    bgHover: 'hover:bg-slate-200',
-    text: 'text-slate-700',
-    bgSelected: 'bg-slate-500',
-    textSelected: 'text-white',
-    bgDark: 'dark:bg-slate-900/30',
-    textDark: 'dark:text-slate-300',
+    gradientFrom: '#5E8C31',
+    gradientTo: '#4a7026',
   },
 };
 
 /**
- * Get Tailwind color classes for a category
- * @param color - The color name from the backend (e.g., 'blue', 'teal')
+ * Get Tailwind color classes for a category pill/badge
+ * @param color - The color name from the backend (e.g., 'sapphire', 'ruby')
  * @param isSelected - Whether the category is currently selected
  * @returns Object with Tailwind classes for background, text, and hover states
  */
 export function getCategoryColorClasses(color?: string, isSelected: boolean = false) {
-  const colorName = (color as ColorName) || 'teal'; // default to teal if no color
-  const classes = colorMap[colorName] || colorMap.teal;
+  const colorName = (color as ColorName) || 'sapphire';
+  const classes = jewelColorMap[colorName] || jewelColorMap.sapphire;
 
   if (isSelected) {
     return {
@@ -164,17 +219,90 @@ export function getCategoryColorClasses(color?: string, isSelected: boolean = fa
   }
 
   return {
-    background: `${classes.bg} ${classes.bgDark} ${classes.text} ${classes.textDark}`,
-    hover: `${classes.bgHover} dark:hover:bg-${colorName}-800/50`,
+    background: `${classes.bg} ${classes.text}`,
+    hover: `${classes.bgHover}`,
   };
 }
 
 /**
- * Get inline style object for dynamic color classes
- * Useful when Tailwind's JIT compiler needs help with dynamic values
+ * Get gradient classes for a text-only project card based on category
+ * @param categoryColor - The primary category's color (e.g., 'sapphire', 'ruby')
+ * @param projectId - Fallback project ID for deterministic gradient when no category
+ * @returns Tailwind gradient classes using jewel tone hex colors
  */
-export function getCategoryColorStyle(color?: string, isSelected: boolean = false) {
-  // This is a backup for cases where Tailwind classes don't work
-  // The class-based approach should be preferred
-  return {};
+export function getCategoryGradient(categoryColor?: string, projectId?: number): string {
+  const colorName = (categoryColor as ColorName) || null;
+  const classes = colorName ? jewelColorMap[colorName] : null;
+
+  if (classes) {
+    return `from-[${classes.gradientFrom}] to-[${classes.gradientTo}]`;
+  }
+
+  // Fallback: cycle through jewel gradients based on project ID
+  const fallbackColors: ColorName[] = [
+    'sapphire', 'emerald', 'amethyst', 'jade', 'topaz',
+    'tanzanite', 'ruby', 'morganite', 'peridot', 'rose-quartz'
+  ];
+  const index = projectId ? projectId % fallbackColors.length : 0;
+  const fallback = jewelColorMap[fallbackColors[index]];
+  return `from-[${fallback.gradientFrom}] to-[${fallback.gradientTo}]`;
 }
+
+/**
+ * Get inline style object for dynamic jewel colors
+ * Use this when Tailwind JIT can't handle dynamic arbitrary values
+ */
+export function getCategoryGradientStyle(categoryColor?: string, projectId?: number): React.CSSProperties {
+  const colorName = (categoryColor as ColorName) || null;
+  const classes = colorName ? jewelColorMap[colorName] : null;
+
+  if (classes) {
+    return {
+      background: `linear-gradient(135deg, ${classes.gradientFrom}, ${classes.gradientTo})`,
+    };
+  }
+
+  // Fallback
+  const fallbackColors: ColorName[] = [
+    'sapphire', 'emerald', 'amethyst', 'jade', 'topaz',
+    'tanzanite', 'ruby', 'morganite', 'peridot', 'rose-quartz'
+  ];
+  const index = projectId ? projectId % fallbackColors.length : 0;
+  const fallback = jewelColorMap[fallbackColors[index]];
+  return {
+    background: `linear-gradient(135deg, ${fallback.gradientFrom}, ${fallback.gradientTo})`,
+  };
+}
+
+/**
+ * Category to Jewel color mapping
+ * Use this when assigning colors to categories in the database
+ */
+export const CATEGORY_JEWEL_COLORS = {
+  'AI Agents & Multi-Tool Systems': 'amethyst',
+  'AI Models & Research': 'tanzanite',
+  'Audio & Multimodal': 'sapphire',
+  'Chatbots & Conversation': 'rose-quartz',
+  'Data & Analytics': 'emerald',
+  'Design (Mockups & UI)': 'morganite',
+  'Developer & Coding': 'jade',
+  'Games & Interactive': 'ruby',
+  'Images & Video': 'topaz',
+  'Podcasts & Education': 'peridot',
+} as const;
+
+/**
+ * Jewel tone hex values for direct use
+ */
+export const JEWEL_HEX = {
+  sapphire: '#0F52BA',
+  tanzanite: '#4B0082',
+  amethyst: '#5a175d',
+  'rose-quartz': '#AA336A',
+  emerald: '#046307',
+  morganite: '#C46480',
+  jade: '#00A86B',
+  ruby: '#9B111E',
+  topaz: '#E27D12',
+  peridot: '#5E8C31',
+} as const;

@@ -20,7 +20,7 @@ class UserRole(models.TextChoices):
     MENTOR = 'mentor', 'Mentor'
     PATRON = 'patron', 'Patron'
     ADMIN = 'admin', 'Admin'
-    BOT = 'bot', 'Bot'
+    AGENT = 'agent', 'Agent'
 
 
 class User(AbstractUser):
@@ -85,6 +85,7 @@ class User(AbstractUser):
         ('blossom', 'Blossom'),
         ('bloom', 'Bloom'),
         ('evergreen', 'Evergreen'),
+        ('curation', 'Curation'),  # Special tier for AI agents - no points
     ]
 
     TIER_THRESHOLDS = {
@@ -172,8 +173,8 @@ class User(AbstractUser):
             if len(self.bio) > 5000:
                 raise ValidationError('Bio must be less than 5000 characters.')
 
-        # Validate avatar_url is from allowed domains (skip for bots)
-        if self.avatar_url and self.role != UserRole.BOT:
+        # Validate avatar_url is from allowed domains (skip for agents)
+        if self.avatar_url and self.role != UserRole.AGENT:
             from django.conf import settings
 
             # Get MinIO endpoints from settings
@@ -239,8 +240,8 @@ class User(AbstractUser):
         return self.role == UserRole.ADMIN or self.is_superuser
 
     @property
-    def is_bot(self):
-        return self.role == UserRole.BOT
+    def is_agent(self):
+        return self.role == UserRole.AGENT
 
     def has_role_permission(self, required_role: str) -> bool:
         """Check if user has at least the required role level."""
@@ -280,7 +281,7 @@ class User(AbstractUser):
             description (str): Optional human-readable description
 
         Returns:
-            int: User's new total_points value
+            int: User's new total_points value (0 for curation tier users)
 
         Raises:
             ValueError: If amount is not positive
@@ -288,6 +289,14 @@ class User(AbstractUser):
         Example:
             user.add_points(25, 'project_create', 'Created: My First Project')
         """
+        # Skip point awards for curation tier users (AI agents)
+        if self.tier == 'curation':
+            logger.debug(
+                f'Skipping points for curation tier user {self.username}',
+                extra={'user_id': self.id, 'activity_type': activity_type},
+            )
+            return self.total_points
+
         if amount <= 0:
             raise ValueError(f'Points amount must be positive, got {amount}')
 

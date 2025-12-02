@@ -11,6 +11,13 @@ export interface ExploreParams {
   page_size?: number;
 }
 
+export interface UserTool {
+  id: number;
+  name: string;
+  slug: string;
+  logoUrl?: string;
+}
+
 export interface User {
   id: number;
   username: string;
@@ -23,6 +30,7 @@ export interface User {
   level: number;
   tier: string;
   tierDisplay: string;
+  topTools?: UserTool[];
 }
 
 /**

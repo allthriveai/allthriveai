@@ -139,6 +139,23 @@ class BattleService:
         """Initialize battle service with AI provider."""
         self.ai_provider = AIProvider()
 
+    def _get_invitation_or_error(self, invitation_id: int) -> BattleInvitation:
+        """Retrieve invitation by ID or raise ValueError.
+
+        Args:
+            invitation_id: ID of the invitation
+
+        Returns:
+            BattleInvitation instance
+
+        Raises:
+            ValueError: If invitation not found
+        """
+        try:
+            return BattleInvitation.objects.get(id=invitation_id)
+        except BattleInvitation.DoesNotExist:
+            raise ValueError('Invitation not found.')
+
     def generate_challenge(self, battle_type: str) -> str:
         """Generate a random challenge for a battle.
 
@@ -208,8 +225,8 @@ class BattleService:
             battle=battle, sender=challenger, recipient=opponent, message=message, status=InvitationStatus.PENDING
         )
 
-        # Auto-accept invitations for bot users
-        if opponent.is_bot:
+        # Auto-accept invitations for agent users
+        if opponent.is_agent:
             invitation.accept()
 
         return invitation
@@ -227,10 +244,7 @@ class BattleService:
         Raises:
             ValueError: If invitation not found or user not recipient
         """
-        try:
-            invitation = BattleInvitation.objects.get(id=invitation_id)
-        except BattleInvitation.DoesNotExist:
-            raise ValueError('Invitation not found.')
+        invitation = self._get_invitation_or_error(invitation_id)
 
         if invitation.recipient != user:
             raise ValueError('You are not the recipient of this invitation.')
@@ -248,10 +262,7 @@ class BattleService:
         Raises:
             ValueError: If invitation not found or user not recipient
         """
-        try:
-            invitation = BattleInvitation.objects.get(id=invitation_id)
-        except BattleInvitation.DoesNotExist:
-            raise ValueError('Invitation not found.')
+        invitation = self._get_invitation_or_error(invitation_id)
 
         if invitation.recipient != user:
             raise ValueError('You are not the recipient of this invitation.')

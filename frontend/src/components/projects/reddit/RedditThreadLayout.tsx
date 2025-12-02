@@ -19,6 +19,17 @@ import {
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 
+// Configure marked for Reddit-style markdown
+marked.setOptions({
+  breaks: true,  // Convert \n to <br>
+  gfm: true,     // GitHub Flavored Markdown (strikethrough, tables, etc.)
+});
+
+// Reusable className constants
+const ICON_BUTTON_CLASS = 'flex items-center justify-center w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-all backdrop-blur-md';
+const SECTION_HEADER_CLASS = 'text-sm font-semibold text-white/60 mb-3';
+const TAG_CONTAINER_CLASS = 'flex flex-wrap gap-2';
+
 interface RedditThreadLayoutProps {
   project: Project;
 }
@@ -33,15 +44,6 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
   const [isFeedbackSidebarOpen, setIsFeedbackSidebarOpen] = useState(false);
 
   const redditData = localProject.content?.reddit;
-
-  // Debug logging
-  console.log('RedditThreadLayout - redditData:', redditData);
-  console.log('RedditThreadLayout - is_video:', redditData?.is_video);
-  console.log('RedditThreadLayout - video_url:', redditData?.video_url);
-  console.log('RedditThreadLayout - thumbnail_url:', redditData?.thumbnail_url);
-  console.log('RedditThreadLayout - thumbnailUrl:', redditData?.thumbnailUrl);
-  console.log('RedditThreadLayout - selftext:', redditData?.selftext?.substring(0, 100));
-  console.log('RedditThreadLayout - selftext_html:', redditData?.selftext_html?.substring(0, 200));
 
   // React Rewards for project likes
   const { reward: rewardLike } = useReward('likeReward', 'emoji', {
@@ -184,7 +186,8 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-all backdrop-blur-md"
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-all backdrop-blur-md"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 <ArrowLeftIcon className="w-5 h-5" />
                 <span className="hidden sm:inline">Back</span>
@@ -197,11 +200,12 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                 id="likeReward"
                 onClick={handleToggleLike}
                 disabled={!isAuthenticated || isLiking}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-all backdrop-blur-md border ${
+                className={`flex items-center gap-2 px-4 py-2 font-semibold transition-all backdrop-blur-md border ${
                   localProject.isLikedByUser
                     ? 'bg-pink-500/90 border-pink-400/50 text-white shadow-[0_0_20px_rgba(236,72,153,0.3)]'
                     : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 {localProject.isLikedByUser ? (
                   <HeartIconSolid className="w-5 h-5" />
@@ -213,14 +217,16 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
 
               <button
                 onClick={() => setIsFeedbackSidebarOpen(true)}
-                className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-all backdrop-blur-md"
+                className={ICON_BUTTON_CLASS}
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 <ChatBubbleLeftRightIcon className="w-5 h-5" />
               </button>
 
               <button
                 onClick={() => setShowShareModal(true)}
-                className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-all backdrop-blur-md"
+                className={ICON_BUTTON_CLASS}
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 <ShareIcon className="w-5 h-5" />
               </button>
@@ -234,9 +240,9 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
         {/* Hero Card with Glassmorphism */}
         <div className="relative mb-8">
           {/* Glowing backdrop */}
-          <div className="absolute -inset-2 bg-gradient-to-r from-orange-500/20 to-pink-500/20 rounded-3xl blur-2xl opacity-50" />
+          <div className="absolute -inset-2 bg-gradient-to-r from-orange-500/20 to-pink-500/20 blur-2xl opacity-50" style={{ borderRadius: '8px' }} />
 
-          <div className="relative backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+          <div className="relative backdrop-blur-xl bg-white/5 border border-white/10 overflow-hidden shadow-2xl" style={{ borderRadius: 'var(--radius)' }}>
             {/* Video Player or Thumbnail Hero Image */}
             {hasVideo && postVideoUrl ? (
               <div className="w-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
@@ -275,9 +281,17 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
             ) : null}
 
             <div className="p-8">
-              {/* Subreddit, Flair, and Author */}
+              {/* Title */}
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+                {localProject.title}
+              </h1>
+
+              {/* Subreddit, Author, Date, and Flair Pills - Below Title */}
               <div className="flex flex-wrap items-center gap-3 mb-6">
-                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500/20 border border-orange-400/30 backdrop-blur-md">
+                <div
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-500/20 border border-orange-400/30 backdrop-blur-md"
+                  style={{ borderRadius: 'var(--radius)' }}
+                >
                   <ChatBubbleLeftRightIcon className="w-5 h-5 text-orange-400" />
                   <span className="font-semibold text-orange-300">r/{subreddit}</span>
                 </div>
@@ -286,49 +300,49 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                   href={`https://www.reddit.com/user/${cleanAuthor}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-400/30 backdrop-blur-md hover:bg-blue-500/30 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 border border-blue-400/30 backdrop-blur-md hover:bg-blue-500/30 transition-colors"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   <UserIcon className="w-5 h-5 text-blue-400" />
                   <span className="font-semibold text-blue-300">u/{cleanAuthor}</span>
                 </a>
 
-                {linkFlair && (
+                {formattedDate && (
                   <div
-                    className="px-4 py-2 rounded-xl font-semibold text-sm border backdrop-blur-md"
+                    className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 backdrop-blur-md"
+                    style={{ borderRadius: 'var(--radius)' }}
+                  >
+                    <ClockIcon className="w-5 h-5 text-white/60" />
+                    <span className="font-medium text-white/70">{formattedDate}</span>
+                  </div>
+                )}
+
+                {linkFlair && (
+                  <span
+                    className="px-3 py-1.5 font-medium text-sm border backdrop-blur-md"
                     style={{
+                      borderRadius: 'var(--radius)',
                       backgroundColor: linkFlairBgColor ? `${linkFlairBgColor}40` : 'rgba(99, 102, 241, 0.2)',
                       borderColor: linkFlairBgColor ? `${linkFlairBgColor}60` : 'rgba(99, 102, 241, 0.3)',
                       color: '#e0e7ff',
                     }}
                   >
                     {linkFlair}
-                  </div>
+                  </span>
                 )}
               </div>
 
-            {/* Title */}
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
-              {localProject.title}
-            </h1>
-
-            {/* Metadata */}
-            <div className="flex flex-wrap items-center gap-6 text-white/70 mb-6">
-              <div className="flex items-center gap-2">
-                <UserIcon className="w-4 h-4" />
-                <span>u/{cleanAuthor}</span>
-              </div>
-              {formattedDate && (
-                <div className="flex items-center gap-2">
-                  <ClockIcon className="w-4 h-4" />
-                  <span>{formattedDate}</span>
-                </div>
-              )}
-            </div>
-
             {/* Post Selftext Content */}
             {(postSelftextHtml || postSelftext) && (
-              <div className="mb-6">
-                <div className="prose prose-lg prose-invert max-w-none p-6 rounded-xl bg-white/5 border border-white/10">
+              <div className="mb-8">
+                <h2 className="text-sm font-bold text-white/50 uppercase tracking-[0.15em] mb-4 flex items-center gap-3">
+                  <span>Discussion</span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-white/20 to-transparent" />
+                </h2>
+                <div
+                  className="reddit-prose max-w-none p-6 sm:p-8 bg-white/5 border border-white/10 backdrop-blur-md"
+                  style={{ borderRadius: 'var(--radius)' }}
+                >
                   {postSelftextHtml ? (
                     <div
                       dangerouslySetInnerHTML={{
@@ -336,9 +350,11 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                       }}
                     />
                   ) : (
-                    <div className="whitespace-pre-wrap">
-                      {postSelftext}
-                    </div>
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeHtml(marked.parse(postSelftext) as string)
+                      }}
+                    />
                   )}
                 </div>
               </div>
@@ -350,7 +366,8 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                   href={permalink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold shadow-[0_0_30px_rgba(249,115,22,0.3)] hover:shadow-[0_0_40px_rgba(249,115,22,0.5)] transition-all"
+                  className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold shadow-[0_0_30px_rgba(249,115,22,0.3)] hover:shadow-[0_0_40px_rgba(249,115,22,0.5)] transition-all"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   <LinkIcon className="w-5 h-5" />
                   View Full Discussion on Reddit
@@ -362,7 +379,7 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
 
         {/* Info Card */}
         <div className="relative">
-          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-8 shadow-xl">
+          <div className="backdrop-blur-xl bg-white/5 border border-white/10 p-8 shadow-xl" style={{ borderRadius: 'var(--radius)' }}>
             <h2 className="text-2xl font-bold text-white mb-6">Discussion Details</h2>
 
             <div className="space-y-4">
@@ -397,7 +414,10 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
             </div>
 
             {/* Disclaimer */}
-            <div className="mt-8 p-6 rounded-xl bg-orange-500/10 border border-orange-400/30 backdrop-blur-md">
+            <div
+              className="mt-8 p-6 bg-orange-500/10 border border-orange-400/30 backdrop-blur-md"
+              style={{ borderRadius: 'var(--radius)' }}
+            >
               <h3 className="text-orange-300 font-semibold mb-2 flex items-center gap-2">
                 <span className="text-xl">⚠️</span> Disclaimer
               </h3>
@@ -412,19 +432,20 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
 
         {/* AllThrive Metadata Card */}
         <div className="relative mt-8">
-          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-8 shadow-xl">
+          <div className="backdrop-blur-xl bg-white/5 border border-white/10 p-8 shadow-xl" style={{ borderRadius: 'var(--radius)' }}>
             <h2 className="text-2xl font-bold text-white mb-6">AllThrive</h2>
 
             <div className="space-y-6">
               {/* Tools */}
               {localProject.tools && localProject.tools.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-white/60 mb-3">Tools</h3>
-                  <div className="flex flex-wrap gap-2">
+                  <h3 className={SECTION_HEADER_CLASS}>Tools</h3>
+                  <div className={TAG_CONTAINER_CLASS}>
                     {localProject.tools.map((tool) => (
                       <span
                         key={tool.id}
-                        className="px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-sm font-medium"
+                        className="px-3 py-1.5 bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-sm font-medium"
+                        style={{ borderRadius: 'var(--radius)' }}
                       >
                         {tool.name}
                       </span>
@@ -436,12 +457,13 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
               {/* Categories */}
               {localProject.categories && localProject.categories.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-white/60 mb-3">Category</h3>
-                  <div className="flex flex-wrap gap-2">
+                  <h3 className={SECTION_HEADER_CLASS}>Category</h3>
+                  <div className={TAG_CONTAINER_CLASS}>
                     {localProject.categories.map((category) => (
                       <span
                         key={category.id}
-                        className="px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-400/30 text-blue-200 text-sm font-medium"
+                        className="px-3 py-1.5 bg-blue-500/20 border border-blue-400/30 text-blue-200 text-sm font-medium"
+                        style={{ borderRadius: 'var(--radius)' }}
                       >
                         {category.name}
                       </span>
@@ -453,12 +475,13 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
               {/* Topics */}
               {localProject.topics && localProject.topics.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-white/60 mb-3">Topics</h3>
-                  <div className="flex flex-wrap gap-2">
+                  <h3 className={SECTION_HEADER_CLASS}>Topics</h3>
+                  <div className={TAG_CONTAINER_CLASS}>
                     {localProject.topics.map((topic, idx) => (
                       <span
                         key={idx}
-                        className="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-400/30 text-purple-200 text-sm font-medium"
+                        className="px-3 py-1.5 bg-purple-500/20 border border-purple-400/30 text-purple-200 text-sm font-medium"
+                        style={{ borderRadius: 'var(--radius)' }}
                       >
                         {topic}
                       </span>
@@ -474,7 +497,11 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
       {/* Share Modal */}
       {showShareModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowShareModal(false)}>
-          <div className="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl max-w-md w-full p-6 backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="bg-gray-900 border border-white/10 shadow-2xl max-w-md w-full p-6 backdrop-blur-xl"
+            style={{ borderRadius: 'var(--radius)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-xl font-bold text-white mb-6">Share Thread</h3>
 
             <div className="space-y-3 mb-6">
@@ -482,7 +509,8 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                 href={getShareUrls().twitter}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 w-full p-3 rounded-lg bg-[#1DA1F2]/20 hover:bg-[#1DA1F2]/30 border border-[#1DA1F2]/30 text-white transition-colors"
+                className="flex items-center gap-3 w-full p-3 bg-[#1DA1F2]/20 hover:bg-[#1DA1F2]/30 border border-[#1DA1F2]/30 text-white transition-colors"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 <span className="font-medium">Share on X (Twitter)</span>
               </a>
@@ -491,7 +519,8 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                 href={getShareUrls().linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 w-full p-3 rounded-lg bg-[#0A66C2]/20 hover:bg-[#0A66C2]/30 border border-[#0A66C2]/30 text-white transition-colors"
+                className="flex items-center gap-3 w-full p-3 bg-[#0A66C2]/20 hover:bg-[#0A66C2]/30 border border-[#0A66C2]/30 text-white transition-colors"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 <span className="font-medium">Share on LinkedIn</span>
               </a>
@@ -500,7 +529,8 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                 href={getShareUrls().reddit}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 w-full p-3 rounded-lg bg-[#FF4500]/20 hover:bg-[#FF4500]/30 border border-[#FF4500]/30 text-white transition-colors"
+                className="flex items-center gap-3 w-full p-3 bg-[#FF4500]/20 hover:bg-[#FF4500]/30 border border-[#FF4500]/30 text-white transition-colors"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 <span className="font-medium">Share on Reddit</span>
               </a>
@@ -509,7 +539,8 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
             <div className="pt-4 border-t border-white/10">
               <button
                 onClick={handleCopyLink}
-                className="flex items-center justify-center gap-2 w-full p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-colors"
+                className="flex items-center justify-center gap-2 w-full p-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-colors"
+                style={{ borderRadius: 'var(--radius)' }}
               >
                 {linkCopied ? (
                   <span className="text-green-400 font-medium">Link Copied!</span>
@@ -535,7 +566,8 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                 <h3 className="text-xl font-bold text-white">Comments</h3>
                 <button
                   onClick={() => setIsFeedbackSidebarOpen(false)}
-                  className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                  className="p-2 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                  style={{ borderRadius: 'var(--radius)' }}
                 >
                   ✕
                 </button>

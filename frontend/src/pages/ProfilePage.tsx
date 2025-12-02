@@ -48,8 +48,14 @@ function getTierDisplay(tier?: string): string {
     blossom: 'Blossom',
     bloom: 'Bloom',
     evergreen: 'Evergreen',
+    curation: 'Curation',
   };
   return tierMap[tier || ''] || 'Seedling';
+}
+
+// Check if user is in curation tier (AI agents/bots - no points/achievements)
+function isCurationTier(tier?: string): boolean {
+  return tier === 'curation';
 }
 
 export default function ProfilePage() {
@@ -91,8 +97,8 @@ export default function ProfilePage() {
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | null;
     if (tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity'].includes(tabFromUrl)) {
-      // Security: only allow Activity tab for own profile
-      if (tabFromUrl === 'activity' && !isOwnProfile) {
+      // Security: only allow Activity and Learning tabs for own profile
+      if ((tabFromUrl === 'activity' || tabFromUrl === 'learning') && !isOwnProfile) {
         setActiveTab('showcase');
         setSearchParams({ tab: 'showcase' });
         return;
@@ -223,26 +229,50 @@ export default function ProfilePage() {
 
   // Tabs logic
   const showPlayground = isOwnProfile || (displayUser?.playgroundIsPublic !== false);
-  const tabs = isAuthenticated && isOwnProfile
-    ? [
+  const isCuration = isCurationTier(displayUser?.tier);
+
+  // Build tabs array - exclude favorites for curation tier users
+  const tabs = (() => {
+    if (isAuthenticated && isOwnProfile) {
+      if (isCuration) {
+        return [
+          { id: 'showcase', label: 'Showcase' },
+          { id: 'playground', label: 'Playground' },
+          { id: 'learning', label: 'Learning' },
+          { id: 'activity', label: 'Activity' },
+        ] as const;
+      }
+      return [
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
         { id: 'favorites', label: 'Favorites' },
         { id: 'learning', label: 'Learning' },
         { id: 'activity', label: 'Activity' },
-      ] as const
-    : showPlayground
-    ? [
+      ] as const;
+    }
+    if (showPlayground) {
+      if (isCuration) {
+        return [
+          { id: 'showcase', label: 'Showcase' },
+          { id: 'playground', label: 'Playground' },
+        ] as const;
+      }
+      return [
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
         { id: 'favorites', label: 'Favorites' },
-        { id: 'learning', label: 'Learning' },
-      ] as const
-    : [
-        { id: 'showcase', label: 'Showcase' },
-        { id: 'favorites', label: 'Favorites' },
-        { id: 'learning', label: 'Learning' },
       ] as const;
+    }
+    if (isCuration) {
+      return [
+        { id: 'showcase', label: 'Showcase' },
+      ] as const;
+    }
+    return [
+      { id: 'showcase', label: 'Showcase' },
+      { id: 'favorites', label: 'Favorites' },
+    ] as const;
+  })();
 
   if (isLoading) {
     return (
@@ -393,15 +423,18 @@ export default function ProfilePage() {
                       </div>
                     )}
 
-                    {/* Stats Grid */}
-                    <div className={`grid grid-cols-3 gap-2 ${scrolled ? 'border-y' : 'border-b'} border-gray-200 dark:border-white/10 py-4 mb-6`}>
-                      <div className="text-center">
-                        <div className="text-sm font-bold text-gray-900 dark:text-white mb-1">
-                          {displayUser?.totalPoints || 0}
+                    {/* Stats Grid - 2 columns for curation tier (no points), 3 columns for others */}
+                    <div className={`grid ${isCuration ? 'grid-cols-2' : 'grid-cols-3'} gap-2 ${scrolled ? 'border-y' : 'border-b'} border-gray-200 dark:border-white/10 py-4 mb-6`}>
+                      {/* Points - Hidden for curation tier */}
+                      {!isCuration && (
+                        <div className="text-center">
+                          <div className="text-sm font-bold text-gray-900 dark:text-white mb-1">
+                            {displayUser?.totalPoints || 0}
+                          </div>
+                          <div className="text-[10px] uppercase tracking-wider text-gray-500">Points</div>
                         </div>
-                        <div className="text-[10px] uppercase tracking-wider text-gray-500">Points</div>
-                      </div>
-                      <div className="text-center border-l border-gray-200 dark:border-white/10 pl-1">
+                      )}
+                      <div className={`text-center ${!isCuration ? 'border-l border-gray-200 dark:border-white/10 pl-1' : ''}`}>
                         <div className="text-sm font-bold text-gray-900 dark:text-white mb-1">
                           {projects.showcase.length + projects.playground.length}
                         </div>
@@ -446,41 +479,43 @@ export default function ProfilePage() {
                       </div>
                     )}
 
-                    {/* Achievements */}
-                    <div className="mb-6">
-                      <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Achievements</h4>
-                      {achievementsByCategory && !isAchievementsLoading ? (() => {
-                        const earnedAchievements = Object.values(achievementsByCategory)
-                          .flat()
-                          .filter(a => a.is_earned)
-                          .slice(0, 6);
+                    {/* Achievements - Hidden for curation tier */}
+                    {!isCuration && (
+                      <div className="mb-6">
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Achievements</h4>
+                        {achievementsByCategory && !isAchievementsLoading ? (() => {
+                          const earnedAchievements = Object.values(achievementsByCategory)
+                            .flat()
+                            .filter(a => a.is_earned)
+                            .slice(0, 6);
 
-                        if (earnedAchievements.length === 0) {
-                          return <p className="text-sm text-gray-400 italic">No badges yet</p>;
-                        }
+                          if (earnedAchievements.length === 0) {
+                            return <p className="text-sm text-gray-400 italic">No badges yet</p>;
+                          }
 
-                        return (
-                          <div className="grid grid-cols-3 gap-2">
-                            {earnedAchievements.map((achievement) => {
-                              const rarityColors = getRarityColorClasses(achievement.rarity);
-                              return (
-                                <div
-                                  key={achievement.id}
-                                  className={`aspect-square rounded-lg bg-gradient-to-br ${rarityColors.from} ${rarityColors.to} flex items-center justify-center text-white shadow-sm cursor-help group relative`}
-                                  title={achievement.name}
-                                >
-                                  <FontAwesomeIcon icon={faTrophy} className="text-sm" />
-                                </div>
-                              );
-                            })}
+                          return (
+                            <div className="grid grid-cols-3 gap-2">
+                              {earnedAchievements.map((achievement) => {
+                                const rarityColors = getRarityColorClasses(achievement.rarity);
+                                return (
+                                  <div
+                                    key={achievement.id}
+                                    className={`aspect-square rounded-lg bg-gradient-to-br ${rarityColors.from} ${rarityColors.to} flex items-center justify-center text-white shadow-sm cursor-help group relative`}
+                                    title={achievement.name}
+                                  >
+                                    <FontAwesomeIcon icon={faTrophy} className="text-sm" />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })() : (
+                          <div className="flex gap-2">
+                            {[1,2,3].map(i => <div key={i} className="w-full h-16 rounded-lg bg-gray-100 dark:bg-white/5 animate-pulse" />)}
                           </div>
-                        );
-                      })() : (
-                        <div className="flex gap-2">
-                          {[1,2,3].map(i => <div key={i} className="w-full h-16 rounded-lg bg-gray-100 dark:bg-white/5 animate-pulse" />)}
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Tools */}
                     <div>
@@ -586,33 +621,37 @@ export default function ProfilePage() {
                         <FontAwesomeIcon icon={faFlask} className="w-3 h-3" />
                       </button>
 
-                      {/* Favorites Icon - Always visible */}
-                      <button
-                        onClick={() => handleTabChange('favorites')}
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                          activeTab === 'favorites'
-                            ? 'bg-pink-500 text-white shadow-md'
-                            : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
-                        }`}
-                        title="Favorites"
-                      >
-                        <FontAwesomeIcon icon={faHeart} className="w-3 h-3" />
-                      </button>
+                      {/* Favorites Icon - Hidden for curation tier */}
+                      {!isCuration && (
+                        <button
+                          onClick={() => handleTabChange('favorites')}
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                            activeTab === 'favorites'
+                              ? 'bg-pink-500 text-white shadow-md'
+                              : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                          }`}
+                          title="Favorites"
+                        >
+                          <FontAwesomeIcon icon={faHeart} className="w-3 h-3" />
+                        </button>
+                      )}
 
-                      {/* Learning Icon - Always visible */}
-                      <button
-                        onClick={() => handleTabChange('learning')}
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                          activeTab === 'learning'
-                            ? 'bg-teal-500 text-white shadow-md'
-                            : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
-                        }`}
-                        title="Learning"
-                      >
-                        <FontAwesomeIcon icon={faGraduationCap} className="w-3 h-3" />
-                      </button>
+                      {/* Learning Icon - Only visible for profile owner */}
+                      {isOwnProfile && (
+                        <button
+                          onClick={() => handleTabChange('learning')}
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                            activeTab === 'learning'
+                              ? 'bg-teal-500 text-white shadow-md'
+                              : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                          }`}
+                          title="Learning"
+                        >
+                          <FontAwesomeIcon icon={faGraduationCap} className="w-3 h-3" />
+                        </button>
+                      )}
 
-                      {/* Activity Icon - Always visible for profile owner */}
+                      {/* Activity Icon - Only visible for profile owner */}
                       {isOwnProfile && (
                         <button
                           onClick={() => handleTabChange('activity')}

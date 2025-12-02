@@ -12,7 +12,7 @@ import requests
 from django.db import transaction
 from django.utils import timezone
 
-from core.integrations.reddit_models import RedditCommunityBot, RedditThread
+from core.integrations.reddit_models import RedditCommunityAgent, RedditThread
 from core.projects.models import Project
 from services.moderation import ContentModerator, ImageModerator
 
@@ -354,17 +354,17 @@ class RedditSyncService:
             }
 
     @classmethod
-    def sync_bot(cls, bot: RedditCommunityBot, full_sync: bool = False) -> dict:
-        """Sync a single Reddit bot's threads.
+    def sync_agent(cls, agent: RedditCommunityAgent, full_sync: bool = False) -> dict:
+        """Sync a single Reddit agent's threads.
 
         Args:
-            bot: RedditCommunityBot instance
+            agent: RedditCommunityAgent instance
             full_sync: If True, process all posts; if False, only new ones
 
         Returns:
             Dict with sync results: created, updated, errors
         """
-        logger.info(f'Starting sync for bot: {bot.name} (r/{bot.subreddit})')
+        logger.info(f'Starting sync for agent: {agent.name} (r/{agent.subreddit})')
 
         results = {
             'created': 0,
@@ -375,7 +375,7 @@ class RedditSyncService:
 
         try:
             # Fetch RSS feed
-            feed_url = bot.rss_feed_url
+            feed_url = agent.rss_feed_url
             logger.debug(f'Fetching RSS feed: {feed_url}')
 
             response = requests.get(
@@ -387,7 +387,7 @@ class RedditSyncService:
 
             # Parse feed
             posts = RedditRSSParser.parse_feed(response.text)
-            logger.info(f'Found {len(posts)} posts in feed for r/{bot.subreddit}')
+            logger.info(f'Found {len(posts)} posts in feed for r/{agent.subreddit}')
 
             # Note: RSS doesn't provide score/comments, so we can't filter here
             # We store all posts and let users filter in the UI
@@ -399,7 +399,7 @@ class RedditSyncService:
                     # Note: RSS doesn't give us score/comments, so we can't filter here
                     # We'll store all and let users filter in the UI, or we'd need API access
 
-                    created, updated = cls._process_post(bot, post_data)
+                    created, updated = cls._process_post(agent, post_data)
                     if created:
                         results['created'] += 1
                     elif updated:
@@ -409,32 +409,32 @@ class RedditSyncService:
                     results['errors'] += 1
                     results['error_messages'].append(str(e))
 
-            # Update bot sync status
-            bot.last_synced_at = timezone.now()
-            bot.last_sync_status = f'Success: {results["created"]} created, {results["updated"]} updated'
+            # Update agent sync status
+            agent.last_synced_at = timezone.now()
+            agent.last_sync_status = f'Success: {results["created"]} created, {results["updated"]} updated'
             if results['errors'] > 0:
-                bot.status = RedditCommunityBot.Status.ERROR
-                bot.last_sync_error = f'{results["errors"]} errors occurred'
+                agent.status = RedditCommunityAgent.Status.ERROR
+                agent.last_sync_error = f'{results["errors"]} errors occurred'
             else:
-                bot.status = RedditCommunityBot.Status.ACTIVE
-                bot.last_sync_error = ''
-            bot.save()
+                agent.status = RedditCommunityAgent.Status.ACTIVE
+                agent.last_sync_error = ''
+            agent.save()
 
-            logger.info(f'Sync complete for {bot.name}: {results}')
+            logger.info(f'Sync complete for {agent.name}: {results}')
 
         except requests.RequestException as e:
-            logger.error(f'Failed to fetch RSS feed for {bot.name}: {e}')
-            bot.status = RedditCommunityBot.Status.ERROR
-            bot.last_sync_error = f'RSS fetch failed: {str(e)}'
-            bot.save()
+            logger.error(f'Failed to fetch RSS feed for {agent.name}: {e}')
+            agent.status = RedditCommunityAgent.Status.ERROR
+            agent.last_sync_error = f'RSS fetch failed: {str(e)}'
+            agent.save()
             results['errors'] += 1
             results['error_messages'].append(str(e))
 
         except Exception as e:
-            logger.error(f'Unexpected error syncing {bot.name}: {e}', exc_info=True)
-            bot.status = RedditCommunityBot.Status.ERROR
-            bot.last_sync_error = f'Sync failed: {str(e)}'
-            bot.save()
+            logger.error(f'Unexpected error syncing {agent.name}: {e}', exc_info=True)
+            agent.status = RedditCommunityAgent.Status.ERROR
+            agent.last_sync_error = f'Sync failed: {str(e)}'
+            agent.save()
             results['errors'] += 1
             results['error_messages'].append(str(e))
 
@@ -442,7 +442,7 @@ class RedditSyncService:
 
     @classmethod
     @transaction.atomic
-    def _process_post(cls, bot: RedditCommunityBot, post_data: dict) -> tuple[bool, bool]:
+    def _process_post(cls, agent: RedditCommunityAgent, post_data: dict) -> tuple[bool, bool]:
         """Process a single Reddit post: create or update thread/project.
 
         Returns:
@@ -459,11 +459,11 @@ class RedditSyncService:
 
         except RedditThread.DoesNotExist:
             # Create new thread + project
-            cls._create_thread(bot, post_data)
+            cls._create_thread(agent, post_data)
             return True, False
 
     @classmethod
-    def _auto_tag_project(cls, project: Project, metrics: dict, subreddit: str, bot: RedditCommunityBot):
+    def _auto_tag_project(cls, project: Project, metrics: dict, subreddit: str, agent: RedditCommunityAgent):
         """Automatically tag a Reddit project with tools, categories, and topics using AI."""
         from core.taxonomy.models import Taxonomy
         from core.tools.models import Tool
@@ -489,11 +489,11 @@ class RedditSyncService:
             if link_flair and link_flair.lower() not in ['discussion', 'question', 'showcase']:
                 topics.append(link_flair.lower())
 
-        # Get default tools from bot settings
-        default_tool_slugs = bot.settings.get('default_tools', [])
+        # Get default tools from agent settings
+        default_tool_slugs = agent.settings.get('default_tools', [])
         detected_tools = []
 
-        # Add default tools from bot settings first
+        # Add default tools from agent settings first
         for tool_slug in default_tool_slugs:
             try:
                 tool = Tool.objects.filter(slug=tool_slug).first()
@@ -517,11 +517,11 @@ class RedditSyncService:
             project.tools.set(detected_tools)
             logger.info(f'Assigned {len(detected_tools)} tools to project: {[t.name for t in detected_tools]}')
 
-        # Get default categories from bot settings
-        default_category_slugs = bot.settings.get('default_categories', [])
+        # Get default categories from agent settings
+        default_category_slugs = agent.settings.get('default_categories', [])
         detected_categories = []
 
-        # Add default categories from bot settings first
+        # Add default categories from agent settings first
         for cat_slug in default_category_slugs:
             try:
                 category = Taxonomy.objects.filter(slug=cat_slug, taxonomy_type='category').first()
@@ -555,13 +555,52 @@ class RedditSyncService:
         logger.info(f'Assigned {len(topics)} topics to project: {topics}')
 
     @classmethod
-    def _create_thread(cls, bot: RedditCommunityBot, post_data: dict):
+    def _select_best_image_url(cls, metrics: dict, thumbnail_fallback: str) -> str:
+        """Select the best image URL from metrics.
+
+        Prioritize: gallery images > full-size image > RSS thumbnail.
+
+        Args:
+            metrics: Post metrics dict from fetch_post_metrics()
+            thumbnail_fallback: Fallback thumbnail URL from RSS feed
+
+        Returns:
+            Best available image URL
+        """
+        if metrics.get('is_gallery') and metrics.get('gallery_images'):
+            return metrics['gallery_images'][0]  # Use first gallery image
+        elif metrics.get('image_url'):
+            return metrics['image_url']
+        return thumbnail_fallback
+
+    @classmethod
+    def _prepare_reddit_metadata(cls, post_data: dict, metrics: dict) -> dict:
+        """Prepare combined metadata for JSON storage.
+
+        Args:
+            post_data: Post data from RSS feed
+            metrics: Post metrics from Reddit API
+
+        Returns:
+            Combined metadata dict with datetime converted to ISO string
+        """
+        metadata = {
+            **post_data,
+            **metrics,  # Include all metrics data (selftext, video, gallery, etc.)
+        }
+        # Convert datetime to string for JSON storage
+        if metadata.get('published_utc'):
+            metadata['published_utc'] = metadata['published_utc'].isoformat()
+        return metadata
+
+    @classmethod
+    def _create_thread(cls, agent: RedditCommunityAgent, post_data: dict):
         """Create a new Project and RedditThread."""
         # Fetch current metrics (score, comments, full-size image) from Reddit
         metrics = cls.fetch_post_metrics(post_data['permalink'])
 
-        # Check if post meets minimum score threshold from bot settings
-        min_score = bot.settings.get('min_score', 0)
+        # Check if post meets minimum score threshold from agent settings
+        min_score = agent.settings.get('min_score', 0)
         if metrics['score'] < min_score:
             logger.info(
                 f'Skipping post {post_data["reddit_post_id"]} - score {metrics["score"]} below minimum {min_score}'
@@ -591,18 +630,14 @@ class RedditSyncService:
             logger.warning(f'Skipping post {post_data["reddit_post_id"]} - failed moderation: {reason}')
             return  # Skip posts that fail moderation
 
-        # Prioritize gallery images, then full-size image, then RSS thumbnail
-        image_url = post_data['thumbnail_url']
-        if metrics.get('is_gallery') and metrics.get('gallery_images'):
-            image_url = metrics['gallery_images'][0]  # Use first gallery image
-        elif metrics.get('image_url'):
-            image_url = metrics['image_url']
+        # Select best image URL
+        image_url = cls._select_best_image_url(metrics, post_data['thumbnail_url'])
 
         # Build project content - check for video hero display mode
         project_content = {}
-        hero_display_mode = bot.settings.get('hero_display_mode', '')
+        hero_display_mode = agent.settings.get('hero_display_mode', '')
 
-        # If bot is configured for video hero and post has a video, set video hero
+        # If agent is configured for video hero and post has a video, set video hero
         if hero_display_mode == 'video' and metrics.get('is_video') and metrics.get('video_url'):
             project_content = {
                 'heroDisplayMode': 'video',
@@ -619,7 +654,7 @@ class RedditSyncService:
 
         # Create project
         project = Project.objects.create(
-            user=bot.bot_user,
+            user=agent.agent_user,
             title=post_data['title'],
             description=post_data['content'][:5000] if post_data['content'] else '',  # Truncate if too long
             type=Project.ProjectType.REDDIT_THREAD,
@@ -631,23 +666,17 @@ class RedditSyncService:
         )
 
         # Auto-tag the project
-        cls._auto_tag_project(project, metrics, post_data.get('subreddit', ''), bot)
+        cls._auto_tag_project(project, metrics, post_data.get('subreddit', ''), agent)
 
         # Prepare metadata with all Reddit data
-        metadata = {
-            **post_data,
-            **metrics,  # Include all metrics data (selftext, video, gallery, etc.)
-        }
-        # Convert datetime to string for JSON storage
-        if metadata.get('published_utc'):
-            metadata['published_utc'] = metadata['published_utc'].isoformat()
+        metadata = cls._prepare_reddit_metadata(post_data, metrics)
 
         # Create Reddit thread metadata with fetched metrics and moderation data
         RedditThread.objects.create(
             project=project,
-            bot=bot,
+            agent=agent,
             reddit_post_id=post_data['reddit_post_id'],
-            subreddit=post_data['subreddit'] or bot.subreddit,
+            subreddit=post_data['subreddit'] or agent.subreddit,
             author=post_data['author'],
             permalink=post_data['permalink'],
             score=metrics['score'],
@@ -672,19 +701,15 @@ class RedditSyncService:
         # Fetch current metrics (score, comments, full-size image) from Reddit
         metrics = cls.fetch_post_metrics(post_data['permalink'])
 
-        # Prioritize gallery images, then full-size image, then RSS thumbnail
-        image_url = post_data['thumbnail_url']
-        if metrics.get('is_gallery') and metrics.get('gallery_images'):
-            image_url = metrics['gallery_images'][0]  # Use first gallery image
-        elif metrics.get('image_url'):
-            image_url = metrics['image_url']
+        # Select best image URL
+        image_url = cls._select_best_image_url(metrics, post_data['thumbnail_url'])
 
         # Update project fields that might change
         project = thread.project
         project.featured_image_url = image_url
 
         # Check if we should set video hero display (if not already set)
-        hero_display_mode = thread.bot.settings.get('hero_display_mode', '')
+        hero_display_mode = thread.agent.settings.get('hero_display_mode', '')
         update_fields = ['featured_image_url']
 
         if hero_display_mode == 'video' and not project.content:
@@ -708,16 +733,10 @@ class RedditSyncService:
 
         # Update tags if project doesn't have any yet
         if not project.tools.exists() and not project.topics:
-            cls._auto_tag_project(project, metrics, post_data.get('subreddit', ''), thread.bot)
+            cls._auto_tag_project(project, metrics, post_data.get('subreddit', ''), thread.agent)
 
         # Prepare metadata with all Reddit data
-        metadata = {
-            **post_data,
-            **metrics,  # Include all metrics data (selftext, video, gallery, etc.)
-        }
-        # Convert datetime to string for JSON storage
-        if metadata.get('published_utc'):
-            metadata['published_utc'] = metadata['published_utc'].isoformat()
+        metadata = cls._prepare_reddit_metadata(post_data, metrics)
 
         # Update thread metadata with refreshed metrics
         thread.thumbnail_url = image_url
@@ -731,27 +750,27 @@ class RedditSyncService:
         )
 
     @classmethod
-    def sync_all_active_bots(cls) -> dict:
-        """Sync all active Reddit bots.
+    def sync_all_active_agents(cls) -> dict:
+        """Sync all active Reddit agents.
 
         Returns:
             Dict with overall sync statistics
         """
-        active_bots = RedditCommunityBot.objects.filter(status=RedditCommunityBot.Status.ACTIVE)
+        active_agents = RedditCommunityAgent.objects.filter(status=RedditCommunityAgent.Status.ACTIVE)
 
         overall_results = {
-            'bots_synced': 0,
+            'agents_synced': 0,
             'total_created': 0,
             'total_updated': 0,
             'total_errors': 0,
         }
 
-        for bot in active_bots:
-            results = cls.sync_bot(bot)
-            overall_results['bots_synced'] += 1
+        for agent in active_agents:
+            results = cls.sync_agent(agent)
+            overall_results['agents_synced'] += 1
             overall_results['total_created'] += results['created']
             overall_results['total_updated'] += results['updated']
             overall_results['total_errors'] += results['errors']
 
-        logger.info(f'Synced {overall_results["bots_synced"]} bots: {overall_results}')
+        logger.info(f'Synced {overall_results["agents_synced"]} agents: {overall_results}')
         return overall_results

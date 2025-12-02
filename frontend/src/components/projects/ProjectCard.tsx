@@ -31,6 +31,7 @@ import { ToolTray } from '@/components/tools/ToolTray';
 import { SlideUpHero } from './SlideUpHero';
 import { useAuth } from '@/hooks/useAuth';
 import { useReward } from 'react-rewards';
+import { getCategoryGradientStyle } from '@/utils/categoryColors';
 
 interface ProjectCardProps {
   project: Project;
@@ -213,21 +214,16 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     }
 
     // Create a gradient placeholder with project title
-    const gradients = [
-      'from-blue-500 to-purple-600',
-      'from-green-500 to-teal-600',
-      'from-orange-500 to-red-600',
-      'from-pink-500 to-rose-600',
-      'from-indigo-500 to-blue-600',
-      'from-yellow-500 to-orange-600',
-    ];
-    const gradientIndex = project.id ? project.id % gradients.length : 0;
+    // Use category color for meaningful gradients, fallback to deterministic gradient
+    const primaryCategory = project.categoriesDetails?.[0];
+    const gradientStyle = getCategoryGradientStyle(primaryCategory?.color, project.id);
 
     // Return a special type to render gradient instead of image
     return {
       type: 'gradient' as const,
-      gradient: gradients[gradientIndex],
-      title: project.title
+      gradientStyle,
+      title: project.title,
+      categoryName: primaryCategory?.name, // Include category name for potential display
     };
   };
 
@@ -332,7 +328,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
             )}
 
             {isGradient && heroElement.type === 'gradient' && (
-              <div className={`w-full aspect-[4/3] bg-gradient-to-br ${heroElement.gradient} flex items-center justify-center p-8 pb-48 md:pb-8`}>
+              <div className="w-full aspect-[4/3] flex items-center justify-center p-8 pb-48 md:pb-8" style={heroElement.gradientStyle}>
                 <div className="text-center">
                   <h3 className="text-3xl font-bold text-white drop-shadow-lg">
                     {heroElement.title}
@@ -485,8 +481,8 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         {/* Always render footer absolute at bottom for seamless overlay look */}
         {/* Show by default on mobile (md:opacity-0), show on hover on desktop (md:group-hover:opacity-100) */}
         <div className="absolute bottom-0 left-0 right-0 z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-          {/* Gradient Background for smooth overlay fade */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent -top-64 md:-top-40" />
+          {/* Gradient Background for smooth overlay fade - taller on gradient cards (desktop only) */}
+          <div className={`absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent -top-64 ${isGradient ? 'md:-top-96' : 'md:-top-40'}`} />
 
           <div className="relative p-5 pt-2">
             <h3 className="text-xl font-bold mb-1 line-clamp-2 leading-tight text-white drop-shadow-md">
