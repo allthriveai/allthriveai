@@ -248,9 +248,12 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
               <div className="w-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
                 <video
                   controls
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
                   className="w-full max-h-[800px] object-contain"
                   preload="metadata"
-                  playsInline
                 >
                   <source src={postVideoUrl} type="video/mp4" />
                   Your browser does not support the video tag.
