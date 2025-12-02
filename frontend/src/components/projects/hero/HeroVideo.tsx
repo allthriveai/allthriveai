@@ -67,7 +67,6 @@ export function HeroVideo({ videoUrl }: HeroVideoProps) {
               controls
               autoPlay
               loop
-              muted
               playsInline
               className="rounded-xl md:rounded-2xl max-h-[80vh] max-w-full"
               onError={() => {

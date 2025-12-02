@@ -3,6 +3,7 @@
 import html as html_module
 import logging
 import re
+import time
 from datetime import datetime
 from urllib.parse import urlparse
 from xml.etree.ElementTree import Element
@@ -159,6 +160,11 @@ class RedditSyncService:
         'chatgptprompts',
     ]
 
+    # Rate limiting settings
+    RATE_LIMIT_DELAY = 2.0  # Delay between requests in seconds
+    MAX_RETRIES = 3  # Maximum number of retry attempts
+    RETRY_BACKOFF = 5.0  # Initial backoff time for retries in seconds
+
     @classmethod
     def _moderate_content(cls, title: str, selftext: str, image_url: str, subreddit: str) -> tuple[bool, str, dict]:
         """Moderate Reddit post content (text and image).
@@ -230,6 +236,70 @@ class RedditSyncService:
         return True, 'Content approved', moderation_results
 
     @classmethod
+    def _make_reddit_request(cls, url: str, timeout: int = 30) -> requests.Response:
+        """Make a rate-limited request to Reddit with exponential backoff retry.
+
+        Args:
+            url: The URL to fetch
+            timeout: Request timeout in seconds
+
+        Returns:
+            Response object
+
+        Raises:
+            requests.RequestException: If all retry attempts fail
+        """
+        last_exception = None
+        backoff_time = cls.RETRY_BACKOFF
+
+        for attempt in range(cls.MAX_RETRIES):
+            try:
+                # Add delay before request (except first attempt)
+                if attempt > 0:
+                    logger.info(f'Retry attempt {attempt + 1}/{cls.MAX_RETRIES} after {backoff_time}s backoff')
+                    time.sleep(backoff_time)
+                else:
+                    # Always add base rate limit delay
+                    time.sleep(cls.RATE_LIMIT_DELAY)
+
+                response = requests.get(
+                    url,
+                    headers={'User-Agent': cls.USER_AGENT},
+                    timeout=timeout,
+                )
+                response.raise_for_status()
+                return response
+
+            except requests.exceptions.HTTPError as e:
+                last_exception = e
+                if e.response.status_code == 429:  # Rate limit
+                    # Check for Retry-After header
+                    retry_after = e.response.headers.get('Retry-After')
+                    if retry_after:
+                        try:
+                            backoff_time = float(retry_after)
+                        except ValueError:
+                            pass
+                    logger.warning(f'Rate limited (429) on attempt {attempt + 1}, backing off for {backoff_time}s')
+                    # Exponential backoff for next attempt
+                    backoff_time *= 2
+                elif 500 <= e.response.status_code < 600:  # Server error
+                    logger.warning(f'Server error {e.response.status_code} on attempt {attempt + 1}')
+                    backoff_time *= 1.5
+                else:
+                    # For other HTTP errors, don't retry
+                    raise
+
+            except requests.exceptions.RequestException as e:
+                last_exception = e
+                logger.warning(f'Request failed on attempt {attempt + 1}: {e}')
+                backoff_time *= 1.5
+
+        # All retries exhausted
+        logger.error(f'All {cls.MAX_RETRIES} retry attempts failed for {url}')
+        raise last_exception
+
+    @classmethod
     def fetch_post_metrics(cls, permalink: str) -> dict:
         """Fetch score, comment count, and full-size image from Reddit's JSON API.
 
@@ -243,12 +313,7 @@ class RedditSyncService:
             # Reddit has a .json endpoint for every post
             json_url = permalink.rstrip('/') + '.json'
 
-            response = requests.get(
-                json_url,
-                headers={'User-Agent': cls.USER_AGENT},
-                timeout=10,
-            )
-            response.raise_for_status()
+            response = cls._make_reddit_request(json_url, timeout=10)
 
             data = response.json()
             # Reddit returns an array with [post_data, comments_data]
@@ -374,16 +439,11 @@ class RedditSyncService:
         }
 
         try:
-            # Fetch RSS feed
+            # Fetch RSS feed with rate limiting and retry logic
             feed_url = agent.rss_feed_url
             logger.debug(f'Fetching RSS feed: {feed_url}')
 
-            response = requests.get(
-                feed_url,
-                headers={'User-Agent': cls.USER_AGENT},
-                timeout=30,
-            )
-            response.raise_for_status()
+            response = cls._make_reddit_request(feed_url, timeout=30)
 
             # Parse feed
             posts = RedditRSSParser.parse_feed(response.text)
@@ -765,7 +825,12 @@ class RedditSyncService:
             'total_errors': 0,
         }
 
-        for agent in active_agents:
+        for i, agent in enumerate(active_agents):
+            # Add delay between agents (except for first agent)
+            if i > 0:
+                logger.debug(f'Waiting {cls.RATE_LIMIT_DELAY}s before syncing next agent...')
+                time.sleep(cls.RATE_LIMIT_DELAY)
+
             results = cls.sync_agent(agent)
             overall_results['agents_synced'] += 1
             overall_results['total_created'] += results['created']

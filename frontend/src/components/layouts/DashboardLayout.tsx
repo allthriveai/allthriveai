@@ -176,13 +176,15 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           onClose={handleCloseEvents}
         />
 
-        {/* Intelligent Chat Panel */}
-        <IntelligentChatPanel
-          isOpen={addProjectOpen}
-          onClose={handleCloseAddProject}
-          conversationId={conversationId}
-          welcomeMode={addProjectWelcomeMode}
-        />
+        {/* Intelligent Chat Panel - only render when open so internal state resets on close */}
+        {addProjectOpen && (
+          <IntelligentChatPanel
+            isOpen={addProjectOpen}
+            onClose={handleCloseAddProject}
+            conversationId={conversationId}
+            welcomeMode={addProjectWelcomeMode}
+          />
+        )}
 
         {/* Page-level Comment Panel */}
         {commentPanelProject && (
