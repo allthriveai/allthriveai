@@ -305,6 +305,18 @@ companies:
     twitter_handle: Replit
     github_url: https://github.com/replit
 
+  - name: xAI
+    tagline: Understanding the universe through AI
+    description: >
+      xAI is an AI company founded by Elon Musk focused on building AI to accelerate
+      human scientific discovery and understand the true nature of the universe.
+      Known for Grok, an AI assistant with real-time knowledge.
+    website_url: https://x.ai
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/a/a0/Grok-icon.svg
+    founded_year: 2023
+    headquarters: San Francisco, CA
+    twitter_handle: xai
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
@@ -437,6 +449,48 @@ tools:
       - Leverage Google ecosystem integration
       - Good for collaborative work with Google Docs
       - Use for visual analysis and understanding
+
+  - name: Grok
+    company: xAI
+    tagline: AI assistant with real-time knowledge
+    description: >
+      Grok is xAI's conversational AI assistant with real-time access to information
+      from X (Twitter). Known for witty, rebellious personality and up-to-date knowledge.
+    category: chat
+    tool_type: ai_tool
+    website_url: https://x.ai/grok
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/a/a0/Grok-icon.svg
+    pricing_model: subscription
+    has_free_tier: false
+    tags:
+      - NLP
+      - xAI
+      - Conversation
+      - Real-time
+      - X Integration
+    key_features:
+      - title: Real-time X Access
+        description: Direct access to real-time information from X platform
+      - title: Rebellious Personality
+        description: Witty, humorous, and less restrained responses
+      - title: Current Events
+        description: Up-to-date knowledge of trending topics and news
+      - title: Uncensored Answers
+        description: Willing to tackle controversial questions
+      - title: Visual Understanding
+        description: Analyze and discuss images
+    usage_tips:
+      - Great for current events and trending topics
+      - Use for questions requiring real-time information
+      - Leverage X platform data for social insights
+      - Expect humorous and witty responses
+      - Good for unfiltered perspectives
+    best_practices:
+      - Verify critical information from multiple sources
+      - Use for social media trends and analysis
+      - Good for creative and unconventional thinking
+      - Understand personality style before using
+      - Cross-reference factual claims
 
   - name: Perplexity
     company: Perplexity AI

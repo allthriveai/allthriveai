@@ -302,6 +302,26 @@ class SideQuest(models.Model):
     starts_at = models.DateTimeField(null=True, blank=True, help_text='When quest becomes available')
     expires_at = models.DateTimeField(null=True, blank=True, help_text='When quest expires (null = permanent)')
 
+    # Multi-step guided quest support
+    is_guided = models.BooleanField(default=False, help_text='True for multi-step guided quests')
+    steps = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            'Ordered list of quest steps. '
+            'Example: [{"id": "step_1", "title": "Explore", '
+            '"description": "...", "destination_url": "/learn", '
+            '"action_trigger": "page_visit", "icon": "book"}]'
+        ),
+    )
+    narrative_intro = models.TextField(
+        blank=True, help_text='Welcome/intro text shown when quest starts (encouraging, educational tone)'
+    )
+    narrative_complete = models.TextField(blank=True, help_text='Celebration text shown when quest is completed')
+    estimated_minutes = models.PositiveIntegerField(
+        null=True, blank=True, help_text='Estimated time to complete in minutes'
+    )
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -373,6 +393,15 @@ class UserSideQuest(models.Model):
     # Example: {"quiz_ids": [1, 2, 3], "last_activity": "2024-01-15"}
     progress_data = models.JSONField(default=dict, help_text='Additional progress tracking data')
 
+    # Multi-step guided quest progress
+    current_step_index = models.PositiveIntegerField(
+        default=0, help_text='Index of current step in guided quest (0-based)'
+    )
+    completed_step_ids = models.JSONField(default=list, help_text='List of completed step IDs: ["step_1", "step_2"]')
+    step_completed_at = models.JSONField(
+        default=dict, help_text='Timestamps when each step was completed: {"step_1": "2024-01-15T10:00:00Z"}'
+    )
+
     # Completion
     is_completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -416,3 +445,63 @@ class UserSideQuest(models.Model):
 
         # Award points to user
         self.user.add_points(self.points_awarded, 'side_quest', f'Completed: {self.side_quest.title}')
+
+    def get_current_step(self):
+        """Get the current step for guided quests."""
+        if not self.side_quest.is_guided or not self.side_quest.steps:
+            return None
+        if self.current_step_index >= len(self.side_quest.steps):
+            return None
+        return self.side_quest.steps[self.current_step_index]
+
+    def get_next_step_url(self):
+        """Get the destination URL for the current step."""
+        step = self.get_current_step()
+        return step.get('destination_url') if step else None
+
+    def complete_step(self, step_id: str):
+        """Mark a step as completed and advance to next step."""
+        if step_id in self.completed_step_ids:
+            return False  # Already completed
+
+        # Add to completed steps
+        completed_ids = list(self.completed_step_ids)
+        completed_ids.append(step_id)
+        self.completed_step_ids = completed_ids
+
+        # Record completion timestamp
+        step_times = dict(self.step_completed_at)
+        step_times[step_id] = timezone.now().isoformat()
+        self.step_completed_at = step_times
+
+        # Advance to next step
+        self.current_step_index += 1
+
+        # Check if all steps completed
+        if self.current_step_index >= len(self.side_quest.steps):
+            self.complete()
+        else:
+            self.save()
+
+        return True
+
+    def get_steps_progress(self):
+        """Get progress for all steps in the quest."""
+        if not self.side_quest.is_guided or not self.side_quest.steps:
+            return []
+
+        progress = []
+        for i, step in enumerate(self.side_quest.steps):
+            step_id = step.get('id', f'step_{i}')
+            is_completed = step_id in self.completed_step_ids
+            completed_at = self.step_completed_at.get(step_id) if is_completed else None
+            progress.append(
+                {
+                    'step': step,
+                    'index': i,
+                    'is_completed': is_completed,
+                    'is_current': i == self.current_step_index and not self.is_completed,
+                    'completed_at': completed_at,
+                }
+            )
+        return progress

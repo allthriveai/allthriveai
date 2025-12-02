@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
+import { useActiveQuest } from '@/hooks/useActiveQuest';
 import {
   HomeIcon,
   MagnifyingGlassIcon,
@@ -14,15 +15,18 @@ import { getMenuSections } from './menuData';
 import { NavDropdown } from './NavDropdown';
 import { MobileMenu } from './MobileMenu';
 import { UserMenu } from './UserMenu';
+import { ActiveQuestIndicator } from '@/components/side-quests/ActiveQuestIndicator';
 
 interface TopNavigationProps {
   onMenuClick: (menuItem: string) => void;
   onAddProject?: () => void;
+  onOpenActiveQuest?: () => void;
 }
 
-export function TopNavigation({ onMenuClick, onAddProject }: TopNavigationProps) {
+export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: TopNavigationProps) {
   const { user, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { activeQuest } = useActiveQuest();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -111,6 +115,14 @@ export function TopNavigation({ onMenuClick, onAddProject }: TopNavigationProps)
 
             {/* Right Side - Actions */}
             <div className="flex items-center gap-2">
+              {/* Active Quest Indicator */}
+              {isAuthenticated && activeQuest && onOpenActiveQuest && (
+                <ActiveQuestIndicator
+                  activeQuest={activeQuest}
+                  onClick={onOpenActiveQuest}
+                />
+              )}
+
               {/* Search Button */}
               <button
                 onClick={() => setSearchOpen(!searchOpen)}
@@ -125,7 +137,17 @@ export function TopNavigation({ onMenuClick, onAddProject }: TopNavigationProps)
               {isAuthenticated && user?.username && onAddProject && (
                 <button
                   onClick={onAddProject}
-                  className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-400 hover:to-blue-400 text-white rounded-xl transition-all duration-300 hover:scale-105 text-sm font-medium shadow-lg shadow-teal-500/30 hover:shadow-xl hover:shadow-teal-500/40 border border-white/20"
+                  className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 text-sm font-medium border border-white/20 text-slate-900"
+                  style={{
+                    background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+                    boxShadow: '0 2px 8px rgba(34, 211, 238, 0.15)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(34, 211, 238, 0.25), 0 2px 8px rgba(74, 222, 128, 0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(34, 211, 238, 0.15)';
+                  }}
                 >
                   <PlusIcon className="w-4 h-4" />
                   <span className="hidden md:inline">Add Project</span>

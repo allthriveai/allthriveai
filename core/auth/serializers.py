@@ -3,6 +3,22 @@ from rest_framework import serializers
 from core.social.models import SocialConnection
 from core.users.models import User, UserRole
 
+# Profile fields shared across serializers
+PROFILE_FIELDS = [
+    'avatar_url',
+    'bio',
+    'tagline',
+    'location',
+    'pronouns',
+    'website_url',
+    'calendar_url',
+    'linkedin_url',
+    'twitter_url',
+    'github_url',
+    'youtube_url',
+    'instagram_url',
+]
+
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for User model with field-level permissions.
@@ -13,6 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     full_name = serializers.SerializerMethodField()
     role_display = serializers.CharField(source='get_role_display', read_only=True)
+    tier_display = serializers.CharField(source='get_tier_display', read_only=True)
     social_connections = serializers.SerializerMethodField()
     current_streak = serializers.SerializerMethodField()
 
@@ -27,18 +44,9 @@ class UserSerializer(serializers.ModelSerializer):
             'full_name',
             'role',
             'role_display',
-            'avatar_url',
-            'bio',
-            'tagline',
-            'location',
-            'pronouns',
-            'website_url',
-            'calendar_url',
-            'linkedin_url',
-            'twitter_url',
-            'github_url',
-            'youtube_url',
-            'instagram_url',
+            'tier',
+            'tier_display',
+            *PROFILE_FIELDS,
             'playground_is_public',
             'is_profile_public',
             'allow_llm_training',
@@ -54,6 +62,7 @@ class UserSerializer(serializers.ModelSerializer):
             'date_joined',
             'last_login',
             'role',
+            'tier',
             'social_connections',
             'total_points',
             'level',
@@ -175,18 +184,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'username',
             'first_name',
             'last_name',
-            'avatar_url',
-            'bio',
-            'tagline',
-            'location',
-            'pronouns',
-            'website_url',
-            'calendar_url',
-            'linkedin_url',
-            'twitter_url',
-            'github_url',
-            'youtube_url',
-            'instagram_url',
+            *PROFILE_FIELDS,
             'playground_is_public',
             'is_profile_public',
             'allow_llm_training',

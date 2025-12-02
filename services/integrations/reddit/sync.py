@@ -450,11 +450,27 @@ class RedditSyncService:
             posts = RedditRSSParser.parse_feed(response.text)
             logger.info(f'Found {len(posts)} posts in feed for r/{agent.subreddit}')
 
-            # Note: RSS doesn't provide score/comments, so we can't filter here
-            # We store all posts and let users filter in the UI
+            # Filter posts to only process new ones since last sync
+            posts_to_process = []
+            cutoff_time = agent.last_synced_at
+
+            for post_data in posts:
+                post_published = post_data.get('published_utc')
+                # Include post if:
+                # 1. No last sync (first time), OR
+                # 2. Post was published after last sync time, OR
+                # 3. Post doesn't have a timestamp (include to be safe)
+                if not cutoff_time or not post_published or post_published > cutoff_time:
+                    posts_to_process.append(post_data)
+                else:
+                    logger.debug(f'Skipping post {post_data.get("reddit_post_id")} - older than last sync')
+
+            logger.info(
+                f'Filtered to {len(posts_to_process)} new posts (from {len(posts)} total) for r/{agent.subreddit}'
+            )
 
             # Process each post
-            for post_data in posts:
+            for post_data in posts_to_process:
                 try:
                     # Skip posts that don't meet minimum thresholds
                     # Note: RSS doesn't give us score/comments, so we can't filter here

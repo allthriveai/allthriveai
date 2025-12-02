@@ -5,8 +5,10 @@ import { RightAboutPanel } from '@/components/about';
 import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalendarPanel';
 import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
 import { CommentTray } from '@/components/projects/CommentTray';
+import { QuestTray } from '@/components/side-quests/QuestTray';
 import { useAuth } from '@/hooks/useAuth';
-import type { Project } from '@/types/models';
+import { useActiveQuest } from '@/hooks/useActiveQuest';
+import type { Project, UserSideQuest } from '@/types/models';
 
 // Constants
 const GITHUB_OAUTH_TIMESTAMP_KEY = 'github_oauth_timestamp';
@@ -17,6 +19,7 @@ interface DashboardLayoutProps {
     openChat: (menuItem: string) => void;
     openAddProject: (welcomeMode?: boolean) => void;
     openCommentPanel: (project: Project) => void;
+    openQuestTray: (quest: UserSideQuest) => void;
   }) => ReactNode);
   openAboutPanel?: boolean;
 }
@@ -30,6 +33,16 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const [addProjectWelcomeMode, setAddProjectWelcomeMode] = useState(false);
   const [commentPanelOpen, setCommentPanelOpen] = useState(false);
   const [commentPanelProject, setCommentPanelProject] = useState<Project | null>(null);
+
+  // Quest tray state using the hook
+  const {
+    questTrayOpen,
+    selectedQuest,
+    activeQuest,
+    openQuestTray,
+    openActiveQuestTray,
+    closeQuestTray,
+  } = useActiveQuest();
 
   // Stable conversationId that doesn't change on every render
   // This prevents the IntelligentChatPanel from reinitializing on parent re-renders
@@ -155,12 +168,13 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         <TopNavigation
           onMenuClick={handleMenuClick}
           onAddProject={handleOpenAddProject}
+          onOpenActiveQuest={openActiveQuestTray}
         />
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto scroll-pt-16">
           <div className="pt-16">
-            {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel }) : children}
+            {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray }) : children}
           </div>
         </main>
 
@@ -196,6 +210,13 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           />
         )}
 
+        {/* Quest Tray */}
+        <QuestTray
+          isOpen={questTrayOpen}
+          onClose={closeQuestTray}
+          activeQuest={selectedQuest}
+        />
+
         {/* Overlay when about is open */}
         {aboutOpen && (
           <div className={OVERLAY_CLASSNAME} onClick={handleCloseAbout} />
@@ -214,6 +235,11 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         {/* Overlay when comment panel is open */}
         {commentPanelOpen && (
           <div className={OVERLAY_CLASSNAME} onClick={handleCloseCommentPanel} />
+        )}
+
+        {/* Overlay when quest tray is open */}
+        {questTrayOpen && (
+          <div className={OVERLAY_CLASSNAME} onClick={closeQuestTray} />
         )}
       </div>
     </div>

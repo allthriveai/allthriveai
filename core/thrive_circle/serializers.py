@@ -186,6 +186,7 @@ class SideQuestSerializer(serializers.ModelSerializer):
     is_available = serializers.SerializerMethodField()
     category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
     category_slug = serializers.CharField(source='category.slug', read_only=True, allow_null=True)
+    step_count = serializers.SerializerMethodField()
 
     class Meta:
         model = SideQuest
@@ -213,6 +214,13 @@ class SideQuestSerializer(serializers.ModelSerializer):
             'is_available',
             'starts_at',
             'expires_at',
+            # Multi-step guided quest fields
+            'is_guided',
+            'steps',
+            'narrative_intro',
+            'narrative_complete',
+            'estimated_minutes',
+            'step_count',
             'created_at',
             'updated_at',
         ]
@@ -221,6 +229,12 @@ class SideQuestSerializer(serializers.ModelSerializer):
     def get_is_available(self, obj):
         """Check if quest is currently available."""
         return obj.is_available()
+
+    def get_step_count(self, obj):
+        """Get the number of steps in a guided quest."""
+        if obj.is_guided and obj.steps:
+            return len(obj.steps)
+        return 0
 
 
 class UserSideQuestSerializer(serializers.ModelSerializer):
@@ -231,6 +245,11 @@ class UserSideQuestSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     progress_percentage = serializers.IntegerField(read_only=True)
+
+    # Multi-step guided quest progress fields
+    current_step = serializers.SerializerMethodField()
+    next_step_url = serializers.SerializerMethodField()
+    steps_progress = serializers.SerializerMethodField()
 
     class Meta:
         model = UserSideQuest
@@ -246,6 +265,13 @@ class UserSideQuestSerializer(serializers.ModelSerializer):
             'target_progress',
             'progress_percentage',
             'progress_data',
+            # Multi-step guided quest progress
+            'current_step_index',
+            'completed_step_ids',
+            'step_completed_at',
+            'current_step',
+            'next_step_url',
+            'steps_progress',
             'is_completed',
             'completed_at',
             'points_awarded',
@@ -261,3 +287,15 @@ class UserSideQuestSerializer(serializers.ModelSerializer):
             'completed_at',
             'points_awarded',
         ]
+
+    def get_current_step(self, obj):
+        """Get the current step for guided quests."""
+        return obj.get_current_step()
+
+    def get_next_step_url(self, obj):
+        """Get the destination URL for the current step."""
+        return obj.get_next_step_url()
+
+    def get_steps_progress(self, obj):
+        """Get progress for all steps in the quest."""
+        return obj.get_steps_progress()

@@ -58,6 +58,10 @@ function isCurationTier(tier?: string): boolean {
   return tier === 'curation';
 }
 
+// Shared tab button class names
+const TAB_BUTTON_ACTIVE = 'bg-teal-500 text-white shadow-md';
+const TAB_BUTTON_INACTIVE = 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10';
+
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
   const { user, isAuthenticated } = useAuth();
@@ -92,6 +96,8 @@ export default function ProfilePage() {
 
   const isOwnProfile = username === user?.username;
   const displayUser = isOwnProfile ? user : profileUser;
+  const isAdmin = user?.role === 'admin';
+  const canManagePosts = isOwnProfile || isAdmin;
 
   // Sync activeTab with URL query parameter
   useEffect(() => {
@@ -231,15 +237,12 @@ export default function ProfilePage() {
   const showPlayground = isOwnProfile || (displayUser?.playgroundIsPublic !== false);
   const isCuration = isCurationTier(displayUser?.tier);
 
-  // Build tabs array - exclude favorites for curation tier users
+  // Build tabs array - exclude favorites, learning, activity, and playground for curation tier users (agents)
   const tabs = (() => {
     if (isAuthenticated && isOwnProfile) {
       if (isCuration) {
         return [
-          { id: 'showcase', label: 'Showcase' },
-          { id: 'playground', label: 'Playground' },
-          { id: 'learning', label: 'Learning' },
-          { id: 'activity', label: 'Activity' },
+          { id: 'showcase', label: 'Posts' },
         ] as const;
       }
       return [
@@ -253,8 +256,7 @@ export default function ProfilePage() {
     if (showPlayground) {
       if (isCuration) {
         return [
-          { id: 'showcase', label: 'Showcase' },
-          { id: 'playground', label: 'Playground' },
+          { id: 'showcase', label: 'Posts' },
         ] as const;
       }
       return [
@@ -265,7 +267,7 @@ export default function ProfilePage() {
     }
     if (isCuration) {
       return [
-        { id: 'showcase', label: 'Showcase' },
+        { id: 'showcase', label: 'Posts' },
       ] as const;
     }
     return [
@@ -599,9 +601,7 @@ export default function ProfilePage() {
                       <button
                         onClick={() => handleTabChange('showcase')}
                         className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                          activeTab === 'showcase'
-                            ? 'bg-teal-500 text-white shadow-md'
-                            : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                          activeTab === 'showcase' ? TAB_BUTTON_ACTIVE : TAB_BUTTON_INACTIVE
                         }`}
                         title="Showcase"
                       >
@@ -612,9 +612,7 @@ export default function ProfilePage() {
                       <button
                         onClick={() => handleTabChange('playground')}
                         className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                          activeTab === 'playground'
-                            ? 'bg-teal-500 text-white shadow-md'
-                            : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                          activeTab === 'playground' ? TAB_BUTTON_ACTIVE : TAB_BUTTON_INACTIVE
                         }`}
                         title="Playground"
                       >
@@ -641,9 +639,7 @@ export default function ProfilePage() {
                         <button
                           onClick={() => handleTabChange('learning')}
                           className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                            activeTab === 'learning'
-                              ? 'bg-teal-500 text-white shadow-md'
-                              : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                            activeTab === 'learning' ? TAB_BUTTON_ACTIVE : TAB_BUTTON_INACTIVE
                           }`}
                           title="Learning"
                         >
@@ -656,9 +652,7 @@ export default function ProfilePage() {
                         <button
                           onClick={() => handleTabChange('activity')}
                           className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                            activeTab === 'activity'
-                              ? 'bg-teal-500 text-white shadow-md'
-                              : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                            activeTab === 'activity' ? TAB_BUTTON_ACTIVE : TAB_BUTTON_INACTIVE
                           }`}
                           title="Activity"
                         >
@@ -704,8 +698,8 @@ export default function ProfilePage() {
                     );
                   })}
 
-                  {/* Select/Delete Buttons - Only for profile owner on Showcase/Playground tabs */}
-                  {isOwnProfile &&
+                  {/* Select/Delete Buttons - For profile owner or admin on Showcase/Playground tabs */}
+                  {canManagePosts &&
                    ((activeTab === 'showcase' && projects.showcase.length > 0) ||
                     (activeTab === 'playground' && projects.playground.length > 0)) && (
                     <div className="flex items-center gap-2 md:ml-4 self-end md:self-auto">
@@ -745,7 +739,7 @@ export default function ProfilePage() {
                             project={project}
                             onEdit={() => navigate(`/${username}/${project.slug}/edit`)}
                             onDelete={async () => {}}
-                            isOwner={isOwnProfile}
+                            isOwner={canManagePosts}
                             variant="masonry"
                             selectionMode={selectionMode}
                             isSelected={selectedProjectIds.has(project.id)}
@@ -773,7 +767,7 @@ export default function ProfilePage() {
                             project={project}
                             onEdit={() => navigate(`/${username}/${project.slug}/edit`)}
                             onDelete={async () => {}}
-                            isOwner={isOwnProfile}
+                            isOwner={canManagePosts}
                             variant="masonry"
                             selectionMode={selectionMode}
                             isSelected={selectedProjectIds.has(project.id)}
@@ -837,6 +831,11 @@ export default function ProfilePage() {
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 This action cannot be undone. The selected project{selectedProjectIds.size > 1 ? 's' : ''} will be permanently deleted.
+                {!isOwnProfile && isAdmin && (
+                  <span className="block mt-2 text-amber-600 dark:text-amber-400 font-medium">
+                    ⚠️ Admin Action: You are deleting another user's projects.
+                  </span>
+                )}
               </p>
               <div className="flex gap-3 justify-end">
                 <button

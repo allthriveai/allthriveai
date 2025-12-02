@@ -12,6 +12,7 @@ import type { UserSideQuest } from '@/types/models';
 
 interface MySideQuestsPanelProps {
   quests: UserSideQuest[];
+  onOpenQuestTray?: (quest: UserSideQuest) => void;
 }
 
 const statusConfig = {
@@ -44,7 +45,7 @@ const difficultyIcons = {
   epic: faTrophy,
 };
 
-export function MySideQuestsPanel({ quests }: MySideQuestsPanelProps) {
+export function MySideQuestsPanel({ quests, onOpenQuestTray }: MySideQuestsPanelProps) {
   const inProgressQuests = quests.filter(q => q.status === 'in_progress');
   const completedQuests = quests.filter(q => q.status === 'completed');
 
@@ -59,7 +60,11 @@ export function MySideQuestsPanel({ quests }: MySideQuestsPanelProps) {
           </h2>
           <div className="space-y-4">
             {inProgressQuests.map((userQuest) => (
-              <QuestProgressCard key={userQuest.id} userQuest={userQuest} />
+              <QuestProgressCard
+                key={userQuest.id}
+                userQuest={userQuest}
+                onOpenQuestTray={onOpenQuestTray}
+              />
             ))}
           </div>
         </div>
@@ -74,7 +79,11 @@ export function MySideQuestsPanel({ quests }: MySideQuestsPanelProps) {
           </h2>
           <div className="space-y-4">
             {completedQuests.map((userQuest) => (
-              <QuestProgressCard key={userQuest.id} userQuest={userQuest} />
+              <QuestProgressCard
+                key={userQuest.id}
+                userQuest={userQuest}
+                onOpenQuestTray={onOpenQuestTray}
+              />
             ))}
           </div>
         </div>
@@ -83,13 +92,31 @@ export function MySideQuestsPanel({ quests }: MySideQuestsPanelProps) {
   );
 }
 
-function QuestProgressCard({ userQuest }: { userQuest: UserSideQuest }) {
+interface QuestProgressCardProps {
+  userQuest: UserSideQuest;
+  onOpenQuestTray?: (quest: UserSideQuest) => void;
+}
+
+function QuestProgressCard({ userQuest, onOpenQuestTray }: QuestProgressCardProps) {
   const { sideQuest, status, currentProgress, targetProgress, progressPercentage, xpAwarded, completedAt } = userQuest;
   const statusInfo = statusConfig[status];
   const difficultyIcon = difficultyIcons[sideQuest.difficulty];
+  const isClickable = !!onOpenQuestTray;
+
+  const handleClick = () => {
+    if (onOpenQuestTray) {
+      onOpenQuestTray(userQuest);
+    }
+  };
 
   return (
-    <div className="glass rounded-lg p-6">
+    <div
+      className={`glass rounded-lg p-6 ${isClickable ? 'cursor-pointer hover:ring-2 hover:ring-cyan-400/50 transition-all' : ''}`}
+      onClick={handleClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={isClickable ? (e) => e.key === 'Enter' && handleClick() : undefined}
+    >
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">

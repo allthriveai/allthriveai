@@ -541,6 +541,25 @@ export interface QuestCategoryProgress {
   bonusClaimed: boolean;
 }
 
+// Quest step definition for multi-step guided quests
+export interface QuestStep {
+  id: string;
+  title: string;
+  description: string;
+  destinationUrl: string | null;
+  actionTrigger: string;
+  icon: string;
+}
+
+// Step progress for tracking user's journey
+export interface QuestStepProgress {
+  step: QuestStep;
+  index: number;
+  isCompleted: boolean;
+  isCurrent: boolean;
+  completedAt: string | null;
+}
+
 export interface SideQuest {
   id: string;
   title: string;
@@ -565,6 +584,13 @@ export interface SideQuest {
   isAvailable: boolean;
   startsAt: string | null;
   expiresAt: string | null;
+  // Multi-step guided quest fields
+  isGuided: boolean;
+  steps: QuestStep[];
+  narrativeIntro: string;
+  narrativeComplete: string;
+  estimatedMinutes: number | null;
+  stepCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -581,6 +607,13 @@ export interface UserSideQuest {
   targetProgress: number;
   progressPercentage: number;
   progressData: Record<string, any>;
+  // Multi-step guided quest progress
+  currentStepIndex: number;
+  completedStepIds: string[];
+  stepCompletedAt: Record<string, string>;
+  currentStep: QuestStep | null;
+  nextStepUrl: string | null;
+  stepsProgress: QuestStepProgress[];
   isCompleted: boolean;
   completedAt: string | null;
   pointsAwarded: number;

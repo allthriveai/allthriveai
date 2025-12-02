@@ -15,6 +15,9 @@ export default {
           bright: '#22D3EE',
           neon: '#4ADEE7',
         },
+        green: {
+          neon: '#4ade80',
+        },
         pink: {
           accent: '#FB37FF',
         },
@@ -82,15 +85,18 @@ export default {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'neon-glow': 'radial-gradient(circle at center, rgba(34, 211, 238, 0.15) 0%, rgba(2, 6, 23, 0) 70%)',
+        'gradient-primary': 'linear-gradient(135deg, #22d3ee, #4ade80)',
+        'neon-glow': 'radial-gradient(circle at center, rgba(34, 211, 238, 0.15) 0%, rgba(74, 222, 128, 0.1) 50%, rgba(2, 6, 23, 0) 70%)',
         'glass-gradient': 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
       },
       boxShadow: {
         'glass': '0 4px 30px rgba(0, 0, 0, 0.1)',
         'glass-lg': '0 8px 40px rgba(0, 0, 0, 0.2)',
-        'neon': '0 0 20px rgba(34, 211, 238, 0.3), 0 0 10px rgba(34, 211, 238, 0.1)',
-        'neon-strong': '0 0 30px rgba(34, 211, 238, 0.5), 0 0 15px rgba(34, 211, 238, 0.3)',
+        'neon': '0 0 20px rgba(34, 211, 238, 0.3), 0 0 10px rgba(74, 222, 128, 0.2)',
+        'neon-strong': '0 0 30px rgba(34, 211, 238, 0.5), 0 0 15px rgba(74, 222, 128, 0.3)',
+        'neon-primary': '0 0 20px rgba(34, 211, 238, 0.4), 0 0 40px rgba(74, 222, 128, 0.2)',
         'glow-teal': '0 0 40px -10px rgba(34, 211, 238, 0.4)',
+        'glow-primary': '0 0 40px -10px rgba(34, 211, 238, 0.4), 0 0 30px -10px rgba(74, 222, 128, 0.3)',
         'inner-light': 'inset 0 0 0 1px rgba(255, 255, 255, 0.1)',
       },
       backdropBlur: {
