@@ -65,8 +65,7 @@ def update_learning_path_on_sidequest_completion(sender, instance, **kwargs):
             service = LearningPathService()
             service.update_path_on_sidequest_completion(user=instance.user, topic=topic, user_sidequest=instance)
             logger.info(
-                f'Updated learning path for user {instance.user.username} '
-                f'in topic {topic} after side quest completion'
+                f'Updated learning path for user {instance.user.username} in topic {topic} after side quest completion'
             )
     except Exception as e:
         logger.error(f'Error updating learning path on side quest completion: {e}')

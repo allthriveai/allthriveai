@@ -252,13 +252,13 @@ class Command(BaseCommand):
         prefix = '[DRY RUN] Would have ' if dry_run else ''
 
         self.stdout.write(f'\n{prefix}Companies:')
-        self.stdout.write(f"  Created: {stats['companies_created']}")
-        self.stdout.write(f"  Updated: {stats['companies_updated']}")
+        self.stdout.write(f'  Created: {stats["companies_created"]}')
+        self.stdout.write(f'  Updated: {stats["companies_updated"]}')
 
         self.stdout.write(f'\n{prefix}Tools:')
-        self.stdout.write(f"  Created: {stats['tools_created']}")
-        self.stdout.write(f"  Updated: {stats['tools_updated']}")
-        self.stdout.write(f"  Linked to companies: {stats['tools_linked']}")
+        self.stdout.write(f'  Created: {stats["tools_created"]}')
+        self.stdout.write(f'  Updated: {stats["tools_updated"]}')
+        self.stdout.write(f'  Linked to companies: {stats["tools_linked"]}')
 
         total = (
             stats['companies_created'] + stats['companies_updated'] + stats['tools_created'] + stats['tools_updated']

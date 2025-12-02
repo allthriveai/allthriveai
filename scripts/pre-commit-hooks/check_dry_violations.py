@@ -111,7 +111,7 @@ class DuplicationChecker(ast.NodeVisitor):
                 lines = [line for line, s in self.string_literals if s == string]
                 preview = string[:50] + '...' if len(string) > 50 else string
                 self.findings.append(
-                    f"String literal repeated {count} times (lines {', '.join(map(str, lines))}): " f'"{preview}"'
+                    f'String literal repeated {count} times (lines {", ".join(map(str, lines))}): "{preview}"'
                 )
 
     def _check_similar_functions(self) -> None:

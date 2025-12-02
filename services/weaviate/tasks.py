@@ -335,8 +335,7 @@ def update_engagement_metrics():
         chunk_count = (total_projects + CHUNK_SIZE - 1) // CHUNK_SIZE
 
         logger.info(
-            f'Queueing {chunk_count} engagement update chunks for {total_projects} projects '
-            f'(chunk_size={CHUNK_SIZE})'
+            f'Queueing {chunk_count} engagement update chunks for {total_projects} projects (chunk_size={CHUNK_SIZE})'
         )
 
         # Queue chunk tasks
@@ -468,7 +467,7 @@ def update_engagement_metrics_chunk(self, offset: int, limit: int):
             if success:
                 updated_count += 1
         except Exception as e:
-            logger.error(f"Error updating Weaviate for project {update['project_id']}: {e}")
+            logger.error(f'Error updating Weaviate for project {update["project_id"]}: {e}')
             error_count += 1
 
     logger.info(f'Engagement chunk complete (offset={offset}): {updated_count} updated, {error_count} errors')

@@ -30,9 +30,7 @@ class ImageModerator:
             self.client = ai_provider.client
             self.has_client = True
         except (ValueError, Exception) as e:
-            logger.warning(
-                f'AI provider not configured for image moderation: {e}. ' 'Image moderation will be skipped.'
-            )
+            logger.warning(f'AI provider not configured for image moderation: {e}. Image moderation will be skipped.')
             self.client = None
             self.has_client = False
 

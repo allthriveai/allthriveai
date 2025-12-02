@@ -145,7 +145,7 @@ class LearningPathService:
         path.save()
 
         if old_level != path.current_skill_level:
-            logger.info(f'User {user.username} leveled up in {topic}: ' f'{old_level} -> {path.current_skill_level}')
+            logger.info(f'User {user.username} leveled up in {topic}: {old_level} -> {path.current_skill_level}')
 
         return path
 
@@ -174,7 +174,7 @@ class LearningPathService:
         path.save()
 
         if old_level != path.current_skill_level:
-            logger.info(f'User {user.username} leveled up in {topic}: ' f'{old_level} -> {path.current_skill_level}')
+            logger.info(f'User {user.username} leveled up in {topic}: {old_level} -> {path.current_skill_level}')
 
         return path
 

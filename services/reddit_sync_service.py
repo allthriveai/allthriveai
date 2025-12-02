@@ -208,7 +208,7 @@ class RedditSyncService:
 
         if not text_result['approved']:
             logger.info(
-                f'Reddit post text rejected by moderation: ' f'subreddit=r/{subreddit}, reason={text_result["reason"]}'
+                f'Reddit post text rejected by moderation: subreddit=r/{subreddit}, reason={text_result["reason"]}'
             )
             return False, text_result['reason'], moderation_results
 

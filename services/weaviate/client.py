@@ -708,7 +708,7 @@ class WeaviateConnectionPool:
                 self._pool.put_nowait(client)
                 successful += 1
             except Exception as e:
-                logger.warning(f'Failed to warm pool connection {i+1}/{count}: {e}')
+                logger.warning(f'Failed to warm pool connection {i + 1}/{count}: {e}')
 
         if successful < count:
             logger.warning(f'Connection pool partially warmed: {successful}/{count} connections ready')
@@ -749,14 +749,12 @@ class WeaviateConnectionPool:
             # Try to get from pool
             try:
                 client = self._pool.get(timeout=timeout)
-                logger.debug(f'Got client from pool (available={self._pool.qsize()}, ' f'total={self._created_count})')
+                logger.debug(f'Got client from pool (available={self._pool.qsize()}, total={self._created_count})')
             except Empty:
                 # Pool empty, try to create new if under limit
                 with self._lock:
                     if self._created_count < self.pool_size:
-                        logger.info(
-                            f'Pool empty, creating new connection ' f'({self._created_count + 1}/{self.pool_size})'
-                        )
+                        logger.info(f'Pool empty, creating new connection ({self._created_count + 1}/{self.pool_size})')
                         client = self._create_client()
                     else:
                         logger.error(
@@ -898,7 +896,7 @@ def get_connection_pool() -> WeaviateConnectionPool:
         with _pool_lock:
             if _connection_pool is None:
                 _connection_pool = WeaviateConnectionPool()
-                logger.info(f'Initialized Weaviate connection pool ' f'(size={_connection_pool.pool_size})')
+                logger.info(f'Initialized Weaviate connection pool (size={_connection_pool.pool_size})')
 
     return _connection_pool
 

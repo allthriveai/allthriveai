@@ -128,8 +128,8 @@ class Command(BaseCommand):
         self.stdout.write('\n' + '=' * 60)
         self.stdout.write(self.style.HTTP_INFO('EXPORT SUMMARY'))
         self.stdout.write('=' * 60)
-        self.stdout.write(f"  Companies: {stats['companies']}")
-        self.stdout.write(f"  Tools: {stats['tools']}")
+        self.stdout.write(f'  Companies: {stats["companies"]}')
+        self.stdout.write(f'  Tools: {stats["tools"]}')
 
     def export_companies(self, active_only, stats):
         """Export companies to list of dicts."""

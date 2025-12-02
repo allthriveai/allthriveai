@@ -259,8 +259,8 @@ class ActivityInsightsService:
                     'title': 'Your Go-To Tool',
                     'description': (
                         f"You've used {top_tool['name']} in "
-                        f"{top_tool['usage_count']} project"
-                        f"{'s' if top_tool['usage_count'] > 1 else ''}."
+                        f'{top_tool["usage_count"]} project'
+                        f'{"s" if top_tool["usage_count"] > 1 else ""}.'
                     ),
                     'color': 'blue',
                 }

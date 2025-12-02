@@ -239,7 +239,7 @@ class PersonalizationEngine:
             with self._get_client() as client:
                 if not client.is_available():
                     logger.warning(
-                        f'Weaviate unavailable for user vector lookup user_id={user.id}, ' 'will generate on-the-fly'
+                        f'Weaviate unavailable for user vector lookup user_id={user.id}, will generate on-the-fly'
                     )
                 else:
                     # Note: client.client accesses the underlying weaviate.Client

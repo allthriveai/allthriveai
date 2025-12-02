@@ -86,7 +86,7 @@ class CircuitBreaker:
                 logger.warning(f'Circuit breaker {self.name}: HALF_OPEN -> OPEN (failure in test)')
             elif self._failure_count >= self.failure_threshold:
                 if self._state != self.OPEN:
-                    logger.warning(f'Circuit breaker {self.name}: CLOSED -> OPEN ' f'(failures={self._failure_count})')
+                    logger.warning(f'Circuit breaker {self.name}: CLOSED -> OPEN (failures={self._failure_count})')
                     self._state = self.OPEN
 
     def can_execute(self) -> bool:

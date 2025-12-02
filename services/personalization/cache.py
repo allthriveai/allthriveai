@@ -230,7 +230,7 @@ class StampedePreventionMixin:
             count = 1
 
         if count > max_per_minute:
-            logger.warning(f'Rate limited invalidation for {rate_limit_key} ' f'({count}/{max_per_minute} per minute)')
+            logger.warning(f'Rate limited invalidation for {rate_limit_key} ({count}/{max_per_minute} per minute)')
             return False
 
         cache.delete(key)
@@ -319,7 +319,7 @@ class PersonalizationCache(StampedePreventionMixin):
                 count = 1
 
             if count > max_per_minute:
-                logger.info(f'Rate limited trending feed invalidation ' f'({count}/{max_per_minute} per minute)')
+                logger.info(f'Rate limited trending feed invalidation ({count}/{max_per_minute} per minute)')
                 return False
 
         for page in range(1, 11):
@@ -367,14 +367,14 @@ class PersonalizationCache(StampedePreventionMixin):
     def get_semantic_search(cls, query: str, alpha: float = 0.7) -> dict | None:
         """Get cached semantic search results."""
         query_hash = cls._hash_query(query)
-        key = cls._make_key('semantic_search', query_hash, f'a{int(alpha*10)}')
+        key = cls._make_key('semantic_search', query_hash, f'a{int(alpha * 10)}')
         return cache.get(key)
 
     @classmethod
     def set_semantic_search(cls, query: str, alpha: float, data: dict) -> None:
         """Cache semantic search results."""
         query_hash = cls._hash_query(query)
-        key = cls._make_key('semantic_search', query_hash, f'a{int(alpha*10)}')
+        key = cls._make_key('semantic_search', query_hash, f'a{int(alpha * 10)}')
         cache.set(key, data, CACHE_TTLS['semantic_search'])
 
     # Popular Feed Caching (for cold start)

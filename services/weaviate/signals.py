@@ -84,7 +84,7 @@ def sync_project_on_save(sender, instance, created, **kwargs):
         if was_searchable and not should_be_searchable:
             # Project became non-searchable - REMOVE from Weaviate immediately
             # This is critical for privacy - private projects must not be searchable
-            logger.info(f'Project {instance.id} visibility changed to non-searchable, ' f'removing from Weaviate')
+            logger.info(f'Project {instance.id} visibility changed to non-searchable, removing from Weaviate')
             remove_project_from_weaviate.delay(instance.id)
         elif should_be_searchable:
             # Project is searchable - sync to Weaviate
