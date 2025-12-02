@@ -157,10 +157,11 @@ function InsightsCardsSection({ insights }: { insights: PersonalizedInsight[] })
         return (
           <div
             key={index}
-            className={`rounded-xl p-4 border ${colors.border} ${colors.bg} transition-transform hover:scale-[1.02]`}
+            className={`p-4 border ${colors.border} ${colors.bg} transition-transform hover:scale-[1.02]`}
+            style={{ borderRadius: 'var(--radius)' }}
           >
             <div className="flex items-start gap-3">
-              <div className={`p-2 rounded-lg ${colors.bg}`}>
+              <div className={`p-2 ${colors.bg}`} style={{ borderRadius: 'var(--radius)' }}>
                 <FontAwesomeIcon icon={icon} className={`w-5 h-5 ${colors.text}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -195,7 +196,8 @@ function StatsSummarySection({ stats }: { stats: ActivityInsights['statsSummary'
       {statItems.map((stat) => (
         <div
           key={stat.label}
-          className="glass-subtle rounded-xl p-4 border border-gray-200 dark:border-gray-800 text-center"
+          className="glass-subtle p-4 border border-gray-200 dark:border-gray-800 text-center"
+          style={{ borderRadius: 'var(--radius)' }}
         >
           <FontAwesomeIcon icon={stat.icon} className={`w-6 h-6 ${stat.color} mb-2`} />
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -214,9 +216,9 @@ function StatsSummarySection({ stats }: { stats: ActivityInsights['statsSummary'
 function ToolEngagementSection({ tools, onToolClick }: { tools: ToolEngagement[]; onToolClick: (slug: string) => void }) {
   if (tools.length === 0) {
     return (
-      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+      <div className="glass-subtle p-6 border border-gray-200 dark:border-gray-800" style={{ borderRadius: 'var(--radius)' }}>
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-teal-100 dark:bg-teal-900/30 rounded-lg">
+          <div className="p-2 bg-teal-100 dark:bg-teal-900/30" style={{ borderRadius: 'var(--radius)' }}>
             <FontAwesomeIcon icon={faWrench} className="w-5 h-5 text-teal-600 dark:text-teal-400" />
           </div>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">Tools You Use</h3>
@@ -234,9 +236,9 @@ function ToolEngagementSection({ tools, onToolClick }: { tools: ToolEngagement[]
   const maxCount = Math.max(...tools.map(t => t.usageCount));
 
   return (
-    <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+    <div className="glass-subtle p-6 border border-gray-200 dark:border-gray-800" style={{ borderRadius: 'var(--radius)' }}>
       <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-teal-100 dark:bg-teal-900/30 rounded-lg">
+        <div className="p-2 bg-teal-100 dark:bg-teal-900/30" style={{ borderRadius: 'var(--radius)' }}>
           <FontAwesomeIcon icon={faWrench} className="w-5 h-5 text-teal-600 dark:text-teal-400" />
         </div>
         <h3 className="text-lg font-bold text-gray-900 dark:text-white">Tools You Use</h3>
@@ -286,9 +288,9 @@ function ToolEngagementSection({ tools, onToolClick }: { tools: ToolEngagement[]
 function TopicInterestsSection({ topics }: { topics: TopicInterest[] }) {
   if (topics.length === 0) {
     return (
-      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+      <div className="glass-subtle p-6 border border-gray-200 dark:border-gray-800" style={{ borderRadius: 'var(--radius)' }}>
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+          <div className="p-2 bg-purple-100 dark:bg-purple-900/30" style={{ borderRadius: 'var(--radius)' }}>
             <FontAwesomeIcon icon={faBookOpen} className="w-5 h-5 text-purple-600 dark:text-purple-400" />
           </div>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">Your Interests</h3>
@@ -318,9 +320,9 @@ function TopicInterestsSection({ topics }: { topics: TopicInterest[] }) {
   ];
 
   return (
-    <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+    <div className="glass-subtle p-6 border border-gray-200 dark:border-gray-800" style={{ borderRadius: 'var(--radius)' }}>
       <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+        <div className="p-2 bg-purple-100 dark:bg-purple-900/30" style={{ borderRadius: 'var(--radius)' }}>
           <FontAwesomeIcon icon={faBookOpen} className="w-5 h-5 text-purple-600 dark:text-purple-400" />
         </div>
         <h3 className="text-lg font-bold text-gray-900 dark:text-white">Your Interests</h3>
@@ -371,10 +373,10 @@ function ActivityTrendsSection({ trends }: { trends: ActivityTrend[] }) {
   const activeDays = trends.filter(t => t.activityCount > 0).length;
 
   return (
-    <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+    <div className="glass-subtle p-6 border border-gray-200 dark:border-gray-800" style={{ borderRadius: 'var(--radius)' }}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+          <div className="p-2 bg-green-100 dark:bg-green-900/30" style={{ borderRadius: 'var(--radius)' }}>
             <FontAwesomeIcon icon={faChartLine} className="w-5 h-5 text-green-600 dark:text-green-400" />
           </div>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">Last 30 Days</h3>
@@ -458,9 +460,9 @@ function PointsCategorySection({ categories }: { categories: PointsCategory[] })
   });
 
   return (
-    <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+    <div className="glass-subtle p-6 border border-gray-200 dark:border-gray-800" style={{ borderRadius: 'var(--radius)' }}>
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 rounded-lg">
+        <div className="p-2 bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30" style={{ borderRadius: 'var(--radius)' }}>
           <FontAwesomeIcon icon={faTrophy} className="w-5 h-5 text-teal-600 dark:text-teal-400" />
         </div>
         <h3 className="text-lg font-bold text-gray-900 dark:text-white">Points Breakdown</h3>
@@ -510,7 +512,8 @@ function PointsCategorySection({ categories }: { categories: PointsCategory[] })
           {segments.map((segment) => (
             <div
               key={segment.activityType}
-              className="flex items-center gap-3 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
+              className="flex items-center gap-3 p-3 bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
+              style={{ borderRadius: 'var(--radius)' }}
             >
               <div
                 className="w-4 h-4 rounded-full flex-shrink-0"

@@ -178,10 +178,11 @@ export default function ToolDirectoryPage() {
                               key={tool.id}
                               to={`/tools/${tool.slug}`}
                               replace={isToolTrayOpen}
-                              className="block text-left glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800 hover:border-primary-300 dark:hover:border-primary-700 transition-all hover:shadow-lg"
+                              className="block text-left glass-subtle p-6 border border-gray-200 dark:border-gray-800 hover:border-cyan-400 dark:hover:border-cyan-600 transition-all hover:shadow-neon"
+                              style={{ borderRadius: 'var(--radius)' }}
                             >
                               <div className="flex items-start gap-4">
-                                <div className="flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                                <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center overflow-hidden bg-white border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
                                   {tool.logoUrl ? (
                                     <img src={tool.logoUrl} alt={`${tool.name} logo`} className="w-10 h-10 object-contain" />
                                   ) : (

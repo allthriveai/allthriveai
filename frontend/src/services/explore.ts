@@ -98,16 +98,17 @@ export async function exploreProfiles(page: number = 1, page_size: number = 20):
  * Get available filter options (tools)
  */
 export async function getFilterOptions(): Promise<{
-  tools: Array<{ id: number; name: string; slug: string }>;
+  tools: Array<{ id: number; name: string; slug: string; logoUrl?: string }>;
 }> {
   const response = await api.get<PaginatedResponse<any>>('/tools/', {
-    params: { ordering: 'name' }
+    params: { ordering: 'name', page_size: 500 }
   });
   return {
     tools: response.data.results.map((tool: any) => ({
       id: tool.id,
       name: tool.name,
-      slug: tool.slug
+      slug: tool.slug,
+      logoUrl: tool.logoUrl  // Already transformed from logo_url by API interceptor
     }))
   };
 }

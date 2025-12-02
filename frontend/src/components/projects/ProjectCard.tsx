@@ -289,9 +289,10 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       <>
       <CardWrapper
         {...(cardProps as React.ComponentProps<typeof Link>)}
-        className={`block relative rounded overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 group ${
+        className={`block relative overflow-hidden shadow-lg hover:shadow-neon hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 group ${
           isSelected ? 'ring-4 ring-primary-500' : ''
         } ${dynamicHeightClass} ${dynamicWidthClass} ${!imageLoaded && (heroElement.type === 'image' || heroElement.type === 'slideshow') ? 'min-h-[400px]' : ''}`}
+        style={{ borderRadius: 'var(--radius)' }}
       >
 
         {/* Selection checkbox */}
@@ -674,9 +675,10 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   return (
     <CardWrapper
       {...(cardProps as React.ComponentProps<typeof Link>)}
-      className={`block glass-subtle hover:glass-strong transition-all duration-300 rounded-xl overflow-hidden group relative ${
+      className={`block glass-subtle hover:glass-strong transition-all duration-300 overflow-hidden group relative ${
         isSelected ? 'ring-4 ring-primary-500' : ''
       }`}
+      style={{ borderRadius: 'var(--radius)' }}
     >
       {/* Selection checkbox - positioned absolutely over the card */}
       {selectionMode && (

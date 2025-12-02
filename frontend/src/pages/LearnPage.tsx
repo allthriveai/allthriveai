@@ -8,6 +8,10 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useState } from 'react';
 
+// Constants
+const SECTION_HEADING_STYLE = 'text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2';
+const SECTION_TEXT_STYLE = 'text-gray-600 dark:text-gray-400 text-sm';
+
 interface LearnCardProps {
   title: string;
   description: string;
@@ -24,7 +28,7 @@ function LearnCard({ title, description, icon, onClick, comingSoon }: LearnCardP
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="glass-strong rounded-xl p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative overflow-hidden w-full text-left"
+      className="glass-strong p-8 hover:-translate-y-1 cursor-pointer group relative overflow-hidden w-full text-left"
     >
       {/* Coming Soon Badge */}
       {comingSoon && (
@@ -36,9 +40,10 @@ function LearnCard({ title, description, icon, onClick, comingSoon }: LearnCardP
       {/* Icon */}
       <div className="mb-6 flex items-center justify-center">
         <div
-          className={`w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center transition-transform duration-300 ${
+          className={`w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center transition-transform duration-300 ${
             isHovered ? 'scale-110 rotate-3' : ''
           }`}
+          style={{ borderRadius: 'var(--radius)' }}
         >
           <FontAwesomeIcon
             icon={icon}
@@ -58,7 +63,8 @@ function LearnCard({ title, description, icon, onClick, comingSoon }: LearnCardP
 
       {/* Hover Effect Gradient */}
       <div
-        className={`absolute inset-0 bg-gradient-to-br from-primary-500/5 to-primary-700/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl`}
+        className={`absolute inset-0 bg-gradient-to-br from-primary-500/5 to-primary-700/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}
+        style={{ borderRadius: 'var(--radius)' }}
       />
     </button>
   );
@@ -130,32 +136,32 @@ export default function LearnPage() {
             </div>
 
             {/* Additional Info Section */}
-            <div className="mt-16 glass-strong rounded-xl p-8">
+            <div className="mt-16 glass-strong p-8">
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 Why Learn with All Thrive AI?
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  <h3 className={SECTION_HEADING_STYLE}>
                     Practical Focus
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  <p className={SECTION_TEXT_STYLE}>
                     Learn skills that you can immediately apply to real-world AI projects and challenges.
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  <h3 className={SECTION_HEADING_STYLE}>
                     Expert-Curated
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  <p className={SECTION_TEXT_STYLE}>
                     Content designed by AI practitioners with years of experience in the field.
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  <h3 className={SECTION_HEADING_STYLE}>
                     Community-Driven
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  <p className={SECTION_TEXT_STYLE}>
                     Connect with fellow learners and grow together in a supportive environment.
                   </p>
                 </div>
@@ -166,7 +172,7 @@ export default function LearnPage() {
           {/* Coming Soon Toast */}
           {showComingSoon && (
             <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
-              <div className="glass-strong px-6 py-4 rounded-xl shadow-glass-xl border border-white/20">
+              <div className="glass-strong px-6 py-4 shadow-glass-xl border border-white/20">
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
                   <p className="text-sm font-medium text-slate-900 dark:text-slate-100">

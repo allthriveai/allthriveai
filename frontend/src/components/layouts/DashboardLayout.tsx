@@ -1,6 +1,5 @@
 import { useState, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '@/hooks/useTheme';
 import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightAboutPanel } from '@/components/about';
 import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalendarPanel';
@@ -8,6 +7,10 @@ import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
 import { CommentTray } from '@/components/projects/CommentTray';
 import { useAuth } from '@/hooks/useAuth';
 import type { Project } from '@/types/models';
+
+// Constants
+const GITHUB_OAUTH_TIMESTAMP_KEY = 'github_oauth_timestamp';
+const OVERLAY_CLASSNAME = 'fixed inset-0 bg-black/20 z-30 md:hidden';
 
 interface DashboardLayoutProps {
   children: ReactNode | ((props: {
@@ -19,7 +22,6 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
-  const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
@@ -38,7 +40,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   // Check for GitHub OAuth return and auto-open Add Project panel
   useEffect(() => {
     const oauthReturn = localStorage.getItem('github_oauth_return');
-    const oauthTimestamp = localStorage.getItem('github_oauth_timestamp');
+    const oauthTimestamp = localStorage.getItem(GITHUB_OAUTH_TIMESTAMP_KEY);
 
     // Validate return value is expected
     const validReturnValues = ['add_project_chat'] as const;
@@ -52,14 +54,14 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       if (isNaN(age) || age > 5 * 60 * 1000) {
         // Expired or invalid - clean up and exit
         localStorage.removeItem('github_oauth_return');
-        localStorage.removeItem('github_oauth_timestamp');
+        localStorage.removeItem(GITHUB_OAUTH_TIMESTAMP_KEY);
         return;
       }
     }
 
     // Clear immediately to prevent re-triggering on subsequent renders
     localStorage.removeItem('github_oauth_return');
-    localStorage.removeItem('github_oauth_timestamp');
+    localStorage.removeItem(GITHUB_OAUTH_TIMESTAMP_KEY);
 
     console.log('✅ Opening Add Project panel after OAuth return');
     handleOpenAddProject();
@@ -128,17 +130,9 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setCommentPanelProject(null);
   };
 
-  const backgroundImage = theme === 'dark' ? '/dark.jpeg' : '/light.jpeg';
-
   return (
     <div className="relative h-screen w-full overflow-hidden">
-      {/* Background Layer */}
-      <div
-        className={`absolute inset-0 bg-cover bg-center bg-no-repeat ${
-          theme === 'light' ? '-scale-x-100 -scale-y-100' : ''
-        }`}
-        style={{ backgroundImage: `url(${backgroundImage})` }}
-      />
+      {/* Background is now handled by CSS in index.css - uses CSS gradients instead of images */}
 
       {/* Main App Layout */}
       <div className="relative z-10 flex flex-col h-full">
@@ -187,34 +181,22 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
 
         {/* Overlay when about is open */}
         {aboutOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 z-30 md:hidden"
-            onClick={handleCloseAbout}
-          />
+          <div className={OVERLAY_CLASSNAME} onClick={handleCloseAbout} />
         )}
 
         {/* Overlay when events is open */}
         {eventsOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 z-30 md:hidden"
-            onClick={handleCloseEvents}
-          />
+          <div className={OVERLAY_CLASSNAME} onClick={handleCloseEvents} />
         )}
 
         {/* Overlay when add project is open */}
         {addProjectOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 z-30 md:hidden"
-            onClick={handleCloseAddProject}
-          />
+          <div className={OVERLAY_CLASSNAME} onClick={handleCloseAddProject} />
         )}
 
         {/* Overlay when comment panel is open */}
         {commentPanelOpen && (
-          <div
-            className="fixed inset-0 bg-black/20 z-30 md:hidden"
-            onClick={handleCloseCommentPanel}
-          />
+          <div className={OVERLAY_CLASSNAME} onClick={handleCloseCommentPanel} />
         )}
       </div>
     </div>

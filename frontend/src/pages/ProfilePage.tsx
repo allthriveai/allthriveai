@@ -118,14 +118,6 @@ export default function ProfilePage() {
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Auto-collapse sidebar on scroll
-  useEffect(() => {
-    if (scrolled && sidebarOpen) {
-      setSidebarOpen(false);
-    } else if (!scrolled && !sidebarOpen) {
-      setSidebarOpen(true);
-    }
-  }, [scrolled]);
 
   // Update URL when tab changes
   const handleTabChange = (tab: 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity') => {
@@ -277,13 +269,13 @@ export default function ProfilePage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col w-full relative bg-gray-50 dark:bg-[#0a0a0a]">
+      <div className="flex flex-col w-full relative">
 
         {/* Main content area */}
         <div className="w-full relative">
           {/* Mobile Sticky Header - Shows when scrolled past banner */}
           <div
-            className={`lg:hidden fixed top-16 left-0 right-0 z-50 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/10 transition-all duration-300 transform ${
+            className={`lg:hidden fixed top-16 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-white/10 transition-all duration-300 transform ${
               scrolled ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
             }`}
           >
@@ -341,7 +333,7 @@ export default function ProfilePage() {
                 {/* Name & Tagline */}
                 <div className="pb-2 md:pb-4 flex-1 min-w-0 transition-all duration-500 ease-in-out">
                   <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-1 md:mb-2 leading-tight truncate transition-all duration-500">
-                    <span className="bg-gradient-to-r from-teal-600 via-blue-600 to-purple-600 dark:from-teal-400 dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                    <span className="bg-gradient-to-r from-[#4ADEE7] to-[#22D3EE] bg-clip-text text-transparent">
                       {displayUser?.fullName || displayUser?.username || 'Portfolio'}
                     </span>
                   </h1>
@@ -660,11 +652,12 @@ export default function ProfilePage() {
                       <button
                         key={tab.id}
                         onClick={() => handleTabChange(tab.id as any)}
-                        className={`flex items-center gap-2 py-4 px-1 text-sm font-medium border-b-2 transition-colors ${
+                        className={`flex items-center gap-2 py-3 px-3 text-sm font-medium transition-all ${
                           activeTab === tab.id
-                            ? 'border-teal-500 text-teal-600 dark:text-teal-400'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                            ? 'glass-subtle text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 shadow-neon'
+                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:shadow-neon'
                         }`}
+                        style={{ borderRadius: 'var(--radius)' }}
                       >
                         <FontAwesomeIcon icon={tabIcons[tab.id as keyof typeof tabIcons]} className="w-3.5 h-3.5" />
                         {tab.label}

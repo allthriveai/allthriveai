@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, SparklesIcon, XMarkIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
 import type { Taxonomy } from '@/types/models';
 import { getCategoryColorClasses } from '@/utils/categoryColors';
 
@@ -9,7 +10,7 @@ interface SearchBarWithFiltersProps {
   initialValue?: string;
   // Filters
   topics?: Taxonomy[];
-  tools?: Array<{ id: number; name: string; slug: string }>;
+  tools?: Array<{ id: number; name: string; slug: string; logoUrl?: string }>;
   selectedTopics?: string[];  // Category slugs
   selectedToolSlugs?: string[];
   onTopicsChange?: (topicSlugs: string[]) => void;  // Category slugs
@@ -96,7 +97,8 @@ export function SearchBarWithFilters({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
-            className="w-full pl-16 pr-32 py-3.5 text-base rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow"
+            className="w-full pl-16 pr-32 py-3.5 text-base border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow hover:shadow-neon focus:shadow-neon"
+            style={{ borderRadius: 'var(--radius)' }}
           />
 
           {/* Right Side Buttons */}
@@ -137,7 +139,8 @@ export function SearchBarWithFilters({
             {/* Search Button */}
             <button
               type="submit"
-              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md font-medium transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium transition-all flex items-center gap-1.5 hover:shadow-neon"
+              style={{ borderRadius: 'var(--radius)' }}
               aria-label="Search"
             >
               <MagnifyingGlassIcon className="w-4 h-4" />
@@ -176,8 +179,16 @@ export function SearchBarWithFilters({
               <button
                 key={toolSlug}
                 onClick={() => toggleTool(toolSlug)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-full text-xs font-medium hover:bg-teal-200 dark:hover:bg-teal-900/50 transition-colors"
+                className="inline-flex items-center gap-1.5 px-2 py-1 bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 text-xs font-medium hover:bg-cyan-100 dark:hover:bg-cyan-900/50 transition-colors"
+                style={{ borderRadius: 'var(--radius)' }}
               >
+                <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden bg-white border border-cyan-300 dark:border-cyan-700">
+                  {tool.logoUrl ? (
+                    <img src={tool.logoUrl} alt="" className="w-3 h-3 object-contain" />
+                  ) : (
+                    <WrenchScrewdriverIcon className="w-2 h-2 text-gray-400" />
+                  )}
+                </div>
                 {tool.name}
                 <XMarkIcon className="w-3 h-3" />
               </button>
@@ -196,7 +207,7 @@ export function SearchBarWithFilters({
 
       {/* Filter Dropdown */}
       {showFilterDropdown && showFilters && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-lg">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 shadow-lg overflow-visible" style={{ borderRadius: 'var(--radius)' }}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900 dark:text-white">Filters</h3>
             <button
@@ -232,29 +243,54 @@ export function SearchBarWithFilters({
               </div>
             )}
 
-            {/* Tools */}
+            {/* Tools - Circular logos with subtle styling */}
             {tools.length > 0 && (
               <div>
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Tools
                 </h4>
-                <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
-                  {tools.map((tool) => (
-                    <button
-                      key={tool.slug}
-                      onClick={() => toggleTool(tool.slug)}
-                      className={`
-                        px-3 py-1.5 rounded-md text-sm font-medium transition-all
-                        ${
-                          selectedToolSlugs.includes(tool.slug)
-                            ? 'bg-teal-500 text-white shadow-sm'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        }
-                      `}
-                    >
-                      {tool.name}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-2 max-h-64 overflow-visible p-2 -m-2">
+                  {tools.map((tool) => {
+                    const isSelected = selectedToolSlugs.includes(tool.slug);
+                    return (
+                      <button
+                        key={tool.slug}
+                        onClick={() => toggleTool(tool.slug)}
+                        className={`
+                          group flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 ease-out hover:scale-125 hover:z-10
+                          ${
+                            isSelected
+                              ? 'bg-cyan-100 dark:bg-cyan-900/50 border-cyan-400 dark:border-cyan-600'
+                              : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                          }
+                        `}
+                        title={tool.name}
+                      >
+                        {/* Circular logo */}
+                        <div className={`
+                          w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden bg-white border
+                          ${isSelected ? 'border-cyan-400 dark:border-cyan-600' : 'border-gray-200 dark:border-gray-600'}
+                        `}>
+                          {tool.logoUrl ? (
+                            <img
+                              src={tool.logoUrl}
+                              alt=""
+                              className="w-3.5 h-3.5 object-contain"
+                            />
+                          ) : (
+                            <WrenchScrewdriverIcon className="w-2.5 h-2.5 text-gray-400" />
+                          )}
+                        </div>
+                        {/* Tool name */}
+                        <span className={`
+                          text-xs font-medium truncate max-w-[80px]
+                          ${isSelected ? 'text-cyan-700 dark:text-cyan-300' : 'text-gray-600 dark:text-gray-300'}
+                        `}>
+                          {tool.name}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -1,10 +1,16 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { ChatInterface } from './ChatInterface';
 import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
 import { useIntelligentChat } from '@/hooks/useIntelligentChat';
 import { useAuth } from '@/hooks/useAuth';
+
+// Constants
+const ONBOARDING_BUTTON_BASE = 'w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50';
+const BUTTON_FLEX_CONTAINER = 'flex items-center gap-3';
+const BUTTON_TITLE_STYLE = 'font-medium text-slate-900 dark:text-slate-100 text-sm';
+const BUTTON_SUBTITLE_STYLE = 'text-xs text-slate-600 dark:text-slate-400';
 
 interface IntelligentChatPanelProps {
   isOpen: boolean;
@@ -122,17 +128,17 @@ export function IntelligentChatPanel({
               <button
                 onClick={handlePlayGame}
                 disabled={isLoading}
-                className="w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50"
+                className={ONBOARDING_BUTTON_BASE}
               >
-                <div className="flex items-center gap-3">
+                <div className={BUTTON_FLEX_CONTAINER}>
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center flex-shrink-0">
                     <span className="text-lg">🎮</span>
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium text-slate-900 dark:text-slate-100 text-sm">
+                    <div className={BUTTON_TITLE_STYLE}>
                       Play a game
                     </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                    <div className={BUTTON_SUBTITLE_STYLE}>
                       Help us personalize your experience
                     </div>
                   </div>
@@ -142,17 +148,17 @@ export function IntelligentChatPanel({
               <button
                 onClick={handleAddFirstProject}
                 disabled={isLoading}
-                className="w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50"
+                className={ONBOARDING_BUTTON_BASE}
               >
-                <div className="flex items-center gap-3">
+                <div className={BUTTON_FLEX_CONTAINER}>
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center flex-shrink-0">
                     <span className="text-lg">➕</span>
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium text-slate-900 dark:text-slate-100 text-sm">
+                    <div className={BUTTON_TITLE_STYLE}>
                       Add your first project
                     </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                    <div className={BUTTON_SUBTITLE_STYLE}>
                       Paste a link, connect an integration, or describe it
                     </div>
                   </div>
@@ -162,17 +168,17 @@ export function IntelligentChatPanel({
               <button
                 onClick={handleMakeSomethingNew}
                 disabled={isLoading}
-                className="w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50"
+                className={ONBOARDING_BUTTON_BASE}
               >
-                <div className="flex items-center gap-3">
+                <div className={BUTTON_FLEX_CONTAINER}>
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center flex-shrink-0">
                     <span className="text-lg">✨</span>
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium text-slate-900 dark:text-slate-100 text-sm">
+                    <div className={BUTTON_TITLE_STYLE}>
                       Don't know where to start?
                     </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                    <div className={BUTTON_SUBTITLE_STYLE}>
                       Let's make something new together
                     </div>
                   </div>
@@ -278,12 +284,28 @@ export function IntelligentChatPanel({
             </div>
           </div>
 
-          {/* User info */}
-          {user && (
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              {user.username || user.email}
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {/* User info */}
+            {user && (
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {user.username || user.email}
+              </div>
+            )}
+
+            {/* Close button */}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Close button clicked');
+                onClose();
+              }}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label="Close chat"
+            >
+              <XMarkIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </button>
+          </div>
         </div>
       }
       inputPlaceholder="Ask me anything..."

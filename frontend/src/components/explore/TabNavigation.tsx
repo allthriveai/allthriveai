@@ -31,13 +31,14 @@ export function TabNavigation({ activeTab, onChange }: TabNavigationProps) {
             key={tab.id}
             onClick={() => onChange(tab.id)}
             className={`
-              flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all whitespace-nowrap
+              flex items-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap
               ${
                 activeTab === tab.id
-                  ? 'glass-subtle text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  ? 'glass-subtle text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800 shadow-neon'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:shadow-neon'
               }
             `}
+            style={{ borderRadius: 'var(--radius)' }}
           >
             {tab.icon}
             <span>{tab.label}</span>
@@ -50,7 +51,8 @@ export function TabNavigation({ activeTab, onChange }: TabNavigationProps) {
         <select
           value={activeTab}
           onChange={(e) => onChange(e.target.value as ExploreTab)}
-          className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:shadow-neon"
+          style={{ borderRadius: 'var(--radius)' }}
         >
           {tabs.map((tab) => (
             <option key={tab.id} value={tab.id}>
