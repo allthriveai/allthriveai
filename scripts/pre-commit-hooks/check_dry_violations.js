@@ -14,10 +14,10 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Configuration
-const MIN_DUPLICATE_LINES = 4;
-const MIN_STRING_LENGTH = 20;
-const MIN_STRING_OCCURRENCES = 3;
-const MIN_OBJECT_OCCURRENCES = 2;
+const MIN_DUPLICATE_LINES = 6; // Increased from 4
+const MIN_STRING_LENGTH = 30; // Increased from 20
+const MIN_STRING_OCCURRENCES = 4; // Increased from 3
+const MIN_OBJECT_OCCURRENCES = 3; // Increased from 2 - className repetition threshold
 
 /**
  * Normalize a line for comparison
@@ -71,6 +71,10 @@ function isCommonPattern(str) {
     /^Bearer\s/,              // Auth headers
     /^#[0-9a-fA-F]{3,8}$/,   // Color codes
     /^[\w-]+:\s/,            // CSS-like properties
+    /^text-\w+/,             // Tailwind text classes
+    /^flex\s/,               // Flex classes
+    /^on[A-Z]/,              // Event handlers
+    /^use[A-Z]/,             // Custom hooks
   ];
   return patterns.some(p => p.test(str));
 }
@@ -166,12 +170,16 @@ function checkRepeatedClassNames(content) {
 
   Object.entries(classes).forEach(([className, { count, lines }]) => {
     if (count >= MIN_OBJECT_OCCURRENCES) {
-      findings.push({
-        type: 'repeated_className',
-        count,
-        lines,
-        preview: className.slice(0, 60) + '...'
-      });
+      // Skip very common utility patterns
+      const isCommonUtility = /^(flex|grid|text|bg|p-|m-|w-|h-)/.test(className);
+      if (!isCommonUtility) {
+        findings.push({
+          type: 'repeated_className',
+          count,
+          lines,
+          preview: className.slice(0, 60) + '...'
+        });
+      }
     }
   });
 

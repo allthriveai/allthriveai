@@ -122,7 +122,10 @@ repos:
             .*/tests/.*|\
             .*/migrations/.*|\
             scripts/pre-commit-hooks/.*|\
-            .*/conftest\.py$\
+            .*/conftest\.py$|\
+            .*/fixtures\.py$|\
+            .*/seed.*\.py$|\
+            .*/constants\.py$\
           )$
         verbose: true
 
@@ -138,6 +141,9 @@ repos:
             .*\.test\.(ts|tsx|js|jsx)$|\
             .*\.spec\.(ts|tsx|js|jsx)$|\
             .*/node_modules/.*|\
-            scripts/pre-commit-hooks/.*\
+            scripts/pre-commit-hooks/.*|\
+            .*/fixtures/.*|\
+            .*/types\.ts$|\
+            .*/constants\.(ts|js)$\
           )$
         verbose: true

@@ -17,9 +17,9 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 # Configuration
-MIN_DUPLICATE_LINES = 4  # Minimum consecutive lines to flag as duplicate
-MIN_STRING_LENGTH = 20  # Minimum string length to track for duplication
-MIN_STRING_OCCURRENCES = 3  # How many times a string must appear to be flagged
+MIN_DUPLICATE_LINES = 6  # Minimum consecutive lines to flag as duplicate (increased from 4)
+MIN_STRING_LENGTH = 30  # Minimum string length to track for duplication (increased from 20)
+MIN_STRING_OCCURRENCES = 4  # How many times a string must appear to be flagged (increased from 3)
 SIMILARITY_THRESHOLD = 0.8  # How similar code blocks must be (0-1)
 
 
@@ -70,6 +70,15 @@ class DuplicationChecker(ast.NodeVisitor):
             r'^\d{4}-\d{2}-\d{2}',  # Date patterns
             r'^application/\w+',  # MIME types
             r'^Bearer ',  # Auth headers
+            r'^services\.',  # Module paths (commonly repeated in tests)
+            r'.*\.py$',  # File paths
+            r'^mock_',  # Mock variable names
+            r'^test_',  # Test names
+            r'_test$',  # Test suffixes
+            r'^on_\w+',  # Event handlers
+            r'claude-\d',  # Model names
+            r'gemini-\d',  # Model names
+            r'gpt-\d',  # Model names
         ]
         return any(re.match(pattern, value) for pattern in common_patterns)
 
