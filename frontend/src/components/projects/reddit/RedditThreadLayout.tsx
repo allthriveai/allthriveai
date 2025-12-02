@@ -42,6 +42,7 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
   const [showShareModal, setShowShareModal] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [isFeedbackSidebarOpen, setIsFeedbackSidebarOpen] = useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
 
   const redditData = localProject.content?.reddit;
 
@@ -247,6 +248,7 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
             {hasVideo && postVideoUrl ? (
               <div className="w-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
                 <video
+                  ref={videoRef}
                   controls
                   autoPlay
                   loop
@@ -254,6 +256,13 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                   playsInline
                   className="w-full max-h-[800px] object-contain"
                   preload="metadata"
+                  onLoadedMetadata={() => {
+                    // Ensure video starts muted but volume control is available
+                    if (videoRef.current) {
+                      videoRef.current.muted = true;
+                      videoRef.current.volume = 0.5; // Set to 50% when unmuted
+                    }
+                  }}
                 >
                   <source src={postVideoUrl} type="video/mp4" />
                   Your browser does not support the video tag.
