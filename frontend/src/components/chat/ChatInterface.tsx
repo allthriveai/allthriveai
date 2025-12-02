@@ -86,7 +86,7 @@ export function ChatInterface({
     <>
       {/* Sliding Panel */}
       <div
-        className={`fixed right-0 top-16 w-full md:w-[480px] h-[calc(100vh-4rem)] border-l border-white/20 dark:border-white/10 flex flex-col shadow-2xl transition-all duration-300 z-[60] ${
+        className={`fixed right-0 top-16 w-full md:w-[480px] h-[calc(100vh-4rem)] border-l border-white/20 dark:border-white/10 flex flex-col shadow-2xl transition-all duration-300 z-40 ${
           isOpen ? 'translate-x-0 opacity-100 visible' : 'translate-x-full opacity-0 invisible pointer-events-none'
         }`}
         style={{
@@ -104,7 +104,7 @@ export function ChatInterface({
             headerContent
           ) : (
             <>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text:white">
                 {config?.agentName || 'Chat'}
               </h2>
               <button
@@ -191,7 +191,7 @@ export function ChatInterface({
               type="text"
               placeholder={inputPlaceholder}
               disabled={isLoading}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all chat-input"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text:white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all chat-input"
             />
             <button
               type="submit"
@@ -207,7 +207,7 @@ export function ChatInterface({
       {/* Mobile Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/20 z-[55] md:hidden"
+          className="fixed inset-0 bg-black/20 z-30 md:hidden"
           onClick={onClose}
         />
       )}

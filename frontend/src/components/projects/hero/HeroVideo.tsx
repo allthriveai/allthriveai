@@ -43,7 +43,9 @@ function isDirectVideo(url: string): boolean {
     url.endsWith('.mp4') ||
     url.endsWith('.webm') ||
     url.endsWith('.ogg') ||
-    url.includes('/projects/videos/')
+    url.includes('/projects/videos/') ||
+    url.includes('v.redd.it') || // Reddit video URLs
+    url.includes('reddit.com') && (url.includes('DASH_') || url.includes('.mp4')) // Reddit video fallback patterns
   );
 }
 
@@ -63,6 +65,10 @@ export function HeroVideo({ videoUrl }: HeroVideoProps) {
             <video
               src={videoUrl}
               controls
+              autoPlay
+              loop
+              muted
+              playsInline
               className="rounded-xl md:rounded-2xl max-h-[80vh] max-w-full"
               onError={() => {
                 console.error('Video load error');
