@@ -19,13 +19,28 @@ from .quest_tracker import track_quest_action
 logger = logging.getLogger(__name__)
 
 
+def _validate_signal_preconditions(instance, created, check_created=True):
+    """Helper to validate common signal preconditions."""
+    if check_created and not created:
+        return None
+
+    user = instance.user
+    if not user:
+        return None
+
+    return user
+
+
+def _log_completion(action_type, user_id, completed):
+    """Helper to log quest completion."""
+    if completed:
+        logger.info(f'{action_type} triggered quest completion for user {user_id}: {completed}')
+
+
 @receiver(post_save, sender=ProjectComment)
 def track_comment_created(sender, instance, created, **kwargs):
     """Track when a user creates a comment on a project."""
-    if not created:
-        return
-
-    user = instance.user
+    user = _validate_signal_preconditions(instance, created)
     if not user:
         return
 
@@ -42,17 +57,13 @@ def track_comment_created(sender, instance, created, **kwargs):
         },
     )
 
-    if completed:
-        logger.info(f'Comment triggered quest completion for user {user.id}: {completed}')
+    _log_completion('Comment', user.id, completed)
 
 
 @receiver(post_save, sender=Project)
 def track_project_created(sender, instance, created, **kwargs):
     """Track when a user creates a project."""
-    if not created:
-        return
-
-    user = instance.user
+    user = _validate_signal_preconditions(instance, created)
     if not user:
         return
 
@@ -65,17 +76,13 @@ def track_project_created(sender, instance, created, **kwargs):
         },
     )
 
-    if completed:
-        logger.info(f'Project creation triggered quest completion for user {user.id}: {completed}')
+    _log_completion('Project creation', user.id, completed)
 
 
 @receiver(post_save, sender=ProjectLike)
 def track_project_liked(sender, instance, created, **kwargs):
     """Track when a user likes a project."""
-    if not created:
-        return
-
-    user = instance.user
+    user = _validate_signal_preconditions(instance, created)
     if not user:
         return
 
@@ -91,8 +98,7 @@ def track_project_liked(sender, instance, created, **kwargs):
         },
     )
 
-    if completed:
-        logger.info(f'Project like triggered quest completion for user {user.id}: {completed}')
+    _log_completion('Project like', user.id, completed)
 
 
 @receiver(post_save, sender=QuizAttempt)
@@ -102,7 +108,7 @@ def track_quiz_completed(sender, instance, created, **kwargs):
     if not instance.completed_at:
         return
 
-    user = instance.user
+    user = _validate_signal_preconditions(instance, created, check_created=False)
     if not user:
         return
 
@@ -143,8 +149,7 @@ def track_quiz_completed(sender, instance, created, **kwargs):
         )
         completed.extend(perfect_completed)
 
-    if completed:
-        logger.info(f'Quiz completion triggered quest completion for user {user.id}: {completed}')
+    _log_completion('Quiz completion', user.id, completed)
 
 
 @receiver(post_save, sender=ImageGenerationSession)
@@ -153,7 +158,7 @@ def track_image_generated(sender, instance, created, **kwargs):
     if not instance.final_image_url:
         return  # No image generated yet
 
-    user = instance.user
+    user = _validate_signal_preconditions(instance, created, check_created=False)
     if not user:
         return
 
@@ -166,8 +171,7 @@ def track_image_generated(sender, instance, created, **kwargs):
         },
     )
 
-    if completed:
-        logger.info(f'Image generation triggered quest completion for user {user.id}: {completed}')
+    _log_completion('Image generation', user.id, completed)
 
 
 def track_user_login(user):
@@ -188,8 +192,7 @@ def track_user_login(user):
     # Auto-start daily quests for the user
     QuestTracker.auto_start_daily_quests(user)
 
-    if completed:
-        logger.info(f'Login triggered quest completion for user {user.id}: {completed}')
+    _log_completion('Login', user.id, completed)
 
     return completed
 
@@ -212,8 +215,7 @@ def track_search_used(user, query: str = ''):
         },
     )
 
-    if completed:
-        logger.info(f'Search triggered quest completion for user {user.id}: {completed}')
+    _log_completion('Search', user.id, completed)
 
     return completed
 
@@ -239,8 +241,7 @@ def track_profile_viewed(user, viewed_user):
         },
     )
 
-    if completed:
-        logger.info(f'Profile view triggered quest completion for user {user.id}: {completed}')
+    _log_completion('Profile view', user.id, completed)
 
     return completed
 
@@ -263,7 +264,6 @@ def track_github_imported(user, repo_url: str = ''):
         },
     )
 
-    if completed:
-        logger.info(f'GitHub import triggered quest completion for user {user.id}: {completed}')
+    _log_completion('GitHub import', user.id, completed)
 
     return completed

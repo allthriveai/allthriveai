@@ -22,11 +22,9 @@ interface JewelColorClasses {
 }
 
 /**
- * True jewel tone colors - rich, saturated gemstone colors
- * Using CSS custom properties defined in index.css
+ * Primary jewel tone color definitions
  */
-const jewelColorMap: Record<ColorName, JewelColorClasses> = {
-  // Primary jewel tones
+const baseJewelColors = {
   sapphire: {
     bg: 'bg-[#0F52BA]/15',
     bgHover: 'hover:bg-[#0F52BA]/25',
@@ -117,88 +115,39 @@ const jewelColorMap: Record<ColorName, JewelColorClasses> = {
     gradientFrom: '#5E8C31',
     gradientTo: '#4a7026',
   },
-  // Legacy color mappings (map to closest jewel tone)
-  teal: {
-    bg: 'bg-[#00A86B]/15',
-    bgHover: 'hover:bg-[#00A86B]/25',
-    text: 'text-[#00A86B] dark:text-[#4dd8a0]',
-    bgSelected: 'bg-[#00A86B]',
-    textSelected: 'text-white',
-    gradientFrom: '#00A86B',
-    gradientTo: '#008c5a',
-  },
-  cyan: {
-    bg: 'bg-[#0F52BA]/15',
-    bgHover: 'hover:bg-[#0F52BA]/25',
-    text: 'text-[#0F52BA] dark:text-[#5a8fe8]',
-    bgSelected: 'bg-[#0F52BA]',
-    textSelected: 'text-white',
-    gradientFrom: '#0F52BA',
-    gradientTo: '#0a3d8a',
-  },
-  blue: {
-    bg: 'bg-[#0F52BA]/15',
-    bgHover: 'hover:bg-[#0F52BA]/25',
-    text: 'text-[#0F52BA] dark:text-[#5a8fe8]',
-    bgSelected: 'bg-[#0F52BA]',
-    textSelected: 'text-white',
-    gradientFrom: '#0F52BA',
-    gradientTo: '#0a3d8a',
-  },
-  green: {
-    bg: 'bg-[#046307]/15',
-    bgHover: 'hover:bg-[#046307]/25',
-    text: 'text-[#046307] dark:text-[#4ade80]',
-    bgSelected: 'bg-[#046307]',
-    textSelected: 'text-white',
-    gradientFrom: '#046307',
-    gradientTo: '#034a05',
-  },
-  purple: {
-    bg: 'bg-[#5a175d]/15',
-    bgHover: 'hover:bg-[#5a175d]/25',
-    text: 'text-[#5a175d] dark:text-[#b366b8]',
-    bgSelected: 'bg-[#5a175d]',
-    textSelected: 'text-white',
-    gradientFrom: '#5a175d',
-    gradientTo: '#420f44',
-  },
-  pink: {
-    bg: 'bg-[#AA336A]/15',
-    bgHover: 'hover:bg-[#AA336A]/25',
-    text: 'text-[#AA336A] dark:text-[#e880a8]',
-    bgSelected: 'bg-[#AA336A]',
-    textSelected: 'text-white',
-    gradientFrom: '#AA336A',
-    gradientTo: '#8a2856',
-  },
-  red: {
-    bg: 'bg-[#9B111E]/15',
-    bgHover: 'hover:bg-[#9B111E]/25',
-    text: 'text-[#9B111E] dark:text-[#e85a66]',
-    bgSelected: 'bg-[#9B111E]',
-    textSelected: 'text-white',
-    gradientFrom: '#9B111E',
-    gradientTo: '#7a0d18',
-  },
-  orange: {
-    bg: 'bg-[#E27D12]/15',
-    bgHover: 'hover:bg-[#E27D12]/25',
-    text: 'text-[#E27D12] dark:text-[#f5a855]',
-    bgSelected: 'bg-[#E27D12]',
-    textSelected: 'text-white',
-    gradientFrom: '#E27D12',
-    gradientTo: '#c56a0e',
-  },
-  lime: {
-    bg: 'bg-[#5E8C31]/15',
-    bgHover: 'hover:bg-[#5E8C31]/25',
-    text: 'text-[#5E8C31] dark:text-[#98c860]',
-    bgSelected: 'bg-[#5E8C31]',
-    textSelected: 'text-white',
-    gradientFrom: '#5E8C31',
-    gradientTo: '#4a7026',
-  },
+} as const;
+
+/**
+ * Legacy color name to jewel tone mapping
+ */
+const legacyColorMapping: Record<string, keyof typeof baseJewelColors> = {
+  teal: 'jade',
+  cyan: 'sapphire',
+  blue: 'sapphire',
+  green: 'emerald',
+  purple: 'amethyst',
+  pink: 'rose-quartz',
+  red: 'ruby',
+  orange: 'topaz',
+  lime: 'peridot',
+};
+
+/**
+ * True jewel tone colors - rich, saturated gemstone colors
+ * Using CSS custom properties defined in index.css
+ */
+const jewelColorMap: Record<ColorName, JewelColorClasses> = {
+  ...baseJewelColors,
+  // Legacy colors map to jewel tones
+  teal: baseJewelColors.jade,
+  cyan: baseJewelColors.sapphire,
+  blue: baseJewelColors.sapphire,
+  green: baseJewelColors.emerald,
+  purple: baseJewelColors.amethyst,
+  pink: baseJewelColors['rose-quartz'],
+  red: baseJewelColors.ruby,
+  orange: baseJewelColors.topaz,
+  lime: baseJewelColors.peridot,
 };
 
 /**

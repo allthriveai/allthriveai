@@ -8,6 +8,11 @@ import type { SideQuest, UserSideQuest, QuestCategory } from '@/types/models';
 import { QuestProgressMap } from './QuestProgressMap';
 import { QuestStepCard } from './QuestStepCard';
 
+// Reusable style constants
+const GLASS_BORDER_SUBTLE = '1px solid var(--glass-border-subtle)';
+const createLinearGradient = (colorFrom: string, colorTo: string, opacity1: number, opacity2: number) =>
+  `linear-gradient(135deg, ${colorFrom.includes('rgba') ? colorFrom : `rgba(${parseInt(colorFrom.slice(1,3), 16)}, ${parseInt(colorFrom.slice(3,5), 16)}, ${parseInt(colorFrom.slice(5,7), 16)}, ${opacity1})`}, ${colorTo.includes('rgba') ? colorTo : `rgba(${parseInt(colorTo.slice(1,3), 16)}, ${parseInt(colorTo.slice(3,5), 16)}, ${parseInt(colorTo.slice(5,7), 16)}, ${opacity2})`})`;
+
 interface QuestTrayProps {
   isOpen: boolean;
   onClose: () => void;
@@ -335,7 +340,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
             <div
               className="w-20 h-20 rounded-2xl flex items-center justify-center"
               style={{
-                background: `linear-gradient(135deg, ${questColors.bgLight}, ${hexToRgba(questColors.colorTo, 0.1)})`,
+                background: createLinearGradient(questColors.colorFrom, questColors.colorTo, 0.1, 0.1),
                 boxShadow: `0 0 30px ${questColors.border}`,
               }}
             >
@@ -396,7 +401,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
               <div
                 className="flex items-center gap-2 px-4 py-2 rounded-full"
                 style={{
-                  background: `linear-gradient(135deg, ${questColors.bgLight}, ${hexToRgba(questColors.colorTo, 0.1)})`,
+                  background: createLinearGradient(questColors.colorFrom, questColors.colorTo, 0.1, 0.1),
                   border: `1px solid ${questColors.border}`,
                 }}
               >
@@ -456,7 +461,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
                 }}
                 className="w-full py-3 px-6 rounded-xl font-medium text-muted transition-all hover:text-secondary flex items-center justify-center gap-2"
                 style={{
-                  border: '1px solid var(--glass-border-subtle)',
+                  border: GLASS_BORDER_SUBTLE,
                   background: 'var(--glass-fill-subtle)',
                 }}
               >
@@ -511,7 +516,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
               style={{
                 background: isCompleted
                   ? 'linear-gradient(135deg, rgba(74, 222, 128, 0.3), rgba(74, 222, 128, 0.1))'
-                  : `linear-gradient(135deg, ${questColors.bgLight}, ${hexToRgba(questColors.colorTo, 0.1)})`,
+                  : createLinearGradient(questColors.colorFrom, questColors.colorTo, 0.1, 0.1),
               }}
             >
               {isCompleted ? (
@@ -566,7 +571,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
             <div
               className="flex items-center gap-2 px-3 py-1.5 rounded-full"
               style={{
-                background: `linear-gradient(135deg, ${questColors.bgLight}, ${hexToRgba(questColors.colorTo, 0.1)})`,
+                background: createLinearGradient(questColors.colorFrom, questColors.colorTo, 0.1, 0.1),
                 border: `1px solid ${questColors.border}`,
               }}
             >

@@ -39,6 +39,9 @@ import {
 import type { SideQuest, UserSideQuest } from '@/types/models';
 import { DEFAULT_QUEST_COLORS } from '@/utils/colors';
 
+// Reusable style constants
+const GLASS_BORDER_SUBTLE = '1px solid var(--glass-border-subtle)';
+
 // Map icon names from backend to FontAwesome icons
 const categoryIconMap: Record<string, IconDefinition> = {
   faUsers,
@@ -342,7 +345,7 @@ export default function SideQuestsPage() {
                       onClick={() => scrollSlider('left')}
                       disabled={!canScrollLeft}
                       className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                      style={{ background: 'var(--glass-fill)', border: '1px solid var(--glass-border-subtle)' }}
+                      style={{ background: 'var(--glass-fill)', border: GLASS_BORDER_SUBTLE }}
                     >
                       <FontAwesomeIcon icon={faChevronLeft} className="text-muted text-sm" />
                     </button>
@@ -350,7 +353,7 @@ export default function SideQuestsPage() {
                       onClick={() => scrollSlider('right')}
                       disabled={!canScrollRight}
                       className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                      style={{ background: 'var(--glass-fill)', border: '1px solid var(--glass-border-subtle)' }}
+                      style={{ background: 'var(--glass-fill)', border: GLASS_BORDER_SUBTLE }}
                     >
                       <FontAwesomeIcon icon={faChevronRight} className="text-muted text-sm" />
                     </button>
@@ -501,7 +504,7 @@ export default function SideQuestsPage() {
                           ? '1px solid rgba(74, 222, 128, 0.3)'
                           : isExpanded
                             ? `1px solid ${hexToRgba(cardColorFrom, 0.3)}`
-                            : '1px solid var(--glass-border-subtle)',
+                            : GLASS_BORDER_SUBTLE,
                       }}
                     >
                       {/* Category Card Header - Clickable */}
@@ -652,7 +655,7 @@ export default function SideQuestsPage() {
                                         ? '1px solid rgba(74, 222, 128, 0.2)'
                                         : isQuestInProgress
                                           ? `1px solid ${hexToRgba(cardColorFrom, 0.25)}`
-                                          : '1px solid var(--glass-border-subtle)',
+                                          : GLASS_BORDER_SUBTLE,
                                     }}
                                   >
                                     {/* Quest Number / Status */}
