@@ -180,11 +180,22 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const getHeroElement = () => {
     const heroMode = project.content?.heroDisplayMode;
 
+    // Debug logging for Reddit videos
+    if (project.type === 'reddit_thread') {
+      console.log('ProjectCard - Reddit thread detected:', {
+        title: project.title,
+        heroMode,
+        heroVideoUrl: project.content?.heroVideoUrl,
+        content: project.content
+      });
+    }
+
     // If hero mode is specified, use that (regardless of variant)
     if (heroMode === 'image' && project.featuredImageUrl) {
       return { type: 'image' as const, url: project.featuredImageUrl };
     }
     if (heroMode === 'video' && project.content?.heroVideoUrl) {
+      console.log('ProjectCard - Returning video hero:', project.content.heroVideoUrl);
       return { type: 'video' as const, url: project.content.heroVideoUrl };
     }
     if (heroMode === 'slideshow' && project.content?.heroSlideshowImages && project.content.heroSlideshowImages.length > 0) {
