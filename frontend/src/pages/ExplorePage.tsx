@@ -371,18 +371,19 @@ export function ExplorePage() {
   const showFilters = activeTab === 'categories' || activeTab === 'tools';
 
   // Handle welcome redirect from auth - open chat in welcome mode
-  // Uses useEffect to avoid race conditions from calling during render
-  useEffect(() => {
-    const isWelcome = searchParams.get('welcome') === 'true';
-    if (isWelcome && openAddProjectRef.current) {
-      // Remove the welcome param from URL first
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete('welcome');
-      setSearchParams(newParams, { replace: true });
-      // Open the chat in welcome mode after a brief delay for UI to settle
-      setTimeout(() => openAddProjectRef.current?.(true), 100);
-    }
-  }, [searchParams, setSearchParams]);
+  // Temporarily disabled to avoid auto-reopening the Add Project chat on Explore
+  // when users close it manually. Re-enable once the welcome flow is revised.
+  // useEffect(() => {
+  //   const isWelcome = searchParams.get('welcome') === 'true';
+  //   if (isWelcome && openAddProjectRef.current) {
+  //     // Remove the welcome param from URL first
+  //     const newParams = new URLSearchParams(searchParams);
+  //     newParams.delete('welcome');
+  //     setSearchParams(newParams, { replace: true });
+  //     // Open the chat in welcome mode after a brief delay for UI to settle
+  //     setTimeout(() => openAddProjectRef.current?.(true), 100);
+  //   }
+  // }, [searchParams, setSearchParams]);
 
   return (
     <>

@@ -57,6 +57,13 @@ app.conf.beat_schedule = {
             'queue': 'youtube_sync',
         },
     },
+    'sync-reddit-agents': {
+        'task': 'core.integrations.reddit_tasks.sync_all_reddit_agents_task',
+        'schedule': crontab(hour='*/4'),  # Every 4 hours
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour if not picked up
+        },
+    },
     # Weaviate personalization tasks
     'weaviate-update-engagement-metrics': {
         'task': 'services.weaviate.tasks.update_engagement_metrics',
