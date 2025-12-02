@@ -180,14 +180,17 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const getHeroElement = () => {
     const heroMode = project.content?.heroDisplayMode;
 
-    // Debug logging for Reddit videos
-    if (project.type === 'reddit_thread') {
-      console.log('ProjectCard - Reddit thread detected:', {
-        title: project.title,
-        heroMode,
-        heroVideoUrl: project.content?.heroVideoUrl,
-        content: project.content
-      });
+    // For Reddit threads, check if there's video data in the reddit metadata (fallback)
+    if (project.type === 'reddit_thread' && !heroMode) {
+      const redditData = project.content?.reddit;
+      // Check for video URL in Reddit metadata
+      const videoUrl = redditData?.video_url || redditData?.videoUrl;
+      const isVideo = redditData?.is_video || redditData?.isVideo;
+
+      if (isVideo && videoUrl) {
+        console.log('ProjectCard - Reddit video detected via fallback:', videoUrl);
+        return { type: 'video' as const, url: videoUrl };
+      }
     }
 
     // If hero mode is specified, use that (regardless of variant)
