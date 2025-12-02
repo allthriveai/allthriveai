@@ -241,9 +241,13 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     };
   };
 
-  const CardWrapper = selectionMode ? 'div' : Link;
+  // For RSS articles, link directly to external URL if available
+  const shouldLinkExternal = project.type === 'rss_article' && project.externalUrl;
+  const CardWrapper = selectionMode ? 'div' : (shouldLinkExternal ? 'a' : Link);
   const cardProps = selectionMode
     ? { onClick: handleClick, style: { cursor: 'pointer' } }
+    : shouldLinkExternal
+    ? { href: project.externalUrl, target: '_blank', rel: 'noopener noreferrer' }
     : { to: projectUrl };
 
   // Masonry variant - Flexible height for text, portrait for media

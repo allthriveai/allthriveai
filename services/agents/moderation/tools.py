@@ -11,7 +11,7 @@ from typing import Any
 from langchain.tools import tool
 from pydantic import BaseModel, Field
 
-from services.moderation.moderator import ContentModerator
+from services.agents.moderation.moderator import ContentModerator
 
 logger = logging.getLogger(__name__)
 

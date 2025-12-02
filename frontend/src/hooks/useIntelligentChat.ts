@@ -28,6 +28,12 @@ export interface WebSocketMessage {
   chunk?: string;
   error?: string;
   timestamp?: string;
+  message?: string;
+  // Image generation fields
+  image_url?: string;
+  filename?: string;
+  session_id?: number;
+  iteration_number?: number;
   // Tool-related fields
   tool?: string;
   output?: {
@@ -46,6 +52,13 @@ export interface ChatMessage {
   content: string;
   sender: 'user' | 'assistant';
   timestamp: Date;
+  metadata?: {
+    type?: 'text' | 'generating' | 'generated_image';
+    imageUrl?: string;
+    filename?: string;
+    sessionId?: number;
+    iterationNumber?: number;
+  };
 }
 
 interface UseIntelligentChatOptions {
@@ -79,6 +92,7 @@ export function useIntelligentChat({
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intentionalCloseRef = useRef(false);
   const connectFnRef = useRef<(() => void) | null>(null);
+  const isConnectingRef = useRef(false); // Ref-based lock to prevent duplicate connections
 
   // Clear all timers
   const clearTimers = useCallback(() => {
@@ -131,7 +145,7 @@ export function useIntelligentChat({
 
   // Connect to WebSocket
   const connect = useCallback(async () => {
-    console.log('[WebSocket] Attempting connection...', { isAuthenticated, authLoading, conversationId, isConnecting });
+    console.log('[WebSocket] Attempting connection...', { isAuthenticated, authLoading, conversationId, isConnecting, isConnectingRef: isConnectingRef.current });
     if (authLoading) {
       console.log('[WebSocket] Waiting for auth to load...');
       return;
@@ -145,10 +159,14 @@ export function useIntelligentChat({
       console.warn('[WebSocket] Already connected');
       return;
     }
-    if (isConnecting) {
-      console.warn('[WebSocket] Connection already in progress');
+    // Use ref-based lock to prevent race conditions with React StrictMode
+    if (isConnecting || isConnectingRef.current) {
+      console.warn('[WebSocket] Connection already in progress (ref check)');
       return;
     }
+
+    // Set ref lock immediately (sync) before any async operations
+    isConnectingRef.current = true;
 
     // Clear existing connection
     if (wsRef.current) {
@@ -189,6 +207,7 @@ export function useIntelligentChat({
     } catch (error) {
       console.error('[WebSocket] Failed to fetch connection token:', error);
       setIsConnecting(false);
+      isConnectingRef.current = false;
       onError?.('Failed to get connection token. Please try again.');
       return;
     }
@@ -222,6 +241,7 @@ export function useIntelligentChat({
         }
         setIsConnected(true);
         setIsConnecting(false);
+        isConnectingRef.current = false;
         setReconnectAttempts(0); // Reset on successful connection
         startHeartbeat();
       };
@@ -252,10 +272,9 @@ export function useIntelligentChat({
               break;
 
             case 'chunk':
-              // Append chunk to current message (with de-duplication)
+              // Append chunk to current message
               if (data.chunk) {
-                const deduped = data.chunk.replace(/\b(\w+)(\s+\1){1,}\b/g, '$1');
-                currentMessageRef.current += deduped;
+                currentMessageRef.current += data.chunk;
 
                 // Update or add the assistant message
                 setMessages((prev) => {
@@ -300,6 +319,47 @@ export function useIntelligentChat({
               }
               break;
 
+            case 'image_generating':
+              // Image generation started - show generating indicator
+              console.log('[WebSocket] Image generation started');
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: `generating-${Date.now()}`,
+                  content: data.message || 'Creating your image with Nano Banana...',
+                  sender: 'assistant' as const,
+                  timestamp: new Date(),
+                  metadata: { type: 'generating' },
+                },
+              ]);
+              break;
+
+            case 'image_generated':
+              // Image generated successfully - replace generating indicator with image
+              console.log('[WebSocket] Image generated:', data.image_url, 'session:', data.session_id, 'iteration:', data.iteration_number);
+              setMessages((prev) => {
+                // Remove the generating indicator
+                const filtered = prev.filter(m => m.metadata?.type !== 'generating');
+                return [
+                  ...filtered,
+                  {
+                    id: `generated-image-${Date.now()}`,
+                    content: '', // No text content, just the image
+                    sender: 'assistant' as const,
+                    timestamp: new Date(),
+                    metadata: {
+                      type: 'generated_image',
+                      imageUrl: data.image_url,
+                      filename: data.filename,
+                      sessionId: data.session_id,
+                      iterationNumber: data.iteration_number,
+                    },
+                  },
+                ];
+              });
+              setIsLoading(false);
+              break;
+
             case 'completed':
               setIsLoading(false);
               currentMessageRef.current = '';
@@ -326,12 +386,14 @@ export function useIntelligentChat({
         console.error('WebSocket error:', error);
         setIsConnected(false);
         setIsConnecting(false);
+        isConnectingRef.current = false;
         onError?.('WebSocket connection error');
       };
 
       ws.onclose = (event) => {
         setIsConnected(false);
         setIsConnecting(false);
+        isConnectingRef.current = false;
         setIsLoading(false);
         clearTimers();
 
@@ -355,6 +417,7 @@ export function useIntelligentChat({
     } catch (error) {
       console.error('Failed to create WebSocket:', error);
       setIsConnecting(false);
+      isConnectingRef.current = false;
       onError?.('Failed to establish WebSocket connection');
       scheduleReconnect();
     }

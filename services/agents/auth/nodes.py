@@ -5,7 +5,7 @@ LangGraph nodes for auth chat flow
 from typing import Literal, TypedDict
 
 from core.users.models import User
-from services.ai_provider import AIProvider
+from services.ai import AIProvider
 
 from . import prompts
 

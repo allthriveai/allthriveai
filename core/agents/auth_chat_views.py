@@ -16,8 +16,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from core.users.models import User
-from services.auth_agent.graph import auth_graph
-from services.auth_agent.validators import (
+from services.agents.auth.graph import auth_graph
+from services.agents.auth.validators import (
     validate_email,
     validate_interests,
     validate_name,

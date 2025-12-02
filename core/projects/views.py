@@ -622,8 +622,13 @@ def explore_projects(request):
         except (ValueError, IndexError):
             pass  # Invalid topics, ignore
 
+    # Apply tab-specific filters
+    if tab == 'news':
+        # Filter for RSS article projects only
+        queryset = queryset.filter(type='rss_article').order_by('-created_at')
+
     # Apply sorting or personalization based on tab
-    if tab == 'for-you':
+    elif tab == 'for-you':
         # Use new personalization engine for "For You" feed
         from services.personalization import ColdStartService, PersonalizationEngine
 

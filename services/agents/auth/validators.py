@@ -4,7 +4,8 @@ DEPRECATED: These functions are maintained for backward compatibility.
 New code should use services.auth.ValidationService and services.auth.UsernameService.
 """
 
-from services.auth import AuthValidationError, UsernameService, ValidationService
+from services.auth.credentials import UsernameService, ValidationService
+from services.auth.exceptions import AuthValidationError
 
 
 def validate_email(email: str) -> tuple[bool, str | None]:

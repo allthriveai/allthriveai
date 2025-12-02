@@ -19,7 +19,7 @@ from django.urls import path
 
 from core.projects.models import Project
 from core.users.models import User
-from services.langsmith_service import langsmith_service
+from services.ai.langsmith import langsmith_service
 
 
 class AIAnalyticsDashboard:

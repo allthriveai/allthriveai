@@ -8,7 +8,7 @@ from typing import Any
 from openai import APIConnectionError, APIError, APITimeoutError, RateLimitError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from services.ai_provider import AIProvider
+from services.ai import AIProvider
 
 logger = logging.getLogger(__name__)
 

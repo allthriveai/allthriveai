@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.users.models import User
-from services.learning_path_service import LearningPathService
+from services.gamification import LearningPathService
 
 from .models import UserLearningPath
 from .serializers import (

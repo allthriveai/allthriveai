@@ -1,5 +1,5 @@
-import { XMarkIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
-import { useRef, useEffect } from 'react';
+import { XMarkIcon, PaperAirplaneIcon, PhotoIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { useRef, useEffect, useState } from 'react';
 import type { ChatMessage, ChatConfig } from '@/types/chat';
 
 interface ChatInterfaceProps {
@@ -8,7 +8,7 @@ interface ChatInterfaceProps {
   config?: ChatConfig;
   messages: ChatMessage[];
   isLoading: boolean;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, attachments?: File[]) => void;
   header?: React.ReactNode;
   headerContent?: React.ReactNode;
   inputPlaceholder?: string;
@@ -18,6 +18,8 @@ interface ChatInterfaceProps {
   /** Replaces the entire messages area when provided (useful for GitHub repo list, etc.) */
   customContent?: React.ReactNode;
   error?: string;
+  /** Enable file/image attachments */
+  enableAttachments?: boolean;
 }
 
 export function ChatInterface({
@@ -35,9 +37,12 @@ export function ChatInterface({
   customEmptyState,
   customContent,
   error,
+  enableAttachments = false,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -54,10 +59,23 @@ export function ChatInterface({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const input = inputRef.current;
-    if (!input?.value.trim()) return;
+    if (!input?.value.trim() && attachments.length === 0) return;
 
-    onSendMessage(input.value);
-    input.value = '';
+    onSendMessage(input?.value || '', attachments.length > 0 ? attachments : undefined);
+    if (input) input.value = '';
+    setAttachments([]);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    // Limit to 5 files max
+    setAttachments(prev => [...prev, ...files].slice(0, 5));
+    // Reset input so the same file can be selected again
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const renderMessage = (message: ChatMessage) => {
@@ -178,12 +196,69 @@ export function ChatInterface({
 
         {/* Input Area */}
         <div className="border-t border-gray-200 dark:border-gray-800 p-4 flex-shrink-0 bg-white dark:bg-gray-900 overflow-visible relative">
+          {/* Attachment Preview */}
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {attachments.map((file, index) => (
+                <div
+                  key={`${file.name}-${index}`}
+                  className="relative group flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm"
+                >
+                  {file.type.startsWith('image/') ? (
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={file.name}
+                      className="w-8 h-8 object-cover rounded"
+                    />
+                  ) : (
+                    <PhotoIcon className="w-5 h-5 text-gray-500" />
+                  )}
+                  <span className="max-w-[120px] truncate text-gray-700 dark:text-gray-300">
+                    {file.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(index)}
+                    className="text-gray-400 hover:text-red-500 transition-colors"
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    <XCircleIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="flex gap-2 items-center">
             {/* Custom Input Prefix (e.g., + button) */}
             {customInputPrefix && (
               <div className="flex-shrink-0 relative">
                 {customInputPrefix}
               </div>
+            )}
+
+            {/* Attachment Button */}
+            {enableAttachments && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="chat-file-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading || attachments.length >= 5}
+                  className="p-2 text-gray-500 hover:text-primary-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={attachments.length >= 5 ? 'Maximum 5 files' : 'Attach image'}
+                >
+                  <PhotoIcon className="w-5 h-5" />
+                </button>
+              </>
             )}
 
             <input

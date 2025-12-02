@@ -16,7 +16,7 @@ from core.integrations.github.constants import (
     MAX_TOPICS_PER_PROJECT,
     MIN_CATEGORY_ID,
 )
-from services.ai_provider import AIProvider
+from services.ai import AIProvider
 
 logger = logging.getLogger(__name__)
 

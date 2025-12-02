@@ -51,7 +51,7 @@ class StorageService:
 
             except S3Error as e:
                 logger.error(f'Failed to ensure bucket exists: {e}')
-                raise RuntimeError(f'MinIO bucket setup failed: {e}')
+                raise RuntimeError(f'MinIO bucket setup failed: {e}') from e
 
     def _set_public_read_policy(self):
         """Set policy to allow public read only for 'public/' prefix."""

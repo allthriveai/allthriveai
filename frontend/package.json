@@ -43,6 +43,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-icons": "^5.5.0",
+    "react-markdown": "^10.1.0",
     "react-rewards": "^2.1.0",
     "react-router-dom": "^6.30.1",
     "react-spring": "^10.0.3",

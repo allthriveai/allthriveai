@@ -1,13 +1,16 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { faStar, faCodeBranch, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './ChatInterface';
 import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
-import { useIntelligentChat } from '@/hooks/useIntelligentChat';
+import { GeneratedImageMessage } from './GeneratedImageMessage';
+import { useIntelligentChat, type ChatMessage } from '@/hooks/useIntelligentChat';
 import { useAuth } from '@/hooks/useAuth';
+import { setProjectFeaturedImage, createProjectFromImageSession } from '@/services/projects';
 import {
   fetchGitHubRepos,
   checkGitHubConnection,
@@ -18,6 +21,23 @@ const ONBOARDING_BUTTON_BASE = 'w-full text-left px-4 py-3 rounded-lg bg-white d
 const BUTTON_FLEX_CONTAINER = 'flex items-center gap-3';
 const BUTTON_TITLE_STYLE = 'font-medium text-slate-900 dark:text-slate-100 text-sm';
 const BUTTON_SUBTITLE_STYLE = 'text-xs text-slate-600 dark:text-slate-400';
+
+// Nano Banana welcome message for image generation
+const NANO_BANANA_WELCOME = `Hey there! I'm **Nano Banana**, your creative image assistant.
+
+I can help you create:
+- Infographics explaining your project
+- Technical diagrams and flowcharts
+- Beautiful banners and headers
+- Any visual you can imagine!
+
+**Tips for great results:**
+1. **Be specific** - "A flowchart showing OAuth login flow" beats "auth diagram"
+2. **Describe style** - Tell me if you want minimalist, colorful, corporate, etc.
+3. **Add text** - I'm great at rendering text in images
+4. **Upload references** - Click the photo icon to show me examples
+
+What would you like me to create?`;
 
 interface IntelligentChatPanelProps {
   isOpen: boolean;
@@ -70,11 +90,24 @@ export function IntelligentChatPanel({
     onProjectCreated: handleProjectCreated,
   });
 
-  const handleSendMessage = (content: string) => {
-    if (!content.trim() || isLoading) return;
+  const handleSendMessage = (content: string, attachments?: File[]) => {
+    if (!content.trim() && (!attachments || attachments.length === 0)) return;
+    if (isLoading) return;
+
     setError(undefined);
     setHasInteracted(true);
-    sendMessage(content);
+
+    // For now, if there are attachments, we'll mention them in the message
+    // TODO: Implement proper file upload via the upload service
+    if (attachments && attachments.length > 0) {
+      const attachmentNames = attachments.map(f => f.name).join(', ');
+      const messageWithAttachments = content
+        ? `${content}\n\n[Attached: ${attachmentNames}]`
+        : `[Attached: ${attachmentNames}]`;
+      sendMessage(messageWithAttachments);
+    } else {
+      sendMessage(content);
+    }
   };
 
   // Onboarding button handlers - send messages to the AI agent
@@ -173,11 +206,17 @@ export function IntelligentChatPanel({
       case 'youtube':
         sendMessage('I want to add a YouTube video to my project');
         break;
-      case 'upload':
-        sendMessage('I want to upload files to my project');
+      case 'create-visual':
+        // Set image generation mode and show Nano Banana welcome
+        setHasInteracted(true);
+        // The welcome message will trigger intent detection to route to image-generation
+        sendMessage('Create an image or infographic for me');
         break;
-      case 'url':
-        sendMessage('I want to add content from a URL to my project');
+      case 'ask-help':
+        sendMessage('I need help with something');
+        break;
+      case 'describe':
+        sendMessage("I'd like to describe something to you");
         break;
     }
   }, [handleGitHubImport, sendMessage]);
@@ -437,6 +476,131 @@ export function IntelligentChatPanel({
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   console.log('[IntelligentChatPanel] plusMenuOpen:', plusMenuOpen);
 
+  // Track current project ID for "Use as Featured Image" functionality
+  // Extract from conversationId if it follows "project-{id}" pattern
+  const currentProjectId = conversationId.startsWith('project-')
+    ? parseInt(conversationId.replace('project-', ''), 10)
+    : null;
+
+  // Handle setting an image as project's featured image
+  const handleUseAsFeaturedImage = useCallback(async (imageUrl: string) => {
+    if (!currentProjectId) {
+      console.warn('[IntelligentChatPanel] No project ID available for setting featured image');
+      return;
+    }
+
+    try {
+      await setProjectFeaturedImage(currentProjectId, imageUrl);
+      console.log(`[IntelligentChatPanel] Set featured image for project ${currentProjectId}`);
+    } catch (error) {
+      console.error('[IntelligentChatPanel] Failed to set featured image:', error);
+      throw error; // Re-throw so GeneratedImageMessage can show error state
+    }
+  }, [currentProjectId]);
+
+  // Handle creating a project from a Nano Banana image session
+  const handleCreateProjectFromImage = useCallback(async (sessionId: number) => {
+    try {
+      const result = await createProjectFromImageSession(sessionId);
+      console.log(`[IntelligentChatPanel] Created project from image session: ${result.project.title}`);
+
+      return {
+        projectUrl: result.project.url,
+        projectTitle: result.project.title,
+      };
+    } catch (error) {
+      console.error('[IntelligentChatPanel] Failed to create project from image:', error);
+      throw error; // Re-throw so GeneratedImageMessage can show error state
+    }
+  }, []);
+
+  // Custom message renderer for different message types
+  const renderMessage = useCallback((message: ChatMessage) => {
+    const isUser = message.sender === 'user';
+    const messageType = message.metadata?.type;
+
+    // Handle generating state (loading indicator)
+    if (messageType === 'generating') {
+      return (
+        <div className="flex justify-start">
+          <div className="max-w-md px-4 py-3 rounded-lg bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800">
+            <div className="flex items-center gap-3">
+              <div className="animate-bounce text-2xl">🍌</div>
+              <div>
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                  Nano Banana is creating...
+                </p>
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                  {message.content || 'Generating your image...'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Handle generated image
+    if (messageType === 'generated_image' && message.metadata?.imageUrl) {
+      return (
+        <div className="flex justify-start">
+          <GeneratedImageMessage
+            imageUrl={message.metadata.imageUrl}
+            filename={message.metadata.filename || 'nano-banana-image.png'}
+            sessionId={message.metadata.sessionId}
+            iterationNumber={message.metadata.iterationNumber}
+            onUseAsFeaturedImage={currentProjectId ? handleUseAsFeaturedImage : undefined}
+            onCreateProject={message.metadata.sessionId ? handleCreateProjectFromImage : undefined}
+          />
+        </div>
+      );
+    }
+
+    // Standard text message
+    return (
+      <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+        <div
+          className={`max-w-md px-4 py-2 rounded-lg ${
+            isUser
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+          }`}
+        >
+          {isUser ? (
+            <span className="whitespace-pre-wrap">{message.content}</span>
+          ) : (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown
+                components={{
+                  // Override default paragraph to not have bottom margin on last element
+                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  // Make links open in new tab
+                  a: ({ href, children }) => (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline">
+                      {children}
+                    </a>
+                  ),
+                  // Style code blocks
+                  code: ({ children, node }) => {
+                    // Check if this is a code block (has parent pre) or inline code
+                    const isInline = node?.position?.start.line === node?.position?.end.line;
+                    return isInline ? (
+                      <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm">{children}</code>
+                    ) : (
+                      <code>{children}</code>
+                    );
+                  },
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }, [currentProjectId, handleUseAsFeaturedImage, handleCreateProjectFromImage]);
+
   return (
     <ChatInterface
       isOpen={isOpen}
@@ -445,6 +609,7 @@ export function IntelligentChatPanel({
       messages={messages}
       isLoading={isLoading}
       error={error}
+      customMessageRenderer={renderMessage}
       customInputPrefix={
         <ChatPlusMenu
           onIntegrationSelect={handleIntegrationSelect}
@@ -501,6 +666,7 @@ export function IntelligentChatPanel({
       inputPlaceholder="Ask me anything..."
       customEmptyState={renderEmptyState()}
       customContent={githubStep !== 'idle' ? renderGitHubUI() : undefined}
+      enableAttachments={true}
     />
   );
 }

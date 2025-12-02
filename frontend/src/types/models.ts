@@ -510,6 +510,37 @@ export type SideQuestSkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'ma
 
 export type UserSideQuestStatus = 'not_started' | 'in_progress' | 'completed' | 'expired';
 
+export type QuestCategoryType = 'community' | 'learning' | 'creative' | 'exploration' | 'daily' | 'special';
+
+export interface QuestCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  categoryType: QuestCategoryType;
+  categoryTypeDisplay: string;
+  icon: string;
+  colorFrom: string;
+  colorTo: string;
+  completionBonusPoints: number;
+  order: number;
+  isActive: boolean;
+  isFeatured: boolean;
+  questCount: number;
+  quests?: SideQuest[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuestCategoryProgress {
+  totalQuests: number;
+  completedQuests: number;
+  inProgressQuests: number;
+  completionPercentage: number;
+  isComplete: boolean;
+  bonusClaimed: boolean;
+}
+
 export interface SideQuest {
   id: string;
   title: string;
@@ -518,12 +549,18 @@ export interface SideQuest {
   questTypeDisplay: string;
   difficulty: SideQuestDifficulty;
   difficultyDisplay: string;
+  category?: string;
+  categoryName?: string;
+  categorySlug?: string;
   topic: TopicSlug | null;
   topicDisplay: string | null;
   skillLevel: SideQuestSkillLevel | null;
   skillLevelDisplay: string | null;
   requirements: Record<string, any>;
   pointsReward: number;
+  order?: number;
+  isDaily?: boolean;
+  isRepeatable?: boolean;
   isActive: boolean;
   isAvailable: boolean;
   startsAt: string | null;

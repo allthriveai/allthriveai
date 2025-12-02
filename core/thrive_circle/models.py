@@ -112,6 +112,62 @@ class WeeklyGoal(models.Model):
         return min(100, int((self.current_progress / self.target_progress) * 100))
 
 
+class QuestCategory(models.Model):
+    """
+    Quest Categories/Pathways for organizing side quests.
+
+    Categories provide structure and progression for users, grouping related quests
+    into themed pathways like "Community Builder", "Learning Explorer", etc.
+    """
+
+    CATEGORY_TYPE_CHOICES = [
+        ('community', 'Community'),  # Social engagement quests
+        ('learning', 'Learning'),  # Educational/quiz quests
+        ('creative', 'Creative'),  # Project creation quests
+        ('exploration', 'Exploration'),  # Site discovery/scavenger hunts
+        ('daily', 'Daily'),  # Quick daily challenges
+        ('special', 'Special'),  # Limited-time events
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Category details
+    name = models.CharField(max_length=100, help_text='Category name (e.g., "Community Builder")')
+    slug = models.SlugField(max_length=50, unique=True, help_text='URL-friendly identifier')
+    description = models.TextField(help_text='What this category is about')
+    category_type = models.CharField(max_length=20, choices=CATEGORY_TYPE_CHOICES)
+
+    # Visual styling
+    icon = models.CharField(max_length=50, default='faCompass', help_text='FontAwesome icon name')
+    color_from = models.CharField(max_length=20, default='blue-500', help_text='Gradient start color')
+    color_to = models.CharField(max_length=20, default='purple-500', help_text='Gradient end color')
+
+    # Category completion rewards
+    completion_bonus_points = models.IntegerField(
+        default=100, help_text='Bonus points for completing all quests in category'
+    )
+
+    # Ordering and display
+    order = models.IntegerField(default=0, help_text='Display order')
+    is_active = models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False, help_text='Show prominently on the page')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', 'name']
+        verbose_name = 'Quest Category'
+        verbose_name_plural = 'Quest Categories'
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def quest_count(self):
+        return self.quests.filter(is_active=True).count()
+
+
 class SideQuest(models.Model):
     """
     Side Quest definitions - optional challenges users can complete for points.
@@ -123,16 +179,34 @@ class SideQuest(models.Model):
     """
 
     QUEST_TYPE_CHOICES = [
-        ('quiz_mastery', 'Quiz Mastery'),  # Complete X quizzes in a row without mistakes
-        ('project_showcase', 'Project Showcase'),  # Create a project with specific criteria
-        ('community_helper', 'Community Helper'),  # Help others with comments/feedback
-        ('learning_streak', 'Learning Streak'),  # Maintain a learning streak
-        ('topic_explorer', 'Topic Explorer'),  # Explore X different topics
-        ('tool_master', 'Tool Master'),  # Use X different tools in projects
-        ('early_bird', 'Early Bird'),  # Complete activities in the morning
-        ('night_owl', 'Night Owl'),  # Complete activities at night
-        ('social_butterfly', 'Social Butterfly'),  # Engage with X different users
-        ('content_creator', 'Content Creator'),  # Create multiple projects in a week
+        # Community quests
+        ('comment_post', 'Comment on Posts'),  # Leave comments on others' projects
+        ('give_feedback', 'Give Feedback'),  # Provide constructive feedback
+        ('react_to_projects', 'React to Projects'),  # Like/heart projects
+        ('follow_users', 'Follow Users'),  # Follow other creators
+        # Learning quests
+        ('complete_quiz', 'Complete Quiz'),  # Complete a quiz
+        ('quiz_streak', 'Quiz Streak'),  # Complete X quizzes in a row
+        ('perfect_quiz', 'Perfect Quiz'),  # Score 100% on a quiz
+        ('explore_topics', 'Explore Topics'),  # Try quizzes in different topics
+        # Creative quests
+        ('create_project', 'Create Project'),  # Create a new project
+        ('generate_image', 'Generate Image'),  # Use Nano Banana
+        ('import_github', 'Import GitHub'),  # Import from GitHub
+        ('add_description', 'Add Description'),  # Add detailed description
+        # Exploration quests
+        ('visit_pages', 'Visit Pages'),  # Visit specific pages
+        ('find_easter_egg', 'Find Easter Egg'),  # Discover hidden features
+        ('explore_profiles', 'Explore Profiles'),  # View other users' profiles
+        ('use_search', 'Use Search'),  # Use semantic search feature
+        # Daily quests (quick tasks)
+        ('daily_login', 'Daily Login'),  # Log in today
+        ('daily_activity', 'Daily Activity'),  # Complete any activity
+        ('daily_engagement', 'Daily Engagement'),  # Engage with community
+        # Special/Meta
+        ('streak_milestone', 'Streak Milestone'),  # Reach X day streak
+        ('level_up', 'Level Up'),  # Reach a new level
+        ('category_complete', 'Category Complete'),  # Complete all quests in category
     ]
 
     DIFFICULTY_CHOICES = [
@@ -176,6 +250,16 @@ class SideQuest(models.Model):
     quest_type = models.CharField(max_length=50, choices=QUEST_TYPE_CHOICES, help_text='Type of quest')
     difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default='medium')
 
+    # Category/Pathway
+    category = models.ForeignKey(
+        QuestCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quests',
+        help_text='Quest category/pathway',
+    )
+
     # Topic-based progression (Phase 2 enhancement)
     topic = models.CharField(
         max_length=50,
@@ -194,10 +278,24 @@ class SideQuest(models.Model):
 
     # Requirements (stored as JSON for flexibility)
     # Example: {"target": 5, "timeframe": "week", "criteria": "perfect_score"}
+    # Auto-tracking: {"action": "comment_created", "target": 3}
     requirements = models.JSONField(default=dict, help_text='JSON object defining quest requirements')
 
     # Rewards
     points_reward = models.IntegerField(validators=[MinValueValidator(10)], help_text='Points awarded on completion')
+
+    # Quest ordering within category
+    order = models.IntegerField(default=0, help_text='Order within category')
+
+    # Daily quest settings
+    is_daily = models.BooleanField(default=False, help_text='Is this a rotating daily quest?')
+    daily_reset_hour = models.IntegerField(default=0, help_text='Hour (0-23 UTC) when daily quest resets')
+
+    # Repeatable settings
+    is_repeatable = models.BooleanField(default=False, help_text='Can this quest be completed multiple times?')
+    repeat_cooldown_hours = models.IntegerField(
+        default=24, help_text='Hours before quest can be repeated (if repeatable)'
+    )
 
     # Availability
     is_active = models.BooleanField(default=True, help_text='Whether quest is currently available')
@@ -209,7 +307,7 @@ class SideQuest(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['category__order', 'order', '-created_at']
         verbose_name = 'Side Quest'
         verbose_name_plural = 'Side Quests'
         indexes = [
@@ -218,6 +316,8 @@ class SideQuest(models.Model):
             models.Index(fields=['difficulty', 'is_active']),
             models.Index(fields=['topic', 'skill_level', 'is_active']),  # Topic-based filtering
             models.Index(fields=['topic', 'is_active']),  # Quick topic lookup
+            models.Index(fields=['category', 'is_active', 'order']),  # Category listing
+            models.Index(fields=['is_daily', 'is_active']),  # Daily quest lookup
         ]
 
     def __str__(self):
@@ -233,6 +333,10 @@ class SideQuest(models.Model):
         if self.expires_at and now > self.expires_at:
             return False
         return True
+
+    def get_action_trigger(self):
+        """Get the action type that triggers progress on this quest."""
+        return self.requirements.get('action', None)
 
 
 class UserSideQuest(models.Model):

@@ -15,8 +15,8 @@ from django.utils import timezone
 
 from core.integrations.reddit_models import RedditCommunityAgent, RedditThread
 from core.projects.models import Project
-from services.moderation import ContentModerator, ImageModerator
-from services.reddit_video_downloader import RedditVideoDownloader
+from services.agents.moderation import ContentModerator, ImageModerator
+from services.integrations.reddit.video_downloader import RedditVideoDownloader
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +179,7 @@ class RedditSyncService:
         Returns:
             Tuple of (approved, reason, moderation_data)
         """
-        from services.moderation.keyword_filter import KeywordFilter
+        from services.agents.moderation.keyword_filter import KeywordFilter
 
         moderation_results = {'text': None, 'image': None, 'keyword': None}
         context = f'Reddit post from r/{subreddit}'

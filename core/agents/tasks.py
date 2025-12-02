@@ -5,17 +5,21 @@ Handles:
 - Async message processing with LangGraph agents
 - Streaming responses via Redis Pub/Sub to WebSockets
 - Conversation state persistence with two-tier caching
+- Image generation with Gemini 2.0 Flash
 """
 
 import logging
+import uuid
 
+import requests
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
 from django.contrib.auth import get_user_model
 
-from services.ai_provider import AIProvider
-from services.auth_agent.checkpointer import cache_checkpoint
+from services.agents.auth.checkpointer import cache_checkpoint
+from services.ai import AIProvider
+from services.integrations.storage import StorageService
 
 from .intent_detection import get_intent_service
 from .metrics import MetricsCollector, llm_response_time, timed_metric
@@ -78,28 +82,37 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
             },
         )
 
-        # Determine routing based on conversation context
-        # If conversation_id starts with "project-", it was opened via "+ Add Project"
-        # so we always use the LangGraph agent for the entire conversation
+        # Determine routing based on conversation context and message content
         is_project_conversation = conversation_id.startswith('project-')
 
-        if is_project_conversation:
+        # Always run intent detection to catch image generation requests
+        intent_service = get_intent_service()
+        intent = intent_service.detect_intent(
+            user_message=sanitized_message,
+            conversation_history=None,  # TODO: wire up actual history
+            integration_type=None,  # TODO: extract from conversation context
+        )
+        logger.info(f'Detected intent: {intent} for conversation {conversation_id}')
+
+        # For project conversations, default to project-creation unless
+        # we detect a specific intent like image-generation
+        if is_project_conversation and intent not in ('image-generation',):
             intent = 'project-creation'
-            logger.info(f'Project conversation detected: {conversation_id}')
-        else:
-            # Detect user intent for non-project conversations
-            intent_service = get_intent_service()
-            intent = intent_service.detect_intent(
-                user_message=sanitized_message,
-                conversation_history=None,  # TODO: wire up actual history
-                integration_type=None,  # TODO: extract from conversation context
-            )
-            logger.info(f'Detected intent: {intent} for conversation {conversation_id}')
+            logger.info('Project conversation - overriding to project-creation')
 
         # Route to appropriate processor based on intent
         if intent == 'project-creation':
             # Use LangGraph agent with tools for project creation
             result = _process_with_langgraph_agent(
+                conversation_id=conversation_id,
+                message=sanitized_message,
+                user=user,
+                channel_name=channel_name,
+                channel_layer=channel_layer,
+            )
+        elif intent == 'image-generation':
+            # Use Gemini 2.0 Flash for image generation
+            result = _process_image_generation(
                 conversation_id=conversation_id,
                 message=sanitized_message,
                 user=user,
@@ -185,7 +198,7 @@ def _process_with_langgraph_agent(
     """
     import asyncio
 
-    from services.project_agent.agent import stream_agent_response
+    from services.agents.project.agent import stream_agent_response
 
     logger.info(f'Processing with LangGraph agent: conversation={conversation_id}')
 
@@ -412,3 +425,175 @@ def _get_system_prompt_for_intent(intent: str) -> str:
         'about functionality. Be patient, clear, and provide step-by-step guidance. '
         'Keep responses concise and practical.'
     )
+
+
+def _process_image_generation(
+    conversation_id: str,
+    message: str,
+    user,
+    channel_name: str,
+    channel_layer,
+    reference_image_urls: list[str] | None = None,
+    conversation_history: list[dict] | None = None,
+) -> dict:
+    """
+    Process image generation request using Gemini 2.0 Flash.
+
+    Generates images based on user prompts and streams progress via WebSocket.
+    Tracks iterations in ImageGenerationSession for project creation.
+
+    Args:
+        conversation_id: Unique conversation identifier
+        message: User's image generation prompt
+        user: User object
+        channel_name: Redis channel for WebSocket
+        channel_layer: Django Channels layer
+        reference_image_urls: Optional URLs of reference images
+        conversation_history: Previous turns for multi-turn refinement
+
+    Returns:
+        Dict with processing results including image_generated flag and session_id
+    """
+    from .models import ImageGenerationIteration, ImageGenerationSession
+
+    logger.info(f'Processing image generation: conversation={conversation_id}')
+
+    # Get or create session for tracking iterations
+    session, created = ImageGenerationSession.objects.get_or_create(
+        conversation_id=conversation_id,
+        user=user,
+        defaults={'final_image_url': ''},
+    )
+    if created:
+        logger.info(f'Created new image generation session: {session.id}')
+
+    # Send "generating" status with session_id
+    async_to_sync(channel_layer.group_send)(
+        channel_name,
+        {
+            'type': 'chat.message',
+            'event': 'image_generating',
+            'message': 'Creating your image with Nano Banana...',
+            'conversation_id': conversation_id,
+            'session_id': session.id,
+        },
+    )
+
+    try:
+        # Download reference images if provided
+        reference_bytes = []
+        for url in reference_image_urls or []:
+            try:
+                resp = requests.get(url, timeout=10)
+                if resp.status_code == 200:
+                    reference_bytes.append(resp.content)
+            except Exception as e:
+                logger.warning(f'Failed to download reference image {url}: {e}')
+
+        # Generate image using Gemini
+        ai = AIProvider(provider='gemini', user_id=user.id)
+        image_bytes, mime_type, text_response = ai.generate_image(
+            prompt=message,
+            conversation_history=conversation_history,
+            reference_images=reference_bytes if reference_bytes else None,
+        )
+
+        if not image_bytes:
+            # No image was generated - send error
+            error_message = text_response or "Sorry, I couldn't generate that image. Try a different description!"
+            async_to_sync(channel_layer.group_send)(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'chunk',
+                    'chunk': error_message,
+                    'conversation_id': conversation_id,
+                },
+            )
+            return {'image_generated': False, 'session_id': session.id}
+
+        # Upload to MinIO
+        filename = f'nano-banana-{uuid.uuid4()}.png'
+        storage = StorageService()
+        image_url, upload_error = storage.upload_file(
+            file_data=image_bytes,
+            filename=filename,
+            folder='generated-images',
+            content_type=mime_type or 'image/png',
+            is_public=True,
+        )
+
+        if upload_error or not image_url:
+            logger.error(f'Failed to upload image: {upload_error}')
+            async_to_sync(channel_layer.group_send)(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'chunk',
+                    'chunk': "I generated the image but couldn't save it. Please try again!",
+                    'conversation_id': conversation_id,
+                },
+            )
+            return {'image_generated': False, 'session_id': session.id}
+
+        logger.info(f'Image generated and uploaded: {image_url}')
+
+        # Track this iteration in the session
+        iteration_order = session.iterations.count()
+        ImageGenerationIteration.objects.create(
+            session=session,
+            prompt=message,
+            image_url=image_url,
+            gemini_response_text=text_response or '',
+            order=iteration_order,
+        )
+
+        # Update session's final image URL
+        session.final_image_url = image_url
+        session.save(update_fields=['final_image_url', 'updated_at'])
+
+        logger.info(f'Saved iteration {iteration_order} for session {session.id}')
+
+        # Send text response first if available
+        if text_response:
+            async_to_sync(channel_layer.group_send)(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'chunk',
+                    'chunk': text_response,
+                    'conversation_id': conversation_id,
+                },
+            )
+
+        # Send success with image URL and session info
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'image_generated',
+                'image_url': image_url,
+                'filename': filename,
+                'conversation_id': conversation_id,
+                'session_id': session.id,
+                'iteration_number': iteration_order + 1,
+            },
+        )
+
+        return {'image_generated': True, 'image_url': image_url, 'session_id': session.id}
+
+    except Exception as e:
+        logger.error(f'Image generation failed: {e}', exc_info=True)
+
+        # Send error message
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'chunk',
+                'chunk': 'I encountered an issue generating your image. Please try again with a different description!',
+                'conversation_id': conversation_id,
+            },
+        )
+
+        return {'image_generated': False}

@@ -14,7 +14,7 @@ from langchain.tools import tool
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from services.project_service import ProjectService
+from services.projects import ProjectService
 
 logger = logging.getLogger(__name__)
 

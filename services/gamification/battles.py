@@ -16,8 +16,7 @@ from core.battles.models import (
     SubmissionType,
 )
 from core.users.models import User
-
-from .ai_provider import AIProvider
+from services.ai.provider import AIProvider
 
 
 class BattleService:
@@ -153,8 +152,8 @@ class BattleService:
         """
         try:
             return BattleInvitation.objects.get(id=invitation_id)
-        except BattleInvitation.DoesNotExist:
-            raise ValueError('Invitation not found.')
+        except BattleInvitation.DoesNotExist as e:
+            raise ValueError('Invitation not found.') from e
 
     def generate_challenge(self, battle_type: str) -> str:
         """Generate a random challenge for a battle.
@@ -166,13 +165,13 @@ class BattleService:
             Generated challenge text
         """
         templates = self.CHALLENGE_TEMPLATES.get(battle_type, self.CHALLENGE_TEMPLATES[BattleType.TEXT_PROMPT])
-        template = random.choice(templates)
+        template = random.choice(templates)  # noqa: S311
 
         # Replace variables in template
         challenge = template
         for var_name, var_options in self.CHALLENGE_VARIABLES.items():
             if '{' + var_name + '}' in challenge:
-                challenge = challenge.replace('{' + var_name + '}', random.choice(var_options))
+                challenge = challenge.replace('{' + var_name + '}', random.choice(var_options))  # noqa: S311
 
         return challenge
 
@@ -201,8 +200,8 @@ class BattleService:
         """
         try:
             opponent = User.objects.get(username=opponent_username.lower())
-        except User.DoesNotExist:
-            raise ValueError(f"User '{opponent_username}' not found.")
+        except User.DoesNotExist as e:
+            raise ValueError(f"User '{opponent_username}' not found.") from e
 
         if challenger == opponent:
             raise ValueError('Cannot create a battle with yourself.')
@@ -288,8 +287,8 @@ class BattleService:
         """
         try:
             battle = PromptBattle.objects.get(id=battle_id)
-        except PromptBattle.DoesNotExist:
-            raise ValueError('Battle not found.')
+        except PromptBattle.DoesNotExist as e:
+            raise ValueError('Battle not found.') from e
 
         # Validate user is a participant
         if user not in [battle.challenger, battle.opponent]:

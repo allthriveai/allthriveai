@@ -16,7 +16,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from services.langsmith_service import langsmith_service
+from services.ai.langsmith import langsmith_service
 
 
 @api_view(['GET'])

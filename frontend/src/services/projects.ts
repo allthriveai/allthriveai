@@ -221,3 +221,43 @@ export async function getTaxonomies(type?: 'category' | 'tag'): Promise<Taxonomy
   const response = await api.get<{ results: Taxonomy[] }>(`/taxonomy/${params}`);
   return response.data.results;
 }
+
+/**
+ * Set a project's featured image from a URL
+ * Used by Nano Banana to set generated images as project featured images
+ */
+export async function setProjectFeaturedImage(projectId: number, imageUrl: string): Promise<Project> {
+  const response = await api.patch<ProjectApiResponse>(`/me/projects/${projectId}/`, {
+    featured_image_url: imageUrl,
+  });
+  return transformProject(response.data);
+}
+
+/**
+ * Response from creating a project from an image generation session
+ */
+export interface CreateProjectFromImageResult {
+  success: boolean;
+  project: {
+    id: number;
+    slug: string;
+    title: string;
+    url: string;
+  };
+}
+
+/**
+ * Create a project from a Nano Banana image generation session
+ * This creates a project with the final generated image as featured image
+ * and includes an AI-generated creative journey summary
+ */
+export async function createProjectFromImageSession(
+  sessionId: number,
+  customTitle?: string
+): Promise<CreateProjectFromImageResult> {
+  const response = await api.post<CreateProjectFromImageResult>('/agents/create-project-from-image/', {
+    session_id: sessionId,
+    title: customTitle,
+  });
+  return response.data;
+}

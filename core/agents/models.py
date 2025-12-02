@@ -98,3 +98,80 @@ class Message(models.Model):
 
     def __str__(self):
         return f'{self.role}: {self.content[:50]}...'
+
+
+class ImageGenerationSession(BaseModel):
+    """Tracks a Nano Banana image generation session with iterations.
+
+    Each session represents a conversation where the user creates/refines
+    images. When the user creates a project from the session, the iterations
+    are used to generate a "creative journey" summary.
+    """
+
+    conversation_id = models.CharField(
+        max_length=255, db_index=True, help_text='WebSocket conversation ID (e.g., project-123)'
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='image_generation_sessions'
+    )
+    final_image_url = models.CharField(max_length=500, blank=True, help_text='URL of the final/selected image')
+    project = models.ForeignKey(
+        'core.Project',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='image_generation_sessions',
+        help_text='Project created from this session (if any)',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['conversation_id']),
+        ]
+
+    def __str__(self):
+        return f'ImageGenSession {self.id} - {self.user.username if self.user else "Unknown"}'
+
+    @property
+    def iteration_count(self):
+        return self.iterations.count()
+
+    def get_creative_journey_data(self):
+        """Get iteration data formatted for AI summary generation."""
+        return [
+            {
+                'order': iteration.order,
+                'prompt': iteration.prompt,
+                'gemini_response': iteration.gemini_response_text,
+                'image_url': iteration.image_url,
+            }
+            for iteration in self.iterations.order_by('order')
+        ]
+
+
+class ImageGenerationIteration(models.Model):
+    """Individual iteration in an image generation session.
+
+    Each iteration represents one prompt-response cycle where the user
+    provides a prompt and receives a generated image.
+    """
+
+    session = models.ForeignKey(ImageGenerationSession, on_delete=models.CASCADE, related_name='iterations')
+    prompt = models.TextField(help_text="User's prompt for this iteration")
+    image_url = models.CharField(max_length=500, help_text='URL of the generated image')
+    gemini_response_text = models.TextField(blank=True, help_text="Gemini's text response accompanying the image")
+    order = models.PositiveIntegerField(default=0, help_text='Order of this iteration in the session')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'created_at']
+        indexes = [
+            models.Index(fields=['session', 'order']),
+        ]
+
+    def __str__(self):
+        return f'Iteration {self.order} - {self.prompt[:50]}...'

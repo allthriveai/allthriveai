@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from core.users.models import User
 
-from .models import PointActivity, SideQuest, UserSideQuest, WeeklyGoal
+from .models import PointActivity, QuestCategory, SideQuest, UserSideQuest, WeeklyGoal
 from .services import PointsConfig
 
 
@@ -134,6 +134,48 @@ class WeeklyGoalSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'is_completed', 'completed_at']
 
 
+class QuestCategorySerializer(serializers.ModelSerializer):
+    """Serializer for Quest Categories/Pathways."""
+
+    category_type_display = serializers.CharField(source='get_category_type_display', read_only=True)
+    quest_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = QuestCategory
+        fields = [
+            'id',
+            'name',
+            'slug',
+            'description',
+            'category_type',
+            'category_type_display',
+            'icon',
+            'color_from',
+            'color_to',
+            'completion_bonus_points',
+            'order',
+            'is_active',
+            'is_featured',
+            'quest_count',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class QuestCategoryDetailSerializer(QuestCategorySerializer):
+    """Detailed serializer with quests included."""
+
+    quests = serializers.SerializerMethodField()
+
+    class Meta(QuestCategorySerializer.Meta):
+        fields = QuestCategorySerializer.Meta.fields + ['quests']
+
+    def get_quests(self, obj):
+        quests = obj.quests.filter(is_active=True).order_by('order')
+        return SideQuestSerializer(quests, many=True).data
+
+
 class SideQuestSerializer(serializers.ModelSerializer):
     """Serializer for Side Quest definitions."""
 
@@ -142,6 +184,8 @@ class SideQuestSerializer(serializers.ModelSerializer):
     topic_display = serializers.CharField(source='get_topic_display', read_only=True, allow_null=True)
     skill_level_display = serializers.CharField(source='get_skill_level_display', read_only=True, allow_null=True)
     is_available = serializers.SerializerMethodField()
+    category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
+    category_slug = serializers.CharField(source='category.slug', read_only=True, allow_null=True)
 
     class Meta:
         model = SideQuest
@@ -153,12 +197,18 @@ class SideQuestSerializer(serializers.ModelSerializer):
             'quest_type_display',
             'difficulty',
             'difficulty_display',
+            'category',
+            'category_name',
+            'category_slug',
             'topic',
             'topic_display',
             'skill_level',
             'skill_level_display',
             'requirements',
             'points_reward',
+            'order',
+            'is_daily',
+            'is_repeatable',
             'is_active',
             'is_available',
             'starts_at',

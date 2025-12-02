@@ -237,6 +237,7 @@ OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
 GEMINI_MODEL_NAME = config('GEMINI_MODEL_NAME', default='gemini-1.5-flash')
+GEMINI_IMAGE_MODEL = config('GEMINI_IMAGE_MODEL', default='gemini-2.0-flash-exp')
 
 # Weaviate Vector Database Configuration
 WEAVIATE_HOST = config('WEAVIATE_HOST', default='localhost')

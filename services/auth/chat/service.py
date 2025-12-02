@@ -5,7 +5,7 @@ Handles session state management for conversational auth flow.
 
 import logging
 
-from services.auth_agent.graph import auth_graph
+from services.agents.auth.graph import auth_graph
 
 from ..credentials import CredentialAuthService
 from ..exceptions import AuthenticationFailed, AuthValidationError, SessionError, UserCreationError

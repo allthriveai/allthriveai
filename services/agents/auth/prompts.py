@@ -45,7 +45,7 @@ NAME_PROMPT = """Ask for their first and last name in a friendly way.
 Keep it short and casual - one sentence."""
 
 PASSWORD_PROMPT = """Ask them to create a secure password.
-Be encouraging but brief - one sentence."""
+Be encouraging but brief - one sentence."""  # noqa: S105
 
 INTERESTS_PROMPT = """Ask what they want to do on AllThrive. The options are:
 - Explore
@@ -65,7 +65,7 @@ SUCCESS_PROMPT = """Celebrate! Their account is created.
 Make it exciting and welcoming. Keep it short - one sentence with emojis!"""
 
 LOGIN_PASSWORD_PROMPT = """Welcome them back and ask for their password.
-Use their first name. Keep it friendly - one sentence."""
+Use their first name. Keep it friendly - one sentence."""  # noqa: S105
 
 LOGIN_SUCCESS_PROMPT = """They're logged in! Welcome them back with enthusiasm.
 Use their first name. One sentence with emojis."""

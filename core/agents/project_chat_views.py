@@ -17,7 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from core.agents.circuit_breaker import CircuitBreakerOpenError, get_cached_faq_response, langraph_circuit_breaker
 from core.agents.security import output_validator, validate_chat_input
-from services.project_agent.agent import project_agent
+from services.agents.project.agent import project_agent
 
 logger = logging.getLogger(__name__)
 

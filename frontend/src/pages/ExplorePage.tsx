@@ -132,7 +132,7 @@ export function ExplorePage() {
 
   // Fetch projects with infinite scroll (for most tabs)
   const exploreParamsBase = {
-    tab: activeTab === 'for-you' ? 'for-you' : activeTab === 'trending' ? 'trending' : 'all',
+    tab: activeTab === 'for-you' ? 'for-you' : activeTab === 'trending' ? 'trending' : activeTab === 'news' ? 'news' : 'all',
     search: searchQuery || undefined,
     categories: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
     tools: selectedToolIds.length > 0 ? selectedToolIds : undefined,
@@ -215,14 +215,14 @@ export function ExplorePage() {
     enabled: activeTab === 'profiles',
   });
 
-  // Fetch quizzes
+  // Fetch quizzes (exclude from profiles and news tabs)
   const {
     data: quizzesData,
     isLoading: isLoadingQuizzes,
   } = useQuery({
     queryKey: ['exploreQuizzes', searchQuery],
     queryFn: () => getQuizzes({ search: searchQuery || undefined }),
-    enabled: activeTab !== 'profiles',
+    enabled: activeTab !== 'profiles' && activeTab !== 'news',
   });
 
   // Determine which data to display

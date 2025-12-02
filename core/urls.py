@@ -5,7 +5,7 @@ from rest_framework.routers import DefaultRouter
 from .achievements.views import AchievementViewSet
 from .agents.auth_chat_views import auth_chat_finalize, auth_chat_state, auth_chat_stream
 from .agents.project_chat_views import project_chat_stream_v2
-from .agents.views import ConversationViewSet, MessageViewSet, detect_intent
+from .agents.views import ConversationViewSet, CreateProjectFromImageView, MessageViewSet, detect_intent
 from .auth.views import (
     UserProfileView,
     csrf_token,
@@ -57,7 +57,7 @@ from .social.views import (
 )
 from .social.views import oauth_callback as social_oauth_callback
 from .taxonomy.views import TaxonomyViewSet, UserTagViewSet, track_interaction, user_personalization_overview
-from .thrive_circle.views import PointActivityViewSet, SideQuestViewSet, ThriveCircleViewSet
+from .thrive_circle.views import PointActivityViewSet, QuestCategoryViewSet, SideQuestViewSet, ThriveCircleViewSet
 from .tools.views import ToolBookmarkViewSet, ToolComparisonViewSet, ToolReviewViewSet, ToolViewSet
 from .uploads.views import upload_file, upload_image
 from .users.views import explore_users
@@ -81,6 +81,7 @@ me_router.register(r'battle-invitations', BattleInvitationViewSet, basename='me-
 me_router.register(r'thrive-circle', ThriveCircleViewSet, basename='me-thrive-circle')
 me_router.register(r'point-activities', PointActivityViewSet, basename='me-point-activities')
 me_router.register(r'side-quests', SideQuestViewSet, basename='me-side-quests')
+me_router.register(r'quest-categories', QuestCategoryViewSet, basename='me-quest-categories')
 me_router.register(r'achievements', AchievementViewSet, basename='me-achievements')
 
 # Taxonomy router (public but auth-required)
@@ -155,6 +156,7 @@ urlpatterns = [
     path('project/chat/stream/', project_chat_stream_v2, name='project_chat_stream'),
     # Agent endpoints
     path('agents/detect-intent/', detect_intent, name='detect_intent'),
+    path('agents/create-project-from-image/', CreateProjectFromImageView.as_view(), name='create_project_from_image'),
     # User-scoped /me endpoints
     path('me/profile/', UserProfileView.as_view(), name='me_profile'),
     path('me/activity/', user_activity, name='user_activity'),

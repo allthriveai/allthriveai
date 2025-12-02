@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from core.projects.models import CommentVote, ProjectComment
-from services.moderation import ContentModerator
+from services.agents.moderation import ContentModerator
 
 
 class CommentVoteSerializer(serializers.ModelSerializer):

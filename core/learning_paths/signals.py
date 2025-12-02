@@ -22,7 +22,7 @@ def update_learning_path_on_quiz_completion(sender, instance, created, **kwargs)
         return
 
     # Import here to avoid circular imports
-    from services.learning_path_service import LearningPathService
+    from services.gamification import LearningPathService
 
     try:
         service = LearningPathService()
@@ -54,7 +54,7 @@ def update_learning_path_on_sidequest_completion(sender, instance, **kwargs):
         return
 
     # Import here to avoid circular imports
-    from services.learning_path_service import LearningPathService
+    from services.gamification import LearningPathService
 
     try:
         side_quest = instance.side_quest

@@ -4,7 +4,7 @@ import logging
 
 from core.taxonomy.models import Taxonomy
 from core.tools.models import Tool
-from services.ai_provider import AIProvider
+from services.ai import AIProvider
 
 logger = logging.getLogger(__name__)
 

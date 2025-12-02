@@ -12,5 +12,5 @@ class ThriveCircleConfig(AppConfig):
 
     def ready(self):
         """Import signals when the app is ready."""
-        # Import signals here if needed
-        pass
+        # Import signals for quest auto-tracking
+        from . import signals  # noqa: F401

@@ -12,10 +12,13 @@ from rest_framework.throttling import UserRateThrottle
 
 from core.users.models import User
 
-from .models import PointActivity, SideQuest, UserSideQuest, WeeklyGoal
+from .models import PointActivity, QuestCategory, SideQuest, UserSideQuest, WeeklyGoal
+from .quest_tracker import QuestTracker
 from .serializers import (
     AwardPointsSerializer,
     PointActivitySerializer,
+    QuestCategoryDetailSerializer,
+    QuestCategorySerializer,
     SideQuestSerializer,
     UserPointsSerializer,
     UserSideQuestSerializer,
@@ -254,6 +257,56 @@ class PointActivityViewSet(viewsets.ReadOnlyModelViewSet):
         return PointActivity.objects.filter(user=self.request.user).select_related('user').order_by('-created_at')
 
 
+class QuestCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for Quest Categories/Pathways.
+
+    Endpoints:
+    - GET /api/quest-categories/ - List all active categories
+    - GET /api/quest-categories/{slug}/ - Get category with quests
+    - GET /api/quest-categories/{slug}/progress/ - Get user's progress in category
+    """
+
+    serializer_class = QuestCategorySerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'slug'
+
+    def get_queryset(self):
+        return QuestCategory.objects.filter(is_active=True).order_by('order')
+
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return QuestCategoryDetailSerializer
+        return QuestCategorySerializer
+
+    @action(detail=True, methods=['get'])
+    def progress(self, request, slug=None):
+        """Get user's progress in a specific category."""
+        category = self.get_object()
+        progress = QuestTracker.get_category_progress(request.user, category)
+        return Response(
+            {
+                'category': QuestCategorySerializer(category).data,
+                'progress': progress,
+            }
+        )
+
+    @action(detail=False, methods=['get'])
+    def all_progress(self, request):
+        """Get user's progress across all categories."""
+        categories = self.get_queryset()
+        result = []
+        for category in categories:
+            progress = QuestTracker.get_category_progress(request.user, category)
+            result.append(
+                {
+                    'category': QuestCategorySerializer(category).data,
+                    'progress': progress,
+                }
+            )
+        return Response(result)
+
+
 class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for Side Quests.
@@ -262,6 +315,7 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
     - GET /api/side-quests/ - List all available side quests
     - GET /api/side-quests/{id}/ - Get specific side quest
     - GET /api/side-quests/my-quests/ - Get current user's active and completed quests
+    - GET /api/side-quests/daily/ - Get today's daily quests
     - POST /api/side-quests/{id}/start/ - Start (accept) a side quest
     - POST /api/side-quests/{id}/update-progress/ - Update progress on a side quest
     - POST /api/side-quests/{id}/complete/ - Mark a side quest as completed
@@ -278,21 +332,34 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
         - topic: Filter quests by topic slug (e.g., 'chatbots-conversation')
         - skill_level: Filter quests by skill level (beginner, intermediate, advanced, master)
         - quest_type: Filter quests by type (quiz_mastery, project_showcase, etc.)
+        - category: Filter quests by category slug
+        - is_daily: Filter to only daily quests
 
         Query params:
             ?topic=chatbots-conversation
             ?skill_level=beginner
             ?quest_type=project_showcase
+            ?category=community-builder
+            ?is_daily=true
         """
         from django.utils import timezone
 
         now = timezone.now()
-        queryset = SideQuest.objects.filter(
-            is_active=True,
-        ).filter(
-            models.Q(starts_at__isnull=True) | models.Q(starts_at__lte=now),
-            models.Q(expires_at__isnull=True) | models.Q(expires_at__gte=now),
+        queryset = (
+            SideQuest.objects.filter(
+                is_active=True,
+            )
+            .filter(
+                models.Q(starts_at__isnull=True) | models.Q(starts_at__lte=now),
+                models.Q(expires_at__isnull=True) | models.Q(expires_at__gte=now),
+            )
+            .select_related('category')
         )
+
+        # Filter by category if provided
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category__slug=category)
 
         # Filter by topic if provided
         topic = self.request.query_params.get('topic')
@@ -311,7 +378,47 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
         if quest_type:
             queryset = queryset.filter(quest_type=quest_type)
 
+        # Filter by is_daily if provided
+        is_daily = self.request.query_params.get('is_daily')
+        if is_daily and is_daily.lower() == 'true':
+            queryset = queryset.filter(is_daily=True)
+
         return queryset
+
+    @action(detail=False, methods=['get'])
+    def daily(self, request):
+        """
+        Get today's daily quests for the user.
+
+        Returns daily quests the user is working on or can start,
+        and auto-starts any new daily quests.
+        """
+        user = request.user
+
+        # Auto-start daily quests for the user
+        QuestTracker.auto_start_daily_quests(user)
+
+        # Get user's daily quests (in progress and available)
+        daily_quests = QuestTracker.get_daily_quests(user)
+
+        # Get user progress for these quests
+        user_quests = UserSideQuest.objects.filter(
+            user=user,
+            side_quest__in=daily_quests,
+        ).select_related('side_quest')
+
+        # Build response with quest + progress
+        result = []
+        for quest in daily_quests:
+            user_quest = next((uq for uq in user_quests if uq.side_quest_id == quest.id), None)
+            result.append(
+                {
+                    'quest': SideQuestSerializer(quest).data,
+                    'progress': UserSideQuestSerializer(user_quest).data if user_quest else None,
+                }
+            )
+
+        return Response(result)
 
     @action(detail=False, methods=['get'], url_path='my-quests')
     def my_quests(self, request):

@@ -16,7 +16,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, To
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 
-from services.ai_provider import AIProvider
+from services.ai import AIProvider
 
 from .prompts import SYSTEM_PROMPT
 from .tools import PROJECT_TOOLS
@@ -210,7 +210,7 @@ async def _get_async_agent():
     a new event loop per task, and the checkpointer's connection pool
     is bound to the event loop it was created in.
     """
-    from services.auth_agent.checkpointer import get_async_checkpointer
+    from services.agents.auth.checkpointer import get_async_checkpointer
 
     checkpointer = await get_async_checkpointer()
     agent = _workflow.compile(checkpointer=checkpointer)
@@ -262,15 +262,21 @@ async def stream_agent_response(user_message: str, user_id: int, username: str, 
             if kind == 'on_chat_model_stream':
                 # Filter to only stream from the agent node
                 # Tags contain the node name that triggered the event
-                if 'agent' not in tags and 'seq:step:1' not in tags:
-                    # Allow events without tags (backwards compat) but track run_id
+                is_agent_stream = 'agent' in tags or 'seq:step:1' in tags
+
+                # Skip if not from agent and we have tags (definitive non-agent source)
+                if tags and not is_agent_stream:
+                    continue
+
+                # Track run_id to prevent duplicate streams
+                if run_id:
+                    # If we've already processed this run and it's not the current one, skip
                     if run_id in processed_stream_runs and run_id != current_stream_run_id:
                         continue
-
-                # If this is a new stream run, record it
-                if run_id and run_id not in processed_stream_runs:
-                    processed_stream_runs.add(run_id)
-                    current_stream_run_id = run_id
+                    # If this is a new stream run, record it
+                    if run_id not in processed_stream_runs:
+                        processed_stream_runs.add(run_id)
+                        current_stream_run_id = run_id
 
                 content = event.get('data', {}).get('chunk')
                 if content:

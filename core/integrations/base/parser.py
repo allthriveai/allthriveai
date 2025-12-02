@@ -586,7 +586,7 @@ class BaseParser:
         Returns:
             Optimized blocks with better layouts
         """
-        from services.ai_provider import AIProvider
+        from services.ai.provider import AIProvider
 
         # Don't optimize if we have very few blocks
         if len(blocks) < 5:
@@ -846,7 +846,7 @@ Return ONLY the JSON, no explanation."""
         Returns:
             Transformed blocks with rewritten, enhanced content
         """
-        from services.ai_provider import AIProvider
+        from services.ai.provider import AIProvider
 
         name = platform_data.get('name', '')
         description = platform_data.get('description', '')
@@ -1053,7 +1053,7 @@ Return ONLY the JSON, no explanation."""
         Returns:
             Mermaid diagram code or None if generation fails
         """
-        from services.ai_provider import AIProvider
+        from services.ai.provider import AIProvider
 
         name = platform_data.get('name', '')
         description = platform_data.get('description', '')

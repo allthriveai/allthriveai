@@ -6,7 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from core.projects.models import Project
-from services.achievements import AchievementTracker
+from services.gamification.achievements import AchievementTracker
 
 logger = logging.getLogger(__name__)
 

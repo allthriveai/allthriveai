@@ -1,8 +1,9 @@
-"""Django admin configuration for Reddit integration models."""
+"""Django admin configuration for integration models."""
 
 from django.contrib import admin
 
 from .reddit_models import DeletedRedditThread, RedditCommunityAgent, RedditThread
+from .rss_models import RSSFeedAgent, RSSFeedItem
 
 
 @admin.register(RedditCommunityAgent)
@@ -73,3 +74,40 @@ class DeletedRedditThreadAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Allow deletion of records if thread should be allowed back."""
         return True
+
+
+@admin.register(RSSFeedAgent)
+class RSSFeedAgentAdmin(admin.ModelAdmin):
+    """Admin interface for RSS feed agents."""
+
+    list_display = ['name', 'source_name', 'status', 'last_synced_at', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['name', 'source_name', 'feed_url']
+    readonly_fields = ['created_at', 'updated_at', 'last_synced_at']
+
+    fieldsets = (
+        ('Basic Info', {'fields': ('agent_user', 'name', 'source_name', 'feed_url', 'status')}),
+        ('Settings', {'fields': ('settings',)}),
+        ('Sync Status', {'fields': ('last_synced_at', 'last_sync_status', 'last_sync_error')}),
+        ('Metadata', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
+    )
+
+
+@admin.register(RSSFeedItem)
+class RSSFeedItemAdmin(admin.ModelAdmin):
+    """Admin interface for RSS feed items."""
+
+    list_display = ['feed_item_id', 'source_name', 'author', 'published_at', 'created_at']
+    list_filter = ['source_name', 'published_at']
+    search_fields = ['feed_item_id', 'source_name', 'author', 'project__title']
+    readonly_fields = ['created_at', 'updated_at', 'last_synced_at']
+
+    fieldsets = (
+        ('Project Link', {'fields': ('project', 'agent')}),
+        ('RSS Info', {'fields': ('feed_item_id', 'source_name', 'author', 'permalink', 'thumbnail_url')}),
+        ('Content', {'fields': ('categories', 'published_at')}),
+        (
+            'Metadata',
+            {'fields': ('rss_metadata', 'last_synced_at', 'created_at', 'updated_at'), 'classes': ('collapse',)},
+        ),
+    )

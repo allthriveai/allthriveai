@@ -51,7 +51,13 @@ class Project(models.Model):
         PROMPT = 'prompt', 'Prompt / Conversation'
         VIDEO = 'video', 'Video'
         REDDIT_THREAD = 'reddit_thread', 'Reddit Thread'
+        RSS_ARTICLE = 'rss_article', 'RSS Article'
         OTHER = 'other', 'Other'
+
+    class DifficultyLevel(models.TextChoices):
+        BEGINNER = 'beginner', 'Beginner'
+        INTERMEDIATE = 'intermediate', 'Intermediate'
+        ADVANCED = 'advanced', 'Advanced'
 
     objects = ProjectQuerySet.as_manager()
 
@@ -132,6 +138,15 @@ class Project(models.Model):
             'If True, tools/categories/topics were manually edited by admin '
             'and should not be auto-updated during resync'
         ),
+    )
+    # Difficulty level for content personalization (not user-facing)
+    difficulty_level = models.CharField(
+        max_length=20,
+        choices=DifficultyLevel.choices,
+        blank=True,
+        default='',
+        db_index=True,
+        help_text='Content difficulty: beginner, intermediate, advanced (for personalization)',
     )
     # Personalization metrics (updated by Celery tasks)
     engagement_velocity = models.FloatField(

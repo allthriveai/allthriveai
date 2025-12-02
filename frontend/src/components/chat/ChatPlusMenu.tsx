@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faYoutube } from '@fortawesome/free-brands-svg-icons';
-import { faFileArrowUp, faLink } from '@fortawesome/free-solid-svg-icons';
+import { faCircleQuestion, faCommentDots } from '@fortawesome/free-solid-svg-icons';
 
-export type IntegrationType = 'github' | 'youtube' | 'upload' | 'url';
+export type IntegrationType = 'github' | 'youtube' | 'create-visual' | 'ask-help' | 'describe';
 
 interface ChatPlusMenuProps {
   onIntegrationSelect: (type: IntegrationType) => void;
@@ -18,7 +18,7 @@ interface ChatPlusMenuProps {
 interface IntegrationOption {
   type: IntegrationType;
   label: string;
-  icon: typeof faGithub;
+  icon: typeof faGithub | string; // string for emoji
   description: string;
   available: boolean;
 }
@@ -39,17 +39,24 @@ const integrationOptions: IntegrationOption[] = [
     available: true,
   },
   {
-    type: 'upload',
-    label: 'Upload File',
-    icon: faFileArrowUp,
-    description: 'Upload files or images',
+    type: 'create-visual',
+    label: 'Create Image/Infographic',
+    icon: '🍌',
+    description: 'Generate visuals with AI',
     available: true,
   },
   {
-    type: 'url',
-    label: 'Paste URL',
-    icon: faLink,
-    description: 'Import from any URL',
+    type: 'describe',
+    label: 'Describe Anything',
+    icon: faCommentDots,
+    description: 'Tell me about your project',
+    available: true,
+  },
+  {
+    type: 'ask-help',
+    label: 'Ask for Help',
+    icon: faCircleQuestion,
+    description: 'Get AI assistance',
     available: true,
   },
 ];
@@ -161,7 +168,11 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
                   ${focusedIndex === index ? 'bg-slate-100 dark:bg-slate-700' : ''}
                 `}
               >
-                <FontAwesomeIcon icon={option.icon} className="w-5 h-5 text-slate-700 dark:text-slate-300 mt-0.5 flex-shrink-0" />
+                {typeof option.icon === 'string' ? (
+                  <span className="text-xl leading-none mt-0.5 flex-shrink-0">{option.icon}</span>
+                ) : (
+                  <FontAwesomeIcon icon={option.icon} className="w-5 h-5 text-slate-700 dark:text-slate-300 mt-0.5 flex-shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
                     {option.label}

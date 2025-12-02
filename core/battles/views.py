@@ -6,7 +6,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from services.battle_service import BattleService
+from services.gamification import BattleService
 
 from .models import BattleInvitation, BattleStatus, BattleSubmission, InvitationStatus, PromptBattle
 from .serializers import (

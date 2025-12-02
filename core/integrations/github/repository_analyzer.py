@@ -11,7 +11,7 @@ import yaml
 from github import Github, GithubException, UnknownObjectException
 from github.Repository import Repository
 
-from services.ai_provider import AIProvider
+from services.ai import AIProvider
 
 logger = logging.getLogger(__name__)
 

@@ -50,6 +50,9 @@ export function useSideQuests() {
       // Invalidate both available and my quests
       queryClient.invalidateQueries({ queryKey: ['side-quests'] });
     },
+    onError: (error) => {
+      console.error('Failed to start quest:', error);
+    },
   });
 
   // Update progress mutation
@@ -84,7 +87,9 @@ export function useSideQuests() {
 
     // Mutations
     startQuest: startQuestMutation.mutate,
+    startQuestAsync: startQuestMutation.mutateAsync,
     isStartingQuest: startQuestMutation.isPending,
+    startQuestSuccess: startQuestMutation.isSuccess,
 
     updateProgress: updateProgressMutation.mutate,
     isUpdatingProgress: updateProgressMutation.isPending,

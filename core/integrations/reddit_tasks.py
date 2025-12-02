@@ -5,7 +5,7 @@ import logging
 from celery import shared_task
 
 from core.integrations.reddit_models import RedditCommunityAgent
-from services.reddit_sync_service import RedditSyncService
+from services.integrations.reddit.sync import RedditSyncService
 
 logger = logging.getLogger(__name__)
 

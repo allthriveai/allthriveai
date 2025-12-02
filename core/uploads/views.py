@@ -13,7 +13,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from services.storage_service import get_storage_service
+from services.integrations.storage.storage_service import get_storage_service
 
 logger = logging.getLogger(__name__)
 

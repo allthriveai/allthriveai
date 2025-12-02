@@ -15,6 +15,13 @@ logger = logging.getLogger(__name__)
 # Default timeout for AI API calls (in seconds)
 DEFAULT_AI_TIMEOUT = 60
 
+# Nano Banana system prompt for image generation
+NANO_BANANA_SYSTEM_PROMPT = """You are Nano Banana, an image generation assistant.
+IMPORTANT: Always generate and return an actual image in your response.
+If the user's request is vague, ask a brief clarifying question BUT ALSO generate a sample
+image to show what you can do.
+Never just describe what you would create - always include an actual generated image."""
+
 
 class AIProviderType(Enum):
     """Supported AI provider types."""
@@ -72,8 +79,10 @@ class AIProvider:
         """
         try:
             provider_enum = AIProviderType(provider.lower())
-        except ValueError:
-            raise ValueError(f'Invalid provider: {provider}. Must be one of: {[p.value for p in AIProviderType]}')
+        except ValueError as e:
+            raise ValueError(
+                f'Invalid provider: {provider}. Must be one of: {[p.value for p in AIProviderType]}'
+            ) from e
 
         self._provider = provider_enum
         self._client = self._initialize_client()
@@ -93,8 +102,8 @@ class AIProvider:
         """Initialize Azure OpenAI client."""
         try:
             from openai import AzureOpenAI
-        except ImportError:
-            raise ImportError('OpenAI library not installed. Install with: pip install openai')
+        except ImportError as e:
+            raise ImportError('OpenAI library not installed. Install with: pip install openai') from e
 
         api_key = getattr(settings, 'AZURE_OPENAI_API_KEY', None)
         endpoint = getattr(settings, 'AZURE_OPENAI_ENDPOINT', None)
@@ -116,8 +125,8 @@ class AIProvider:
         """Initialize OpenAI client."""
         try:
             from openai import OpenAI
-        except ImportError:
-            raise ImportError('OpenAI library not installed. Install with: pip install openai')
+        except ImportError as e:
+            raise ImportError('OpenAI library not installed. Install with: pip install openai') from e
 
         api_key = getattr(settings, 'OPENAI_API_KEY', None)
 
@@ -130,8 +139,8 @@ class AIProvider:
         """Initialize Anthropic client."""
         try:
             from anthropic import Anthropic
-        except ImportError:
-            raise ImportError('Anthropic library not installed. Install with: pip install anthropic')
+        except ImportError as e:
+            raise ImportError('Anthropic library not installed. Install with: pip install anthropic') from e
 
         api_key = getattr(settings, 'ANTHROPIC_API_KEY', None)
 
@@ -144,10 +153,10 @@ class AIProvider:
         """Initialize Google Gemini client."""
         try:
             import google.generativeai as genai
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 'Google Generative AI library not installed. Install with: pip install google-generativeai'
-            )
+            ) from e
 
         api_key = getattr(settings, 'GOOGLE_API_KEY', None)
 
@@ -478,8 +487,7 @@ class AIProvider:
             messages=[{'role': 'user', 'content': prompt}],
             **kwargs,
         ) as stream:
-            for text in stream.text_stream:
-                yield text
+            yield from stream.text_stream
 
     def _stream_gemini(
         self,
@@ -590,3 +598,147 @@ class AIProvider:
                 temperature=temperature,
                 **kwargs,
             )
+
+    @traceable(name='ai_provider_generate_image', run_type='llm')
+    def generate_image(
+        self,
+        prompt: str,
+        conversation_history: list[dict] | None = None,
+        reference_images: list[bytes] | None = None,
+        model: str | None = None,
+        timeout: int = 120,
+    ) -> tuple[bytes | None, str | None, str | None]:
+        """
+        Generate an image using Gemini 2.0 Flash native image generation.
+
+        This method uses Gemini's native image generation capabilities to create
+        images from text prompts. It supports multi-turn conversations for
+        iterative refinement and reference images for style guidance.
+
+        Args:
+            prompt: Current user prompt describing the desired image
+            conversation_history: Previous turns for multi-turn refinement.
+                                 Each turn should have 'role' ('user'/'model')
+                                 and 'parts' (list with text/image content)
+            reference_images: List of reference image bytes for this turn
+            model: Model override (default: settings.GEMINI_IMAGE_MODEL)
+            timeout: Request timeout in seconds (default: 120)
+
+        Returns:
+            Tuple of (image_bytes, mime_type, text_response) or (None, None, None) on error
+
+        Raises:
+            ValueError: If Gemini is not configured properly
+            Exception: If image generation fails
+
+        Example:
+            ai = AIProvider(provider='gemini')
+            image_bytes, mime_type, text = ai.generate_image(
+                "Create an infographic about Python programming"
+            )
+            if image_bytes:
+                with open('output.png', 'wb') as f:
+                    f.write(image_bytes)
+        """
+        try:
+            from google import genai
+            from google.genai import types
+        except ImportError as e:
+            raise ImportError('Google GenAI library not installed. Install with: pip install google-genai') from e
+
+        api_key = getattr(settings, 'GOOGLE_API_KEY', None)
+        if not api_key:
+            raise ValueError('Google API key not configured. Set GOOGLE_API_KEY in settings.')
+
+        # Use the image generation model - gemini-3-pro-image-preview for best quality
+        model_name = model or getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-3-pro-image-preview')
+
+        logger.info(
+            'Generating image with Gemini',
+            extra={
+                'model': model_name,
+                'user_id': self.user_id,
+                'has_reference_images': bool(reference_images),
+                'history_length': len(conversation_history) if conversation_history else 0,
+            },
+        )
+
+        try:
+            # Create client with API key
+            client = genai.Client(api_key=api_key)
+
+            # Build content parts for the request
+            contents = []
+
+            # Add system instruction as first user message
+            contents.append(
+                types.Content(
+                    role='user',
+                    parts=[types.Part.from_text(text=NANO_BANANA_SYSTEM_PROMPT + '\n\n' + prompt)],
+                )
+            )
+
+            # Add reference images if provided
+            if reference_images:
+                image_parts = []
+                for img_bytes in reference_images:
+                    image_parts.append(types.Part.from_bytes(data=img_bytes, mime_type='image/png'))
+                image_parts.append(types.Part.from_text(text='Please use these reference images for style guidance.'))
+                contents.append(types.Content(role='user', parts=image_parts))
+
+            # Generate with image output enabled
+            response = client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    response_modalities=['IMAGE', 'TEXT'],
+                ),
+            )
+
+            # Extract image and text from response
+            image_bytes = None
+            mime_type = None
+            text_response = None
+
+            if response.candidates and response.candidates[0].content:
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data:
+                        if part.inline_data.mime_type and part.inline_data.mime_type.startswith('image/'):
+                            image_bytes = part.inline_data.data
+                            mime_type = part.inline_data.mime_type
+                    elif part.text:
+                        text_response = part.text
+
+            if image_bytes:
+                logger.info(
+                    'Image generated successfully',
+                    extra={
+                        'model': model_name,
+                        'user_id': self.user_id,
+                        'image_size': len(image_bytes),
+                        'mime_type': mime_type,
+                    },
+                )
+            else:
+                logger.warning(
+                    'No image in response',
+                    extra={
+                        'model': model_name,
+                        'user_id': self.user_id,
+                        'text_response': text_response[:100] if text_response else None,
+                    },
+                )
+
+            return image_bytes, mime_type, text_response
+
+        except Exception as e:
+            logger.error(
+                f'Image generation failed: {e}',
+                extra={
+                    'model': model_name,
+                    'user_id': self.user_id,
+                    'error_type': type(e).__name__,
+                },
+                exc_info=True,
+            )
+            raise
