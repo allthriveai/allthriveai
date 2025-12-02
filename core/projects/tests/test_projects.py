@@ -96,7 +96,7 @@ class ProjectModelTest(TestCase):
     def test_project_showcase_flag(self):
         """Test is_showcase flag."""
         project = Project.objects.create(user=self.user, title='Showcase Project', is_showcased=True)
-        self.assertTrue(project.is_showcasedd)
+        self.assertTrue(project.is_showcased)
 
     def test_project_content_json(self):
         """Test that content field stores JSON correctly."""
@@ -291,6 +291,8 @@ class ProjectAPITest(APITestCase):
 class CommentPermissionsTest(APITestCase):
     """Test comment deletion permissions for admins."""
 
+    PROJECT_API_ENDPOINT = '/api/v1/me/projects/'
+
     def setUp(self):
         self.user1 = User.objects.create_user(username='user1', email='user1@example.com', password='pass123')
         self.user2 = User.objects.create_user(username='user2', email='user2@example.com', password='pass123')
@@ -392,12 +394,12 @@ class CommentPermissionsTest(APITestCase):
         project = Project.objects.create(user=self.user1, title='Original Title')
 
         self.client.force_authenticate(user=self.user1)
-        data = {'title': 'Updated Title', 'description': 'New description', 'is_showcase': True}
+        data = {'title': 'Updated Title', 'description': 'New description', 'is_showcased': True}
         response = self.client.patch(f'/api/v1/me/projects/{project.id}/', data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Updated Title')
         self.assertEqual(response.data['description'], 'New description')
-        self.assertTrue(response.data['isShowcase'])  # camelCase in response
+        self.assertTrue(response.data['isShowcased'])  # camelCase in response
 
     def test_delete_own_project(self):
         """Test that user can delete their own project."""
