@@ -46,6 +46,7 @@ interface IntelligentChatPanelProps {
   onClose: () => void;
   conversationId?: string;
   welcomeMode?: boolean; // Show onboarding welcome message for new users
+  supportMode?: boolean; // Start with help questions panel visible
 }
 
 /**
@@ -63,11 +64,12 @@ export function IntelligentChatPanel({
   onClose,
   conversationId = 'default-conversation',
   welcomeMode = false,
+  supportMode = false,
 }: IntelligentChatPanelProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [error, setError] = useState<string | undefined>();
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(supportMode); // If support mode, mark as interacted
 
   // GitHub integration state
   const [githubStep, setGithubStep] = useState<'idle' | 'loading' | 'connect' | 'repos' | 'importing'>('idle');
@@ -75,8 +77,8 @@ export function IntelligentChatPanel({
   const [githubSearchQuery, setGithubSearchQuery] = useState('');
   const [githubMessage, setGithubMessage] = useState<string>('');
 
-  // Help mode state
-  const [helpMode, setHelpMode] = useState(false);
+  // Help mode state - start in help mode if supportMode prop is true
+  const [helpMode, setHelpMode] = useState(supportMode);
 
   // Handle project creation - redirect to the new project page
   const handleProjectCreated = useCallback((projectUrl: string, projectTitle: string) => {
@@ -101,6 +103,7 @@ export function IntelligentChatPanel({
 
     setError(undefined);
     setHasInteracted(true);
+    setHelpMode(false); // Close help panel when user sends a message
 
     // For now, if there are attachments, we'll mention them in the message
     // TODO: Implement proper file upload via the upload service

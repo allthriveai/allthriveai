@@ -84,6 +84,47 @@ class ActivityInsightsService:
 
         return result
 
+    def get_side_quests_completed(self):
+        """
+        Get user's completed side quests.
+        Returns quests sorted by completion date with category info.
+        """
+        from core.thrive_circle.models import UserSideQuest
+
+        completed_quests = (
+            UserSideQuest.objects.filter(
+                user=self.user,
+                is_completed=True,
+            )
+            .select_related('side_quest', 'side_quest__category')
+            .order_by('-completed_at')[:10]  # Top 10 most recent
+        )
+
+        result = []
+        for user_quest in completed_quests:
+            quest = user_quest.side_quest
+            category = quest.category
+            result.append(
+                {
+                    'id': str(quest.id),
+                    'title': quest.title,
+                    'description': quest.description,
+                    'difficulty': quest.difficulty,
+                    'difficulty_display': (
+                        quest.get_difficulty_display() if hasattr(quest, 'get_difficulty_display') else quest.difficulty
+                    ),
+                    'points_awarded': user_quest.points_awarded or quest.points_reward,
+                    'completed_at': user_quest.completed_at.isoformat() if user_quest.completed_at else None,
+                    'category_name': category.name if category else None,
+                    'category_slug': category.slug if category else None,
+                    'category_icon': category.icon if category else None,
+                    'category_color_from': category.color_from if category else None,
+                    'category_color_to': category.color_to if category else None,
+                }
+            )
+
+        return result
+
     def get_topic_interests(self):
         """
         Aggregate topic interests from quizzes and projects.
@@ -319,7 +360,7 @@ class ActivityInsightsService:
                     {
                         'type': 'quiz_performance',
                         'icon': 'academic-cap',
-                        'title': 'Quiz Master',
+                        'title': 'Quiz Pro',
                         'description': f'Your recent quiz average is {avg_score:.0f}%! Impressive!',
                         'color': 'green',
                     }
@@ -361,7 +402,7 @@ class ActivityInsightsService:
         """Get summary statistics for the user."""
         from core.projects.models import Project
         from core.quizzes.models import QuizAttempt
-        from core.thrive_circle.models import PointActivity
+        from core.thrive_circle.models import PointActivity, UserSideQuest
 
         # Total quizzes completed
         quizzes_completed = QuizAttempt.objects.filter(
@@ -383,22 +424,17 @@ class ActivityInsightsService:
             or 0
         )
 
-        # Unique tools used
-        unique_tools = (
-            Project.objects.filter(
-                user=self.user,
-                is_archived=False,
-            )
-            .values('tools')
-            .distinct()
-            .count()
-        )
+        # Side quests completed
+        side_quests_completed = UserSideQuest.objects.filter(
+            user=self.user,
+            is_completed=True,
+        ).count()
 
         return {
             'quizzes_completed': quizzes_completed,
             'projects_count': projects_count,
             'total_points': total_points,
-            'unique_tools_used': unique_tools,
+            'side_quests_completed': side_quests_completed,
             'current_streak': getattr(self.user, 'current_streak_days', 0),
             'longest_streak': getattr(self.user, 'longest_streak_days', 0),
         }

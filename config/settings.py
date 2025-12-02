@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'core.thrive_circle',
     'core.integrations',  # Content source integrations (YouTube, RSS, etc.)
     'core.learning_paths',  # Auto-generated learning paths per topic
+    'core.billing',  # Stripe subscriptions and token packages
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -236,6 +237,11 @@ REST_FRAMEWORK = {
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
+
+# Stripe Payment Configuration
+STRIPE_PUBLIC_KEY = config('STRIPE_PUBLIC_KEY', default='')
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 GEMINI_MODEL_NAME = config('GEMINI_MODEL_NAME', default='gemini-1.5-flash')
 GEMINI_IMAGE_MODEL = config('GEMINI_IMAGE_MODEL', default='gemini-2.0-flash-exp')
 

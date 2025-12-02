@@ -3,29 +3,29 @@
  *
  * A comprehensive activity dashboard showing:
  * - Personalized insights cards
- * - Tool engagement visualization
+ * - Side quests completed
  * - Topic interests
  * - Activity trends
  * - Points breakdown by category
  */
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSpinner,
   faFire,
   faBookOpen,
-  faWrench,
   faChartLine,
   faTrophy,
   faLightbulb,
   faArrowTrendUp,
   faGraduationCap,
+  faCompass,
+  faCheck,
 } from '@fortawesome/free-solid-svg-icons';
 import {
   getActivityInsights,
   type ActivityInsights,
-  type ToolEngagement,
+  type SideQuestCompleted,
   type TopicInterest,
   type PointsCategory,
   type PersonalizedInsight,
@@ -39,7 +39,7 @@ interface ActivityInsightsTabProps {
 
 // Map icon names from backend to FontAwesome icons
 const iconMap: Record<string, any> = {
-  'wrench': faWrench,
+  'compass': faCompass,
   'book-open': faBookOpen,
   'fire': faFire,
   'academic-cap': faGraduationCap,
@@ -61,7 +61,6 @@ const colorClasses: Record<string, { bg: string; text: string; border: string }>
 };
 
 export function ActivityInsightsTab({ username, isOwnProfile }: ActivityInsightsTabProps) {
-  const navigate = useNavigate();
   const [insights, setInsights] = useState<ActivityInsights | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -131,9 +130,9 @@ export function ActivityInsightsTab({ username, isOwnProfile }: ActivityInsights
       {/* Stats Summary */}
       <StatsSummarySection stats={insights.statsSummary} />
 
-      {/* Tool Engagement & Topic Interests - Side by Side */}
+      {/* Side Quests & Topic Interests - Side by Side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ToolEngagementSection tools={insights.toolEngagement} onToolClick={(slug) => navigate(`/tools/${slug}`)} />
+        <SideQuestsSection quests={insights.sideQuestsCompleted} />
         <TopicInterestsSection topics={insights.topicInterests} />
       </div>
 
@@ -186,7 +185,7 @@ function StatsSummarySection({ stats }: { stats: ActivityInsights['statsSummary'
     { label: 'Total Points', value: stats.totalPoints.toLocaleString(), icon: faTrophy, color: 'text-yellow-500' },
     { label: 'Projects', value: stats.projectsCount, icon: faChartLine, color: 'text-blue-500' },
     { label: 'Quizzes Completed', value: stats.quizzesCompleted, icon: faGraduationCap, color: 'text-purple-500' },
-    { label: 'Tools Used', value: stats.uniqueToolsUsed, icon: faWrench, color: 'text-teal-500' },
+    { label: 'Side Quests Completed', value: stats.sideQuestsCompleted, icon: faCompass, color: 'text-teal-500' },
     { label: 'Current Streak', value: `${stats.currentStreak} days`, icon: faFire, color: 'text-orange-500' },
     { label: 'Best Streak', value: `${stats.longestStreak} days`, icon: faArrowTrendUp, color: 'text-green-500' },
   ];
@@ -212,71 +211,87 @@ function StatsSummarySection({ stats }: { stats: ActivityInsights['statsSummary'
   );
 }
 
-// Tool Engagement Section
-function ToolEngagementSection({ tools, onToolClick }: { tools: ToolEngagement[]; onToolClick: (slug: string) => void }) {
-  if (tools.length === 0) {
+// Side Quests Completed Section
+function SideQuestsSection({ quests }: { quests: SideQuestCompleted[] }) {
+  if (quests.length === 0) {
     return (
       <div className="glass-subtle p-6 border border-gray-200 dark:border-gray-800" style={{ borderRadius: 'var(--radius)' }}>
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-teal-100 dark:bg-teal-900/30" style={{ borderRadius: 'var(--radius)' }}>
-            <FontAwesomeIcon icon={faWrench} className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+            <FontAwesomeIcon icon={faCompass} className="w-5 h-5 text-teal-600 dark:text-teal-400" />
           </div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Tools You Use</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Side Quests Completed</h3>
         </div>
         <div className="text-center py-8">
-          <FontAwesomeIcon icon={faWrench} className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" />
+          <FontAwesomeIcon icon={faCompass} className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" />
           <p className="text-gray-500 dark:text-gray-400">
-            Add tools to your projects to see your usage here!
+            Complete side quests to see your achievements here!
           </p>
         </div>
       </div>
     );
   }
 
-  const maxCount = Math.max(...tools.map(t => t.usageCount));
+  // Difficulty colors
+  const difficultyColors: Record<string, string> = {
+    'easy': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    'medium': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+    'hard': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  };
 
   return (
     <div className="glass-subtle p-6 border border-gray-200 dark:border-gray-800" style={{ borderRadius: 'var(--radius)' }}>
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 bg-teal-100 dark:bg-teal-900/30" style={{ borderRadius: 'var(--radius)' }}>
-          <FontAwesomeIcon icon={faWrench} className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+          <FontAwesomeIcon icon={faCompass} className="w-5 h-5 text-teal-600 dark:text-teal-400" />
         </div>
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Tools You Use</h3>
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Side Quests Completed</h3>
       </div>
 
       <div className="space-y-3">
-        {tools.map((tool) => {
-          const percentage = (tool.usageCount / maxCount) * 100;
+        {quests.map((quest) => {
+          const gradientStyle = quest.categoryColorFrom && quest.categoryColorTo
+            ? { background: `linear-gradient(135deg, ${quest.categoryColorFrom}, ${quest.categoryColorTo})` }
+            : undefined;
+
           return (
-            <button
-              key={tool.id}
-              onClick={() => onToolClick(tool.slug)}
-              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+            <div
+              key={quest.id}
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
-              {tool.logoUrl ? (
-                <img src={tool.logoUrl} alt={tool.name} className="w-8 h-8 rounded-lg object-contain" />
-              ) : (
-                <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  <FontAwesomeIcon icon={faWrench} className="w-4 h-4 text-gray-500" />
-                </div>
-              )}
+              {/* Category icon with gradient */}
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={gradientStyle || { backgroundColor: 'var(--color-gray-200)' }}
+              >
+                {quest.categoryIcon ? (
+                  <span className="text-white text-sm">{quest.categoryIcon}</span>
+                ) : (
+                  <FontAwesomeIcon icon={faCheck} className="w-4 h-4 text-white" />
+                )}
+              </div>
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-medium text-gray-900 dark:text-white text-sm truncate">
-                    {tool.name}
+                    {quest.title}
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {tool.usageCount} project{tool.usageCount !== 1 ? 's' : ''}
+                  <span className="text-xs text-teal-600 dark:text-teal-400 font-medium">
+                    +{quest.pointsAwarded} pts
                   </span>
                 </div>
-                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full transition-all duration-500"
-                    style={{ width: `${percentage}%` }}
-                  />
+                <div className="flex items-center gap-2">
+                  {quest.categoryName && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {quest.categoryName}
+                    </span>
+                  )}
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${difficultyColors[quest.difficulty] || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
+                    {quest.difficultyDisplay}
+                  </span>
                 </div>
               </div>
-            </button>
+            </div>
           );
         })}
       </div>

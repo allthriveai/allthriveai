@@ -376,7 +376,7 @@ def user_activity_insights(request):
         - stats_summary: Overview statistics
     """
     try:
-        from services.activity_insights_service import ActivityInsightsService
+        from services.activity_insights import ActivityInsightsService
 
         service = ActivityInsightsService(request.user)
         insights = service.get_full_insights()

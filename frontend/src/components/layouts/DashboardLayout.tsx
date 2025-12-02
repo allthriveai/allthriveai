@@ -31,6 +31,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const [eventsOpen, setEventsOpen] = useState(false);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
   const [addProjectWelcomeMode, setAddProjectWelcomeMode] = useState(false);
+  const [chatSupportMode, setChatSupportMode] = useState(false);
   const [commentPanelOpen, setCommentPanelOpen] = useState(false);
   const [commentPanelProject, setCommentPanelProject] = useState<Project | null>(null);
 
@@ -126,6 +127,13 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     } else if (menuItem === 'Events Calendar') {
       setEventsOpen(true);
       setAboutOpen(false);
+    } else if (menuItem === 'Chat') {
+      // Open chat panel in support mode (with help questions visible)
+      setAddProjectOpen(true);
+      setChatSupportMode(true);
+      setAddProjectWelcomeMode(false);
+      setAboutOpen(false);
+      setEventsOpen(false);
     }
   };
 
@@ -141,6 +149,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     // Open Add Project panel with 4 options (or welcome mode for new users)
     setAddProjectOpen(true);
     setAddProjectWelcomeMode(welcomeMode);
+    setChatSupportMode(false); // Reset support mode when opening normally
     setAboutOpen(false);
     setEventsOpen(false);
   };
@@ -148,6 +157,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const handleCloseAddProject = () => {
     setAddProjectOpen(false);
     setAddProjectWelcomeMode(false);
+    setChatSupportMode(false);
   };
 
   const handleOpenCommentPanel = (project: Project) => {
@@ -203,6 +213,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
             onClose={handleCloseAddProject}
             conversationId={conversationId}
             welcomeMode={addProjectWelcomeMode}
+            supportMode={chatSupportMode}
           />
         )}
 

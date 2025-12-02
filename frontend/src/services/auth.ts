@@ -66,6 +66,21 @@ export interface ToolEngagement {
   usageCount: number;
 }
 
+export interface SideQuestCompleted {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: string;
+  difficultyDisplay: string;
+  pointsAwarded: number;
+  completedAt: string | null;
+  categoryName: string | null;
+  categorySlug: string | null;
+  categoryIcon: string | null;
+  categoryColorFrom: string | null;
+  categoryColorTo: string | null;
+}
+
 export interface TopicInterest {
   topic: string;
   topicDisplay: string;
@@ -100,13 +115,13 @@ export interface StatsSummary {
   quizzesCompleted: number;
   projectsCount: number;
   totalPoints: number;
-  uniqueToolsUsed: number;
+  sideQuestsCompleted: number;
   currentStreak: number;
   longestStreak: number;
 }
 
 export interface ActivityInsights {
-  toolEngagement: ToolEngagement[];
+  sideQuestsCompleted: SideQuestCompleted[];
   topicInterests: TopicInterest[];
   activityTrends: ActivityTrend[];
   pointsByCategory: PointsCategory[];
