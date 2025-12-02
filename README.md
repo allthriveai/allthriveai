@@ -17,10 +17,11 @@ Find trending AI projects, automate your portfolio, and grow your skills.
 
 ### 🎨 Portfolio & Showcase
 - **Unified Portfolio**: Consolidate all your AI projects from any tool into one professional portfolio
+- **Integrations**: Auto-sync your AI projects from whichever AI tool you're building with
 - **Automatic Capture**: Chrome extension automatically adds projects as you work
-- **Integrations**: Auto-sync projects from whichever AI tool you're building with
 - **Privacy Controls**: Public/private projects, customizable profiles, and visibility settings
 - **Professional Presence**: Showcase your AI journey in one coherent place
+- **Analytics and Insights**: Measurable insights on which AI tools you are using and new ones that interest you based on your activity
 
 ### 🎮 Learn & Level Up
 - **Personalized Learning Paths**: Interactive courses tailored to your interests and skill level
