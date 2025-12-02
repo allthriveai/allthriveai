@@ -26,7 +26,7 @@ interface TopNavigationProps {
 export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: TopNavigationProps) {
   const { user, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { activeQuest } = useActiveQuest();
+  const { activeQuest, abandonQuest, isAbandoningQuest, activeQuestColors, activeQuestCategory } = useActiveQuest();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -120,6 +120,10 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
                 <ActiveQuestIndicator
                   activeQuest={activeQuest}
                   onClick={onOpenActiveQuest}
+                  onAbandon={abandonQuest}
+                  isAbandoning={isAbandoningQuest}
+                  colors={activeQuestColors}
+                  category={activeQuestCategory}
                 />
               )}
 

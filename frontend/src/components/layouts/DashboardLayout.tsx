@@ -42,7 +42,13 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     openQuestTray,
     openActiveQuestTray,
     closeQuestTray,
+    getQuestColors,
+    getQuestCategory,
   } = useActiveQuest();
+
+  // Get colors and category for the selected quest
+  const selectedQuestColors = getQuestColors(selectedQuest);
+  const selectedQuestCategory = getQuestCategory(selectedQuest);
 
   // Stable conversationId that doesn't change on every render
   // This prevents the IntelligentChatPanel from reinitializing on parent re-renders
@@ -214,7 +220,9 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         <QuestTray
           isOpen={questTrayOpen}
           onClose={closeQuestTray}
-          activeQuest={selectedQuest}
+          userQuest={selectedQuest}
+          colors={selectedQuestColors}
+          category={selectedQuestCategory}
         />
 
         {/* Overlay when about is open */}

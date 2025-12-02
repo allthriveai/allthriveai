@@ -215,6 +215,13 @@ export async function completeSideQuest(questId: string): Promise<UserSideQuest>
 }
 
 /**
+ * Abandon (deactivate) an in-progress side quest
+ */
+export async function abandonSideQuest(questId: string): Promise<void> {
+  await api.post(`/me/side-quests/${questId}/abandon/`);
+}
+
+/**
  * Get all quest categories
  */
 export async function getQuestCategories(): Promise<QuestCategory[]> {

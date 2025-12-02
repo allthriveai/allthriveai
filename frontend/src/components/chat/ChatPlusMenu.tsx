@@ -56,7 +56,7 @@ const integrationOptions: IntegrationOption[] = [
     type: 'ask-help',
     label: 'Ask for Help',
     icon: faCircleQuestion,
-    description: 'Get AI assistance',
+    description: 'Browse common questions & get help',
     available: true,
   },
 ];

@@ -8,6 +8,8 @@ import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './ChatInterface';
 import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
 import { GeneratedImageMessage } from './GeneratedImageMessage';
+import { HelpQuestionsPanel } from './HelpQuestionsPanel';
+import type { HelpQuestion } from '@/data/helpQuestions';
 import { useIntelligentChat, type ChatMessage } from '@/hooks/useIntelligentChat';
 import { useAuth } from '@/hooks/useAuth';
 import { setProjectFeaturedImage, createProjectFromImageSession } from '@/services/projects';
@@ -72,6 +74,9 @@ export function IntelligentChatPanel({
   const [githubRepos, setGithubRepos] = useState<GitHubRepository[]>([]);
   const [githubSearchQuery, setGithubSearchQuery] = useState('');
   const [githubMessage, setGithubMessage] = useState<string>('');
+
+  // Help mode state
+  const [helpMode, setHelpMode] = useState(false);
 
   // Handle project creation - redirect to the new project page
   const handleProjectCreated = useCallback((projectUrl: string, projectTitle: string) => {
@@ -197,6 +202,17 @@ export function IntelligentChatPanel({
     setGithubSearchQuery('');
   };
 
+  // Help mode handlers
+  const handleHelpQuestionSelect = useCallback((question: HelpQuestion) => {
+    // Close help mode and send the question's message to the AI
+    setHelpMode(false);
+    sendMessage(question.chatMessage);
+  }, [sendMessage]);
+
+  const handleCloseHelp = useCallback(() => {
+    setHelpMode(false);
+  }, []);
+
   const handleIntegrationSelect = useCallback(async (type: IntegrationType) => {
     switch (type) {
       case 'github':
@@ -213,7 +229,9 @@ export function IntelligentChatPanel({
         sendMessage('Create an image or infographic for me');
         break;
       case 'ask-help':
-        sendMessage('I need help with something');
+        // Show help questions panel
+        setHelpMode(true);
+        setHasInteracted(true);
         break;
       case 'describe':
         sendMessage("I'd like to describe something to you");
@@ -665,7 +683,16 @@ export function IntelligentChatPanel({
       }
       inputPlaceholder="Ask me anything..."
       customEmptyState={renderEmptyState()}
-      customContent={githubStep !== 'idle' ? renderGitHubUI() : undefined}
+      customContent={
+        helpMode ? (
+          <HelpQuestionsPanel
+            onQuestionSelect={handleHelpQuestionSelect}
+            onClose={handleCloseHelp}
+          />
+        ) : githubStep !== 'idle' ? (
+          renderGitHubUI()
+        ) : undefined
+      }
       enableAttachments={true}
     />
   );

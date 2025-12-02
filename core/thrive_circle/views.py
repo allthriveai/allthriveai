@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models import Prefetch
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
@@ -324,6 +325,43 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = SideQuestSerializer
     permission_classes = [IsAuthenticated]
 
+    def _get_user_quest_or_404(self, user, side_quest):
+        """
+        Retrieve a UserSideQuest or raise 404 if not found.
+
+        Args:
+            user: The authenticated user
+            side_quest: The SideQuest object
+
+        Returns:
+            UserSideQuest: The user's quest record
+
+        Raises:
+            NotFound: If user has not started this quest
+        """
+        try:
+            return UserSideQuest.objects.get(user=user, side_quest=side_quest)
+        except UserSideQuest.DoesNotExist as e:
+            raise NotFound('You have not started this quest yet.') from e
+
+    def _log_quest_completion(self, user, side_quest, user_quest):
+        """
+        Log when a user completes a quest.
+
+        Args:
+            user: The authenticated user
+            side_quest: The SideQuest object
+            user_quest: The UserSideQuest object with completion details
+        """
+        logger.info(
+            f'User completed side quest: {side_quest.title}',
+            extra={
+                'user_id': user.id,
+                'quest_id': str(side_quest.id),
+                'xp_awarded': user_quest.xp_awarded,
+            },
+        )
+
     def get_queryset(self):
         """
         Return only active quests that are currently available.
@@ -549,10 +587,7 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({'error': 'Increment must be a non-negative integer.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get user's quest
-        try:
-            user_quest = UserSideQuest.objects.get(user=user, side_quest=side_quest)
-        except UserSideQuest.DoesNotExist:
-            return Response({'error': 'You have not started this quest yet.'}, status=status.HTTP_404_NOT_FOUND)
+        user_quest = self._get_user_quest_or_404(user, side_quest)
 
         if user_quest.is_completed:
             return Response({'error': 'This quest is already completed.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -564,15 +599,7 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
         # Check if quest is now complete
         if user_quest.current_progress >= user_quest.target_progress:
             user_quest.complete()
-
-            logger.info(
-                f'User completed side quest: {side_quest.title}',
-                extra={
-                    'user_id': user.id,
-                    'quest_id': str(side_quest.id),
-                    'xp_awarded': user_quest.xp_awarded,
-                },
-            )
+            self._log_quest_completion(user, side_quest, user_quest)
 
         return Response(UserSideQuestSerializer(user_quest).data)
 
@@ -598,24 +625,47 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
         side_quest = self.get_object()
 
         # Get user's quest
-        try:
-            user_quest = UserSideQuest.objects.get(user=user, side_quest=side_quest)
-        except UserSideQuest.DoesNotExist:
-            return Response({'error': 'You have not started this quest yet.'}, status=status.HTTP_404_NOT_FOUND)
+        user_quest = self._get_user_quest_or_404(user, side_quest)
 
         if user_quest.is_completed:
             return Response({'error': 'This quest is already completed.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Complete the quest
         user_quest.complete()
+        self._log_quest_completion(user, side_quest, user_quest)
 
+        return Response(UserSideQuestSerializer(user_quest).data)
+
+    @action(detail=True, methods=['post'])
+    def abandon(self, request, pk=None):
+        """
+        Abandon (cancel) an in-progress side quest.
+
+        This deletes the UserSideQuest record, allowing the user to restart the quest later.
+
+        Returns:
+            204 No Content on success
+        """
+        user = request.user
+        side_quest = self.get_object()
+
+        # Get user's quest
+        user_quest = self._get_user_quest_or_404(user, side_quest)
+
+        if user_quest.is_completed:
+            return Response({'error': 'Cannot abandon a completed quest.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Log before deletion
         logger.info(
-            f'User completed side quest: {side_quest.title}',
+            f'User abandoned side quest: {side_quest.title}',
             extra={
                 'user_id': user.id,
                 'quest_id': str(side_quest.id),
-                'xp_awarded': user_quest.xp_awarded,
+                'progress': f'{user_quest.current_progress}/{user_quest.target_progress}',
             },
         )
 
-        return Response(UserSideQuestSerializer(user_quest).data)
+        # Delete the user quest record
+        user_quest.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

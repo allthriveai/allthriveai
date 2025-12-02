@@ -10,6 +10,7 @@ import {
   getAllCategoryProgress,
   getDailyQuests,
 } from '@/services/thriveCircle';
+import { tailwindColorToHex } from '@/utils/colors';
 import type { QuestCategory, QuestCategoryProgress, SideQuest } from '@/types/models';
 
 export function useQuestCategories() {
@@ -54,9 +55,12 @@ export function useQuestCategories() {
     retry: 1,
   });
 
-  // Merge categories with their progress
+  // Merge categories with their progress and convert colors to hex
   const categoriesWithProgress = (categories || []).map((category) => ({
     ...category,
+    // Convert Tailwind color names to hex values
+    colorFrom: tailwindColorToHex(category.colorFrom),
+    colorTo: tailwindColorToHex(category.colorTo),
     progress: categoryProgress?.[category.slug] || null,
   }));
 

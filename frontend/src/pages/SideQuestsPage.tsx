@@ -35,6 +35,7 @@ import {
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons';
 import type { QuestCategory, QuestCategoryProgress, SideQuest, UserSideQuest } from '@/types/models';
+import { DEFAULT_QUEST_COLORS } from '@/utils/colors';
 
 // Map icon names from backend to FontAwesome icons
 const categoryIconMap: Record<string, IconDefinition> = {
@@ -76,7 +77,9 @@ export default function SideQuestsPage() {
     myQuests,
     isLoading,
     startQuestAsync,
-    isStartingQuest
+    isStartingQuest,
+    abandonQuest,
+    isAbandoningQuest,
   } = useSideQuests();
 
   const {
@@ -99,15 +102,27 @@ export default function SideQuestsPage() {
     return myQuests.find(uq => uq.sideQuest.id === questId);
   };
 
+  // Get colors and category for a quest
+  const getQuestCategoryInfo = (quest: SideQuest | null, userQuest: UserSideQuest | null) => {
+    const sideQuest = userQuest?.sideQuest || quest;
+    if (!sideQuest?.categorySlug) return { colors: undefined, category: undefined };
+    const category = categories.find(c => c.slug === sideQuest.categorySlug);
+    if (!category) return { colors: undefined, category: undefined };
+    return {
+      colors: { colorFrom: category.colorFrom, colorTo: category.colorTo },
+      category,
+    };
+  };
+
+  // Get colors for the currently selected quest
+  const { colors: selectedQuestColors, category: selectedQuestCategory } = getQuestCategoryInfo(selectedQuest, selectedUserQuest);
+
   // Handle quest click
   const handleQuestClick = (quest: SideQuest) => {
-    console.log('handleQuestClick called with quest:', quest);
     const userQuest = getUserQuestStatus(quest.id);
-    console.log('userQuest found:', userQuest);
     setSelectedQuest(userQuest ? null : quest);
     setSelectedUserQuest(userQuest || null);
     setTrayOpen(true);
-    console.log('trayOpen set to true');
   };
 
   // Handle closing the tray
@@ -156,23 +171,31 @@ export default function SideQuestsPage() {
     }
   };
 
-  // TEMP: Disabled auth check for testing
-  // if (!isAuthenticated) {
-  //   return (
-  //     <DashboardLayout>
-  //       <div className="h-full flex items-center justify-center">
-  //         <div className="text-center">
-  //           <h1 className="text-4xl font-bold mb-2">Join Side Quests</h1>
-  //           <p className="text-muted">Log in to discover and complete optional challenges for bonus XP</p>
-  //         </div>
-  //       </div>
-  //     </DashboardLayout>
-  //   );
-  // }
+  // Show login prompt for unauthenticated users
+  if (!isAuthenticated) {
+    return (
+      <DashboardLayout>
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold mb-2">Join Side Quests</h1>
+            <p className="text-muted">Log in to discover and complete optional challenges for bonus XP</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const mainCategories = categories.filter(c => c.categoryType !== 'daily');
   const inProgressQuests = myQuests.filter(q => q.status === 'in_progress');
   const getQuestsForCategory = (categorySlug: string) => availableQuests.filter(q => q.categorySlug === categorySlug);
+
+  // Helper to convert hex to rgba
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
 
   // Expanded Category View - Game Detail Page
   if (selectedCategory) {
@@ -185,6 +208,10 @@ export default function SideQuestsPage() {
       const uq = getUserQuestStatus(q.id);
       return sum + (uq?.status === 'completed' ? q.pointsReward : 0);
     }, 0);
+
+    // Category colors
+    const catColorFrom = selectedCategory.colorFrom || DEFAULT_QUEST_COLORS.colorFrom;
+    const catColorTo = selectedCategory.colorTo || DEFAULT_QUEST_COLORS.colorTo;
 
     return (
       <DashboardLayout>
@@ -207,14 +234,15 @@ export default function SideQuestsPage() {
             <div
               className="h-64 sm:h-80 relative overflow-hidden"
               style={{
-                background: `linear-gradient(135deg, rgba(34, 211, 238, 0.3) 0%, rgba(74, 222, 128, 0.2) 50%, rgba(2, 6, 23, 0.9) 100%)`,
+                background: `linear-gradient(135deg, ${hexToRgba(catColorFrom, 0.3)} 0%, ${hexToRgba(catColorTo, 0.2)} 50%, rgba(2, 6, 23, 0.9) 100%)`,
               }}
             >
               {/* Large Icon */}
               <div className="absolute inset-0 flex items-center justify-center opacity-30">
                 <FontAwesomeIcon
                   icon={getCategoryIcon(selectedCategory.icon)}
-                  className="text-[120px] sm:text-[150px] text-cyan-400"
+                  className="text-[120px] sm:text-[150px]"
+                  style={{ color: catColorFrom }}
                 />
               </div>
 
@@ -235,9 +263,9 @@ export default function SideQuestsPage() {
                   <span
                     className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.3), rgba(74, 222, 128, 0.2))',
-                      border: '1px solid rgba(34, 211, 238, 0.4)',
-                      color: '#22d3ee',
+                      background: `linear-gradient(135deg, ${hexToRgba(catColorFrom, 0.3)}, ${hexToRgba(catColorTo, 0.2)})`,
+                      border: `1px solid ${hexToRgba(catColorFrom, 0.4)}`,
+                      color: catColorFrom,
                     }}
                   >
                     Quest Path
@@ -253,7 +281,7 @@ export default function SideQuestsPage() {
                 <h1
                   className="text-3xl sm:text-4xl font-black mb-3"
                   style={{
-                    background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+                    background: `linear-gradient(135deg, ${catColorFrom}, ${catColorTo})`,
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                   }}
@@ -270,7 +298,7 @@ export default function SideQuestsPage() {
                 <div className="flex flex-wrap items-center gap-6">
                   {/* Quest Count */}
                   <div className="flex items-center gap-2">
-                    <FontAwesomeIcon icon={faScroll} className="text-cyan-400" />
+                    <FontAwesomeIcon icon={faScroll} style={{ color: catColorFrom }} />
                     <span className="text-white font-medium">{totalCount} Quests</span>
                   </div>
 
@@ -287,11 +315,11 @@ export default function SideQuestsPage() {
                         className="h-full rounded-full transition-all"
                         style={{
                           width: `${progressPercent}%`,
-                          background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+                          background: `linear-gradient(135deg, ${catColorFrom}, ${catColorTo})`,
                         }}
                       />
                     </div>
-                    <span className="text-cyan-400 font-bold">{Math.round(progressPercent)}%</span>
+                    <span style={{ color: catColorFrom }} className="font-bold">{Math.round(progressPercent)}%</span>
                   </div>
                 </div>
               </div>
@@ -301,7 +329,7 @@ export default function SideQuestsPage() {
           {/* Quests Section */}
           <div className="max-w-4xl mx-auto px-6 py-8">
             <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-              <FontAwesomeIcon icon={faGamepad} className="text-cyan-400" />
+              <FontAwesomeIcon icon={faGamepad} style={{ color: catColorFrom }} />
               Available Quests
             </h2>
 
@@ -339,12 +367,12 @@ export default function SideQuestsPage() {
                         background: isCompleted
                           ? 'linear-gradient(135deg, rgba(74, 222, 128, 0.12), rgba(74, 222, 128, 0.04))'
                           : isInProgress
-                            ? 'linear-gradient(135deg, rgba(34, 211, 238, 0.12), rgba(34, 211, 238, 0.04))'
+                            ? `linear-gradient(135deg, ${hexToRgba(catColorFrom, 0.12)}, ${hexToRgba(catColorFrom, 0.04)})`
                             : 'rgba(255, 255, 255, 0.03)',
                         border: isCompleted
                           ? '1px solid rgba(74, 222, 128, 0.25)'
                           : isInProgress
-                            ? '1px solid rgba(34, 211, 238, 0.25)'
+                            ? `1px solid ${hexToRgba(catColorFrom, 0.25)}`
                             : '1px solid rgba(255, 255, 255, 0.06)',
                       }}
                     >
@@ -355,7 +383,7 @@ export default function SideQuestsPage() {
                           background: isCompleted
                             ? 'linear-gradient(135deg, rgba(74, 222, 128, 0.3), rgba(74, 222, 128, 0.1))'
                             : isInProgress
-                              ? 'linear-gradient(135deg, rgba(34, 211, 238, 0.3), rgba(34, 211, 238, 0.1))'
+                              ? `linear-gradient(135deg, ${hexToRgba(catColorFrom, 0.3)}, ${hexToRgba(catColorFrom, 0.1)})`
                               : 'rgba(255, 255, 255, 0.05)',
                         }}
                       >
@@ -364,7 +392,7 @@ export default function SideQuestsPage() {
                         ) : isCompleted ? (
                           <FontAwesomeIcon icon={faCheck} className="text-green-400" />
                         ) : isInProgress ? (
-                          <FontAwesomeIcon icon={faPlay} className="text-cyan-400" />
+                          <FontAwesomeIcon icon={faPlay} style={{ color: catColorFrom }} />
                         ) : (
                           <span className="text-slate-400">{index + 1}</span>
                         )}
@@ -377,7 +405,13 @@ export default function SideQuestsPage() {
                             {quest.title}
                           </h3>
                           {isInProgress && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 font-medium flex-shrink-0">
+                            <span
+                              className="text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                              style={{
+                                backgroundColor: hexToRgba(catColorFrom, 0.2),
+                                color: catColorFrom,
+                              }}
+                            >
                               ACTIVE
                             </span>
                           )}
@@ -394,11 +428,11 @@ export default function SideQuestsPage() {
                                 className="h-full rounded-full"
                                 style={{
                                   width: `${userQuest.progressPercentage}%`,
-                                  background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+                                  background: `linear-gradient(135deg, ${catColorFrom}, ${catColorTo})`,
                                 }}
                               />
                             </div>
-                            <span className="text-xs text-cyan-400">{userQuest.progressPercentage}%</span>
+                            <span className="text-xs" style={{ color: catColorFrom }}>{userQuest.progressPercentage}%</span>
                           </div>
                         )}
                       </div>
@@ -436,6 +470,13 @@ export default function SideQuestsPage() {
           userQuest={selectedUserQuest}
           onStartQuest={handleStartQuest}
           isStarting={isStartingQuest}
+          onAbandon={(questId) => {
+            abandonQuest(questId);
+            handleCloseTray();
+          }}
+          isAbandoning={isAbandoningQuest}
+          colors={selectedQuestColors}
+          category={selectedQuestCategory}
         />
       </DashboardLayout>
     );
@@ -516,25 +557,44 @@ export default function SideQuestsPage() {
                 <h2 className="text-lg font-bold text-white">Continue Playing</h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {inProgressQuests.map((userQuest) => (
-                    <button
+                {inProgressQuests.map((userQuest) => {
+                  // Get category colors for this quest
+                  const { colors: questColors } = getQuestCategoryInfo(null, userQuest);
+                  const colorFrom = questColors?.colorFrom || DEFAULT_QUEST_COLORS.colorFrom;
+                  const colorTo = questColors?.colorTo || DEFAULT_QUEST_COLORS.colorTo;
+
+                  return (
+                    <div
                       key={userQuest.id}
+                      className="group relative overflow-hidden rounded-xl text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-xl cursor-pointer"
+                      style={{
+                        background: `linear-gradient(135deg, ${hexToRgba(colorFrom, 0.15)}, ${hexToRgba(colorTo, 0.05)})`,
+                        border: `1px solid ${hexToRgba(colorFrom, 0.3)}`,
+                      }}
                       onClick={() => {
                         setSelectedQuest(null);
                         setSelectedUserQuest(userQuest);
                         setTrayOpen(true);
                       }}
-                      className="group relative overflow-hidden rounded-xl text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(34, 211, 238, 0.05))',
-                        border: '1px solid rgba(34, 211, 238, 0.3)',
-                      }}
                     >
+                      {/* Delete Button - appears on hover */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          abandonQuest(userQuest.sideQuest.id);
+                        }}
+                        disabled={isAbandoningQuest}
+                        className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 bg-red-500/80 hover:bg-red-500 text-white shadow-lg"
+                        title="Cancel quest"
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="text-xs" />
+                      </button>
+
                       {/* Glow Effect */}
                       <div
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
                         style={{
-                          background: 'radial-gradient(circle at center, rgba(34, 211, 238, 0.2), transparent 70%)',
+                          background: `radial-gradient(circle at center, ${hexToRgba(colorFrom, 0.2)}, transparent 70%)`,
                         }}
                       />
 
@@ -543,12 +603,18 @@ export default function SideQuestsPage() {
                           <div
                             className="w-10 h-10 rounded-lg flex items-center justify-center"
                             style={{
-                              background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.4), rgba(74, 222, 128, 0.2))',
+                              background: `linear-gradient(135deg, ${hexToRgba(colorFrom, 0.4)}, ${hexToRgba(colorTo, 0.2)})`,
                             }}
                           >
-                            <FontAwesomeIcon icon={faPlay} className="text-cyan-400" />
+                            <FontAwesomeIcon icon={faPlay} style={{ color: colorFrom }} />
                           </div>
-                          <span className="text-[10px] px-2 py-1 rounded-full bg-cyan-500/30 text-cyan-300 font-bold animate-pulse">
+                          <span
+                            className="text-[10px] px-2 py-1 rounded-full font-bold animate-pulse"
+                            style={{
+                              backgroundColor: hexToRgba(colorFrom, 0.3),
+                              color: colorFrom,
+                            }}
+                          >
                             IN PROGRESS
                           </span>
                         </div>
@@ -565,15 +631,16 @@ export default function SideQuestsPage() {
                               className="h-full rounded-full transition-all"
                               style={{
                                 width: `${userQuest.progressPercentage}%`,
-                                background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+                                background: `linear-gradient(135deg, ${colorFrom}, ${colorTo})`,
                               }}
                             />
                           </div>
-                          <span className="text-sm font-bold text-cyan-400">{userQuest.progressPercentage}%</span>
+                          <span className="text-sm font-bold" style={{ color: colorFrom }}>{userQuest.progressPercentage}%</span>
                         </div>
                       </div>
-                    </button>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -611,6 +678,10 @@ export default function SideQuestsPage() {
                   const totalXP = categoryQuests.reduce((sum, q) => sum + q.pointsReward, 0);
                   const isComplete = progressPercent === 100;
 
+                  // Category colors
+                  const cardColorFrom = category.colorFrom || DEFAULT_QUEST_COLORS.colorFrom;
+                  const cardColorTo = category.colorTo || DEFAULT_QUEST_COLORS.colorTo;
+
                   return (
                     <button
                       key={category.id}
@@ -629,14 +700,15 @@ export default function SideQuestsPage() {
                       <div
                         className="h-32 relative overflow-hidden"
                         style={{
-                          background: `linear-gradient(135deg, rgba(34, 211, 238, 0.2) 0%, rgba(74, 222, 128, 0.15) 50%, rgba(2, 6, 23, 0.8) 100%)`,
+                          background: `linear-gradient(135deg, ${hexToRgba(cardColorFrom, 0.2)} 0%, ${hexToRgba(cardColorTo, 0.15)} 50%, rgba(2, 6, 23, 0.8) 100%)`,
                         }}
                       >
                         {/* Large Icon as Cover Art */}
                         <div className="absolute inset-0 flex items-center justify-center">
                           <FontAwesomeIcon
                             icon={getCategoryIcon(category.icon)}
-                            className="text-6xl text-cyan-400 opacity-60 group-hover:scale-110 transition-transform duration-300"
+                            className="text-6xl opacity-60 group-hover:scale-110 transition-transform duration-300"
+                            style={{ color: cardColorFrom }}
                           />
                         </div>
 
@@ -644,7 +716,7 @@ export default function SideQuestsPage() {
                         <div
                           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                           style={{
-                            background: 'radial-gradient(circle at center, rgba(34, 211, 238, 0.3), transparent 70%)',
+                            background: `radial-gradient(circle at center, ${hexToRgba(cardColorFrom, 0.3)}, transparent 70%)`,
                           }}
                         />
 
@@ -669,8 +741,12 @@ export default function SideQuestsPage() {
                       {/* Game Info */}
                       <div className="p-4">
                         {/* Title */}
-                        <h3 className="font-bold text-white text-lg mb-1 group-hover:text-cyan-400 transition-colors">
-                          {category.name}
+                        <h3
+                          className="font-bold text-white text-lg mb-1 transition-colors"
+                          style={{ ['--hover-color' as string]: cardColorFrom }}
+                        >
+                          <span className="group-hover:hidden">{category.name}</span>
+                          <span className="hidden group-hover:inline" style={{ color: cardColorFrom }}>{category.name}</span>
                         </h3>
 
                         {/* Description */}
@@ -699,7 +775,7 @@ export default function SideQuestsPage() {
                                 width: `${progressPercent}%`,
                                 background: isComplete
                                   ? 'linear-gradient(135deg, #4ade80, #22c55e)'
-                                  : 'linear-gradient(135deg, #22d3ee, #4ade80)',
+                                  : `linear-gradient(135deg, ${cardColorFrom}, ${cardColorTo})`,
                               }}
                             />
                           </div>
@@ -731,6 +807,13 @@ export default function SideQuestsPage() {
         userQuest={selectedUserQuest}
         onStartQuest={handleStartQuest}
         isStarting={isStartingQuest}
+        onAbandon={(questId) => {
+          abandonQuest(questId);
+          handleCloseTray();
+        }}
+        isAbandoning={isAbandoningQuest}
+        colors={selectedQuestColors}
+        category={selectedQuestCategory}
       />
     </DashboardLayout>
   );

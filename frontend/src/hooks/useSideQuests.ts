@@ -10,6 +10,7 @@ import {
   startSideQuest,
   updateSideQuestProgress,
   completeSideQuest,
+  abandonSideQuest,
 } from '@/services/thriveCircle';
 import type { SideQuest, UserSideQuest } from '@/types/models';
 
@@ -74,6 +75,17 @@ export function useSideQuests() {
     },
   });
 
+  // Abandon quest mutation
+  const abandonQuestMutation = useMutation({
+    mutationFn: (questId: string) => abandonSideQuest(questId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['side-quests'] });
+    },
+    onError: (error) => {
+      console.error('Failed to abandon quest:', error);
+    },
+  });
+
   return {
     // Available quests
     availableQuests: (availableQuests || []) as SideQuest[],
@@ -96,5 +108,9 @@ export function useSideQuests() {
 
     completeQuest: completeQuestMutation.mutate,
     isCompletingQuest: completeQuestMutation.isPending,
+
+    abandonQuest: abandonQuestMutation.mutate,
+    abandonQuestAsync: abandonQuestMutation.mutateAsync,
+    isAbandoningQuest: abandonQuestMutation.isPending,
   };
 }
