@@ -11,6 +11,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.taxonomy.models import UserInteraction
+from core.thrive_circle.models import UserSideQuest
+from core.thrive_circle.signals import track_search_used
 from core.throttles import AuthenticatedProjectsThrottle, ProjectLikeThrottle, PublicProjectsThrottle
 from core.users.models import User
 
@@ -155,13 +157,34 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 },
             )
 
-        return Response(
-            {
-                'liked': liked,
-                'heart_count': project.heart_count,
-            },
-            status=status.HTTP_200_OK,
-        )
+        response_data = {
+            'liked': liked,
+            'heart_count': project.heart_count,
+        }
+
+        # Check for completed quests only when liking (not unliking)
+        if liked:
+            from django.utils import timezone
+
+            recent_completed_quests = UserSideQuest.objects.filter(
+                user=user,
+                status='completed',
+                completed_at__gte=timezone.now() - timezone.timedelta(seconds=5),
+            ).select_related('side_quest', 'side_quest__category')
+
+            if recent_completed_quests.exists():
+                response_data['completedQuests'] = [
+                    {
+                        'id': str(uq.side_quest.id),
+                        'title': uq.side_quest.title,
+                        'description': uq.side_quest.description,
+                        'pointsAwarded': uq.points_awarded or uq.side_quest.points_reward,
+                        'categoryName': uq.side_quest.category.name if uq.side_quest.category else None,
+                    }
+                    for uq in recent_completed_quests
+                ]
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
     def perform_update(self, serializer):
         """Called when updating a project."""
@@ -739,6 +762,10 @@ def semantic_search(request):
     query = request.data.get('query', '').strip()
     if not query:
         return Response({'error': 'Query is required'}, status=400)
+
+    # Track search usage for quest progress (only for authenticated users)
+    if request.user.is_authenticated:
+        track_search_used(request.user, query)
 
     limit = min(int(request.data.get('limit', 50)), 100)
     alpha = float(request.data.get('alpha', 0.7))

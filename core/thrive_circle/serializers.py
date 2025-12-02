@@ -1,11 +1,46 @@
 """Serializers for Thrive Circle API."""
 
+import json
+import sys
+
 from rest_framework import serializers
 
 from core.users.models import User
 
 from .models import PointActivity, QuestCategory, SideQuest, UserSideQuest, WeeklyGoal
 from .services import PointsConfig
+
+# Maximum sizes for JSON fields to prevent abuse
+MAX_REQUIREMENTS_SIZE = 4096  # 4KB
+MAX_STEPS_SIZE = 32768  # 32KB (steps can be larger due to narrative content)
+MAX_PROGRESS_DATA_SIZE = 8192  # 8KB
+
+
+def validate_json_size(value, max_size: int, field_name: str):
+    """
+    Validate that a JSON field doesn't exceed maximum size.
+
+    Args:
+        value: The JSON value (dict or list)
+        max_size: Maximum allowed size in bytes
+        field_name: Name of the field for error message
+
+    Raises:
+        serializers.ValidationError: If size exceeds limit
+    """
+    if value is None:
+        return value
+
+    try:
+        size = sys.getsizeof(json.dumps(value))
+        if size > max_size:
+            raise serializers.ValidationError(
+                f'{field_name} exceeds maximum size of {max_size} bytes (got {size} bytes)'
+            )
+    except (TypeError, ValueError) as e:
+        raise serializers.ValidationError(f'{field_name} contains invalid JSON: {e}') from e
+
+    return value
 
 
 class PointActivitySerializer(serializers.ModelSerializer):
@@ -250,6 +285,10 @@ class UserSideQuestSerializer(serializers.ModelSerializer):
     current_step = serializers.SerializerMethodField()
     next_step_url = serializers.SerializerMethodField()
     steps_progress = serializers.SerializerMethodField()
+
+    def validate_progress_data(self, value):
+        """Validate progress_data JSON field size."""
+        return validate_json_size(value, MAX_PROGRESS_DATA_SIZE, 'progress_data')
 
     class Meta:
         model = UserSideQuest

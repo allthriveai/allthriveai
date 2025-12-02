@@ -106,6 +106,17 @@ def track_quiz_completed(sender, instance, created, **kwargs):
     if not user:
         return
 
+    # IDEMPOTENCY: Only track on first completion (when completed_at is newly set)
+    # Check if this is an update where completed_at was just set
+    if not created:
+        # Use a cache key to prevent duplicate processing
+        from django.core.cache import cache
+
+        cache_key = f'quiz_tracked_{instance.pk}'
+        if cache.get(cache_key):
+            return  # Already tracked
+        cache.set(cache_key, True, timeout=60)  # Prevent duplicate tracking for 60 seconds
+
     # Calculate score
     score = instance.percentage_score if hasattr(instance, 'percentage_score') else 0
 

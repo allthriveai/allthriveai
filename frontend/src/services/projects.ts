@@ -1,6 +1,7 @@
 import { api } from './api';
 import type { Project, ProjectPayload, PaginatedResponse, ProjectContent, ProjectType, Tool, Taxonomy } from '@/types/models';
 import type { ApiResponse } from '@/types/api';
+import type { CompletedQuestInfo } from '@/contexts/QuestCompletionContext';
 
 // Backend project response (before camelCase transform is applied)
 interface ProjectApiResponse {
@@ -165,12 +166,22 @@ export async function getUserProjects(username: string): Promise<{
 
 /**
  * Toggle like/heart on a project
+ * Returns the like status, heart count, and any completed quests triggered by this action
  */
-export async function toggleProjectLike(projectId: number): Promise<{ liked: boolean; heartCount: number }> {
-  const response = await api.post<{ liked: boolean; heart_count: number }>(`/me/projects/${projectId}/toggle-like/`);
+export async function toggleProjectLike(projectId: number): Promise<{
+  liked: boolean;
+  heartCount: number;
+  completedQuests?: CompletedQuestInfo[];
+}> {
+  const response = await api.post<{
+    liked: boolean;
+    heart_count: number;
+    completedQuests?: CompletedQuestInfo[];
+  }>(`/me/projects/${projectId}/toggle-like/`);
   return {
     liked: response.data.liked,
     heartCount: response.data.heart_count,
+    completedQuests: response.data.completedQuests,
   };
 }
 

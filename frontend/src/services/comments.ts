@@ -1,5 +1,6 @@
 import { api } from './api';
 import { handleError, logError, validators } from '@/utils/errorHandler';
+import type { CompletedQuestInfo } from '@/contexts/QuestCompletionContext';
 
 export interface Comment {
   id: number;
@@ -21,6 +22,10 @@ export interface CommentCreateData {
 
 export interface CommentVoteData {
   vote_type: 'up' | 'down';
+}
+
+export interface CommentCreateResponse extends Comment {
+  completedQuests?: CompletedQuestInfo[];
 }
 
 /**
@@ -59,11 +64,12 @@ export async function getProjectComments(projectId: number): Promise<Comment[]> 
 
 /**
  * Create a new comment on a project
+ * Returns the created comment and any completed quests triggered by this action
  */
 export async function createProjectComment(
   projectId: number,
   data: CommentCreateData
-): Promise<Comment> {
+): Promise<CommentCreateResponse> {
   // Pre-validate content
   const validation = validators.commentContent(data.content);
   if (!validation.valid) {

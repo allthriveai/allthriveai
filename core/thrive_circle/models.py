@@ -159,12 +159,23 @@ class QuestCategory(models.Model):
         ordering = ['order', 'name']
         verbose_name = 'Quest Category'
         verbose_name_plural = 'Quest Categories'
+        indexes = [
+            models.Index(fields=['is_active', 'order']),
+            models.Index(fields=['slug']),
+            models.Index(fields=['is_featured', 'is_active']),
+            models.Index(fields=['category_type', 'is_active']),
+        ]
 
     def __str__(self):
         return self.name
 
     @property
     def quest_count(self):
+        """
+        WARNING: This property causes N+1 queries when used in list serialization.
+        For list views, use annotate(quest_count=Count('quests', filter=Q(quests__is_active=True)))
+        instead of accessing this property.
+        """
         return self.quests.filter(is_active=True).count()
 
 
@@ -420,6 +431,10 @@ class UserSideQuest(models.Model):
             models.Index(fields=['user', 'status']),
             models.Index(fields=['user', 'is_completed']),
             models.Index(fields=['side_quest', 'is_completed']),
+            # Additional indexes for scalability at 100K+ users
+            models.Index(fields=['user', '-updated_at']),
+            models.Index(fields=['user', 'status', '-updated_at']),
+            models.Index(fields=['is_completed', '-completed_at']),
         ]
 
     def __str__(self):
@@ -432,19 +447,18 @@ class UserSideQuest(models.Model):
             return 0
         return min(100, int((self.current_progress / self.target_progress) * 100))
 
-    def complete(self):
-        """Mark quest as completed and award points."""
-        if self.is_completed:
-            return
+    def complete(self, force: bool = False):
+        """
+        Mark quest as completed and award points.
 
-        self.is_completed = True
-        self.status = 'completed'
-        self.completed_at = timezone.now()
-        self.points_awarded = self.side_quest.points_reward
-        self.save()
+        Uses centralized QuestCompletionService for consistent behavior.
 
-        # Award points to user
-        self.user.add_points(self.points_awarded, 'side_quest', f'Completed: {self.side_quest.title}')
+        Args:
+            force: If True, skip requirement validation (for auto-tracking completion)
+        """
+        from .services import QuestCompletionService
+
+        QuestCompletionService.complete_quest(self, force=force)
 
     def get_current_step(self):
         """Get the current step for guided quests."""

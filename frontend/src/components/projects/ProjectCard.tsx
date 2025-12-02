@@ -31,7 +31,7 @@ import { ToolTray } from '@/components/tools/ToolTray';
 import { SlideUpHero } from './SlideUpHero';
 import { useAuth } from '@/hooks/useAuth';
 import { useReward } from 'react-rewards';
-import { getCategoryGradientStyle } from '@/utils/categoryColors';
+import { getCategoryGradientStyle, getCategoryColors } from '@/utils/categoryColors';
 
 interface ProjectCardProps {
   project: Project;
@@ -215,7 +215,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       };
     }
 
-    // Fallback: use featuredImageUrl > bannerUrl > Unsplash random image
+    // Fallback: use featuredImageUrl > bannerUrl > gradient (as last resort)
     if (project.featuredImageUrl) {
       return { type: 'image' as const, url: project.featuredImageUrl };
     }
@@ -230,7 +230,14 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     // Create a gradient placeholder with project title
     // Use category color for meaningful gradients, fallback to deterministic gradient
     const primaryCategory = project.categoriesDetails?.[0];
-    const gradientStyle = getCategoryGradientStyle(primaryCategory?.color, project.id);
+
+    // Get raw colors for animated gradient
+    const { from, to } = getCategoryColors(primaryCategory?.color, project.id);
+
+    // Create large dramatic swooping gradients like the Suncatcher design
+    const gradientStyle: React.CSSProperties = {
+      backgroundImage: `radial-gradient(ellipse 120% 150% at 95% -20%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 40%, transparent 70%), radial-gradient(ellipse 140% 180% at -10% 110%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.15) 35%, transparent 65%), linear-gradient(135deg, ${from} 0%, ${to} 50%, ${from} 100%)`,
+    };
 
     // Return a special type to render gradient instead of image
     return {
@@ -346,8 +353,9 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
             )}
 
             {isGradient && heroElement.type === 'gradient' && (
-              <div className="w-full aspect-[4/3] flex items-center justify-center p-8 pb-48 md:pb-8" style={heroElement.gradientStyle}>
-                <div className="text-center">
+              <div className="w-full aspect-[4/3] flex items-center justify-center p-8 pb-48 md:pb-8 animate-gradient-flow relative overflow-hidden" style={heroElement.gradientStyle}>
+                <div className="absolute inset-0 bg-noise-subtle opacity-50 mix-blend-overlay pointer-events-none" />
+                <div className="text-center relative z-10">
                   <h3 className="text-3xl font-bold text-white drop-shadow-lg">
                     {heroElement.title}
                   </h3>

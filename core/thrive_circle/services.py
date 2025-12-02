@@ -6,6 +6,8 @@ Handles points calculation logic and business rules
 import logging
 
 from django.conf import settings
+from django.db import transaction
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -159,3 +161,116 @@ class PointsService:
             logger.warning(
                 f'Unusually high quiz points: {amount}', extra={'activity_type': activity_type, 'amount': amount}
             )
+
+
+class QuestCompletionService:
+    """
+    Centralized service for quest completion logic.
+
+    All quest completions should go through this service to ensure
+    consistent behavior, validation, and logging.
+    """
+
+    # Status constants (avoid magic strings)
+    STATUS_NOT_STARTED = 'not_started'
+    STATUS_IN_PROGRESS = 'in_progress'
+    STATUS_COMPLETED = 'completed'
+    STATUS_EXPIRED = 'expired'
+
+    @classmethod
+    @transaction.atomic
+    def complete_quest(cls, user_quest, force: bool = False) -> bool:
+        """
+        Complete a quest with proper validation and atomic transaction.
+
+        Args:
+            user_quest: UserSideQuest instance to complete
+            force: If True, skip requirement validation (for system/admin use)
+
+        Returns:
+            bool: True if quest was completed, False if already completed
+
+        Raises:
+            ValueError: If requirements are not met and force=False
+        """
+
+        if user_quest.is_completed:
+            logger.debug(f'Quest already completed: {user_quest.side_quest.title}')
+            return False
+
+        side_quest = user_quest.side_quest
+
+        # Validate requirements unless forced
+        if not force:
+            cls._validate_requirements(user_quest, side_quest)
+
+        # Complete the quest
+        user_quest.is_completed = True
+        user_quest.status = cls.STATUS_COMPLETED
+        user_quest.completed_at = timezone.now()
+        user_quest.points_awarded = side_quest.points_reward
+        user_quest.save()
+
+        # Award points to user
+        user_quest.user.add_points(
+            user_quest.points_awarded,
+            'side_quest',
+            f'Completed: {side_quest.title}',
+        )
+
+        logger.info(
+            'Quest completed',
+            extra={
+                'user_id': user_quest.user.id,
+                'quest_id': str(side_quest.id),
+                'quest_title': side_quest.title,
+                'points_awarded': user_quest.points_awarded,
+            },
+        )
+
+        return True
+
+    @classmethod
+    def _validate_requirements(cls, user_quest, side_quest) -> None:
+        """
+        Validate that quest requirements are met.
+
+        Args:
+            user_quest: UserSideQuest instance
+            side_quest: SideQuest instance
+
+        Raises:
+            ValueError: If requirements are not met
+        """
+        # For guided quests, all steps must be completed
+        if side_quest.is_guided:
+            total_steps = len(side_quest.steps) if side_quest.steps else 0
+            if user_quest.current_step_index < total_steps:
+                remaining = total_steps - user_quest.current_step_index
+                raise ValueError(f'Quest not complete. {remaining} steps remaining.')
+
+        # For progress-based quests, must reach target
+        elif user_quest.current_progress < user_quest.target_progress:
+            raise ValueError(
+                f'Quest requirements not met. ' f'Progress: {user_quest.current_progress}/{user_quest.target_progress}'
+            )
+
+    @classmethod
+    def can_complete(cls, user_quest) -> tuple[bool, str | None]:
+        """
+        Check if a quest can be completed.
+
+        Args:
+            user_quest: UserSideQuest instance
+
+        Returns:
+            Tuple of (can_complete: bool, error_message: str | None)
+        """
+        if user_quest.is_completed:
+            return False, 'Quest is already completed.'
+
+        try:
+            cls._validate_requirements(user_quest, user_quest.side_quest)
+            return True, None
+        except ValueError as e:
+            return False, str(e)

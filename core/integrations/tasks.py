@@ -266,6 +266,11 @@ def import_github_repo_task(self, user_id: int, url: str, is_showcase: bool = Tr
         # Apply AI metadata (categories, topics, tools)
         apply_ai_metadata(project, analysis)
 
+        # Track GitHub import for quest progress
+        from core.thrive_circle.signals import track_github_imported
+
+        track_github_imported(user, url)
+
         logger.info(f'Successfully imported {owner}/{repo} as project {project.id} (task {self.request.id})')
 
         project_url = f'/{user.username}/{project.slug}'

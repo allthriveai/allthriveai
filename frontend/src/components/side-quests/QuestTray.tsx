@@ -262,7 +262,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{
-          backgroundColor: 'rgba(2, 6, 23, 0.98)',
+          backgroundColor: 'var(--bg-primary)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderLeft: `1px solid ${questColors.borderLight}`,
@@ -304,10 +304,10 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
             e.stopPropagation();
             onClose();
           }}
-          className="absolute top-4 right-4 p-2 rounded-xl transition-all hover:bg-white/5 z-20"
+          className="absolute top-4 right-4 p-2 rounded-xl transition-all hover:bg-white/5 dark:hover:bg-white/5 hover:bg-black/5 z-20"
           aria-label="Close"
         >
-          <XMarkIcon className="w-6 h-6 text-slate-400" />
+          <XMarkIcon className="w-6 h-6 text-muted" />
         </button>
 
         {/* Cinematic content */}
@@ -375,8 +375,8 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
                         : isMissionHeader
                           ? questColors.colorFrom
                           : isStep
-                            ? '#e2e8f0'
-                            : '#94a3b8',
+                            ? 'var(--text-primary)'
+                            : 'var(--text-secondary)',
                     textShadow: isTitle ? `0 0 20px ${questColors.textShadow}` : 'none',
                   }}
                 >
@@ -454,9 +454,10 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
                   e.stopPropagation();
                   handleDecline();
                 }}
-                className="w-full py-3 px-6 rounded-xl font-medium text-slate-400 transition-all hover:text-slate-300 hover:bg-white/5 flex items-center justify-center gap-2"
+                className="w-full py-3 px-6 rounded-xl font-medium text-muted transition-all hover:text-secondary flex items-center justify-center gap-2"
                 style={{
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  border: '1px solid var(--glass-border-subtle)',
+                  background: 'var(--glass-fill-subtle)',
                 }}
               >
                 <FontAwesomeIcon icon={faSkull} className="text-sm opacity-60" />
@@ -467,7 +468,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
 
           {/* Skip hint */}
           {!introComplete && (
-            <p className="absolute bottom-8 text-xs text-slate-500 animate-pulse">
+            <p className="absolute bottom-8 text-xs text-muted animate-pulse">
               Tap anywhere to skip
             </p>
           )}
@@ -483,7 +484,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}
       style={{
-        backgroundColor: 'rgba(2, 6, 23, 0.95)',
+        backgroundColor: 'var(--bg-primary)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         borderLeft: `1px solid ${questColors.borderLight}`,
@@ -537,7 +538,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
               >
                 {sideQuest.title}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted">
                 {isCompleted ? (
                   'Quest Completed!'
                 ) : isInProgress && totalSteps > 0 ? (
@@ -550,10 +551,10 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl transition-all hover:bg-white/5"
+            className="p-2 rounded-xl transition-all hover:bg-white/5 dark:hover:bg-white/5 hover:bg-black/5"
             aria-label="Close"
           >
-            <XMarkIcon className="w-6 h-6 text-slate-400" />
+            <XMarkIcon className="w-6 h-6 text-muted" />
           </button>
         </div>
 
@@ -581,7 +582,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
 
             {/* Estimated Time */}
             {sideQuest.estimatedMinutes && (
-              <div className="flex items-center gap-1.5 text-slate-400">
+              <div className="flex items-center gap-1.5 text-muted">
                 <ClockIcon className="w-4 h-4" />
                 <span className="text-sm">~{sideQuest.estimatedMinutes} min</span>
               </div>
@@ -591,13 +592,9 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
           {/* Quest Description */}
           {sideQuest.description && (
             <div
-              className="p-4 rounded-xl"
-              style={{
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-              }}
+              className="p-4 rounded-xl glass-subtle"
             >
-              <p className="text-sm text-slate-300 leading-relaxed">
+              <p className="text-sm text-secondary leading-relaxed">
                 {sideQuest.description}
               </p>
             </div>
@@ -612,7 +609,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
                 border: `1px solid ${questColors.borderLight}`,
               }}
             >
-              <p className="text-sm text-slate-300 leading-relaxed italic">
+              <p className="text-sm text-secondary leading-relaxed italic">
                 "{sideQuest.narrativeIntro}"
               </p>
             </div>
@@ -631,7 +628,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
                 <CheckIcon className="w-5 h-5 text-green-400" />
                 <span className="font-bold text-green-400">Quest Complete!</span>
               </div>
-              <p className="text-sm text-slate-300 leading-relaxed">
+              <p className="text-sm text-secondary leading-relaxed">
                 {sideQuest.narrativeComplete || `You earned +${userQuest?.xpAwarded || sideQuest.pointsReward} XP!`}
               </p>
             </div>
@@ -647,7 +644,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
           {/* Steps List (for in-progress guided quests) */}
           {isInProgress && sideQuest.isGuided && stepsProgress && stepsProgress.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
+              <h3 className="text-sm font-semibold text-secondary uppercase tracking-wider">
                 Journey Steps
               </h3>
               <div className="space-y-2">
@@ -666,17 +663,17 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
           {/* Progress bar for non-guided in-progress quests */}
           {isInProgress && !sideQuest.isGuided && userQuest && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
+              <h3 className="text-sm font-semibold text-secondary uppercase tracking-wider">
                 Progress
               </h3>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Current Progress</span>
-                  <span className="font-medium text-white">
+                  <span className="text-muted">Current Progress</span>
+                  <span className="font-medium text-default">
                     {userQuest.currentProgress} / {userQuest.targetProgress}
                   </span>
                 </div>
-                <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-3 rounded-full overflow-hidden" style={{ background: 'var(--glass-fill)' }}>
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
@@ -685,7 +682,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
                     }}
                   />
                 </div>
-                <div className="text-xs text-slate-500 text-right">
+                <div className="text-xs text-muted text-right">
                   {userQuest.progressPercentage}% complete
                 </div>
               </div>
@@ -714,7 +711,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
 
           {/* In progress without destination - Show encouragement */}
           {isInProgress && !currentStep?.destinationUrl && (
-            <div className="text-center text-slate-400 text-sm">
+            <div className="text-center text-muted text-sm">
               Keep exploring to complete this quest!
             </div>
           )}
@@ -723,7 +720,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
           {isInProgress && onAbandon && !showAbandonConfirm && (
             <button
               onClick={() => setShowAbandonConfirm(true)}
-              className="mt-3 w-full py-2 px-4 rounded-xl text-sm font-medium text-slate-400 hover:text-red-400 transition-colors border border-transparent hover:border-red-400/30 hover:bg-red-400/10"
+              className="mt-3 w-full py-2 px-4 rounded-xl text-sm font-medium text-muted hover:text-red-400 transition-colors border border-transparent hover:border-red-400/30 hover:bg-red-400/10"
             >
               Cancel Quest
             </button>
@@ -732,13 +729,14 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
           {/* Abandon Confirmation */}
           {isInProgress && onAbandon && showAbandonConfirm && (
             <div className="mt-3 space-y-3">
-              <p className="text-center text-sm text-slate-300">
+              <p className="text-center text-sm text-secondary">
                 Are you sure you want to cancel this quest? Your progress will be lost.
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowAbandonConfirm(false)}
-                  className="flex-1 py-2 px-4 rounded-xl text-sm font-medium text-slate-300 border border-slate-600 hover:bg-slate-700/50 transition-colors"
+                  className="flex-1 py-2 px-4 rounded-xl text-sm font-medium text-secondary transition-colors"
+                  style={{ border: '1px solid var(--glass-border)', background: 'var(--glass-fill-subtle)' }}
                   disabled={isAbandoning}
                 >
                   Keep Quest

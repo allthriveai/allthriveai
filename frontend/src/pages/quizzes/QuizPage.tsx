@@ -5,7 +5,8 @@ import { getQuiz, startQuiz, submitAnswer, completeQuiz } from '@/services/quiz'
 import { QuizCard } from '@/components/quiz/QuizCard';
 import { QuizProgress } from '@/components/quiz/QuizProgress';
 import { QuizResults } from '@/components/quiz/QuizResults';
-import type { Quiz, QuizQuestion, QuizAnswerResponse } from '@/components/quiz/types';
+import { QuestCompletionCelebration } from '@/components/side-quests/QuestCompletionCelebration';
+import type { Quiz, QuizQuestion, QuizAnswerResponse, CompletedQuestInfo } from '@/components/quiz/types';
 
 type QuizState = 'intro' | 'taking' | 'feedback' | 'results';
 
@@ -23,6 +24,8 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(true);
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [completedQuests, setCompletedQuests] = useState<CompletedQuestInfo[]>([]);
+  const [showCelebration, setShowCelebration] = useState(false);
   const questionStartTime = useRef<number>(Date.now());
 
   useEffect(() => {
@@ -114,8 +117,14 @@ export default function QuizPage() {
     if (!attemptId) return;
 
     try {
-      await completeQuiz(attemptId);
+      const response = await completeQuiz(attemptId);
       setQuizState('results');
+
+      // Check if any quests were completed
+      if (response.completedQuests && response.completedQuests.length > 0) {
+        setCompletedQuests(response.completedQuests);
+        setShowCelebration(true);
+      }
     } catch (err) {
       console.error('Failed to complete quiz:', err);
       setQuizState('results'); // Show results anyway
@@ -139,6 +148,7 @@ export default function QuizPage() {
   return (
     <DashboardLayout>
       {() => (
+        <>
         <div className="flex-1 overflow-auto">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {loading && (
@@ -294,6 +304,18 @@ export default function QuizPage() {
             )}
           </div>
         </div>
+
+        {/* Quest Completion Celebration */}
+        {showCelebration && completedQuests.length > 0 && (
+          <QuestCompletionCelebration
+            completedQuests={completedQuests}
+            onClose={() => {
+              setShowCelebration(false);
+              setCompletedQuests([]);
+            }}
+          />
+        )}
+      </>
       )}
     </DashboardLayout>
   );

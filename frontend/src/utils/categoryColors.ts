@@ -275,6 +275,27 @@ export function getCategoryGradientStyle(categoryColor?: string, projectId?: num
 }
 
 /**
+ * Get raw gradient colors for custom styling
+ */
+export function getCategoryColors(categoryColor?: string, projectId?: number): { from: string; to: string } {
+  const colorName = (categoryColor as ColorName) || null;
+  const classes = colorName ? jewelColorMap[colorName] : null;
+
+  if (classes) {
+    return { from: classes.gradientFrom, to: classes.gradientTo };
+  }
+
+  // Fallback
+  const fallbackColors: ColorName[] = [
+    'sapphire', 'emerald', 'amethyst', 'jade', 'topaz',
+    'tanzanite', 'ruby', 'morganite', 'peridot', 'rose-quartz'
+  ];
+  const index = projectId ? projectId % fallbackColors.length : 0;
+  const fallback = jewelColorMap[fallbackColors[index]];
+  return { from: fallback.gradientFrom, to: fallback.gradientTo };
+}
+
+/**
  * Category to Jewel color mapping
  * Use this when assigning colors to categories in the database
  */

@@ -6,7 +6,7 @@ from django.db import models
 from django.db.models import Prefetch
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
@@ -26,7 +26,7 @@ from .serializers import (
     WeeklyGoalSerializer,
 )
 from .services import PointsService
-from .utils import get_week_start
+from .utils import get_week_start, safe_int_param
 
 logger = logging.getLogger(__name__)
 
@@ -54,10 +54,32 @@ class ThriveCircleViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         """
         Optimize queryset with prefetch_related to prevent N+1 queries.
+
+        For list views (leaderboard), returns all users ordered by points.
+        Note: Consider adding privacy filtering based on user preferences if needed.
         """
         return User.objects.prefetch_related(
             Prefetch('point_activities', queryset=PointActivity.objects.order_by('-created_at')[:20])
         ).order_by('-total_points')
+
+    def get_object(self):
+        """
+        Override to enforce user isolation - users can only view their own detailed data.
+
+        For leaderboard privacy, users can only retrieve their own full profile via ID.
+        Other users' detailed gamification data is not accessible via direct ID lookup.
+        Use the list endpoint for public leaderboard view (limited data).
+        """
+        obj = super().get_object()
+
+        # Allow users to only view their own detailed gamification data
+        if obj.id != self.request.user.id:
+            raise PermissionDenied(
+                'You can only view your own detailed gamification data. '
+                'Use /my-status/ endpoint or view the leaderboard for public stats.'
+            )
+
+        return obj
 
     @action(detail=False, methods=['get'])
     def my_status(self, request):
@@ -223,7 +245,7 @@ class ThriveCircleViewSet(viewsets.ReadOnlyModelViewSet):
         from core.projects.serializers import ProjectSerializer
 
         user = request.user
-        limit = min(int(request.query_params.get('limit', 10)), 50)
+        limit = safe_int_param(request.query_params.get('limit'), default=10, min_val=1, max_val=50)
 
         # Get users in the same tier (excluding current user)
         same_tier_users = User.objects.filter(tier=user.tier).exclude(id=user.id).values_list('id', flat=True)
@@ -273,7 +295,17 @@ class QuestCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'slug'
 
     def get_queryset(self):
-        return QuestCategory.objects.filter(is_active=True).order_by('order')
+        """
+        Return active categories with annotated quest count to prevent N+1 queries.
+
+        Uses annotate instead of the quest_count property to efficiently count
+        active quests per category in a single query.
+        """
+        return (
+            QuestCategory.objects.filter(is_active=True)
+            .annotate(annotated_quest_count=models.Count('quests', filter=models.Q(quests__is_active=True)))
+            .order_by('order')
+        )
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -294,11 +326,50 @@ class QuestCategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=['get'])
     def all_progress(self, request):
-        """Get user's progress across all categories."""
-        categories = self.get_queryset()
+        """
+        Get user's progress across all categories.
+
+        Optimized to fetch all progress data in 2 queries instead of 2N+1.
+        """
+        user = request.user
+        categories = list(self.get_queryset())
+        category_ids = [c.id for c in categories]
+
+        # Single query to get all user quest progress grouped by category
+        from django.db.models import Count, Q
+
+        user_quest_stats = (
+            UserSideQuest.objects.filter(
+                user=user,
+                side_quest__category_id__in=category_ids,
+                side_quest__is_active=True,
+            )
+            .values('side_quest__category_id')
+            .annotate(
+                completed_count=Count('id', filter=Q(is_completed=True)),
+                in_progress_count=Count('id', filter=Q(status='in_progress', is_completed=False)),
+                bonus_claimed=Count('id', filter=Q(side_quest__quest_type='category_complete', is_completed=True)),
+            )
+        )
+
+        # Build lookup dict
+        progress_by_category = {stat['side_quest__category_id']: stat for stat in user_quest_stats}
+
+        # Get total quests per category (already annotated in queryset)
         result = []
         for category in categories:
-            progress = QuestTracker.get_category_progress(request.user, category)
+            stats = progress_by_category.get(category.id, {})
+            completed = stats.get('completed_count', 0)
+            total = category.annotated_quest_count if hasattr(category, 'annotated_quest_count') else 0
+
+            progress = {
+                'total_quests': total,
+                'completed_quests': completed,
+                'in_progress_quests': stats.get('in_progress_count', 0),
+                'completion_percentage': int(completed / total * 100) if total > 0 else 0,
+                'is_complete': completed >= total and total > 0,
+                'bonus_claimed': stats.get('bonus_claimed', 0) > 0,
+            }
             result.append(
                 {
                     'category': QuestCategorySerializer(category).data,
@@ -358,7 +429,7 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
             extra={
                 'user_id': user.id,
                 'quest_id': str(side_quest.id),
-                'xp_awarded': user_quest.xp_awarded,
+                'points_awarded': user_quest.points_awarded,
             },
         )
 
@@ -483,7 +554,7 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
         """
         user = request.user
         status_filter = request.query_params.get('status', None)
-        limit = min(int(request.query_params.get('limit', 50)), 100)
+        limit = safe_int_param(request.query_params.get('limit'), default=50, min_val=1, max_val=100)
 
         queryset = UserSideQuest.objects.filter(user=user).select_related('side_quest')
 
@@ -608,8 +679,8 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
         """
         Manually mark a side quest as completed.
 
-        This is for quests that don't track numeric progress,
-        or for admin/system completion.
+        This endpoint verifies that quest requirements are met before allowing completion.
+        Users must have reached the target progress to complete a quest.
 
         Returns:
             {
@@ -629,6 +700,23 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
 
         if user_quest.is_completed:
             return Response({'error': 'This quest is already completed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # SECURITY: Verify quest requirements are actually met
+        # For guided quests, all steps must be completed
+        if side_quest.is_guided:
+            if user_quest.current_step_index < len(side_quest.steps):
+                steps_remaining = len(side_quest.steps) - user_quest.current_step_index
+                return Response(
+                    {'error': f'Quest not complete. {steps_remaining} steps remaining.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        # For progress-based quests, must reach target
+        elif user_quest.current_progress < user_quest.target_progress:
+            progress_info = f'{user_quest.current_progress}/{user_quest.target_progress}'
+            return Response(
+                {'error': f'Quest requirements not met. Progress: {progress_info}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Complete the quest
         user_quest.complete()

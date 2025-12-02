@@ -101,8 +101,8 @@ def seed_community_quests(category):
 
     quests = [
         {
-            'title': 'First Comment',
-            'description': "Leave your first comment on someone else's project. Spread some encouragement!",
+            'title': 'Spread Encouragement',
+            'description': "Leave a comment on someone else's project. Your feedback makes a difference!",
             'quest_type': 'comment_post',
             'difficulty': 'easy',
             'requirements': {'action': 'comment_created', 'target': 1},
@@ -173,8 +173,8 @@ def seed_learning_quests(category):
 
     quests = [
         {
-            'title': 'First Quiz',
-            'description': 'Complete your first quiz to test your AI knowledge!',
+            'title': 'Quiz Starter',
+            'description': 'Complete a quiz to test your AI knowledge!',
             'quest_type': 'complete_quiz',
             'difficulty': 'easy',
             'requirements': {'action': 'quiz_completed', 'target': 1},
@@ -245,8 +245,8 @@ def seed_creative_quests(category):
 
     quests = [
         {
-            'title': 'First Project',
-            'description': 'Create your first project to start building your portfolio!',
+            'title': 'Portfolio Builder',
+            'description': 'Create a project to start building your portfolio!',
             'quest_type': 'create_project',
             'difficulty': 'easy',
             'requirements': {'action': 'project_created', 'target': 1},
@@ -273,7 +273,7 @@ def seed_creative_quests(category):
         },
         {
             'title': 'Banana Time',
-            'description': 'Generate your first image with Nano Banana!',
+            'description': 'Generate an image with Nano Banana!',
             'quest_type': 'generate_image',
             'difficulty': 'easy',
             'requirements': {'action': 'image_generated', 'target': 1},

@@ -88,10 +88,20 @@ export interface QuizAnswerResponse {
   correctAnswer?: string | string[];
 }
 
+export interface CompletedQuestInfo {
+  id: string;
+  title: string;
+  description: string;
+  pointsAwarded: number;
+  categoryName: string | null;
+}
+
 export interface QuizCompleteResponse {
   score: number;
   totalQuestions: number;
   results: QuizAttempt;
+  pointsEarned?: number;
+  completedQuests?: CompletedQuestInfo[];
 }
 
 export interface QuizStats {

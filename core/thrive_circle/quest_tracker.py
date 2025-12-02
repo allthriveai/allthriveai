@@ -125,7 +125,8 @@ class QuestTracker:
 
                 # Check if completed
                 if user_quest.current_progress >= user_quest.target_progress:
-                    user_quest.complete()
+                    # Use force=True since we've already validated progress
+                    user_quest.complete(force=True)
                     completed_quests.append(str(quest.id))
 
                     logger.info(

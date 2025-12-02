@@ -15,6 +15,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.audits.models import UserAuditLog
+from core.thrive_circle.signals import track_profile_viewed, track_user_login
 from core.throttles import AuthenticatedProfileThrottle, PublicProfileThrottle
 from core.users.models import User
 
@@ -109,6 +110,9 @@ def login_view(request):
         details={'email': email, 'method': 'email_password'},
         success=True,
     )
+
+    # Track login for quest progress and auto-start daily quests
+    track_user_login(user)
 
     # Ensure minimum response time
     elapsed = time.time() - start_time
@@ -277,6 +281,10 @@ def username_profile_view(request, username):
         response_data = {'success': True, 'data': serializer.data}
         status_code = 200
 
+        # Track profile view for quest progress (only for authenticated users viewing others)
+        if request.user.is_authenticated and request.user != user:
+            track_profile_viewed(request.user, user)
+
         # Cache successful responses
         cache.set(
             cache_key, {'response': response_data, 'status': status_code}, settings.CACHE_TTL.get('PUBLIC_PROFILE', 300)
@@ -339,6 +347,9 @@ def oauth_callback(request):
     from services.auth import set_auth_cookies
 
     if request.user.is_authenticated:
+        # Track login for quest progress and auto-start daily quests
+        track_user_login(request.user)
+
         # Redirect to user profile with cookies set
         username = request.user.username
         redirect_url = f'{settings.FRONTEND_URL}/{username}'
@@ -448,7 +459,7 @@ def user_activity(request):
     ]
 
     # Get points history (last 20 point activities)
-    from core.thrive_circle.models import PointActivity
+    from core.thrive_circle.models import PointActivity, UserSideQuest
 
     points_activities = PointActivity.objects.filter(user=user).order_by('-created_at')[:20]
 
@@ -463,6 +474,28 @@ def user_activity(request):
             'createdAt': activity.created_at.isoformat(),
         }
         for activity in points_activities
+    ]
+
+    # Get recent quest completions with full quest details
+    completed_quests = (
+        UserSideQuest.objects.filter(user=user, status='completed')
+        .select_related('side_quest')
+        .order_by('-completed_at')[:10]
+    )
+
+    quest_completions = [
+        {
+            'id': str(quest.id),
+            'questId': str(quest.side_quest.id),
+            'questTitle': quest.side_quest.title,
+            'questDescription': quest.side_quest.description,
+            'categorySlug': quest.side_quest.category.slug if quest.side_quest.category else None,
+            'categoryName': quest.side_quest.category.name if quest.side_quest.category else None,
+            'pointsAwarded': quest.points_awarded,
+            'completedAt': quest.completed_at.isoformat() if quest.completed_at else None,
+            'isGuided': quest.side_quest.is_guided,
+        }
+        for quest in completed_quests
     ]
 
     return Response(
@@ -485,8 +518,10 @@ def user_activity(request):
                     'totalPoints': user.total_points,
                     'level': user.level,
                     'currentStreak': user.current_streak_days,
+                    'lifetimeQuestsCompleted': user.lifetime_side_quests_completed,
                 },
                 'pointsFeed': points_feed,
+                'questCompletions': quest_completions,
             },
         }
     )

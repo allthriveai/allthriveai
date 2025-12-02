@@ -9,7 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
-from core.thrive_circle.models import PointActivity
+from core.thrive_circle.models import PointActivity, UserSideQuest
 from core.thrive_circle.services import PointsService
 
 from .models import Quiz, QuizAttempt, QuizQuestion
@@ -234,6 +234,25 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
                     extra={'user_id': request.user.id, 'quiz_attempt_id': str(attempt.id)},
                 )
 
+        # Get quests that were completed by this action (completed in last 5 seconds)
+        # The signal track_quiz_completed runs when attempt.save() is called above
+        recent_completed_quests = UserSideQuest.objects.filter(
+            user=request.user,
+            status='completed',
+            completed_at__gte=timezone.now() - timezone.timedelta(seconds=5),
+        ).select_related('side_quest')
+
+        completed_quests_data = [
+            {
+                'id': str(uq.side_quest.id),
+                'title': uq.side_quest.title,
+                'description': uq.side_quest.description,
+                'pointsAwarded': uq.points_awarded or uq.side_quest.points_reward,
+                'categoryName': uq.side_quest.category.name if uq.side_quest.category else None,
+            }
+            for uq in recent_completed_quests
+        ]
+
         serializer = self.get_serializer(attempt)
         return Response(
             {
@@ -242,6 +261,7 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
                 'percentage_score': attempt.percentage_score,
                 'results': serializer.data,
                 'points_earned': points_earned,
+                'completed_quests': completed_quests_data,
             }
         )
 

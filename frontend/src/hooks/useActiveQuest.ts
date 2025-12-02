@@ -3,7 +3,7 @@
  * Provides the current in-progress quest and methods to interact with the quest tray
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
 import { getMySideQuests, abandonSideQuest, getQuestCategories } from '@/services/thriveCircle';
@@ -15,6 +15,18 @@ export function useActiveQuest() {
   const queryClient = useQueryClient();
   const [questTrayOpen, setQuestTrayOpen] = useState(false);
   const [selectedQuest, setSelectedQuest] = useState<UserSideQuest | null>(null);
+
+  // Ref to track timeout for cleanup
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Fetch user's in-progress quests
   const {
@@ -89,8 +101,12 @@ export function useActiveQuest() {
   // Close the quest tray
   const closeQuestTray = useCallback(() => {
     setQuestTrayOpen(false);
+    // Clear any existing timeout before setting a new one
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
     // Don't clear selectedQuest immediately to allow for close animation
-    setTimeout(() => setSelectedQuest(null), 300);
+    closeTimeoutRef.current = setTimeout(() => setSelectedQuest(null), 300);
   }, []);
 
   // Refresh quest data

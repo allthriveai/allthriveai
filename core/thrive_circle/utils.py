@@ -7,6 +7,35 @@ from django.db.models import F
 from django.utils import timezone
 
 
+def safe_int_param(value, default: int, min_val: int = None, max_val: int = None) -> int:
+    """
+    Safely parse an integer from a query parameter.
+
+    Args:
+        value: The raw value from request.query_params.get()
+        default: Default value if parsing fails or value is None
+        min_val: Optional minimum value (inclusive)
+        max_val: Optional maximum value (inclusive)
+
+    Returns:
+        Parsed and bounded integer value
+    """
+    if value is None:
+        return default
+
+    try:
+        result = int(value)
+    except (ValueError, TypeError):
+        return default
+
+    if min_val is not None:
+        result = max(result, min_val)
+    if max_val is not None:
+        result = min(result, max_val)
+
+    return result
+
+
 def get_week_start(date=None):
     """
     Get the Monday of the current week (or specified date's week).
