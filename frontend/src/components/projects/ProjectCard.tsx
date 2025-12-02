@@ -42,6 +42,7 @@ interface ProjectCardProps {
   onDelete?: (projectId: number) => void;
   onToggleShowcase?: (projectId: number) => void;
   userAvatarUrl?: string;  // Owner's avatar URL
+  onCommentClick?: (project: Project) => void;  // Optional callback for page-level comment panel
 }
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -55,7 +56,7 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const typeLabels = PROJECT_TYPE_LABELS;
 
-export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl }: ProjectCardProps) {
+export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick }: ProjectCardProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
@@ -147,7 +148,12 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const handleCommentClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Close other trays first
+    // If page-level callback is provided, use it
+    if (onCommentClick) {
+      onCommentClick(project);
+      return;
+    }
+    // Otherwise, use local comment tray
     setShowToolTray(false);
     setShowCommentTray(true);
   };
@@ -643,13 +649,15 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         showComments={false}
       />
 
-      {/* Comment Tray */}
-      <CommentTray
-        isOpen={showCommentTray}
-        onClose={() => setShowCommentTray(false)}
-        project={project}
-        isAuthenticated={isAuthenticated}
-      />
+      {/* Comment Tray - only render if no page-level callback provided */}
+      {!onCommentClick && (
+        <CommentTray
+          isOpen={showCommentTray}
+          onClose={() => setShowCommentTray(false)}
+          project={project}
+          isAuthenticated={isAuthenticated}
+        />
+      )}
 
       {/* Tool Tray */}
       {project.toolsDetails && project.toolsDetails.length > 0 && (

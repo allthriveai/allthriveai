@@ -353,6 +353,42 @@ def oauth_callback(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def user_activity_insights(request):
+    """Get comprehensive activity insights for the current user.
+
+    Returns:
+        - tool_engagement: Top tools used in projects
+        - topic_interests: Topics most engaged with
+        - activity_trends: Daily activity for last 30 days
+        - points_by_category: Points breakdown by activity type
+        - insights: Personalized insights cards
+        - stats_summary: Overview statistics
+    """
+    try:
+        from services.activity_insights_service import ActivityInsightsService
+
+        service = ActivityInsightsService(request.user)
+        insights = service.get_full_insights()
+
+        return Response(
+            {
+                'success': True,
+                'data': insights,
+            }
+        )
+    except Exception as e:
+        logger.exception(f'Error in user_activity_insights: {e}')
+        return Response(
+            {
+                'success': False,
+                'error': str(e),
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def user_activity(request):
     """Get current user's recent activity and statistics."""
     user = request.user

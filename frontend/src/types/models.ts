@@ -549,3 +549,95 @@ export interface UserSideQuest {
   startedAt: string;
   updatedAt: string;
 }
+
+// Learning Path Types
+export type LearningPathSkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'master';
+
+export interface UserLearningPath {
+  id: number;
+  topic: TopicSlug;
+  topicDisplay: string;
+  currentSkillLevel: LearningPathSkillLevel;
+  skillLevelDisplay: string;
+  quizzesCompleted: number;
+  quizzesTotal: number;
+  sideQuestsCompleted: number;
+  sideQuestsTotal: number;
+  topicPoints: number;
+  progressPercentage: number;
+  pointsToNextLevel: number;
+  nextSkillLevel: LearningPathSkillLevel | null;
+  startedAt: string;
+  lastActivityAt: string;
+}
+
+export interface CompletedQuizAttempt {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  quizSlug: string;
+  score: number;
+  totalQuestions: number;
+  percentageScore: number;
+  completedAt: string;
+}
+
+export interface AvailableQuiz {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  difficulty: string;
+  estimatedTime: number;
+  questionCount: number;
+}
+
+export interface CompletedSideQuest {
+  id: string;
+  sideQuestId: string;
+  title: string;
+  difficulty: string;
+  pointsAwarded: number;
+  completedAt: string;
+}
+
+export interface ActiveSideQuest {
+  id: string;
+  sideQuestId: string;
+  title: string;
+  difficulty: string;
+  progressPercentage: number;
+  currentProgress: number;
+  targetProgress: number;
+}
+
+export interface RecommendedNext {
+  type: 'quiz' | 'sidequest';
+  id: string;
+  title: string;
+  difficulty?: string;
+  progress?: number;
+  isNew?: boolean;
+}
+
+export interface LearningPathDetail {
+  path: UserLearningPath;
+  completedQuizzes: CompletedQuizAttempt[];
+  availableQuizzes: AvailableQuiz[];
+  completedSidequests: CompletedSideQuest[];
+  activeSidequests: ActiveSideQuest[];
+  recommendedNext: RecommendedNext | null;
+}
+
+export interface TopicRecommendation {
+  topic: TopicSlug;
+  topicDisplay: string;
+  quizCount: number;
+  sidequestCount: number;
+  score: number;
+}
+
+export interface LearningPathTopic {
+  slug: TopicSlug;
+  name: string;
+}

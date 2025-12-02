@@ -22,10 +22,19 @@ class ImageModerator:
     """
 
     def __init__(self):
-        # Get OpenAI-compatible client from AIProvider
-        # Uses DEFAULT_AI_PROVIDER from settings (supports Azure OpenAI or OpenAI)
-        ai_provider = AIProvider()  # Uses default provider from settings
-        self.client = ai_provider.client
+        # Image moderation uses GPT-4 Vision (chat completions) which works with both OpenAI and Azure
+        # Try to get client from AIProvider, but handle case where API key is missing
+
+        try:
+            ai_provider = AIProvider()  # Uses default provider from settings
+            self.client = ai_provider.client
+            self.has_client = True
+        except (ValueError, Exception) as e:
+            logger.warning(
+                f'AI provider not configured for image moderation: {e}. ' 'Image moderation will be skipped.'
+            )
+            self.client = None
+            self.has_client = False
 
     @retry(
         stop=stop_after_attempt(3),
@@ -51,6 +60,18 @@ class ImageModerator:
                 'reason': 'No image provided',
                 'categories': {},
                 'confidence': 0.0,
+            }
+
+        # If no client configured, approve all images with warning
+        if not self.has_client or not self.client:
+            logger.debug(f'Skipping image moderation (no API key) for context: {context}')
+            return {
+                'approved': True,
+                'flagged': False,
+                'reason': 'Image moderation skipped - no API key configured',
+                'categories': {},
+                'confidence': 0.0,
+                'skipped': True,
             }
 
         try:

@@ -8,7 +8,9 @@ import { getUserProjects, bulkDeleteProjects } from '@/services/projects';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useAchievements } from '@/hooks/useAchievements';
-import { ActivityFeed } from '@/components/profile/ActivityFeed';
+import { ActivityInsightsTab } from '@/components/profile/ActivityInsightsTab';
+import { FavoritesTab } from '@/components/profile/FavoritesTab';
+import { LearningPathsTab } from '@/components/learning';
 import { getRarityColorClasses } from '@/services/achievements';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -34,6 +36,8 @@ import {
   faMapMarkerAlt,
   faFlask,
   faChartLine,
+  faGraduationCap,
+  faHeart,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Helper to convert tier code to display name
@@ -63,9 +67,9 @@ export default function ProfilePage() {
   const [userNotFound, setUserNotFound] = useState(false);
 
   // Initialize activeTab from URL or default to 'showcase'
-  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'activity' | null;
-  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'activity'>(
-    tabFromUrl && ['showcase', 'playground', 'activity'].includes(tabFromUrl) ? tabFromUrl : 'showcase'
+  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | null;
+  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'favorites' | 'learning' | 'activity'>(
+    tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity'].includes(tabFromUrl) ? tabFromUrl : 'showcase'
   );
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<number>>(new Set());
@@ -85,8 +89,8 @@ export default function ProfilePage() {
 
   // Sync activeTab with URL query parameter
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'activity' | null;
-    if (tabFromUrl && ['showcase', 'playground', 'activity'].includes(tabFromUrl)) {
+    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | null;
+    if (tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity'].includes(tabFromUrl)) {
       // Security: only allow Activity tab for own profile
       if (tabFromUrl === 'activity' && !isOwnProfile) {
         setActiveTab('showcase');
@@ -124,7 +128,7 @@ export default function ProfilePage() {
   }, [scrolled]);
 
   // Update URL when tab changes
-  const handleTabChange = (tab: 'showcase' | 'playground' | 'activity') => {
+  const handleTabChange = (tab: 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity') => {
     setActiveTab(tab);
     setSearchParams({ tab });
     if (selectionMode) {
@@ -231,15 +235,21 @@ export default function ProfilePage() {
     ? [
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
+        { id: 'favorites', label: 'Favorites' },
+        { id: 'learning', label: 'Learning' },
         { id: 'activity', label: 'Activity' },
       ] as const
     : showPlayground
     ? [
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
+        { id: 'favorites', label: 'Favorites' },
+        { id: 'learning', label: 'Learning' },
       ] as const
     : [
         { id: 'showcase', label: 'Showcase' },
+        { id: 'favorites', label: 'Favorites' },
+        { id: 'learning', label: 'Learning' },
       ] as const;
 
   if (isLoading) {
@@ -584,6 +594,32 @@ export default function ProfilePage() {
                         <FontAwesomeIcon icon={faFlask} className="w-3 h-3" />
                       </button>
 
+                      {/* Favorites Icon - Always visible */}
+                      <button
+                        onClick={() => handleTabChange('favorites')}
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                          activeTab === 'favorites'
+                            ? 'bg-pink-500 text-white shadow-md'
+                            : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                        }`}
+                        title="Favorites"
+                      >
+                        <FontAwesomeIcon icon={faHeart} className="w-3 h-3" />
+                      </button>
+
+                      {/* Learning Icon - Always visible */}
+                      <button
+                        onClick={() => handleTabChange('learning')}
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                          activeTab === 'learning'
+                            ? 'bg-teal-500 text-white shadow-md'
+                            : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                        }`}
+                        title="Learning"
+                      >
+                        <FontAwesomeIcon icon={faGraduationCap} className="w-3 h-3" />
+                      </button>
+
                       {/* Activity Icon - Always visible for profile owner */}
                       {isOwnProfile && (
                         <button
@@ -615,6 +651,8 @@ export default function ProfilePage() {
                     const tabIcons = {
                       showcase: faTh,
                       playground: faFlask,
+                      favorites: faHeart,
+                      learning: faGraduationCap,
                       activity: faChartLine,
                     };
 
@@ -720,11 +758,32 @@ export default function ProfilePage() {
                 </div>
               )}
 
+              {/* Favorites Tab - Full width layout */}
+              {activeTab === 'favorites' && (
+                <div className="pb-20">
+                  <FavoritesTab
+                    username={username || user?.username || ''}
+                    isOwnProfile={isOwnProfile}
+                  />
+                </div>
+              )}
+
+              {/* Learning Tab - Full width layout */}
+              {activeTab === 'learning' && (
+                <div className="pb-20">
+                  <LearningPathsTab
+                    username={username || user?.username || ''}
+                    isOwnProfile={isOwnProfile}
+                  />
+                </div>
+              )}
+
               {/* Activity Tab - Full width layout */}
               {activeTab === 'activity' && isOwnProfile && (
-                <div className="pb-20">
-                  <ActivityFeed />
-                </div>
+                <ActivityInsightsTab
+                  username={username || ''}
+                  isOwnProfile={isOwnProfile}
+                />
               )}
             </div>
           </div>

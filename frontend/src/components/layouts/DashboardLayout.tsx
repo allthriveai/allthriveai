@@ -5,18 +5,28 @@ import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightAboutPanel } from '@/components/about';
 import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalendarPanel';
 import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
+import { CommentTray } from '@/components/projects/CommentTray';
+import { useAuth } from '@/hooks/useAuth';
+import type { Project } from '@/types/models';
 
 interface DashboardLayoutProps {
-  children: ReactNode | ((props: { openChat: (menuItem: string) => void; openAddProject: (welcomeMode?: boolean) => void }) => ReactNode);
+  children: ReactNode | ((props: {
+    openChat: (menuItem: string) => void;
+    openAddProject: (welcomeMode?: boolean) => void;
+    openCommentPanel: (project: Project) => void;
+  }) => ReactNode);
   openAboutPanel?: boolean;
 }
 
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
   const { theme } = useTheme();
+  const { isAuthenticated } = useAuth();
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
   const [addProjectWelcomeMode, setAddProjectWelcomeMode] = useState(false);
+  const [commentPanelOpen, setCommentPanelOpen] = useState(false);
+  const [commentPanelProject, setCommentPanelProject] = useState<Project | null>(null);
 
   // Auto-open about panel when prop is true
   useEffect(() => {
@@ -104,6 +114,20 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setAddProjectWelcomeMode(false);
   };
 
+  const handleOpenCommentPanel = (project: Project) => {
+    setCommentPanelProject(project);
+    setCommentPanelOpen(true);
+    // Close other panels
+    setAboutOpen(false);
+    setEventsOpen(false);
+    setAddProjectOpen(false);
+  };
+
+  const handleCloseCommentPanel = () => {
+    setCommentPanelOpen(false);
+    setCommentPanelProject(null);
+  };
+
   const backgroundImage = theme === 'dark' ? '/dark.jpeg' : '/light.jpeg';
 
   return (
@@ -127,7 +151,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto scroll-pt-16">
           <div className="pt-16">
-            {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject }) : children}
+            {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel }) : children}
           </div>
         </main>
 
@@ -151,6 +175,16 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           welcomeMode={addProjectWelcomeMode}
         />
 
+        {/* Page-level Comment Panel */}
+        {commentPanelProject && (
+          <CommentTray
+            isOpen={commentPanelOpen}
+            onClose={handleCloseCommentPanel}
+            project={commentPanelProject}
+            isAuthenticated={isAuthenticated}
+          />
+        )}
+
         {/* Overlay when about is open */}
         {aboutOpen && (
           <div
@@ -172,6 +206,14 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           <div
             className="fixed inset-0 bg-black/20 z-30 md:hidden"
             onClick={handleCloseAddProject}
+          />
+        )}
+
+        {/* Overlay when comment panel is open */}
+        {commentPanelOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-30 md:hidden"
+            onClick={handleCloseCommentPanel}
           />
         )}
       </div>

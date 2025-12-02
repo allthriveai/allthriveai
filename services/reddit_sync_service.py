@@ -212,11 +212,19 @@ class RedditSyncService:
             moderation_results['image'] = image_result
 
             if not image_result['approved']:
-                logger.info(
-                    f'Reddit post image rejected by moderation: '
-                    f'subreddit=r/{subreddit}, reason={image_result["reason"]}, url={image_url}'
-                )
-                return False, image_result['reason'], moderation_results
+                # Only block if it's a true content issue, not an API/system error
+                if image_result.get('skipped') or 'error' in image_result:
+                    logger.warning(
+                        f'Image moderation unavailable for r/{subreddit} post, allowing post: '
+                        f'reason={image_result["reason"]}, url={image_url}'
+                    )
+                    # Continue with post creation despite moderation error
+                else:
+                    logger.info(
+                        f'Reddit post image rejected by moderation: '
+                        f'subreddit=r/{subreddit}, reason={image_result["reason"]}, url={image_url}'
+                    )
+                    return False, image_result['reason'], moderation_results
 
         # All checks passed
         return True, 'Content approved', moderation_results
@@ -617,7 +625,7 @@ class RedditSyncService:
             type=Project.ProjectType.REDDIT_THREAD,
             external_url=post_data['permalink'],
             featured_image_url=image_url,
-            content=project_content if project_content else None,
+            content=project_content or {},  # Use empty dict instead of None
             is_showcased=True,
             is_private=False,
         )

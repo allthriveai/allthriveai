@@ -387,7 +387,7 @@ export function ExplorePage() {
   return (
     <>
     <DashboardLayout>
-      {({ openAddProject }) => {
+      {({ openAddProject, openCommentPanel }) => {
         // Store the function in ref for useEffect to access
         openAddProjectRef.current = openAddProject;
 
@@ -551,6 +551,7 @@ export function ExplorePage() {
                               variant="masonry"
                               userAvatarUrl={item.data.userAvatarUrl}
                               isOwner={user?.username === item.data.username}
+                              onCommentClick={openCommentPanel}
                             />
                           )}
                         </FadeInItem>

@@ -17,6 +17,10 @@
     --neon-teal: #22D3EE;
     --neon-bright: #4ADEE7;
     --neon-pink: #FB37FF;
+
+    /* Neon Shadow (reusable) */
+    --shadow-neon: 0 0 20px rgba(34, 211, 238, 0.3), 0 0 10px rgba(34, 211, 238, 0.1);
+    --shadow-neon-strong: 0 0 30px rgba(34, 211, 238, 0.5), 0 0 15px rgba(34, 211, 238, 0.3);
   }
 
   html {
@@ -50,13 +54,19 @@
   /* === Glass Surfaces === */
 
   .glass-panel {
-    @apply bg-glass-fill backdrop-blur-xl border border-glass-border rounded-3xl;
+    @apply backdrop-blur-xl border rounded-3xl;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(148, 163, 184, 0.35);
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
   }
 
   .glass-card {
     @apply glass-panel p-8 md:p-10 transition-all duration-300;
-    @apply hover:border-cyan-neon/30 hover:shadow-neon;
+  }
+
+  .glass-card:hover {
+    border-color: rgba(74, 222, 231, 0.3);
+    box-shadow: var(--shadow-neon);
   }
 
   .glass-subtle {
@@ -66,7 +76,9 @@
   /* === Neon Elements === */
 
   .neon-border {
-    @apply border border-cyan-bright/50 shadow-neon;
+    @apply border;
+    border-color: rgba(34, 211, 238, 0.5);
+    box-shadow: var(--shadow-neon);
   }
 
   .glow-teal {
@@ -74,52 +86,84 @@
   }
 
   .text-gradient-cyan {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-neon to-cyan-bright;
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(to right, #4ADEE7, #22D3EE);
+  }
+
+  /* Shadow utilities */
+  .shadow-neon {
+    box-shadow: var(--shadow-neon);
+  }
+
+  .shadow-neon-strong {
+    box-shadow: var(--shadow-neon-strong);
   }
 
   /* === Buttons === */
 
   .btn {
     @apply inline-flex items-center justify-center rounded-xl font-medium transition-all duration-300 px-6 py-3;
-    @apply focus:outline-none focus:ring-2 focus:ring-cyan-bright/50 focus:ring-offset-2 focus:ring-offset-slate-900;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900;
+    --tw-ring-color: rgba(34, 211, 238, 0.5);
   }
 
   .btn-primary {
-    @apply btn;
-    @apply bg-gradient-to-r from-cyan-500 to-cyan-bright text-background font-semibold;
-    @apply hover:shadow-neon hover:scale-[1.02];
+    @apply btn font-semibold;
+    background-image: linear-gradient(to right, #0EA5E9, #22D3EE);
+    color: #020617;
+  }
+
+  .btn-primary:hover {
+    box-shadow: var(--shadow-neon);
+    transform: scale(1.02);
   }
 
   .btn-secondary {
-    @apply btn;
-    @apply bg-white/10 text-white border border-white/10 backdrop-blur-md;
-    @apply hover:bg-white/20 hover:border-cyan-bright/30 hover:text-cyan-bright;
+    @apply btn bg-white/10 text-white border border-white/10 backdrop-blur-md;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-white/20;
+    border-color: rgba(34, 211, 238, 0.3);
+    color: #22D3EE;
   }
 
   .btn-outline {
-    @apply btn;
-    @apply border border-cyan-bright/50 text-cyan-bright bg-transparent;
-    @apply hover:bg-cyan-bright/10 hover:shadow-neon;
+    @apply btn bg-transparent;
+    border: 1px solid rgba(34, 211, 238, 0.5);
+    color: #22D3EE;
+  }
+
+  .btn-outline:hover {
+    box-shadow: var(--shadow-neon);
+    background-color: rgba(34, 211, 238, 0.1);
   }
 
   .btn-ghost {
-    @apply btn;
-    @apply text-slate-400 hover:text-white hover:bg-white/5;
+    @apply btn text-slate-400 hover:text-white hover:bg-white/5;
   }
 
   /* === Inputs === */
   .input-glass {
     @apply w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-400;
-    @apply focus:outline-none focus:border-cyan-bright/50 focus:shadow-neon focus:bg-white/10 transition-all duration-300;
+    @apply focus:outline-none focus:bg-white/10 transition-all duration-300;
+  }
+
+  .input-glass:focus {
+    border-color: rgba(34, 211, 238, 0.5);
+    box-shadow: var(--shadow-neon);
   }
 
   /* === Accents === */
   .circuit-connector {
-    @apply absolute w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-bright/20 to-transparent;
+    @apply absolute w-full h-[1px];
+    background-image: linear-gradient(to right, transparent, rgba(34, 211, 238, 0.2), transparent);
   }
 
   .luminous-dot {
-    @apply w-2 h-2 rounded-full bg-cyan-bright shadow-neon;
+    @apply w-2 h-2 rounded-full;
+    background-color: #22D3EE;
+    box-shadow: var(--shadow-neon);
   }
 }
 

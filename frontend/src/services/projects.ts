@@ -173,6 +173,14 @@ export async function toggleProjectLike(projectId: number): Promise<{ liked: boo
 }
 
 /**
+ * Get projects liked/hearted by a user
+ */
+export async function getLikedProjects(username: string): Promise<Project[]> {
+  const response = await api.get<{ results: ProjectApiResponse[] }>(`/users/${username}/liked-projects/`);
+  return response.data.results.map(transformProject);
+}
+
+/**
  * Delete a redirect for a project
  */
 export async function deleteProjectRedirect(projectId: number, redirectId: number): Promise<void> {

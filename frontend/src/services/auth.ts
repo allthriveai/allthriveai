@@ -55,6 +55,65 @@ export interface ActivityData {
   pointsFeed: PointsHistory[];
 }
 
+// Activity Insights Types
+export interface ToolEngagement {
+  id: number;
+  name: string;
+  slug: string;
+  logoUrl: string;
+  category: string;
+  categoryDisplay: string;
+  usageCount: number;
+}
+
+export interface TopicInterest {
+  topic: string;
+  topicDisplay: string;
+  quizCount: number;
+  projectCount: number;
+  engagementScore: number;
+}
+
+export interface ActivityTrend {
+  date: string;
+  activityCount: number;
+  points: number;
+}
+
+export interface PointsCategory {
+  activityType: string;
+  displayName: string;
+  totalPoints: number;
+  count: number;
+  color: string;
+}
+
+export interface PersonalizedInsight {
+  type: string;
+  icon: string;
+  title: string;
+  description: string;
+  color: string;
+}
+
+export interface StatsSummary {
+  quizzesCompleted: number;
+  projectsCount: number;
+  totalPoints: number;
+  uniqueToolsUsed: number;
+  currentStreak: number;
+  longestStreak: number;
+}
+
+export interface ActivityInsights {
+  toolEngagement: ToolEngagement[];
+  topicInterests: TopicInterest[];
+  activityTrends: ActivityTrend[];
+  pointsByCategory: PointsCategory[];
+  insights: PersonalizedInsight[];
+  statsSummary: StatsSummary;
+}
+
 // Login user
 export async function login(credentials: LoginCredentials): Promise<User> {
   const response = await api.post<ApiResponse<User>>('/auth/login/', credentials);
@@ -88,6 +147,12 @@ export async function refreshToken(): Promise<void> {
 // Get user activity and statistics
 export async function getUserActivity(): Promise<ActivityData> {
   const response = await api.get<ApiResponse<ActivityData>>('/me/activity/');
+  return response.data.data;
+}
+
+// Get comprehensive activity insights
+export async function getActivityInsights(): Promise<ActivityInsights> {
+  const response = await api.get<ApiResponse<ActivityInsights>>('/me/activity/insights/');
   return response.data.data;
 }
 

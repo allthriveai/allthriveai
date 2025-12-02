@@ -8,8 +8,6 @@ from typing import Any
 from openai import APIConnectionError, APIError, APITimeoutError, RateLimitError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from services.ai_provider import AIProvider
-
 logger = logging.getLogger(__name__)
 
 
@@ -22,10 +20,21 @@ class ContentModerator:
     """
 
     def __init__(self):
-        # Get OpenAI-compatible client from AIProvider
-        # Uses DEFAULT_AI_PROVIDER from settings (supports Azure OpenAI or OpenAI)
-        ai_provider = AIProvider()  # Uses default provider from settings
-        self.client = ai_provider.client
+        # Always use OpenAI for moderation (Azure OpenAI doesn't support moderations endpoint)
+        # Even if DEFAULT_AI_PROVIDER is 'azure', we need OpenAI for this specific API
+        from django.conf import settings
+        from openai import OpenAI
+
+        self.has_api_key = bool(settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith('your-'))
+
+        if self.has_api_key:
+            self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        else:
+            logger.warning(
+                'OPENAI_API_KEY not configured - moderation will approve all content. '
+                'Set OPENAI_API_KEY to enable content moderation.'
+            )
+            self.client = None
 
     @retry(
         stop=stop_after_attempt(3),
@@ -51,6 +60,18 @@ class ContentModerator:
                 'reason': 'Content cannot be empty',
                 'categories': {},
                 'confidence': 1.0,
+            }
+
+        # If no API key configured, approve all content with warning
+        if not self.has_api_key or not self.client:
+            logger.debug(f'Skipping moderation (no API key) for context: {context}')
+            return {
+                'approved': True,
+                'flagged': False,
+                'reason': 'Moderation skipped - no API key configured',
+                'categories': {},
+                'confidence': 0.0,
+                'skipped': True,
             }
 
         try:

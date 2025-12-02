@@ -20,6 +20,7 @@ import ReferralsPage from '@/pages/settings/ReferralsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
 import StyleGuide2 from '@/pages/StyleGuide2';
+import NeonGlassStyleguide from '@/pages/NeonGlassStyleguide';
 import QuizListPage from '@/pages/quizzes/QuizListPage';
 import QuizPage from '@/pages/quizzes/QuizPage';
 import LearnPage from '@/pages/LearnPage';
@@ -40,6 +41,7 @@ export function AppRoutes() {
       <Route path="/about-us" element={<AboutPage />} />
       <Route path="/styleguide" element={<StyleGuidePage />} />
       <Route path="/styleguide2" element={<StyleGuide2 />} />
+      <Route path="/styleguide-neon" element={<NeonGlassStyleguide />} />
 
       {/* Learn route */}
       <Route path="/learn" element={<LearnPage />} />

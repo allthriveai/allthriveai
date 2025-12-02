@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'core.achievements',
     'core.thrive_circle',
     'core.integrations',  # Content source integrations (YouTube, RSS, etc.)
+    'core.learning_paths',  # Auto-generated learning paths per topic
     'allauth',
     'allauth.account',
     'allauth.socialaccount',

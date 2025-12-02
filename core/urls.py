@@ -16,6 +16,7 @@ from .auth.views import (
     oauth_urls,
     signup,
     user_activity,
+    user_activity_insights,
     username_profile_view,
 )
 from .auth.views_token import generate_ws_connection_token
@@ -157,10 +158,13 @@ urlpatterns = [
     # User-scoped /me endpoints
     path('me/profile/', UserProfileView.as_view(), name='me_profile'),
     path('me/activity/', user_activity, name='user_activity'),
+    path('me/activity/insights/', user_activity_insights, name='user_activity_insights'),
     path('me/personalization/', user_personalization_overview, name='user_personalization'),
     path('me/personalization/status/', personalization_status, name='personalization_status'),
     path('me/interactions/', track_interaction, name='track_interaction'),
     path('me/', include(me_router.urls)),
+    # Learning paths endpoints
+    path('', include('core.learning_paths.urls')),
     # Taxonomy endpoints
     path('', include(taxonomy_router.urls)),
     # Tool endpoints
