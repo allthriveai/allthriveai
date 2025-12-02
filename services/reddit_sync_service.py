@@ -16,6 +16,7 @@ from django.utils import timezone
 from core.integrations.reddit_models import RedditCommunityAgent, RedditThread
 from core.projects.models import Project
 from services.moderation import ContentModerator, ImageModerator
+from services.reddit_video_downloader import RedditVideoDownloader
 
 logger = logging.getLogger(__name__)
 
@@ -508,7 +509,14 @@ class RedditSyncService:
         Returns:
             Tuple of (created, updated) booleans
         """
+        from core.integrations.reddit_models import DeletedRedditThread
+
         reddit_post_id = post_data['reddit_post_id']
+
+        # Check if this thread was previously deleted by an admin
+        if DeletedRedditThread.objects.filter(reddit_post_id=reddit_post_id).exists():
+            logger.debug(f'Skipping Reddit post {reddit_post_id} - was previously deleted by admin')
+            return False, False  # Don't create or update
 
         # Check if thread already exists
         try:
@@ -615,6 +623,40 @@ class RedditSyncService:
         logger.info(f'Assigned {len(topics)} topics to project: {topics}')
 
     @classmethod
+    def _record_moderation_failure(
+        cls, agent: RedditCommunityAgent, post_data: dict, reason: str, moderation_data: dict
+    ):
+        """Record a post that failed moderation to prevent re-attempting on every sync.
+
+        Args:
+            agent: The Reddit agent
+            post_data: Post data from RSS feed
+            reason: Moderation failure reason
+            moderation_data: Full moderation results
+        """
+        from core.integrations.reddit_models import DeletedRedditThread
+
+        try:
+            # Use DeletedRedditThread to also track moderation failures
+            # This prevents re-moderating the same content on every sync
+            DeletedRedditThread.objects.get_or_create(
+                reddit_post_id=post_data['reddit_post_id'],
+                defaults={
+                    'agent': agent,
+                    'subreddit': post_data.get('subreddit', ''),
+                    'deleted_by': None,  # System rejection, not admin deletion
+                    'deletion_type': DeletedRedditThread.DeletionType.MODERATION_FAILED,
+                    'deletion_reason': f'Failed moderation: {reason}',
+                },
+            )
+            logger.info(
+                f'Recorded moderation failure for {post_data["reddit_post_id"]} '
+                f'(r/{post_data.get("subreddit", "")}) - will not re-attempt'
+            )
+        except Exception as e:
+            logger.error(f'Failed to record moderation failure: {e}', exc_info=True)
+
+    @classmethod
     def _select_best_image_url(cls, metrics: dict, thumbnail_fallback: str) -> str:
         """Select the best image URL from metrics.
 
@@ -687,6 +729,8 @@ class RedditSyncService:
         )
 
         if not approved:
+            # Record this moderation failure to prevent re-attempting on every sync
+            cls._record_moderation_failure(agent, post_data, reason, moderation_data)
             logger.warning(f'Skipping post {post_data["reddit_post_id"]} - failed moderation: {reason}')
             return  # Skip posts that fail moderation
 
@@ -698,19 +742,31 @@ class RedditSyncService:
         hero_display_mode = agent.settings.get('hero_display_mode', '')
 
         # If agent is configured for video hero and post has a video, set video hero
-        if hero_display_mode == 'video' and metrics.get('is_video') and metrics.get('video_url'):
-            project_content = {
-                'heroDisplayMode': 'video',
-                'heroVideoUrl': metrics['video_url'],
-            }
-            logger.info(f'Setting video hero display for post {post_data["reddit_post_id"]}')
-        # Also check for external video URLs (e.g., v.redd.it links)
-        elif hero_display_mode == 'video' and metrics.get('url', '').startswith('https://v.redd.it/'):
-            project_content = {
-                'heroDisplayMode': 'video',
-                'heroVideoUrl': metrics['url'],
-            }
-            logger.info(f'Setting video hero display (v.redd.it) for post {post_data["reddit_post_id"]}')
+        video_url = None
+        if hero_display_mode == 'video' and (
+            metrics.get('is_video') or metrics.get('url', '').startswith('https://v.redd.it/')
+        ):
+            # Try to download video with audio using yt-dlp
+            downloader = RedditVideoDownloader()
+            if downloader.check_yt_dlp_installed():
+                downloaded_path = downloader.download_video(post_data['permalink'], post_data['reddit_post_id'])
+                if downloaded_path:
+                    video_url = downloader.get_video_url(post_data['reddit_post_id'])
+                    logger.info(f'Downloaded Reddit video with audio: {video_url}')
+                else:
+                    logger.warning('Failed to download video, using fallback URL')
+                    video_url = metrics.get('video_url') or metrics.get('url')
+            else:
+                logger.warning('yt-dlp not installed, using fallback video URL')
+                video_url = metrics.get('video_url') or metrics.get('url')
+
+            if video_url:
+                project_content = {
+                    'heroDisplayMode': 'video',
+                    'heroVideoUrl': video_url,
+                    'redditPermalink': post_data['permalink'],
+                }
+                logger.info(f'Setting video hero display for post {post_data["reddit_post_id"]}')
 
         # Create project
         project = Project.objects.create(
@@ -791,8 +847,8 @@ class RedditSyncService:
 
         project.save(update_fields=update_fields)
 
-        # Update tags if project doesn't have any yet
-        if not project.tools.exists() and not project.topics:
+        # Update tags if project doesn't have any yet AND hasn't been manually edited
+        if not project.tags_manually_edited and not project.tools.exists() and not project.topics:
             cls._auto_tag_project(project, metrics, post_data.get('subreddit', ''), thread.agent)
 
         # Prepare metadata with all Reddit data

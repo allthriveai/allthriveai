@@ -125,6 +125,14 @@ class Project(models.Model):
         related_name='projects',
         help_text='Content source that created this project (if auto-synced)',
     )
+    # Tag override flag for Reddit/synced projects
+    tags_manually_edited = models.BooleanField(
+        default=False,
+        help_text=(
+            'If True, tools/categories/topics were manually edited by admin '
+            'and should not be auto-updated during resync'
+        ),
+    )
     # Personalization metrics (updated by Celery tasks)
     engagement_velocity = models.FloatField(
         default=0.0,

@@ -30,6 +30,11 @@ export default defineConfig({
           });
         },
       },
+      '/media': {
+        target: process.env.VITE_API_PROXY_TARGET || 'http://web:8000',
+        changeOrigin: true,
+        secure: false,
+      },
       '/ws': {
         target: process.env.VITE_WS_PROXY_TARGET || 'ws://localhost:8000',
         ws: true,

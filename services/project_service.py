@@ -60,7 +60,7 @@ class ProjectService:
         title: str,
         project_type: str,
         description: str = '',
-        is_showcase: bool = False,
+        is_showcase: bool = True,  # Default to showcased
         featured_image_url: str | None = None,
         content: dict | None = None,
         external_url: str = '',

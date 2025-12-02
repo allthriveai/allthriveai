@@ -23,6 +23,7 @@ interface ProjectApiResponse {
   categories?: number[];
   categoriesDetails?: Taxonomy[];
   topics?: string[];
+  tagsManuallyEdited?: boolean;
   heartCount?: number;
   isLikedByUser?: boolean;
   content?: ProjectContent;
@@ -55,6 +56,7 @@ function transformProject(data: ProjectApiResponse): Project {
     categories: data.categoriesDetails || data.categories || [],  // Use categoriesDetails (full objects) first
     categoriesDetails: data.categoriesDetails || [],
     topics: data.topics || [],
+    tagsManuallyEdited: data.tagsManuallyEdited || false,
     heartCount: data.heartCount || 0,
     isLikedByUser: data.isLikedByUser || false,
     content: data.content || {},
@@ -185,4 +187,37 @@ export async function getLikedProjects(username: string): Promise<Project[]> {
  */
 export async function deleteProjectRedirect(projectId: number, redirectId: number): Promise<void> {
   await api.delete(`/me/projects/${projectId}/redirects/${redirectId}/`);
+}
+
+/**
+ * Update project tags (admin only)
+ * Sets tags_manually_edited flag to prevent auto-tagging during resync
+ */
+export async function updateProjectTags(
+  projectId: number,
+  tags: {
+    tools?: number[];
+    categories?: number[];
+    topics?: string[];
+  }
+): Promise<Project> {
+  const response = await api.patch<ProjectApiResponse>(`/me/projects/${projectId}/update-tags/`, tags);
+  return transformProject(response.data);
+}
+
+/**
+ * Get all available tools
+ */
+export async function getTools(): Promise<Tool[]> {
+  const response = await api.get<{ results: Tool[] }>("/tools/");
+  return response.data.results;
+}
+
+/**
+ * Get all taxonomies (categories, tags, etc.)
+ */
+export async function getTaxonomies(type?: 'category' | 'tag'): Promise<Taxonomy[]> {
+  const params = type ? `?taxonomy_type=${type}` : '';
+  const response = await api.get<{ results: Taxonomy[] }>(`/taxonomy/${params}`);
+  return response.data.results;
 }

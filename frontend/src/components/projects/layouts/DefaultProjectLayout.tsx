@@ -25,6 +25,7 @@ import { createDefaultSectionContent, generateSectionId } from '@/types/sections
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ProjectEditTray } from '../ProjectEditTray';
+import { InlineTagEditor } from '../shared/InlineTagEditor';
 import {
   CodeBracketIcon,
   EllipsisVerticalIcon,
@@ -459,6 +460,13 @@ export function DefaultProjectLayout() {
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Admin Inline Tag Editor */}
+              {isOwner && (
+                <div className="mt-6 p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl">
+                  <InlineTagEditor project={project} onProjectUpdate={setProject} isAdmin={true} />
                 </div>
               )}
 

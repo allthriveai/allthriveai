@@ -15,7 +15,11 @@ RUN apt-get update \
         build-essential \
         libpq-dev \
         netcat-traditional \
+        ffmpeg \
     && rm -rf /var/lib/apt/lists/*
+
+# Install yt-dlp for Reddit video downloading
+RUN pip install --no-cache-dir yt-dlp
 
 # Install Python dependencies
 COPY requirements.txt .

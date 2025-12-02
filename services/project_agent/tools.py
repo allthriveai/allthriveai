@@ -26,7 +26,7 @@ class CreateProjectInput(BaseModel):
     title: str = Field(description='The title/name of the project')
     project_type: str = Field(description='Type of project: github_repo, image_collection, prompt, or other')
     description: str = Field(default='', description='Description of the project (optional)')
-    is_showcase: bool = Field(default=False, description='Whether to add to showcase (optional)')
+    is_showcase: bool = Field(default=True, description='Whether to add to showcase (default: True)')
     external_url: str = Field(default='', description='External URL for the project (e.g., GitHub repo URL)')
     language: str = Field(default='', description='Primary programming language (for GitHub repos)')
     topics: list[str] = Field(default_factory=list, description='Topics/tags for the project')
@@ -60,7 +60,7 @@ def create_project(
     title: str,
     project_type: str,
     description: str = '',
-    is_showcase: bool = False,
+    is_showcase: bool = True,  # Default to showcased
     external_url: str = '',
     language: str = '',
     topics: list[str] | None = None,
@@ -382,8 +382,8 @@ def import_github_project(
         featured_image_url=hero_image,
         # banner_url intentionally left empty - frontend renders gradient
         content=content,
-        is_showcase=is_showcase,
-        is_published=not is_private,  # Published unless marked as private
+        is_showcased=is_showcase,  # Field is is_showcased, param is is_showcase
+        is_private=is_private,
     )
 
     # Apply AI-suggested categories, topics, tools, and technologies from sections

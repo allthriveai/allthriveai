@@ -11,10 +11,8 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   fetchGitHubRepos,
   checkGitHubConnection,
-  importGitHubRepoAsync,
   type GitHubRepository,
 } from '@/services/github';
-
 // Constants
 const ONBOARDING_BUTTON_BASE = 'w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50';
 const BUTTON_FLEX_CONTAINER = 'flex items-center gap-3';
@@ -146,40 +144,17 @@ export function IntelligentChatPanel({
   };
 
   const handleSelectRepo = async (repo: GitHubRepository) => {
-    setGithubStep('importing');
-    setGithubMessage(`Importing "${repo.name}"...`);
+    // Close the repo picker UI
+    handleCancelGitHub();
 
-    try {
-      const result = await importGitHubRepoAsync(
-        repo.htmlUrl,
-        false,
-        (status) => {
-          setGithubMessage(status);
-        }
-      );
+    // Use the AI agent to import the repository with template-based analysis
+    // The agent will use import_github_project tool which generates beautiful
+    // structured sections (overview, features, tech_stack, architecture, etc.)
+    const importMessage = `Import this GitHub repository to my showcase: ${repo.htmlUrl}`;
 
-      setGithubMessage(`✅ Successfully imported "${repo.name}"! Redirecting...`);
-
-      // Close panel and navigate to the project
-      setTimeout(() => {
-        onClose();
-        navigate(result.url);
-      }, 1500);
-    } catch (error: any) {
-      console.error('Failed to import repo:', error);
-
-      // Handle duplicate imports with link to existing project
-      if (error.errorCode === 'DUPLICATE_IMPORT' && error.project) {
-        setGithubMessage(`This repository is already imported.`);
-        setTimeout(() => {
-          onClose();
-          navigate(error.project.url);
-        }, 1500);
-      } else {
-        setGithubMessage(error.message || 'Failed to import repository.');
-        setGithubStep('repos');
-      }
-    }
+    // Send message to the chat agent
+    setHasInteracted(true);
+    sendMessage(importMessage);
   };
 
   const handleCancelGitHub = () => {
@@ -319,83 +294,84 @@ export function IntelligentChatPanel({
     if (messages.length > 0 || hasInteracted) return null;
 
     // Welcome mode for new users after onboarding
-    if (welcomeMode) {
-      return (
-        <div className="flex flex-col items-start justify-start h-full px-4 pt-4">
-          <div className="max-w-md">
-            <div className="mb-4 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-              <p className="text-sm mb-1 flex items-center gap-2">
-                🎉 Glad you're here{user?.first_name ? `, ${user.first_name}` : ''}!
-              </p>
-              <p className="text-sm">Let's get you started. What would you like to do?</p>
-            </div>
-
-            {/* 3 Onboarding Options */}
-            <div className="space-y-2">
-              <button
-                onClick={handlePlayGame}
-                disabled={isLoading}
-                className={ONBOARDING_BUTTON_BASE}
-              >
-                <div className={BUTTON_FLEX_CONTAINER}>
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg">🎮</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className={BUTTON_TITLE_STYLE}>
-                      Play a game
-                    </div>
-                    <div className={BUTTON_SUBTITLE_STYLE}>
-                      Help us personalize your experience
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={handleAddFirstProject}
-                disabled={isLoading}
-                className={ONBOARDING_BUTTON_BASE}
-              >
-                <div className={BUTTON_FLEX_CONTAINER}>
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg">➕</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className={BUTTON_TITLE_STYLE}>
-                      Add your first project
-                    </div>
-                    <div className={BUTTON_SUBTITLE_STYLE}>
-                      Paste a link, connect an integration, or describe it
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={handleMakeSomethingNew}
-                disabled={isLoading}
-                className={ONBOARDING_BUTTON_BASE}
-              >
-                <div className={BUTTON_FLEX_CONTAINER}>
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg">✨</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className={BUTTON_TITLE_STYLE}>
-                      Don't know where to start?
-                    </div>
-                    <div className={BUTTON_SUBTITLE_STYLE}>
-                      Let's make something new together
-                    </div>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
+    // Temporarily disabled - re-enable once onboarding flow is revised
+    // if (welcomeMode) {
+    //   return (
+    //     <div className="flex flex-col items-start justify-start h-full px-4 pt-4">
+    //       <div className="max-w-md">
+    //         <div className="mb-4 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+    //           <p className="text-sm mb-1 flex items-center gap-2">
+    //             🎉 Glad you're here{user?.first_name ? `, ${user.first_name}` : ''}!
+    //           </p>
+    //           <p className="text-sm">Let's get you started. What would you like to do?</p>
+    //         </div>
+    //
+    //         {/* 3 Onboarding Options */}
+    //         <div className="space-y-2">
+    //           <button
+    //             onClick={handlePlayGame}
+    //             disabled={isLoading}
+    //             className={ONBOARDING_BUTTON_BASE}
+    //           >
+    //             <div className={BUTTON_FLEX_CONTAINER}>
+    //               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center flex-shrink-0">
+    //                 <span className="text-lg">🎮</span>
+    //               </div>
+    //               <div className="flex-1">
+    //                 <div className={BUTTON_TITLE_STYLE}>
+    //                   Play a game
+    //                 </div>
+    //                 <div className={BUTTON_SUBTITLE_STYLE}>
+    //                   Help us personalize your experience
+    //                 </div>
+    //               </div>
+    //             </div>
+    //           </button>
+    //
+    //           <button
+    //             onClick={handleAddFirstProject}
+    //             disabled={isLoading}
+    //             className={ONBOARDING_BUTTON_BASE}
+    //           >
+    //             <div className={BUTTON_FLEX_CONTAINER}>
+    //               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center flex-shrink-0">
+    //                 <span className="text-lg">➕</span>
+    //               </div>
+    //               <div className="flex-1">
+    //                 <div className={BUTTON_TITLE_STYLE}>
+    //                   Add your first project
+    //                 </div>
+    //                 <div className={BUTTON_SUBTITLE_STYLE}>
+    //                   Paste a link, connect an integration, or describe it
+    //                 </div>
+    //               </div>
+    //             </div>
+    //           </button>
+    //
+    //           <button
+    //             onClick={handleMakeSomethingNew}
+    //             disabled={isLoading}
+    //             className={ONBOARDING_BUTTON_BASE}
+    //           >
+    //             <div className={BUTTON_FLEX_CONTAINER}>
+    //               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center flex-shrink-0">
+    //                 <span className="text-lg">✨</span>
+    //               </div>
+    //               <div className="flex-1">
+    //                 <div className={BUTTON_TITLE_STYLE}>
+    //                   Don't know where to start?
+    //                 </div>
+    //                 <div className={BUTTON_SUBTITLE_STYLE}>
+    //                   Let's make something new together
+    //                 </div>
+    //               </div>
+    //             </div>
+    //           </button>
+    //         </div>
+    //       </div>
+    //     </div>
+    //   );
+    // }
 
     // Default empty state
     return (

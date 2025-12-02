@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.cache import cache
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import Throttled
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -18,6 +19,59 @@ from .models import Project, ProjectLike
 from .serializers import ProjectSerializer
 
 logger = logging.getLogger(__name__)
+
+# URL constants for explore pagination
+EXPLORE_BASE_URL = '/api/v1/projects/explore/'
+
+
+def apply_throttle(request):
+    """Apply throttling based on authentication status.
+
+    Raises Throttled exception if rate limit exceeded.
+    """
+    throttle_class = AuthenticatedProjectsThrottle if request.user.is_authenticated else PublicProjectsThrottle
+    throttle = throttle_class()
+    if not throttle.allow_request(request, None):
+        raise Throttled(wait=throttle.wait())
+
+
+def build_pagination_urls(tab: str, page_num: int, page_size: int, total_count: int) -> tuple[str | None, str | None]:
+    """Build next and previous pagination URLs for explore endpoint.
+
+    Returns:
+        Tuple of (next_url, previous_url)
+    """
+    has_next = page_num * page_size < total_count
+    next_url = f'{EXPLORE_BASE_URL}?tab={tab}&page={page_num + 1}&page_size={page_size}' if has_next else None
+    previous_url = f'{EXPLORE_BASE_URL}?tab={tab}&page={page_num - 1}&page_size={page_size}' if page_num > 1 else None
+    return next_url, previous_url
+
+
+def build_paginated_response(
+    projects, metadata: dict, page_num: int, page_size: int, tab: str, metadata_key: str = 'personalization'
+) -> dict:
+    """Build a standard paginated response for explore endpoint.
+
+    Args:
+        projects: Queryset or list of projects to serialize
+        metadata: Additional metadata to include in response
+        page_num: Current page number
+        page_size: Items per page
+        tab: Tab name for URL building (e.g., 'for-you', 'trending')
+        metadata_key: Key name for metadata in response (default: 'personalization')
+    """
+    serializer = ProjectSerializer(projects, many=True)
+    # Handle different metadata count keys
+    total_count = metadata.get('total_candidates', metadata.get('total_trending', len(projects)))
+    next_url, previous_url = build_pagination_urls(tab, page_num, page_size, total_count)
+
+    return {
+        'count': total_count,
+        'next': next_url,
+        'previous': previous_url,
+        'results': serializer.data,
+        metadata_key: metadata,
+    }
 
 
 class ProjectPagination(PageNumberPagination):
@@ -119,6 +173,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """Called when deleting a project.
 
         Admins can delete any project, regular users can only delete their own.
+        For Reddit thread projects, records deletion to prevent resync recreation.
         """
         from core.users.models import UserRole
 
@@ -129,9 +184,38 @@ class ProjectViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('You do not have permission to delete this project.')
 
         user = instance.user
+
+        # If this is a Reddit thread project, record the deletion
+        if instance.type == Project.ProjectType.REDDIT_THREAD and hasattr(instance, 'reddit_thread'):
+            self._record_reddit_thread_deletion(instance, self.request.user)
+
         instance.delete()
         # Invalidate cache after delete
         self._invalidate_user_cache(user)
+
+    def _record_reddit_thread_deletion(self, project, deleted_by):
+        """Record a Reddit thread deletion to prevent resync recreation."""
+        try:
+            from core.integrations.reddit_models import DeletedRedditThread
+
+            thread = project.reddit_thread
+
+            # Create a deletion record
+            DeletedRedditThread.objects.create(
+                reddit_post_id=thread.reddit_post_id,
+                agent=thread.agent,
+                subreddit=thread.subreddit,
+                deleted_by=deleted_by,
+                deletion_type=DeletedRedditThread.DeletionType.ADMIN_DELETED,
+                deletion_reason=f'Inappropriate content - deleted by admin {deleted_by.username}',
+            )
+
+            logger.info(
+                f'Recorded deletion of Reddit thread {thread.reddit_post_id} '
+                f'(r/{thread.subreddit}) by {deleted_by.username}'
+            )
+        except Exception as e:
+            logger.error(f'Failed to record Reddit thread deletion: {e}', exc_info=True)
 
     def _invalidate_user_cache(self, user):
         """Invalidate cached project lists for a user."""
@@ -139,6 +223,82 @@ class ProjectViewSet(viewsets.ModelViewSet):
         cache.delete(f'projects:v2:{username_lower}:own')
         cache.delete(f'projects:v2:{username_lower}:public')
         logger.debug(f'Invalidated project cache for user {user.username}')
+
+    @action(detail=True, methods=['patch'], url_path='update-tags')
+    def update_tags(self, request, pk=None):
+        """Update project tags (tools, categories, topics) - Admin only.
+
+        Sets tags_manually_edited=True to prevent auto-tagging during resync.
+
+        Payload:
+        {
+            "tools": [1, 2, 3],  # Tool IDs
+            "categories": [4, 5],  # Category/Taxonomy IDs
+            "topics": ["python", "ai_agents"]  # String array
+        }
+        """
+        from core.taxonomy.models import Taxonomy
+        from core.tools.models import Tool
+        from core.users.models import UserRole
+
+        # Only admins can manually edit tags
+        if request.user.role != UserRole.ADMIN:
+            return Response(
+                {'error': 'Only admins can manually edit project tags'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        project = self.get_object()
+
+        # Update tools
+        if 'tools' in request.data:
+            tool_ids = request.data['tools']
+            if not isinstance(tool_ids, list):
+                return Response(
+                    {'error': {'field': 'tools', 'message': 'Must be a list of tool IDs'}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            tools = Tool.objects.filter(id__in=tool_ids)
+            project.tools.set(tools)
+
+        # Update categories
+        if 'categories' in request.data:
+            category_ids = request.data['categories']
+            if not isinstance(category_ids, list):
+                return Response(
+                    {'error': {'field': 'categories', 'message': 'Must be a list of category IDs'}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            categories = Taxonomy.objects.filter(id__in=category_ids, taxonomy_type='category')
+            project.categories.set(categories)
+
+        # Update topics
+        if 'topics' in request.data:
+            topics = request.data['topics']
+            if not isinstance(topics, list):
+                return Response(
+                    {'error': {'field': 'topics', 'message': 'Must be a list of strings'}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            # Validate and clean topics
+            cleaned_topics = [str(t).strip().lower()[:50] for t in topics if t]
+            project.topics = cleaned_topics[:15]  # Limit to 15 topics
+
+        # Mark as manually edited
+        project.tags_manually_edited = True
+        project.save()
+
+        # Invalidate cache
+        self._invalidate_user_cache(project.user)
+
+        logger.info(
+            f'Admin {request.user.username} manually edited tags for project {project.id} '
+            f'({project.user.username}/{project.slug})'
+        )
+
+        # Return updated project
+        serializer = self.get_serializer(project)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['post'], url_path='bulk-delete')
     def bulk_delete(self, request):
@@ -167,12 +327,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         # Admin can delete any projects, regular users only their own
         if request.user.role == UserRole.ADMIN:
-            queryset = Project.objects.filter(id__in=project_ids)
+            queryset = Project.objects.filter(id__in=project_ids).select_related('reddit_thread')
         else:
-            queryset = Project.objects.filter(id__in=project_ids, user=request.user)
+            queryset = Project.objects.filter(id__in=project_ids, user=request.user).select_related('reddit_thread')
 
         # Get affected users for cache invalidation
         affected_users = set(queryset.values_list('user', flat=True))
+
+        # Record Reddit thread deletions before actual deletion
+        for project in queryset:
+            if project.type == Project.ProjectType.REDDIT_THREAD and hasattr(project, 'reddit_thread'):
+                self._record_reddit_thread_deletion(project, request.user)
 
         deleted_count, _ = queryset.delete()
 
@@ -247,13 +412,7 @@ def public_user_projects(request, username):
     - Uses select_related to prevent N+1 queries
     - Consistent response time to prevent user enumeration
     """
-    # Apply throttling based on authentication status
-    throttle_class = AuthenticatedProjectsThrottle if request.user.is_authenticated else PublicProjectsThrottle
-    throttle = throttle_class()
-    if not throttle.allow_request(request, None):
-        from rest_framework.exceptions import Throttled
-
-        raise Throttled(wait=throttle.wait())
+    apply_throttle(request)
 
     start_time = time.time()
 
@@ -326,13 +485,7 @@ def user_liked_projects(request, username):
     - Rate limited similarly to other public project endpoints
     - Uses select_related/prefetch_related to avoid N+1 queries
     """
-    # Apply throttling based on authentication status
-    throttle_class = AuthenticatedProjectsThrottle if request.user.is_authenticated else PublicProjectsThrottle
-    throttle = throttle_class()
-    if not throttle.allow_request(request, None):
-        from rest_framework.exceptions import Throttled
-
-        raise Throttled(wait=throttle.wait())
+    apply_throttle(request)
 
     start_time = time.time()
 
@@ -489,31 +642,8 @@ def explore_projects(request):
                         page=page_num,
                         page_size=page_size,
                     )
-                    serializer = ProjectSerializer(result['projects'], many=True)
-
-                    # Calculate pagination info
-                    total_count = result['metadata'].get('total_candidates', len(result['projects']))
-                    has_next = page_num * page_size < total_count
-
-                    next_url = (
-                        f'/api/v1/projects/explore/?tab=for-you&page={page_num + 1}&page_size={page_size}'
-                        if has_next
-                        else None
-                    )
-                    previous_url = (
-                        f'/api/v1/projects/explore/?tab=for-you&page={page_num - 1}&page_size={page_size}'
-                        if page_num > 1
-                        else None
-                    )
-
                     return Response(
-                        {
-                            'count': total_count,
-                            'next': next_url,
-                            'previous': previous_url,
-                            'results': serializer.data,
-                            'personalization': result['metadata'],
-                        }
+                        build_paginated_response(result['projects'], result['metadata'], page_num, page_size, 'for-you')
                     )
                 except Exception as e:
                     logger.error(f'Personalization engine error: {e}', exc_info=True)
@@ -525,30 +655,8 @@ def explore_projects(request):
                 page=page_num,
                 page_size=page_size,
             )
-            serializer = ProjectSerializer(result['projects'], many=True)
-
-            # Calculate pagination info
-            total_count = result['metadata'].get('total_candidates', 0)
-            has_next = page_num * page_size < total_count
-
-            next_url = (
-                f'/api/v1/projects/explore/?tab=for-you&page={page_num + 1}' f'&page_size={page_size}'
-                if has_next
-                else None
-            )
-            previous_url = (
-                f'/api/v1/projects/explore/?tab=for-you&page={page_num - 1}' f'&page_size={page_size}'
-                if page_num > 1
-                else None
-            )
             return Response(
-                {
-                    'count': total_count,
-                    'next': next_url,
-                    'previous': previous_url,
-                    'results': serializer.data,
-                    'personalization': result['metadata'],
-                }
+                build_paginated_response(result['projects'], result['metadata'], page_num, page_size, 'for-you')
             )
         else:
             # Anonymous user - show popular
@@ -558,30 +666,8 @@ def explore_projects(request):
                 page=page_num,
                 page_size=page_size,
             )
-            serializer = ProjectSerializer(result['projects'], many=True)
-
-            # Calculate pagination info
-            total_count = result['metadata'].get('total_candidates', 0)
-            has_next = page_num * page_size < total_count
-
-            next_url = (
-                f'/api/v1/projects/explore/?tab=for-you&page={page_num + 1}' f'&page_size={page_size}'
-                if has_next
-                else None
-            )
-            previous_url = (
-                f'/api/v1/projects/explore/?tab=for-you&page={page_num - 1}' f'&page_size={page_size}'
-                if page_num > 1
-                else None
-            )
             return Response(
-                {
-                    'count': total_count,
-                    'next': next_url,
-                    'previous': previous_url,
-                    'results': serializer.data,
-                    'personalization': result['metadata'],
-                }
+                build_paginated_response(result['projects'], result['metadata'], page_num, page_size, 'for-you')
             )
 
     elif tab == 'trending':
@@ -598,30 +684,10 @@ def explore_projects(request):
                 page=page_num,
                 page_size=page_size,
             )
-            serializer = ProjectSerializer(result['projects'], many=True)
-
-            # Calculate pagination info
-            total_count = result['metadata'].get('total_trending', 0)
-            has_next = page_num * page_size < total_count
-
-            next_url = (
-                f'/api/v1/projects/explore/?tab=trending&page={page_num + 1}' f'&page_size={page_size}'
-                if has_next
-                else None
-            )
-            previous_url = (
-                f'/api/v1/projects/explore/?tab=trending&page={page_num - 1}' f'&page_size={page_size}'
-                if page_num > 1
-                else None
-            )
             return Response(
-                {
-                    'count': total_count,
-                    'next': next_url,
-                    'previous': previous_url,
-                    'results': serializer.data,
-                    'trending': result['metadata'],
-                }
+                build_paginated_response(
+                    result['projects'], result['metadata'], page_num, page_size, 'trending', 'trending'
+                )
             )
         except Exception as e:
             logger.error(f'Trending engine error: {e}', exc_info=True)

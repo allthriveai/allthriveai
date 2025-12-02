@@ -233,3 +233,76 @@ class RedditThread(models.Model):
 
     def __str__(self):
         return f'r/{self.subreddit} - {self.reddit_post_id}'
+
+
+class DeletedRedditThread(models.Model):
+    """Track Reddit threads that should not be synced.
+
+    This includes:
+    1. Threads deleted by admins (to prevent recreation)
+    2. Threads that failed content moderation (to prevent re-checking)
+    """
+
+    class DeletionType(models.TextChoices):
+        ADMIN_DELETED = 'admin_deleted', 'Admin Deleted'
+        MODERATION_FAILED = 'moderation_failed', 'Moderation Failed'
+
+    reddit_post_id = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text='Reddit post ID (e.g., "t3_1pa4e7t") that was deleted or rejected',
+    )
+
+    deletion_type = models.CharField(
+        max_length=20,
+        choices=DeletionType.choices,
+        default=DeletionType.ADMIN_DELETED,
+        db_index=True,
+        help_text='Type of deletion: admin or moderation failure',
+    )
+
+    agent = models.ForeignKey(
+        RedditCommunityAgent,
+        on_delete=models.CASCADE,
+        related_name='deleted_threads',
+        help_text='Agent that originally created this thread',
+    )
+
+    subreddit = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text='Subreddit name for reference',
+    )
+
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text='Admin user who deleted the thread',
+    )
+
+    deleted_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When the thread was deleted',
+    )
+
+    deletion_reason = models.TextField(
+        blank=True,
+        default='',
+        help_text='Optional reason for deletion',
+    )
+
+    class Meta:
+        db_table = 'deleted_reddit_threads'
+        verbose_name = 'Deleted Reddit Thread'
+        verbose_name_plural = 'Deleted Reddit Threads'
+        indexes = [
+            models.Index(fields=['reddit_post_id']),
+            models.Index(fields=['agent', '-deleted_at']),
+        ]
+        ordering = ['-deleted_at']
+
+    def __str__(self):
+        return f'Deleted: r/{self.subreddit} - {self.reddit_post_id}'

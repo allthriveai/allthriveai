@@ -252,9 +252,10 @@ export function useIntelligentChat({
               break;
 
             case 'chunk':
-              // Append chunk to current message
+              // Append chunk to current message (with de-duplication)
               if (data.chunk) {
-                currentMessageRef.current += data.chunk;
+                const deduped = data.chunk.replace(/\b(\w+)(\s+\1){1,}\b/g, '$1');
+                currentMessageRef.current += deduped;
 
                 // Update or add the assistant message
                 setMessages((prev) => {

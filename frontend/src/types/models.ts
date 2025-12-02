@@ -121,6 +121,7 @@ export interface Project {
   categories?: number[]; // Category taxonomy IDs (predefined)
   categoriesDetails?: Taxonomy[]; // Full category taxonomy objects
   topics?: string[]; // User-generated topics (free-form, moderated)
+  tagsManuallyEdited?: boolean; // If true, tags were manually edited by admin and won't be auto-updated
   heartCount: number;
   isLikedByUser: boolean;
   content: ProjectContent;

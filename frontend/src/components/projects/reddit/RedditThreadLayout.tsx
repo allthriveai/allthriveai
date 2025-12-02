@@ -97,7 +97,8 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
   const commentCount = numComments || num_comments || 0;
   const postScore = score || 0;
   const hasVideo = isVideo || is_video || false;
-  const postVideoUrl = videoUrl || video_url || '';
+  // Use heroVideoUrl from project content (downloaded videos) if available, otherwise use reddit metadata
+  const postVideoUrl = localProject.content?.heroVideoUrl || videoUrl || video_url || '';
 
   // Clean author name (remove /u/ prefix if present)
   const cleanAuthor = author?.replace(/^\/u\//, '') || 'unknown';
@@ -246,27 +247,34 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
           <div className="relative backdrop-blur-xl bg-white/5 border border-white/10 overflow-hidden shadow-2xl" style={{ borderRadius: 'var(--radius)' }}>
             {/* Video Player or Thumbnail Hero Image */}
             {hasVideo && postVideoUrl ? (
-              <div className="w-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden">
+              <div className="w-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative overflow-hidden aspect-video">
                 <video
                   ref={videoRef}
                   controls
                   autoPlay
                   loop
-                  muted
                   playsInline
-                  className="w-full max-h-[800px] object-contain"
+                  poster={thumbnailImage && thumbnailImage !== 'self' && thumbnailImage !== 'default' ? thumbnailImage : undefined}
+                  className="w-full h-full object-contain"
                   preload="metadata"
-                  onLoadedMetadata={() => {
-                    // Ensure video starts muted but volume control is available
-                    if (videoRef.current) {
-                      videoRef.current.muted = true;
-                      videoRef.current.volume = 0.5; // Set to 50% when unmuted
-                    }
-                  }}
                 >
                   <source src={postVideoUrl} type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
+                {/* Note: Only show warning for v.redd.it URLs (not our downloaded videos) */}
+                {postVideoUrl.includes('v.redd.it') && (
+                  <div className="absolute bottom-4 right-4 bg-black/80 backdrop-blur-sm px-4 py-2 rounded-lg text-white/70 text-sm flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>No audio available</span>
+                    {permalink && (
+                      <a href={permalink} target="_blank" rel="noopener noreferrer" className="underline hover:text-white ml-2">
+                        Watch on Reddit
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             ) : thumbnailImage && thumbnailImage !== 'self' && thumbnailImage !== 'default' ? (
               <div className="w-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center min-h-[400px] relative overflow-hidden">

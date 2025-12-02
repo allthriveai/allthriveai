@@ -246,49 +246,85 @@ async def stream_agent_response(user_message: str, user_id: int, username: str, 
     project_created = False
     project_data = None
 
+    # Track processed events to avoid duplicates
+    processed_tool_calls = set()
+    processed_stream_runs = set()  # Track run_ids we've already started streaming
+    current_stream_run_id = None  # The run_id we're currently streaming from
+
     try:
         # Stream agent execution
         async for event in agent.astream_events(input_state, config, version='v1'):
             kind = event['event']
+            run_id = event.get('run_id', '')
+            tags = event.get('tags', [])
 
-            # Stream LLM tokens
+            # Stream LLM tokens - only from 'agent' node to avoid duplicates
             if kind == 'on_chat_model_stream':
-                content = event['data']['chunk'].content
+                # Filter to only stream from the agent node
+                # Tags contain the node name that triggered the event
+                if 'agent' not in tags and 'seq:step:1' not in tags:
+                    # Allow events without tags (backwards compat) but track run_id
+                    if run_id in processed_stream_runs and run_id != current_stream_run_id:
+                        continue
+
+                # If this is a new stream run, record it
+                if run_id and run_id not in processed_stream_runs:
+                    processed_stream_runs.add(run_id)
+                    current_stream_run_id = run_id
+
+                content = event.get('data', {}).get('chunk')
                 if content:
-                    yield {'type': 'token', 'content': content}
+                    token_content = getattr(content, 'content', content) if hasattr(content, 'content') else content
+                    if token_content:
+                        yield {'type': 'token', 'content': token_content}
 
-            # Tool execution started (standard tools)
+            # Tool execution started
             elif kind == 'on_tool_start':
-                tool_name = event['name']
-                yield {'type': 'tool_start', 'tool': tool_name}
+                tool_name = event.get('name', '')
+                run_id = event.get('run_id', '')
+                # Track this tool call
+                if run_id and run_id not in processed_tool_calls:
+                    yield {'type': 'tool_start', 'tool': tool_name}
 
-            # Tool execution ended (standard tools)
+            # Tool execution ended
             elif kind == 'on_tool_end':
-                tool_name = event['name']
-                raw_output = event['data'].get('output')
+                tool_name = event.get('name', '')
+                run_id = event.get('run_id', '')
+
+                # Skip if already processed
+                if run_id in processed_tool_calls:
+                    continue
+                processed_tool_calls.add(run_id)
+
+                raw_output = event.get('data', {}).get('output')
                 # Convert output to serializable format
                 if hasattr(raw_output, 'dict'):
                     output = raw_output.dict()
                 elif isinstance(raw_output, dict):
                     output = raw_output
+                elif isinstance(raw_output, str):
+                    # Try to parse as JSON
+                    try:
+                        output = json.loads(raw_output)
+                    except (json.JSONDecodeError, TypeError):
+                        output = {'raw': raw_output}
                 else:
                     output = str(raw_output) if raw_output else None
 
-                # Check if create_project tool succeeded
-                if tool_name == 'create_project' and isinstance(output, dict) and output.get('success'):
-                    project_created = True
-                    project_data = output
+                # Check if project creation tool succeeded
+                if tool_name in TOOLS_NEEDING_STATE:
+                    if isinstance(output, dict) and output.get('success'):
+                        project_created = True
+                        project_data = output
 
                 yield {'type': 'tool_end', 'tool': tool_name, 'output': output}
 
-            # Detect tool results from our custom tool_node via ToolMessage
+            # Custom tool_node results come through chain end as ToolMessages
             elif kind == 'on_chain_end':
                 output = event.get('data', {}).get('output')
-                # output can be dict, list, string, or None - only process if dict with messages
                 if isinstance(output, dict):
                     messages = output.get('messages', [])
                     for msg in messages:
-                        # Check if msg is a ToolMessage-like object with name and content
                         if hasattr(msg, 'name') and hasattr(msg, 'content') and msg.name:
                             tool_name = msg.name
                             try:
@@ -296,19 +332,17 @@ async def stream_agent_response(user_message: str, user_id: int, username: str, 
                             except (json.JSONDecodeError, TypeError):
                                 tool_output = {'raw': str(msg.content)}
 
-                            # Emit tool_start and tool_end for custom tool_node results
+                            # Emit tool events so frontend can handle redirects
                             yield {'type': 'tool_start', 'tool': tool_name}
                             yield {'type': 'tool_end', 'tool': tool_name, 'output': tool_output}
 
-                            # Check if create_project succeeded
                             if (
-                                tool_name == 'create_project'
+                                tool_name in TOOLS_NEEDING_STATE
                                 and isinstance(tool_output, dict)
                                 and tool_output.get('success')
                             ):
                                 project_created = True
                                 project_data = tool_output
-                                logger.info(f'Project created detected: {project_data}')
 
         yield {
             'type': 'complete',
