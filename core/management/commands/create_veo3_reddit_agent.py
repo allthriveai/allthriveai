@@ -17,7 +17,7 @@ from core.integrations.reddit_models import RedditCommunityAgent
 from core.taxonomy.models import Taxonomy
 from core.tools.models import Company, Tool
 from core.users.models import User, UserRole
-from services.reddit_sync_service import RedditSyncService
+from services.integrations.reddit.sync import RedditSyncService
 
 # Default settings for Veo3 Reddit agent
 VEO3_AGENT_SETTINGS = {

@@ -28,7 +28,7 @@ class AIAnalyzerTestCase(TestCase):
             'dependencies': {},
         }
 
-    @patch('services.ai_provider.AIProvider.complete')
+    @patch('services.ai.provider.AIProvider.complete')
     @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
     @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
     @patch('core.integrations.base.parser.BaseParser.parse')
@@ -77,7 +77,7 @@ class AIAnalyzerTestCase(TestCase):
         self.assertIn('python', result['topics'])
         self.assertEqual(result['hero_image'], 'https://example.com/hero.png')
 
-    @patch('services.ai_provider.AIProvider.complete')
+    @patch('services.ai.provider.AIProvider.complete')
     @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
     @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
     def test_analyze_without_readme(self, mock_diagram, mock_scan, mock_ai):
@@ -110,7 +110,7 @@ class AIAnalyzerTestCase(TestCase):
         self.assertEqual(blocks[0]['type'], 'text')
         self.assertEqual(blocks[0]['style'], 'heading')
 
-    @patch('services.ai_provider.AIProvider.complete')
+    @patch('services.ai.provider.AIProvider.complete')
     @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
     @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
     def test_analyze_handles_ai_error(self, mock_diagram, mock_scan, mock_ai):
@@ -129,7 +129,7 @@ class AIAnalyzerTestCase(TestCase):
         self.assertIn('description', result)
         self.assertEqual(result['category_ids'], [9])  # Default to Developer & Coding
 
-    @patch('services.ai_provider.AIProvider.complete')
+    @patch('services.ai.provider.AIProvider.complete')
     @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
     @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
     def test_analyze_validates_category_ids(self, mock_diagram, mock_scan, mock_ai):
@@ -157,7 +157,7 @@ class AIAnalyzerTestCase(TestCase):
         self.assertNotIn(999, result['category_ids'])
         self.assertNotIn(-1, result['category_ids'])
 
-    @patch('services.ai_provider.AIProvider.complete')
+    @patch('services.ai.provider.AIProvider.complete')
     @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
     @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
     @patch('core.integrations.base.parser.BaseParser.parse')
@@ -200,7 +200,7 @@ class AIAnalyzerTestCase(TestCase):
         # Should use logo as hero image (logo preferred over banner)
         self.assertEqual(result['hero_image'], 'https://raw.githubusercontent.com/testowner/test-repo/HEAD/logo.svg')
 
-    @patch('services.ai_provider.AIProvider.complete')
+    @patch('services.ai.provider.AIProvider.complete')
     @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
     @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
     @patch('core.integrations.base.parser.BaseParser.parse')
@@ -243,7 +243,7 @@ class AIAnalyzerTestCase(TestCase):
         # Should use banner as hero image
         self.assertEqual(result['hero_image'], 'https://raw.githubusercontent.com/testowner/test-repo/HEAD/banner.png')
 
-    @patch('services.ai_provider.AIProvider.complete')
+    @patch('services.ai.provider.AIProvider.complete')
     @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
     @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
     @patch('core.integrations.base.parser.BaseParser.parse')
@@ -301,7 +301,7 @@ class AIAnalyzerTestCase(TestCase):
             self.assertIn('url', img)
             self.assertIn('screenshots', img['url'])
 
-    @patch('services.ai_provider.AIProvider.complete')
+    @patch('services.ai.provider.AIProvider.complete')
     @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
     @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
     def test_analyze_without_readme_adds_screenshots(self, mock_diagram, mock_scan, mock_ai):
@@ -331,7 +331,7 @@ class AIAnalyzerTestCase(TestCase):
         self.assertEqual(len(image_grid_blocks), 1)
         self.assertEqual(len(image_grid_blocks[0]['images']), 2)
 
-    @patch('services.ai_provider.AIProvider.complete')
+    @patch('services.ai.provider.AIProvider.complete')
     @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
     @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
     def test_analyze_limits_screenshots_to_six(self, mock_diagram, mock_scan, mock_ai):
@@ -482,7 +482,7 @@ class FormatTreeForPromptTestCase(TestCase):
 #             ],
 #         }
 #
-#     @patch('services.ai_provider.AIProvider.complete')
+#     @patch('services.ai.provider.AIProvider.complete')
 #     @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
 #     @patch('core.integrations.base.parser.BaseParser.parse')
 #     def test_analyze_returns_sections(self, mock_parse, mock_scan, mock_ai):
@@ -544,7 +544,7 @@ class FormatTreeForPromptTestCase(TestCase):
 #             self.assertIn('order', section)
 #             self.assertIn('content', section)
 #
-#     @patch('services.ai_provider.AIProvider.complete')
+#     @patch('services.ai.provider.AIProvider.complete')
 #     @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
 #     @patch('core.integrations.base.parser.BaseParser.parse')
 #     def test_analyze_includes_architecture_section(self, mock_parse, mock_scan, mock_ai):
@@ -577,7 +577,7 @@ class FormatTreeForPromptTestCase(TestCase):
 #         self.assertIn('diagram', arch_section['content'])
 #         self.assertIn('graph TD', arch_section['content']['diagram'])
 #
-#     @patch('services.ai_provider.AIProvider.complete')
+#     @patch('services.ai.provider.AIProvider.complete')
 #     @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
 #     @patch('core.integrations.base.parser.BaseParser.parse')
 #     def test_analyze_handles_ai_error_gracefully(self, mock_parse, mock_scan, mock_ai):

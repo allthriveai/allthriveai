@@ -75,7 +75,7 @@ class TestRealGitHubImportFlow:
         3. Project is created with all required fields
         """
         from core.projects.models import Project
-        from services.project_agent.tools import import_github_project
+        from services.agents.project.tools import import_github_project
 
         # Clean up any existing project for this repo
         Project.objects.filter(user=github_user, external_url=TEST_REPO_URL).delete()
@@ -371,7 +371,7 @@ class TestAgentStreamingWithRealImport:
         4. Project is created with all required fields
         """
         from core.projects.models import Project
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         # Clean up any existing project
         await sync_to_async(Project.objects.filter(user=github_user, external_url=TEST_REPO_URL).delete)()
@@ -442,7 +442,7 @@ class TestEdgeCases:
         """
         Test that importing a repo you don't own fails with clear message.
         """
-        from services.project_agent.tools import import_github_project
+        from services.agents.project.tools import import_github_project
 
         # Try to import a repo not owned by the user
         result = import_github_project.func(
@@ -472,7 +472,7 @@ class TestEdgeCases:
         # Create a unique test user without GitHub OAuth
         import uuid
 
-        from services.project_agent.tools import import_github_project
+        from services.agents.project.tools import import_github_project
 
         unique_suffix = str(uuid.uuid4())[:8]
         user_no_github = User.objects.create_user(
@@ -510,7 +510,7 @@ class TestEdgeCases:
         from django.db import IntegrityError
 
         from core.projects.models import Project
-        from services.project_agent.tools import import_github_project
+        from services.agents.project.tools import import_github_project
 
         # Clean up first
         Project.objects.filter(user=github_user, external_url=TEST_REPO_URL).delete()

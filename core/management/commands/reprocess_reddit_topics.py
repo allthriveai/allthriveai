@@ -6,7 +6,7 @@ Run with: python manage.py reprocess_reddit_topics
 from django.core.management.base import BaseCommand
 
 from core.integrations.reddit_models import RedditThread
-from services.reddit_sync_service import RedditSyncService
+from services.integrations.reddit.sync import RedditSyncService
 
 
 class Command(BaseCommand):

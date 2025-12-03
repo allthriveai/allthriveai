@@ -108,7 +108,7 @@ class TestProjectCreationE2E:
         4. Project has correct attributes
         """
         from core.projects.models import Project
-        from services.project_agent.tools import create_project, fetch_github_metadata
+        from services.agents.project.tools import create_project, fetch_github_metadata
 
         # Step 1: Test fetch_github_metadata directly
         with patch('services.project_agent.tools.requests.get') as mock_get:
@@ -171,7 +171,7 @@ class TestProjectCreationE2E:
         """Test that tool_node correctly injects state into tools."""
         import asyncio
 
-        from services.project_agent.agent import tool_node
+        from services.agents.project.agent import tool_node
 
         # Create a mock AI message with tool call
         ai_message = MagicMock()
@@ -217,7 +217,7 @@ class TestProjectCreationE2E:
     @pytest.mark.django_db
     def test_state_reducers_preserve_user_id(self, test_user):
         """Test that state reducers correctly preserve user_id across turns."""
-        from services.project_agent.agent import keep_latest_or_existing, keep_latest_str_or_existing
+        from services.agents.project.agent import keep_latest_or_existing, keep_latest_str_or_existing
 
         # Test keep_latest_or_existing
         assert keep_latest_or_existing(None, 123) == 123  # New value wins
@@ -277,7 +277,7 @@ class TestProjectCreationE2E:
     @pytest.mark.django_db
     def test_create_project_without_state_fails(self):
         """Test that create_project fails without state."""
-        from services.project_agent.tools import create_project
+        from services.agents.project.tools import create_project
 
         result = create_project.func(
             title='No State Test',
@@ -292,7 +292,7 @@ class TestProjectCreationE2E:
     @pytest.mark.django_db
     def test_create_project_without_user_id_fails(self):
         """Test that create_project fails without user_id in state."""
-        from services.project_agent.tools import create_project
+        from services.agents.project.tools import create_project
 
         result = create_project.func(
             title='No User ID Test',
@@ -310,7 +310,7 @@ class TestGitHubMetadataFetching:
 
     def test_fetch_github_metadata_success(self):
         """Test successful GitHub metadata fetch."""
-        from services.project_agent.tools import fetch_github_metadata
+        from services.agents.project.tools import fetch_github_metadata
 
         with patch('services.project_agent.tools.ProjectService') as mock_service:
             mock_service.is_github_url.return_value = True
@@ -340,7 +340,7 @@ class TestGitHubMetadataFetching:
 
     def test_fetch_github_metadata_invalid_url(self):
         """Test that invalid URLs are rejected."""
-        from services.project_agent.tools import fetch_github_metadata
+        from services.agents.project.tools import fetch_github_metadata
 
         with patch('services.project_agent.tools.ProjectService') as mock_service:
             mock_service.is_github_url.return_value = False
@@ -367,7 +367,7 @@ class TestIntegration:
         4. Tool execution: create_project
         """
         from core.projects.models import Project
-        from services.project_agent.tools import create_project, fetch_github_metadata
+        from services.agents.project.tools import create_project, fetch_github_metadata
 
         # Simulate the conversation flow
         conversation = []

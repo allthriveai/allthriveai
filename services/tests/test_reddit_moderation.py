@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from services.reddit_sync_service import RedditSyncService
+from services.integrations.reddit.sync import RedditSyncService
 
 
 class TestRedditContentModeration:

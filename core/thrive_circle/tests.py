@@ -1,3 +1,4 @@
+# ruff: noqa: S106
 """
 Tests for Thrive Circle unified points system.
 """
@@ -23,8 +24,7 @@ class UserPointsModelTest(TestCase):
     """Tests for User model points system"""
 
     def setUp(self):
-        test_password = User.objects.make_random_password()
-        self.user = User.objects.create_user(username='testuser', email='test@example.com', password=test_password)
+        self.user = User.objects.create_user(username='testuser', email='test@example.com', password='testpass123')
 
     def test_user_default_tier(self):
         """Test user starts with default tier"""
@@ -107,8 +107,7 @@ class StreakTrackingTest(TestCase):
     """Tests for streak tracking functionality"""
 
     def setUp(self):
-        test_password = User.objects.make_random_password()
-        self.user = User.objects.create_user(username='streakuser', email='streak@test.com', password=test_password)
+        self.user = User.objects.create_user(username='streakuser', email='streak@test.com', password='testpass123')
 
     def test_first_activity_sets_streak_to_one(self):
         """Test that first points activity sets streak to 1"""
@@ -174,8 +173,7 @@ class PointActivityModelTest(TestCase):
     """Tests for PointActivity model"""
 
     def setUp(self):
-        test_password = User.objects.make_random_password()
-        self.user = User.objects.create_user(username='activityuser', email='activity@test.com', password=test_password)
+        self.user = User.objects.create_user(username='activityuser', email='activity@test.com', password='testpass123')
 
     def test_activity_records_tier_at_time(self):
         """Test that activity records tier at time of award"""
@@ -200,8 +198,7 @@ class ThriveCircleAPITest(APITestCase):
     """Tests for Thrive Circle API endpoints"""
 
     def setUp(self):
-        test_password = User.objects.make_random_password()
-        self.user = User.objects.create_user(username='apiuser', email='api@test.com', password=test_password)
+        self.user = User.objects.create_user(username='apiuser', email='api@test.com', password='testpass123')
         self.client.force_authenticate(user=self.user)
 
     def test_my_status_endpoint(self):
@@ -239,8 +236,7 @@ class WeeklyGoalTest(TestCase):
     """Tests for weekly goals"""
 
     def setUp(self):
-        test_password = User.objects.make_random_password()
-        self.user = User.objects.create_user(username='goaluser', email='goal@test.com', password=test_password)
+        self.user = User.objects.create_user(username='goaluser', email='goal@test.com', password='testpass123')
         self.week_start = get_week_start()
 
         self.goal = WeeklyGoal.objects.create(
@@ -275,8 +271,7 @@ class SideQuestTest(TestCase):
     """Tests for side quests"""
 
     def setUp(self):
-        test_password = User.objects.make_random_password()
-        self.user = User.objects.create_user(username='questuser', email='quest@test.com', password=test_password)
+        self.user = User.objects.create_user(username='questuser', email='quest@test.com', password='testpass123')
         self.quest = SideQuest.objects.create(
             title='Test Quest',
             description='Complete 5 quizzes',
@@ -350,11 +345,10 @@ class AutoTrackingIntegrationTest(TestCase):
     """
 
     def setUp(self):
-        test_password = User.objects.make_random_password()
-        self.user = User.objects.create_user(username='trackuser', email='track@test.com', password=test_password)
+        self.user = User.objects.create_user(username='trackuser', email='track@test.com', password='testpass123')
         # Create a second user who owns projects (we can't track actions on own projects)
         self.project_owner = User.objects.create_user(
-            username='projectowner', email='owner@test.com', password=test_password
+            username='projectowner', email='owner@test.com', password='testpass123'
         )
 
     def test_comment_increments_quest_progress(self):
@@ -489,8 +483,7 @@ class QuestCompletionAPITest(APITestCase):
     """
 
     def setUp(self):
-        test_password = User.objects.make_random_password()
-        self.user = User.objects.create_user(username='apiuser2', email='api2@test.com', password=test_password)
+        self.user = User.objects.create_user(username='apiuser2', email='api2@test.com', password='testpass123')
         self.client.force_authenticate(user=self.user)
 
         # Create a quest
@@ -601,9 +594,8 @@ class CeleryTaskTest(TestCase):
     """Tests for Celery tasks"""
 
     def setUp(self):
-        test_password = User.objects.make_random_password()
-        self.user1 = User.objects.create_user(username='user1', email='user1@test.com', password=test_password)
-        self.user2 = User.objects.create_user(username='user2', email='user2@test.com', password=test_password)
+        self.user1 = User.objects.create_user(username='user1', email='user1@test.com', password='testpass123')
+        self.user2 = User.objects.create_user(username='user2', email='user2@test.com', password='testpass123')
 
     def test_create_weekly_goals_task(self):
         """Test that create_weekly_goals creates goals for all active users"""

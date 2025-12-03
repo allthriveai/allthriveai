@@ -9,7 +9,7 @@ from core.integrations.reddit_models import RedditCommunityAgent, RedditThread
 from core.projects.models import Project
 from core.taxonomy.models import Taxonomy
 from core.tools.models import Tool
-from services.reddit_sync_service import RedditSyncService
+from services.integrations.reddit.sync import RedditSyncService
 
 User = get_user_model()
 

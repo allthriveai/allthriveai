@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from services.project_agent.tools import (
+from services.agents.project.tools import (
     create_project,
     extract_url_info,
     fetch_github_metadata,

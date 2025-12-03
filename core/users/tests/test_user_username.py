@@ -45,7 +45,7 @@ class UsernameUniquenessTestCase(TestCase):
 
     def test_username_validation_format(self):
         """Test that usernames meet format requirements."""
-        from services.auth_agent.validators import validate_username
+        from services.agents.auth.validators import validate_username
 
         # Valid usernames
         valid, error = validate_username('johndoe')
@@ -82,7 +82,7 @@ class UsernameUniquenessTestCase(TestCase):
 
     def test_username_availability_check(self):
         """Test checking if username is already taken."""
-        from services.auth_agent.validators import validate_username
+        from services.agents.auth.validators import validate_username
 
         # Create a user
         User.objects.create_user(username='takenuser', email='taken@example.com', password='testpass123')
@@ -217,7 +217,7 @@ class UsernameGenerationTestCase(TestCase):
 
     def test_generate_username_from_email(self):
         """Test generating suggested username from email."""
-        from services.auth_agent.validators import generate_username_from_email
+        from services.agents.auth.validators import generate_username_from_email
 
         # Standard email
         username = generate_username_from_email('john.doe@example.com')
@@ -241,7 +241,7 @@ class UsernameGenerationTestCase(TestCase):
 
     def test_suggested_username_is_lowercase(self):
         """Test that suggested usernames are lowercase."""
-        from services.auth_agent.validators import generate_username_from_email
+        from services.agents.auth.validators import generate_username_from_email
 
         username = generate_username_from_email('JohnDoe@Example.com')
         self.assertEqual(username, 'johndoe')

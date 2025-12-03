@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
-from services.project_agent.agent import (
+from services.agents.project.agent import (
     ProjectAgentState,
     agent_node,
     create_project_agent,

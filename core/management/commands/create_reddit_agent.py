@@ -9,7 +9,7 @@ from django.utils.text import slugify
 
 from core.integrations.reddit_models import RedditCommunityAgent
 from core.users.models import User, UserRole
-from services.reddit_sync_service import RedditSyncService
+from services.integrations.reddit.sync import RedditSyncService
 
 
 class Command(BaseCommand):

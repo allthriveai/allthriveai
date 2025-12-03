@@ -72,7 +72,7 @@ class TestStreamingIntegration:
         - list
         - None
         """
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         # Create a mock agent that emits various event types
         async def mock_astream_events(input_state, config, version):
@@ -141,7 +141,7 @@ class TestStreamingIntegration:
         Test that tool results from custom tool_node are correctly extracted
         from on_chain_end events via ToolMessage parsing.
         """
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         # Create a ToolMessage like what our custom tool_node produces
         tool_message = ToolMessage(
@@ -205,7 +205,7 @@ class TestStreamingIntegration:
         """
         Test that streaming handles ToolMessages with non-JSON content gracefully.
         """
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         # ToolMessage with non-JSON content
         tool_message = ToolMessage(
@@ -250,7 +250,7 @@ class TestStreamingIntegration:
         """
         Test that standard on_tool_start and on_tool_end events are handled.
         """
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         async def mock_astream_events(input_state, config, version):
             yield {
@@ -299,7 +299,7 @@ class TestStreamingIntegration:
         """
         Test that exceptions during streaming are caught and yield error event.
         """
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         async def mock_astream_events(input_state, config, version):
             yield {
@@ -349,7 +349,7 @@ class TestRealAgentExecution:
         - Only LLM calls are mocked
         """
 
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         # Mock the LLM to return a tool call for fetch_github_metadata
         # Use proper AIMessage with tool_calls
@@ -417,7 +417,7 @@ class TestRealAgentExecution:
         from django.contrib.auth import get_user_model
 
         from core.projects.models import Project
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         User = get_user_model()
 
@@ -563,7 +563,7 @@ class TestEventOutputTypes:
     @pytest.mark.asyncio
     async def test_output_is_string(self, test_user):
         """Test handling when output is a plain string."""
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         async def mock_astream_events(input_state, config, version):
             yield {'event': 'on_chain_end', 'data': {'output': 'just a string'}}
@@ -588,7 +588,7 @@ class TestEventOutputTypes:
     @pytest.mark.asyncio
     async def test_output_is_none(self, test_user):
         """Test handling when output is None."""
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         async def mock_astream_events(input_state, config, version):
             yield {'event': 'on_chain_end', 'data': {'output': None}}
@@ -613,7 +613,7 @@ class TestEventOutputTypes:
     @pytest.mark.asyncio
     async def test_output_is_list(self, test_user):
         """Test handling when output is a list."""
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         async def mock_astream_events(input_state, config, version):
             yield {'event': 'on_chain_end', 'data': {'output': ['a', 'b', 'c']}}
@@ -638,7 +638,7 @@ class TestEventOutputTypes:
     @pytest.mark.asyncio
     async def test_output_is_integer(self, test_user):
         """Test handling when output is an integer."""
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         async def mock_astream_events(input_state, config, version):
             yield {'event': 'on_chain_end', 'data': {'output': 42}}
@@ -663,7 +663,7 @@ class TestEventOutputTypes:
     @pytest.mark.asyncio
     async def test_messages_is_not_list(self, test_user):
         """Test handling when messages exists but is not a list."""
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         async def mock_astream_events(input_state, config, version):
             yield {
@@ -691,7 +691,7 @@ class TestEventOutputTypes:
     @pytest.mark.asyncio
     async def test_data_key_missing(self, test_user):
         """Test handling when data key is missing from event."""
-        from services.project_agent.agent import stream_agent_response
+        from services.agents.project.agent import stream_agent_response
 
         async def mock_astream_events(input_state, config, version):
             yield {'event': 'on_chain_end'}  # No 'data' key

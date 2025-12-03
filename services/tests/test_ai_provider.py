@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 from django.conf import settings
 from django.test import TestCase
 
-from services.ai_provider import AIProvider
+from services.ai.provider import AIProvider
 
 
 class AIProviderTestCase(TestCase):
