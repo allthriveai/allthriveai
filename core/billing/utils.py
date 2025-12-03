@@ -115,7 +115,10 @@ def can_make_ai_request(user) -> tuple[bool, str]:
 
 def deduct_ai_request_from_subscription(user) -> bool:
     """
-    Deduct one AI request from user's monthly allowance.
+    Deduct one AI request from user's monthly allowance using atomic increment.
+
+    Uses Django F() expressions to prevent race conditions when multiple
+    concurrent requests try to increment the counter simultaneously.
 
     Args:
         user: Django User instance
@@ -123,16 +126,23 @@ def deduct_ai_request_from_subscription(user) -> bool:
     Returns:
         True if deducted successfully, False otherwise
     """
+    from django.db.models import F
+
     try:
-        subscription = UserSubscription.objects.get(user=user)
+        subscription = UserSubscription.objects.select_for_update().get(user=user)
 
         # Check if can make request
         if not subscription.can_make_ai_request():
             return False
 
-        # Increment counter
-        subscription.ai_requests_used_this_month += 1
-        subscription.save()
+        # Atomically increment counter using F() expression
+        # This prevents race conditions from concurrent requests
+        UserSubscription.objects.filter(pk=subscription.pk).update(
+            ai_requests_used_this_month=F('ai_requests_used_this_month') + 1
+        )
+
+        # Refresh from database to get updated value for logging
+        subscription.refresh_from_db()
 
         logger.debug(
             f'Deducted AI request from user {user.id} subscription '

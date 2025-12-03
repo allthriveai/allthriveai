@@ -28,10 +28,60 @@ from core.projects.models import Project
 logger = logging.getLogger(__name__)
 
 
+def get_best_thumbnail(thumbnails: dict) -> str:
+    """
+    Get the best available thumbnail from YouTube thumbnails dict.
+
+    Args:
+        thumbnails: Dictionary of thumbnail sizes
+
+    Returns:
+        URL of the best available thumbnail
+    """
+    for size in ['maxres', 'high', 'medium', 'default']:
+        if size in thumbnails:
+            return thumbnails[size]['url']
+    return ''
+
+
 class YouTubeViewSet(viewsets.ViewSet):
     """API endpoints for YouTube integration."""
 
     permission_classes = [IsAuthenticated]
+
+    def _get_youtube_service(self, user):
+        """
+        Initialize YouTube service with user's OAuth token.
+
+        Args:
+            user: User instance
+
+        Returns:
+            YouTubeService instance
+
+        Raises:
+            IntegrationAuthError: If token is invalid or missing
+        """
+        access_token = get_user_youtube_token(user)
+        return YouTubeService(oauth_token=access_token)
+
+    def _get_user_channel_id(self, youtube):
+        """
+        Get the authenticated user's YouTube channel ID.
+
+        Args:
+            youtube: YouTubeService instance
+
+        Returns:
+            Channel ID string
+
+        Raises:
+            ValueError: If no channel found
+        """
+        response = youtube._make_request(endpoint='/channels', params={'part': 'id', 'mine': 'true'})
+        if not response.get('items'):
+            raise ValueError('No YouTube channel found')
+        return response['items'][0]['id']
 
     @action(detail=False, methods=['get'], url_path='my-channel')
     def my_channel(self, request):
@@ -55,11 +105,7 @@ class YouTubeViewSet(viewsets.ViewSet):
         }
         """
         try:
-            # Get YouTube OAuth token
-            access_token = get_user_youtube_token(request.user)
-
-            # Initialize YouTube service
-            youtube = YouTubeService(oauth_token=access_token)
+            youtube = self._get_youtube_service(request.user)
 
             # Get user's channel info (use "mine" parameter)
             response = youtube._make_request(
@@ -79,13 +125,6 @@ class YouTubeViewSet(viewsets.ViewSet):
             already_imported = ContentSource.objects.filter(
                 user=request.user, platform='youtube', source_identifier=channel_id
             ).exists()
-
-            # Helper to get best available thumbnail
-            def get_best_thumbnail(thumbnails: dict) -> str:
-                for size in ['maxres', 'high', 'medium', 'default']:
-                    if size in thumbnails:
-                        return thumbnails[size]['url']
-                return ''
 
             return Response(
                 {
@@ -143,11 +182,7 @@ class YouTubeViewSet(viewsets.ViewSet):
         max_results = int(request.query_params.get('max_results', 50))
 
         try:
-            # Get YouTube OAuth token
-            access_token = get_user_youtube_token(request.user)
-
-            # Initialize YouTube service
-            youtube = YouTubeService(oauth_token=access_token)
+            youtube = self._get_youtube_service(request.user)
 
             # Get user's channel ID first
             channel_response = youtube._make_request(
@@ -183,13 +218,6 @@ class YouTubeViewSet(viewsets.ViewSet):
                     'external_url', flat=True
                 )
             )
-
-            # Helper to get best available thumbnail
-            def get_best_thumbnail(thumbnails: dict) -> str:
-                for size in ['maxres', 'high', 'medium', 'default']:
-                    if size in thumbnails:
-                        return thumbnails[size]['url']
-                return ''
 
             videos = []
             for video in videos_detail_response.get('items', []):
@@ -246,18 +274,8 @@ class YouTubeViewSet(viewsets.ViewSet):
         max_videos = request.data.get('max_videos', 50)
 
         try:
-            # Get user's channel ID
-            access_token = get_user_youtube_token(request.user)
-            youtube = YouTubeService(oauth_token=access_token)
-
-            response = youtube._make_request(endpoint='/channels', params={'part': 'id', 'mine': 'true'})
-
-            if not response.get('items'):
-                return Response(
-                    {'success': False, 'error': 'No YouTube channel found'}, status=status.HTTP_404_NOT_FOUND
-                )
-
-            channel_id = response['items'][0]['id']
+            youtube = self._get_youtube_service(request.user)
+            channel_id = self._get_user_channel_id(youtube)
 
             logger.info(f'User {user_id} importing channel {channel_id}')
 
@@ -306,16 +324,11 @@ class YouTubeViewSet(viewsets.ViewSet):
         }
         """
         try:
-            # Get user's channel ID
-            access_token = get_user_youtube_token(request.user)
-            youtube = YouTubeService(oauth_token=access_token)
-
-            response = youtube._make_request(endpoint='/channels', params={'part': 'id', 'mine': 'true'})
-
-            if not response.get('items'):
+            youtube = self._get_youtube_service(request.user)
+            try:
+                channel_id = self._get_user_channel_id(youtube)
+            except ValueError:
                 return Response({'success': True, 'sync_enabled': False, 'message': 'No YouTube channel found'})
-
-            channel_id = response['items'][0]['id']
 
             # Check if ContentSource exists
             content_source = ContentSource.objects.filter(
@@ -366,18 +379,13 @@ class YouTubeViewSet(viewsets.ViewSet):
         enabled = request.data.get('enabled', True)
 
         try:
-            # Get user's channel ID
-            access_token = get_user_youtube_token(request.user)
-            youtube = YouTubeService(oauth_token=access_token)
-
-            response = youtube._make_request(endpoint='/channels', params={'part': 'id', 'mine': 'true'})
-
-            if not response.get('items'):
+            youtube = self._get_youtube_service(request.user)
+            try:
+                channel_id = self._get_user_channel_id(youtube)
+            except ValueError:
                 return Response(
                     {'success': False, 'error': 'No YouTube channel found'}, status=status.HTTP_404_NOT_FOUND
                 )
-
-            channel_id = response['items'][0]['id']
 
             # Get or create ContentSource
             content_source = ContentSource.objects.filter(

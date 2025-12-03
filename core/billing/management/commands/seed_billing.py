@@ -77,8 +77,8 @@ class Command(BaseCommand):
                 'slug': 'community-pro',
                 'name': 'Community Pro',
                 'description': 'Full community access with analytics and higher AI quota',
-                'price_monthly': Decimal('18.00'),  # $18/month
-                'price_annual': Decimal('180.00'),  # $180/year (save $36 vs monthly)
+                'price_monthly': Decimal('20.00'),  # $20/month
+                'price_annual': Decimal('200.00'),  # $200/year (save $40 vs monthly - 2 months free)
                 'trial_period_days': 7,
                 'monthly_ai_requests': 500,  # Good for active community members
                 'has_marketplace_access': True,
@@ -96,8 +96,8 @@ class Command(BaseCommand):
                 'slug': 'pro-learn',
                 'name': 'Pro Learn',
                 'description': 'Everything in Community Pro plus Go1 course library and higher AI quota',
-                'price_monthly': Decimal('35.00'),  # $35/month
-                'price_annual': Decimal('350.00'),  # $350/year (save $70 vs monthly)
+                'price_monthly': Decimal('40.00'),  # $40/month
+                'price_annual': Decimal('400.00'),  # $400/year (save $80 vs monthly - 2 months free)
                 'trial_period_days': 0,
                 'monthly_ai_requests': 2000,  # High limit for serious learners
                 'has_marketplace_access': True,
@@ -115,8 +115,8 @@ class Command(BaseCommand):
                 'slug': 'creator-mentor',
                 'name': 'Creator / Mentor',
                 'description': 'Creator tools to monetize your expertise plus high AI quota',
-                'price_monthly': Decimal('99.00'),  # $99/month
-                'price_annual': Decimal('990.00'),  # $990/year (save $198 vs monthly)
+                'price_monthly': Decimal('100.00'),  # $100/month
+                'price_annual': Decimal('1000.00'),  # $1000/year (save $200 vs monthly - 2 months free)
                 'trial_period_days': 0,
                 'monthly_ai_requests': 5000,  # Very high limit (NOT unlimited - no one gets unlimited)
                 'has_marketplace_access': True,

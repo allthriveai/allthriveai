@@ -257,20 +257,30 @@ class UserTokenBalance(models.Model):
         return f'{self.user.email} - {self.balance:,} tokens'
 
     def add_tokens(self, amount, source='purchase'):
-        """Add tokens to balance."""
-        self.balance += amount
+        """Add tokens to balance using atomic increment."""
+        from django.db.models import F
+
+        update_fields = {'balance': F('balance') + amount}
+
         if source == 'purchase':
-            self.total_purchased += amount
-            self.last_purchase_date = timezone.now()
-        self.save()
+            update_fields['total_purchased'] = F('total_purchased') + amount
+            update_fields['last_purchase_date'] = timezone.now()
+
+        UserTokenBalance.objects.filter(pk=self.pk).update(**update_fields)
+        self.refresh_from_db()
 
     def deduct_tokens(self, amount):
-        """Deduct tokens from balance."""
+        """Deduct tokens from balance using atomic decrement."""
+        from django.db.models import F
+
         if amount > self.balance:
             raise ValueError('Insufficient token balance')
-        self.balance -= amount
-        self.total_used += amount
-        self.save()
+
+        # Atomically decrement balance and increment total_used
+        UserTokenBalance.objects.filter(pk=self.pk).update(
+            balance=F('balance') - amount, total_used=F('total_used') + amount
+        )
+        self.refresh_from_db()
 
     def has_sufficient_balance(self, amount):
         """Check if user has enough tokens."""
@@ -434,3 +444,62 @@ class SubscriptionChange(models.Model):
         if self.from_tier:
             return f'{self.user.email} - {self.from_tier.name} → {self.to_tier.name} ({self.change_type})'
         return f'{self.user.email} - {self.to_tier.name} ({self.change_type})'
+
+
+class WebhookEvent(models.Model):
+    """
+    Tracks processed Stripe webhook events for idempotency.
+
+    Prevents duplicate processing of the same webhook event.
+    Stripe can send the same event multiple times, so we need to track
+    which events we've already processed.
+    """
+
+    # Stripe event ID (unique identifier from Stripe)
+    stripe_event_id = models.CharField(max_length=255, unique=True, db_index=True)
+
+    # Event details
+    event_type = models.CharField(max_length=100, db_index=True, help_text='e.g., payment_intent.succeeded')
+    processed = models.BooleanField(default=False, db_index=True)
+
+    # Processing status
+    processing_started_at = models.DateTimeField(null=True, blank=True)
+    processing_completed_at = models.DateTimeField(null=True, blank=True)
+    processing_error = models.TextField(blank=True, help_text='Error message if processing failed')
+
+    # Event payload (for debugging)
+    payload = models.JSONField(default=dict, help_text='Full webhook event payload')
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Webhook Event'
+        verbose_name_plural = 'Webhook Events'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['stripe_event_id', 'processed']),
+            models.Index(fields=['event_type', '-created_at']),
+            models.Index(fields=['processed', '-created_at']),
+        ]
+
+    def __str__(self):
+        status = 'Processed' if self.processed else 'Pending'
+        return f'{self.event_type} ({self.stripe_event_id[:20]}...) - {status}'
+
+    def mark_processing_started(self):
+        """Mark that we've started processing this event."""
+        self.processing_started_at = timezone.now()
+        self.save(update_fields=['processing_started_at', 'updated_at'])
+
+    def mark_processing_completed(self):
+        """Mark that we've successfully processed this event."""
+        self.processed = True
+        self.processing_completed_at = timezone.now()
+        self.save(update_fields=['processed', 'processing_completed_at', 'updated_at'])
+
+    def mark_processing_failed(self, error_message: str):
+        """Mark that processing this event failed."""
+        self.processing_error = error_message
+        self.save(update_fields=['processing_error', 'updated_at'])

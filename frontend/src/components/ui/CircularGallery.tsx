@@ -110,12 +110,19 @@ function MobileGallery({ items }: { items: GalleryItem[] }) {
   );
 }
 
-// Desktop 3D circular gallery
+// Desktop 3D circular gallery with keyboard navigation
 function DesktopGallery({ items, radius, autoRotateSpeed }: { items: GalleryItem[]; radius: number; autoRotateSpeed: number }) {
   const [rotation, setRotation] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const animationFrameRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const anglePerItem = 360 / items.length;
 
   useEffect(() => {
+    if (isPaused) return;
+
     const autoRotate = () => {
       setRotation((prev) => prev + autoRotateSpeed);
       animationFrameRef.current = requestAnimationFrame(autoRotate);
@@ -125,15 +132,49 @@ function DesktopGallery({ items, radius, autoRotateSpeed }: { items: GalleryItem
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [autoRotateSpeed]);
+  }, [autoRotateSpeed, isPaused]);
 
-  const anglePerItem = 360 / items.length;
+  // Calculate current front item based on rotation
+  useEffect(() => {
+    const normalizedRotation = ((rotation % 360) + 360) % 360;
+    const index = Math.round(normalizedRotation / anglePerItem) % items.length;
+    const frontIndex = (items.length - index) % items.length;
+    setCurrentIndex(frontIndex);
+  }, [rotation, anglePerItem, items.length]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setRotation((prev) => prev - anglePerItem);
+      setIsPaused(true);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setRotation((prev) => prev + anglePerItem);
+      setIsPaused(true);
+    } else if (e.key === ' ') {
+      e.preventDefault();
+      setIsPaused((prev) => !prev);
+    }
+  };
 
   return (
     <div
-      className="relative w-full h-[500px] flex items-center justify-center"
+      ref={containerRef}
+      className="relative w-full h-[500px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-4 focus:ring-offset-[#020617] rounded-2xl"
       style={{ perspective: '1500px' }}
+      tabIndex={0}
+      role="listbox"
+      aria-label={`Project gallery. Use arrow keys to navigate. Currently showing: ${items[currentIndex]?.title}. ${isPaused ? 'Paused' : 'Auto-rotating'}. Press Space to ${isPaused ? 'resume' : 'pause'}.`}
+      aria-activedescendant={`gallery-item-${items[currentIndex]?.id}`}
+      onKeyDown={handleKeyDown}
+      onFocus={() => setIsPaused(true)}
+      onBlur={() => setIsPaused(false)}
     >
+      {/* Screen reader announcement */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {items[currentIndex]?.title}
+      </div>
+
       <div
         className="relative w-full h-full"
         style={{
@@ -152,8 +193,10 @@ function DesktopGallery({ items, radius, autoRotateSpeed }: { items: GalleryItem
           return (
             <div
               key={item.id}
-              role="group"
-              aria-label={item.title}
+              id={`gallery-item-${item.id}`}
+              role="option"
+              aria-selected={i === currentIndex}
+              aria-label={`${item.title}${item.description ? `. ${item.description}` : ''}`}
               className="absolute w-[280px] h-[360px] cursor-pointer"
               style={{
                 transform: `rotateY(${itemAngle}deg) translateZ(${radius}px)`,
@@ -171,6 +214,14 @@ function DesktopGallery({ items, radius, autoRotateSpeed }: { items: GalleryItem
           );
         })}
       </div>
+
+      {/* Pause indicator */}
+      {isPaused && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-medium flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-cyan-400" />
+          Paused - Use arrow keys to navigate
+        </div>
+      )}
     </div>
   );
 }

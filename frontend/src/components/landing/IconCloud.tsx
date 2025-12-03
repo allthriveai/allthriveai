@@ -93,8 +93,9 @@ export function IconCloud() {
 
   if (!renderedIcons) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="w-16 h-16 rounded-full border-2 border-cyan-500/30 border-t-cyan-400 animate-spin" />
+      <div className="w-full h-full flex items-center justify-center" role="status" aria-live="polite">
+        <div className="w-16 h-16 rounded-full border-2 border-cyan-500/30 border-t-cyan-400 animate-spin" aria-hidden="true" />
+        <span className="sr-only">Loading AI tools...</span>
       </div>
     );
   }

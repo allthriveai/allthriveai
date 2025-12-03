@@ -236,9 +236,6 @@ export function SideQuestsPreview() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <span className="inline-block px-4 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-medium mb-4">
-            Gamified Learning
-          </span>
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
             Learn By{' '}
             <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
@@ -259,42 +256,70 @@ export function SideQuestsPreview() {
           className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch"
         >
           {/* Left - Tabs */}
-          <div className="space-y-4">
-            {learningTypes.map((type) => {
+          <div
+            className="space-y-4"
+            role="tablist"
+            aria-label="Learning modalities"
+          >
+            {learningTypes.map((type, index) => {
               const isActive = activeType === type.id;
               const colorClasses = {
                 cyan: {
                   activeBg: 'bg-cyan-500/10',
                   activeBorder: 'border-cyan-500/50',
+                  focusRing: 'focus:ring-cyan-400',
                   icon: 'text-cyan-400',
                   iconBg: 'from-cyan-500/30 to-green-500/30',
                 },
                 purple: {
                   activeBg: 'bg-purple-500/10',
                   activeBorder: 'border-purple-500/50',
+                  focusRing: 'focus:ring-purple-400',
                   icon: 'text-purple-400',
                   iconBg: 'from-purple-500/30 to-pink-500/30',
                 },
                 amber: {
                   activeBg: 'bg-amber-500/10',
                   activeBorder: 'border-amber-500/50',
+                  focusRing: 'focus:ring-amber-400',
                   icon: 'text-amber-400',
                   iconBg: 'from-amber-500/30 to-orange-500/30',
                 },
               }[type.color];
 
+              const handleKeyDown = (e: React.KeyboardEvent) => {
+                const types = learningTypes.map(t => t.id);
+                const currentIndex = types.indexOf(activeType);
+
+                if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  const nextIndex = (currentIndex + 1) % types.length;
+                  setActiveType(types[nextIndex]);
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  const prevIndex = (currentIndex - 1 + types.length) % types.length;
+                  setActiveType(types[prevIndex]);
+                }
+              };
+
               return (
                 <button
                   key={type.id}
+                  id={`tab-${type.id}`}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`tabpanel-${type.id}`}
+                  tabIndex={isActive ? 0 : -1}
                   onClick={() => setActiveType(type.id)}
-                  className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 ${
+                  onKeyDown={handleKeyDown}
+                  className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#020617] ${colorClasses.focusRing} ${
                     isActive
                       ? `${colorClasses.activeBg} ${colorClasses.activeBorder}`
                       : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
                   }`}
                 >
                   <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorClasses.iconBg} flex items-center justify-center flex-shrink-0`}>
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorClasses.iconBg} flex items-center justify-center flex-shrink-0`} aria-hidden="true">
                       <FontAwesomeIcon icon={type.icon} className={`w-6 h-6 ${colorClasses.icon}`} />
                     </div>
                     <div>
@@ -310,7 +335,13 @@ export function SideQuestsPreview() {
           </div>
 
           {/* Right - Preview */}
-          <div className="min-h-[400px] lg:min-h-0">
+          <div
+            className="min-h-[400px] lg:min-h-0"
+            id={`tabpanel-${activeType}`}
+            role="tabpanel"
+            aria-labelledby={`tab-${activeType}`}
+            aria-live="polite"
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeType}

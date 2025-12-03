@@ -118,7 +118,7 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
  */
 export async function createSubscription(
   tierSlug: string,
-  billingInterval: 'monthly' | 'annual' = 'monthly'
+  billingInterval: 'monthly' | 'annual'
 ): Promise<{
   subscriptionId: string;
   clientSecret: string;

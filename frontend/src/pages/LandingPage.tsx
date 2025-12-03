@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SEO, SEOPresets } from '@/components/common/SEO';
 import { Modal } from '@/components/ui/Modal';
+import { SkipLink } from '@/components/ui/SkipLink';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { ExplorePreview } from '@/components/landing/ExplorePreview';
 import { AutomatedProfile } from '@/components/landing/AutomatedProfile';
@@ -18,8 +19,9 @@ export default function LandingPage() {
   return (
     <>
       <SEO {...SEOPresets.home} />
+      <SkipLink />
 
-      <div className="min-h-screen bg-[#020617] text-white overflow-x-hidden">
+      <main id="main-content" className="min-h-screen bg-[#020617] text-white overflow-x-hidden">
         {/* Section 1: Hero with CTA */}
         <HeroSection onRequestInvite={handleRequestInvite} />
 
@@ -37,7 +39,7 @@ export default function LandingPage() {
 
         {/* Section 6: Footer */}
         <Footer />
-      </div>
+      </main>
 
       {/* Coming Soon Modal */}
       <Modal

@@ -9,12 +9,13 @@ import logging
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django_ratelimit.decorators import ratelimit
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import SubscriptionTier, TokenPackage
+from .models import SubscriptionTier, TokenPackage, WebhookEvent
 from .serializers import (
     CancelSubscriptionSerializer,
     CreateSubscriptionSerializer,
@@ -37,12 +38,15 @@ logger = logging.getLogger(__name__)
 
 @csrf_exempt
 @require_http_methods(['POST'])
+@ratelimit(key='ip', rate='100/m', method='POST', block=True)
 def stripe_webhook(request):
     """
-    Handle Stripe webhook events.
+    Handle Stripe webhook events with idempotency protection.
 
     This endpoint receives events from Stripe when subscriptions change,
     payments succeed, or other events occur.
+
+    Implements idempotency to prevent duplicate processing of the same event.
     """
     payload = request.body
     sig_header = request.headers.get('stripe-signature')
@@ -54,41 +58,72 @@ def stripe_webhook(request):
     try:
         # Verify webhook signature
         event = StripeService.verify_webhook_signature(payload, sig_header)
+        event_id = event['id']
+        event_type = event['type']
 
-        logger.info(f"Received Stripe webhook: {event['type']}")
+        logger.info(f'Received Stripe webhook: {event_type} (ID: {event_id})')
+
+        # Check if we've already processed this event (idempotency)
+        webhook_event, created = WebhookEvent.objects.get_or_create(
+            stripe_event_id=event_id,
+            defaults={
+                'event_type': event_type,
+                'payload': event,
+                'processed': False,
+            },
+        )
+
+        # If event already exists and was processed, return success without reprocessing
+        if not created:
+            if webhook_event.processed:
+                logger.info(f'Webhook event {event_id} already processed, skipping')
+                return HttpResponse('Webhook already processed', status=200)
+            else:
+                logger.warning(f'Webhook event {event_id} exists but not completed - reprocessing')
+
+        # Mark processing started
+        webhook_event.mark_processing_started()
 
         # Handle different event types
-        event_type = event['type']
         event_data = event['data']
 
-        # Subscription events
-        if event_type == 'customer.subscription.created':
-            StripeService.handle_subscription_updated(event_data)
+        try:
+            # Subscription events
+            if event_type == 'customer.subscription.created':
+                StripeService.handle_subscription_updated(event_data)
 
-        elif event_type == 'customer.subscription.updated':
-            StripeService.handle_subscription_updated(event_data)
+            elif event_type == 'customer.subscription.updated':
+                StripeService.handle_subscription_updated(event_data)
 
-        elif event_type == 'customer.subscription.deleted':
-            StripeService.handle_subscription_deleted(event_data)
+            elif event_type == 'customer.subscription.deleted':
+                StripeService.handle_subscription_deleted(event_data)
 
-        # Payment events
-        elif event_type == 'payment_intent.succeeded':
-            StripeService.handle_payment_intent_succeeded(event_data)
+            # Payment events
+            elif event_type == 'payment_intent.succeeded':
+                StripeService.handle_payment_intent_succeeded(event_data)
 
-        elif event_type == 'payment_intent.payment_failed':
-            logger.warning(f"Payment failed for payment_intent: {event_data['object']['id']}")
+            elif event_type == 'payment_intent.payment_failed':
+                logger.warning(f"Payment failed for payment_intent: {event_data['object']['id']}")
 
-        # Invoice events
-        elif event_type == 'invoice.payment_succeeded':
-            logger.info(f"Invoice payment succeeded: {event_data['object']['id']}")
+            # Invoice events
+            elif event_type == 'invoice.payment_succeeded':
+                logger.info(f"Invoice payment succeeded: {event_data['object']['id']}")
 
-        elif event_type == 'invoice.payment_failed':
-            logger.warning(f"Invoice payment failed: {event_data['object']['id']}")
+            elif event_type == 'invoice.payment_failed':
+                logger.warning(f"Invoice payment failed: {event_data['object']['id']}")
 
-        else:
-            logger.info(f'Unhandled webhook event type: {event_type}')
+            else:
+                logger.info(f'Unhandled webhook event type: {event_type}')
 
-        return HttpResponse('Webhook received', status=200)
+            # Mark processing completed
+            webhook_event.mark_processing_completed()
+
+            return HttpResponse('Webhook received', status=200)
+
+        except Exception as processing_error:
+            # Mark processing failed
+            webhook_event.mark_processing_failed(str(processing_error))
+            raise
 
     except StripeServiceError as e:
         logger.error(f'Webhook signature verification failed: {e}')
@@ -157,7 +192,7 @@ def create_subscription_view(request):
     Body:
     {
         "tier_slug": "community-pro",
-        "billing_interval": "monthly" | "annual" (optional, defaults to "monthly")
+        "billing_interval": "monthly" | "annual" (required)
     }
 
     Returns:
@@ -175,7 +210,7 @@ def create_subscription_view(request):
 
     try:
         tier = SubscriptionTier.objects.get(slug=serializer.validated_data['tier_slug'])
-        billing_interval = serializer.validated_data.get('billing_interval', 'monthly')
+        billing_interval = serializer.validated_data['billing_interval']
 
         result = StripeService.create_subscription(request.user, tier, billing_interval)
 

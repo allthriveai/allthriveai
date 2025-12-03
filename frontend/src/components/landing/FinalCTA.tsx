@@ -8,8 +8,8 @@ interface FinalCTAProps {
 export function FinalCTA({ onRequestInvite }: FinalCTAProps) {
   return (
     <section className="relative py-32 overflow-hidden">
-      {/* Background with animated gradient */}
-      <div className="absolute inset-0">
+      {/* Background with animated gradient - decorative only */}
+      <div className="absolute inset-0" aria-hidden="true">
         <div
           className="absolute inset-0"
           style={{

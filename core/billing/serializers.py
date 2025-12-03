@@ -173,8 +173,6 @@ class CreateSubscriptionSerializer(serializers.Serializer):
     tier_slug = serializers.SlugField()
     billing_interval = serializers.ChoiceField(
         choices=['monthly', 'annual'],
-        default='monthly',
-        required=False,
         help_text='Billing interval: monthly or annual',
     )
 

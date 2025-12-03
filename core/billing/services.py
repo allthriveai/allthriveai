@@ -109,14 +109,14 @@ class StripeService:
 
     @staticmethod
     @transaction.atomic
-    def create_subscription(user, tier: SubscriptionTier, billing_interval: str = 'monthly') -> dict[str, Any]:
+    def create_subscription(user, tier: SubscriptionTier, billing_interval: str) -> dict[str, Any]:
         """
         Create a new subscription for a user.
 
         Args:
             user: Django User instance
             tier: SubscriptionTier instance
-            billing_interval: 'monthly' or 'annual' (default: 'monthly')
+            billing_interval: 'monthly' or 'annual' (required)
 
         Returns:
             Dict with subscription details and client_secret for payment
