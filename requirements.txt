@@ -28,14 +28,14 @@ cryptography>=43.0.0
 # AI/ML - Core Providers
 openai>=1.50.0
 anthropic>=0.40.0
-google-generativeai>=0.8.0
-google-genai>=1.0.0  # New Google AI SDK for image generation
+google-generativeai==0.8.5
+google-genai==1.52.0  # New Google AI SDK for image generation
 
 # AI/ML - LangChain Ecosystem
-langchain>=0.3.0
-langchain-openai>=0.2.0
-langchain-anthropic>=0.2.0
-langchain-google-genai>=2.0.0
+langchain==0.3.27
+langchain-openai==0.3.35
+langchain-anthropic==0.3.22
+langchain-google-genai==2.0.10
 langgraph>=0.2.0
 langgraph-checkpoint-redis>=0.2.0
 langgraph-checkpoint-postgres>=3.0.1
