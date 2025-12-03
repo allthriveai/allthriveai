@@ -62,17 +62,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
 
       - name: Install dependencies
+        timeout-minutes: 15
         run: |
-          python -m venv venv
-          . venv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Wait for Postgres (psycopg2)
         run: |
-          . venv/bin/activate
           python - <<'PY'
           import os, time, psycopg2
           url = os.environ['DATABASE_URL']
@@ -90,7 +90,6 @@ jobs:
 
       - name: Django checks and migrations
         run: |
-          . venv/bin/activate
           python manage.py check --deploy
           python manage.py migrate --noinput
           # Ensure no model changes are pending
@@ -98,12 +97,10 @@ jobs:
 
       - name: Run Django tests
         run: |
-          . venv/bin/activate
           python manage.py test --verbosity=2 --keepdb
 
       - name: Run security tests (pytest)
         run: |
-          . venv/bin/activate
           pytest core/agents/tests/test_security_comprehensive.py -v --cov=core.agents.security --cov-report=term --cov-report=html
 
       - name: Upload coverage reports
@@ -117,7 +114,6 @@ jobs:
 
       - name: DB health endpoint smoke test
         run: |
-          . venv/bin/activate
           # Start server in background with logs
           python manage.py runserver 127.0.0.1:8000 > /tmp/server.log 2>&1 &
           SRV_PID=$!
@@ -197,17 +193,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
 
       - name: Install dependencies
+        timeout-minutes: 15
         run: |
-          python -m venv venv
-          . venv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Wait for services
         run: |
-          . venv/bin/activate
           # Wait for Postgres
           python - <<'PY'
           import os, time, psycopg2
@@ -241,17 +237,14 @@ jobs:
 
       - name: Run migrations
         run: |
-          . venv/bin/activate
           python manage.py migrate --noinput
 
       - name: Run SEO & Privacy tests
         run: |
-          . venv/bin/activate
           python manage.py test core.tests.test_seo_privacy --verbosity=2
 
       - name: Validate robots.txt
         run: |
-          . venv/bin/activate
           # Start server
           python manage.py runserver 127.0.0.1:8000 >/dev/null 2>&1 &
           SRV_PID=$!
@@ -281,7 +274,6 @@ jobs:
 
       - name: Validate sitemap
         run: |
-          . venv/bin/activate
           # Start server
           python manage.py runserver 127.0.0.1:8000 >/dev/null 2>&1 &
           SRV_PID=$!
@@ -306,7 +298,6 @@ jobs:
 
       - name: Validate AI plugin manifest
         run: |
-          . venv/bin/activate
           # Start server
           python manage.py runserver 127.0.0.1:8000 >/dev/null 2>&1 &
           SRV_PID=$!
