@@ -16,11 +16,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
+from core.billing.permissions import RequiresAnalytics
 from services.ai.langsmith import langsmith_service
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, RequiresAnalytics])
 def user_ai_analytics(request):
     """
     Get AI cost and usage analytics for the authenticated user.
@@ -121,7 +122,7 @@ def system_ai_analytics(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, RequiresAnalytics])
 def check_user_spend_limit(request):
     """
     Check if user is approaching or has exceeded spend limits.

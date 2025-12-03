@@ -17,6 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from core.agents.circuit_breaker import CircuitBreakerOpenError, get_cached_faq_response, langraph_circuit_breaker
 from core.agents.security import output_validator, validate_chat_input
+from core.billing.permissions import CanMakeAIRequest
 from services.agents.project.agent import project_agent
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 @csrf_exempt
 @require_http_methods(['POST'])
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, CanMakeAIRequest])
 @ratelimit(key='user', rate='20/m', method='POST')  # 20 requests per minute per user
 def project_chat_stream_v2(request):
     """

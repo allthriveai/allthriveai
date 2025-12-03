@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.billing.permissions import CanMakeAIRequest
 from core.projects.models import Project
 from services.ai.provider import AIProvider
 
@@ -93,7 +94,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanMakeAIRequest])
     def send_message(self, request, pk=None):
         """Send a message in a conversation and get AI response."""
         conversation = self.get_object()
@@ -134,7 +135,7 @@ class MessageViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, CanMakeAIRequest])
 def detect_intent(request):
     """
     Detect user intent using LLM-based reasoning.
