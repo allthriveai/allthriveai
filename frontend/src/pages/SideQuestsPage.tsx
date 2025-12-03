@@ -170,9 +170,36 @@ export default function SideQuestsPage() {
     );
   }
 
-  const mainCategories = categories.filter(c => c.categoryType !== 'daily');
+  // Sort categories by their order field for proper progression
+  const mainCategories = categories
+    .filter(c => c.categoryType !== 'daily')
+    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   const inProgressQuests = myQuests.filter(q => q.status === 'in_progress');
-  const getQuestsForCategory = (categorySlug: string) => availableQuests.filter(q => q.categorySlug === categorySlug);
+
+  // Difficulty order for sorting (beginner to advanced progression)
+  const difficultyOrder: Record<string, number> = {
+    easy: 0,     // Beginner
+    medium: 1,   // Intermediate
+    hard: 2,     // Advanced
+    epic: 3,     // Epic
+  };
+
+  // Get quests for a category, sorted by difficulty then by order field
+  const getQuestsForCategory = (categorySlug: string) => {
+    return availableQuests
+      .filter(q => q.categorySlug === categorySlug)
+      .sort((a, b) => {
+        // First sort by difficulty (easy → medium → hard → epic)
+        const diffA = difficultyOrder[a.difficulty] ?? 99;
+        const diffB = difficultyOrder[b.difficulty] ?? 99;
+        if (diffA !== diffB) return diffA - diffB;
+
+        // Then sort by order field if available
+        const orderA = a.order ?? 999;
+        const orderB = b.order ?? 999;
+        return orderA - orderB;
+      });
+  };
 
   // Track which category is expanded (null = none expanded)
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);

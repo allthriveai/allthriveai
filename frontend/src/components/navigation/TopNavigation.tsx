@@ -81,7 +81,7 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
                 <div className="p-1.5 rounded-lg bg-gradient-to-br from-teal-400/20 to-blue-500/20 backdrop-blur-sm">
                   <HomeIcon className="w-5 h-5" />
                 </div>
-                <span className="font-bold text-lg hidden sm:block bg-gradient-to-r from-teal-600 to-blue-600 dark:from-teal-400 dark:to-blue-400 bg-clip-text text-transparent">AllThrive</span>
+                <span className="font-bold text-lg hidden sm:block bg-gradient-to-r from-teal-600 to-blue-600 dark:from-teal-400 dark:to-blue-400 bg-clip-text text-transparent">All Thrive</span>
               </button>
 
               {/* Desktop Navigation Links */}

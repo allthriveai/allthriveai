@@ -198,7 +198,7 @@ export default function ProjectDetailPage() {
     <DashboardLayout autoCollapseSidebar>
       <SEO
         title={project.title}
-        description={project.description || `${project.title} by @${project.username} on AllThrive AI`}
+        description={project.description || `${project.title} by @${project.username} on All Thrive AI`}
         image={project.featuredImageUrl || project.bannerUrl || 'https://allthrive.ai/og-image.jpg'}
         url={`https://allthrive.ai/${username}/${projectSlug}`}
         type="article"

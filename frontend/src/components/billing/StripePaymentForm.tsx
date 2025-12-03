@@ -16,7 +16,17 @@ import {
 } from '@stripe/react-stripe-js';
 
 // Load Stripe publishable key from environment
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+// Debug logging
+if (!STRIPE_KEY) {
+  console.error('❌ VITE_STRIPE_PUBLISHABLE_KEY is not set in environment variables');
+  console.error('Please add VITE_STRIPE_PUBLISHABLE_KEY to your .env file and restart the dev server');
+} else {
+  console.log('✅ Stripe key loaded:', STRIPE_KEY.substring(0, 20) + '...');
+}
+
+const stripePromise = loadStripe(STRIPE_KEY || '');
 
 interface PaymentFormProps {
   clientSecret: string;
@@ -45,7 +55,7 @@ function PaymentForm({ clientSecret, onSuccess, onError }: PaymentFormProps) {
 
     try {
       // Confirm payment
-      const { error } = await stripe.confirmPayment({
+      const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/account/billing?success=true`,
@@ -54,13 +64,60 @@ function PaymentForm({ clientSecret, onSuccess, onError }: PaymentFormProps) {
       });
 
       if (error) {
-        onError(error.message || 'Payment failed. Please try again.');
-      } else {
+        // Categorize errors for better UX
+        let errorMessage = error.message || 'Payment failed. Please try again.';
+
+        switch (error.type) {
+          case 'card_error':
+            // Card was declined
+            errorMessage = `Card declined: ${error.message}`;
+            break;
+          case 'validation_error':
+            // Invalid card details
+            errorMessage = 'Please check your card details and try again.';
+            break;
+          case 'invalid_request_error':
+            // Invalid request to Stripe
+            errorMessage = 'Payment setup error. Please refresh and try again.';
+            break;
+          case 'api_connection_error':
+          case 'api_error':
+            // Network or Stripe API errors
+            errorMessage = 'Network error. Please check your connection and try again.';
+            break;
+          case 'rate_limit_error':
+            // Too many requests
+            errorMessage = 'Too many attempts. Please wait a moment and try again.';
+            break;
+          case 'authentication_error':
+            // Authentication with Stripe failed
+            errorMessage = 'Payment system error. Please contact support.';
+            break;
+          default:
+            errorMessage = error.message || 'Payment failed. Please try again.';
+        }
+
+        console.error('[Payment Error]', error.type, error.message);
+        onError(errorMessage);
+      } else if (paymentIntent?.status === 'succeeded') {
         // Payment succeeded
+        console.log('[Payment Success]', paymentIntent.id);
         onSuccess();
+      } else if (paymentIntent?.status === 'requires_action') {
+        // 3D Secure or other action required - Stripe Elements handles this automatically
+        onError('Additional verification required. Please follow the prompts.');
+      } else if (paymentIntent?.status === 'processing') {
+        // Payment is processing - wait for webhook
+        console.log('[Payment Processing]', paymentIntent.id);
+        onSuccess(); // Let the success handler poll for completion
+      } else {
+        // Unknown payment intent status
+        console.error('[Payment Unknown Status]', paymentIntent?.status);
+        onError('Payment status unknown. Please contact support if you were charged.');
       }
     } catch (err) {
-      onError('An unexpected error occurred. Please try again.');
+      console.error('[Payment Unexpected Error]', err);
+      onError('An unexpected error occurred. Please contact support if you were charged.');
     } finally {
       setIsProcessing(false);
     }

@@ -13,10 +13,21 @@ from rest_framework.throttling import UserRateThrottle
 
 from core.users.models import User
 
-from .models import PointActivity, QuestCategory, SideQuest, UserSideQuest, WeeklyGoal
+from .models import (
+    CircleMembership,
+    Kudos,
+    PointActivity,
+    QuestCategory,
+    SideQuest,
+    UserSideQuest,
+    WeeklyGoal,
+)
 from .quest_tracker import QuestTracker
 from .serializers import (
     AwardPointsSerializer,
+    CircleDetailSerializer,
+    CreateKudosSerializer,
+    KudosSerializer,
     PointActivitySerializer,
     QuestCategoryDetailSerializer,
     QuestCategorySerializer,
@@ -757,3 +768,296 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
         user_quest.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# =============================================================================
+# Circle ViewSet - Community Micro-Groups
+# =============================================================================
+
+
+class CircleViewSet(viewsets.ViewSet):
+    """
+    ViewSet for Circle community features.
+
+    Endpoints:
+    - GET /api/circles/my-circle/ - Get current user's circle with members and challenge
+    - GET /api/circles/activity/ - Get activity feed for user's circle
+    - POST /api/circles/kudos/ - Give kudos to a circle member
+    - GET /api/circles/kudos/received/ - Get kudos the user has received
+    - GET /api/circles/kudos/given/ - Get kudos the user has given
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_user_current_circle(self, user):
+        """
+        Get the user's current active circle.
+
+        Returns the Circle object if found, None otherwise.
+        """
+        week_start = get_week_start()
+
+        try:
+            membership = CircleMembership.objects.select_related('circle').get(
+                user=user,
+                circle__week_start=week_start,
+                circle__is_active=True,
+                is_active=True,
+            )
+            return membership.circle
+        except CircleMembership.DoesNotExist:
+            return None
+
+    @action(detail=False, methods=['get'], url_path='my-circle')
+    def my_circle(self, request):
+        """
+        Get the authenticated user's current circle.
+
+        Returns the circle details including:
+        - Circle metadata (name, tier, week dates)
+        - All members with their points earned in circle
+        - Current active challenge with progress
+        - User's own membership details
+
+        Returns:
+            {
+                "id": "...",
+                "name": "Eager Explorers #42",
+                "tier": "seedling",
+                "tier_display": "Seedling",
+                "week_start": "2024-01-01",
+                "week_end": "2024-01-07",
+                "member_count": 25,
+                "active_member_count": 18,
+                "members": [...],
+                "active_challenge": {...},
+                "my_membership": {...}
+            }
+        """
+        circle = self._get_user_current_circle(request.user)
+
+        if not circle:
+            return Response(
+                {
+                    'detail': 'You are not in a circle this week. ' 'Circles are formed weekly - check back on Monday!',
+                    'has_circle': False,
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = CircleDetailSerializer(circle, context={'request': request})
+        return Response({**serializer.data, 'has_circle': True})
+
+    @action(detail=False, methods=['get'])
+    def activity(self, request):
+        """
+        Get activity feed for the user's current circle.
+
+        Shows recent kudos and project activity from circle members.
+
+        Query params:
+            - limit: Number of items to return (default: 20, max: 50)
+
+        Returns:
+            {
+                "kudos": [...],  # Recent kudos in the circle
+                "has_circle": true
+            }
+        """
+        circle = self._get_user_current_circle(request.user)
+
+        if not circle:
+            return Response(
+                {'detail': 'You are not in a circle this week.', 'has_circle': False},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        limit = safe_int_param(request.query_params.get('limit'), default=20, min_val=1, max_val=50)
+
+        # Get recent kudos in this circle
+        kudos = (
+            Kudos.objects.filter(circle=circle)
+            .select_related('from_user', 'to_user', 'project')
+            .order_by('-created_at')[:limit]
+        )
+
+        return Response(
+            {
+                'kudos': KudosSerializer(kudos, many=True).data,
+                'circle_name': circle.name,
+                'has_circle': True,
+            }
+        )
+
+    @action(detail=False, methods=['post'])
+    def kudos(self, request):
+        """
+        Give kudos to a circle member.
+
+        Users can give kudos to recognize and appreciate fellow circle members.
+        Limited to one of each kudos type per user pair per circle to prevent spam.
+
+        Request body:
+            {
+                "to_user_id": "uuid",
+                "kudos_type": "helpful",  # great_project, helpful, inspiring, creative, supportive, welcome
+                "message": "Thanks for the feedback!",  # Optional, max 280 chars
+                "project_id": "uuid"  # Optional, link to specific project
+            }
+
+        Returns:
+            {
+                "id": "...",
+                "from_user": {...},
+                "to_user": {...},
+                "kudos_type": "helpful",
+                "kudos_type_display": "🤝 Helpful",
+                "message": "Thanks for the feedback!",
+                ...
+            }
+        """
+        circle = self._get_user_current_circle(request.user)
+
+        if not circle:
+            return Response(
+                {'detail': 'You must be in a circle to give kudos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = CreateKudosSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        to_user_id = serializer.validated_data['to_user_id']
+        kudos_type = serializer.validated_data['kudos_type']
+        message = serializer.validated_data.get('message', '')
+        project_id = serializer.validated_data.get('project_id')
+
+        # Verify target user is in the same circle
+        try:
+            to_user = User.objects.get(id=to_user_id)
+            CircleMembership.objects.get(user=to_user, circle=circle, is_active=True)
+        except (User.DoesNotExist, CircleMembership.DoesNotExist):
+            return Response(
+                {'detail': 'User is not a member of your circle.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check for duplicate kudos (same type from same user in same circle)
+        if Kudos.objects.filter(
+            from_user=request.user,
+            to_user=to_user,
+            circle=circle,
+            kudos_type=kudos_type,
+        ).exists():
+            return Response(
+                {'detail': f'You have already given "{kudos_type}" kudos to this user this week.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get project if provided
+        project = None
+        if project_id:
+            from core.projects.models import Project
+
+            try:
+                project = Project.objects.get(id=project_id)
+            except Project.DoesNotExist:
+                pass  # Project is optional, just skip if not found
+
+        # Create the kudos
+        new_kudos = Kudos.objects.create(
+            from_user=request.user,
+            to_user=to_user,
+            circle=circle,
+            kudos_type=kudos_type,
+            message=message,
+            project=project,
+        )
+
+        # Award points to the recipient
+        try:
+            to_user.add_points(
+                amount=5,  # Small reward for being recognized
+                activity_type='help',
+                description=f'Received kudos: {new_kudos.get_kudos_type_display()}',
+            )
+        except Exception as e:
+            logger.warning(f'Failed to award kudos points: {e}')
+
+        logger.info(
+            f'Kudos given: {request.user.username} → {to_user.username} ({kudos_type})',
+            extra={
+                'from_user_id': str(request.user.id),
+                'to_user_id': str(to_user.id),
+                'circle_id': str(circle.id),
+                'kudos_type': kudos_type,
+            },
+        )
+
+        return Response(KudosSerializer(new_kudos).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'], url_path='kudos/received')
+    def kudos_received(self, request):
+        """
+        Get kudos the user has received.
+
+        Query params:
+            - limit: Number of items to return (default: 20, max: 100)
+            - circle_only: If 'true', only show kudos from current circle
+
+        Returns:
+            [
+                {
+                    "id": "...",
+                    "from_user": {...},
+                    "kudos_type": "helpful",
+                    "kudos_type_display": "🤝 Helpful",
+                    "message": "Great work!",
+                    ...
+                },
+                ...
+            ]
+        """
+        limit = safe_int_param(request.query_params.get('limit'), default=20, min_val=1, max_val=100)
+        circle_only = request.query_params.get('circle_only', 'false').lower() == 'true'
+
+        queryset = Kudos.objects.filter(to_user=request.user).select_related(
+            'from_user', 'to_user', 'circle', 'project'
+        )
+
+        if circle_only:
+            circle = self._get_user_current_circle(request.user)
+            if circle:
+                queryset = queryset.filter(circle=circle)
+
+        kudos = queryset.order_by('-created_at')[:limit]
+        return Response(KudosSerializer(kudos, many=True).data)
+
+    @action(detail=False, methods=['get'], url_path='kudos/given')
+    def kudos_given(self, request):
+        """
+        Get kudos the user has given.
+
+        Query params:
+            - limit: Number of items to return (default: 20, max: 100)
+
+        Returns:
+            [
+                {
+                    "id": "...",
+                    "to_user": {...},
+                    "kudos_type": "helpful",
+                    ...
+                },
+                ...
+            ]
+        """
+        limit = safe_int_param(request.query_params.get('limit'), default=20, min_val=1, max_val=100)
+
+        kudos = (
+            Kudos.objects.filter(from_user=request.user)
+            .select_related('from_user', 'to_user', 'circle', 'project')
+            .order_by('-created_at')[:limit]
+        )
+
+        return Response(KudosSerializer(kudos, many=True).data)

@@ -45,7 +45,7 @@ export const StyleGuide2 = () => {
              NEON THRIVE
            </h1>
            <p className="text-2xl text-gray-300 max-w-2xl border-l-4 border-brand-neon-green pl-6">
-             Style Guide 2.0: Merging the organic growth of AllThrive with high-tech cyberpunk aesthetics.
+             Style Guide 2.0: Merging the organic growth of All Thrive with high-tech cyberpunk aesthetics.
            </p>
         </section>
 

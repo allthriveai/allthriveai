@@ -8,25 +8,24 @@ import { api } from './api';
 
 // Types
 export interface SubscriptionTier {
-  id: number;
   slug: string;
   name: string;
-  tierType: string;
-  priceMonthly: string;
-  priceAnnual: string;
-  monthlyAiRequests: number;
-  hasMarketplaceAccess: boolean;
-  hasGo1Courses: boolean;
-  hasAiMentor: boolean;
-  hasQuests: boolean;
-  hasCircles: boolean;
-  hasProjects: boolean;
-  hasCreatorTools: boolean;
-  hasAnalytics: boolean;
-  isActive: boolean;
   description: string;
-  stripePriceIdMonthly: string | null;
-  stripePriceIdAnnual: string | null;
+  tierType: string;
+  priceMonthly: number;
+  priceAnnual: number;
+  trialPeriodDays: number;
+  monthlyAiRequests: number;
+  features: {
+    marketplace: boolean;
+    go1Courses: boolean;
+    aiMentor: boolean;
+    quests: boolean;
+    circles: boolean;
+    projects: boolean;
+    creatorTools: boolean;
+    analytics: boolean;
+  };
 }
 
 export interface UserSubscription {
@@ -99,6 +98,7 @@ export async function getSubscriptionTiers(): Promise<SubscriptionTier[]> {
 
 /**
  * Get user's current subscription
+ * Note: This endpoint doesn't exist yet - use getSubscriptionStatus() instead
  */
 export async function getUserSubscription(): Promise<UserSubscription> {
   const response = await api.get('/billing/subscription/');
@@ -109,7 +109,7 @@ export async function getUserSubscription(): Promise<UserSubscription> {
  * Get user's subscription status
  */
 export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
-  const response = await api.get('/billing/subscription/status/');
+  const response = await api.get('/billing/status/');
   return response.data;
 }
 
@@ -124,7 +124,7 @@ export async function createSubscription(
   clientSecret: string;
   status: string;
 }> {
-  const response = await api.post('/billing/subscription/create/', {
+  const response = await api.post('/billing/subscriptions/create/', {
     tierSlug,
     billingInterval,
   });
@@ -139,7 +139,7 @@ export async function updateSubscription(tierSlug: string): Promise<{
   status: string;
   message: string;
 }> {
-  const response = await api.post('/billing/subscription/update/', {
+  const response = await api.post('/billing/subscriptions/update/', {
     tierSlug,
   });
   return response.data;
@@ -154,7 +154,7 @@ export async function cancelSubscription(): Promise<{
   message: string;
   currentPeriodEnd: string;
 }> {
-  const response = await api.post('/billing/subscription/cancel/');
+  const response = await api.post('/billing/subscriptions/cancel/');
   return response.data;
 }
 

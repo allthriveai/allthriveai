@@ -7,7 +7,17 @@ from rest_framework import serializers
 
 from core.users.models import User
 
-from .models import PointActivity, QuestCategory, SideQuest, UserSideQuest, WeeklyGoal
+from .models import (
+    Circle,
+    CircleChallenge,
+    CircleMembership,
+    Kudos,
+    PointActivity,
+    QuestCategory,
+    SideQuest,
+    UserSideQuest,
+    WeeklyGoal,
+)
 from .services import PointsConfig
 
 # Maximum sizes for JSON fields to prevent abuse
@@ -338,3 +348,189 @@ class UserSideQuestSerializer(serializers.ModelSerializer):
     def get_steps_progress(self, obj):
         """Get progress for all steps in the quest."""
         return obj.get_steps_progress()
+
+
+# =============================================================================
+# Circle Serializers - Community Micro-Groups
+# =============================================================================
+
+
+class CircleMemberSerializer(serializers.ModelSerializer):
+    """Simplified user serializer for circle member lists."""
+
+    avatar_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'avatar_url', 'tier', 'level', 'total_points']
+        read_only_fields = fields
+
+    def get_avatar_url(self, obj):
+        """Get user's avatar URL."""
+        if hasattr(obj, 'avatar') and obj.avatar:
+            return obj.avatar.url
+        return None
+
+
+class CircleMembershipSerializer(serializers.ModelSerializer):
+    """Serializer for circle membership with user details."""
+
+    user = CircleMemberSerializer(read_only=True)
+
+    class Meta:
+        model = CircleMembership
+        fields = [
+            'id',
+            'user',
+            'is_active',
+            'joined_at',
+            'points_earned_in_circle',
+            'was_active',
+        ]
+        read_only_fields = fields
+
+
+class CircleChallengeSerializer(serializers.ModelSerializer):
+    """Serializer for circle challenges."""
+
+    challenge_type_display = serializers.CharField(source='get_challenge_type_display', read_only=True)
+    progress_percentage = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = CircleChallenge
+        fields = [
+            'id',
+            'challenge_type',
+            'challenge_type_display',
+            'title',
+            'description',
+            'target',
+            'current_progress',
+            'progress_percentage',
+            'is_completed',
+            'completed_at',
+            'bonus_points',
+            'rewards_distributed',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+
+class CircleSerializer(serializers.ModelSerializer):
+    """Serializer for Circle with basic info."""
+
+    tier_display = serializers.CharField(source='get_tier_display', read_only=True)
+
+    class Meta:
+        model = Circle
+        fields = [
+            'id',
+            'name',
+            'tier',
+            'tier_display',
+            'week_start',
+            'week_end',
+            'member_count',
+            'active_member_count',
+            'is_active',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+
+class CircleDetailSerializer(CircleSerializer):
+    """Detailed serializer with members and active challenge."""
+
+    members = serializers.SerializerMethodField()
+    active_challenge = serializers.SerializerMethodField()
+    my_membership = serializers.SerializerMethodField()
+
+    class Meta(CircleSerializer.Meta):
+        fields = CircleSerializer.Meta.fields + ['members', 'active_challenge', 'my_membership']
+
+    def get_members(self, obj):
+        """Get all active members of the circle."""
+        memberships = (
+            obj.memberships.filter(is_active=True).select_related('user').order_by('-points_earned_in_circle')[:50]
+        )  # Limit for performance
+        return CircleMembershipSerializer(memberships, many=True).data
+
+    def get_active_challenge(self, obj):
+        """Get the current active challenge for this circle."""
+        challenge = obj.challenges.filter(is_completed=False).first()
+        if not challenge:
+            # Show completed challenge if no active one
+            challenge = obj.challenges.first()
+        return CircleChallengeSerializer(challenge).data if challenge else None
+
+    def get_my_membership(self, obj):
+        """Get the requesting user's membership details."""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            try:
+                membership = obj.memberships.get(user=request.user)
+                return CircleMembershipSerializer(membership).data
+            except CircleMembership.DoesNotExist:
+                pass
+        return None
+
+
+class KudosSerializer(serializers.ModelSerializer):
+    """Serializer for Kudos (peer recognition)."""
+
+    from_user = CircleMemberSerializer(read_only=True)
+    to_user = CircleMemberSerializer(read_only=True)
+    kudos_type_display = serializers.CharField(source='get_kudos_type_display', read_only=True)
+    project_title = serializers.CharField(source='project.title', read_only=True, allow_null=True)
+
+    class Meta:
+        model = Kudos
+        fields = [
+            'id',
+            'from_user',
+            'to_user',
+            'circle',
+            'kudos_type',
+            'kudos_type_display',
+            'message',
+            'project',
+            'project_title',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'from_user', 'created_at']
+
+
+class CreateKudosSerializer(serializers.Serializer):
+    """Serializer for creating new kudos."""
+
+    to_user_id = serializers.UUIDField(help_text='ID of the user to give kudos to')
+    kudos_type = serializers.ChoiceField(
+        choices=Kudos.KUDOS_TYPE_CHOICES,
+        help_text='Type of kudos to give',
+    )
+    message = serializers.CharField(
+        max_length=280,
+        required=False,
+        allow_blank=True,
+        help_text='Optional message (max 280 chars)',
+    )
+    project_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text='Optional project ID to link the kudos to',
+    )
+
+    def validate_to_user_id(self, value):
+        """Ensure target user exists."""
+        try:
+            User.objects.get(id=value)
+        except User.DoesNotExist as e:
+            raise serializers.ValidationError('User not found.') from e
+        return value
+
+    def validate(self, attrs):
+        """Validate kudos can be given."""
+        request = self.context.get('request')
+        if request and str(request.user.id) == str(attrs['to_user_id']):
+            raise serializers.ValidationError({'to_user_id': 'You cannot give kudos to yourself.'})
+        return attrs

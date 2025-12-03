@@ -48,7 +48,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
             {/* Hero Statement */}
             <div className="bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20 p-6 rounded-lg border-l-4 border-primary-500">
               <p className="text-xl font-bold text-gray-900 dark:text-white leading-relaxed">
-                AllThrive is one home where AI-curious creators learn, showcase, and thrive together.
+                All Thrive is one home where AI-curious creators learn, showcase, and thrive together.
               </p>
             </div>
 
@@ -113,7 +113,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
                 💫 Simple promise
               </h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                We promise to hold space for curiosity, connection, and shared learning. AllThrive is a place
+                We promise to hold space for curiosity, connection, and shared learning. All Thrive is a place
                 where trying matters, ideas are welcomed, and everyone can explore what is possible with AI.
               </p>
             </div>

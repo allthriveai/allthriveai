@@ -1,64 +1,95 @@
-Django>=5.0,<5.1
-djangorestframework>=3.14.0
-django-filter>=23.0
-python-decouple>=3.8
-psycopg2-binary>=2.9.9
-psycopg>=3.2.0  # Modern PostgreSQL adapter for Python
+# Django & REST Framework
+Django>=5.0,<5.2
+djangorestframework>=3.15.0
+django-filter>=24.0
+django-cors-headers>=4.4.0
+
+# Database
+psycopg2-binary>=2.9.9  # Django's PostgreSQL adapter
+psycopg>=3.2.0  # Modern PostgreSQL adapter for LangGraph checkpointer
 psycopg-pool>=3.2.0  # Connection pooling for psycopg
-gunicorn>=21.2.0
-django-cors-headers>=4.3.1
-celery>=5.3.4
-redis>=5.0.1
-openai>=1.12.0
-anthropic>=0.18.0
-google-generativeai>=0.5.0
-langchain>=0.1.0
-langchain-google-genai>=1.0.0
-langchain-openai>=0.0.5
-langgraph>=0.1.0
-langgraph-checkpoint-redis>=0.0.1
+dj-database-url>=2.2.0
+django-db-connection-pool>=1.2.5
+
+# Configuration
+python-decouple>=3.8
+python-dotenv>=1.0.1
+
+# Server
+gunicorn>=22.0.0
+daphne>=4.1.0  # ASGI server for Django Channels
+
+# Authentication
+django-allauth>=64.0.0
+dj-rest-auth>=6.0.0
+djangorestframework-simplejwt>=5.3.1
+cryptography>=43.0.0
+
+# AI/ML - Core Providers
+openai>=1.50.0
+anthropic>=0.40.0
+google-generativeai>=0.8.0  # Legacy Google AI SDK
+google-genai>=1.0.0  # New Google AI SDK
+
+# AI/ML - LangChain Ecosystem
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langchain-anthropic>=0.2.0
+langchain-google-genai>=2.0.0
+langgraph>=0.2.0
+langgraph-checkpoint-redis>=0.2.0
 langgraph-checkpoint-postgres>=3.0.1
-langsmith>=0.1.0
-langchain-anthropic>=0.1.0
+langsmith>=0.1.140
+
+# Vector Database
 weaviate-client>=3.26.0,<4.0.0  # Vector database for personalization (v3 API)
-python-dotenv>=1.0.0
-dj-database-url>=2.1.0
-django-allauth>=0.57.0
-dj-rest-auth>=5.0.0
-djangorestframework-simplejwt>=5.3.0
-cryptography>=41.0.0
-bleach>=6.0.0
+
+# Task Queue
+celery>=5.4.0
+redis>=5.2.0
+
+# WebSocket Support
+channels>=4.1.0  # Django Channels for WebSocket
+channels-redis>=4.2.1  # Redis backend for Channels
+websockets>=13.0  # WebSocket client for testing
+
+# Payments
+stripe>=11.0.0
+
+# Storage
+minio>=7.2.9
+boto3>=1.35.0
+
+# Security
+bleach>=6.1.0
 django-ratelimit>=4.1.0
 django-csp>=3.8
-stripe>=8.0.0  # Payment processing for subscriptions and tokens
-django-db-connection-pool>=1.2.4
-minio>=7.2.0
-boto3>=1.34.0
-Pillow>=10.0.0
-python-magic>=0.4.27
-markdown>=3.5.0
-requests>=2.31.0
 defusedxml>=0.7.1
 better-profanity==0.7.0
-ruff>=0.6.4
-bandit[toml]>=1.7.6
-fastmcp>=0.1.0  # MCP client for multi-source analysis
-pyyaml>=6.0  # For parsing docker-compose.yml files
-tenacity>=8.2.0  # Retry logic for API calls
-httpx>=0.25.0  # Async HTTP client
 
-# WebSocket support
-channels>=4.0.0  # Django Channels for WebSocket
-channels-redis>=4.2.0  # Redis backend for Channels
-daphne>=4.0.0  # ASGI server for Django Channels
-websockets>=12.0  # WebSocket client for testing
+# Media/Content
+Pillow>=10.4.0
+python-magic>=0.4.27
+markdown>=3.7
 
-# Monitoring dependencies
+# HTTP/API
+requests>=2.32.0
+httpx>=0.27.0
+tenacity>=9.0.0  # Retry logic for API calls
+
+# MCP & YAML
+fastmcp>=2.0.0  # MCP client for multi-source analysis
+pyyaml>=6.0.2  # For parsing docker-compose.yml files
+
+# Monitoring
 django-prometheus>=2.4.1
 
-# Testing dependencies
-pytest==9.0.1
-pytest-django==4.11.1
-pytest-cov==6.0.0
-pytest-asyncio>=1.0.0  # Async test support for LangGraph agent tests
-google-genai>=1.0.0
+# Code Quality (dev)
+ruff>=0.7.0
+bandit[toml]>=1.7.10
+
+# Testing (dev)
+pytest>=8.3.0
+pytest-django>=4.9.0
+pytest-cov>=6.0.0
+pytest-asyncio>=0.24.0  # Async test support for LangGraph agent tests

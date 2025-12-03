@@ -3,7 +3,7 @@ import { useState } from 'react';
 /**
  * StyleguideDemo Component - Neon Glass Edition
  *
- * Showcase for the new AllThrive AI aesthetic:
+ * Showcase for the new All Thrive AI aesthetic:
  * - Dark futuristic theme
  * - Neon lights (teal, cyan, electric blue, pink)
  * - Glassmorphism panels

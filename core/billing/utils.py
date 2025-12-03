@@ -320,6 +320,7 @@ def get_available_tiers() -> list:
             'slug': tier.slug,
             'name': tier.name,
             'description': tier.description,
+            'tier_type': tier.tier_type,
             'price_monthly': float(tier.price_monthly),
             'price_annual': float(tier.price_annual),
             'trial_period_days': tier.trial_period_days,

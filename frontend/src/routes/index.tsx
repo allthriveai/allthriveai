@@ -32,6 +32,7 @@ import BattleDetailPage from '@/pages/play/BattleDetailPage';
 import ThriveCirclePage from '@/pages/ThriveCirclePage';
 import SideQuestsPage from '@/pages/SideQuestsPage';
 import PricingPage from '@/pages/PricingPage';
+import CheckoutPage from '@/pages/CheckoutPage';
 
 export function AppRoutes() {
   return (
@@ -124,6 +125,16 @@ export function AppRoutes() {
 
       {/* Pricing - public route */}
       <Route path="/pricing" element={<PricingPage />} />
+
+      {/* Checkout - protected route */}
+      <Route
+        path="/checkout"
+        element={
+          <ProtectedRoute>
+            <CheckoutPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Play routes - protected */}
       <Route

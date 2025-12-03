@@ -44,7 +44,7 @@ const getBaseUrl = (): string => {
  * Optimized for search engines, social media, and LLM discoverability
  */
 export function SEO({
-  title = 'AllThrive AI - AI Portfolio Platform with Gamified Learning & Discovery',
+  title = 'All Thrive AI - AI Portfolio Platform with Gamified Learning & Discovery',
   description = 'Showcase your AI projects, discover innovative work, and level up your skills through interactive challenges. Build your AI portfolio, earn achievements, and connect with the community.',
   keywords = 'AI portfolio, machine learning projects, AI learning platform, gamified learning, AI community, project showcase, AI tools, deep learning, developer portfolio, coding challenges',
   image = `${getBaseUrl()}/og-image.jpg`,
@@ -55,7 +55,7 @@ export function SEO({
   const location = useLocation();
   const baseUrl = getBaseUrl();
   const currentUrl = url || `${baseUrl}${location.pathname}`;
-  const fullTitle = title.includes('AllThrive') ? title : `${title} | AllThrive AI`;
+  const fullTitle = title.includes('All Thrive') ? title : `${title} | All Thrive AI`;
 
   return (
     <Helmet>
@@ -72,13 +72,13 @@ export function SEO({
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={type} />
       <meta property="og:url" content={currentUrl} />
-      <meta property="og:site_name" content="AllThrive AI" />
+      <meta property="og:site_name" content="All Thrive AI" />
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={image} />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
-      <meta property="og:image:alt" content="AllThrive AI - AI Portfolio Platform" />
+      <meta property="og:image:alt" content="All Thrive AI - AI Portfolio Platform" />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
@@ -86,7 +86,7 @@ export function SEO({
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
-      <meta name="twitter:image:alt" content="AllThrive AI - AI Portfolio Platform" />
+      <meta name="twitter:image:alt" content="All Thrive AI - AI Portfolio Platform" />
     </Helmet>
   );
 }
@@ -94,13 +94,13 @@ export function SEO({
 // Preset configurations for common pages
 export const SEOPresets = {
   home: {
-    title: 'AllThrive AI - AI Portfolio Platform with Gamified Learning & Discovery',
+    title: 'All Thrive AI - AI Portfolio Platform with Gamified Learning & Discovery',
     description: 'Showcase your AI projects, discover innovative work, and level up your skills through interactive challenges. Build your AI portfolio, earn achievements, and connect with the community.',
     keywords: 'AI portfolio, machine learning projects, AI learning platform, gamified learning, AI community, project showcase',
   },
   about: {
-    title: 'About AllThrive AI',
-    description: 'Learn about AllThrive AI - the platform empowering AI practitioners, learners, and researchers to showcase projects, learn through gamification, and connect with the community.',
+    title: 'About All Thrive AI',
+    description: 'Learn about All Thrive AI - the platform empowering AI practitioners, learners, and researchers to showcase projects, learn through gamification, and connect with the community.',
     keywords: 'about allthrive, AI platform, AI learning, AI community, mission',
   },
   explore: {
@@ -120,17 +120,17 @@ export const SEOPresets = {
   },
   dashboard: {
     title: 'Dashboard',
-    description: 'Your AllThrive AI dashboard - manage projects, track progress, and view achievements.',
+    description: 'Your All Thrive AI dashboard - manage projects, track progress, and view achievements.',
     noindex: true,
   },
   profile: (username: string) => ({
-    title: `${username} - AllThrive AI Profile`,
-    description: `View ${username}'s AI project portfolio, achievements, and contributions on AllThrive AI.`,
+    title: `${username} - All Thrive AI Profile`,
+    description: `View ${username}'s AI project portfolio, achievements, and contributions on All Thrive AI.`,
     keywords: `${username}, AI portfolio, developer profile, AI projects`,
   }),
   project: (projectName: string) => ({
     title: projectName,
-    description: `${projectName} - AI project showcase on AllThrive AI`,
+    description: `${projectName} - AI project showcase on All Thrive AI`,
     keywords: 'AI project, machine learning, project showcase',
     type: 'article',
   }),

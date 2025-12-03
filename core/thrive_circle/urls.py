@@ -3,13 +3,20 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import PointActivityViewSet, QuestCategoryViewSet, SideQuestViewSet, ThriveCircleViewSet
+from .views import (
+    CircleViewSet,
+    PointActivityViewSet,
+    QuestCategoryViewSet,
+    SideQuestViewSet,
+    ThriveCircleViewSet,
+)
 
 router = DefaultRouter()
 router.register(r'thrive-circle', ThriveCircleViewSet, basename='thrive-circle')
 router.register(r'point-activities', PointActivityViewSet, basename='point-activities')
 router.register(r'side-quests', SideQuestViewSet, basename='side-quests')
 router.register(r'quest-categories', QuestCategoryViewSet, basename='quest-categories')
+router.register(r'circles', CircleViewSet, basename='circles')
 
 urlpatterns = [
     path('', include(router.urls)),

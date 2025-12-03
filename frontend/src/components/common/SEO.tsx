@@ -16,7 +16,7 @@ interface SEOProps {
  * Optimized for search engines and social media sharing
  */
 export function SEO({
-  title = 'AllThrive AI - Explore AI Together',
+  title = 'All Thrive AI - Explore AI Together',
   description = 'Find trending AI projects, automate your portfolio, and grow your skills.',
   keywords = 'AI creations, AI portfolio, AI projects, Midjourney, Replit, Claude, AI showcase, AI community, AI builders, AI tools, cross-platform AI',
   image = 'https://allthrive.ai/og-image.jpg',
@@ -27,7 +27,7 @@ export function SEO({
   const location = useLocation();
   const baseUrl = 'https://allthrive.ai';
   const currentUrl = url || `${baseUrl}${location.pathname}`;
-  const fullTitle = title.includes('AllThrive') ? title : `${title} | AllThrive AI`;
+  const fullTitle = title.includes('All Thrive') ? title : `${title} | All Thrive AI`;
 
   useEffect(() => {
     // Update document title
@@ -48,7 +48,7 @@ export function SEO({
       { property: 'og:image:alt', content: fullTitle },
       { property: 'og:url', content: currentUrl },
       { property: 'og:type', content: type },
-      { property: 'og:site_name', content: 'AllThrive AI' },
+      { property: 'og:site_name', content: 'All Thrive AI' },
 
       // Twitter
       { name: 'twitter:card', content: 'summary_large_image' },
@@ -96,13 +96,13 @@ export function SEO({
 // Preset configurations for common pages
 export const SEOPresets = {
   home: {
-    title: 'AllThrive AI - Explore AI Together',
+    title: 'All Thrive AI - Explore AI Together',
     description: 'Find trending AI projects, automate your portfolio, and grow your skills.',
     keywords: 'AI portfolio, AI projects, AI feed, AI discovery, trending AI, AI learning, AI showcase, AI community, AI builders, automate portfolio, explore AI',
   },
   about: {
-    title: 'About AllThrive AI',
-    description: 'AllThrive AI is where AI creators showcase work from any tool - from Midjourney art to Replit apps to Claude agents. Discover, share, and connect with builders.',
+    title: 'About All Thrive AI',
+    description: 'All Thrive AI is where AI creators showcase work from any tool - from Midjourney art to Replit apps to Claude agents. Discover, share, and connect with builders.',
     keywords: 'about allthrive, AI platform, AI creators, AI community, cross-platform AI, AI showcase',
   },
   explore: {
@@ -122,17 +122,17 @@ export const SEOPresets = {
   },
   dashboard: {
     title: 'Dashboard',
-    description: 'Your AllThrive AI dashboard - manage projects, track progress, and view achievements.',
+    description: 'Your All Thrive AI dashboard - manage projects, track progress, and view achievements.',
     noindex: true,
   },
   profile: (username: string) => ({
-    title: `${username} - AllThrive AI Profile`,
-    description: `View ${username}'s AI project portfolio, achievements, and contributions on AllThrive AI.`,
+    title: `${username} - All Thrive AI Profile`,
+    description: `View ${username}'s AI project portfolio, achievements, and contributions on All Thrive AI.`,
     keywords: `${username}, AI portfolio, developer profile, AI projects`,
   }),
   project: (projectName: string) => ({
     title: projectName,
-    description: `${projectName} - AI project showcase on AllThrive AI`,
+    description: `${projectName} - AI project showcase on All Thrive AI`,
     keywords: 'AI project, machine learning, project showcase',
     type: 'article',
   }),

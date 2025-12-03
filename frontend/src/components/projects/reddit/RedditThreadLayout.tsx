@@ -442,7 +442,7 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                 <span className="text-xl">⚠️</span> Disclaimer
               </h3>
               <p className="text-orange-200/80 text-sm leading-relaxed">
-                This content was originally posted on Reddit by <strong>u/{cleanAuthor}</strong> and is not created, owned, or affiliated with AllThrive.
+                This content was originally posted on Reddit by <strong>u/{cleanAuthor}</strong> and is not created, owned, or affiliated with All Thrive.
                 We curate these discussions to help our community find valuable AI insights.
                 All credit belongs to the original authors.
               </p>
@@ -450,23 +450,26 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
           </div>
         </div>
 
-        {/* AllThrive Metadata Card */}
+        {/* All Thrive Metadata Card */}
         <div className="relative mt-8">
           <div className="backdrop-blur-xl bg-white/5 border border-white/10 p-8 shadow-xl" style={{ borderRadius: 'var(--radius)' }}>
-            <h2 className="text-2xl font-bold text-white mb-6">AllThrive</h2>
+            <h2 className="text-2xl font-bold text-white mb-6">All Thrive</h2>
 
             <div className="space-y-6">
               {/* Tools */}
-              {localProject.tools && localProject.tools.length > 0 && (
+              {localProject.toolsDetails && localProject.toolsDetails.length > 0 && (
                 <div>
                   <h3 className={SECTION_HEADER_CLASS}>Tools</h3>
                   <div className={TAG_CONTAINER_CLASS}>
-                    {localProject.tools.map((tool) => (
+                    {localProject.toolsDetails.map((tool) => (
                       <span
                         key={tool.id}
-                        className="px-3 py-1.5 bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-sm font-medium"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-sm font-medium"
                         style={{ borderRadius: 'var(--radius)' }}
                       >
+                        {tool.logoUrl && (
+                          <img src={tool.logoUrl} alt={tool.name} className="w-4 h-4 rounded object-cover" />
+                        )}
                         {tool.name}
                       </span>
                     ))}
@@ -475,14 +478,14 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
               )}
 
               {/* Categories */}
-              {localProject.categories && localProject.categories.length > 0 && (
+              {localProject.categoriesDetails && localProject.categoriesDetails.length > 0 && (
                 <div>
                   <h3 className={SECTION_HEADER_CLASS}>Category</h3>
                   <div className={TAG_CONTAINER_CLASS}>
-                    {localProject.categories.map((category) => (
+                    {localProject.categoriesDetails.map((category) => (
                       <span
                         key={category.id}
-                        className="px-3 py-1.5 bg-blue-500/20 border border-blue-400/30 text-blue-200 text-sm font-medium"
+                        className="px-3 py-1.5 bg-primary-500/20 border border-primary-400/30 text-primary-200 text-sm font-medium"
                         style={{ borderRadius: 'var(--radius)' }}
                       >
                         {category.name}

@@ -1,34 +1,139 @@
+/**
+ * ThriveCirclePage - Community circle page with Neon Glass aesthetic
+ * Features the circle community: members, challenge, activity, and kudos
+ * Includes real-time activity notifications
+ */
+
+import { useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
+import { useCircleActivityMock } from '@/hooks/useCircleWebSocket';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { WeeklyGoalsPanel } from '@/components/thrive-circle/WeeklyGoalsPanel';
-import { ProjectCard } from '@/components/projects/ProjectCard';
+import { CircleMembersGrid } from '@/components/thrive-circle/CircleMembersGrid';
+import { CircleChallengeCard } from '@/components/thrive-circle/CircleChallengeCard';
+import { CircleActivityFeed } from '@/components/thrive-circle/CircleActivityFeed';
+import { CircleProjectsFeed } from '@/components/thrive-circle/CircleProjectsFeed';
+import { KudosWall } from '@/components/thrive-circle/KudosWall';
+import { GiveKudosModal } from '@/components/thrive-circle/GiveKudosModal';
+import {
+  CircleActivityToast,
+  useCircleActivityToasts,
+  type CircleActivityEvent,
+} from '@/components/thrive-circle/CircleActivityToast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faFire,
-  faTrophy,
-  faChartLine,
   faUsers,
-  faBook,
-  faRocket
+  faCalendarWeek,
+  faSpinner,
+  faUserGroup,
+  faBolt,
 } from '@fortawesome/free-solid-svg-icons';
+import type { CircleMembership, KudosType, TierName } from '@/types/models';
+
+// Tier descriptions and colors
+const TIER_CONFIG: Record<TierName, { emoji: string; description: string; color: string }> = {
+  seedling: {
+    emoji: '🌱',
+    description: 'Just getting started! Focus on exploring and building your first projects.',
+    color: 'text-emerald-400',
+  },
+  sprout: {
+    emoji: '🌿',
+    description: 'Growing strong! You\'re building consistency and helping others along the way.',
+    color: 'text-green-400',
+  },
+  blossom: {
+    emoji: '🌸',
+    description: 'Blooming beautifully! Your creativity and contributions are making an impact.',
+    color: 'text-pink-400',
+  },
+  bloom: {
+    emoji: '🌺',
+    description: 'In full bloom! You\'re a valued community member inspiring others.',
+    color: 'text-rose-400',
+  },
+  evergreen: {
+    emoji: '🌲',
+    description: 'A pillar of the community! Your consistent excellence guides others.',
+    color: 'text-teal-400',
+  },
+  curation: {
+    emoji: '✨',
+    description: 'Community curator! You help shape and elevate the entire community.',
+    color: 'text-yellow-400',
+  },
+};
 
 export default function ThriveCirclePage() {
-  const { isAuthenticated } = useAuth();
-  const { tierStatus, weeklyGoals, circleProjects, isLoading, isLoadingWeeklyGoals, isLoadingCircleProjects } = useThriveCircle();
+  const { isAuthenticated, user } = useAuth();
+  const {
+    myCircle,
+    kudosReceived,
+    circleActivity,
+    isLoading,
+    isLoadingCircle,
+    isLoadingKudos,
+    circleProjects,
+    isLoadingCircleProjects,
+    giveKudos,
+    isGivingKudos,
+  } = useThriveCircle();
 
+  const [selectedMember, setSelectedMember] = useState<CircleMembership | null>(null);
+
+  // Real-time activity toasts
+  const { events: activityEvents, addEvent, dismissEvent } = useCircleActivityToasts();
+
+  // Handle real-time activity events (using mock for demo, switch to useCircleWebSocket for production)
+  const handleActivityEvent = useCallback((event: CircleActivityEvent) => {
+    addEvent(event);
+  }, [addEvent]);
+
+  // Enable mock activity events for demo (shows a new activity every 8 seconds)
+  // In production, replace this with: useCircleWebSocket({ circleId: myCircle?.id, onActivity: handleActivityEvent })
+  useCircleActivityMock(handleActivityEvent, isAuthenticated && !!myCircle, 8000);
+
+  const handleGiveKudos = (kudosType: KudosType, message: string) => {
+    if (!selectedMember) return;
+    giveKudos({
+      toUserId: selectedMember.user.id,
+      kudosType,
+      message,
+    });
+    setSelectedMember(null);
+  };
+
+  // Unauthenticated view
   if (!isAuthenticated) {
     return (
       <DashboardLayout>
         {() => (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <h1 className="text-4xl font-bold mb-2">
-                Join Thrive Circle
-              </h1>
-              <p className="text-muted">
-                Log in to see your learning journey and connect with the community
-              </p>
+          <div className="min-h-screen bg-background relative overflow-hidden">
+            {/* Ambient Background Effects */}
+            <div className="fixed inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
+            <div className="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+            <div className="fixed bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-pink-accent/5 blur-[120px] pointer-events-none" />
+
+            <div className="relative z-10 h-full flex items-center justify-center px-4">
+              <div className="glass-card text-center max-w-md p-8">
+                <div className="w-20 h-20 rounded-2xl bg-cyan-500/20 flex items-center justify-center mx-auto mb-6 shadow-neon">
+                  <FontAwesomeIcon icon={faUserGroup} className="text-4xl text-cyan-bright" />
+                </div>
+                <h1 className="text-3xl font-bold text-white mb-4">
+                  Join Your <span className="text-gradient-cyan">Circle</span>
+                </h1>
+                <p className="text-slate-400 mb-8 leading-relaxed">
+                  Every week, you'll be matched with ~25 fellow learners at your level.
+                  Complete challenges together, give kudos, and grow as a community.
+                </p>
+                <a
+                  href="/auth"
+                  className="btn-primary inline-flex items-center gap-2 shadow-neon-strong"
+                >
+                  <FontAwesomeIcon icon={faBolt} />
+                  Sign In to Join
+                </a>
+              </div>
             </div>
           </div>
         )}
@@ -36,191 +141,163 @@ export default function ThriveCirclePage() {
     );
   }
 
+  // Loading state
+  if (isLoading || isLoadingCircle) {
+    return (
+      <DashboardLayout>
+        {() => (
+          <div className="min-h-screen bg-background relative overflow-hidden">
+            <div className="fixed inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
+            <div className="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+
+            <div className="relative z-10 h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-full bg-cyan-500/20 flex items-center justify-center mx-auto mb-4 shadow-neon">
+                  <FontAwesomeIcon icon={faSpinner} spin className="text-2xl text-cyan-bright" />
+                </div>
+                <p className="text-slate-400">Loading your circle...</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </DashboardLayout>
+    );
+  }
+
+  // Format week dates
+  const formatWeekDates = () => {
+    if (!myCircle) return 'This Week';
+    const start = new Date(myCircle.weekStart);
+    const end = new Date(myCircle.weekEnd);
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+    return `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)}`;
+  };
+
   return (
     <DashboardLayout>
       {() => (
-        <div className="h-full overflow-y-auto">
-          {/* Hero Banner */}
-          <div className="relative h-64 bg-gradient-to-r from-primary-600 to-primary-800 dark:from-primary-800 dark:to-primary-950">
-            <div className="absolute inset-0 bg-[url('/thrive-hero-pattern.svg')] opacity-10"></div>
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-              <h1 className="text-4xl font-bold text-white mb-4">
-                {tierStatus?.tierDisplay ? `${tierStatus.tierDisplay} Circle` : 'Thrive Circle'}
-              </h1>
-              <p className="text-xl text-primary-100 max-w-3xl">
-                Your gamified learning journey. Earn XP through quizzes, projects, and community engagement to unlock tiers from Seedling to Evergreen. Track your streaks, complete weekly goals, and grow with fellow learners.
-              </p>
-            </div>
-          </div>
+        <div className="min-h-screen bg-background relative overflow-hidden">
+          {/* Ambient Background Effects */}
+          <div className="fixed inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
+          <div className="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+          <div className="fixed bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-pink-accent/5 blur-[120px] pointer-events-none" />
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Column 1 - About You */}
-                <section className="lg:col-span-3 space-y-6">
-                  {/* Your Journey */}
-                  {tierStatus && (
-                    <div className="glass p-6 rounded">
-                      <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                        <FontAwesomeIcon icon={faTrophy} className="text-primary-500" />
-                        Your Journey
-                      </h2>
-
-                      {/* Tier Badge */}
-                      <div className="p-6 rounded bg-gradient-primary text-white text-center mb-4 shadow-brand">
-                        <FontAwesomeIcon icon={faFire} className="text-5xl mb-3" />
-                        <div className="text-xl font-bold">{tierStatus.tierDisplay || 'Seedling'}</div>
-                        <div className="text-sm opacity-90 mt-1">{tierStatus.totalPoints?.toLocaleString() || 0} Points</div>
-                        <div className="text-xs opacity-75 mt-1">Level {tierStatus.level || 1}</div>
-                      </div>
-
-                      {/* Progress to next tier */}
-                      {tierStatus.pointsToNextTier !== undefined && tierStatus.pointsToNextTier > 0 && (
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm text-muted">
-                            <span>Next tier in {tierStatus.pointsToNextTier?.toLocaleString() || 0} points</span>
-                          </div>
-                          <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-primary transition-all duration-500"
-                              style={{
-                                width: `${Math.min(100, ((tierStatus.totalPoints || 0) / ((tierStatus.totalPoints || 0) + (tierStatus.pointsToNextTier || 1))) * 100)}%`
-                              }}
-                            />
-                          </div>
-                        </div>
+          <div className="relative z-10 h-full overflow-y-auto">
+            {/* Hero Section with Circle Challenge */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent" />
+              <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Circle Header */}
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-8 gap-4">
+                  <div className="flex-1">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-neon text-xs font-medium mb-4 tracking-wider uppercase">
+                      <span className="luminous-dot animate-pulse" />
+                      <FontAwesomeIcon icon={faCalendarWeek} />
+                      <span>{formatWeekDates()}</span>
+                    </div>
+                    <h1 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3 mb-2">
+                      {myCircle?.tier && (
+                        <span className="text-4xl md:text-5xl">
+                          {TIER_CONFIG[myCircle.tier]?.emoji || '🌱'}
+                        </span>
                       )}
-                    </div>
-                  )}
-
-                  {/* Your Streak */}
-                  <div className="glass p-6 rounded">
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                      <FontAwesomeIcon icon={faFire} className="text-orange-500" />
-                      Your Streak
-                    </h3>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-1">
-                        {tierStatus?.currentStreakDays || 0}
-                      </div>
-                      <div className="text-sm text-muted mb-3">days</div>
-                      <div className="text-xs text-muted">
-                        Best: {tierStatus?.longestStreakDays || 0} days
-                      </div>
-                    </div>
+                      {myCircle ? (
+                        <span>
+                          <span className={TIER_CONFIG[myCircle.tier]?.color || 'text-cyan-bright'}>
+                            {myCircle.tierDisplay || myCircle.tier?.charAt(0).toUpperCase() + myCircle.tier?.slice(1)}
+                          </span>
+                          {' '}Circle
+                        </span>
+                      ) : (
+                        <span>Your Circle</span>
+                      )}
+                    </h1>
+                    {myCircle?.tier && (
+                      <p className="text-slate-300 text-sm md:text-base mb-3 max-w-xl">
+                        {TIER_CONFIG[myCircle.tier]?.description}
+                      </p>
+                    )}
+                    {myCircle && (
+                      <p className="text-slate-400 text-sm">
+                        <span className="text-cyan-bright font-medium">{myCircle.memberCount}</span> members
+                        <span className="text-slate-600 mx-2">•</span>
+                        <span className="text-emerald-400 font-medium">{myCircle.activeMemberCount}</span> active this week
+                      </p>
+                    )}
                   </div>
+                </div>
 
-                  {/* Your Stats */}
-                  <div className="glass p-6 rounded">
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                      <FontAwesomeIcon icon={faChartLine} className="text-accent-500" />
-                      Your Stats
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted text-sm">Quizzes</span>
-                        <span className="font-semibold">{tierStatus?.lifetimeQuizzesCompleted || 0}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted text-sm">Projects</span>
-                        <span className="font-semibold">{tierStatus?.lifetimeProjectsCreated || 0}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted text-sm">Side Quests</span>
-                        <span className="font-semibold">{tierStatus?.lifetimeSideQuestsCompleted || 0}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted text-sm">Comments</span>
-                        <span className="font-semibold">{tierStatus?.lifetimeCommentsPosted || 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Column 2 - Community */}
-                <section className="lg:col-span-3 space-y-6">
-                  {/* Weekly Goals */}
-                  <WeeklyGoalsPanel goals={weeklyGoals} isLoading={isLoadingWeeklyGoals} />
-
-                  {/* Circle Stats */}
-                  <div className="glass p-6 rounded">
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                      <FontAwesomeIcon icon={faUsers} className="text-accent-500" />
-                      Circle Stats
-                    </h3>
-                    <div className="text-center py-4">
-                      <div className="text-2xl font-bold text-primary-600 dark:text-primary-400 mb-1">
-                        {circleProjects?.length || 0}
-                      </div>
-                      <div className="text-sm text-muted">
-                        {tierStatus?.tierDisplay || 'Circle'} projects
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Circle Interests */}
-                  <div className="glass p-6 rounded">
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                      <FontAwesomeIcon icon={faBook} className="text-primary-500" />
-                      Circle Interests
-                    </h3>
-                    <p className="text-xs text-muted text-center py-6">
-                      Coming soon!<br />
-                      See trending topics in your tier.
+                {/* Circle Challenge - Hero Style */}
+                {myCircle?.activeChallenge ? (
+                  <CircleChallengeCard challenge={myCircle.activeChallenge} variant="hero" />
+                ) : (
+                  <div className="glass-card neon-border p-8 text-center">
+                    <FontAwesomeIcon icon={faCalendarWeek} className="text-4xl text-cyan-bright/50 mb-4" />
+                    <p className="text-lg text-slate-400">
+                      {myCircle
+                        ? 'No challenge this week. Check back on Monday!'
+                        : 'Circles are formed every Monday. Check back soon!'}
                     </p>
                   </div>
-                </section>
-
-                {/* Column 3 - Projects Feed */}
-                <section className="lg:col-span-6">
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-                      <FontAwesomeIcon icon={faRocket} className="text-accent-500" />
-                      {tierStatus?.tierDisplay ? `${tierStatus.tierDisplay} Circle` : 'Circle'} Projects
-                    </h2>
-                    <p className="text-sm text-muted">
-                      Projects from members in your tier
-                    </p>
-                  </div>
-
-                  {isLoadingCircleProjects ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="text-center">
-                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 dark:border-primary-400" />
-                        <p className="mt-4 text-gray-600 dark:text-gray-400">Loading projects...</p>
-                      </div>
-                    </div>
-                  ) : circleProjects && circleProjects.length > 0 ? (
-                    <div className="columns-1 sm:columns-2 gap-2">
-                      {circleProjects.map((project: any) => (
-                        <div key={project.id} className="break-inside-avoid mb-2">
-                          <ProjectCard
-                            project={project}
-                            variant="masonry"
-                            userAvatarUrl={project.user_avatar_url}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="text-center">
-                        <FontAwesomeIcon icon={faRocket} className="text-5xl text-gray-400 mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">No projects yet</h3>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm">
-                          Be the first in your circle to share a project!
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </section>
+                )}
               </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+              {/* Row 1: Circle Members (50%) + Activity Feed (50%) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Circle Members Grid */}
+                <CircleMembersGrid
+                  members={myCircle?.members || []}
+                  currentUserId={user?.id}
+                  onGiveKudos={setSelectedMember}
+                  isLoading={isLoadingCircle}
+                />
+
+                {/* Activity Feed */}
+                <CircleActivityFeed
+                  kudos={circleActivity?.kudos || kudosReceived}
+                  isLoading={isLoadingKudos}
+                />
+              </div>
+
+              {/* Row 2: Kudos Wall (100% - only shows if kudos exist) */}
+              <KudosWall
+                kudos={kudosReceived || []}
+                currentUserId={user?.id}
+                isLoading={isLoadingKudos}
+              />
+
+              {/* Row 3: Circle Projects Feed (100%) */}
+              <CircleProjectsFeed
+                projects={circleProjects}
+                isLoading={isLoadingCircleProjects}
+              />
+
+              {/* Quick Challenge Card (if exists) */}
+              {myCircle?.activeChallenge && (
+                <CircleChallengeCard challenge={myCircle.activeChallenge} variant="card" />
+              )}
+            </div>
+
+            {/* Give Kudos Modal */}
+            {selectedMember && (
+              <GiveKudosModal
+                member={selectedMember}
+                onClose={() => setSelectedMember(null)}
+                onSubmit={handleGiveKudos}
+                isSubmitting={isGivingKudos}
+              />
             )}
+
+            {/* Real-time Activity Toasts */}
+            <CircleActivityToast
+              events={activityEvents}
+              onDismiss={dismissEvent}
+              maxVisible={3}
+              autoHideDuration={5000}
+            />
           </div>
         </div>
       )}

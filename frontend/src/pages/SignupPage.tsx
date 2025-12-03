@@ -169,7 +169,7 @@ export default function SignupPage() {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Create Account</h1>
-          <p className="text-gray-600 dark:text-gray-400">Join AllThrive AI today</p>
+          <p className="text-gray-600 dark:text-gray-400">Join All Thrive AI today</p>
         </div>
 
         {/* Signup Card */}

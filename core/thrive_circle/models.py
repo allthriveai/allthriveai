@@ -519,3 +519,345 @@ class UserSideQuest(models.Model):
                 }
             )
         return progress
+
+
+# =============================================================================
+# Circle Models - Community Micro-Groups
+# =============================================================================
+
+
+class Circle(models.Model):
+    """
+    A Circle is a small community group of ~20-30 users within a tier.
+
+    Circles are formed weekly, grouping users by their tier for a shared
+    community experience. Think of it like Duolingo leagues but for
+    community building rather than competition.
+    """
+
+    TIER_CHOICES = [
+        ('seedling', 'Seedling'),
+        ('sprout', 'Sprout'),
+        ('blossom', 'Blossom'),
+        ('bloom', 'Bloom'),
+        ('evergreen', 'Evergreen'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Circle identity
+    name = models.CharField(
+        max_length=100,
+        help_text='Circle name (e.g., "Seedling Circle #472" or fun generated name)',
+    )
+    tier = models.CharField(
+        max_length=20,
+        choices=TIER_CHOICES,
+        help_text='Which tier this circle belongs to',
+    )
+
+    # Time window - circles are weekly
+    week_start = models.DateField(help_text='Monday of the week this circle is active')
+    week_end = models.DateField(help_text='Sunday of the week this circle is active')
+
+    # Stats (cached for performance)
+    member_count = models.PositiveIntegerField(default=0, help_text='Number of members in circle')
+    active_member_count = models.PositiveIntegerField(default=0, help_text='Members who were active this week')
+
+    # Metadata
+    is_active = models.BooleanField(default=True, help_text='Whether this circle is currently active')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-week_start', 'tier', 'name']
+        verbose_name = 'Circle'
+        verbose_name_plural = 'Circles'
+        indexes = [
+            models.Index(fields=['tier', 'week_start', 'is_active']),
+            models.Index(fields=['week_start', 'week_end']),
+            models.Index(fields=['is_active', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.name} ({self.get_tier_display()} - Week of {self.week_start})'
+
+    def update_member_counts(self):
+        """Update cached member counts."""
+        self.member_count = self.memberships.filter(is_active=True).count()
+        # Active = had any point activity this week
+        from django.db.models import Exists, OuterRef
+
+        active_users = PointActivity.objects.filter(
+            user=OuterRef('user'),
+            created_at__date__gte=self.week_start,
+            created_at__date__lte=self.week_end,
+        )
+        self.active_member_count = (
+            self.memberships.filter(is_active=True)
+            .annotate(has_activity=Exists(active_users))
+            .filter(has_activity=True)
+            .count()
+        )
+        self.save(update_fields=['member_count', 'active_member_count', 'updated_at'])
+
+
+class CircleMembership(models.Model):
+    """
+    Links a user to a Circle for a specific week.
+
+    Users are assigned to one circle per week based on their tier.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='circle_memberships',
+    )
+    circle = models.ForeignKey(
+        Circle,
+        on_delete=models.CASCADE,
+        related_name='memberships',
+    )
+
+    # Membership state
+    is_active = models.BooleanField(default=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    # Activity tracking for this membership period
+    points_earned_in_circle = models.IntegerField(
+        default=0,
+        help_text='Points earned while in this circle',
+    )
+    was_active = models.BooleanField(
+        default=False,
+        help_text='Whether user was active during this circle period',
+    )
+
+    class Meta:
+        unique_together = ['user', 'circle']
+        ordering = ['-joined_at']
+        verbose_name = 'Circle Membership'
+        verbose_name_plural = 'Circle Memberships'
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=['circle', 'is_active']),
+            models.Index(fields=['user', '-joined_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} in {self.circle.name}'
+
+
+class CircleChallenge(models.Model):
+    """
+    A shared weekly challenge for all members of a Circle.
+
+    Unlike individual goals, Circle Challenges are collaborative -
+    everyone in the circle contributes to a shared progress bar.
+    When the circle hits the goal, everyone gets bonus points.
+    """
+
+    CHALLENGE_TYPE_CHOICES = [
+        ('create_projects', 'Create Projects Together'),
+        ('give_feedback', 'Give Feedback to Each Other'),
+        ('complete_quests', 'Complete Side Quests'),
+        ('earn_points', 'Earn Points Together'),
+        ('maintain_streaks', 'Maintain Streaks'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    circle = models.ForeignKey(
+        Circle,
+        on_delete=models.CASCADE,
+        related_name='challenges',
+    )
+
+    # Challenge details
+    challenge_type = models.CharField(
+        max_length=30,
+        choices=CHALLENGE_TYPE_CHOICES,
+        help_text='Type of challenge',
+    )
+    title = models.CharField(
+        max_length=200,
+        help_text='Human-readable challenge title',
+    )
+    description = models.TextField(
+        blank=True,
+        help_text='Detailed description of the challenge',
+    )
+
+    # Progress tracking
+    target = models.PositiveIntegerField(help_text='Target value to complete challenge')
+    current_progress = models.PositiveIntegerField(default=0, help_text='Current collective progress')
+
+    # Completion
+    is_completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    # Rewards
+    bonus_points = models.PositiveIntegerField(
+        default=50,
+        help_text='Points awarded to each member when challenge is completed',
+    )
+    rewards_distributed = models.BooleanField(
+        default=False,
+        help_text='Whether bonus points have been distributed to members',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Circle Challenge'
+        verbose_name_plural = 'Circle Challenges'
+        indexes = [
+            models.Index(fields=['circle', 'is_completed']),
+            models.Index(fields=['challenge_type', 'is_completed']),
+        ]
+
+    def __str__(self):
+        status = '✓' if self.is_completed else f'{self.current_progress}/{self.target}'
+        return f'{self.circle.name} - {self.title} ({status})'
+
+    @property
+    def progress_percentage(self):
+        """Calculate percentage progress towards challenge completion."""
+        if self.target == 0:
+            return 0
+        return min(100, int((self.current_progress / self.target) * 100))
+
+    def increment_progress(self, amount: int = 1):
+        """
+        Increment challenge progress atomically.
+
+        Returns True if this increment caused the challenge to complete.
+        """
+        from django.db.models import F
+
+        # Atomic increment
+        CircleChallenge.objects.filter(pk=self.pk).update(
+            current_progress=F('current_progress') + amount,
+            updated_at=timezone.now(),
+        )
+
+        # Refresh and check completion
+        self.refresh_from_db()
+
+        if self.current_progress >= self.target and not self.is_completed:
+            self.is_completed = True
+            self.completed_at = timezone.now()
+            self.save(update_fields=['is_completed', 'completed_at'])
+            return True
+
+        return False
+
+    def distribute_rewards(self):
+        """
+        Distribute bonus points to all active circle members.
+
+        Should only be called once when challenge completes.
+        """
+        if self.rewards_distributed:
+            logger.warning(f'Rewards already distributed for challenge {self.id}')
+            return
+
+        active_members = self.circle.memberships.filter(is_active=True).select_related('user')
+
+        for membership in active_members:
+            membership.user.add_points(
+                amount=self.bonus_points,
+                activity_type='weekly_goal',  # Reuse existing activity type
+                description=f'Circle Challenge: {self.title}',
+            )
+
+        self.rewards_distributed = True
+        self.save(update_fields=['rewards_distributed'])
+
+        logger.info(
+            f'Distributed {self.bonus_points} points to {active_members.count()} ' f'members for challenge {self.id}'
+        )
+
+
+class Kudos(models.Model):
+    """
+    Peer recognition within a Circle.
+
+    Circle members can give kudos to each other as a lightweight
+    way to show appreciation without requiring chat functionality.
+    """
+
+    KUDOS_TYPE_CHOICES = [
+        ('great_project', '🎨 Great Project'),
+        ('helpful', '🤝 Helpful'),
+        ('inspiring', '✨ Inspiring'),
+        ('creative', '💡 Creative'),
+        ('supportive', '💪 Supportive'),
+        ('welcome', '👋 Welcome'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Who gave and received
+    from_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='kudos_given',
+    )
+    to_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='kudos_received',
+    )
+
+    # Context - which circle this was given in
+    circle = models.ForeignKey(
+        Circle,
+        on_delete=models.CASCADE,
+        related_name='kudos',
+        help_text='The circle context where kudos was given',
+    )
+
+    # Kudos details
+    kudos_type = models.CharField(
+        max_length=20,
+        choices=KUDOS_TYPE_CHOICES,
+        default='helpful',
+    )
+    message = models.CharField(
+        max_length=280,
+        blank=True,
+        help_text='Optional short message (like a tweet)',
+    )
+
+    # Optional: link to specific content
+    project = models.ForeignKey(
+        'core.Project',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='kudos',
+        help_text='Optional: kudos for a specific project',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Kudos'
+        verbose_name_plural = 'Kudos'
+        indexes = [
+            models.Index(fields=['to_user', '-created_at']),
+            models.Index(fields=['from_user', '-created_at']),
+            models.Index(fields=['circle', '-created_at']),
+        ]
+        # Prevent spam: one kudos type per user pair per circle
+        unique_together = ['from_user', 'to_user', 'circle', 'kudos_type']
+
+    def __str__(self):
+        return f'{self.from_user.username} → {self.to_user.username}: {self.get_kudos_type_display()}'

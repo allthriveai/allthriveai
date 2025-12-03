@@ -14,6 +14,10 @@ import type {
   UserSideQuest,
   QuestCategory,
   QuestCategoryProgress,
+  Circle,
+  Kudos,
+  CreateKudosRequest,
+  CircleActivityFeed,
 } from '@/types/models';
 
 /**
@@ -269,4 +273,74 @@ export async function getDailyQuests(): Promise<SideQuest[]> {
   // The daily endpoint returns [{quest: {...}, progress: {...}}, ...] format
   // Extract just the quest objects for the component
   return response.data.map((item: { quest: SideQuest }) => item.quest);
+}
+
+// =============================================================================
+// Circle API - Community Micro-Groups
+// =============================================================================
+
+/**
+ * Get current user's circle for this week
+ * Returns circle details with members, challenge, and user's membership
+ */
+export async function getMyCircle(): Promise<Circle | null> {
+  try {
+    const response = await api.get('/me/circles/my-circle/');
+    // API interceptor converts snake_case to camelCase
+    return response.data as Circle;
+  } catch (error: any) {
+    // 404 means user is not in a circle this week
+    if (error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get activity feed for user's current circle
+ */
+export async function getCircleActivity(limit: number = 20): Promise<CircleActivityFeed | null> {
+  try {
+    const response = await api.get(`/me/circles/activity/?limit=${limit}`);
+    return response.data as CircleActivityFeed;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Give kudos to a circle member
+ */
+export async function giveKudos(request: CreateKudosRequest): Promise<Kudos> {
+  const response = await api.post('/me/circles/kudos/', {
+    to_user_id: request.toUserId,
+    kudos_type: request.kudosType,
+    message: request.message || '',
+    project_id: request.projectId || null,
+  });
+  return response.data as Kudos;
+}
+
+/**
+ * Get kudos received by the current user
+ */
+export async function getKudosReceived(limit: number = 20, circleOnly: boolean = false): Promise<Kudos[]> {
+  const params = new URLSearchParams();
+  params.append('limit', limit.toString());
+  if (circleOnly) params.append('circle_only', 'true');
+
+  const response = await api.get(`/me/circles/kudos/received/?${params.toString()}`);
+  return response.data as Kudos[];
+}
+
+/**
+ * Get kudos given by the current user
+ */
+export async function getKudosGiven(limit: number = 20): Promise<Kudos[]> {
+  const response = await api.get(`/me/circles/kudos/given/?limit=${limit}`);
+  return response.data as Kudos[];
 }

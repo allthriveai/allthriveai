@@ -5,6 +5,7 @@ Handles all Stripe API interactions for subscriptions and payments.
 """
 
 import logging
+from datetime import timezone as dt_timezone
 from typing import Any
 
 import stripe
@@ -144,8 +145,26 @@ class StripeService:
             # Get or create Stripe customer
             customer_id = StripeService.get_or_create_customer(user)
 
-            # Get user's subscription record
-            user_subscription = UserSubscription.objects.get(user=user)
+            # Get or create user's subscription record with database lock to prevent race conditions
+            # We need to handle the case where UserSubscription doesn't exist yet
+            try:
+                user_subscription = UserSubscription.objects.select_for_update().get(user=user)
+            except UserSubscription.DoesNotExist:
+                # Create a new UserSubscription for this user
+                # Note: Can't use select_for_update() with create, but that's okay since we just created it
+                user_subscription = UserSubscription.objects.create(
+                    user=user,
+                    tier=SubscriptionTier.objects.get(tier_type='free'),  # Start with free tier
+                    status='active',
+                )
+
+            # Check if user already has an active paid subscription
+            if user_subscription.stripe_subscription_id and user_subscription.status in ['active', 'trialing']:
+                raise StripeServiceError(
+                    'You already have an active subscription. Please cancel your current subscription first, '
+                    'or use the update subscription endpoint to change tiers.'
+                )
+
             old_tier = user_subscription.tier
 
             # Create subscription in Stripe
@@ -172,21 +191,26 @@ class StripeService:
             user_subscription.stripe_subscription_id = stripe_subscription.id
             user_subscription.stripe_customer_id = customer_id
             user_subscription.status = stripe_subscription.status
-            user_subscription.current_period_start = timezone.datetime.fromtimestamp(
-                stripe_subscription.current_period_start, tz=timezone.utc
-            )
-            user_subscription.current_period_end = timezone.datetime.fromtimestamp(
-                stripe_subscription.current_period_end, tz=timezone.utc
-            )
+
+            # Period dates may not exist for incomplete subscriptions (payment_behavior='default_incomplete')
+            # They will be set by webhook when payment succeeds
+            if hasattr(stripe_subscription, 'current_period_start') and stripe_subscription.current_period_start:
+                user_subscription.current_period_start = timezone.datetime.fromtimestamp(
+                    stripe_subscription.current_period_start, tz=dt_timezone.UTC
+                )
+            if hasattr(stripe_subscription, 'current_period_end') and stripe_subscription.current_period_end:
+                user_subscription.current_period_end = timezone.datetime.fromtimestamp(
+                    stripe_subscription.current_period_end, tz=dt_timezone.UTC
+                )
 
             # Set trial dates if in trial
-            if stripe_subscription.trial_start:
+            if hasattr(stripe_subscription, 'trial_start') and stripe_subscription.trial_start:
                 user_subscription.trial_start = timezone.datetime.fromtimestamp(
-                    stripe_subscription.trial_start, tz=timezone.utc
+                    stripe_subscription.trial_start, tz=dt_timezone.UTC
                 )
-            if stripe_subscription.trial_end:
+            if hasattr(stripe_subscription, 'trial_end') and stripe_subscription.trial_end:
                 user_subscription.trial_end = timezone.datetime.fromtimestamp(
-                    stripe_subscription.trial_end, tz=timezone.utc
+                    stripe_subscription.trial_end, tz=dt_timezone.UTC
                 )
 
             user_subscription.save()
@@ -302,7 +326,8 @@ class StripeService:
             StripeServiceError: If update fails
         """
         try:
-            user_subscription = UserSubscription.objects.get(user=user)
+            # Lock the subscription record to prevent concurrent updates
+            user_subscription = UserSubscription.objects.select_for_update().get(user=user)
             old_tier = user_subscription.tier
 
             if not user_subscription.stripe_subscription_id:
@@ -405,8 +430,14 @@ class StripeService:
             # Get or create Stripe customer
             customer_id = StripeService.get_or_create_customer(user)
 
-            # Create payment intent
-            amount_cents = int(package.price * 100)  # Convert to cents
+            # Generate idempotency key to prevent duplicate charges on retry
+            # Format: token_purchase_{user_id}_{package_id}_{date}
+            idempotency_key = f'token_purchase_{user.id}_{package.id}_{timezone.now().strftime("%Y%m%d")}'
+
+            # Create payment intent (use Decimal for accurate currency conversion)
+            from decimal import Decimal
+
+            amount_cents = int((package.price * Decimal('100')).quantize(Decimal('1')))
 
             payment_intent = stripe.PaymentIntent.create(
                 amount=amount_cents,
@@ -418,6 +449,7 @@ class StripeService:
                     'token_amount': package.token_amount,
                 },
                 description=f'{package.name} - {package.token_amount:,} tokens',
+                idempotency_key=idempotency_key,  # Prevents duplicate charges
             )
 
             # Create TokenPurchase record
@@ -613,10 +645,10 @@ class StripeService:
             # Update status
             user_subscription.status = stripe_subscription['status']
             user_subscription.current_period_start = timezone.datetime.fromtimestamp(
-                stripe_subscription['current_period_start'], tz=timezone.utc
+                stripe_subscription['current_period_start'], tz=dt_timezone.UTC
             )
             user_subscription.current_period_end = timezone.datetime.fromtimestamp(
-                stripe_subscription['current_period_end'], tz=timezone.utc
+                stripe_subscription['current_period_end'], tz=dt_timezone.UTC
             )
 
             user_subscription.save()

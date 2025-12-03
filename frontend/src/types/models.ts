@@ -491,6 +491,92 @@ export interface WeeklyGoal {
   updatedAt: string;
 }
 
+// =============================================================================
+// Circle Types - Community Micro-Groups
+// =============================================================================
+
+export type KudosType = 'great_project' | 'helpful' | 'inspiring' | 'creative' | 'supportive' | 'welcome';
+
+export type CircleChallengeType = 'create_projects' | 'give_feedback' | 'complete_quests' | 'earn_points' | 'maintain_streaks';
+
+export interface CircleMember {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  tier: TierName;
+  level: number;
+  totalPoints: number;
+}
+
+export interface CircleMembership {
+  id: string;
+  user: CircleMember;
+  isActive: boolean;
+  joinedAt: string;
+  pointsEarnedInCircle: number;
+  wasActive: boolean;
+}
+
+export interface CircleChallenge {
+  id: string;
+  challengeType: CircleChallengeType;
+  challengeTypeDisplay: string;
+  title: string;
+  description: string;
+  target: number;
+  currentProgress: number;
+  progressPercentage: number;
+  isCompleted: boolean;
+  completedAt: string | null;
+  bonusPoints: number;
+  rewardsDistributed: boolean;
+  createdAt: string;
+}
+
+export interface Circle {
+  id: string;
+  name: string;
+  tier: TierName;
+  tierDisplay: string;
+  weekStart: string;
+  weekEnd: string;
+  memberCount: number;
+  activeMemberCount: number;
+  isActive: boolean;
+  createdAt: string;
+  // Detailed fields (from CircleDetailSerializer)
+  members?: CircleMembership[];
+  activeChallenge?: CircleChallenge | null;
+  myMembership?: CircleMembership | null;
+  hasCircle?: boolean;
+}
+
+export interface Kudos {
+  id: string;
+  fromUser: CircleMember;
+  toUser: CircleMember;
+  circle: string;
+  kudosType: KudosType;
+  kudosTypeDisplay: string;
+  message: string;
+  project: string | null;
+  projectTitle: string | null;
+  createdAt: string;
+}
+
+export interface CreateKudosRequest {
+  toUserId: string;
+  kudosType: KudosType;
+  message?: string;
+  projectId?: string;
+}
+
+export interface CircleActivityFeed {
+  kudos: Kudos[];
+  circleName: string;
+  hasCircle: boolean;
+}
+
 // Side Quests
 export type SideQuestType =
   | 'quiz_mastery'

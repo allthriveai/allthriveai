@@ -643,7 +643,7 @@ export function IntelligentChatPanel({
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              AllThrive AI Chat
+              All Thrive AI Chat
             </h2>
 
             {/* Connection status indicator */}

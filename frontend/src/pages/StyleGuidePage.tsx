@@ -4,7 +4,7 @@ export default function StyleGuidePage() {
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
         <div className="mb-16">
-          <h1 className="text-gradient mb-2">AllThrive AI Style Guide</h1>
+          <h1 className="text-gradient mb-2">All Thrive AI Style Guide</h1>
           <p className="text-muted mb-4">Design system with glassmorphism and brand gradients</p>
           <p className="text-sm text-muted">Global border radius: 4px</p>
         </div>
@@ -389,7 +389,7 @@ export default function StyleGuidePage() {
 </div>
 
 // Gradient Text
-<h1 className="text-gradient">AllThrive AI</h1>
+<h1 className="text-gradient">All Thrive AI</h1>
 
 // Brand Colors
 <div className="bg-primary-500">Teal</div>

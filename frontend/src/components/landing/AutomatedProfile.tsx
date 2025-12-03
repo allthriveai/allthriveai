@@ -181,7 +181,7 @@ export function AutomatedProfile() {
             {/* AI badge */}
             <div className="mt-5 pt-5 border-t border-white/10 flex items-center justify-center gap-2 text-gray-500 text-sm">
               <SparklesIcon className="w-4 h-4 text-cyan-400" />
-              Profile auto-generated via AllThrive Chat
+              Profile auto-generated via All Thrive Chat
             </div>
           </div>
         </motion.div>

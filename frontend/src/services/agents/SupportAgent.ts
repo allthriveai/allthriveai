@@ -17,7 +17,7 @@ export class SupportAgent extends BaseAgent {
       agentId: 'support',
       agentName: 'Support Agent',
       agentDescription: 'AI assistant for platform support and guidance',
-      initialMessage: 'Hi! I\'m here to help answer your questions about AllThrive AI. What can I assist you with?',
+      initialMessage: 'Hi! I\'m here to help answer your questions about All Thrive AI. What can I assist you with?',
     });
   }
 
@@ -69,7 +69,7 @@ export class SupportAgent extends BaseAgent {
       greeting = 'Good evening';
     }
 
-    return `${greeting}! I'm here to help answer your questions about AllThrive AI. What can I assist you with?`;
+    return `${greeting}! I'm here to help answer your questions about All Thrive AI. What can I assist you with?`;
   }
 
   /**

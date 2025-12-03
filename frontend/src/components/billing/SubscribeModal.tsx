@@ -39,21 +39,29 @@ export function SubscribeModal({
   message,
 }: SubscribeModalProps) {
   const queryClient = useQueryClient();
-  const [step, setStep] = useState<'select' | 'payment'>('select');
+  // If tier is pre-selected (from pricing page), start on payment step, otherwise tier selection
+  const [step, setStep] = useState<'select' | 'payment'>(selectedTierSlug ? 'payment' : 'select');
   const [selectedTier, setSelectedTier] = useState<string | null>(selectedTierSlug || null);
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch available tiers
   const { data: tiers, isLoading: tiersLoading } = useQuery({
     queryKey: ['subscription-tiers'],
-    queryFn: getSubscriptionTiers,
+    queryFn: async () => {
+      const data = await getSubscriptionTiers();
+      console.log('[SubscribeModal] Tiers data:', data);
+      console.log('[SubscribeModal] First tier keys:', data[0] ? Object.keys(data[0]) : 'No tiers');
+      console.log('[SubscribeModal] First tier:', data[0]);
+      return data;
+    },
     enabled: isOpen, // Only fetch when modal is open
   });
 
   // Create subscription mutation (gets client secret)
   const createSubscriptionMutation = useMutation({
-    mutationFn: (tierSlug: string) => createSubscription(tierSlug),
+    mutationFn: (tierSlug: string) => createSubscription(tierSlug, billingInterval),
     onSuccess: (data) => {
       setClientSecret(data.clientSecret);
       setStep('payment');
@@ -100,6 +108,15 @@ export function SubscribeModal({
     }
   }, [isOpen]);
 
+  // Auto-proceed to payment if tier is pre-selected (from pricing page)
+  useEffect(() => {
+    if (isOpen && selectedTierSlug && !clientSecret && step === 'payment') {
+      // Automatically create subscription for pre-selected tier
+      console.log('[SubscribeModal] Auto-creating subscription for tier:', selectedTierSlug);
+      createSubscriptionMutation.mutate(selectedTierSlug);
+    }
+  }, [isOpen, selectedTierSlug, clientSecret, step]);
+
   if (!isOpen) return null;
 
   const handleContinueToPayment = () => {
@@ -107,11 +124,50 @@ export function SubscribeModal({
     createSubscriptionMutation.mutate(selectedTier);
   };
 
-  const handlePaymentSuccess = () => {
-    // Invalidate subscription status query
+  const handlePaymentSuccess = async () => {
+    // Poll backend for subscription activation (webhooks are asynchronous)
+    const maxAttempts = 10;
+    const pollInterval = 1000; // 1 second
+
+    console.log('[SubscribeModal] Payment confirmed, polling for subscription activation...');
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Wait before checking status
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+        // Fetch latest subscription status
+        const status = await getSubscriptionStatus();
+
+        console.log(`[SubscribeModal] Poll attempt ${attempt}/${maxAttempts}:`, {
+          hasActiveSubscription: status.hasActiveSubscription,
+          subscriptionStatus: status.subscriptionStatus,
+          tierSlug: status.tierSlug,
+        });
+
+        // Check if subscription is now active
+        if (status.hasActiveSubscription && status.subscriptionStatus === 'active') {
+          console.log('[SubscribeModal] Subscription activated!');
+          // Invalidate queries to refresh UI
+          queryClient.invalidateQueries({ queryKey: ['subscription-status'] });
+          queryClient.invalidateQueries({ queryKey: ['user-subscription'] });
+          onClose();
+          return;
+        }
+      } catch (err) {
+        console.error(`[SubscribeModal] Poll attempt ${attempt} failed:`, err);
+      }
+    }
+
+    // Timeout reached - webhook might be delayed
+    console.warn('[SubscribeModal] Subscription activation polling timeout');
+    setError(
+      'Your payment was successful, but subscription activation is taking longer than expected. ' +
+      'Please refresh the page in a few seconds. If the issue persists, contact support.'
+    );
+
+    // Still invalidate queries in case status updated
     queryClient.invalidateQueries({ queryKey: ['subscription-status'] });
-    queryClient.invalidateQueries({ queryKey: ['user-subscription'] });
-    onClose();
   };
 
   const handlePaymentError = (errorMessage: string) => {
@@ -127,34 +183,41 @@ export function SubscribeModal({
   // Tier order for display
   const tierOrder = ['free', 'community_pro', 'pro_learn', 'creator_mentor'];
 
-  const sortedTiers = tiers?.sort((a, b) => {
-    return tierOrder.indexOf(a.tierType) - tierOrder.indexOf(b.tierType);
-  }).filter(t => t.tierType !== 'free'); // Don't show free tier in modal
+  const sortedTiers = tiers
+    ? [...tiers] // Create a new array to avoid mutating the original
+        .filter(t => t.tierType !== 'free') // Don't show free tier in modal
+        .sort((a, b) => {
+          const indexA = tierOrder.indexOf(a.tierType);
+          const indexB = tierOrder.indexOf(b.tierType);
+          return indexA - indexB;
+        })
+    : [];
+
 
   // Get feature list for a tier
   const getFeatureList = (tier: SubscriptionTier): string[] => {
-    const features: string[] = [];
+    const featureList: string[] = [];
 
     // AI Requests
     if (tier.monthlyAiRequests === 0) {
-      features.push('Unlimited AI requests');
+      featureList.push('Unlimited AI requests');
     } else {
-      features.push(`${tier.monthlyAiRequests.toLocaleString()} AI requests/month`);
+      featureList.push(`${tier.monthlyAiRequests.toLocaleString()} AI requests/month`);
     }
 
     // Core features
-    if (tier.hasAiMentor) features.push('AI Mentor');
-    if (tier.hasQuests) features.push('Side Quests');
-    if (tier.hasProjects) features.push('Project Portfolio');
+    if (tier.features.aiMentor) featureList.push('AI Mentor');
+    if (tier.features.quests) featureList.push('Side Quests');
+    if (tier.features.projects) featureList.push('Project Portfolio');
 
     // Premium features
-    if (tier.hasCircles) features.push('Thrive Circles');
-    if (tier.hasMarketplaceAccess) features.push('Marketplace Access');
-    if (tier.hasGo1Courses) features.push('Go1 Course Library');
-    if (tier.hasAnalytics) features.push('Advanced Analytics');
-    if (tier.hasCreatorTools) features.push('Creator Tools');
+    if (tier.features.circles) featureList.push('Thrive Circles');
+    if (tier.features.marketplace) featureList.push('Marketplace Access');
+    if (tier.features.go1Courses) featureList.push('Go1 Course Library');
+    if (tier.features.analytics) featureList.push('Advanced Analytics');
+    if (tier.features.creatorTools) featureList.push('Creator Tools');
 
-    return features;
+    return featureList;
   };
 
   // Get neon color for tier
@@ -258,7 +321,7 @@ export function SubscribeModal({
 
               return (
                 <div
-                  key={tier.tierType}
+                  key={tier.slug}
                   className={`relative rounded-lg p-6 cursor-pointer transition-all ${
                     isSelected
                       ? 'ring-2 ring-[var(--neon-cyan)]'
@@ -320,13 +383,21 @@ export function SubscribeModal({
         )}
 
         {/* Step 2: Payment Form */}
-        {step === 'payment' && clientSecret && (
+        {step === 'payment' && (
           <div className="p-8 max-w-2xl mx-auto">
-            <StripePaymentForm
-              clientSecret={clientSecret}
-              onSuccess={handlePaymentSuccess}
-              onError={handlePaymentError}
-            />
+            {clientSecret ? (
+              <StripePaymentForm
+                clientSecret={clientSecret}
+                onSuccess={handlePaymentSuccess}
+                onError={handlePaymentError}
+              />
+            ) : (
+              /* Loading state while creating subscription */
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-2 border-[var(--neon-cyan)] border-t-transparent mb-4"></div>
+                <p className="text-[var(--text-secondary)]">Initializing payment...</p>
+              </div>
+            )}
           </div>
         )}
 

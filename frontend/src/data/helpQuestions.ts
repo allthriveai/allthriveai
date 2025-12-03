@@ -34,7 +34,7 @@ export const HELP_CATEGORIES: HelpCategoryInfo[] = [
     id: 'getting-started',
     title: 'Getting Started',
     icon: '🚀',
-    description: 'New to AllThrive? Start here',
+    description: 'New to All Thrive? Start here',
   },
   {
     id: 'projects',
@@ -75,7 +75,7 @@ export const HELP_QUESTIONS: HelpQuestion[] = [
     id: 'what-are-ai-agents',
     question: 'What are AI agents and how do they help me?',
     category: 'getting-started',
-    chatMessage: 'What are AI agents in AllThrive and how can they help me build my portfolio?',
+    chatMessage: 'What are AI agents in All Thrive and how can they help me build my portfolio?',
     keywords: ['ai', 'agents', 'assistant', 'help', 'what', 'explain'],
   },
   {
@@ -142,7 +142,7 @@ export const HELP_QUESTIONS: HelpQuestion[] = [
     id: 'available-platforms',
     question: 'What platforms can I connect?',
     category: 'integrations',
-    chatMessage: 'What platforms and services can I integrate with AllThrive?',
+    chatMessage: 'What platforms and services can I integrate with All Thrive?',
     keywords: ['platforms', 'integrations', 'connect', 'available', 'services'],
   },
   {
@@ -221,9 +221,9 @@ export const HELP_QUESTIONS: HelpQuestion[] = [
   },
   {
     id: 'personalize-experience',
-    question: 'How do I personalize my AllThrive experience?',
+    question: 'How do I personalize my All Thrive experience?',
     category: 'settings',
-    chatMessage: 'What customization options are available to personalize my AllThrive experience?',
+    chatMessage: 'What customization options are available to personalize my All Thrive experience?',
     keywords: ['personalize', 'customize', 'preferences', 'settings'],
   },
   {

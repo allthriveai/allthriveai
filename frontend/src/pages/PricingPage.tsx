@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SEO } from '@/components/common/SEO';
+import { Footer } from '@/components/landing/Footer';
 import { getSubscriptionTiers, getSubscriptionStatus } from '@/services/billing';
 import type { SubscriptionTier, SubscriptionStatus } from '@/services/billing';
 import { CheckIcon } from '@heroicons/react/24/solid';
@@ -24,42 +25,42 @@ export default function PricingPage() {
     queryFn: getSubscriptionStatus,
   });
 
-  const handleSelectPlan = (tierSlug: string) => {
-    if (tierSlug === 'free') {
+  const handleSelectPlan = (tierSlug: string, tierName: string) => {
+    if (tierSlug === 'free-explorer') {
       // Free tier - no action needed
       return;
     }
 
-    // Navigate to account settings billing page where they can subscribe
-    navigate(`/account/settings/billing?tier=${tierSlug}`);
+    // Navigate to checkout page with selected tier
+    navigate(`/checkout?tier=${tierSlug}`);
   };
 
   const currentTierSlug = subscriptionStatus?.tierSlug;
 
   // Feature mapping for display
   const getFeatureList = (tier: SubscriptionTier): string[] => {
-    const features: string[] = [];
+    const featureList: string[] = [];
 
     // AI Requests
     if (tier.monthlyAiRequests === 0) {
-      features.push('Unlimited AI requests');
+      featureList.push('Unlimited AI requests');
     } else {
-      features.push(`${tier.monthlyAiRequests.toLocaleString()} AI requests/month`);
+      featureList.push(`${tier.monthlyAiRequests.toLocaleString()} AI requests/month`);
     }
 
     // Core features
-    if (tier.hasAiMentor) features.push('AI Mentor');
-    if (tier.hasQuests) features.push('Side Quests & Challenges');
-    if (tier.hasProjects) features.push('Project Portfolio');
+    if (tier.features.aiMentor) featureList.push('AI Mentor');
+    if (tier.features.quests) featureList.push('Side Quests & Challenges');
+    if (tier.features.projects) featureList.push('Project Portfolio');
 
     // Premium features
-    if (tier.hasCircles) features.push('Thrive Circles');
-    if (tier.hasMarketplaceAccess) features.push('Marketplace Access');
-    if (tier.hasGo1Courses) features.push('Go1 Course Library');
-    if (tier.hasAnalytics) features.push('Advanced Analytics');
-    if (tier.hasCreatorTools) features.push('Creator Tools & Monetization');
+    if (tier.features.circles) featureList.push('Thrive Circles');
+    if (tier.features.marketplace) featureList.push('Marketplace Access');
+    if (tier.features.go1Courses) featureList.push('Go1 Course Library');
+    if (tier.features.analytics) featureList.push('Advanced Analytics');
+    if (tier.features.creatorTools) featureList.push('Creator Tools & Monetization');
 
-    return features;
+    return featureList;
   };
 
   // Tier order for display
@@ -118,7 +119,7 @@ export default function PricingPage() {
   return (
     <DashboardLayout>
       <SEO
-        title="Pricing - AllThrive AI"
+        title="Pricing - All Thrive AI"
         description="Choose the perfect plan for your AI learning journey"
       />
 
@@ -149,7 +150,7 @@ export default function PricingPage() {
               <span className={`text-sm font-medium ${billingCycle === 'annual' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                 Annual
                 <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
-                  Save 17%
+                  Save 15%
                 </span>
               </span>
             </div>
@@ -175,7 +176,7 @@ export default function PricingPage() {
 
               return (
                 <div
-                  key={tier.id}
+                  key={tier.slug}
                   className={`relative flex flex-col rounded-2xl border-2 ${colors.border} bg-white dark:bg-gray-800 p-8 shadow-xl ${isPopular ? 'ring-4 ring-purple-500 ring-opacity-50 scale-105' : ''}`}
                 >
                   {isPopular && (
@@ -228,7 +229,7 @@ export default function PricingPage() {
 
                   {/* CTA Button */}
                   <button
-                    onClick={() => handleSelectPlan(tier.slug)}
+                    onClick={() => handleSelectPlan(tier.slug, tier.name)}
                     disabled={isCurrentPlan}
                     className={`w-full rounded-lg px-4 py-3 text-center text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 mb-6 ${
                       isCurrentPlan
@@ -293,6 +294,9 @@ export default function PricingPage() {
             </div>
           </div>
         </div>
+
+        {/* Footer */}
+        <Footer />
       </div>
     </DashboardLayout>
   );

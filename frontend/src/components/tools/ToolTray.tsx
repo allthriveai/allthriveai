@@ -347,7 +347,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
               </section>
             )}
 
-            {/* AllThrive Projects Using This Tool */}
+            {/* All Thrive Projects Using This Tool */}
             <section className="bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider flex items-center gap-2">

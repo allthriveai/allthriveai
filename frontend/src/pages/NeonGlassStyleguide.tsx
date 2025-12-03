@@ -21,7 +21,7 @@ import {
 /**
  * NeonGlassStyleguide - Preview of the Neon Glass Design System
  *
- * This page showcases the new AllThrive AI aesthetic before site-wide rollout:
+ * This page showcases the new All Thrive AI aesthetic before site-wide rollout:
  * - Dark futuristic theme (#020617 background)
  * - Neon accents (cyan, teal, pink)
  * - Glassmorphism panels with backdrop blur
@@ -448,7 +448,7 @@ export default function NeonGlassStyleguide() {
                       <div className="p-1.5 rounded-lg bg-gradient-to-br from-cyan-400/20 to-cyan-600/20">
                         <HomeIcon className="w-5 h-5 text-cyan-bright" />
                       </div>
-                      <span className="font-bold text-lg text-gradient-cyan">AllThrive</span>
+                      <span className="font-bold text-lg text-gradient-cyan">All Thrive</span>
                     </div>
 
                     <div className="hidden md:flex items-center gap-1">
@@ -692,7 +692,7 @@ text-pink-accent /* #FB37FF */`}
 
         {/* Footer */}
         <footer className="mt-24 text-center text-slate-500 text-sm">
-          <p>Neon Glass Design System &mdash; AllThrive AI</p>
+          <p>Neon Glass Design System &mdash; All Thrive AI</p>
           <p className="mt-2">
             <a href="/styleguide" className="text-cyan-bright hover:underline">Original Styleguide</a>
             {' · '}
