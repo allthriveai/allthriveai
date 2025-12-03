@@ -151,5 +151,5 @@ export const TIMING = {
   COMING_SOON_DURATION: 3000,
 } as const;
 
-// Export tools icon for use in LeftSidebar
+// Export tools icon
 export const TOOLS_ICON = faWrench;

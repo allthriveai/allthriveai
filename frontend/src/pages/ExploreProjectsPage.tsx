@@ -57,7 +57,7 @@ export default function ExploreProjectsPage() {
 
     // Apply showcase filter
     if (activeFilters.showcase && activeFilters.showcase.includes('true')) {
-      filtered = filtered.filter((project) => project.isShowcase);
+      filtered = filtered.filter((project) => project.isShowcased);
     }
 
     // Apply tags filter (example)
@@ -92,7 +92,7 @@ export default function ExploreProjectsPage() {
       label: 'Featured',
       multiSelect: false,
       options: [
-        { id: 'showcase-true', label: '⭐ Showcase Only', value: 'true', count: allProjects.filter(p => p.isShowcase).length },
+        { id: 'showcase-true', label: '⭐ Showcase Only', value: 'true', count: allProjects.filter(p => p.isShowcased).length },
       ],
     },
     // Example: Dynamic tags filter (you'd build this from actual project tags)

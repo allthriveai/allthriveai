@@ -386,7 +386,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
     setIsSaving(true);
     try {
       const updatedProject = await updateProject(project.id, {
-        isShowcase: !project.isShowcase,
+        isShowcased: !project.isShowcased,
       });
       onProjectUpdate(updatedProject);
     } catch (err) {

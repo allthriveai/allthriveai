@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
-import HomePage from '@/pages/HomePage';
+import LandingPage from '@/pages/LandingPage';
 import AboutPage from '@/pages/AboutPage';
 import AuthPage from '@/pages/AuthPage';
 import LoginPage from '@/pages/LoginPage';
@@ -20,6 +20,7 @@ import ReferralsPage from '@/pages/settings/ReferralsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
 import StyleGuide2 from '@/pages/StyleGuide2';
+import NeonGlassStyleguide from '@/pages/NeonGlassStyleguide';
 import QuizListPage from '@/pages/quizzes/QuizListPage';
 import QuizPage from '@/pages/quizzes/QuizPage';
 import LearnPage from '@/pages/LearnPage';
@@ -30,31 +31,110 @@ import PromptBattlePage from '@/pages/play/PromptBattlePage';
 import BattleDetailPage from '@/pages/play/BattleDetailPage';
 import ThriveCirclePage from '@/pages/ThriveCirclePage';
 import SideQuestsPage from '@/pages/SideQuestsPage';
+import PricingPage from '@/pages/PricingPage';
+import CheckoutPage from '@/pages/CheckoutPage';
 
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/" element={<HomePage />} />
-      <Route path="/about" element={<AboutPage />} />
-      <Route path="/about-us" element={<AboutPage />} />
-      <Route path="/styleguide" element={<StyleGuidePage />} />
-      <Route path="/styleguide2" element={<StyleGuide2 />} />
+      {/* Landing page - public, redirects authenticated users to /explore */}
+      <Route path="/" element={<LandingPage />} />
+      <Route
+        path="/about"
+        element={
+          <ProtectedRoute>
+            <AboutPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/about-us"
+        element={
+          <ProtectedRoute>
+            <AboutPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/styleguide"
+        element={
+          <ProtectedRoute>
+            <StyleGuidePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/styleguide2"
+        element={
+          <ProtectedRoute>
+            <StyleGuide2 />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/styleguide-neon"
+        element={
+          <ProtectedRoute>
+            <NeonGlassStyleguide />
+          </ProtectedRoute>
+        }
+      />
 
-      {/* Learn route */}
-      <Route path="/learn" element={<LearnPage />} />
+      {/* Learn route - protected */}
+      <Route
+        path="/learn"
+        element={
+          <ProtectedRoute>
+            <LearnPage />
+          </ProtectedRoute>
+        }
+      />
 
-      {/* Quiz routes - must come before /:username routes */}
-      <Route path="/quick-quizzes" element={<QuizListPage />} />
-      <Route path="/quick-quizzes/:slug" element={<QuizPage />} />
+      {/* Quiz routes - protected, must come before /:username routes */}
+      <Route
+        path="/quick-quizzes"
+        element={
+          <ProtectedRoute>
+            <QuizListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/quick-quizzes/:slug"
+        element={
+          <ProtectedRoute>
+            <QuizPage />
+          </ProtectedRoute>
+        }
+      />
 
-      {/* Tool Directory - public routes */}
-      <Route path="/tools" element={<ToolDirectoryPage />}>
+      {/* Tool Directory - protected */}
+      <Route
+        path="/tools"
+        element={
+          <ProtectedRoute>
+            <ToolDirectoryPage />
+          </ProtectedRoute>
+        }
+      >
         <Route path=":slug" element={<ToolDetailPage />} />
       </Route>
 
       {/* Explore - public route */}
       <Route path="/explore" element={<ExplorePage />} />
+
+      {/* Pricing - public route */}
+      <Route path="/pricing" element={<PricingPage />} />
+
+      {/* Checkout - protected route */}
+      <Route
+        path="/checkout"
+        element={
+          <ProtectedRoute>
+            <CheckoutPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Play routes - protected */}
       <Route

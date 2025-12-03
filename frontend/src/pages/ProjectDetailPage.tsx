@@ -18,7 +18,7 @@ import { getProjectBySlug, deleteProject, updateProject } from '@/services/proje
 import type { Project } from '@/types/models';
 import { useAuth } from '@/hooks/useAuth';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { ProjectProvider } from '@/contexts/ProjectContext';
+import { ProjectProvider } from '@/context/ProjectContext';
 import { ProjectLayoutRouter } from '@/components/projects/layouts';
 
 /** Polling interval for analysis status (GitHub/Figma projects) */
@@ -145,7 +145,7 @@ export default function ProjectDetailPage() {
 
     try {
       const updatedProject = await updateProject(project.id, {
-        isShowcase: !project.isShowcase,
+        isShowcased: !project.isShowcased,
       });
       setProject(updatedProject);
     } catch (error) {
@@ -198,7 +198,7 @@ export default function ProjectDetailPage() {
     <DashboardLayout autoCollapseSidebar>
       <SEO
         title={project.title}
-        description={project.description || `${project.title} by @${project.username} on AllThrive AI`}
+        description={project.description || `${project.title} by @${project.username} on All Thrive AI`}
         image={project.featuredImageUrl || project.bannerUrl || 'https://allthrive.ai/og-image.jpg'}
         url={`https://allthrive.ai/${username}/${projectSlug}`}
         type="article"

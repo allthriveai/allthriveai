@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { FunnelIcon, XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
-import type { Taxonomy } from '@/types/models';
+import { FunnelIcon, ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
+import type { Topic, Tool } from '@/types/models';
 import { getCategoryColorClasses } from '@/utils/categoryColors';
+
+// Constants
+const SHOW_MORE_BUTTON_STYLE = 'px-2.5 py-1 text-xs text-teal-600 dark:text-teal-400 hover:underline font-medium';
 
 interface FilterPanelProps {
   topics: Taxonomy[];
-  tools: Array<{ id: number; name: string; slug: string }>;
+  tools: Array<{ id: number; name: string; slug: string; logoUrl?: string }>;
   selectedTopics: number[];
   selectedToolSlugs: string[];
   onTopicsChange: (topics: number[]) => void;
@@ -106,7 +110,7 @@ export function FilterPanel({
                 {topics.length > maxInitialItems && (
                   <button
                     onClick={() => setShowAllTopics(!showAllTopics)}
-                    className="px-2.5 py-1 text-xs text-teal-600 dark:text-teal-400 hover:underline font-medium"
+                    className={SHOW_MORE_BUTTON_STYLE}
                   >
                     {showAllTopics ? '− Less' : `+${topics.length - maxInitialItems}`}
                   </button>
@@ -115,30 +119,55 @@ export function FilterPanel({
             </div>
           )}
 
-          {/* Tools */}
+          {/* Tools - Circular logos with subtle styling */}
           {tools.length > 0 && (
             <div>
-              <div className="flex flex-wrap gap-1.5">
-                {visibleTools.map((tool) => (
-                  <button
-                    key={tool.slug}
-                    onClick={() => toggleTool(tool.slug)}
-                    className={`
-                      px-2.5 py-1 rounded-md text-xs font-medium transition-all
-                      ${
-                        selectedToolSlugs.includes(tool.slug)
-                          ? 'bg-teal-500 text-white shadow-sm'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                      }
-                    `}
-                  >
-                    {tool.name}
-                  </button>
-                ))}
+              <div className="flex flex-wrap gap-2">
+                {visibleTools.map((tool) => {
+                  const isSelected = selectedToolSlugs.includes(tool.slug);
+                  return (
+                    <button
+                      key={tool.slug}
+                      onClick={() => toggleTool(tool.slug)}
+                      className={`
+                        group flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 ease-out hover:scale-125 hover:z-10
+                        ${
+                          isSelected
+                            ? 'bg-cyan-100 dark:bg-cyan-900/50 border-cyan-400 dark:border-cyan-600'
+                            : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }
+                      `}
+                      title={tool.name}
+                    >
+                      {/* Circular logo */}
+                      <div className={`
+                        w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden bg-white border
+                        ${isSelected ? 'border-cyan-400 dark:border-cyan-600' : 'border-gray-200 dark:border-gray-600'}
+                      `}>
+                        {tool.logoUrl ? (
+                          <img
+                            src={tool.logoUrl}
+                            alt=""
+                            className="w-3.5 h-3.5 object-contain"
+                          />
+                        ) : (
+                          <WrenchScrewdriverIcon className="w-2.5 h-2.5 text-gray-400" />
+                        )}
+                      </div>
+                      {/* Tool name */}
+                      <span className={`
+                        text-xs font-medium truncate max-w-[80px]
+                        ${isSelected ? 'text-cyan-700 dark:text-cyan-300' : 'text-gray-600 dark:text-gray-300'}
+                      `}>
+                        {tool.name}
+                      </span>
+                    </button>
+                  );
+                })}
                 {tools.length > maxInitialItems && (
                   <button
                     onClick={() => setShowAllTools(!showAllTools)}
-                    className="px-2.5 py-1 text-xs text-teal-600 dark:text-teal-400 hover:underline font-medium"
+                    className={SHOW_MORE_BUTTON_STYLE}
                   >
                     {showAllTools ? '− Less' : `+${tools.length - maxInitialItems}`}
                   </button>

@@ -1,5 +1,6 @@
 """URL configuration for allthrive-ai-django project."""
 
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path, re_path
@@ -52,3 +53,9 @@ urlpatterns = [
     # Fallback for old username format (without @)
     re_path(r'^(?P<username>[a-zA-Z0-9_-]+)$', profile_view, name='username_profile'),
 ]
+
+# Serve media files in development with range request support
+if settings.DEBUG:
+    from core.views.media_views import serve_media_with_range
+
+    urlpatterns.append(path('media/<path:path>', serve_media_with_range, name='media'))

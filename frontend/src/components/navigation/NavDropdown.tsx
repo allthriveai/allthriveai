@@ -86,7 +86,10 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
             navigate(section.path);
           }
         }}
-        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 ${
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        aria-controls={`dropdown-menu-${label.toLowerCase().replace(/\s+/g, '-')}`}
+        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 ${
           isActive || isOpen
             ? 'bg-teal-400/[0.15] dark:bg-teal-500/[0.12] text-teal-700 dark:text-teal-300 shadow-lg shadow-teal-500/20'
             : 'hover:bg-white/[0.15] dark:hover:bg-white/[0.1] text-gray-900 dark:text-gray-100'
@@ -95,12 +98,16 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
         {label}
         <ChevronDownIcon
           className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+          aria-hidden="true"
         />
       </button>
 
       {/* Dropdown Menu - Light/Dark mode support */}
       {isOpen && (
         <div
+          id={`dropdown-menu-${label.toLowerCase().replace(/\s+/g, '-')}`}
+          role="menu"
+          aria-label={`${label} submenu`}
           className="absolute top-full left-0 mt-2 w-64 rounded shadow-2xl border border-white/30 dark:border-white/20 py-2 animate-fade-in transition-all duration-200 animate-scale-in overflow-hidden"
           style={{
             backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.85)',

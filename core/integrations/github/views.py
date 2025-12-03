@@ -281,7 +281,7 @@ def import_github_repo_async(request):
         from core.integrations.tasks import import_github_repo_task
 
         task = import_github_repo_task.delay(
-            user_id=request.user.id, url=url, is_showcase=is_showcase, is_private=is_private
+            user_id=request.user.id, url=url, is_showcased=is_showcase, is_private=is_private
         )
 
         logger.info(f'Queued GitHub import task {task.id} for {owner}/{repo} by user {request.user.username}')

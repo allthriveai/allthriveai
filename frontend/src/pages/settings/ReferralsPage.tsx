@@ -163,7 +163,7 @@ export default function ReferralsPage() {
                 Referrals
               </h1>
               <p className="text-slate-600 dark:text-slate-400">
-                Invite friends and earn rewards when they join AllThrive AI
+                Invite friends and earn rewards when they join All Thrive AI
               </p>
             </div>
 

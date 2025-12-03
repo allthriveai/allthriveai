@@ -614,7 +614,7 @@ export default function IntegrationsSettingsPage() {
                   </h3>
                   <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
                     Connect your content platforms to automatically populate your project feed.
-                    When you post on these platforms, your content can be synced to your AllThrive profile.
+                    When you post on these platforms, your content can be synced to your All Thrive profile.
                   </p>
                   <p className="text-xs text-blue-700 dark:text-blue-300">
                     Your credentials are encrypted and stored securely. You can disconnect at any time.
@@ -797,7 +797,7 @@ export default function IntegrationsSettingsPage() {
               <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
                 <li className="flex gap-2">
                   <span className="text-primary-500">1.</span>
-                  <span>Connect your account by authorizing AllThrive to access your public content</span>
+                  <span>Connect your account by authorizing All Thrive to access your public content</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-primary-500">2.</span>

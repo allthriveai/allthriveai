@@ -28,7 +28,7 @@ import {
 } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { PlusIcon } from '@heroicons/react/24/outline';
-import { useSectionEditorContext } from '@/contexts/SectionEditorContext';
+import { useSectionEditorContext } from '@/context/SectionEditorContext';
 import { SectionEditor } from './SectionEditor';
 import { SectionTypePicker } from './SectionTypePicker';
 import type { ProjectSection, SectionType } from '@/types/models';

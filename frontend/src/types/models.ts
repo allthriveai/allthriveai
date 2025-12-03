@@ -1,10 +1,10 @@
 import type { TopicSlug } from '@/config/topics';
 
 // User roles
-export type UserRole = 'explorer' | 'learner' | 'expert' | 'creator' | 'mentor' | 'patron' | 'admin' | 'bot';
+export type UserRole = 'explorer' | 'learner' | 'expert' | 'creator' | 'mentor' | 'patron' | 'admin' | 'agent';
 
 // Thrive Circle tier names
-export type TierName = 'seedling' | 'sprout' | 'blossom' | 'bloom' | 'evergreen';
+export type TierName = 'seedling' | 'sprout' | 'blossom' | 'bloom' | 'evergreen' | 'curation';
 
 // User model
 export interface User {
@@ -109,13 +109,11 @@ export interface Project {
   slug: string;
   description: string;
   type: ProjectType;
-  isShowcase: boolean;
-  isHighlighted: boolean;
-  isPrivate: boolean;
-  isArchived: boolean;
-  isPublished: boolean;
-  publishedAt?: string;
-  bannerUrl?: string; // Banner/cover image (renamed from bannerUrl for clarity)
+  isShowcased: boolean; // Featured on user profile showcase section
+  isHighlighted: boolean; // Featured at top of profile (only one per user)
+  isPrivate: boolean; // Hidden from explore feed and public views
+  isArchived: boolean; // Soft delete - hidden from all views
+  bannerUrl?: string; // Banner/cover image
   featuredImageUrl?: string;
   externalUrl?: string;
   tools: number[]; // Tool IDs
@@ -123,6 +121,7 @@ export interface Project {
   categories?: number[]; // Category taxonomy IDs (predefined)
   categoriesDetails?: Taxonomy[]; // Full category taxonomy objects
   topics?: string[]; // User-generated topics (free-form, moderated)
+  tagsManuallyEdited?: boolean; // If true, tags were manually edited by admin and won't be auto-updated
   heartCount: number;
   isLikedByUser: boolean;
   content: ProjectContent;
@@ -203,6 +202,7 @@ export type ProjectBlock = BaseBlock & (
   | { type: 'imageGrid'; images: Array<{ url: string; caption?: string }>; caption?: string }
   | { type: 'mermaid'; code: string; caption?: string }
   | { type: 'code_snippet'; code: string; language: string; filename?: string; highlightLines?: number[] }
+  | { type: 'icon_card'; icon: string; text: string }
 );
 
 // Project creation/update payload
@@ -211,11 +211,10 @@ export interface ProjectPayload {
   slug?: string;
   description?: string;
   type?: ProjectType;
-  isShowcase?: boolean;
+  isShowcased?: boolean;
   isHighlighted?: boolean;
   isPrivate?: boolean;
   isArchived?: boolean;
-  isPublished?: boolean;
   bannerUrl?: string;
   featuredImageUrl?: string;
   externalUrl?: string;
@@ -314,6 +313,9 @@ export interface Tool {
   // Categorization
   category: ToolCategory;
   categoryDisplay: string;
+  company?: number; // Company ID
+  companyName?: string; // Company name
+  companySlug?: string; // Company slug
   tags: string[];
 
   // Media
@@ -489,6 +491,92 @@ export interface WeeklyGoal {
   updatedAt: string;
 }
 
+// =============================================================================
+// Circle Types - Community Micro-Groups
+// =============================================================================
+
+export type KudosType = 'great_project' | 'helpful' | 'inspiring' | 'creative' | 'supportive' | 'welcome';
+
+export type CircleChallengeType = 'create_projects' | 'give_feedback' | 'complete_quests' | 'earn_points' | 'maintain_streaks';
+
+export interface CircleMember {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  tier: TierName;
+  level: number;
+  totalPoints: number;
+}
+
+export interface CircleMembership {
+  id: string;
+  user: CircleMember;
+  isActive: boolean;
+  joinedAt: string;
+  pointsEarnedInCircle: number;
+  wasActive: boolean;
+}
+
+export interface CircleChallenge {
+  id: string;
+  challengeType: CircleChallengeType;
+  challengeTypeDisplay: string;
+  title: string;
+  description: string;
+  target: number;
+  currentProgress: number;
+  progressPercentage: number;
+  isCompleted: boolean;
+  completedAt: string | null;
+  bonusPoints: number;
+  rewardsDistributed: boolean;
+  createdAt: string;
+}
+
+export interface Circle {
+  id: string;
+  name: string;
+  tier: TierName;
+  tierDisplay: string;
+  weekStart: string;
+  weekEnd: string;
+  memberCount: number;
+  activeMemberCount: number;
+  isActive: boolean;
+  createdAt: string;
+  // Detailed fields (from CircleDetailSerializer)
+  members?: CircleMembership[];
+  activeChallenge?: CircleChallenge | null;
+  myMembership?: CircleMembership | null;
+  hasCircle?: boolean;
+}
+
+export interface Kudos {
+  id: string;
+  fromUser: CircleMember;
+  toUser: CircleMember;
+  circle: string;
+  kudosType: KudosType;
+  kudosTypeDisplay: string;
+  message: string;
+  project: string | null;
+  projectTitle: string | null;
+  createdAt: string;
+}
+
+export interface CreateKudosRequest {
+  toUserId: string;
+  kudosType: KudosType;
+  message?: string;
+  projectId?: string;
+}
+
+export interface CircleActivityFeed {
+  kudos: Kudos[];
+  circleName: string;
+  hasCircle: boolean;
+}
+
 // Side Quests
 export type SideQuestType =
   | 'quiz_mastery'
@@ -508,6 +596,56 @@ export type SideQuestSkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'ma
 
 export type UserSideQuestStatus = 'not_started' | 'in_progress' | 'completed' | 'expired';
 
+export type QuestCategoryType = 'community' | 'learning' | 'creative' | 'exploration' | 'daily' | 'special';
+
+export interface QuestCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  categoryType: QuestCategoryType;
+  categoryTypeDisplay: string;
+  icon: string;
+  colorFrom: string;
+  colorTo: string;
+  completionBonusPoints: number;
+  order: number;
+  isActive: boolean;
+  isFeatured: boolean;
+  questCount: number;
+  quests?: SideQuest[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuestCategoryProgress {
+  totalQuests: number;
+  completedQuests: number;
+  inProgressQuests: number;
+  completionPercentage: number;
+  isComplete: boolean;
+  bonusClaimed: boolean;
+}
+
+// Quest step definition for multi-step guided quests
+export interface QuestStep {
+  id: string;
+  title: string;
+  description: string;
+  destinationUrl: string | null;
+  actionTrigger: string;
+  icon: string;
+}
+
+// Step progress for tracking user's journey
+export interface QuestStepProgress {
+  step: QuestStep;
+  index: number;
+  isCompleted: boolean;
+  isCurrent: boolean;
+  completedAt: string | null;
+}
+
 export interface SideQuest {
   id: string;
   title: string;
@@ -516,16 +654,29 @@ export interface SideQuest {
   questTypeDisplay: string;
   difficulty: SideQuestDifficulty;
   difficultyDisplay: string;
+  category?: string;
+  categoryName?: string;
+  categorySlug?: string;
   topic: TopicSlug | null;
   topicDisplay: string | null;
   skillLevel: SideQuestSkillLevel | null;
   skillLevelDisplay: string | null;
   requirements: Record<string, any>;
   pointsReward: number;
+  order?: number;
+  isDaily?: boolean;
+  isRepeatable?: boolean;
   isActive: boolean;
   isAvailable: boolean;
   startsAt: string | null;
   expiresAt: string | null;
+  // Multi-step guided quest fields
+  isGuided: boolean;
+  steps: QuestStep[];
+  narrativeIntro: string;
+  narrativeComplete: string;
+  estimatedMinutes: number | null;
+  stepCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -542,9 +693,108 @@ export interface UserSideQuest {
   targetProgress: number;
   progressPercentage: number;
   progressData: Record<string, any>;
+  // Multi-step guided quest progress
+  currentStepIndex: number;
+  completedStepIds: string[];
+  stepCompletedAt: Record<string, string>;
+  currentStep: QuestStep | null;
+  nextStepUrl: string | null;
+  stepsProgress: QuestStepProgress[];
   isCompleted: boolean;
   completedAt: string | null;
   pointsAwarded: number;
   startedAt: string;
   updatedAt: string;
+}
+
+// Learning Path Types
+export type LearningPathSkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'master';
+
+export interface UserLearningPath {
+  id: number;
+  topic: TopicSlug;
+  topicDisplay: string;
+  currentSkillLevel: LearningPathSkillLevel;
+  skillLevelDisplay: string;
+  quizzesCompleted: number;
+  quizzesTotal: number;
+  sideQuestsCompleted: number;
+  sideQuestsTotal: number;
+  topicPoints: number;
+  progressPercentage: number;
+  pointsToNextLevel: number;
+  nextSkillLevel: LearningPathSkillLevel | null;
+  startedAt: string;
+  lastActivityAt: string;
+}
+
+export interface CompletedQuizAttempt {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  quizSlug: string;
+  score: number;
+  totalQuestions: number;
+  percentageScore: number;
+  completedAt: string;
+}
+
+export interface AvailableQuiz {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  difficulty: string;
+  estimatedTime: number;
+  questionCount: number;
+}
+
+export interface CompletedSideQuest {
+  id: string;
+  sideQuestId: string;
+  title: string;
+  difficulty: string;
+  pointsAwarded: number;
+  completedAt: string;
+}
+
+export interface ActiveSideQuest {
+  id: string;
+  sideQuestId: string;
+  title: string;
+  difficulty: string;
+  progressPercentage: number;
+  currentProgress: number;
+  targetProgress: number;
+}
+
+export interface RecommendedNext {
+  type: 'quiz' | 'sidequest';
+  id: string;
+  title: string;
+  difficulty?: string;
+  progress?: number;
+  isNew?: boolean;
+}
+
+export interface LearningPathDetail {
+  path: UserLearningPath;
+  completedQuizzes: CompletedQuizAttempt[];
+  availableQuizzes: AvailableQuiz[];
+  completedSidequests: CompletedSideQuest[];
+  activeSidequests: ActiveSideQuest[];
+  recommendedNext: RecommendedNext | null;
+}
+
+export interface TopicRecommendation {
+  topic: TopicSlug;
+  topicDisplay: string;
+  quizCount: number;
+  sidequestCount: number;
+  score: number;
+}
+
+export interface LearningPathTopic {
+  slug: TopicSlug;
+  name: string;
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { getTools, getToolCategories, getToolCompanies } from '@/services/tools';
 import { ToolSearchBar, type ToolFilters } from '@/components/tools/ToolSearchBar';
@@ -14,6 +14,11 @@ export default function ToolDirectoryPage() {
   const [companies, setCompanies] = useState<Array<{ id: number; name: string; slug: string; count: number }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if a tool tray is currently open (via nested route)
+  // When path is /tools/:slug, a tray is open
+  const location = useLocation();
+  const isToolTrayOpen = location.pathname !== '/tools' && location.pathname.startsWith('/tools/');
 
   // Load categories and companies on mount
   useEffect(() => {
@@ -172,10 +177,12 @@ export default function ToolDirectoryPage() {
                             <Link
                               key={tool.id}
                               to={`/tools/${tool.slug}`}
-                              className="block text-left glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800 hover:border-primary-300 dark:hover:border-primary-700 transition-all hover:shadow-lg"
+                              replace={isToolTrayOpen}
+                              className="block text-left glass-subtle p-6 border border-gray-200 dark:border-gray-800 hover:border-cyan-400 dark:hover:border-cyan-600 transition-all hover:shadow-neon"
+                              style={{ borderRadius: 'var(--radius)' }}
                             >
                               <div className="flex items-start gap-4">
-                                <div className="flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                                <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center overflow-hidden bg-white border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
                                   {tool.logoUrl ? (
                                     <img src={tool.logoUrl} alt={`${tool.name} logo`} className="w-10 h-10 object-contain" />
                                   ) : (
@@ -187,6 +194,11 @@ export default function ToolDirectoryPage() {
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                                       {tool.name}
                                     </h3>
+                                    {tool.companyName && (
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        by {tool.companyName}
+                                      </p>
+                                    )}
                                   </div>
                                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                                     {tool.tagline}

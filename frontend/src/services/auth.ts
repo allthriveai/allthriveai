@@ -55,6 +55,80 @@ export interface ActivityData {
   pointsFeed: PointsHistory[];
 }
 
+// Activity Insights Types
+export interface ToolEngagement {
+  id: number;
+  name: string;
+  slug: string;
+  logoUrl: string;
+  category: string;
+  categoryDisplay: string;
+  usageCount: number;
+}
+
+export interface SideQuestCompleted {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: string;
+  difficultyDisplay: string;
+  pointsAwarded: number;
+  completedAt: string | null;
+  categoryName: string | null;
+  categorySlug: string | null;
+  categoryIcon: string | null;
+  categoryColorFrom: string | null;
+  categoryColorTo: string | null;
+}
+
+export interface TopicInterest {
+  topic: string;
+  topicDisplay: string;
+  quizCount: number;
+  projectCount: number;
+  engagementScore: number;
+}
+
+export interface ActivityTrend {
+  date: string;
+  activityCount: number;
+  points: number;
+}
+
+export interface PointsCategory {
+  activityType: string;
+  displayName: string;
+  totalPoints: number;
+  count: number;
+  color: string;
+}
+
+export interface PersonalizedInsight {
+  type: string;
+  icon: string;
+  title: string;
+  description: string;
+  color: string;
+}
+
+export interface StatsSummary {
+  quizzesCompleted: number;
+  projectsCount: number;
+  totalPoints: number;
+  sideQuestsCompleted: number;
+  currentStreak: number;
+  longestStreak: number;
+}
+
+export interface ActivityInsights {
+  toolEngagement: ToolEngagement[];
+  topicInterests: TopicInterest[];
+  activityTrends: ActivityTrend[];
+  pointsByCategory: PointsCategory[];
+  insights: PersonalizedInsight[];
+  statsSummary: StatsSummary;
+}
+
 // Login user
 export async function login(credentials: LoginCredentials): Promise<User> {
   const response = await api.post<ApiResponse<User>>('/auth/login/', credentials);
@@ -69,8 +143,12 @@ export async function logout(): Promise<void> {
 }
 
 // Get current authenticated user
+// Uses X-Skip-Auth-Redirect to prevent 401 from triggering redirect to /auth
+// This is used on initial auth check - we just want to know if user is logged in
 export async function getCurrentUser(): Promise<User> {
-  const response = await api.get<ApiResponse<User>>('/auth/me/');
+  const response = await api.get<ApiResponse<User>>('/auth/me/', {
+    headers: { 'X-Skip-Auth-Redirect': 'true' },
+  });
   return response.data.data;
 }
 
@@ -88,6 +166,12 @@ export async function refreshToken(): Promise<void> {
 // Get user activity and statistics
 export async function getUserActivity(): Promise<ActivityData> {
   const response = await api.get<ApiResponse<ActivityData>>('/me/activity/');
+  return response.data.data;
+}
+
+// Get comprehensive activity insights
+export async function getActivityInsights(): Promise<ActivityInsights> {
+  const response = await api.get<ApiResponse<ActivityInsights>>('/me/activity/insights/');
   return response.data.data;
 }
 

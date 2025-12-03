@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from services.social_oauth_service import SocialOAuthService
+from services.integrations.social import SocialOAuthService
 
 from .models import SocialConnection, SocialProvider
 
@@ -51,7 +51,7 @@ def available_providers(request):
     providers = []
     for provider_key, provider_label in SocialProvider.choices:
         # Check if provider is configured
-        from services.social_oauth_service import OAuthProviderConfig
+        from services.integrations.social.oauth_service import OAuthProviderConfig
 
         client_id, client_secret = OAuthProviderConfig.get_client_credentials(provider_key)
 

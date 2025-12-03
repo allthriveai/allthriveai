@@ -16,7 +16,7 @@
 
 import { useCallback, useState } from 'react';
 import type { Project } from '@/types/models';
-import { useProjectContext } from '@/contexts/ProjectContext';
+import { useProjectContext } from '@/context/ProjectContext';
 import { updateProject } from '@/services/projects';
 import { TechStackGrid } from './TechStackGrid';
 import { DirectoryTree } from './DirectoryTree';

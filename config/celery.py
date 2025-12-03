@@ -12,7 +12,22 @@ app.autodiscover_tasks()
 
 # Manually discover tasks from modules not in INSTALLED_APPS
 # These apps have models under 'core' app but tasks need explicit discovery
-app.autodiscover_tasks(['core.projects', 'core.integrations', 'core.integrations.youtube', 'core.agents'])
+app.autodiscover_tasks(
+    [
+        'core.projects',
+        'core.integrations',
+        'core.integrations.youtube',
+        'core.agents',
+        'services.weaviate',  # Weaviate sync tasks
+    ]
+)
+
+# Explicitly register task modules that don't follow the standard tasks.py naming
+# (Celery autodiscover only looks for tasks.py files)
+app.conf.imports = [
+    'core.integrations.reddit_tasks',
+    'core.integrations.rss_tasks',
+]
 
 # Task execution settings for scalability
 app.conf.task_default_rate_limit = '100/m'  # 100 tasks per minute per worker (prevents broker overload)
@@ -47,6 +62,35 @@ app.conf.beat_schedule = {
         'options': {
             'expires': 900,  # Task expires after 15min if not picked up
             'queue': 'youtube_sync',
+        },
+    },
+    'sync-reddit-agents': {
+        'task': 'core.integrations.reddit_tasks.sync_all_reddit_agents_task',
+        'schedule': crontab(hour='*/4'),  # Every 4 hours
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour if not picked up
+        },
+    },
+    'sync-rss-agents': {
+        'task': 'core.integrations.rss_tasks.sync_all_rss_agents_task',
+        'schedule': crontab(hour='*/6'),  # Every 6 hours
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour if not picked up
+        },
+    },
+    # Weaviate personalization tasks
+    'weaviate-update-engagement-metrics': {
+        'task': 'services.weaviate.tasks.update_engagement_metrics',
+        'schedule': crontab(minute=0),  # Every hour at minute 0
+        'options': {
+            'expires': 3600,  # Expires after 1 hour
+        },
+    },
+    'weaviate-full-reindex-projects': {
+        'task': 'services.weaviate.tasks.full_reindex_projects',
+        'schedule': crontab(hour=3, minute=0),  # Daily at 3 AM
+        'options': {
+            'expires': 7200,  # Expires after 2 hours
         },
     },
 }

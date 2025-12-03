@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 from django.conf import settings
 from django.test import TestCase
 
-from services.ai_provider import AIProvider
+from services.ai.provider import AIProvider
 
 
 class AIProviderTestCase(TestCase):
@@ -16,19 +16,19 @@ class AIProviderTestCase(TestCase):
     def test_provider_initialization_default(self):
         """Test default provider initialization."""
         with patch.object(settings, 'DEFAULT_AI_PROVIDER', 'azure'):
-            with patch('services.ai_provider.AIProvider._initialize_client'):
+            with patch('services.ai.provider.AIProvider._initialize_client'):
                 ai = AIProvider()
                 self.assertEqual(ai.current_provider, 'azure')
 
     def test_provider_initialization_specified(self):
         """Test provider initialization with specified provider."""
-        with patch('services.ai_provider.AIProvider._initialize_client'):
+        with patch('services.ai.provider.AIProvider._initialize_client'):
             ai = AIProvider(provider='openai')
             self.assertEqual(ai.current_provider, 'openai')
 
     def test_set_provider(self):
         """Test switching between providers."""
-        with patch('services.ai_provider.AIProvider._initialize_client'):
+        with patch('services.ai.provider.AIProvider._initialize_client'):
             ai = AIProvider(provider='azure')
             self.assertEqual(ai.current_provider, 'azure')
 
@@ -43,7 +43,7 @@ class AIProviderTestCase(TestCase):
 
     def test_invalid_provider(self):
         """Test that invalid provider raises ValueError."""
-        with patch('services.ai_provider.AIProvider._initialize_client'):
+        with patch('services.ai.provider.AIProvider._initialize_client'):
             ai = AIProvider(provider='azure')
 
             with self.assertRaises(ValueError) as context:

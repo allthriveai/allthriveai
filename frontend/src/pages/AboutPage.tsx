@@ -8,14 +8,14 @@ export default function AboutPage() {
       <div className="h-full overflow-y-auto p-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">
-            About AllThrive AI
+            About All Thrive AI
           </h1>
 
           <div className="prose prose-lg dark:prose-invert max-w-none">
             <section className="mb-12">
               <h2 className="text-3xl font-semibold mb-4">AI Portfolio Platform with Gamified Learning & Discovery</h2>
               <p className="text-xl text-gray-700 dark:text-gray-300 mb-4">
-                AllThrive AI is where AI practitioners, learners, and researchers come together to showcase their work,
+                All Thrive AI is where AI practitioners, learners, and researchers come together to showcase their work,
                 level up their skills, and connect with a thriving community passionate about artificial intelligence.
               </p>
               <p className="text-lg text-gray-600 dark:text-gray-400">
@@ -90,7 +90,7 @@ export default function AboutPage() {
             <section className="mb-12">
               <h2 className="text-3xl font-semibold mb-6">Get Started</h2>
               <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">
-                Join AllThrive AI today and start building your AI future:
+                Join All Thrive AI today and start building your AI future:
               </p>
               <ol className="space-y-3 text-lg text-gray-700 dark:text-gray-300 list-decimal list-inside">
                 <li>Sign up with GitHub or Google</li>

@@ -8,6 +8,7 @@
 import { useState, useCallback } from 'react';
 import { useReward } from 'react-rewards';
 import { toggleProjectLike } from '@/services/projects';
+import { useQuestCompletion } from '@/contexts/QuestCompletionContext';
 
 interface UseProjectLikeOptions {
   projectId: number;
@@ -37,6 +38,7 @@ export function useProjectLike({
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [heartCount, setHeartCount] = useState(initialHeartCount);
   const [isLiking, setIsLiking] = useState(false);
+  const { showCelebration } = useQuestCompletion();
 
   // Heart emoji celebration animation
   const { reward } = useReward(rewardElementId, 'emoji', {
@@ -69,6 +71,11 @@ export function useProjectLike({
       // Trigger celebration when liked
       if (result.liked) {
         reward();
+
+        // Check if any quests were completed
+        if (result.completedQuests && result.completedQuests.length > 0) {
+          showCelebration(result.completedQuests);
+        }
       }
     } catch (error) {
       // Revert optimistic update on error
@@ -78,7 +85,7 @@ export function useProjectLike({
     } finally {
       setIsLiking(false);
     }
-  }, [projectId, isAuthenticated, isLiking, isLiked, reward]);
+  }, [projectId, isAuthenticated, isLiking, isLiked, reward, showCelebration]);
 
   return {
     isLiked,

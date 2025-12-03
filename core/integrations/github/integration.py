@@ -227,7 +227,7 @@ class GitHubIntegration(BaseIntegration):
 
         User = get_user_model()
 
-        is_showcase = kwargs.get('is_showcase', True)
+        is_showcased = kwargs.get('is_showcased', kwargs.get('is_showcase', True))
         is_private = kwargs.get('is_private', False)
 
         try:
@@ -324,8 +324,8 @@ class GitHubIntegration(BaseIntegration):
                 description=analysis.get('description', repo_summary.get('description', '')),
                 type=Project.ProjectType.GITHUB_REPO,
                 external_url=url,
-                is_showcase=is_showcase,
-                is_published=not is_private,
+                is_showcased=is_showcased,
+                is_private=is_private,
                 banner_url='',
                 featured_image_url=hero_image if hero_image else '',
                 content={

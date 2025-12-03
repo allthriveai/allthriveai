@@ -4,12 +4,80 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from core.billing.permissions import CanMakeAIRequest
+from core.projects.models import Project
+from services.ai.provider import AIProvider
 
 from .intent_detection import get_intent_service
-from .models import Conversation, Message
+from .models import Conversation, ImageGenerationSession, Message
 from .serializers import ConversationSerializer, MessageSerializer
 
 logger = logging.getLogger(__name__)
+
+
+def _generate_creative_journey_summary(iterations: list[dict]) -> tuple[str, str]:
+    """
+    Generate an AI summary of the creative journey from iterations.
+
+    Args:
+        iterations: List of iteration data with prompt, gemini_response, order
+
+    Returns:
+        Tuple of (title, summary_text)
+    """
+    if not iterations:
+        return 'Nano Banana Creation', 'An AI-generated image.'
+
+    # Build the journey narrative
+    journey_text = '\n'.join([f"Iteration {i['order'] + 1}: User asked: \"{i['prompt']}\"" for i in iterations])
+
+    # Use AI to generate a creative summary
+    prompt = f"""You are summarizing the creative journey of generating an AI image.
+
+The user went through {len(iterations)} iteration(s) to create their final image:
+
+{journey_text}
+
+Write TWO things:
+1. A SHORT TITLE (5-8 words max) that captures what was created
+2. A BRIEF NARRATIVE (2-3 sentences) describing the creative journey - how the image evolved through iterations
+
+Format your response EXACTLY like this:
+TITLE: [your title here]
+SUMMARY: [your summary here]
+
+Be creative and engaging but concise."""
+
+    try:
+        ai = AIProvider(provider='azure')
+        response = ai.complete(prompt=prompt, max_tokens=200, temperature=0.7)
+
+        # Parse the response
+        lines = response.strip().split('\n')
+        title = 'Nano Banana Creation'
+        summary = ''
+
+        for line in lines:
+            if line.startswith('TITLE:'):
+                title = line.replace('TITLE:', '').strip()
+            elif line.startswith('SUMMARY:'):
+                summary = line.replace('SUMMARY:', '').strip()
+
+        if not summary:
+            summary = response.strip()
+
+        return title, summary
+
+    except Exception as e:
+        logger.error(f'Failed to generate creative journey summary: {e}')
+        # Fallback to simple summary
+        first_prompt = iterations[0]['prompt'] if iterations else 'an image'
+        return (
+            f'Nano Banana: {first_prompt[:50]}',
+            f'Created through {len(iterations)} iteration(s), starting with: "{first_prompt}"',
+        )
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
@@ -26,7 +94,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanMakeAIRequest])
     def send_message(self, request, pk=None):
         """Send a message in a conversation and get AI response."""
         conversation = self.get_object()
@@ -67,7 +135,7 @@ class MessageViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, CanMakeAIRequest])
 def detect_intent(request):
     """
     Detect user intent using LLM-based reasoning.
@@ -169,3 +237,154 @@ def detect_intent(request):
             {'error': 'Failed to detect intent'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+class CreateProjectFromImageView(APIView):
+    """
+    Create a project from an image generation session.
+
+    POST /api/v1/agents/create-project-from-image/
+
+    This endpoint:
+    1. Retrieves the image generation session with all iterations
+    2. Uses AI to generate a creative journey summary
+    3. Creates a project with the final image as featured image
+    4. Includes the iteration history in the project content
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        session_id = request.data.get('session_id')
+        custom_title = request.data.get('title')
+
+        if not session_id:
+            return Response(
+                {'error': 'session_id is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Get the session
+            session = ImageGenerationSession.objects.get(id=session_id, user=request.user)
+        except ImageGenerationSession.DoesNotExist:
+            return Response(
+                {'error': 'Session not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check if session already has a project
+        if session.project:
+            return Response(
+                {
+                    'error': 'Project already created from this session',
+                    'project': {
+                        'id': session.project.id,
+                        'slug': session.project.slug,
+                        'url': f'/{session.project.user.username}/{session.project.slug}',
+                    },
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get iteration data for the summary
+        iterations = session.get_creative_journey_data()
+
+        if not iterations:
+            return Response(
+                {'error': 'No images generated in this session'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Generate title and summary
+        generated_title, summary = _generate_creative_journey_summary(iterations)
+        title = custom_title or generated_title
+
+        # Build project content with creative journey
+        content_blocks = [
+            {'type': 'text', 'content': summary},
+        ]
+
+        # Add iteration history if multiple iterations
+        if len(iterations) > 1:
+            content_blocks.append({'type': 'heading', 'level': 2, 'content': 'Creative Journey'})
+            content_blocks.append(
+                {
+                    'type': 'text',
+                    'content': f'This image was refined through {len(iterations)} iterations:',
+                }
+            )
+
+            for iteration in iterations:
+                content_blocks.append(
+                    {
+                        'type': 'heading',
+                        'level': 3,
+                        'content': f"Iteration {iteration['order'] + 1}",
+                    }
+                )
+                content_blocks.append(
+                    {
+                        'type': 'quote',
+                        'content': iteration['prompt'],
+                    }
+                )
+                content_blocks.append(
+                    {
+                        'type': 'image',
+                        'url': iteration['image_url'],
+                        'caption': f"Result of iteration {iteration['order'] + 1}",
+                    }
+                )
+
+        project_content = {
+            'templateVersion': 2,
+            'sections': [
+                {
+                    'id': 'main',
+                    'type': 'content',
+                    'title': 'About This Creation',
+                    'blocks': content_blocks,
+                }
+            ],
+            'heroDisplayMode': 'image',
+        }
+
+        # Create the project
+        try:
+            project = Project.objects.create(
+                user=request.user,
+                title=title,
+                description=summary,
+                featured_image_url=session.final_image_url,
+                banner_url=session.final_image_url,
+                type='prompt',
+                content=project_content,
+                is_showcased=True,
+            )
+
+            # Link project to session
+            session.project = project
+            session.save(update_fields=['project'])
+
+            logger.info(f'Created project {project.id} from image session {session_id}')
+
+            return Response(
+                {
+                    'success': True,
+                    'project': {
+                        'id': project.id,
+                        'slug': project.slug,
+                        'title': project.title,
+                        'url': f'/{project.user.username}/{project.slug}',
+                    },
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            logger.error(f'Failed to create project from image session: {e}', exc_info=True)
+            return Response(
+                {'error': 'Failed to create project'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

@@ -1,13 +1,13 @@
-"""Models for Reddit curation bot integration."""
+"""Models for Reddit curation agent integration."""
 
 from django.conf import settings
 from django.db import models
 
 
-class RedditCommunityBot(models.Model):
-    """Configuration for a Reddit community curation bot.
+class RedditCommunityAgent(models.Model):
+    """Configuration for a Reddit community curation agent.
 
-    Each bot represents one subreddit and automatically creates projects
+    Each agent represents one subreddit and automatically creates projects
     for Reddit threads using RSS feeds.
     """
 
@@ -16,17 +16,17 @@ class RedditCommunityBot(models.Model):
         PAUSED = 'paused', 'Paused'
         ERROR = 'error', 'Error'
 
-    bot_user = models.OneToOneField(
+    agent_user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='reddit_bot_config',
-        help_text='Bot user account (role=BOT) that owns the projects',
-        limit_choices_to={'role': 'bot'},
+        related_name='reddit_agent_config',
+        help_text='Agent user account (role=AGENT) that owns the projects',
+        limit_choices_to={'role': 'agent'},
     )
 
     name = models.CharField(
         max_length=255,
-        help_text='Display name (e.g., "ClaudeCode Reddit Bot")',
+        help_text='Display name (e.g., "ClaudeCode Reddit Agent")',
     )
 
     subreddit = models.CharField(
@@ -41,14 +41,14 @@ class RedditCommunityBot(models.Model):
         choices=Status.choices,
         default=Status.ACTIVE,
         db_index=True,
-        help_text='Bot status (active/paused/error)',
+        help_text='Agent status (active/paused/error)',
     )
 
     # Sync settings stored as JSON
     settings = models.JSONField(
         default=dict,
         blank=True,
-        help_text='Bot configuration: min_score, min_comments, sync_interval_minutes, etc.',
+        help_text='Agent configuration: min_score, min_comments, sync_interval_minutes, etc.',
     )
 
     # Sync tracking
@@ -75,9 +75,9 @@ class RedditCommunityBot(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'reddit_community_bots'
-        verbose_name = 'Reddit Community Bot'
-        verbose_name_plural = 'Reddit Community Bots'
+        db_table = 'reddit_community_agents'
+        verbose_name = 'Reddit Community Agent'
+        verbose_name_plural = 'Reddit Community Agents'
         indexes = [
             models.Index(fields=['status', 'last_synced_at']),
             models.Index(fields=['subreddit']),
@@ -116,11 +116,11 @@ class RedditThread(models.Model):
         help_text='Associated Project (type=reddit_thread)',
     )
 
-    bot = models.ForeignKey(
-        RedditCommunityBot,
+    agent = models.ForeignKey(
+        RedditCommunityAgent,
         on_delete=models.CASCADE,
         related_name='threads',
-        help_text='Bot that created this thread',
+        help_text='Agent that created this thread',
     )
 
     reddit_post_id = models.CharField(
@@ -224,7 +224,7 @@ class RedditThread(models.Model):
         verbose_name_plural = 'Reddit Threads'
         indexes = [
             models.Index(fields=['subreddit', '-created_utc']),
-            models.Index(fields=['bot', '-created_utc']),
+            models.Index(fields=['agent', '-created_utc']),
             models.Index(fields=['-score']),
             models.Index(fields=['-num_comments']),
             models.Index(fields=['reddit_post_id']),
@@ -233,3 +233,76 @@ class RedditThread(models.Model):
 
     def __str__(self):
         return f'r/{self.subreddit} - {self.reddit_post_id}'
+
+
+class DeletedRedditThread(models.Model):
+    """Track Reddit threads that should not be synced.
+
+    This includes:
+    1. Threads deleted by admins (to prevent recreation)
+    2. Threads that failed content moderation (to prevent re-checking)
+    """
+
+    class DeletionType(models.TextChoices):
+        ADMIN_DELETED = 'admin_deleted', 'Admin Deleted'
+        MODERATION_FAILED = 'moderation_failed', 'Moderation Failed'
+
+    reddit_post_id = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text='Reddit post ID (e.g., "t3_1pa4e7t") that was deleted or rejected',
+    )
+
+    deletion_type = models.CharField(
+        max_length=20,
+        choices=DeletionType.choices,
+        default=DeletionType.ADMIN_DELETED,
+        db_index=True,
+        help_text='Type of deletion: admin or moderation failure',
+    )
+
+    agent = models.ForeignKey(
+        RedditCommunityAgent,
+        on_delete=models.CASCADE,
+        related_name='deleted_threads',
+        help_text='Agent that originally created this thread',
+    )
+
+    subreddit = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text='Subreddit name for reference',
+    )
+
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text='Admin user who deleted the thread',
+    )
+
+    deleted_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When the thread was deleted',
+    )
+
+    deletion_reason = models.TextField(
+        blank=True,
+        default='',
+        help_text='Optional reason for deletion',
+    )
+
+    class Meta:
+        db_table = 'deleted_reddit_threads'
+        verbose_name = 'Deleted Reddit Thread'
+        verbose_name_plural = 'Deleted Reddit Threads'
+        indexes = [
+            models.Index(fields=['reddit_post_id']),
+            models.Index(fields=['agent', '-deleted_at']),
+        ]
+        ordering = ['-deleted_at']
+
+    def __str__(self):
+        return f'Deleted: r/{self.subreddit} - {self.reddit_post_id}'

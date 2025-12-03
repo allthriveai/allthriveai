@@ -3,6 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 
+from core.tools.models import Tool
+
 from .models import User
 
 
@@ -33,7 +35,7 @@ def explore_users(request):
     queryset = (
         User.objects.filter(
             is_active=True,
-            projects__is_showcase=True,
+            projects__is_showcased=True,
             projects__is_archived=False,
         )
         .annotate(
@@ -76,6 +78,26 @@ def explore_users(request):
                     'tier_display': user.get_tier_display(),
                 }
             )
+
+        # Get top 3 tools used across user's showcase projects
+        top_tools = (
+            Tool.objects.filter(
+                projects__user=user,
+                projects__is_showcased=True,
+                projects__is_archived=False,
+            )
+            .annotate(usage_count=Count('projects'))
+            .order_by('-usage_count')[:3]
+        )
+        user_data['top_tools'] = [
+            {
+                'id': tool.id,
+                'name': tool.name,
+                'slug': tool.slug,
+                'logo_url': tool.logo_url or '',
+            }
+            for tool in top_tools
+        ]
 
         users_data.append(user_data)
 

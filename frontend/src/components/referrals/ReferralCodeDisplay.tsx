@@ -50,8 +50,8 @@ export function ReferralCodeDisplay({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join AllThrive AI',
-          text: `Use my referral code to join AllThrive AI: ${code}`,
+          title: 'Join All Thrive AI',
+          text: `Use my referral code to join All Thrive AI: ${code}`,
           url: referralUrl,
         });
       } catch (error) {
@@ -168,7 +168,7 @@ export function ReferralCodeDisplay({
             Your Referral Code
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Share this code with friends to invite them to AllThrive AI
+            Share this code with friends to invite them to All Thrive AI
           </p>
         </div>
         {isValid ? (

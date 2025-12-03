@@ -13,7 +13,7 @@
 import { useState, useCallback } from 'react';
 import type { ProjectComponentLayout } from '@/types/components';
 import { ComponentList } from './ComponentRenderer';
-import { useProjectContext } from '@/contexts/ProjectContext';
+import { useProjectContext } from '@/context/ProjectContext';
 import { EditModeIndicator } from '@/components/projects/shared/InlineEditable';
 
 interface ProjectComponentsProps {

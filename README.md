@@ -118,14 +118,18 @@ Run `make help` to see all available commands. Here are the most commonly used:
 
 ## Documentation
 
-- [Styleguide](docs/STYLEGUIDE.md) - Coding standards and best practices
-- [SEO Implementation](docs/SEO_IMPLEMENTATION.md) - SEO and LLM discoverability guide
-- [Database Seeding Guide](docs/DATABASE_SEEDING_GUIDE.md) - How to seed initial data
-- [Quiz Seeding](docs/QUIZ_SEEDING.md) - Quiz data seeding guide
-- [Public Info](docs/PUBLIC_INFO.md) - Comprehensive platform description
-- [Makefile Reference](docs/MAKEFILE_REFERENCE.md) - Complete make command reference
-- [Docker Volume Sync](docs/DOCKER_VOLUME_SYNC.md) - Troubleshooting Docker file syncing issues
-- [Docker Sync Quick Reference](docs/DOCKER_SYNC_QUICK_REFERENCE.md) - Quick commands for Docker sync
+### Evergreen Architecture Documentation
+- [Overview](docs/evergreen-architecture/README.md) - Architecture overview and guidelines
+- [Core Features](docs/evergreen-architecture/01-CORE-FEATURES.md) - Platform features and capabilities
+- [Data Models](docs/evergreen-architecture/02-DATA-MODELS.md) - Database schemas and relationships
+- [API Contracts](docs/evergreen-architecture/03-API-CONTRACTS.md) - API endpoints and specifications
+- [AI Architecture](docs/evergreen-architecture/04-AI-ARCHITECTURE.md) - LLM integration and AI systems
+- [Security & Authentication](docs/evergreen-architecture/05-SECURITY-AUTH.md) - Security patterns and auth flows
+- [Integration Patterns](docs/evergreen-architecture/06-INTEGRATION-PATTERNS.md) - Third-party integrations
+- [WebSocket Implementation](docs/evergreen-architecture/07-WEBSOCKET-IMPLEMENTATION.md) - Real-time communication architecture
+- [Onboarding Architecture](docs/evergreen-architecture/08-ONBOARDING-ARCHITECTURE.md) - User onboarding flow
+- [Intelligent Chat Architecture](docs/evergreen-architecture/intelligent-chat-architecture.md) - AI chat system design
+- [Feature Matrix - Membership Tiers](docs/evergreen-architecture/Feature%20Matrix%20-%20Membership%20Tiers.md) - Subscription tier features
 
 ## Manual Setup (Alternative)
 

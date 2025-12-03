@@ -7,7 +7,7 @@
 import { useCallback } from 'react';
 import type { HeroComponent as HeroComponentType } from '@/types/components';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
-import { useProjectContext } from '@/contexts/ProjectContext';
+import { useProjectContext } from '@/context/ProjectContext';
 import { updateProject } from '@/services/projects';
 import {
   InlineEditableTitle,

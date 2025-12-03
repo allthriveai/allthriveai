@@ -11,7 +11,7 @@ import yaml
 from github import Github, GithubException, UnknownObjectException
 from github.Repository import Repository
 
-from services.ai_provider import AIProvider
+from services.ai import AIProvider
 
 logger = logging.getLogger(__name__)
 
@@ -495,19 +495,19 @@ Return only the Mermaid code."""
         prefix = '  ' * indent
 
         if indent == 0 and tree.get('name'):
-            lines.append(f"{tree['name']}/")
+            lines.append(f'{tree["name"]}/')
 
         for child in tree.get('children', []):
             if child.get('type') == 'directory':
-                lines.append(f"{prefix}{child['name']}/")
+                lines.append(f'{prefix}{child["name"]}/')
                 # Recursively format children
                 for subchild in child.get('children', []):
                     if subchild.get('type') == 'directory':
-                        lines.append(f"{prefix}  {subchild['name']}/")
+                        lines.append(f'{prefix}  {subchild["name"]}/')
                     else:
-                        lines.append(f"{prefix}  {subchild['name']}")
+                        lines.append(f'{prefix}  {subchild["name"]}')
             else:
-                lines.append(f"{prefix}{child['name']}")
+                lines.append(f'{prefix}{child["name"]}')
 
         return '\n'.join(lines)
 

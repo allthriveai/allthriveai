@@ -12,6 +12,12 @@ import type {
   WeeklyGoal,
   SideQuest,
   UserSideQuest,
+  QuestCategory,
+  QuestCategoryProgress,
+  Circle,
+  Kudos,
+  CreateKudosRequest,
+  CircleActivityFeed,
 } from '@/types/models';
 
 /**
@@ -154,25 +160,9 @@ export async function getAvailableSideQuests(filters?: {
   const response = await api.get(url);
 
   // Handle paginated response
+  // Note: API interceptor already converts snake_case to camelCase
   const quests = response.data.results || response.data;
-
-  // Convert snake_case to camelCase
-  return quests.map((quest: any) => ({
-    ...quest,
-    questType: quest.quest_type,
-    questTypeDisplay: quest.quest_type_display,
-    difficultyDisplay: quest.difficulty_display,
-    topicDisplay: quest.topic_display,
-    skillLevel: quest.skill_level,
-    skillLevelDisplay: quest.skill_level_display,
-    pointsReward: quest.points_reward,
-    isActive: quest.is_active,
-    isAvailable: quest.is_available,
-    startsAt: quest.starts_at,
-    expiresAt: quest.expires_at,
-    createdAt: quest.created_at,
-    updatedAt: quest.updated_at,
-  }));
+  return quests as SideQuest[];
 }
 
 /**
@@ -180,24 +170,8 @@ export async function getAvailableSideQuests(filters?: {
  */
 export async function getSideQuest(questId: string): Promise<SideQuest> {
   const response = await api.get(`/me/side-quests/${questId}/`);
-
-  // Convert snake_case to camelCase
-  return {
-    ...response.data,
-    questType: response.data.quest_type,
-    questTypeDisplay: response.data.quest_type_display,
-    difficultyDisplay: response.data.difficulty_display,
-    topicDisplay: response.data.topic_display,
-    skillLevel: response.data.skill_level,
-    skillLevelDisplay: response.data.skill_level_display,
-    xpReward: response.data.xp_reward,
-    isActive: response.data.is_active,
-    isAvailable: response.data.is_available,
-    startsAt: response.data.starts_at,
-    expiresAt: response.data.expires_at,
-    createdAt: response.data.created_at,
-    updatedAt: response.data.updated_at,
-  };
+  // Note: API interceptor already converts snake_case to camelCase
+  return response.data as SideQuest;
 }
 
 /**
@@ -211,37 +185,8 @@ export async function getMySideQuests(status?: string, limit: number = 50): Prom
   const url = `/me/side-quests/my-quests/?${params.toString()}`;
   const response = await api.get(url);
 
-  // Convert snake_case to camelCase
-  return response.data.map((userQuest: any) => ({
-    ...userQuest,
-    sideQuest: {
-      ...userQuest.side_quest,
-      questType: userQuest.side_quest.quest_type,
-      questTypeDisplay: userQuest.side_quest.quest_type_display,
-      difficultyDisplay: userQuest.side_quest.difficulty_display,
-      topicDisplay: userQuest.side_quest.topic_display,
-      skillLevel: userQuest.side_quest.skill_level,
-      skillLevelDisplay: userQuest.side_quest.skill_level_display,
-      pointsReward: userQuest.side_quest.points_reward,
-      isActive: userQuest.side_quest.is_active,
-      isAvailable: userQuest.side_quest.is_available,
-      startsAt: userQuest.side_quest.starts_at,
-      expiresAt: userQuest.side_quest.expires_at,
-      createdAt: userQuest.side_quest.created_at,
-      updatedAt: userQuest.side_quest.updated_at,
-    },
-    sideQuestId: userQuest.side_quest_id,
-    statusDisplay: userQuest.status_display,
-    currentProgress: userQuest.current_progress,
-    targetProgress: userQuest.target_progress,
-    progressPercentage: userQuest.progress_percentage,
-    progressData: userQuest.progress_data,
-    isCompleted: userQuest.is_completed,
-    completedAt: userQuest.completed_at,
-    pointsAwarded: userQuest.points_awarded,
-    startedAt: userQuest.started_at,
-    updatedAt: userQuest.updated_at,
-  }));
+  // Note: API interceptor already converts snake_case to camelCase
+  return response.data as UserSideQuest[];
 }
 
 /**
@@ -249,37 +194,8 @@ export async function getMySideQuests(status?: string, limit: number = 50): Prom
  */
 export async function startSideQuest(questId: string): Promise<UserSideQuest> {
   const response = await api.post(`/me/side-quests/${questId}/start/`);
-
-  // Convert snake_case to camelCase
-  return {
-    ...response.data,
-    sideQuest: {
-      ...response.data.side_quest,
-      questType: response.data.side_quest.quest_type,
-      questTypeDisplay: response.data.side_quest.quest_type_display,
-      difficultyDisplay: response.data.side_quest.difficulty_display,
-      topicDisplay: response.data.side_quest.topic_display,
-      skillLevel: response.data.side_quest.skill_level,
-      skillLevelDisplay: response.data.side_quest.skill_level_display,
-      pointsReward: response.data.side_quest.points_reward,
-      isActive: response.data.side_quest.is_active,
-      isAvailable: response.data.side_quest.is_available,
-      startsAt: response.data.side_quest.starts_at,
-      expiresAt: response.data.side_quest.expires_at,
-      createdAt: response.data.side_quest.created_at,
-      updatedAt: response.data.side_quest.updated_at,
-    },
-    statusDisplay: response.data.status_display,
-    currentProgress: response.data.current_progress,
-    targetProgress: response.data.target_progress,
-    progressPercentage: response.data.progress_percentage,
-    progressData: response.data.progress_data,
-    isCompleted: response.data.is_completed,
-    completedAt: response.data.completed_at,
-    pointsAwarded: response.data.points_awarded,
-    startedAt: response.data.started_at,
-    updatedAt: response.data.updated_at,
-  };
+  // Note: API interceptor already converts snake_case to camelCase
+  return response.data as UserSideQuest;
 }
 
 /**
@@ -289,37 +205,8 @@ export async function updateSideQuestProgress(questId: string, increment: number
   const response = await api.post(`/me/side-quests/${questId}/update-progress/`, {
     increment,
   });
-
-  // Convert snake_case to camelCase
-  return {
-    ...response.data,
-    sideQuest: {
-      ...response.data.side_quest,
-      questType: response.data.side_quest.quest_type,
-      questTypeDisplay: response.data.side_quest.quest_type_display,
-      difficultyDisplay: response.data.side_quest.difficulty_display,
-      topicDisplay: response.data.side_quest.topic_display,
-      skillLevel: response.data.side_quest.skill_level,
-      skillLevelDisplay: response.data.side_quest.skill_level_display,
-      pointsReward: response.data.side_quest.points_reward,
-      isActive: response.data.side_quest.is_active,
-      isAvailable: response.data.side_quest.is_available,
-      startsAt: response.data.side_quest.starts_at,
-      expiresAt: response.data.side_quest.expires_at,
-      createdAt: response.data.side_quest.created_at,
-      updatedAt: response.data.side_quest.updated_at,
-    },
-    statusDisplay: response.data.status_display,
-    currentProgress: response.data.current_progress,
-    targetProgress: response.data.target_progress,
-    progressPercentage: response.data.progress_percentage,
-    progressData: response.data.progress_data,
-    isCompleted: response.data.is_completed,
-    completedAt: response.data.completed_at,
-    pointsAwarded: response.data.points_awarded,
-    startedAt: response.data.started_at,
-    updatedAt: response.data.updated_at,
-  };
+  // Note: API interceptor already converts snake_case to camelCase
+  return response.data as UserSideQuest;
 }
 
 /**
@@ -327,36 +214,133 @@ export async function updateSideQuestProgress(questId: string, increment: number
  */
 export async function completeSideQuest(questId: string): Promise<UserSideQuest> {
   const response = await api.post(`/me/side-quests/${questId}/complete/`);
+  // Note: API interceptor already converts snake_case to camelCase
+  return response.data as UserSideQuest;
+}
 
-  // Convert snake_case to camelCase
-  return {
-    ...response.data,
-    sideQuest: {
-      ...response.data.side_quest,
-      questType: response.data.side_quest.quest_type,
-      questTypeDisplay: response.data.side_quest.quest_type_display,
-      difficultyDisplay: response.data.side_quest.difficulty_display,
-      topicDisplay: response.data.side_quest.topic_display,
-      skillLevel: response.data.side_quest.skill_level,
-      skillLevelDisplay: response.data.side_quest.skill_level_display,
-      pointsReward: response.data.side_quest.points_reward,
-      isActive: response.data.side_quest.is_active,
-      isAvailable: response.data.side_quest.is_available,
-      startsAt: response.data.side_quest.starts_at,
-      expiresAt: response.data.side_quest.expires_at,
-      createdAt: response.data.side_quest.created_at,
-      updatedAt: response.data.side_quest.updated_at,
-    },
-    statusDisplay: response.data.status_display,
-    currentProgress: response.data.current_progress,
-    targetProgress: response.data.target_progress,
-    progressPercentage: response.data.progress_percentage,
-    progressData: response.data.progress_data,
-    isCompleted: response.data.is_completed,
-    completedAt: response.data.completed_at,
-    pointsAwarded: response.data.points_awarded,
-    startedAt: response.data.started_at,
-    createdAt: response.data.created_at,
-    updatedAt: response.data.updated_at,
-  };
+/**
+ * Abandon (deactivate) an in-progress side quest
+ */
+export async function abandonSideQuest(questId: string): Promise<void> {
+  await api.post(`/me/side-quests/${questId}/abandon/`);
+}
+
+/**
+ * Get all quest categories
+ */
+export async function getQuestCategories(): Promise<QuestCategory[]> {
+  const response = await api.get('/me/quest-categories/');
+  // Handle paginated response
+  // Note: API interceptor already converts snake_case to camelCase
+  const categories = response.data.results || response.data;
+  return categories as QuestCategory[];
+}
+
+/**
+ * Get a specific quest category with its quests
+ */
+export async function getQuestCategory(slug: string): Promise<QuestCategory> {
+  const response = await api.get(`/me/quest-categories/${slug}/`);
+  // Note: API interceptor already converts snake_case to camelCase
+  return response.data as QuestCategory;
+}
+
+/**
+ * Get user's progress in a specific category
+ */
+export async function getQuestCategoryProgress(slug: string): Promise<QuestCategoryProgress> {
+  const response = await api.get(`/me/quest-categories/${slug}/progress/`);
+  // Note: API interceptor already converts snake_case to camelCase
+  return response.data as QuestCategoryProgress;
+}
+
+/**
+ * Get user's progress across all categories
+ */
+export async function getAllCategoryProgress(): Promise<Record<string, QuestCategoryProgress>> {
+  const response = await api.get('/me/quest-categories/all_progress/');
+  // Note: API interceptor already converts snake_case to camelCase
+  return response.data as Record<string, QuestCategoryProgress>;
+}
+
+/**
+ * Get daily quests for the current user
+ * API returns {quest: SideQuest, progress: UserSideQuest}[] format
+ */
+export async function getDailyQuests(): Promise<SideQuest[]> {
+  const response = await api.get('/me/side-quests/daily/');
+  // Note: API interceptor already converts snake_case to camelCase
+  // The daily endpoint returns [{quest: {...}, progress: {...}}, ...] format
+  // Extract just the quest objects for the component
+  return response.data.map((item: { quest: SideQuest }) => item.quest);
+}
+
+// =============================================================================
+// Circle API - Community Micro-Groups
+// =============================================================================
+
+/**
+ * Get current user's circle for this week
+ * Returns circle details with members, challenge, and user's membership
+ */
+export async function getMyCircle(): Promise<Circle | null> {
+  try {
+    const response = await api.get('/me/circles/my-circle/');
+    // API interceptor converts snake_case to camelCase
+    return response.data as Circle;
+  } catch (error: any) {
+    // 404 means user is not in a circle this week
+    if (error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get activity feed for user's current circle
+ */
+export async function getCircleActivity(limit: number = 20): Promise<CircleActivityFeed | null> {
+  try {
+    const response = await api.get(`/me/circles/activity/?limit=${limit}`);
+    return response.data as CircleActivityFeed;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Give kudos to a circle member
+ */
+export async function giveKudos(request: CreateKudosRequest): Promise<Kudos> {
+  const response = await api.post('/me/circles/kudos/', {
+    to_user_id: request.toUserId,
+    kudos_type: request.kudosType,
+    message: request.message || '',
+    project_id: request.projectId || null,
+  });
+  return response.data as Kudos;
+}
+
+/**
+ * Get kudos received by the current user
+ */
+export async function getKudosReceived(limit: number = 20, circleOnly: boolean = false): Promise<Kudos[]> {
+  const params = new URLSearchParams();
+  params.append('limit', limit.toString());
+  if (circleOnly) params.append('circle_only', 'true');
+
+  const response = await api.get(`/me/circles/kudos/received/?${params.toString()}`);
+  return response.data as Kudos[];
+}
+
+/**
+ * Get kudos given by the current user
+ */
+export async function getKudosGiven(limit: number = 20): Promise<Kudos[]> {
+  const response = await api.get(`/me/circles/kudos/given/?limit=${limit}`);
+  return response.data as Kudos[];
 }

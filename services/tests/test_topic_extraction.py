@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from services.topic_extraction_service import TopicExtractionService
+from services.ai.topic_extraction import TopicExtractionService
 
 
 @pytest.mark.django_db

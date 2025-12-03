@@ -6,7 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from core.projects.models import Project
-from services.achievements import AchievementTracker
+from services.gamification.achievements import AchievementTracker
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +41,11 @@ def track_project_published(sender, instance, created, **kwargs):
     """
     # Only track if project is published and wasn't just created
     # (to avoid double-counting on initial publish)
-    if not created and instance.is_published:
+    if not created and not instance.is_private:
         try:
             # Check if this is the first time being published
             # by looking at the previous state (would need field tracking for this)
-            # For now, we'll increment on any save where is_published=True
+            # For now, we'll increment on any save where is_private=False
 
             unlocked = AchievementTracker.track_event(
                 user=instance.user, tracking_field='published_project_count', value=1

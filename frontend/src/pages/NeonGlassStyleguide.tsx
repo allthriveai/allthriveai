@@ -1,0 +1,794 @@
+import { useState } from 'react';
+import {
+  HomeIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  BellIcon,
+  UserIcon,
+  Cog6ToothIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  XMarkIcon,
+  StarIcon,
+  HeartIcon,
+  SparklesIcon,
+  BoltIcon,
+  RocketLaunchIcon,
+  ChartBarIcon,
+  ChatBubbleLeftRightIcon,
+} from '@heroicons/react/24/outline';
+
+/**
+ * NeonGlassStyleguide - Preview of the Neon Glass Design System
+ *
+ * This page showcases the new All Thrive AI aesthetic before site-wide rollout:
+ * - Dark futuristic theme (#020617 background)
+ * - Neon accents (cyan, teal, pink)
+ * - Glassmorphism panels with backdrop blur
+ * - Soft radial glows and neon borders
+ */
+export default function NeonGlassStyleguide() {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [inputValue, setInputValue] = useState('');
+  const [checkboxChecked, setCheckboxChecked] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-background relative overflow-hidden font-sans text-white selection:bg-cyan-neon/30">
+      {/* Ambient Background Effects */}
+      <div className="fixed inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
+      <div className="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-pink-accent/5 blur-[120px] pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-6 py-12 relative z-10">
+        {/* Header */}
+        <header className="mb-16 text-center relative">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-neon text-xs font-medium mb-6 tracking-wider uppercase">
+            <span className="luminous-dot animate-pulse" />
+            Neon Glass Preview
+          </div>
+
+          <h1 className="mb-6">
+            Neon <span className="text-gradient-cyan">Glass</span> Styleguide
+          </h1>
+
+          <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            Preview the new design system before rolling out site-wide.
+            Deep navy backgrounds, translucent glass panels, and electric cyan accents.
+          </p>
+        </header>
+
+        {/* Navigation Tabs */}
+        <div className="flex justify-center mb-12">
+          <div className="glass-subtle p-1 inline-flex rounded-xl">
+            {['overview', 'components', 'layouts', 'effects'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 capitalize ${
+                  activeTab === tab
+                    ? 'bg-cyan-500/20 text-cyan-bright shadow-neon border border-cyan-500/30'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-24">
+          {/* === COLOR PALETTE === */}
+          <section>
+            <SectionHeader title="Color Palette" />
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+              <ColorSwatch name="Background" value="#020617" />
+              <ColorSwatch name="Cyan" value="#0EA5E9" />
+              <ColorSwatch name="Bright Teal" value="#22D3EE" />
+              <ColorSwatch name="Neon Bright" value="#4ADEE7" />
+              <ColorSwatch name="Pink Accent" value="#FB37FF" />
+            </div>
+
+            {/* Semantic Colors */}
+            <h4 className="text-lg font-semibold text-white mb-4 mt-8">Semantic Colors</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div className="text-center">
+                <div className="h-20 rounded-xl mb-2 border border-white/10 flex flex-col overflow-hidden">
+                  <div className="flex-1" style={{ backgroundColor: '#f0fdf4' }} />
+                  <div className="flex-1" style={{ backgroundColor: '#10b981' }} />
+                  <div className="flex-1" style={{ backgroundColor: '#064e3b' }} />
+                </div>
+                <p className="text-sm font-medium text-emerald-400">Success</p>
+                <code className="text-xs text-slate-400">#10b981</code>
+              </div>
+              <div className="text-center">
+                <div className="h-20 rounded-xl mb-2 border border-white/10 flex flex-col overflow-hidden">
+                  <div className="flex-1" style={{ backgroundColor: '#fffbeb' }} />
+                  <div className="flex-1" style={{ backgroundColor: '#f59e0b' }} />
+                  <div className="flex-1" style={{ backgroundColor: '#78350f' }} />
+                </div>
+                <p className="text-sm font-medium text-amber-400">Warning</p>
+                <code className="text-xs text-slate-400">#f59e0b</code>
+              </div>
+              <div className="text-center">
+                <div className="h-20 rounded-xl mb-2 border border-white/10 flex flex-col overflow-hidden">
+                  <div className="flex-1" style={{ backgroundColor: '#fef2f2' }} />
+                  <div className="flex-1" style={{ backgroundColor: '#f43f5e' }} />
+                  <div className="flex-1" style={{ backgroundColor: '#881337' }} />
+                </div>
+                <p className="text-sm font-medium text-rose-400">Error</p>
+                <code className="text-xs text-slate-400">#f43f5e</code>
+              </div>
+              <div className="text-center">
+                <div className="h-20 rounded-xl mb-2 border border-white/10 flex flex-col overflow-hidden">
+                  <div className="flex-1" style={{ backgroundColor: '#f0f9ff' }} />
+                  <div className="flex-1" style={{ backgroundColor: '#0ea5e9' }} />
+                  <div className="flex-1" style={{ backgroundColor: '#0c4a6e' }} />
+                </div>
+                <p className="text-sm font-medium text-sky-400">Info</p>
+                <code className="text-xs text-slate-400">#0ea5e9</code>
+              </div>
+            </div>
+
+            <div className="glass-panel p-6">
+              <h4 className="text-sm font-semibold text-slate-300 mb-4">Glass Fill Colors</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-4 rounded-xl bg-white/[0.05] border border-white/10">
+                  <p className="text-xs text-slate-400">5% white</p>
+                  <code className="text-xs text-cyan-bright">bg-white/5</code>
+                </div>
+                <div className="p-4 rounded-xl bg-white/[0.08] border border-white/10">
+                  <p className="text-xs text-slate-400">8% white (glass-fill)</p>
+                  <code className="text-xs text-cyan-bright">rgba(255,255,255,0.08)</code>
+                </div>
+                <div className="p-4 rounded-xl bg-white/[0.12] border border-white/10">
+                  <p className="text-xs text-slate-400">12% white (glass-strong)</p>
+                  <code className="text-xs text-cyan-bright">bg-white/12</code>
+                </div>
+              </div>
+            </div>
+
+            {/* Thrive Circle Tiers */}
+            <h4 className="text-lg font-semibold text-white mb-4 mt-8">Thrive Circle Tiers</h4>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+              <TierSwatch name="Seedling" color="#86efac" gradientFrom="#86efac" gradientTo="#22c55e" description="New members" />
+              <TierSwatch name="Sprout" color="#4ade80" gradientFrom="#4ade80" gradientTo="#16a34a" description="Growing" />
+              <TierSwatch name="Blossom" color="#f472b6" gradientFrom="#f472b6" gradientTo="#db2777" description="Flourishing" />
+              <TierSwatch name="Bloom" color="#c084fc" gradientFrom="#c084fc" gradientTo="#9333ea" description="Thriving" />
+              <TierSwatch name="Evergreen" color="#22d3ee" gradientFrom="#22d3ee" gradientTo="#0891b2" description="Legendary" />
+            </div>
+
+            {/* Category Colors */}
+            <h4 className="text-lg font-semibold text-white mb-4 mt-8">Category Colors</h4>
+            <p className="text-sm text-slate-400 mb-4">Ocean-inspired palette for project categories</p>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
+              <CategorySwatch name="Blue" color="#3b82f6" />
+              <CategorySwatch name="Indigo" color="#6366f1" />
+              <CategorySwatch name="Sky" color="#0ea5e9" />
+              <CategorySwatch name="Cyan" color="#06b6d4" />
+              <CategorySwatch name="Teal" color="#14b8a6" />
+              <CategorySwatch name="Emerald" color="#10b981" />
+              <CategorySwatch name="Green" color="#22c55e" />
+              <CategorySwatch name="Lime" color="#84cc16" />
+              <CategorySwatch name="Ocean" color="#2563eb" />
+              <CategorySwatch name="Slate" color="#64748b" />
+              <CategorySwatch name="Turquoise" color="#22d3ee" />
+              <CategorySwatch name="Aqua" color="#2dd4bf" />
+            </div>
+
+            {/* Achievement Rarity Colors */}
+            <h4 className="text-lg font-semibold text-white mb-4 mt-8">Achievement Rarity</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <RaritySwatch name="Common" gradientFrom="#94a3b8" gradientTo="#64748b" />
+              <RaritySwatch name="Rare" gradientFrom="#3b82f6" gradientTo="#2563eb" />
+              <RaritySwatch name="Epic" gradientFrom="#a855f7" gradientTo="#9333ea" />
+              <RaritySwatch name="Legendary" gradientFrom="#eab308" gradientTo="#ca8a04" />
+            </div>
+
+            {/* Activity Type Colors */}
+            <h4 className="text-lg font-semibold text-white mb-4 mt-8">Activity Types</h4>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+              <ActivitySwatch name="Quiz" color="#10b981" />
+              <ActivitySwatch name="Project Create" color="#3b82f6" />
+              <ActivitySwatch name="Project Update" color="#6366f1" />
+              <ActivitySwatch name="Comment" color="#8b5cf6" />
+              <ActivitySwatch name="Reaction" color="#ec4899" />
+              <ActivitySwatch name="Daily Login" color="#f59e0b" />
+              <ActivitySwatch name="Streak" color="#ef4444" />
+              <ActivitySwatch name="Weekly Goal" color="#14b8a6" />
+              <ActivitySwatch name="Side Quest" color="#a855f7" />
+              <ActivitySwatch name="Event" color="#f97316" />
+              <ActivitySwatch name="Referral" color="#06b6d4" />
+            </div>
+          </section>
+
+          {/* === GLASS SURFACES === */}
+          <section>
+            <SectionHeader title="Glass Surfaces" color="pink" />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="glass-subtle p-8 h-64 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold mb-2 text-white">Subtle Glass</h3>
+                  <p className="text-slate-400 text-sm">.glass-subtle</p>
+                </div>
+                <div className="text-slate-500 text-sm">
+                  Low opacity background for secondary containers and subtle framing.
+                </div>
+              </div>
+
+              <div className="glass-card h-64 flex flex-col justify-between relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl pointer-events-none" />
+                <div>
+                  <h3 className="text-xl font-semibold mb-2 text-cyan-bright">Standard Card</h3>
+                  <p className="text-slate-400 text-sm">.glass-card</p>
+                </div>
+                <div className="text-slate-400 text-sm">
+                  The primary container with backdrop blur, inner borders, and hover glow effects.
+                </div>
+              </div>
+
+              <div className="glass-card neon-border h-64 flex flex-col justify-between relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-cyan-bright shadow-neon opacity-50" />
+                <div>
+                  <h3 className="text-xl font-semibold mb-2 text-white">Neon Active</h3>
+                  <p className="text-slate-400 text-sm">.glass-card .neon-border</p>
+                </div>
+                <div className="text-slate-400 text-sm">
+                  High visibility state for active items, selections, or featured content.
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* === BUTTONS === */}
+          <section>
+            <SectionHeader title="Buttons" />
+
+            <div className="glass-panel p-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+                {/* Button Variants */}
+                <div className="space-y-8">
+                  <h3 className="text-xl text-slate-300 mb-6">Button Variants</h3>
+
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2 uppercase tracking-wider">Primary (Neon Gradient)</p>
+                      <div className="flex flex-wrap gap-3 items-center">
+                        <button className="btn-primary">
+                          Primary Action
+                        </button>
+                        <button className="btn-primary shadow-neon-strong">
+                          With Glow
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2 uppercase tracking-wider">Secondary (Glass)</p>
+                      <div className="flex flex-wrap gap-3">
+                        <button className="btn-secondary">
+                          Secondary
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2 uppercase tracking-wider">Outline</p>
+                      <div className="flex flex-wrap gap-3">
+                        <button className="btn-outline">
+                          Outline
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2 uppercase tracking-wider">Ghost</p>
+                      <div className="flex flex-wrap gap-3">
+                        <button className="btn-ghost">
+                          Ghost
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Button with Icons */}
+                <div className="space-y-8">
+                  <h3 className="text-xl text-slate-300 mb-6">With Icons</h3>
+
+                  <div className="space-y-4">
+                    <button className="btn-primary inline-flex items-center gap-2">
+                      <PlusIcon className="w-5 h-5" />
+                      Add Project
+                    </button>
+
+                    <button className="btn-secondary inline-flex items-center gap-2">
+                      <MagnifyingGlassIcon className="w-5 h-5" />
+                      Search
+                    </button>
+
+                    <button className="btn-outline inline-flex items-center gap-2">
+                      View More
+                      <ArrowRightIcon className="w-4 h-4" />
+                    </button>
+
+                    <div className="flex gap-2 pt-4">
+                      <p className="text-xs text-slate-500 mb-2">Icon Buttons:</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <button className="p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-bright/30 transition-all">
+                        <BellIcon className="w-5 h-5 text-slate-400" />
+                      </button>
+                      <button className="p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-bright/30 transition-all">
+                        <Cog6ToothIcon className="w-5 h-5 text-slate-400" />
+                      </button>
+                      <button className="p-3 rounded-xl bg-cyan-500/20 border border-cyan-500/30 shadow-neon">
+                        <SparklesIcon className="w-5 h-5 text-cyan-bright" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* === FORM INPUTS === */}
+          <section>
+            <SectionHeader title="Form Inputs" color="pink" />
+
+            <div className="glass-panel p-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div className="space-y-6">
+                  <h3 className="text-xl text-slate-300 mb-2">Glass Inputs</h3>
+
+                  <div>
+                    <label className="block text-xs font-medium text-cyan-bright mb-2 uppercase tracking-wider">
+                      System Access Code
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ENTER CODE..."
+                      className="input-glass"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-2 uppercase tracking-wider">
+                      Encrypted Message
+                    </label>
+                    <textarea
+                      placeholder="Type your secure message..."
+                      rows={3}
+                      className="input-glass resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-2 uppercase tracking-wider">
+                      Search with Icon
+                    </label>
+                    <div className="relative">
+                      <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search projects..."
+                        className="input-glass pl-12"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h3 className="text-xl text-slate-300 mb-2">Selection Controls</h3>
+
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                          checkboxChecked
+                            ? 'bg-cyan-500 border-cyan-500'
+                            : 'border-white/30 group-hover:border-cyan-bright/50'
+                        }`}
+                        onClick={() => setCheckboxChecked(!checkboxChecked)}
+                      >
+                        {checkboxChecked && <CheckIcon className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="text-slate-300">Enable neon glow effects</span>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="w-5 h-5 rounded border-2 border-white/30 group-hover:border-cyan-bright/50 flex items-center justify-center transition-all" />
+                      <span className="text-slate-300">Subscribe to updates</span>
+                    </label>
+                  </div>
+
+                  <div className="pt-4">
+                    <p className="text-xs font-medium text-slate-400 mb-3 uppercase tracking-wider">
+                      Interest Tags
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {['AI Tools', 'Design', 'Development', 'Gaming'].map((tag, i) => (
+                        <button
+                          key={tag}
+                          className={`px-3 py-1.5 rounded-lg text-sm transition-all ${
+                            i === 0
+                              ? 'bg-cyan-500/20 border border-cyan-500/30 text-cyan-bright'
+                              : 'bg-white/5 border border-white/10 text-slate-400 hover:border-cyan-bright/30 hover:text-white'
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* === NAVIGATION PREVIEW === */}
+          <section>
+            <SectionHeader title="Navigation Preview" />
+
+            {/* Mock Top Navigation */}
+            <div className="glass-panel p-0 overflow-hidden mb-8">
+              <div
+                className="px-6 py-4 border-b border-white/10"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(20px)',
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-8">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-gradient-to-br from-cyan-400/20 to-cyan-600/20">
+                        <HomeIcon className="w-5 h-5 text-cyan-bright" />
+                      </div>
+                      <span className="font-bold text-lg text-gradient-cyan">All Thrive</span>
+                    </div>
+
+                    <div className="hidden md:flex items-center gap-1">
+                      {['Explore', 'Play', 'Learn', 'Support'].map((item, i) => (
+                        <button
+                          key={item}
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
+                            i === 0
+                              ? 'bg-cyan-400/10 text-cyan-bright border-cyan-400/40 shadow-neon'
+                              : 'text-slate-300 border-transparent hover:bg-white/5 hover:border-white/20'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button className="p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/20 transition-all">
+                      <MagnifyingGlassIcon className="w-5 h-5 text-slate-300" />
+                    </button>
+                    <button className="btn-primary text-sm px-4 py-2 inline-flex items-center gap-2">
+                      <PlusIcon className="w-4 h-4" />
+                      Add Project
+                    </button>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-pink-accent flex items-center justify-center">
+                      <UserIcon className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mock Content Area */}
+              <div className="p-8 bg-background">
+                <p className="text-slate-500 text-center">Page content area</p>
+              </div>
+            </div>
+          </section>
+
+          {/* === CARDS & CONTENT === */}
+          <section>
+            <SectionHeader title="Cards & Content Blocks" color="pink" />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {/* Feature Card */}
+              <div className="glass-card group cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center mb-4 group-hover:shadow-neon transition-all">
+                  <RocketLaunchIcon className="w-6 h-6 text-cyan-bright" />
+                </div>
+                <h4 className="text-lg font-semibold text-white mb-2 group-hover:text-cyan-bright transition-colors">
+                  Quick Launch
+                </h4>
+                <p className="text-slate-400 text-sm">
+                  Start building your AI project in minutes with our guided templates.
+                </p>
+              </div>
+
+              {/* Stats Card */}
+              <div className="glass-card">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-medium text-slate-400">Total Projects</h4>
+                  <ChartBarIcon className="w-5 h-5 text-cyan-bright" />
+                </div>
+                <div className="text-3xl font-bold text-white mb-1">2,847</div>
+                <div className="flex items-center gap-1 text-sm">
+                  <span className="text-emerald-400">+12.5%</span>
+                  <span className="text-slate-500">from last month</span>
+                </div>
+              </div>
+
+              {/* User Card */}
+              <div className="glass-card">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-accent to-cyan-bright" />
+                  <div>
+                    <h4 className="font-semibold text-white">Sarah Chen</h4>
+                    <p className="text-sm text-slate-400">AI Designer</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <span className="px-2 py-1 rounded-lg bg-cyan-500/20 text-cyan-bright text-xs">
+                    Pro Member
+                  </span>
+                  <span className="px-2 py-1 rounded-lg bg-white/5 text-slate-400 text-xs">
+                    42 Projects
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Chat Message Preview */}
+            <div className="glass-panel p-6">
+              <h4 className="text-sm font-medium text-slate-400 mb-4">Chat Interface Preview</h4>
+              <div className="space-y-4">
+                {/* Assistant Message */}
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                    <SparklesIcon className="w-4 h-4 text-cyan-bright" />
+                  </div>
+                  <div className="glass-subtle p-4 rounded-2xl rounded-tl-sm max-w-md">
+                    <p className="text-slate-300 text-sm">
+                      Welcome! I'm here to help you build amazing AI projects. What would you like to create today?
+                    </p>
+                  </div>
+                </div>
+
+                {/* User Message */}
+                <div className="flex gap-3 justify-end">
+                  <div className="bg-gradient-to-r from-cyan-500 to-cyan-bright p-4 rounded-2xl rounded-tr-sm max-w-md">
+                    <p className="text-background text-sm font-medium">
+                      I want to create an AI-powered design tool
+                    </p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-accent to-cyan-bright flex-shrink-0" />
+                </div>
+              </div>
+
+              {/* Input Bar */}
+              <div className="mt-6 flex gap-3">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    placeholder="Type your message..."
+                    className="input-glass pr-12"
+                  />
+                  <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 transition-colors">
+                    <ArrowRightIcon className="w-4 h-4 text-cyan-bright" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* === SPECIAL EFFECTS === */}
+          <section>
+            <SectionHeader title="Special Effects" />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Glow Effects */}
+              <div className="glass-panel p-8 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-radial from-cyan-500/20 to-transparent opacity-50" />
+                <div className="relative z-10">
+                  <h4 className="text-lg font-semibold text-white mb-4">Radial Glow</h4>
+                  <p className="text-slate-400 text-sm mb-4">
+                    Ambient light effects behind important elements
+                  </p>
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 mx-auto shadow-neon-strong flex items-center justify-center">
+                    <BoltIcon className="w-10 h-10 text-white" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Circuit Lines */}
+              <div className="glass-panel p-8 relative overflow-hidden">
+                <div className="circuit-connector top-8" />
+                <div className="circuit-connector top-16 opacity-50" />
+                <div className="circuit-connector bottom-8 opacity-30" />
+
+                <div className="relative z-10">
+                  <h4 className="text-lg font-semibold text-white mb-4">Circuit Connectors</h4>
+                  <p className="text-slate-400 text-sm mb-4">
+                    Decorative lines suggesting connectivity
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="luminous-dot" />
+                      <span className="text-cyan-bright text-sm">System Online</span>
+                    </div>
+                    <code className="text-xs text-slate-500 font-mono">STATUS: ACTIVE</code>
+                  </div>
+                </div>
+              </div>
+
+              {/* Neon Border */}
+              <div className="glass-card neon-border">
+                <h4 className="text-lg font-semibold text-white mb-4">Neon Border</h4>
+                <p className="text-slate-400 text-sm">
+                  Sharp cyan glow for active states and featured content.
+                  Use <code className="text-cyan-bright">.neon-border</code> class.
+                </p>
+              </div>
+
+              {/* Luminous Indicators */}
+              <div className="glass-panel p-8">
+                <h4 className="text-lg font-semibold text-white mb-4">Luminous Indicators</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="luminous-dot" />
+                    <span className="text-slate-300 text-sm">Active connection</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
+                    <span className="text-slate-300 text-sm">Success state</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-pink-accent shadow-[0_0_10px_rgba(251,55,255,0.5)]" />
+                    <span className="text-slate-300 text-sm">Alert indicator</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* === CODE REFERENCE === */}
+          <section>
+            <SectionHeader title="Code Reference" color="pink" />
+
+            <div className="glass-panel p-8">
+              <pre className="text-sm text-slate-300 overflow-x-auto font-mono">
+{`/* Glass Surfaces */
+.glass-panel     /* Main containers */
+.glass-card      /* Interactive cards with hover */
+.glass-subtle    /* Secondary containers */
+
+/* Buttons */
+.btn-primary     /* Cyan gradient, dark text */
+.btn-secondary   /* Glass background, white text */
+.btn-outline     /* Cyan border, transparent bg */
+.btn-ghost       /* No bg, subtle hover */
+
+/* Inputs */
+.input-glass     /* Dark glass input with neon focus */
+
+/* Effects */
+.neon-border     /* Cyan glow border */
+.shadow-neon     /* Neon box shadow */
+.luminous-dot    /* Glowing indicator */
+.circuit-connector /* Decorative line */
+.text-gradient-cyan /* Cyan text gradient */
+
+/* Colors (Tailwind) */
+bg-background    /* #020617 */
+text-cyan-bright /* #22D3EE */
+text-cyan-neon   /* #4ADEE7 */
+text-pink-accent /* #FB37FF */`}
+              </pre>
+            </div>
+          </section>
+        </div>
+
+        {/* Footer */}
+        <footer className="mt-24 text-center text-slate-500 text-sm">
+          <p>Neon Glass Design System &mdash; All Thrive AI</p>
+          <p className="mt-2">
+            <a href="/styleguide" className="text-cyan-bright hover:underline">Original Styleguide</a>
+            {' · '}
+            <a href="/explore" className="text-cyan-bright hover:underline">Explore</a>
+          </p>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+/* Helper Components */
+
+function SectionHeader({ title, color = 'cyan' }: { title: string; color?: 'cyan' | 'pink' }) {
+  return (
+    <div className="flex items-center gap-4 mb-8">
+      <h2 className="text-3xl font-bold">{title}</h2>
+      <div className={`h-[1px] flex-1 bg-gradient-to-r ${
+        color === 'pink' ? 'from-pink-500/50' : 'from-cyan-500/50'
+      } to-transparent opacity-30`} />
+    </div>
+  );
+}
+
+function ColorSwatch({ name, value }: { name: string; value: string }) {
+  return (
+    <div className="text-center">
+      <div
+        className="h-20 rounded-xl mb-2 border border-white/10"
+        style={{ backgroundColor: value }}
+      />
+      <p className="text-sm font-medium text-white">{name}</p>
+      <code className="text-xs text-slate-400">{value}</code>
+    </div>
+  );
+}
+
+function TierSwatch({ name, color, gradientFrom, gradientTo, description }: {
+  name: string;
+  color: string;
+  gradientFrom: string;
+  gradientTo: string;
+  description: string;
+}) {
+  return (
+    <div className="text-center">
+      <div
+        className="h-16 rounded-xl mb-2 border border-white/10 flex items-center justify-center"
+        style={{ background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` }}
+      >
+        <span className="text-white text-xs font-bold drop-shadow-md">{name}</span>
+      </div>
+      <p className="text-sm font-medium" style={{ color }}>{name}</p>
+      <p className="text-xs text-slate-500">{description}</p>
+    </div>
+  );
+}
+
+function CategorySwatch({ name, color }: { name: string; color: string }) {
+  return (
+    <div className="text-center">
+      <div
+        className="h-10 rounded-lg mb-1 border border-white/10"
+        style={{ backgroundColor: color }}
+      />
+      <p className="text-xs font-medium text-slate-300">{name}</p>
+    </div>
+  );
+}
+
+function RaritySwatch({ name, gradientFrom, gradientTo }: {
+  name: string;
+  gradientFrom: string;
+  gradientTo: string;
+}) {
+  return (
+    <div className="text-center">
+      <div
+        className="h-14 rounded-xl mb-2 border border-white/10 flex items-center justify-center"
+        style={{ background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` }}
+      >
+        <span className="text-white text-sm font-bold drop-shadow-md">{name}</span>
+      </div>
+      <code className="text-xs text-slate-400">{gradientFrom}</code>
+    </div>
+  );
+}
+
+function ActivitySwatch({ name, color }: { name: string; color: string }) {
+  return (
+    <div className="text-center">
+      <div
+        className="h-8 w-8 rounded-full mx-auto mb-1 border border-white/10"
+        style={{ backgroundColor: color }}
+      />
+      <p className="text-xs text-slate-400 truncate">{name}</p>
+    </div>
+  );
+}

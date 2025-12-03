@@ -17,7 +17,7 @@ import {
   ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline';
 import { FaCamera } from 'react-icons/fa';
-import { useSectionEditorContext } from '@/contexts/SectionEditorContext';
+import { useSectionEditorContext } from '@/context/SectionEditorContext';
 
 // Gradient banner presets - beautiful abstract gradients
 const GRADIENT_BANNERS = [

@@ -1,6 +1,6 @@
 # Data Models
 
-**Source of Truth** | **Last Updated**: 2025-11-29
+**Source of Truth** | **Last Updated**: 2025-12-01
 
 This document defines the core data models for AllThrive AI, their relationships, and schema design principles.
 
@@ -83,14 +83,13 @@ user: ForeignKey(User)
 slug: str (unique per user)
 title: str
 description: text
-type: enum  # github_repo, figma_design, image_collection, prompt, video, other
+type: enum  # github_repo, figma_design, image_collection, prompt, video, reddit_thread, other
 
-# Visibility
-is_showcase: bool  # Show in profile
-is_private: bool   # Only owner can see
-is_archived: bool  # Soft delete
-is_published: bool # Public visibility
-is_highlighted: bool  # Featured project (1 per user)
+# Visibility (see "Project Visibility Logic" section below)
+is_showcased: bool   # Featured on user's profile showcase section (default: True)
+is_highlighted: bool # Featured at top of profile, only one per user (default: False)
+is_private: bool     # Hidden from explore feed and public views (default: False)
+is_archived: bool    # Soft delete - hidden from all views (default: False)
 
 # Media
 banner_url: str
@@ -106,10 +105,14 @@ topics: array<str>  # User-generated tags
 content: json  # Structured layout blocks
 content_source: ForeignKey(ContentSource, nullable)
 
+# Personalization metrics
+engagement_velocity: float  # For trending algorithm
+view_count: int
+last_velocity_update: datetime (nullable)
+
 # Timestamps
 created_at: datetime
 updated_at: datetime
-published_at: datetime (nullable)
 ```
 
 **Relationships**:
@@ -128,10 +131,44 @@ published_at: datetime (nullable)
 **Indexes**:
 - (user, slug) - Primary lookup
 - (user, external_url) - Duplicate detection
-- (is_showcase, is_archived, -created_at) - Browse/explore
-- (is_published, -published_at) - Public feed
+- (is_private, is_archived, -created_at) - Primary explore filter
+- (is_showcased, is_archived, -created_at) - Profile showcase
 
 **URL Structure**: `/{username}/{slug}`
+
+#### Project Visibility Logic
+
+The visibility system uses a simplified 3-field model:
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `is_private` | `False` | **Primary visibility control**. When `True`, project is hidden from explore feed, search, and all public views. Only the owner can see it. |
+| `is_showcased` | `True` | Controls display on user's profile. `True` = appears in showcase section, `False` = only in playground (but still public in explore if not private). |
+| `is_archived` | `False` | Soft delete. Hidden from ALL views including owner's profile. |
+
+**Key Rules**:
+
+1. **Explore Feed**: Shows all projects where `is_private=False AND is_archived=False`
+   - `is_showcased` does NOT affect explore visibility
+   - All playground projects appear in explore (unless private)
+
+2. **User Profile Showcase**: Shows projects where `is_showcased=True AND is_archived=False`
+   - Private projects only visible to owner
+   - Public users see only non-private showcase projects
+
+3. **User Playground**: Shows ALL of user's non-archived projects
+   - Only visible to the project owner
+   - Includes both showcased and non-showcased projects
+
+4. **Direct URL Access**: Any project can be viewed by direct URL if:
+   - User is the owner, OR
+   - Project is `is_private=False AND is_archived=False`
+
+**Why This Design**:
+- **Simplicity**: One field (`is_private`) controls public visibility
+- **No Redundancy**: Removed `is_published` which was redundant with `is_private`
+- **Separation of Concerns**: `is_showcased` only affects profile display, not discoverability
+- **Default Public**: All projects are public by default, encouraging sharing
 
 ---
 

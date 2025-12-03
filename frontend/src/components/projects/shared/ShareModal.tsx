@@ -33,7 +33,7 @@ export function ShareModal({
   const shareUrl = `${window.location.origin}/${username}/${slug}`;
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(title);
-  const text = shareText || `Check out "${title}" by @${username} on AllThrive AI`;
+  const text = shareText || `Check out "${title}" by @${username} on All Thrive AI`;
   const encodedText = encodeURIComponent(text);
   const encodedDescription = encodeURIComponent(`Check out ${title} by @${username}`);
 

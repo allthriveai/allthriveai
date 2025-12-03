@@ -8,6 +8,7 @@ Supported intents:
 - support: Help, questions, troubleshooting
 - project-creation: Creating projects from integrations
 - discovery: Exploring projects, recommendations
+- image-generation: Creating images, infographics, or visuals with AI
 """
 
 import hashlib
@@ -17,7 +18,7 @@ from typing import Literal
 
 from django.core.cache import cache
 
-from services.ai_provider import AIProvider
+from services.ai import AIProvider
 
 from .metrics import MetricsCollector
 from .security import PromptInjectionFilter
@@ -25,7 +26,7 @@ from .security import PromptInjectionFilter
 logger = logging.getLogger(__name__)
 
 # Intent types
-ChatMode = Literal['support', 'project-creation', 'discovery']
+ChatMode = Literal['support', 'project-creation', 'discovery', 'image-generation']
 
 
 INTENT_DETECTION_PROMPT = """You are an intent classifier for AllThrive AI, a platform for managing AI/ML projects.
@@ -41,13 +42,16 @@ Your job is to analyze user messages and determine their intent from these categ
 3. **discovery**: User wants to explore, search, or discover existing projects
    - Examples: "Show me AI projects", "Find similar projects", "What projects do I have?"
 
+4. **image-generation**: User wants to create, generate, or edit images, infographics, diagrams, or visuals
+   - Examples: "Create an infographic", "Generate an image of...", "Make me a flowchart", "Design a banner"
+
 Context about the user:
 - Integration type: {integration_type}
 - Recent messages: {conversation_history}
 
 User message: {user_message}
 
-Respond with ONLY the intent category (support, project-creation, or discovery).
+Respond with ONLY the intent category (support, project-creation, discovery, or image-generation).
 No explanation, just the category name.
 """
 
@@ -148,7 +152,7 @@ class IntentDetectionService:
             intent = result.strip().lower()
 
             # Validate intent
-            valid_intents: list[ChatMode] = ['support', 'project-creation', 'discovery']
+            valid_intents: list[ChatMode] = ['support', 'project-creation', 'discovery', 'image-generation']
             if intent not in valid_intents:
                 logger.warning(f'Invalid intent from LLM: {intent}, defaulting to support')
                 intent = 'support'
@@ -231,6 +235,13 @@ class IntentDetectionService:
 
         if new_mode == 'discovery':
             return 'I can help you explore projects. What are you looking for?'
+
+        if new_mode == 'image-generation':
+            return (
+                "Hey there! I'm Nano Banana, your creative image assistant. "
+                'I can help you create infographics, diagrams, banners, and more. '
+                'What would you like me to create?'
+            )
 
         # support mode
         return 'How can I help you today?'

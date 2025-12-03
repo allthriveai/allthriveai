@@ -41,7 +41,7 @@ class Command(BaseCommand):
             first_name='Pip',
             last_name='',  # Pip is mononymous
             is_active=True,
-            role=UserRole.BOT,  # Mark as bot
+            role=UserRole.AGENT,  # Mark as agent
             avatar_url=avatar_url,
             bio=(
                 "<p>Hey there! I'm Pip, your friendly AI agent who lives for prompt battles! 🤖✨</p>"
@@ -139,8 +139,7 @@ class Command(BaseCommand):
         for proj_data in showcase_projects:
             Project.objects.create(
                 user=pip,
-                is_showcase=True,
-                is_published=True,
+                is_showcased=True,
                 published_at=timezone.now(),
                 **proj_data,
             )
@@ -149,8 +148,8 @@ class Command(BaseCommand):
         for proj_data in playground_projects:
             Project.objects.create(
                 user=pip,
-                is_showcase=False,
-                is_published=True,  # Public in playground
+                is_showcased=False,
+                # Public in playground
                 published_at=timezone.now(),
                 **proj_data,
             )

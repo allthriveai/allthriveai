@@ -20,7 +20,7 @@ import {
   LinkIcon,
 } from '@heroicons/react/24/outline';
 import { FaStar, FaLock, FaEye } from 'react-icons/fa';
-import { useSectionEditorContext } from '@/contexts/SectionEditorContext';
+import { useSectionEditorContext } from '@/context/SectionEditorContext';
 import { updateProject, deleteProjectRedirect } from '@/services/projects';
 import { generateSlug } from '@/utils/slug';
 import { ToolSelector } from '@/components/projects/ToolSelector';
@@ -177,7 +177,7 @@ export function EditorSidebar() {
 // ============================================================================
 
 interface VisibilitySectionProps {
-  project: { isHighlighted?: boolean; isShowcase: boolean; isPrivate?: boolean };
+  project: { isHighlighted?: boolean; isShowcased: boolean; isPrivate?: boolean };
   isSaving: boolean;
   onUpdate: (updates: Record<string, boolean>) => Promise<void>;
 }
@@ -232,8 +232,8 @@ function VisibilitySection({
           </div>
           <input
             type="checkbox"
-            checked={project.isShowcase}
-            onChange={() => onUpdate({ isShowcase: !project.isShowcase })}
+            checked={project.isShowcased}
+            onChange={() => onUpdate({ isShowcased: !project.isShowcased })}
             disabled={isSaving}
             className="w-5 h-5 text-primary-500 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 disabled:opacity-50"
           />

@@ -32,10 +32,27 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
   const [error, setError] = useState<string | null>(null);
   const [showLinksDropdown, setShowLinksDropdown] = useState(false);
 
+  // Track if tray should be rendered (for slide-out animation)
+  const [shouldRender, setShouldRender] = useState(false);
+
   // Projects using this tool
   const [projectsUsingTool, setProjectsUsingTool] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [totalProjectCount, setTotalProjectCount] = useState(0);
+
+  // Handle mount/unmount for animations
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+    }
+  }, [isOpen]);
+
+  // Handle transition end to unmount after closing
+  const handleTransitionEnd = () => {
+    if (!isOpen) {
+      setShouldRender(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen && toolSlug) {
@@ -100,113 +117,68 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     }
   }
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <>
-        <div
-          className="fixed inset-0 z-40 transition-opacity duration-300 ease-in-out pointer-events-none"
-          onClick={onClose}
-        />
-        <aside
-          className="fixed right-0 top-0 h-full w-full md:w-96 lg:w-[32rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out translate-x-0"
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          }}
-        >
-          <div className="p-6 animate-pulse">
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex items-center gap-4 flex-1">
-                <div className="w-16 h-16 bg-gray-300 dark:bg-gray-700 rounded-xl" />
-                <div className="flex-1">
-                  <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-48 mb-2" />
-                  <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-64" />
-                </div>
+  // Render content based on state
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="p-6 animate-pulse">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-4 flex-1">
+              <div className="w-16 h-16 bg-gray-300 dark:bg-gray-700 rounded-xl" />
+              <div className="flex-1">
+                <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-48 mb-2" />
+                <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-64" />
               </div>
-              <button onClick={onClose} className="p-2">
-                <XMarkIcon className="w-6 h-6 text-gray-500" />
-              </button>
             </div>
-            <div className="space-y-4">
-              <div className="h-24 bg-gray-300 dark:bg-gray-700 rounded-xl" />
-              <div className="h-32 bg-gray-300 dark:bg-gray-700 rounded-xl" />
-              <div className="h-40 bg-gray-300 dark:bg-gray-700 rounded-xl" />
-            </div>
+            <button onClick={onClose} className="p-2">
+              <XMarkIcon className="w-6 h-6 text-gray-500" />
+            </button>
           </div>
-        </aside>
-      </>
-    );
-  }
+          <div className="space-y-4">
+            <div className="h-24 bg-gray-300 dark:bg-gray-700 rounded-xl" />
+            <div className="h-32 bg-gray-300 dark:bg-gray-700 rounded-xl" />
+            <div className="h-40 bg-gray-300 dark:bg-gray-700 rounded-xl" />
+          </div>
+        </div>
+      );
+    }
 
-  // Error state
-  if (error || !tool) {
+    if (error || !tool) {
+      return (
+        <div className="p-6">
+          <div className="flex items-start justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Tool Not Found</h2>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+              aria-label="Close"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+          </div>
+          <div className="rounded-xl p-6 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+            <p className="text-red-600 dark:text-red-400 mb-4">{error || 'This tool could not be found.'}</p>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <>
-        <div
-          className="fixed inset-0 z-40 transition-opacity duration-300 ease-in-out pointer-events-none"
-          onClick={onClose}
-        />
-        <aside
-          className="fixed right-0 top-0 h-full w-full md:w-96 lg:w-[32rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out translate-x-0"
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          }}
-        >
-          <div className="p-6">
-            <div className="flex items-start justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Tool Not Found</h2>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
-                aria-label="Close"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="rounded-xl p-6 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
-              <p className="text-red-600 dark:text-red-400 mb-4">{error || 'This tool could not be found.'}</p>
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </aside>
-      </>
-    );
-  }
-
-  return (
-    <>
-      {/* Backdrop - Non-blocking, no blur, allows scrolling and full visibility */}
-      <div
-        className="fixed inset-0 z-40 transition-opacity duration-300 ease-in-out pointer-events-none"
-        onClick={onClose}
-      />
-
-      {/* Right Sidebar Drawer - Smooth slide-in animation */}
-      <aside
-        className="fixed right-0 top-0 h-full w-full md:w-96 lg:w-[32rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transform transition-transform duration-300 ease-in-out animate-slide-in-right"
-        style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          backdropFilter: 'blur(20px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        }}
-      >
         {/* Header - Fixed */}
         <div className="flex-shrink-0 px-5 py-3 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {/* Logo */}
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-md">
+              <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center overflow-hidden bg-white border border-gray-200 dark:border-gray-700 shadow-md" style={{ borderRadius: 'var(--radius)' }}>
                 {tool.logoUrl ? (
                   <img src={tool.logoUrl} alt={`${tool.name} logo`} className="w-10 h-10 object-contain" />
                 ) : (
@@ -320,7 +292,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
             )}
 
             {/* Brief Description */}
-            <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            <section className="bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
               <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-2 flex items-center gap-2">
                 <FontAwesomeIcon icon={faAlignLeft} className="w-3.5 h-3.5" />
                 Description
@@ -332,7 +304,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
 
             {/* Use Cases */}
             {tool.useCases.length > 0 && (
-              <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+              <section className="bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-2 flex items-center gap-2">
                   <FontAwesomeIcon icon={faListCheck} className="w-3.5 h-3.5" />
                   Use cases
@@ -353,7 +325,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
 
             {/* Latest updates and why they matter */}
             {tool.bestPractices.length > 0 && (
-              <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+              <section className="bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-1 flex items-center gap-2">
                   <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5" />
                   What's new & why it matters
@@ -375,8 +347,8 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
               </section>
             )}
 
-            {/* AllThrive Projects Using This Tool */}
-            <section className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            {/* All Thrive Projects Using This Tool */}
+            <section className="bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider flex items-center gap-2">
                   <FontAwesomeIcon icon={faFolderOpen} className="w-3.5 h-3.5" />
@@ -434,6 +406,33 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
             </section>
           </div>
         </div>
+      </>
+    );
+  };
+
+  return (
+    <>
+      {/* Backdrop - Clickable when open */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-300 ease-in-out ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+      />
+
+      {/* Right Sidebar Drawer - Smooth slide animation */}
+      <aside
+        className={`fixed right-0 top-0 h-full w-full md:w-96 lg:w-[32rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        }}
+        onTransitionEnd={handleTransitionEnd}
+      >
+        {renderContent()}
       </aside>
     </>
   );

@@ -285,7 +285,7 @@ export default function SocialSettingsPage() {
                 Account Connections
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Connect your accounts to enhance your AllThrive experience
+                Connect your accounts to enhance your All Thrive experience
               </p>
 
             {loading ? (
@@ -392,7 +392,7 @@ export default function SocialSettingsPage() {
 
             <div className="mt-8 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                <strong>Note:</strong> Connecting these accounts allows AllThrive to integrate with your
+                <strong>Note:</strong> Connecting these accounts allows All Thrive to integrate with your
                 workflows and provide enhanced AI capabilities. Your credentials are encrypted and stored
                 securely.
               </p>

@@ -119,9 +119,11 @@ export function getCategoryDisplay(category: string): string {
 /**
  * Get api client - deferred import to avoid circular dependencies
  */
-let cachedApi: any = null;
+import type { AxiosInstance } from 'axios';
 
-async function getApiClient() {
+let cachedApi: AxiosInstance | null = null;
+
+async function getApiClient(): Promise<AxiosInstance> {
   if (!cachedApi) {
     const { api } = await import('./api');
     cachedApi = api;

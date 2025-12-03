@@ -90,12 +90,12 @@ class ToolViewSet(viewsets.ReadOnlyModelViewSet):
 
         companies = (
             Company.objects.filter(is_active=True)
-            .annotate(tool_count=Count('tools', filter=Q(tools__is_active=True)))
-            .filter(tool_count__gt=0)
+            .annotate(active_tool_count=Count('tools', filter=Q(tools__is_active=True)))
+            .filter(active_tool_count__gt=0)
             .order_by('name')
         )
 
-        result = [{'id': c.id, 'name': c.name, 'slug': c.slug, 'count': c.tool_count} for c in companies]
+        result = [{'id': c.id, 'name': c.name, 'slug': c.slug, 'count': c.active_tool_count} for c in companies]
         return Response(result)
 
     @action(detail=True, methods=['get'])

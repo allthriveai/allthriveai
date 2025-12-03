@@ -101,7 +101,6 @@ class Command(BaseCommand):
                 'description': 'This project is used for end-to-end testing with Playwright',
                 'type': Project.ProjectType.OTHER,
                 'is_showcase': True,
-                'is_published': True,
                 'is_private': False,
                 'thumbnail_url': 'https://images.unsplash.com/photo-1557683316-973673baf926?w=1600&h=400&fit=crop',
                 'featured_image_url': 'https://images.unsplash.com/photo-1557683316-973673baf926?w=800&h=600&fit=crop',

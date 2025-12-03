@@ -108,12 +108,10 @@ const mockProject: Project = {
   slug: 'test-project',
   description: 'Test description',
   type: 'other',
-  isShowcase: true,
+  isShowcased: true,
   isHighlighted: false,
   isPrivate: false,
   isArchived: false,
-  isPublished: true,
-  publishedAt: '2025-01-01T00:00:00Z',
   bannerUrl: 'https://example.com/thumbnail.jpg',
   featuredImageUrl: null,
   externalUrl: null,
@@ -542,11 +540,11 @@ describe('ProfilePage - Project Selection State Management', () => {
 
   it('should exit selection mode when switching tabs', async () => {
     const projects: Project[] = [
-      { ...mockProject, id: 1, isShowcase: true },
+      { ...mockProject, id: 1, isShowcased: true },
     ];
 
     const playgroundProjects: Project[] = [
-      { ...mockProject, id: 2, isShowcase: false },
+      { ...mockProject, id: 2, isShowcased: false },
     ];
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
@@ -586,11 +584,11 @@ describe('ProfilePage - Project Selection State Management', () => {
 
   it('should maintain separate selection state between showcase and playground tabs', async () => {
     const showcaseProjects: Project[] = [
-      { ...mockProject, id: 1, isShowcase: true },
+      { ...mockProject, id: 1, isShowcased: true },
     ];
 
     const playgroundProjects: Project[] = [
-      { ...mockProject, id: 2, isShowcase: false },
+      { ...mockProject, id: 2, isShowcased: false },
     ];
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({

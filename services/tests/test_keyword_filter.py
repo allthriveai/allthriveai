@@ -2,7 +2,7 @@
 Tests for the keyword-based content filter.
 """
 
-from services.moderation.keyword_filter import KeywordFilter
+from services.agents.moderation.keyword_filter import KeywordFilter
 
 
 class TestKeywordFilter:

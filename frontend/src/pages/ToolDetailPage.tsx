@@ -7,7 +7,9 @@ export default function ToolDetailPage() {
   const navigate = useNavigate();
 
   const handleClose = useCallback(() => {
-    navigate(-1);
+    // Navigate to /tools directly instead of going back in history
+    // This prevents stacking issues when navigating between tools
+    navigate('/tools', { replace: true });
   }, [navigate]);
 
   if (!slug) return null;

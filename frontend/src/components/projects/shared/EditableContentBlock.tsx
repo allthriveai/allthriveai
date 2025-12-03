@@ -12,6 +12,7 @@ import { updateProject } from '@/services/projects';
 import { MermaidDiagram } from './MermaidDiagram';
 import { InlineEditableText } from './InlineEditable';
 import { EditableColumnsBlock } from './EditableColumnsBlock';
+import { IconCard } from './IconCard';
 import type { Project, ProjectBlock, ColumnBlock } from '@/types/models';
 
 // Configure marked options
@@ -19,6 +20,43 @@ marked.setOptions({
   breaks: true,
   gfm: true,
 });
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const CAPTION_CLASSES = 'mt-2 text-sm text-center text-gray-600 dark:text-gray-400';
+
+/**
+ * Reusable Caption component - handles both editable and display modes
+ */
+function Caption({
+  value,
+  isEditable,
+  onChange,
+  placeholder = 'Add a caption...',
+}: {
+  value: string;
+  isEditable: boolean;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+}) {
+  if (isEditable && onChange) {
+    return (
+      <InlineEditableText
+        value={value}
+        isEditable={true}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={CAPTION_CLASSES}
+      />
+    );
+  }
+
+  if (!value) return null;
+
+  return <figcaption className={CAPTION_CLASSES}>{value}</figcaption>;
+}
 
 // ============================================================================
 // Types
@@ -186,20 +224,13 @@ export function EditableContentBlock({
           alt={imageBlock.caption || ''}
           className="max-w-full lg:max-w-3xl h-auto rounded-xl shadow-lg"
         />
-        {(imageBlock.caption || isOwner) &&
-          (isOwner ? (
-            <InlineEditableText
-              value={imageBlock.caption || ''}
-              isEditable={isOwner}
-              onChange={(newValue) => handleBlockChange('caption', newValue)}
-              placeholder="Add a caption..."
-              className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400"
-            />
-          ) : (
-            <figcaption className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
-              {imageBlock.caption}
-            </figcaption>
-          ))}
+        {(imageBlock.caption || isOwner) && (
+          <Caption
+            value={imageBlock.caption || ''}
+            isEditable={isOwner}
+            onChange={(newValue) => handleBlockChange('caption', newValue)}
+          />
+        )}
       </figure>
     );
   }
@@ -230,20 +261,13 @@ export function EditableContentBlock({
             </div>
           )}
         </div>
-        {(mermaidBlock.caption || isOwner) &&
-          (isOwner ? (
-            <InlineEditableText
-              value={mermaidBlock.caption || ''}
-              isEditable={isOwner}
-              onChange={(newValue) => handleBlockChange('caption', newValue)}
-              placeholder="Add a caption..."
-              className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400"
-            />
-          ) : mermaidBlock.caption ? (
-            <p className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
-              {mermaidBlock.caption}
-            </p>
-          ) : null)}
+        {(mermaidBlock.caption || isOwner) && (
+          <Caption
+            value={mermaidBlock.caption || ''}
+            isEditable={isOwner}
+            onChange={(newValue) => handleBlockChange('caption', newValue)}
+          />
+        )}
       </div>
     );
   }
@@ -263,21 +287,35 @@ export function EditableContentBlock({
           playsInline
           className="w-full rounded-xl"
         />
-        {(videoBlock.caption || isOwner) &&
-          (isOwner ? (
-            <InlineEditableText
-              value={videoBlock.caption || ''}
-              isEditable={isOwner}
-              onChange={(newValue) => handleBlockChange('caption', newValue)}
-              placeholder="Add a caption..."
-              className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400"
-            />
-          ) : (
-            <figcaption className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
-              {videoBlock.caption}
-            </figcaption>
-          ))}
+        {(videoBlock.caption || isOwner) && (
+          <Caption
+            value={videoBlock.caption || ''}
+            isEditable={isOwner}
+            onChange={(newValue) => handleBlockChange('caption', newValue)}
+          />
+        )}
       </figure>
+    );
+  }
+
+  // Icon Card block
+  if (block.type === 'icon_card') {
+    const iconCardBlock = block as Extract<ProjectBlock, { type: 'icon_card' }>;
+    return (
+      <IconCard
+        data={{
+          icon: iconCardBlock.icon,
+          title: iconCardBlock.text,
+          description: '',
+        }}
+        isEditing={isOwner}
+        variant="compact"
+        onChange={(data) => {
+          // Update both icon and text
+          handleBlockChange('icon', data.icon);
+          handleBlockChange('text', data.title);
+        }}
+      />
     );
   }
 

@@ -238,8 +238,8 @@ def import_github_repo_task(self, user_id: int, url: str, is_showcase: bool = Tr
             description=analysis.get('description', repo_summary.get('description', '')),
             type=Project.ProjectType.GITHUB_REPO,
             external_url=url,
-            is_showcase=is_showcase,
-            is_published=not is_private,
+            is_showcased=is_showcase,
+            is_private=is_private,
             banner_url='',  # Use gradient background
             featured_image_url=hero_image if hero_image else '',
             content={
@@ -265,6 +265,11 @@ def import_github_repo_task(self, user_id: int, url: str, is_showcase: bool = Tr
 
         # Apply AI metadata (categories, topics, tools)
         apply_ai_metadata(project, analysis)
+
+        # Track GitHub import for quest progress
+        from core.thrive_circle.signals import track_github_imported
+
+        track_github_imported(user, url)
 
         logger.info(f'Successfully imported {owner}/{repo} as project {project.id} (task {self.request.id})')
 

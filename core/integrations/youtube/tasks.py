@@ -40,7 +40,7 @@ def import_youtube_video_task(
     self,
     user_id: int,
     video_id: str,
-    is_showcase: bool = True,
+    is_showcased: bool = True,
     is_private: bool = False,
     content_source_id: int = None,
     skip_ai_analysis: bool = False,
@@ -51,7 +51,7 @@ def import_youtube_video_task(
     Args:
         user_id: User ID
         video_id: YouTube video ID
-        is_showcase: Display in showcase (default: True)
+        is_showcased: Display in showcase (default: True)
         is_private: Make project private (default: False)
         content_source_id: ContentSource ID if auto-synced
         skip_ai_analysis: Skip expensive AI analysis (default: False for auto-sync)
@@ -95,10 +95,8 @@ def import_youtube_video_task(
                 'type': Project.ProjectType.VIDEO,
                 'slug': generate_video_slug(video_data['title'], video_id),
                 'featured_image_url': video_data['thumbnail_url'],
-                'is_showcase': is_showcase,
+                'is_showcased': is_showcased,
                 'is_private': is_private,
-                'is_published': not is_private,
-                'published_at': timezone.now() if not is_private else None,
                 'content_source_id': content_source_id,
                 'content': {
                     'video': {

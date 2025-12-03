@@ -179,7 +179,7 @@ def import_from_url(request):
                 platform=integration.name,
                 user_id=request.user.id,
                 url=url,
-                is_showcase=request.data.get('is_showcase', True),
+                is_showcased=request.data.get('is_showcase', True),
                 is_private=request.data.get('is_private', False),
             )
 

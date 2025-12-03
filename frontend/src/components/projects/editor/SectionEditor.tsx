@@ -31,7 +31,7 @@ import {
   LinkIcon,
   PlusCircleIcon,
 } from '@heroicons/react/24/outline';
-import { useSectionEditorContext } from '@/contexts/SectionEditorContext';
+import { useSectionEditorContext } from '@/context/SectionEditorContext';
 import type {
   ProjectSection,
   SectionType,

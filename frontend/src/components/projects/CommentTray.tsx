@@ -6,6 +6,7 @@ import type { Project } from '@/types/models';
 import { getProjectComments, createProjectComment, voteOnComment, deleteComment, type Comment } from '@/services/comments';
 import { parseApiError } from '@/utils/errorHandler';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuestCompletion } from '@/contexts/QuestCompletionContext';
 
 interface CommentTrayProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface CommentTrayProps {
 
 export function CommentTray({ isOpen, onClose, project, isAuthenticated }: CommentTrayProps) {
   const { user } = useAuth();
+  const { showCelebration } = useQuestCompletion();
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -67,12 +69,12 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
 
     setIsSubmittingComment(true);
     try {
-      const newComment = await createProjectComment(project.id, {
+      const response = await createProjectComment(project.id, {
         content: commentText,
       });
 
-      // Add new comment to list
-      setComments([newComment, ...comments]);
+      // Add new comment to list (response includes the comment data)
+      setComments([response, ...comments]);
       setCommentsLoaded(true);
 
       // Clear form
@@ -84,6 +86,11 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
 
       // Trigger star emoji celebration
       rewardComment();
+
+      // Check if any quests were completed
+      if (response.completedQuests && response.completedQuests.length > 0) {
+        showCelebration(response.completedQuests);
+      }
     } catch (error) {
       const errorInfo = parseApiError(error);
       alert(errorInfo.message);

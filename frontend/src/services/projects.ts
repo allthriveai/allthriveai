@@ -1,13 +1,43 @@
 import { api } from './api';
-import type { Project, ProjectPayload, PaginatedResponse } from '@/types/models';
+import type { Project, ProjectPayload, PaginatedResponse, ProjectContent, ProjectType, Tool, Taxonomy } from '@/types/models';
 import type { ApiResponse } from '@/types/api';
+import type { CompletedQuestInfo } from '@/contexts/QuestCompletionContext';
+
+// Backend project response (before camelCase transform is applied)
+interface ProjectApiResponse {
+  id: number;
+  username: string;
+  userAvatarUrl?: string;
+  title: string;
+  slug: string;
+  description?: string;
+  type: ProjectType;
+  isShowcased: boolean;
+  isHighlighted?: boolean;
+  isPrivate?: boolean;
+  isArchived: boolean;
+  bannerUrl?: string;
+  featuredImageUrl?: string;
+  externalUrl?: string;
+  tools?: number[];
+  toolsDetails?: Tool[];
+  categories?: number[];
+  categoriesDetails?: Taxonomy[];
+  topics?: string[];
+  tagsManuallyEdited?: boolean;
+  heartCount?: number;
+  isLikedByUser?: boolean;
+  content?: ProjectContent;
+  createdAt: string;
+  updatedAt: string;
+}
 
 /**
  * Transform backend data to frontend Project type
  * Note: API interceptor already converts snake_case to camelCase,
  * so we just need to normalize the data structure
  */
-function transformProject(data: any): Project {
+function transformProject(data: ProjectApiResponse): Project {
   return {
     id: data.id,
     username: data.username,
@@ -15,12 +45,10 @@ function transformProject(data: any): Project {
     slug: data.slug,
     description: data.description || '',
     type: data.type,
-    isShowcase: data.isShowcase,
+    isShowcased: data.isShowcased,
     isHighlighted: data.isHighlighted ?? false,
     isPrivate: data.isPrivate ?? false,
     isArchived: data.isArchived,
-    isPublished: data.isPublished ?? false,
-    publishedAt: data.publishedAt,
     bannerUrl: data.bannerUrl,
     featuredImageUrl: data.featuredImageUrl || '',
     externalUrl: data.externalUrl || '',
@@ -29,6 +57,7 @@ function transformProject(data: any): Project {
     categories: data.categoriesDetails || data.categories || [],  // Use categoriesDetails (full objects) first
     categoriesDetails: data.categoriesDetails || [],
     topics: data.topics || [],
+    tagsManuallyEdited: data.tagsManuallyEdited || false,
     heartCount: data.heartCount || 0,
     isLikedByUser: data.isLikedByUser || false,
     content: data.content || {},
@@ -42,7 +71,7 @@ function transformProject(data: any): Project {
  * Note: API interceptor automatically converts camelCase to snake_case,
  * so we can just return the payload as-is
  */
-function transformPayload(payload: ProjectPayload): any {
+function transformPayload(payload: ProjectPayload): ProjectPayload {
   return payload;
 }
 
@@ -50,7 +79,7 @@ function transformPayload(payload: ProjectPayload): any {
  * Get all projects for the current user
  */
 export async function listProjects(): Promise<Project[]> {
-  const response = await api.get<PaginatedResponse<any>>('/me/projects/');
+  const response = await api.get<PaginatedResponse<ProjectApiResponse>>('/me/projects/');
   return response.data.results.map(transformProject);
 }
 
@@ -58,7 +87,7 @@ export async function listProjects(): Promise<Project[]> {
  * Get a single project by ID
  */
 export async function getProject(id: number): Promise<Project> {
-  const response = await api.get<any>(`/me/projects/${id}/`);
+  const response = await api.get<ProjectApiResponse>(`/me/projects/${id}/`);
   return transformProject(response.data);
 }
 
@@ -67,7 +96,7 @@ export async function getProject(id: number): Promise<Project> {
  * Uses the direct project detail endpoint
  */
 export async function getProjectBySlug(username: string, slug: string): Promise<Project> {
-  const response = await api.get<any>(`/users/${username}/projects/${slug}/`);
+  const response = await api.get<ProjectApiResponse>(`/users/${username}/projects/${slug}/`);
   return transformProject(response.data);
 }
 
@@ -76,7 +105,7 @@ export async function getProjectBySlug(username: string, slug: string): Promise<
  */
 export async function createProject(payload: ProjectPayload): Promise<Project> {
   const backendPayload = transformPayload(payload);
-  const response = await api.post<any>('/me/projects/', backendPayload);
+  const response = await api.post<ProjectApiResponse>('/me/projects/', backendPayload);
   return transformProject(response.data);
 }
 
@@ -85,7 +114,7 @@ export async function createProject(payload: ProjectPayload): Promise<Project> {
  */
 export async function updateProject(id: number, payload: Partial<ProjectPayload>): Promise<Project> {
   const backendPayload = transformPayload(payload as ProjectPayload);
-  const response = await api.patch<any>(`/me/projects/${id}/`, backendPayload);
+  const response = await api.patch<ProjectApiResponse>(`/me/projects/${id}/`, backendPayload);
   return transformProject(response.data);
 }
 
@@ -125,8 +154,8 @@ export async function getUserProjects(username: string): Promise<{
   // Use the public endpoint that returns showcase for everyone,
   // and all projects for authenticated users viewing their own profile
   const response = await api.get<{
-    showcase: any[];
-    playground: any[];
+    showcase: ProjectApiResponse[];
+    playground: ProjectApiResponse[];
   }>(`/users/${username}/projects/`);
 
   return {
@@ -137,13 +166,31 @@ export async function getUserProjects(username: string): Promise<{
 
 /**
  * Toggle like/heart on a project
+ * Returns the like status, heart count, and any completed quests triggered by this action
  */
-export async function toggleProjectLike(projectId: number): Promise<{ liked: boolean; heartCount: number }> {
-  const response = await api.post<{ liked: boolean; heart_count: number }>(`/me/projects/${projectId}/toggle-like/`);
+export async function toggleProjectLike(projectId: number): Promise<{
+  liked: boolean;
+  heartCount: number;
+  completedQuests?: CompletedQuestInfo[];
+}> {
+  const response = await api.post<{
+    liked: boolean;
+    heart_count: number;
+    completedQuests?: CompletedQuestInfo[];
+  }>(`/me/projects/${projectId}/toggle-like/`);
   return {
     liked: response.data.liked,
     heartCount: response.data.heart_count,
+    completedQuests: response.data.completedQuests,
   };
+}
+
+/**
+ * Get projects liked/hearted by a user
+ */
+export async function getLikedProjects(username: string): Promise<Project[]> {
+  const response = await api.get<{ results: ProjectApiResponse[] }>(`/users/${username}/liked-projects/`);
+  return response.data.results.map(transformProject);
 }
 
 /**
@@ -151,4 +198,77 @@ export async function toggleProjectLike(projectId: number): Promise<{ liked: boo
  */
 export async function deleteProjectRedirect(projectId: number, redirectId: number): Promise<void> {
   await api.delete(`/me/projects/${projectId}/redirects/${redirectId}/`);
+}
+
+/**
+ * Update project tags (admin only)
+ * Sets tags_manually_edited flag to prevent auto-tagging during resync
+ */
+export async function updateProjectTags(
+  projectId: number,
+  tags: {
+    tools?: number[];
+    categories?: number[];
+    topics?: string[];
+  }
+): Promise<Project> {
+  const response = await api.patch<ProjectApiResponse>(`/me/projects/${projectId}/update-tags/`, tags);
+  return transformProject(response.data);
+}
+
+/**
+ * Get all available tools
+ */
+export async function getTools(): Promise<Tool[]> {
+  const response = await api.get<{ results: Tool[] }>("/tools/");
+  return response.data.results;
+}
+
+/**
+ * Get all taxonomies (categories, tags, etc.)
+ */
+export async function getTaxonomies(type?: 'category' | 'tag'): Promise<Taxonomy[]> {
+  const params = type ? `?taxonomy_type=${type}` : '';
+  const response = await api.get<{ results: Taxonomy[] }>(`/taxonomy/${params}`);
+  return response.data.results;
+}
+
+/**
+ * Set a project's featured image from a URL
+ * Used by Nano Banana to set generated images as project featured images
+ */
+export async function setProjectFeaturedImage(projectId: number, imageUrl: string): Promise<Project> {
+  const response = await api.patch<ProjectApiResponse>(`/me/projects/${projectId}/`, {
+    featured_image_url: imageUrl,
+  });
+  return transformProject(response.data);
+}
+
+/**
+ * Response from creating a project from an image generation session
+ */
+export interface CreateProjectFromImageResult {
+  success: boolean;
+  project: {
+    id: number;
+    slug: string;
+    title: string;
+    url: string;
+  };
+}
+
+/**
+ * Create a project from a Nano Banana image generation session
+ * This creates a project with the final generated image as featured image
+ * and includes an AI-generated creative journey summary
+ */
+export async function createProjectFromImageSession(
+  sessionId: number,
+  customTitle?: string
+): Promise<CreateProjectFromImageResult> {
+  const response = await api.post<CreateProjectFromImageResult>('/agents/create-project-from-image/', {
+    session_id: sessionId,
+    title: customTitle,
+  });
+  return response.data;
 }

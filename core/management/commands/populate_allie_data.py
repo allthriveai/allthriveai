@@ -59,7 +59,7 @@ class Command(BaseCommand):
                 ),
                 'type': Project.ProjectType.GITHUB_REPO,
                 'is_showcase': True,
-                'is_published': True,
+                'is_private': False,
                 'thumbnail_url': 'https://avatars.githubusercontent.com/u/example1',
                 'content': {
                     'blocks': [
@@ -78,7 +78,7 @@ class Command(BaseCommand):
                 ),
                 'type': Project.ProjectType.GITHUB_REPO,
                 'is_showcase': True,
-                'is_published': True,
+                'is_private': False,
                 'thumbnail_url': 'https://avatars.githubusercontent.com/u/example2',
                 'content': {
                     'blocks': [
@@ -93,7 +93,7 @@ class Command(BaseCommand):
                 'description': 'A collection of UI/UX designs and creative work.',
                 'type': Project.ProjectType.IMAGE_COLLECTION,
                 'is_showcase': True,
-                'is_published': True,
+                'is_private': False,
                 'thumbnail_url': 'https://avatars.githubusercontent.com/u/example3',
                 'content': {
                     'blocks': [
@@ -108,7 +108,7 @@ class Command(BaseCommand):
                 'description': 'Building a machine learning data pipeline for real-time predictions.',
                 'type': Project.ProjectType.OTHER,
                 'is_showcase': False,
-                'is_published': False,
+                'is_private': True,
                 'content': {'blocks': []},
             },
         ]
@@ -198,7 +198,7 @@ class Command(BaseCommand):
         self.stdout.write('\nCreating quizzes...')
 
         # Check if there are any published quizzes
-        existing_quizzes = Quiz.objects.filter(is_published=True)
+        existing_quizzes = Quiz.objects.filter(is_private=False)
         if existing_quizzes.exists():
             self.stdout.write(f'Found {existing_quizzes.count()} published quizzes')
 

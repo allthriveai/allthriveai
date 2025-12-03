@@ -1,11 +1,18 @@
 /**
  * HeroVideo - Video display mode for project hero
  *
- * Supports embedded videos (YouTube, Vimeo, Loom) and direct video files.
+ * Supports embedded videos (YouTube, Vimeo, Loom, Reddit) and direct video files.
  */
+
+// Shared styling constants
+const VIDEO_GLOW_BACKDROP = 'absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl';
+const VIDEO_CONTAINER_OUTER = 'relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl overflow-hidden';
+const VIDEO_CONTAINER_INNER = 'relative aspect-video rounded-xl md:rounded-2xl overflow-hidden bg-black';
 
 interface HeroVideoProps {
   videoUrl: string;
+  /** Optional Reddit permalink for proper video+audio playback */
+  redditPermalink?: string;
 }
 
 /**
@@ -36,33 +43,70 @@ function parseVideoUrl(url: string): { platform: 'youtube' | 'vimeo' | 'loom'; i
 }
 
 /**
- * Check if URL is a direct video file
+ * Check if URL is a Reddit video (v.redd.it)
+ */
+function isRedditVideo(url: string): boolean {
+  return url.includes('v.redd.it') || (url.includes('reddit.com') && url.includes('.mp4'));
+}
+
+/**
+ * Check if URL is a direct video file (excluding Reddit videos)
  */
 function isDirectVideo(url: string): boolean {
   return (
-    url.endsWith('.mp4') ||
+    (url.endsWith('.mp4') ||
     url.endsWith('.webm') ||
     url.endsWith('.ogg') ||
-    url.includes('/projects/videos/')
+    url.includes('/projects/videos/')) &&
+    !isRedditVideo(url) // Exclude Reddit videos from direct video handling
   );
 }
 
-export function HeroVideo({ videoUrl }: HeroVideoProps) {
+export function HeroVideo({ videoUrl, redditPermalink }: HeroVideoProps) {
   if (!videoUrl) return null;
+
+  // Debug logging
+  console.log('HeroVideo:', { videoUrl, redditPermalink, isReddit: isRedditVideo(videoUrl) });
+
+  // Handle Reddit videos with iframe embed for proper audio support
+  if (isRedditVideo(videoUrl) && redditPermalink) {
+    // Convert Reddit permalink to embed URL
+    const embedUrl = redditPermalink.replace('reddit.com', 'reddit.com/mediaembed');
+
+    return (
+      <div className="w-full">
+        <div className="relative group">
+          <div className={VIDEO_GLOW_BACKDROP} />
+          <div className={VIDEO_CONTAINER_OUTER}>
+            <div className={VIDEO_CONTAINER_INNER}>
+              <iframe
+                src={embedUrl}
+                title="Reddit video"
+                className="absolute inset-0 w-full h-full"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                sandbox="allow-scripts allow-same-origin allow-presentation"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Handle direct video files
   if (isDirectVideo(videoUrl)) {
     return (
       <div className="w-full flex justify-center">
         <div className="relative group inline-block">
-          {/* Glowing backdrop */}
-          <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
-
-          {/* Video container */}
+          <div className={VIDEO_GLOW_BACKDROP} />
           <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl">
             <video
               src={videoUrl}
               controls
+              autoPlay
+              loop
+              playsInline
               className="rounded-xl md:rounded-2xl max-h-[80vh] max-w-full"
               onError={() => {
                 console.error('Video load error');
@@ -90,12 +134,9 @@ export function HeroVideo({ videoUrl }: HeroVideoProps) {
   return (
     <div className="w-full">
       <div className="relative group">
-        {/* Glowing backdrop */}
-        <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
-
-        {/* Video container */}
-        <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl overflow-hidden">
-          <div className="relative aspect-video rounded-xl md:rounded-2xl overflow-hidden bg-black">
+        <div className={VIDEO_GLOW_BACKDROP} />
+        <div className={VIDEO_CONTAINER_OUTER}>
+          <div className={VIDEO_CONTAINER_INNER}>
             <iframe
               src={embedUrl}
               title="Project video"

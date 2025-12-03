@@ -62,12 +62,12 @@ class AvatarURLValidationTestCase(TestCase):
         self.user.avatar_url = None
         self.user.clean()  # Should not raise
 
-    def test_bot_user_bypass_validation(self):
-        """Test that bot users can use any avatar URL."""
+    def test_agent_user_bypass_validation(self):
+        """Test that agent users can use any avatar URL."""
         from core.users.models import UserRole
 
-        bot_user = User.objects.create_user(
-            username='botuser', email='bot@example.com', password='testpass123', role=UserRole.BOT
+        agent_user = User.objects.create_user(
+            username='agentuser', email='agent@example.com', password='testpass123', role=UserRole.AGENT
         )
-        bot_user.avatar_url = 'https://any-domain.com/avatar.jpg'
-        bot_user.clean()  # Should not raise - bots bypass validation
+        agent_user.avatar_url = 'https://any-domain.com/avatar.jpg'
+        agent_user.clean()  # Should not raise - agents bypass validation

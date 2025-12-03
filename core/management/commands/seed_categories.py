@@ -19,26 +19,42 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Error cleaning up old categories: {e}'))
 
+        # Jewel color palette for categories:
+        # sapphire (blue), tanzanite (violet), amethyst (purple), rose-quartz (pink),
+        # emerald (green), morganite (rose), jade (teal), ruby (red), topaz (amber), peridot (lime)
         categories_data = [
+            # Core 10 categories with primary jewel colors
+            {
+                'name': 'AI Agents & Multi-Tool Systems',
+                'slug': 'ai-agents-multitool',
+                'description': 'AI agents that reason, call tools, and coordinate multi-step work.',
+                'color': 'amethyst',
+            },
+            {
+                'name': 'AI Models & Research',
+                'slug': 'ai-models-research',
+                'description': 'Custom models, fine-tuning, research, and ML experiments.',
+                'color': 'tanzanite',
+            },
+            {
+                'name': 'Audio & Multimodal',
+                'slug': 'audio-multimodal',
+                'description': 'Audio, music, speech synthesis, and complex multimodal experiences.',
+                'color': 'sapphire',
+            },
             {
                 'name': 'Chatbots & Conversation',
                 'slug': 'chatbots-conversation',
                 'description': (
                     'Chat and text-based experiences: Q&A bots, conversational guides, coaching/mentor bots.'
                 ),
-                'color': 'blue',
+                'color': 'rose-quartz',
             },
             {
-                'name': 'Websites & Apps',
-                'slug': 'websites-apps',
-                'description': 'Sites and apps where AI helps power the experience: landing pages, tools, dashboards.',
-                'color': 'cyan',
-            },
-            {
-                'name': 'Images & Video',
-                'slug': 'images-video',
-                'description': 'Visual content: AI-generated images, videos, illustrations, and animations.',
-                'color': 'sky',
+                'name': 'Data & Analytics',
+                'slug': 'data-analytics',
+                'description': 'Data visualization, analytics dashboards, and insights projects.',
+                'color': 'emerald',
             },
             {
                 'name': 'Design (Mockups & UI)',
@@ -46,31 +62,44 @@ class Command(BaseCommand):
                 'description': (
                     'UI/UX design work: mockups, prototypes, brand systems, and interface concepts (e.g. Figma).'
                 ),
-                'color': 'turquoise',
+                'color': 'morganite',
             },
             {
-                'name': 'Audio & Multimodal',
-                'slug': 'audio-multimodal',
-                'description': 'Audio, music, speech synthesis, and complex multimodal experiences.',
-                'color': 'aqua',
-            },
-            {
-                'name': 'Podcasts & Education',
-                'slug': 'podcasts-education',
-                'description': 'AI-related podcasts, interviews, lecture series, tutorials, and learning journeys.',
-                'color': 'teal',
+                'name': 'Developer & Coding',
+                'slug': 'developer-coding',
+                'description': 'Code-centric work: dev tools, libraries, CLIs, coding helpers, infra projects.',
+                'color': 'jade',
             },
             {
                 'name': 'Games & Interactive',
                 'slug': 'games-interactive',
                 'description': 'Playable and interactive projects: story games, simulations, quizzes, challenges.',
-                'color': 'mint',
+                'color': 'ruby',
+            },
+            {
+                'name': 'Images & Video',
+                'slug': 'images-video',
+                'description': 'Visual content: AI-generated images, videos, illustrations, and animations.',
+                'color': 'topaz',
+            },
+            {
+                'name': 'Podcasts & Education',
+                'slug': 'podcasts-education',
+                'description': 'AI-related podcasts, interviews, lecture series, tutorials, and learning journeys.',
+                'color': 'peridot',
+            },
+            # Additional categories (using jewel colors that complement their purpose)
+            {
+                'name': 'Websites & Apps',
+                'slug': 'websites-apps',
+                'description': 'Sites and apps where AI helps power the experience: landing pages, tools, dashboards.',
+                'color': 'sapphire',
             },
             {
                 'name': 'Workflows & Automation',
                 'slug': 'workflows-automation',
                 'description': 'Multi-step flows: n8n/Zapier-style pipelines and automations with AI.',
-                'color': 'indigo',
+                'color': 'jade',
             },
             {
                 'name': 'Productivity',
@@ -79,46 +108,22 @@ class Command(BaseCommand):
                 'color': 'emerald',
             },
             {
-                'name': 'Developer & Coding',
-                'slug': 'developer-coding',
-                'description': 'Code-centric work: dev tools, libraries, CLIs, coding helpers, infra projects.',
-                'color': 'slate',
-            },
-            {
                 'name': 'Prompt Collections & Templates',
                 'slug': 'prompts-templates',
                 'description': 'Reusable prompts and frameworks: prompt packs, templates, scripts, prompt systems.',
-                'color': 'ocean',
+                'color': 'tanzanite',
             },
             {
                 'name': 'Thought Experiments',
                 'slug': 'thought-experiments',
                 'description': 'Creative outlets, ideas, and AI exploration.',
-                'color': 'green',
+                'color': 'amethyst',
             },
             {
                 'name': 'Wellness & Personal Growth',
                 'slug': 'wellness-growth',
                 'description': 'Inner growth and projects for wellbeing.',
-                'color': 'lime',
-            },
-            {
-                'name': 'AI Agents & Multi-Tool Systems',
-                'slug': 'ai-agents-multitool',
-                'description': 'AI agents that reason, call tools, and coordinate multi-step work.',
-                'color': 'turquoise',
-            },
-            {
-                'name': 'AI Models & Research',
-                'slug': 'ai-models-research',
-                'description': 'Custom models, fine-tuning, research, and ML experiments.',
-                'color': 'cyan',
-            },
-            {
-                'name': 'Data & Analytics',
-                'slug': 'data-analytics',
-                'description': 'Data visualization, analytics dashboards, and insights projects.',
-                'color': 'sky',
+                'color': 'rose-quartz',
             },
         ]
 

@@ -46,6 +46,7 @@ services:
 
   web:
     build: .
+    image: allthriveai-backend:latest
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -59,12 +60,17 @@ services:
       - CACHE_URL=redis://redis:6379/2
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - MINIO_USE_SSL=false
+      - WEAVIATE_URL=http://weaviate:8080
+      - STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
     volumes:
       - .:/app
     depends_on:
@@ -74,10 +80,13 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      weaviate:
+        condition: service_healthy
     command: sh /app/scripts/startup.sh
 
   celery:
     build: .
+    image: allthriveai-backend:latest
     restart: unless-stopped
     environment:
       - DEBUG=True
@@ -86,6 +95,15 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - REDIS_URL=redis://redis:6379/3
       - CACHE_URL=redis://redis:6379/2
+      - WEAVIATE_URL=http://weaviate:8080
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_USE_SSL=false
+      - STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
     volumes:
       - .:/app
     depends_on:
@@ -93,7 +111,50 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      weaviate:
+        condition: service_healthy
     command: celery -A config worker --pool=solo --loglevel=info
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  celery-beat:
+    build: .
+    image: allthriveai-backend:latest
+    restart: unless-stopped
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-allthrive}:${POSTGRES_PASSWORD:-allthrive}@db:5432/${POSTGRES_DB:-allthrive_ai}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/3
+      - CACHE_URL=redis://redis:6379/2
+      - WEAVIATE_URL=http://weaviate:8080
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_USE_SSL=false
+    volumes:
+      - .:/app
+    depends_on:
+      celery:
+        condition: service_healthy
+    command: celery -A config beat --loglevel=info
+
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    restart: unless-stopped
+    environment:
+      - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_DEVICE_NAME=allthrive_docker
+    command: listen --forward-to http://web:8000/api/v1/billing/webhooks/stripe/ --skip-verify
+    depends_on:
+      - web
+    profiles:
+      - stripe-webhooks
 
   frontend:
     image: node:20-alpine
@@ -148,8 +209,30 @@ services:
       timeout: 5s
       retries: 3
 
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.27.0
+    restart: unless-stopped
+    ports:
+      - "8080:8080"  # REST API
+      - "50051:50051"  # gRPC
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      ENABLE_MODULES: ''
+      CLUSTER_HOSTNAME: 'node1'
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
   minio_data:
   prometheus_data:
   grafana_data:
+  weaviate_data:

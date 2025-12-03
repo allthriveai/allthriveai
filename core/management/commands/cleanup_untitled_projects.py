@@ -23,7 +23,7 @@ class Command(BaseCommand):
         username = options.get('username')
 
         # Find all unpublished projects titled "Untitled Project"
-        query = Project.objects.filter(title='Untitled Project', is_published=False)
+        query = Project.objects.filter(title='Untitled Project', is_private=True)
 
         if username:
             query = query.filter(user__username=username)
@@ -38,7 +38,7 @@ class Command(BaseCommand):
         for proj in projects_to_delete:
             self.stdout.write(
                 f"  • ID {proj.id}: '{proj.title}' by @{proj.user.username} "
-                f'(showcase={proj.is_showcase}, created={proj.created_at.strftime("%Y-%m-%d")})'
+                f'(showcase={proj.is_showcased}, created={proj.created_at.strftime("%Y-%m-%d")})'
             )
 
         if dry_run:

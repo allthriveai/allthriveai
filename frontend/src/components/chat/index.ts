@@ -1,1 +1,2 @@
-export { RightChatPanel } from './RightChatPanel';
+export { IntelligentChatPanel } from './IntelligentChatPanel';
+export { HelpQuestionsPanel } from './HelpQuestionsPanel';

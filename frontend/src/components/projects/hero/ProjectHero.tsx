@@ -35,6 +35,7 @@ export function ProjectHero({
   const heroQuote = project.content?.heroQuote;
   const heroVideoUrl = project.content?.heroVideoUrl;
   const heroSlideshowImages = project.content?.heroSlideshowImages || [];
+  const redditPermalink = project.content?.redditPermalink || project.externalUrl;
 
   // Quote mode
   if (heroMode === 'quote' && heroQuote) {
@@ -43,7 +44,7 @@ export function ProjectHero({
 
   // Video mode
   if (heroMode === 'video' && heroVideoUrl) {
-    return <HeroVideo videoUrl={heroVideoUrl} />;
+    return <HeroVideo videoUrl={heroVideoUrl} redditPermalink={redditPermalink} />;
   }
 
   // Slideshow mode

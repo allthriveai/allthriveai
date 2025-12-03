@@ -57,6 +57,9 @@ INSTALLED_APPS = [
     'core.achievements',
     'core.thrive_circle',
     'core.integrations',  # Content source integrations (YouTube, RSS, etc.)
+    'core.learning_paths',  # Auto-generated learning paths per topic
+    'core.billing',  # Stripe subscriptions and token packages
+    'core.ai_usage',  # AI usage tracking and cost analytics
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -75,6 +78,8 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'core.auth.oauth_middleware.OAuthJWTMiddleware',  # Set JWT cookies after OAuth login
+    'core.billing.middleware.BillingContextMiddleware',  # Add billing context to requests
+    'core.billing.middleware.AIRequestThrottleMiddleware',  # Add AI quota checking
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
@@ -227,7 +232,7 @@ REST_FRAMEWORK = {
         'quiz_start': '10/hour',
         'quiz_answer': '100/minute',
     },
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomPageNumberPagination',
     'PAGE_SIZE': 10,
 }
 
@@ -235,7 +240,22 @@ REST_FRAMEWORK = {
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
+
+# Stripe Payment Configuration
+STRIPE_PUBLIC_KEY = config('STRIPE_PUBLIC_KEY', default='')
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 GEMINI_MODEL_NAME = config('GEMINI_MODEL_NAME', default='gemini-1.5-flash')
+GEMINI_IMAGE_MODEL = config('GEMINI_IMAGE_MODEL', default='gemini-2.0-flash-exp')
+
+# Weaviate Vector Database Configuration
+WEAVIATE_HOST = config('WEAVIATE_HOST', default='localhost')
+WEAVIATE_PORT = config('WEAVIATE_PORT', default=8080, cast=int)
+WEAVIATE_URL = config('WEAVIATE_URL', default=f'http://{WEAVIATE_HOST}:{WEAVIATE_PORT}')
+WEAVIATE_API_KEY = config('WEAVIATE_API_KEY', default='')  # Optional for local dev
+WEAVIATE_EMBEDDING_MODEL = config('WEAVIATE_EMBEDDING_MODEL', default='text-embedding-3-small')
+WEAVIATE_BATCH_SIZE = config('WEAVIATE_BATCH_SIZE', default=100, cast=int)
+WEAVIATE_TIMEOUT = config('WEAVIATE_TIMEOUT', default=30, cast=int)  # seconds
 
 # GitHub API Token (for project agent)
 GITHUB_API_TOKEN = config('GITHUB_API_TOKEN', default='')  # Optional, increases rate limit
@@ -468,6 +488,11 @@ LOGGING = {
             'handlers': ['console', 'file'],
             'level': 'INFO',
         },
+        'core.billing': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',  # More verbose for billing
+            'propagate': False,
+        },
         'services': {
             'handlers': ['console', 'file'],
             'level': 'DEBUG',
@@ -527,9 +552,9 @@ AUTHENTICATION_BACKENDS = [
 ACCOUNT_ADAPTER = 'core.auth.adapter.CustomAccountAdapter'
 SOCIALACCOUNT_ADAPTER = 'core.auth.adapter.CustomSocialAccountAdapter'
 
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = True
+# New django-allauth settings format (v0.50+)
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Optional for OAuth (they verify with provider)
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True

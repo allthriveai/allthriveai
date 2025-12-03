@@ -31,6 +31,7 @@ import { ToolTray } from '@/components/tools/ToolTray';
 import { SlideUpHero } from './SlideUpHero';
 import { useAuth } from '@/hooks/useAuth';
 import { useReward } from 'react-rewards';
+import { getCategoryGradientStyle, getCategoryColors } from '@/utils/categoryColors';
 
 interface ProjectCardProps {
   project: Project;
@@ -42,6 +43,7 @@ interface ProjectCardProps {
   onDelete?: (projectId: number) => void;
   onToggleShowcase?: (projectId: number) => void;
   userAvatarUrl?: string;  // Owner's avatar URL
+  onCommentClick?: (project: Project) => void;  // Optional callback for page-level comment panel
 }
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -55,7 +57,7 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const typeLabels = PROJECT_TYPE_LABELS;
 
-export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl }: ProjectCardProps) {
+export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick }: ProjectCardProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
@@ -147,6 +149,13 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const handleCommentClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // If page-level callback is provided, use it
+    if (onCommentClick) {
+      onCommentClick(project);
+      return;
+    }
+    // Otherwise, use local comment tray
+    setShowToolTray(false);
     setShowCommentTray(true);
   };
 
@@ -156,9 +165,14 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     setShowModal(true);
   };
 
-  const handleToolClick = (e: React.MouseEvent) => {
+  const handleToolClick = (e: React.MouseEvent, toolSlug?: string) => {
     e.preventDefault();
     e.stopPropagation();
+    // Close other trays first
+    setShowCommentTray(false);
+    if (toolSlug) {
+      setSelectedToolSlug(toolSlug);
+    }
     setShowToolTray(true);
   };
 
@@ -166,11 +180,25 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const getHeroElement = () => {
     const heroMode = project.content?.heroDisplayMode;
 
+    // For Reddit threads, check if there's video data in the reddit metadata (fallback)
+    if (project.type === 'reddit_thread' && !heroMode) {
+      const redditData = project.content?.reddit;
+      // Check for video URL in Reddit metadata
+      const videoUrl = redditData?.video_url || redditData?.videoUrl;
+      const isVideo = redditData?.is_video || redditData?.isVideo;
+
+      if (isVideo && videoUrl) {
+        console.log('ProjectCard - Reddit video detected via fallback:', videoUrl);
+        return { type: 'video' as const, url: videoUrl };
+      }
+    }
+
     // If hero mode is specified, use that (regardless of variant)
     if (heroMode === 'image' && project.featuredImageUrl) {
       return { type: 'image' as const, url: project.featuredImageUrl };
     }
     if (heroMode === 'video' && project.content?.heroVideoUrl) {
+      console.log('ProjectCard - Returning video hero:', project.content.heroVideoUrl);
       return { type: 'video' as const, url: project.content.heroVideoUrl };
     }
     if (heroMode === 'slideshow' && project.content?.heroSlideshowImages && project.content.heroSlideshowImages.length > 0) {
@@ -187,7 +215,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       };
     }
 
-    // Fallback: use featuredImageUrl > bannerUrl > Unsplash random image
+    // Fallback: use featuredImageUrl > bannerUrl > gradient (as last resort)
     if (project.featuredImageUrl) {
       return { type: 'image' as const, url: project.featuredImageUrl };
     }
@@ -200,27 +228,33 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     }
 
     // Create a gradient placeholder with project title
-    const gradients = [
-      'from-blue-500 to-purple-600',
-      'from-green-500 to-teal-600',
-      'from-orange-500 to-red-600',
-      'from-pink-500 to-rose-600',
-      'from-indigo-500 to-blue-600',
-      'from-yellow-500 to-orange-600',
-    ];
-    const gradientIndex = project.id ? project.id % gradients.length : 0;
+    // Use category color for meaningful gradients, fallback to deterministic gradient
+    const primaryCategory = project.categoriesDetails?.[0];
+
+    // Get raw colors for animated gradient
+    const { from, to } = getCategoryColors(primaryCategory?.color, project.id);
+
+    // Create large dramatic swooping gradients like the Suncatcher design
+    const gradientStyle: React.CSSProperties = {
+      backgroundImage: `radial-gradient(ellipse 120% 150% at 95% -20%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 40%, transparent 70%), radial-gradient(ellipse 140% 180% at -10% 110%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.15) 35%, transparent 65%), linear-gradient(135deg, ${from} 0%, ${to} 50%, ${from} 100%)`,
+    };
 
     // Return a special type to render gradient instead of image
     return {
       type: 'gradient' as const,
-      gradient: gradients[gradientIndex],
-      title: project.title
+      gradientStyle,
+      title: project.title,
+      categoryName: primaryCategory?.name, // Include category name for potential display
     };
   };
 
-  const CardWrapper = selectionMode ? 'div' : Link;
+  // For RSS articles, link directly to external URL if available
+  const shouldLinkExternal = project.type === 'rss_article' && project.externalUrl;
+  const CardWrapper = selectionMode ? 'div' : (shouldLinkExternal ? 'a' : Link);
   const cardProps = selectionMode
     ? { onClick: handleClick, style: { cursor: 'pointer' } }
+    : shouldLinkExternal
+    ? { href: project.externalUrl, target: '_blank', rel: 'noopener noreferrer' }
     : { to: projectUrl };
 
   // Masonry variant - Flexible height for text, portrait for media
@@ -276,9 +310,10 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       <>
       <CardWrapper
         {...(cardProps as React.ComponentProps<typeof Link>)}
-        className={`block relative rounded overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 group ${
+        className={`block relative overflow-hidden shadow-lg hover:shadow-neon hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 group ${
           isSelected ? 'ring-4 ring-primary-500' : ''
         } ${dynamicHeightClass} ${dynamicWidthClass} ${!imageLoaded && (heroElement.type === 'image' || heroElement.type === 'slideshow') ? 'min-h-[400px]' : ''}`}
+        style={{ borderRadius: 'var(--radius)' }}
       >
 
         {/* Selection checkbox */}
@@ -318,8 +353,9 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
             )}
 
             {isGradient && heroElement.type === 'gradient' && (
-              <div className={`w-full aspect-[4/3] bg-gradient-to-br ${heroElement.gradient} flex items-center justify-center p-8 pb-48 md:pb-8`}>
-                <div className="text-center">
+              <div className="w-full aspect-[4/3] flex items-center justify-center p-8 pb-48 md:pb-8 animate-gradient-flow relative overflow-hidden" style={heroElement.gradientStyle}>
+                <div className="absolute inset-0 bg-noise-subtle opacity-50 mix-blend-overlay pointer-events-none" />
+                <div className="text-center relative z-10">
                   <h3 className="text-3xl font-bold text-white drop-shadow-lg">
                     {heroElement.title}
                   </h3>
@@ -415,6 +451,8 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                   element2={heroElement.element2}
                   tools={project.toolsDetails}
                   onToolClick={(slug) => {
+                    // Close other trays first
+                    setShowCommentTray(false);
                     setSelectedToolSlug(slug);
                     setShowToolTray(true);
                   }}
@@ -469,8 +507,8 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         {/* Always render footer absolute at bottom for seamless overlay look */}
         {/* Show by default on mobile (md:opacity-0), show on hover on desktop (md:group-hover:opacity-100) */}
         <div className="absolute bottom-0 left-0 right-0 z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-          {/* Gradient Background for smooth overlay fade */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent -top-64 md:-top-40" />
+          {/* Gradient Background for smooth overlay fade - taller on gradient cards (desktop only) */}
+          <div className={`absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent -top-64 ${isGradient ? 'md:-top-96' : 'md:-top-40'}`} />
 
           <div className="relative p-5 pt-2">
             <h3 className="text-xl font-bold mb-1 line-clamp-2 leading-tight text-white drop-shadow-md">
@@ -634,13 +672,15 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         showComments={false}
       />
 
-      {/* Comment Tray */}
-      <CommentTray
-        isOpen={showCommentTray}
-        onClose={() => setShowCommentTray(false)}
-        project={project}
-        isAuthenticated={isAuthenticated}
-      />
+      {/* Comment Tray - only render if no page-level callback provided */}
+      {!onCommentClick && (
+        <CommentTray
+          isOpen={showCommentTray}
+          onClose={() => setShowCommentTray(false)}
+          project={project}
+          isAuthenticated={isAuthenticated}
+        />
+      )}
 
       {/* Tool Tray */}
       {project.toolsDetails && project.toolsDetails.length > 0 && (
@@ -657,9 +697,10 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   return (
     <CardWrapper
       {...(cardProps as React.ComponentProps<typeof Link>)}
-      className={`block glass-subtle hover:glass-strong transition-all duration-300 rounded-xl overflow-hidden group relative ${
+      className={`block glass-subtle hover:glass-strong transition-all duration-300 overflow-hidden group relative ${
         isSelected ? 'ring-4 ring-primary-500' : ''
       }`}
+      style={{ borderRadius: 'var(--radius)' }}
     >
       {/* Selection checkbox - positioned absolutely over the card */}
       {selectionMode && (
@@ -722,7 +763,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                     }}
                     className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
-                    {project.isShowcase ? (
+                    {project.isShowcased ? (
                       <>
                         <EyeSlashIcon className="w-4 h-4" />
                         Remove from Showcase

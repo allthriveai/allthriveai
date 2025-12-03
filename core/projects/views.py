@@ -5,11 +5,14 @@ from django.conf import settings
 from django.core.cache import cache
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import Throttled
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.taxonomy.models import UserInteraction
+from core.thrive_circle.models import UserSideQuest
+from core.thrive_circle.signals import track_search_used
 from core.throttles import AuthenticatedProjectsThrottle, ProjectLikeThrottle, PublicProjectsThrottle
 from core.users.models import User
 
@@ -18,6 +21,59 @@ from .models import Project, ProjectLike
 from .serializers import ProjectSerializer
 
 logger = logging.getLogger(__name__)
+
+# URL constants for explore pagination
+EXPLORE_BASE_URL = '/api/v1/projects/explore/'
+
+
+def apply_throttle(request):
+    """Apply throttling based on authentication status.
+
+    Raises Throttled exception if rate limit exceeded.
+    """
+    throttle_class = AuthenticatedProjectsThrottle if request.user.is_authenticated else PublicProjectsThrottle
+    throttle = throttle_class()
+    if not throttle.allow_request(request, None):
+        raise Throttled(wait=throttle.wait())
+
+
+def build_pagination_urls(tab: str, page_num: int, page_size: int, total_count: int) -> tuple[str | None, str | None]:
+    """Build next and previous pagination URLs for explore endpoint.
+
+    Returns:
+        Tuple of (next_url, previous_url)
+    """
+    has_next = page_num * page_size < total_count
+    next_url = f'{EXPLORE_BASE_URL}?tab={tab}&page={page_num + 1}&page_size={page_size}' if has_next else None
+    previous_url = f'{EXPLORE_BASE_URL}?tab={tab}&page={page_num - 1}&page_size={page_size}' if page_num > 1 else None
+    return next_url, previous_url
+
+
+def build_paginated_response(
+    projects, metadata: dict, page_num: int, page_size: int, tab: str, metadata_key: str = 'personalization'
+) -> dict:
+    """Build a standard paginated response for explore endpoint.
+
+    Args:
+        projects: Queryset or list of projects to serialize
+        metadata: Additional metadata to include in response
+        page_num: Current page number
+        page_size: Items per page
+        tab: Tab name for URL building (e.g., 'for-you', 'trending')
+        metadata_key: Key name for metadata in response (default: 'personalization')
+    """
+    serializer = ProjectSerializer(projects, many=True)
+    # Handle different metadata count keys
+    total_count = metadata.get('total_candidates', metadata.get('total_trending', len(projects)))
+    next_url, previous_url = build_pagination_urls(tab, page_num, page_size, total_count)
+
+    return {
+        'count': total_count,
+        'next': next_url,
+        'previous': previous_url,
+        'results': serializer.data,
+        metadata_key: metadata,
+    }
 
 
 class ProjectPagination(PageNumberPagination):
@@ -101,13 +157,34 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 },
             )
 
-        return Response(
-            {
-                'liked': liked,
-                'heart_count': project.heart_count,
-            },
-            status=status.HTTP_200_OK,
-        )
+        response_data = {
+            'liked': liked,
+            'heart_count': project.heart_count,
+        }
+
+        # Check for completed quests only when liking (not unliking)
+        if liked:
+            from django.utils import timezone
+
+            recent_completed_quests = UserSideQuest.objects.filter(
+                user=user,
+                status='completed',
+                completed_at__gte=timezone.now() - timezone.timedelta(seconds=5),
+            ).select_related('side_quest', 'side_quest__category')
+
+            if recent_completed_quests.exists():
+                response_data['completedQuests'] = [
+                    {
+                        'id': str(uq.side_quest.id),
+                        'title': uq.side_quest.title,
+                        'description': uq.side_quest.description,
+                        'pointsAwarded': uq.points_awarded or uq.side_quest.points_reward,
+                        'categoryName': uq.side_quest.category.name if uq.side_quest.category else None,
+                    }
+                    for uq in recent_completed_quests
+                ]
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
     def perform_update(self, serializer):
         """Called when updating a project."""
@@ -119,6 +196,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """Called when deleting a project.
 
         Admins can delete any project, regular users can only delete their own.
+        For Reddit thread projects, records deletion to prevent resync recreation.
         """
         from core.users.models import UserRole
 
@@ -129,9 +207,38 @@ class ProjectViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('You do not have permission to delete this project.')
 
         user = instance.user
+
+        # If this is a Reddit thread project, record the deletion
+        if instance.type == Project.ProjectType.REDDIT_THREAD and hasattr(instance, 'reddit_thread'):
+            self._record_reddit_thread_deletion(instance, self.request.user)
+
         instance.delete()
         # Invalidate cache after delete
         self._invalidate_user_cache(user)
+
+    def _record_reddit_thread_deletion(self, project, deleted_by):
+        """Record a Reddit thread deletion to prevent resync recreation."""
+        try:
+            from core.integrations.reddit_models import DeletedRedditThread
+
+            thread = project.reddit_thread
+
+            # Create a deletion record
+            DeletedRedditThread.objects.create(
+                reddit_post_id=thread.reddit_post_id,
+                agent=thread.agent,
+                subreddit=thread.subreddit,
+                deleted_by=deleted_by,
+                deletion_type=DeletedRedditThread.DeletionType.ADMIN_DELETED,
+                deletion_reason=f'Inappropriate content - deleted by admin {deleted_by.username}',
+            )
+
+            logger.info(
+                f'Recorded deletion of Reddit thread {thread.reddit_post_id} '
+                f'(r/{thread.subreddit}) by {deleted_by.username}'
+            )
+        except Exception as e:
+            logger.error(f'Failed to record Reddit thread deletion: {e}', exc_info=True)
 
     def _invalidate_user_cache(self, user):
         """Invalidate cached project lists for a user."""
@@ -139,6 +246,82 @@ class ProjectViewSet(viewsets.ModelViewSet):
         cache.delete(f'projects:v2:{username_lower}:own')
         cache.delete(f'projects:v2:{username_lower}:public')
         logger.debug(f'Invalidated project cache for user {user.username}')
+
+    @action(detail=True, methods=['patch'], url_path='update-tags')
+    def update_tags(self, request, pk=None):
+        """Update project tags (tools, categories, topics) - Admin only.
+
+        Sets tags_manually_edited=True to prevent auto-tagging during resync.
+
+        Payload:
+        {
+            "tools": [1, 2, 3],  # Tool IDs
+            "categories": [4, 5],  # Category/Taxonomy IDs
+            "topics": ["python", "ai_agents"]  # String array
+        }
+        """
+        from core.taxonomy.models import Taxonomy
+        from core.tools.models import Tool
+        from core.users.models import UserRole
+
+        # Only admins can manually edit tags
+        if request.user.role != UserRole.ADMIN:
+            return Response(
+                {'error': 'Only admins can manually edit project tags'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        project = self.get_object()
+
+        # Update tools
+        if 'tools' in request.data:
+            tool_ids = request.data['tools']
+            if not isinstance(tool_ids, list):
+                return Response(
+                    {'error': {'field': 'tools', 'message': 'Must be a list of tool IDs'}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            tools = Tool.objects.filter(id__in=tool_ids)
+            project.tools.set(tools)
+
+        # Update categories
+        if 'categories' in request.data:
+            category_ids = request.data['categories']
+            if not isinstance(category_ids, list):
+                return Response(
+                    {'error': {'field': 'categories', 'message': 'Must be a list of category IDs'}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            categories = Taxonomy.objects.filter(id__in=category_ids, taxonomy_type='category')
+            project.categories.set(categories)
+
+        # Update topics
+        if 'topics' in request.data:
+            topics = request.data['topics']
+            if not isinstance(topics, list):
+                return Response(
+                    {'error': {'field': 'topics', 'message': 'Must be a list of strings'}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            # Validate and clean topics
+            cleaned_topics = [str(t).strip().lower()[:50] for t in topics if t]
+            project.topics = cleaned_topics[:15]  # Limit to 15 topics
+
+        # Mark as manually edited
+        project.tags_manually_edited = True
+        project.save()
+
+        # Invalidate cache
+        self._invalidate_user_cache(project.user)
+
+        logger.info(
+            f'Admin {request.user.username} manually edited tags for project {project.id} '
+            f'({project.user.username}/{project.slug})'
+        )
+
+        # Return updated project
+        serializer = self.get_serializer(project)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['post'], url_path='bulk-delete')
     def bulk_delete(self, request):
@@ -167,12 +350,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         # Admin can delete any projects, regular users only their own
         if request.user.role == UserRole.ADMIN:
-            queryset = Project.objects.filter(id__in=project_ids)
+            queryset = Project.objects.filter(id__in=project_ids).select_related('reddit_thread')
         else:
-            queryset = Project.objects.filter(id__in=project_ids, user=request.user)
+            queryset = Project.objects.filter(id__in=project_ids, user=request.user).select_related('reddit_thread')
 
         # Get affected users for cache invalidation
         affected_users = set(queryset.values_list('user', flat=True))
+
+        # Record Reddit thread deletions before actual deletion
+        for project in queryset:
+            if project.type == Project.ProjectType.REDDIT_THREAD and hasattr(project, 'reddit_thread'):
+                self._record_reddit_thread_deletion(project, request.user)
 
         deleted_count, _ = queryset.delete()
 
@@ -223,7 +411,7 @@ def get_project_by_slug(request, username, slug):
 
     # Allow access if:
     # 1. User is the owner
-    # 2. Project is not private and not archived (regardless of is_published status)
+    # 2. Project is not private and not archived
     if not is_owner:
         if project.is_private or project.is_archived:
             return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -237,8 +425,8 @@ def get_project_by_slug(request, username, slug):
 def public_user_projects(request, username):
     """Get projects for a user by username.
 
-    For public/other users: Returns only showcase projects (is_showcase=True, not archived)
-    For the user viewing their own profile: Returns showcase + all projects in playground
+    For public/other users: Returns only showcased projects (is_showcased=True, not archived)
+    For the user viewing their own profile: Returns showcased + all projects in playground
 
     This endpoint is accessible to everyone, including logged-out users.
 
@@ -247,13 +435,7 @@ def public_user_projects(request, username):
     - Uses select_related to prevent N+1 queries
     - Consistent response time to prevent user enumeration
     """
-    # Apply throttling based on authentication status
-    throttle_class = AuthenticatedProjectsThrottle if request.user.is_authenticated else PublicProjectsThrottle
-    throttle = throttle_class()
-    if not throttle.allow_request(request, None):
-        from rest_framework.exceptions import Throttled
-
-        raise Throttled(wait=throttle.wait())
+    apply_throttle(request)
 
     start_time = time.time()
 
@@ -285,7 +467,7 @@ def public_user_projects(request, username):
     # The serializer accesses user.username, so we fetch user data upfront
     showcase_projects = (
         Project.objects.select_related('user')
-        .filter(user=user, is_showcase=True, is_archived=False)
+        .filter(user=user, is_showcased=True, is_archived=False)
         .order_by('-created_at')
     )
 
@@ -326,13 +508,7 @@ def user_liked_projects(request, username):
     - Rate limited similarly to other public project endpoints
     - Uses select_related/prefetch_related to avoid N+1 queries
     """
-    # Apply throttling based on authentication status
-    throttle_class = AuthenticatedProjectsThrottle if request.user.is_authenticated else PublicProjectsThrottle
-    throttle = throttle_class()
-    if not throttle.allow_request(request, None):
-        from rest_framework.exceptions import Throttled
-
-        raise Throttled(wait=throttle.wait())
+    apply_throttle(request)
 
     start_time = time.time()
 
@@ -401,7 +577,6 @@ def explore_projects(request):
     sort = request.GET.get('sort', 'newest')
 
     # Build base queryset - all public projects (not private, not archived)
-    # Show all projects regardless of is_published status so playground projects appear in explore
     queryset = (
         Project.objects.filter(is_private=False, is_archived=False)
         .select_related('user')
@@ -470,54 +645,84 @@ def explore_projects(request):
         except (ValueError, IndexError):
             pass  # Invalid topics, ignore
 
-    # Apply sorting or personalization
-    if tab == 'for-you' and request.user.is_authenticated:
-        # Personalized feed based on user's auto-detected preferences
-        from core.taxonomy.models import UserTag
+    # Apply tab-specific filters
+    if tab == 'news':
+        # Filter for RSS article projects only
+        queryset = queryset.filter(type='rss_article').order_by('-created_at')
 
-        # Get user's tool preferences
-        user_tool_tags = UserTag.objects.filter(user=request.user, taxonomy__taxonomy_type='tool').select_related(
-            'taxonomy'
-        )
+    # Apply sorting or personalization based on tab
+    elif tab == 'for-you':
+        # Use new personalization engine for "For You" feed
+        from services.personalization import ColdStartService, PersonalizationEngine
 
-        if user_tool_tags.exists():
-            # Score each project based on tool matches
-            scored_projects = []
-            for project in queryset:
-                score = 0
-                project_tools = set(project.tools.values_list('id', flat=True))
+        page_num = int(request.GET.get('page', 1))
+        page_size = min(int(request.GET.get('page_size', 30)), 100)
 
-                # Calculate match score (40% weight for tools)
-                for tag in user_tool_tags:
-                    if tag.taxonomy and hasattr(tag.taxonomy, 'tool_entity'):
-                        tool = tag.taxonomy.tool_entity
-                        if tool and tool.id in project_tools:
-                            # Weighted by confidence score
-                            score += tag.confidence_score * 0.40
+        if request.user.is_authenticated:
+            cold_start = ColdStartService()
 
-                # Diversity bonus for newer projects (10% weight)
-                from django.utils import timezone
+            if cold_start.has_sufficient_data(request.user):
+                # Use full personalization engine
+                try:
+                    engine = PersonalizationEngine()
+                    result = engine.get_for_you_feed(
+                        user=request.user,
+                        page=page_num,
+                        page_size=page_size,
+                    )
+                    return Response(
+                        build_paginated_response(result['projects'], result['metadata'], page_num, page_size, 'for-you')
+                    )
+                except Exception as e:
+                    logger.error(f'Personalization engine error: {e}', exc_info=True)
+                    # Fall through to cold start
 
-                days_old = (timezone.now() - project.created_at).days
-                if days_old < 7:
-                    score += 0.10
-                elif days_old < 30:
-                    score += 0.05
-
-                # Popularity bonus (small weight to avoid echo chamber)
-                like_count = project.likes.count() if hasattr(project, 'likes') else 0
-                if like_count > 10:
-                    score += 0.05
-
-                scored_projects.append((project, score))
-
-            # Sort by score descending
-            scored_projects.sort(key=lambda x: x[1], reverse=True)
-            queryset = [p[0] for p in scored_projects]
+            # Cold start or personalization failed
+            result = cold_start.get_cold_start_feed(
+                user=request.user,
+                page=page_num,
+                page_size=page_size,
+            )
+            return Response(
+                build_paginated_response(result['projects'], result['metadata'], page_num, page_size, 'for-you')
+            )
         else:
-            # No preferences yet, fall back to newest
-            queryset = queryset.order_by('-created_at')
-    elif sort == 'trending':
+            # Anonymous user - show popular
+            cold_start = ColdStartService()
+            result = cold_start.get_cold_start_feed(
+                user=None,
+                page=page_num,
+                page_size=page_size,
+            )
+            return Response(
+                build_paginated_response(result['projects'], result['metadata'], page_num, page_size, 'for-you')
+            )
+
+    elif tab == 'trending':
+        # Use trending engine for engagement velocity-based feed
+        from services.personalization import TrendingEngine
+
+        page_num = int(request.GET.get('page', 1))
+        page_size = min(int(request.GET.get('page_size', 30)), 100)
+
+        try:
+            engine = TrendingEngine()
+            result = engine.get_trending_feed(
+                user=request.user if request.user.is_authenticated else None,
+                page=page_num,
+                page_size=page_size,
+            )
+            return Response(
+                build_paginated_response(
+                    result['projects'], result['metadata'], page_num, page_size, 'trending', 'trending'
+                )
+            )
+        except Exception as e:
+            logger.error(f'Trending engine error: {e}', exc_info=True)
+            # Fall through to default sorting
+
+    # Default sorting for 'all' tab or fallback
+    if sort == 'trending':
         # Trending: most likes in the last 7 days
         queryset = queryset.annotate(recent_likes=Count('likes')).order_by('-recent_likes', '-created_at')
     elif sort == 'popular':
@@ -536,6 +741,121 @@ def explore_projects(request):
     serializer = ProjectSerializer(page, many=True)
 
     return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def semantic_search(request):
+    """Semantic search using Weaviate vector similarity.
+
+    Request body:
+    - query: Search query text (required)
+    - limit: Maximum results (default: 50, max: 100)
+    - alpha: Weight for vector vs keyword (0=keyword, 1=vector, default: 0.7)
+
+    Returns projects matching the semantic query.
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    query = request.data.get('query', '').strip()
+    if not query:
+        return Response({'error': 'Query is required'}, status=400)
+
+    # Track search usage for quest progress (only for authenticated users)
+    if request.user.is_authenticated:
+        track_search_used(request.user, query)
+
+    limit = min(int(request.data.get('limit', 50)), 100)
+    alpha = float(request.data.get('alpha', 0.7))
+
+    try:
+        from services.weaviate import get_embedding_service, get_weaviate_client
+        from services.weaviate.schema import WeaviateSchema
+
+        client = get_weaviate_client()
+
+        if not client.is_available():
+            # Fallback to basic text search
+            logger.warning('Weaviate unavailable, falling back to text search')
+            from django.db.models import Q
+
+            queryset = (
+                Project.objects.filter(
+                    is_private=False,
+                    is_archived=False,
+                )
+                .filter(Q(title__icontains=query) | Q(description__icontains=query))
+                .select_related('user')
+                .prefetch_related('tools', 'categories', 'likes')
+                .order_by('-created_at')[:limit]
+            )
+            serializer = ProjectSerializer(queryset, many=True)
+            return Response(
+                {
+                    'results': serializer.data,
+                    'search_type': 'text_fallback',
+                }
+            )
+
+        # Generate query embedding
+        embedding_service = get_embedding_service()
+        query_vector = embedding_service.generate_embedding(query)
+
+        # Perform hybrid search
+        results = client.hybrid_search(
+            collection=WeaviateSchema.PROJECT_COLLECTION,
+            query=query,
+            vector=query_vector if query_vector else None,
+            alpha=alpha,
+            limit=limit,
+        )
+
+        # Get Django objects in order
+        project_ids = [r.get('project_id') for r in results if r.get('project_id')]
+        projects = (
+            Project.objects.filter(id__in=project_ids)
+            .select_related('user')
+            .prefetch_related('tools', 'categories', 'likes')
+        )
+
+        # Maintain search order
+        project_map = {p.id: p for p in projects}
+        ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
+
+        serializer = ProjectSerializer(ordered_projects, many=True)
+        return Response(
+            {
+                'results': serializer.data,
+                'search_type': 'semantic',
+                'alpha': alpha,
+            }
+        )
+
+    except Exception as e:
+        logger.error(f'Semantic search error: {e}', exc_info=True)
+        return Response({'error': 'Search failed'}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def personalization_status(request):
+    """Get user's personalization status and cold-start info.
+
+    Returns:
+    - is_cold_start: Whether user is in cold-start state
+    - has_sufficient_data: Whether personalization can be used
+    - has_onboarding: Whether user completed onboarding
+    - data_score: Completion percentage (0-1)
+    - stats: Current interaction counts
+    """
+    from services.personalization import ColdStartService
+
+    cold_start = ColdStartService()
+    status = cold_start.get_onboarding_status(request.user)
+
+    return Response(status)
 
 
 @api_view(['DELETE'])
@@ -572,41 +892,3 @@ def delete_project_by_id(request, project_id):
     cache.delete(f'projects:v2:{username_lower}:public')
 
     return Response({'message': 'Project deleted successfully'}, status=status.HTTP_200_OK)
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def semantic_search(request):
-    """Semantic search for projects using Weaviate (AI-powered).
-
-    Request body:
-    {
-        "query": "search query text",
-        "filters": {optional filters}
-    }
-
-    Returns list of projects matching the semantic query.
-
-    TODO: Integrate with Weaviate vector database for true semantic search.
-    For now, falls back to basic text search as a placeholder.
-    """
-    from django.db.models import Q
-
-    query = request.data.get('query', '')
-
-    if not query:
-        return Response({'results': []})
-
-    # TODO: Replace this with Weaviate semantic search
-    # For now, use basic text search as fallback
-    queryset = (
-        Project.objects.filter(is_private=False, is_archived=False)
-        .filter(Q(title__icontains=query) | Q(description__icontains=query))
-        .select_related('user')
-        .prefetch_related('tools', 'likes')
-        .order_by('-created_at')[:30]
-    )
-
-    serializer = ProjectSerializer(queryset, many=True)
-
-    return Response({'results': serializer.data})
