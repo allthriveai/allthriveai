@@ -552,9 +552,9 @@ AUTHENTICATION_BACKENDS = [
 ACCOUNT_ADAPTER = 'core.auth.adapter.CustomAccountAdapter'
 SOCIALACCOUNT_ADAPTER = 'core.auth.adapter.CustomSocialAccountAdapter'
 
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = True
+# New django-allauth settings format (v0.50+)
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Optional for OAuth (they verify with provider)
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
