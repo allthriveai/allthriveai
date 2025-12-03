@@ -39,6 +39,7 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
 
 # Database
 *.db
@@ -56,6 +57,9 @@ build/
 
 # Static files (collected at runtime)
 staticfiles/
+
+# Media files (user uploads)
+media/
 
 # Linting/formatting cache
 .ruff_cache/

@@ -458,7 +458,9 @@ export function ExplorePage() {
               // Profiles Grid
               <div>
                 {isLoading ? (
-                  <LoadingSkeleton type="profile" count={9} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+                    <LoadingSkeleton type="profile" count={12} />
+                  </div>
                 ) : (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
@@ -498,7 +500,9 @@ export function ExplorePage() {
               // Mixed Projects and Quizzes Grid
               <>
                 {isLoading ? (
-                  <LoadingSkeleton type="project" count={9} />
+                  <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2">
+                    <LoadingSkeleton type="project" count={12} />
+                  </div>
                 ) : displayProjects.length === 0 && displayQuizzes.length === 0 ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center max-w-md mx-auto">

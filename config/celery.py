@@ -22,6 +22,13 @@ app.autodiscover_tasks(
     ]
 )
 
+# Explicitly register task modules that don't follow the standard tasks.py naming
+# (Celery autodiscover only looks for tasks.py files)
+app.conf.imports = [
+    'core.integrations.reddit_tasks',
+    'core.integrations.rss_tasks',
+]
+
 # Task execution settings for scalability
 app.conf.task_default_rate_limit = '100/m'  # 100 tasks per minute per worker (prevents broker overload)
 app.conf.task_acks_late = True  # Tasks acknowledged after execution (prevents loss on worker crash)
@@ -60,6 +67,13 @@ app.conf.beat_schedule = {
     'sync-reddit-agents': {
         'task': 'core.integrations.reddit_tasks.sync_all_reddit_agents_task',
         'schedule': crontab(hour='*/4'),  # Every 4 hours
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour if not picked up
+        },
+    },
+    'sync-rss-agents': {
+        'task': 'core.integrations.rss_tasks.sync_all_rss_agents_task',
+        'schedule': crontab(hour='*/6'),  # Every 6 hours
         'options': {
             'expires': 3600,  # Task expires after 1 hour if not picked up
         },

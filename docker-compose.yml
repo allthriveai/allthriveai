@@ -46,6 +46,7 @@ services:
 
   web:
     build: .
+    image: allthriveai-backend:latest
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -85,6 +86,7 @@ services:
 
   celery:
     build: .
+    image: allthriveai-backend:latest
     restart: unless-stopped
     environment:
       - DEBUG=True
@@ -112,6 +114,35 @@ services:
       weaviate:
         condition: service_healthy
     command: celery -A config worker --pool=solo --loglevel=info
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  celery-beat:
+    build: .
+    image: allthriveai-backend:latest
+    restart: unless-stopped
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-allthrive}:${POSTGRES_PASSWORD:-allthrive}@db:5432/${POSTGRES_DB:-allthrive_ai}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/3
+      - CACHE_URL=redis://redis:6379/2
+      - WEAVIATE_URL=http://weaviate:8080
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_USE_SSL=false
+    volumes:
+      - .:/app
+    depends_on:
+      celery:
+        condition: service_healthy
+    command: celery -A config beat --loglevel=info
 
   stripe-cli:
     image: stripe/stripe-cli:latest

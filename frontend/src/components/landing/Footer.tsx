@@ -32,15 +32,15 @@ export function Footer({ onOpenChat }: FooterProps) {
   return (
     <footer className="relative bg-[#020617] border-t border-white/5" role="contentinfo">
       <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
+        <div className="flex flex-col md:flex-row md:justify-between gap-8 lg:gap-12">
           {/* Brand column */}
-          <div className="lg:col-span-1">
+          <div className="md:max-w-sm">
             <Link to="/" className="inline-flex items-center gap-2 mb-4">
               <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
                 All Thrive
               </span>
             </Link>
-            <p className="text-gray-400 text-sm mb-6 max-w-xs leading-relaxed">
+            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
               The community platform for AI creators. Showcase your projects,
               learn through gamified challenges, and grow with a community
               built for the AI era.
@@ -96,7 +96,7 @@ export function Footer({ onOpenChat }: FooterProps) {
               <li>
                 <button
                   onClick={onOpenChat}
-                  className="text-gray-400 hover:text-cyan-400 transition-colors text-sm flex items-center gap-2 group"
+                  className="text-gray-400 hover:text-cyan-400 transition-colors text-sm inline-flex items-center gap-2 group"
                 >
                   <ChatBubbleLeftRightIcon className="w-4 h-4 group-hover:text-cyan-400" />
                   Contact Us

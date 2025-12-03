@@ -25,7 +25,6 @@ import { createDefaultSectionContent, generateSectionId } from '@/types/sections
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ProjectEditTray } from '../ProjectEditTray';
-import { InlineTagEditor } from '../shared/InlineTagEditor';
 import {
   CodeBracketIcon,
   EllipsisVerticalIcon,
@@ -463,46 +462,6 @@ export function DefaultProjectLayout() {
                 </div>
               )}
 
-              {/* Category (read-only for non-owners) */}
-              {!isOwner && project.categoriesDetails && project.categoriesDetails.length > 0 && (
-                <div className="space-y-4">
-                  <p className="text-xs font-bold text-white/50 uppercase tracking-[0.2em] pl-1">Category</p>
-                  <div className="flex flex-wrap gap-3">
-                    {project.categoriesDetails.map((category) => (
-                      <div
-                        key={category.id}
-                        className="px-4 py-2 bg-primary-500/20 backdrop-blur-xl rounded-full border border-primary-400/30 text-primary-200 text-sm font-medium"
-                      >
-                        {category.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Topics (read-only for non-owners) */}
-              {!isOwner && project.topics && project.topics.length > 0 && (
-                <div className="space-y-4">
-                  <p className="text-xs font-bold text-white/50 uppercase tracking-[0.2em] pl-1">Topics</p>
-                  <div className="flex flex-wrap gap-2">
-                    {project.topics.map((topic) => (
-                      <div
-                        key={topic}
-                        className="px-3 py-1.5 bg-purple-500/20 backdrop-blur-xl rounded-full border border-purple-400/30 text-purple-200 text-sm"
-                      >
-                        {topic}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Admin Inline Tag Editor */}
-              {isOwner && (
-                <div className="mt-6 p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl">
-                  <InlineTagEditor project={project} onProjectUpdate={setProject} isAdmin={true} />
-                </div>
-              )}
 
               {/* Action Buttons */}
               <div className="pt-6">

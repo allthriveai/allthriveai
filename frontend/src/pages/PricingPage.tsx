@@ -43,22 +43,22 @@ export default function PricingPage() {
 
     // AI Requests
     if (tier.monthlyAiRequests === 0) {
-      featureList.push('Unlimited AI requests');
+      featureList.push('Unlimited AI chat & generation');
     } else {
-      featureList.push(`${tier.monthlyAiRequests.toLocaleString()} AI requests/month`);
+      featureList.push(`${tier.monthlyAiRequests.toLocaleString()} AI chats/month`);
     }
 
     // Core features
-    if (tier.features.aiMentor) featureList.push('AI Mentor');
-    if (tier.features.quests) featureList.push('Side Quests & Challenges');
-    if (tier.features.projects) featureList.push('Project Portfolio');
+    if (tier.features.aiMentor) featureList.push('Pip AI assistant');
+    if (tier.features.quests) featureList.push('Gamified learning quests');
+    if (tier.features.projects) featureList.push('Shareable project portfolio');
 
     // Premium features
-    if (tier.features.circles) featureList.push('Thrive Circles');
-    if (tier.features.marketplace) featureList.push('Marketplace Access');
-    if (tier.features.go1Courses) featureList.push('Go1 Course Library');
-    if (tier.features.analytics) featureList.push('Advanced Analytics');
-    if (tier.features.creatorTools) featureList.push('Creator Tools & Monetization');
+    if (tier.features.circles) featureList.push('Community groups');
+    if (tier.features.marketplace) featureList.push('Prompt & template marketplace');
+    if (tier.features.go1Courses) featureList.push('10,000+ professional courses');
+    if (tier.features.analytics) featureList.push('Portfolio analytics');
+    if (tier.features.creatorTools) featureList.push('Sell courses & coaching');
 
     return featureList;
   };
@@ -123,7 +123,7 @@ export default function PricingPage() {
         description="Choose the perfect plan for your AI learning journey"
       />
 
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-background py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">

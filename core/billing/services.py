@@ -5,7 +5,7 @@ Handles all Stripe API interactions for subscriptions and payments.
 """
 
 import logging
-from datetime import timezone as dt_timezone
+from datetime import UTC
 from typing import Any
 
 import stripe
@@ -159,7 +159,13 @@ class StripeService:
                 )
 
             # Check if user already has an active paid subscription
-            if user_subscription.stripe_subscription_id and user_subscription.status in ['active', 'trialing']:
+            # Only block if subscription is active AND has completed payment (has period dates)
+            # Incomplete subscriptions (no period dates) are allowed to retry
+            if (
+                user_subscription.stripe_subscription_id
+                and user_subscription.status == 'active'
+                and user_subscription.current_period_end is not None
+            ):
                 raise StripeServiceError(
                     'You already have an active subscription. Please cancel your current subscription first, '
                     'or use the update subscription endpoint to change tiers.'
@@ -196,22 +202,18 @@ class StripeService:
             # They will be set by webhook when payment succeeds
             if hasattr(stripe_subscription, 'current_period_start') and stripe_subscription.current_period_start:
                 user_subscription.current_period_start = timezone.datetime.fromtimestamp(
-                    stripe_subscription.current_period_start, tz=dt_timezone.UTC
+                    stripe_subscription.current_period_start, tz=UTC
                 )
             if hasattr(stripe_subscription, 'current_period_end') and stripe_subscription.current_period_end:
                 user_subscription.current_period_end = timezone.datetime.fromtimestamp(
-                    stripe_subscription.current_period_end, tz=dt_timezone.UTC
+                    stripe_subscription.current_period_end, tz=UTC
                 )
 
             # Set trial dates if in trial
             if hasattr(stripe_subscription, 'trial_start') and stripe_subscription.trial_start:
-                user_subscription.trial_start = timezone.datetime.fromtimestamp(
-                    stripe_subscription.trial_start, tz=dt_timezone.UTC
-                )
+                user_subscription.trial_start = timezone.datetime.fromtimestamp(stripe_subscription.trial_start, tz=UTC)
             if hasattr(stripe_subscription, 'trial_end') and stripe_subscription.trial_end:
-                user_subscription.trial_end = timezone.datetime.fromtimestamp(
-                    stripe_subscription.trial_end, tz=dt_timezone.UTC
-                )
+                user_subscription.trial_end = timezone.datetime.fromtimestamp(stripe_subscription.trial_end, tz=UTC)
 
             user_subscription.save()
 
@@ -645,10 +647,10 @@ class StripeService:
             # Update status
             user_subscription.status = stripe_subscription['status']
             user_subscription.current_period_start = timezone.datetime.fromtimestamp(
-                stripe_subscription['current_period_start'], tz=dt_timezone.UTC
+                stripe_subscription['current_period_start'], tz=UTC
             )
             user_subscription.current_period_end = timezone.datetime.fromtimestamp(
-                stripe_subscription['current_period_end'], tz=dt_timezone.UTC
+                stripe_subscription['current_period_end'], tz=UTC
             )
 
             user_subscription.save()

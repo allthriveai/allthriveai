@@ -150,7 +150,7 @@ function BattlePreview() {
       {/* Battle topic */}
       <div className="text-center mb-4">
         <h3 className="text-white font-bold text-lg">Surreal Landscapes</h3>
-        <p className="text-gray-500 text-xs">Who creates the best dreamscape?</p>
+        <p className="text-gray-500 text-xs">Challenge your friends to an epic prompt battle, who can create the best dreamscape?</p>
       </div>
 
       {/* Duel arena */}
