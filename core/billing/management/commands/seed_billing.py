@@ -58,7 +58,8 @@ class Command(BaseCommand):
                 'slug': 'free-explorer',
                 'name': 'Free / Explorer',
                 'description': 'Perfect for exploring AllThrive and trying out basic features',
-                'price_quarterly': Decimal('0.00'),
+                'price_monthly': Decimal('0.00'),
+                'price_annual': Decimal('0.00'),
                 'trial_period_days': 0,
                 'monthly_ai_requests': 20,  # Very limited - just enough to try it out
                 'has_marketplace_access': True,  # Free to browse/engage, no cost to us
@@ -76,7 +77,8 @@ class Command(BaseCommand):
                 'slug': 'community-pro',
                 'name': 'Community Pro',
                 'description': 'Full community access with analytics and higher AI quota',
-                'price_quarterly': Decimal('54.00'),
+                'price_monthly': Decimal('18.00'),  # $18/month
+                'price_annual': Decimal('180.00'),  # $180/year (save $36 vs monthly)
                 'trial_period_days': 7,
                 'monthly_ai_requests': 500,  # Good for active community members
                 'has_marketplace_access': True,
@@ -94,7 +96,8 @@ class Command(BaseCommand):
                 'slug': 'pro-learn',
                 'name': 'Pro Learn',
                 'description': 'Everything in Community Pro plus Go1 course library and higher AI quota',
-                'price_quarterly': Decimal('105.00'),
+                'price_monthly': Decimal('35.00'),  # $35/month
+                'price_annual': Decimal('350.00'),  # $350/year (save $70 vs monthly)
                 'trial_period_days': 0,
                 'monthly_ai_requests': 2000,  # High limit for serious learners
                 'has_marketplace_access': True,
@@ -112,7 +115,8 @@ class Command(BaseCommand):
                 'slug': 'creator-mentor',
                 'name': 'Creator / Mentor',
                 'description': 'Creator tools to monetize your expertise plus high AI quota',
-                'price_quarterly': Decimal('0.00'),  # TBD - will be updated later
+                'price_monthly': Decimal('99.00'),  # $99/month
+                'price_annual': Decimal('990.00'),  # $990/year (save $198 vs monthly)
                 'trial_period_days': 0,
                 'monthly_ai_requests': 5000,  # Very high limit (NOT unlimited - no one gets unlimited)
                 'has_marketplace_access': True,
@@ -136,13 +140,13 @@ class Command(BaseCommand):
 
             if created:
                 created_count += 1
-                self.stdout.write(self.style.SUCCESS(f'  ✅ Created: {tier.name} (${tier.price_quarterly}/quarter)'))
+                self.stdout.write(self.style.SUCCESS(f'  ✅ Created: {tier.name} (${tier.price_monthly}/mo)'))
             else:
                 updated_count += 1
-                self.stdout.write(self.style.WARNING(f'  ♻️  Updated: {tier.name} (${tier.price_quarterly}/quarter)'))
+                self.stdout.write(self.style.WARNING(f'  ♻️  Updated: {tier.name} (${tier.price_monthly}/mo)'))
 
             # Create Stripe products if requested
-            if with_stripe and tier.price_quarterly > 0:
+            if with_stripe and tier.price_monthly > 0:
                 self._create_stripe_product(tier)
 
         self.stdout.write(self.style.SUCCESS(f'  📊 Created: {created_count} | Updated: {updated_count}'))

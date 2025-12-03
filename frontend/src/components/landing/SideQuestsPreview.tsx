@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGraduationCap, faScroll, faTrophy, faBolt, faPlay, faClock, faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faGraduationCap, faScroll, faTrophy, faBolt, faPlay, faClock, faCheck, faStar } from '@fortawesome/free-solid-svg-icons';
 
 type LearningType = 'courses' | 'quests' | 'battles';
 
@@ -23,7 +23,7 @@ const learningTypes = [
   {
     id: 'battles' as const,
     title: 'Prompt Battles',
-    description: 'Compete in timed challenges and earn rankings',
+    description: 'Challenge other users to real-time prompt competitions',
     icon: faTrophy,
     color: 'amber',
   },
@@ -80,101 +80,123 @@ function CoursePreview() {
   );
 }
 
-// Visual preview for Side Quests
+// Visual preview for Side Quests - RPG-style quest intro
 function QuestPreview() {
   return (
     <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-2xl border border-purple-500/20 p-6 flex flex-col">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center">
-          <FontAwesomeIcon icon={faScroll} className="w-6 h-6 text-purple-400" />
-        </div>
-        <div>
-          <div className="text-xs text-purple-400 font-medium">SIDE QUEST</div>
-          <h3 className="text-white font-bold">Create AI Album Art</h3>
+      {/* Quest scroll header */}
+      <div className="flex items-center justify-center mb-4">
+        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center border-2 border-purple-500/30">
+          <FontAwesomeIcon icon={faScroll} className="w-7 h-7 text-purple-400" />
         </div>
       </div>
 
-      <p className="text-gray-400 mb-4">
-        Use any AI image generator to create album cover art for your favorite music. Share your creation with the community!
-      </p>
-
-      <div className="flex-1">
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="aspect-square rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/20 flex items-center justify-center">
-            <span className="text-4xl">🎨</span>
-          </div>
-          <div className="aspect-square rounded-xl bg-gradient-to-br from-pink-500/20 to-orange-500/20 border border-pink-500/20 flex items-center justify-center">
-            <span className="text-4xl">🎵</span>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 mb-4">
-          <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 text-xs">Creative</span>
-          <span className="px-3 py-1 rounded-full bg-pink-500/20 text-pink-400 text-xs">Beginner</span>
-          <span className="px-3 py-1 rounded-full bg-white/10 text-gray-400 text-xs">~30 min</span>
-        </div>
+      {/* Greeting */}
+      <div className="text-center mb-4">
+        <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-1">
+          Hello, Adventurer!
+        </h3>
+        <p className="text-gray-400 text-sm">A new quest awaits you...</p>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-white/10">
-        <span className="flex items-center gap-2 text-purple-400 font-medium">
-          <FontAwesomeIcon icon={faBolt} className="w-4 h-4" />
-          +75 XP
+      {/* Mission briefing */}
+      <div className="flex-1 bg-purple-500/10 rounded-xl border border-purple-500/20 p-4 mb-4">
+        <div className="text-xs text-purple-400 font-medium uppercase tracking-wide mb-2">Your Mission</div>
+        <h4 className="text-white font-bold text-lg mb-2">Banana Time</h4>
+        <p className="text-gray-300 text-sm leading-relaxed">
+          Generate an image with Nano Banana! Unleash your creativity and bring your wildest ideas to life with AI.
+        </p>
+      </div>
+
+      {/* Quest details */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center gap-1.5">
+          <FontAwesomeIcon icon={faStar} className="w-3 h-3" />
+          Easy
         </span>
-        <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium flex items-center gap-2">
-          <FontAwesomeIcon icon={faPlay} className="w-3 h-3" />
-          Start Quest
+        <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 text-xs font-medium">
+          Creative Maker
+        </span>
+      </div>
+
+      {/* Reward & Accept */}
+      <div className="flex items-center justify-between pt-4 border-t border-white/10">
+        <div className="flex items-center gap-2">
+          <FontAwesomeIcon icon={faBolt} className="w-4 h-4 text-amber-400" />
+          <span className="text-amber-400 font-bold">+20 XP</span>
+        </div>
+        <button className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold flex items-center gap-2 hover:shadow-lg hover:shadow-purple-500/30 transition-all">
+          Accept Quest
         </button>
       </div>
     </div>
   );
 }
 
-// Visual preview for Prompt Battles
+// Visual preview for Prompt Battles - Duel style
 function BattlePreview() {
   return (
-    <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-2xl border border-amber-500/20 p-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/30 to-orange-500/30 flex items-center justify-center">
-            <FontAwesomeIcon icon={faTrophy} className="w-6 h-6 text-amber-400" />
-          </div>
-          <div>
-            <div className="text-xs text-amber-400 font-medium">PROMPT BATTLE</div>
-            <h3 className="text-white font-bold">Surreal Landscapes</h3>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/20 border border-red-500/30">
+    <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-2xl border border-amber-500/20 p-5 flex flex-col overflow-hidden">
+      {/* Header with timer */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs text-amber-400 font-bold uppercase tracking-wider">Live Battle</div>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/30">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
           <FontAwesomeIcon icon={faClock} className="w-3 h-3 text-red-400" />
-          <span className="text-red-400 text-sm font-medium">2:34:15</span>
+          <span className="text-red-400 text-xs font-medium">2:34</span>
         </div>
       </div>
 
-      <p className="text-gray-400 mb-4">
-        Create the most dreamlike, surreal landscape using a single prompt. Community votes decide the winner!
-      </p>
+      {/* Battle topic */}
+      <div className="text-center mb-4">
+        <h3 className="text-white font-bold text-lg">Surreal Landscapes</h3>
+        <p className="text-gray-500 text-xs">Who creates the best dreamscape?</p>
+      </div>
 
-      <div className="flex-1">
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="aspect-square rounded-lg bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 flex items-center justify-center">
-              <span className="text-amber-400/40 text-xl">🏔️</span>
-            </div>
-          ))}
+      {/* Duel arena */}
+      <div className="flex-1 flex items-center gap-3">
+        {/* Player 1 */}
+        <div className="flex-1 flex flex-col items-center">
+          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-500/40 flex items-center justify-center mb-2 relative">
+            <span className="text-2xl">🌌</span>
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">47</div>
+          </div>
+          <span className="text-white text-sm font-medium">@dreamer</span>
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-cyan-400 text-xs font-bold">127</span>
+            <span className="text-gray-500 text-xs">votes</span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-gray-400">24 entries</span>
-          <span className="text-gray-400">•</span>
-          <span className="text-gray-400">156 votes</span>
+        {/* VS */}
+        <div className="flex flex-col items-center">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+            <span className="text-white font-black text-sm">VS</span>
+          </div>
+          <div className="w-px h-8 bg-gradient-to-b from-amber-500/50 to-transparent mt-2" />
+        </div>
+
+        {/* Player 2 */}
+        <div className="flex-1 flex flex-col items-center">
+          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-500/40 flex items-center justify-center mb-2 relative">
+            <span className="text-2xl">🏔️</span>
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-[10px] font-bold text-white">52</div>
+          </div>
+          <span className="text-white text-sm font-medium">@visionary</span>
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-purple-400 text-xs font-bold">119</span>
+            <span className="text-gray-500 text-xs">votes</span>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-white/10">
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-3 border-t border-white/10 mt-3">
         <div className="flex items-center gap-2">
           <FontAwesomeIcon icon={faTrophy} className="w-4 h-4 text-amber-400" />
-          <span className="text-amber-400 font-medium">Win 250 XP</span>
+          <span className="text-amber-400 font-bold text-sm">Win 250 XP</span>
         </div>
-        <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium">
+        <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:shadow-lg hover:shadow-amber-500/30 transition-all">
           Enter Battle
         </button>
       </div>
@@ -223,7 +245,7 @@ export function SideQuestsPreview() {
               Doing
             </span>
           </h2>
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-400">
             Interactive courses, creative quests, and prompt battles that make learning feel like play.
           </p>
         </motion.div>

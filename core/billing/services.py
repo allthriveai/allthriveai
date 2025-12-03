@@ -109,13 +109,14 @@ class StripeService:
 
     @staticmethod
     @transaction.atomic
-    def create_subscription(user, tier: SubscriptionTier) -> dict[str, Any]:
+    def create_subscription(user, tier: SubscriptionTier, billing_interval: str = 'monthly') -> dict[str, Any]:
         """
         Create a new subscription for a user.
 
         Args:
             user: Django User instance
             tier: SubscriptionTier instance
+            billing_interval: 'monthly' or 'annual' (default: 'monthly')
 
         Returns:
             Dict with subscription details and client_secret for payment
@@ -124,10 +125,19 @@ class StripeService:
             StripeServiceError: If subscription creation fails
         """
         try:
+            # Validate billing interval
+            if billing_interval not in ['monthly', 'annual']:
+                raise StripeServiceError(f'Invalid billing interval: {billing_interval}')
+
+            # Get the appropriate Stripe price ID
+            stripe_price_id = (
+                tier.stripe_price_id_annual if billing_interval == 'annual' else tier.stripe_price_id_monthly
+            )
+
             # Validate tier has Stripe price
-            if not tier.stripe_price_id_quarterly:
+            if not stripe_price_id:
                 raise StripeServiceError(
-                    f"Tier {tier.name} doesn't have a Stripe price configured. "
+                    f"Tier {tier.name} doesn't have a Stripe price configured for {billing_interval} billing. "
                     'Run: python manage.py seed_billing --with-stripe'
                 )
 
@@ -141,7 +151,7 @@ class StripeService:
             # Create subscription in Stripe
             subscription_params = {
                 'customer': customer_id,
-                'items': [{'price': tier.stripe_price_id_quarterly}],
+                'items': [{'price': stripe_price_id}],
                 'payment_behavior': 'default_incomplete',
                 'payment_settings': {'save_default_payment_method': 'on_subscription'},
                 'expand': ['latest_invoice.payment_intent'],
@@ -276,13 +286,14 @@ class StripeService:
 
     @staticmethod
     @transaction.atomic
-    def update_subscription(user, new_tier: SubscriptionTier) -> dict[str, Any]:
+    def update_subscription(user, new_tier: SubscriptionTier, billing_interval: str = None) -> dict[str, Any]:
         """
         Update a user's subscription to a different tier.
 
         Args:
             user: Django User instance
             new_tier: SubscriptionTier instance to switch to
+            billing_interval: Optional 'monthly' or 'annual'. If None, keeps current interval.
 
         Returns:
             Dict with update details
@@ -297,11 +308,27 @@ class StripeService:
             if not user_subscription.stripe_subscription_id:
                 raise StripeServiceError('No active Stripe subscription found')
 
-            if not new_tier.stripe_price_id_quarterly:
-                raise StripeServiceError(f"Tier {new_tier.name} doesn't have a Stripe price configured")
-
-            # Update subscription in Stripe
+            # Retrieve current subscription to determine billing interval
             stripe_subscription = stripe.Subscription.retrieve(user_subscription.stripe_subscription_id)
+            current_price_id = stripe_subscription['items']['data'][0]['price']['id']
+
+            # Determine billing interval (use current if not specified)
+            if billing_interval is None:
+                # Detect current interval from price ID
+                if current_price_id == old_tier.stripe_price_id_annual:
+                    billing_interval = 'annual'
+                else:
+                    billing_interval = 'monthly'
+
+            # Get the appropriate Stripe price ID for new tier
+            stripe_price_id = (
+                new_tier.stripe_price_id_annual if billing_interval == 'annual' else new_tier.stripe_price_id_monthly
+            )
+
+            if not stripe_price_id:
+                raise StripeServiceError(
+                    f"Tier {new_tier.name} doesn't have a Stripe price configured for {billing_interval} billing"
+                )
 
             # Update the subscription item
             stripe.Subscription.modify(
@@ -309,7 +336,7 @@ class StripeService:
                 items=[
                     {
                         'id': stripe_subscription['items']['data'][0].id,
-                        'price': new_tier.stripe_price_id_quarterly,
+                        'price': stripe_price_id,
                     }
                 ],
                 proration_behavior='create_prorations',  # Pro-rate the difference

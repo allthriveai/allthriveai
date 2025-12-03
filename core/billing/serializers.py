@@ -171,7 +171,12 @@ class CreateSubscriptionSerializer(serializers.Serializer):
     """Serializer for creating a new subscription."""
 
     tier_slug = serializers.SlugField()
-    payment_method_id = serializers.CharField(required=False, help_text='Stripe payment method ID (if not using trial)')
+    billing_interval = serializers.ChoiceField(
+        choices=['monthly', 'annual'],
+        default='monthly',
+        required=False,
+        help_text='Billing interval: monthly or annual',
+    )
 
     def validate_tier_slug(self, value):
         """Validate that the tier exists and is active."""

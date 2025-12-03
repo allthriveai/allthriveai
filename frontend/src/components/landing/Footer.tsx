@@ -32,7 +32,7 @@ export function Footer({ onOpenChat }: FooterProps) {
   return (
     <footer className="relative bg-[#020617] border-t border-white/5" role="contentinfo">
       <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
           {/* Brand column */}
           <div className="lg:col-span-1">
             <Link to="/" className="inline-flex items-center gap-2 mb-4">
@@ -79,9 +79,9 @@ export function Footer({ onOpenChat }: FooterProps) {
             </ul>
           </nav>
 
-          {/* Company links */}
-          <nav aria-label="Connect">
-            <h3 className="text-white font-semibold mb-4">Connect</h3>
+          {/* About links */}
+          <nav aria-label="About">
+            <h3 className="text-white font-semibold mb-4">About</h3>
             <ul className="space-y-3">
               {navigation.company.map((item) => (
                 <li key={item.name}>
@@ -102,13 +102,6 @@ export function Footer({ onOpenChat }: FooterProps) {
                   Contact Us
                 </button>
               </li>
-            </ul>
-          </nav>
-
-          {/* Legal links */}
-          <nav aria-label="Legal">
-            <h3 className="text-white font-semibold mb-4">The Fine Print</h3>
-            <ul className="space-y-3">
               {navigation.legal.map((item) => (
                 <li key={item.name}>
                   <Link

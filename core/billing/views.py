@@ -157,7 +157,7 @@ def create_subscription_view(request):
     Body:
     {
         "tier_slug": "community-pro",
-        "payment_method_id": "pm_xxx" (optional for trial)
+        "billing_interval": "monthly" | "annual" (optional, defaults to "monthly")
     }
 
     Returns:
@@ -175,8 +175,9 @@ def create_subscription_view(request):
 
     try:
         tier = SubscriptionTier.objects.get(slug=serializer.validated_data['tier_slug'])
+        billing_interval = serializer.validated_data.get('billing_interval', 'monthly')
 
-        result = StripeService.create_subscription(request.user, tier)
+        result = StripeService.create_subscription(request.user, tier, billing_interval)
 
         return Response(result, status=status.HTTP_201_CREATED)
 

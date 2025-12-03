@@ -116,13 +116,17 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
 /**
  * Create a new subscription
  */
-export async function createSubscription(tierSlug: string): Promise<{
+export async function createSubscription(
+  tierSlug: string,
+  billingInterval: 'monthly' | 'annual' = 'monthly'
+): Promise<{
   subscriptionId: string;
   clientSecret: string;
   status: string;
 }> {
   const response = await api.post('/billing/subscription/create/', {
     tierSlug,
+    billingInterval,
   });
   return response.data;
 }
