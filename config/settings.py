@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'core.integrations',  # Content source integrations (YouTube, RSS, etc.)
     'core.learning_paths',  # Auto-generated learning paths per topic
     'core.billing',  # Stripe subscriptions and token packages
+    'core.ai_usage',  # AI usage tracking and cost analytics
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -77,6 +78,8 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'core.auth.oauth_middleware.OAuthJWTMiddleware',  # Set JWT cookies after OAuth login
+    'core.billing.middleware.BillingContextMiddleware',  # Add billing context to requests
+    'core.billing.middleware.AIRequestThrottleMiddleware',  # Add AI quota checking
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
@@ -484,6 +487,11 @@ LOGGING = {
         'core': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
+        },
+        'core.billing': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',  # More verbose for billing
+            'propagate': False,
         },
         'services': {
             'handlers': ['console', 'file'],

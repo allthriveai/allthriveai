@@ -103,15 +103,15 @@ export default function ProfilePage() {
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | null;
     if (tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity'].includes(tabFromUrl)) {
-      // Security: only allow Activity and Learning tabs for own profile
-      if ((tabFromUrl === 'activity' || tabFromUrl === 'learning') && !isOwnProfile) {
+      // Security: only allow Activity and Learning tabs for authenticated users viewing their own profile
+      if ((tabFromUrl === 'activity' || tabFromUrl === 'learning') && (!isAuthenticated || !isOwnProfile)) {
         setActiveTab('showcase');
         setSearchParams({ tab: 'showcase' });
         return;
       }
       setActiveTab(tabFromUrl);
     }
-  }, [searchParams, isOwnProfile, setSearchParams]);
+  }, [searchParams, isAuthenticated, isOwnProfile, setSearchParams]);
 
   // Track scroll position to fix sidebar after banner
   useEffect(() => {

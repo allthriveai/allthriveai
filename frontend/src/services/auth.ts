@@ -121,7 +121,7 @@ export interface StatsSummary {
 }
 
 export interface ActivityInsights {
-  sideQuestsCompleted: SideQuestCompleted[];
+  toolEngagement: ToolEngagement[];
   topicInterests: TopicInterest[];
   activityTrends: ActivityTrend[];
   pointsByCategory: PointsCategory[];
@@ -143,8 +143,12 @@ export async function logout(): Promise<void> {
 }
 
 // Get current authenticated user
+// Uses X-Skip-Auth-Redirect to prevent 401 from triggering redirect to /auth
+// This is used on initial auth check - we just want to know if user is logged in
 export async function getCurrentUser(): Promise<User> {
-  const response = await api.get<ApiResponse<User>>('/auth/me/');
+  const response = await api.get<ApiResponse<User>>('/auth/me/', {
+    headers: { 'X-Skip-Auth-Redirect': 'true' },
+  });
   return response.data.data;
 }
 
