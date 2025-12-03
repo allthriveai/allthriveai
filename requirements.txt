@@ -1,8 +1,8 @@
 # Django & REST Framework
-Django>=5.0,<5.2
-djangorestframework>=3.15.0
-django-filter>=24.0
-django-cors-headers>=4.4.0
+Django==5.1.4
+djangorestframework==3.15.2
+django-filter==24.3
+django-cors-headers==4.6.0
 
 # Database
 psycopg2-binary>=2.9.9  # Django's PostgreSQL adapter
@@ -26,27 +26,27 @@ djangorestframework-simplejwt>=5.3.1
 cryptography>=43.0.0
 
 # AI/ML - Core Providers
-openai>=1.50.0
-anthropic>=0.40.0
-google-generativeai>=0.8.0  # Legacy Google AI SDK
-google-genai>=1.0.0  # New Google AI SDK
+openai==1.59.5
+anthropic==0.42.0
+google-generativeai==0.8.3  # Legacy Google AI SDK
+google-genai==1.0.1  # New Google AI SDK
 
 # AI/ML - LangChain Ecosystem
-langchain>=0.3.0
-langchain-openai>=0.2.0
-langchain-anthropic>=0.2.0
-langchain-google-genai>=2.0.0
-langgraph>=0.2.0
-langgraph-checkpoint-redis>=0.2.0
-langgraph-checkpoint-postgres>=3.0.1
-langsmith>=0.1.140
+langchain==0.3.17
+langchain-openai==0.2.14
+langchain-anthropic==0.3.7
+langchain-google-genai==2.0.6
+langgraph==0.2.62
+langgraph-checkpoint-redis==2.0.6
+langgraph-checkpoint-postgres==2.0.13
+langsmith==0.2.7
 
 # Vector Database
-weaviate-client>=3.26.0,<4.0.0  # Vector database for personalization (v3 API)
+weaviate-client==3.26.10  # Vector database for personalization (v3 API)
 
 # Task Queue
-celery>=5.4.0
-redis>=5.2.0
+celery==5.4.0
+redis==5.2.1
 
 # WebSocket Support
 channels>=4.1.0  # Django Channels for WebSocket
