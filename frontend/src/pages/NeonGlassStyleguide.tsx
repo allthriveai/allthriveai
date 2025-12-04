@@ -16,7 +16,13 @@ import {
   RocketLaunchIcon,
   ChartBarIcon,
   ChatBubbleLeftRightIcon,
+  TrophyIcon,
+  FireIcon,
+  UsersIcon,
+  ChatBubbleBottomCenterIcon,
 } from '@heroicons/react/24/outline';
+import { AchievementBadge } from '@/components/achievements/AchievementBadge';
+import { AchievementGrid } from '@/components/achievements/AchievementGrid';
 
 /**
  * NeonGlassStyleguide - Preview of the Neon Glass Design System
@@ -647,6 +653,462 @@ export default function NeonGlassStyleguide() {
                   <div className="flex items-center gap-3">
                     <span className="w-2 h-2 rounded-full bg-pink-accent shadow-[0_0_10px_rgba(251,55,255,0.5)]" />
                     <span className="text-slate-300 text-sm">Alert indicator</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* === ACHIEVEMENT BADGES === */}
+          <section>
+            <SectionHeader title="Achievement Badges" />
+
+            <div className="space-y-8">
+              {/* Individual Badges - Different States */}
+              <div className="glass-panel p-8">
+                <h4 className="text-lg font-semibold text-white mb-6">Badge States & Rarities</h4>
+
+                {/* Unlocked Badges by Rarity */}
+                <div className="mb-8">
+                  <p className="text-sm text-slate-400 mb-4">Unlocked badges with different rarity levels:</p>
+                  <div className="flex flex-wrap gap-6 items-end">
+                    <AchievementBadge
+                      achievement={{
+                        id: 1,
+                        key: 'first_project',
+                        name: 'First Steps',
+                        description: 'Create your first project',
+                        icon: 'RocketLaunchIcon',
+                        category: 'projects',
+                        rarity: 'common',
+                        points: 10,
+                        isSecret: false,
+                      }}
+                      userAchievement={{
+                        id: 1,
+                        earnedAt: new Date().toISOString(),
+                        progress: 1,
+                        total: 1,
+                      }}
+                      size="medium"
+                    />
+
+                    <AchievementBadge
+                      achievement={{
+                        id: 2,
+                        key: 'battle_winner',
+                        name: 'Battle Victor',
+                        description: 'Win your first battle',
+                        icon: 'TrophyIcon',
+                        category: 'battles',
+                        rarity: 'rare',
+                        points: 25,
+                        isSecret: false,
+                      }}
+                      userAchievement={{
+                        id: 2,
+                        earnedAt: new Date().toISOString(),
+                        progress: 1,
+                        total: 1,
+                      }}
+                      size="medium"
+                    />
+
+                    <AchievementBadge
+                      achievement={{
+                        id: 3,
+                        key: 'community_hero',
+                        name: 'Community Hero',
+                        description: 'Help 100 community members',
+                        icon: 'UsersIcon',
+                        category: 'community',
+                        rarity: 'epic',
+                        points: 50,
+                        isSecret: false,
+                      }}
+                      userAchievement={{
+                        id: 3,
+                        earnedAt: new Date().toISOString(),
+                        progress: 100,
+                        total: 100,
+                      }}
+                      size="medium"
+                    />
+
+                    <AchievementBadge
+                      achievement={{
+                        id: 4,
+                        key: 'streak_master',
+                        name: 'Streak Master',
+                        description: 'Maintain a 365 day streak',
+                        icon: 'FireIcon',
+                        category: 'streaks',
+                        rarity: 'legendary',
+                        points: 100,
+                        isSecret: false,
+                      }}
+                      userAchievement={{
+                        id: 4,
+                        earnedAt: new Date().toISOString(),
+                        progress: 365,
+                        total: 365,
+                      }}
+                      size="medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Locked Badges with Progress */}
+                <div className="mb-8">
+                  <p className="text-sm text-slate-400 mb-4">Locked badges showing progress:</p>
+                  <div className="flex flex-wrap gap-6 items-end">
+                    <AchievementBadge
+                      achievement={{
+                        id: 5,
+                        key: 'project_master',
+                        name: 'Project Master',
+                        description: 'Create 10 projects',
+                        icon: 'RocketLaunchIcon',
+                        category: 'projects',
+                        rarity: 'rare',
+                        points: 30,
+                        isSecret: false,
+                      }}
+                      userAchievement={{
+                        id: 5,
+                        earnedAt: '',
+                        progress: 7,
+                        total: 10,
+                      }}
+                      size="medium"
+                    />
+
+                    <AchievementBadge
+                      achievement={{
+                        id: 6,
+                        key: 'engagement_pro',
+                        name: 'Engagement Pro',
+                        description: 'Get 1000 likes on your content',
+                        icon: 'HeartIcon',
+                        category: 'engagement',
+                        rarity: 'epic',
+                        points: 75,
+                        isSecret: false,
+                      }}
+                      userAchievement={{
+                        id: 6,
+                        earnedAt: '',
+                        progress: 450,
+                        total: 1000,
+                      }}
+                      size="medium"
+                    />
+
+                    <AchievementBadge
+                      achievement={{
+                        id: 7,
+                        key: 'secret_achievement',
+                        name: 'Secret Discovery',
+                        description: 'Find the hidden easter egg',
+                        icon: 'SparklesIcon',
+                        category: 'engagement',
+                        rarity: 'legendary',
+                        points: 150,
+                        isSecret: true,
+                      }}
+                      userAchievement={{
+                        id: 7,
+                        earnedAt: '',
+                        progress: 0,
+                        total: 1,
+                      }}
+                      size="medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Different Sizes */}
+                <div>
+                  <p className="text-sm text-slate-400 mb-4">Badge sizes:</p>
+                  <div className="flex flex-wrap gap-6 items-end">
+                    <div className="text-center">
+                      <AchievementBadge
+                        achievement={{
+                          id: 8,
+                          key: 'small_badge',
+                          name: 'Small',
+                          description: 'Small badge size',
+                          icon: 'StarIcon',
+                          category: 'projects',
+                          rarity: 'common',
+                          points: 10,
+                          isSecret: false,
+                        }}
+                        userAchievement={{
+                          id: 8,
+                          earnedAt: new Date().toISOString(),
+                          progress: 1,
+                          total: 1,
+                        }}
+                        size="small"
+                      />
+                      <p className="text-xs text-slate-500 mt-2">Small</p>
+                    </div>
+
+                    <div className="text-center">
+                      <AchievementBadge
+                        achievement={{
+                          id: 9,
+                          key: 'medium_badge',
+                          name: 'Medium',
+                          description: 'Medium badge size',
+                          icon: 'TrophyIcon',
+                          category: 'battles',
+                          rarity: 'rare',
+                          points: 25,
+                          isSecret: false,
+                        }}
+                        userAchievement={{
+                          id: 9,
+                          earnedAt: new Date().toISOString(),
+                          progress: 1,
+                          total: 1,
+                        }}
+                        size="medium"
+                      />
+                      <p className="text-xs text-slate-500 mt-2">Medium (Default)</p>
+                    </div>
+
+                    <div className="text-center">
+                      <AchievementBadge
+                        achievement={{
+                          id: 10,
+                          key: 'large_badge',
+                          name: 'Large',
+                          description: 'Large badge size',
+                          icon: 'FireIcon',
+                          category: 'streaks',
+                          rarity: 'legendary',
+                          points: 100,
+                          isSecret: false,
+                        }}
+                        userAchievement={{
+                          id: 10,
+                          earnedAt: new Date().toISOString(),
+                          progress: 1,
+                          total: 1,
+                        }}
+                        size="large"
+                      />
+                      <p className="text-xs text-slate-500 mt-2">Large</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Achievement Grid Component */}
+              <div className="glass-panel p-8">
+                <h4 className="text-lg font-semibold text-white mb-6">Achievement Grid Component</h4>
+                <p className="text-sm text-slate-400 mb-6">
+                  Full grid with category filtering, progress tracking, and modal details on click.
+                </p>
+
+                <AchievementGrid
+                  achievements={[
+                    {
+                      id: 1,
+                      key: 'first_project',
+                      name: 'First Steps',
+                      description: 'Create your first project',
+                      icon: 'RocketLaunchIcon',
+                      category: 'projects',
+                      rarity: 'common',
+                      points: 10,
+                      isSecret: false,
+                    },
+                    {
+                      id: 2,
+                      key: 'project_master',
+                      name: 'Project Master',
+                      description: 'Create 10 projects',
+                      icon: 'RocketLaunchIcon',
+                      category: 'projects',
+                      rarity: 'rare',
+                      points: 30,
+                      isSecret: false,
+                    },
+                    {
+                      id: 3,
+                      key: 'battle_winner',
+                      name: 'Battle Victor',
+                      description: 'Win your first battle',
+                      icon: 'TrophyIcon',
+                      category: 'battles',
+                      rarity: 'rare',
+                      points: 25,
+                      isSecret: false,
+                    },
+                    {
+                      id: 4,
+                      key: 'battle_legend',
+                      name: 'Battle Legend',
+                      description: 'Win 100 battles',
+                      icon: 'TrophyIcon',
+                      category: 'battles',
+                      rarity: 'legendary',
+                      points: 200,
+                      isSecret: false,
+                    },
+                    {
+                      id: 5,
+                      key: 'community_helper',
+                      name: 'Community Helper',
+                      description: 'Welcome 10 new members',
+                      icon: 'UsersIcon',
+                      category: 'community',
+                      rarity: 'common',
+                      points: 15,
+                      isSecret: false,
+                    },
+                    {
+                      id: 6,
+                      key: 'community_hero',
+                      name: 'Community Hero',
+                      description: 'Help 100 community members',
+                      icon: 'UsersIcon',
+                      category: 'community',
+                      rarity: 'epic',
+                      points: 50,
+                      isSecret: false,
+                    },
+                    {
+                      id: 7,
+                      key: 'engagement_starter',
+                      name: 'Engagement Starter',
+                      description: 'Get 10 likes on your content',
+                      icon: 'HeartIcon',
+                      category: 'engagement',
+                      rarity: 'common',
+                      points: 5,
+                      isSecret: false,
+                    },
+                    {
+                      id: 8,
+                      key: 'engagement_pro',
+                      name: 'Engagement Pro',
+                      description: 'Get 1000 likes on your content',
+                      icon: 'ChatBubbleBottomCenterIcon',
+                      category: 'engagement',
+                      rarity: 'epic',
+                      points: 75,
+                      isSecret: false,
+                    },
+                    {
+                      id: 9,
+                      key: 'streak_starter',
+                      name: 'Streak Starter',
+                      description: 'Maintain a 7 day streak',
+                      icon: 'FireIcon',
+                      category: 'streaks',
+                      rarity: 'common',
+                      points: 10,
+                      isSecret: false,
+                    },
+                    {
+                      id: 10,
+                      key: 'streak_master',
+                      name: 'Streak Master',
+                      description: 'Maintain a 365 day streak',
+                      icon: 'FireIcon',
+                      category: 'streaks',
+                      rarity: 'legendary',
+                      points: 100,
+                      isSecret: false,
+                    },
+                  ]}
+                  userAchievements={{
+                    1: { id: 1, earnedAt: new Date().toISOString(), progress: 1, total: 1 },
+                    3: { id: 3, earnedAt: new Date().toISOString(), progress: 1, total: 1 },
+                    5: { id: 5, earnedAt: new Date().toISOString(), progress: 10, total: 10 },
+                    7: { id: 7, earnedAt: new Date().toISOString(), progress: 50, total: 10 },
+                    9: { id: 9, earnedAt: new Date().toISOString(), progress: 7, total: 7 },
+                    2: { id: 2, earnedAt: '', progress: 7, total: 10 },
+                    4: { id: 4, earnedAt: '', progress: 23, total: 100 },
+                    6: { id: 6, earnedAt: '', progress: 65, total: 100 },
+                    8: { id: 8, earnedAt: '', progress: 450, total: 1000 },
+                    10: { id: 10, earnedAt: '', progress: 89, total: 365 },
+                  }}
+                  title="Achievement Showcase"
+                  showFilters={true}
+                />
+              </div>
+
+              {/* Category Colors Reference */}
+              <div className="glass-panel p-8">
+                <h4 className="text-lg font-semibold text-white mb-6">Achievement Category Colors</h4>
+                <p className="text-sm text-slate-400 mb-6">
+                  Each achievement category uses jewel-tone colors from the design system:
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div className="text-center">
+                    <div className="h-20 rounded-xl mb-2 border border-white/10 flex items-center justify-center"
+                         style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                      <RocketLaunchIcon className="w-8 h-8 text-white drop-shadow-lg" />
+                    </div>
+                    <p className="text-sm font-medium text-emerald-400">Projects</p>
+                    <p className="text-xs text-slate-500 mb-1">jade</p>
+                    <code className="text-xs text-slate-400">#10b981</code>
+                    <br />
+                    <code className="text-xs text-slate-400">#059669</code>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="h-20 rounded-xl mb-2 border border-white/10 flex items-center justify-center"
+                         style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
+                      <TrophyIcon className="w-8 h-8 text-white drop-shadow-lg" />
+                    </div>
+                    <p className="text-sm font-medium text-red-400">Battles</p>
+                    <p className="text-xs text-slate-500 mb-1">ruby</p>
+                    <code className="text-xs text-slate-400">#ef4444</code>
+                    <br />
+                    <code className="text-xs text-slate-400">#dc2626</code>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="h-20 rounded-xl mb-2 border border-white/10 flex items-center justify-center"
+                         style={{ background: 'linear-gradient(135deg, #f472b6, #ec4899)' }}>
+                      <UsersIcon className="w-8 h-8 text-white drop-shadow-lg" />
+                    </div>
+                    <p className="text-sm font-medium text-pink-400">Community</p>
+                    <p className="text-xs text-slate-500 mb-1">rose-quartz</p>
+                    <code className="text-xs text-slate-400">#f472b6</code>
+                    <br />
+                    <code className="text-xs text-slate-400">#ec4899</code>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="h-20 rounded-xl mb-2 border border-white/10 flex items-center justify-center"
+                         style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+                      <HeartIcon className="w-8 h-8 text-white drop-shadow-lg" />
+                    </div>
+                    <p className="text-sm font-medium text-blue-400">Engagement</p>
+                    <p className="text-xs text-slate-500 mb-1">sapphire</p>
+                    <code className="text-xs text-slate-400">#3b82f6</code>
+                    <br />
+                    <code className="text-xs text-slate-400">#2563eb</code>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="h-20 rounded-xl mb-2 border border-white/10 flex items-center justify-center"
+                         style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                      <FireIcon className="w-8 h-8 text-white drop-shadow-lg" />
+                    </div>
+                    <p className="text-sm font-medium text-amber-400">Streaks</p>
+                    <p className="text-xs text-slate-500 mb-1">topaz</p>
+                    <code className="text-xs text-slate-400">#f59e0b</code>
+                    <br />
+                    <code className="text-xs text-slate-400">#d97706</code>
                   </div>
                 </div>
               </div>

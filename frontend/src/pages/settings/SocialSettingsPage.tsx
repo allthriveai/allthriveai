@@ -176,12 +176,12 @@ export default function SocialSettingsPage() {
 
             {/* Error/Success Messages */}
             {errorMessage && (
-              <div role="alert" aria-live="assertive" className="mb-6 glass-strong rounded-xl p-4 border border-red-500/20 bg-red-500/5">
+              <div role="alert" aria-live="assertive" className="mb-6 glass-strong rounded p-4 border border-red-500/20 bg-red-500/5">
                 <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
               </div>
             )}
             {successMessage && (
-              <div role="status" aria-live="polite" className="mb-6 glass-strong rounded-xl p-4 border border-green-500/20 bg-green-500/5">
+              <div role="status" aria-live="polite" className="mb-6 glass-strong rounded p-4 border border-green-500/20 bg-green-500/5">
                 <p className="text-sm text-green-600 dark:text-green-400">{successMessage}</p>
               </div>
             )}
@@ -298,7 +298,7 @@ export default function SocialSettingsPage() {
                   <div
                     key={provider.key}
                     role="listitem"
-                    className="glass-strong rounded-xl p-6 border border-white/20 flex items-center justify-between"
+                    className="glass-strong rounded p-6 border border-white/20 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-2xl">

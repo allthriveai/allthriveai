@@ -10,7 +10,7 @@ import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
 import { GeneratedImageMessage } from './GeneratedImageMessage';
 import { HelpQuestionsPanel } from './HelpQuestionsPanel';
 import type { HelpQuestion } from '@/data/helpQuestions';
-import { useIntelligentChat, type ChatMessage } from '@/hooks/useIntelligentChat';
+import { useIntelligentChat, type ChatMessage, type QuotaExceededInfo } from '@/hooks/useIntelligentChat';
 import { useAuth } from '@/hooks/useAuth';
 import { setProjectFeaturedImage, createProjectFromImageSession } from '@/services/projects';
 import {
@@ -18,6 +18,7 @@ import {
   checkGitHubConnection,
   type GitHubRepository,
 } from '@/services/github';
+import { uploadFile, uploadImage } from '@/services/upload';
 // Constants
 const ONBOARDING_BUTTON_BASE = 'w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50';
 const BUTTON_FLEX_CONTAINER = 'flex items-center gap-3';
@@ -70,6 +71,7 @@ export function IntelligentChatPanel({
   const { user } = useAuth();
   const [error, setError] = useState<string | undefined>();
   const [hasInteracted, setHasInteracted] = useState(supportMode); // If support mode, mark as interacted
+  const [quotaExceeded, setQuotaExceeded] = useState<QuotaExceededInfo | null>(null);
 
   // GitHub integration state
   const [githubStep, setGithubStep] = useState<'idle' | 'loading' | 'connect' | 'repos' | 'importing'>('idle');
@@ -91,28 +93,83 @@ export function IntelligentChatPanel({
     }, 300);
   }, [navigate, onClose]);
 
+  // Handle quota exceeded - show upgrade prompt
+  const handleQuotaExceeded = useCallback((info: QuotaExceededInfo) => {
+    console.log('[Chat] Quota exceeded:', info);
+    setQuotaExceeded(info);
+  }, []);
+
   const { messages, isConnected, isLoading, sendMessage, connect, reconnectAttempts } = useIntelligentChat({
     conversationId,
     onError: (err) => setError(err),
     onProjectCreated: handleProjectCreated,
+    onQuotaExceeded: handleQuotaExceeded,
   });
 
-  const handleSendMessage = (content: string, attachments?: File[]) => {
+  // State for file upload progress
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleSendMessage = async (content: string, attachments?: File[]) => {
     if (!content.trim() && (!attachments || attachments.length === 0)) return;
-    if (isLoading) return;
+    if (isLoading || isUploading) return;
 
     setError(undefined);
     setHasInteracted(true);
     setHelpMode(false); // Close help panel when user sends a message
 
-    // For now, if there are attachments, we'll mention them in the message
-    // TODO: Implement proper file upload via the upload service
+    // Upload attachments if present
     if (attachments && attachments.length > 0) {
-      const attachmentNames = attachments.map(f => f.name).join(', ');
-      const messageWithAttachments = content
-        ? `${content}\n\n[Attached: ${attachmentNames}]`
-        : `[Attached: ${attachmentNames}]`;
-      sendMessage(messageWithAttachments);
+      setIsUploading(true);
+      try {
+        const uploadedFiles: { name: string; url: string; type: string }[] = [];
+
+        for (const file of attachments) {
+          const isImage = file.type.startsWith('image/');
+
+          if (isImage) {
+            const result = await uploadImage(file, 'chat-attachments', true);
+            uploadedFiles.push({
+              name: file.name,
+              url: result.url,
+              type: 'image',
+            });
+          } else {
+            const result = await uploadFile(file, 'chat-attachments', true);
+            uploadedFiles.push({
+              name: file.name,
+              url: result.url,
+              type: result.file_type,
+            });
+          }
+        }
+
+        // Build message with uploaded file URLs
+        const fileDescriptions = uploadedFiles.map(f =>
+          f.type === 'image'
+            ? `[Image: ${f.name}](${f.url})`
+            : `[File: ${f.name}](${f.url})`
+        ).join('\n');
+
+        const messageWithAttachments = content
+          ? `${content}\n\n${fileDescriptions}`
+          : fileDescriptions;
+
+        sendMessage(messageWithAttachments);
+      } catch (uploadError: any) {
+        console.error('[IntelligentChatPanel] File upload failed:', uploadError);
+        // Show more detailed error message to help debug
+        const errorMessage = uploadError?.error || uploadError?.message || 'Unknown error';
+        const statusCode = uploadError?.statusCode;
+        if (statusCode === 401) {
+          setError('Authentication required. Please refresh the page and try again.');
+        } else if (statusCode === 400) {
+          setError(`Upload failed: ${errorMessage}`);
+        } else {
+          setError(`Failed to upload files: ${errorMessage}`);
+        }
+      } finally {
+        setIsUploading(false);
+      }
     } else {
       sendMessage(content);
     }
@@ -492,6 +549,59 @@ export function IntelligentChatPanel({
     );
   };
 
+  // Quota exceeded banner with upgrade options
+  const renderQuotaExceeded = () => {
+    if (!quotaExceeded) return null;
+
+    return (
+      <div className="mx-4 mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-400 mb-1">
+                AI Usage Limit Reached
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                You've used all your AI requests for this period.
+              </p>
+              <div className="mt-2 text-xs text-amber-600 dark:text-amber-500 space-y-1">
+                <p>Plan: <span className="font-medium">{quotaExceeded.tier}</span></p>
+                {quotaExceeded.aiRequestsLimit > 0 && (
+                  <p>Requests: {quotaExceeded.aiRequestsUsed} / {quotaExceeded.aiRequestsLimit} used</p>
+                )}
+                <p>Token Balance: <span className="font-medium">{quotaExceeded.tokenBalance.toLocaleString()}</span></p>
+              </div>
+            </div>
+            <button
+              onClick={() => setQuotaExceeded(null)}
+              className="p-1 hover:bg-amber-200 dark:hover:bg-amber-800 rounded transition-colors"
+              aria-label="Dismiss"
+            >
+              <XMarkIcon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </button>
+          </div>
+
+          <div className="flex gap-2">
+            {quotaExceeded.canPurchaseTokens && (
+              <button
+                onClick={() => navigate('/settings/billing?tab=tokens')}
+                className="flex-1 px-3 py-2 text-xs font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors"
+              >
+                Buy Tokens
+              </button>
+            )}
+            <button
+              onClick={() => navigate(quotaExceeded.upgradeUrl)}
+              className="flex-1 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 rounded-md transition-colors"
+            >
+              Upgrade Plan
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // State for the ChatPlusMenu dropdown - lifted to parent to prevent state loss
   // when component re-renders due to WebSocket connection changes
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
@@ -628,13 +738,13 @@ export function IntelligentChatPanel({
       onClose={onClose}
       onSendMessage={handleSendMessage}
       messages={messages}
-      isLoading={isLoading}
+      isLoading={isLoading || isUploading}
       error={error}
       customMessageRenderer={renderMessage}
       customInputPrefix={
         <ChatPlusMenu
           onIntegrationSelect={handleIntegrationSelect}
-          disabled={isLoading}
+          disabled={isLoading || isUploading}
           isOpen={plusMenuOpen}
           onOpenChange={setPlusMenuOpen}
         />
@@ -687,13 +797,21 @@ export function IntelligentChatPanel({
       inputPlaceholder="Ask me anything..."
       customEmptyState={renderEmptyState()}
       customContent={
+        // Only pass customContent when there's actually custom UI to show
+        // Otherwise let ChatInterface render the messages normally
         helpMode ? (
-          <HelpQuestionsPanel
-            onQuestionSelect={handleHelpQuestionSelect}
-            onClose={handleCloseHelp}
-          />
+          <>
+            {renderQuotaExceeded()}
+            <HelpQuestionsPanel
+              onQuestionSelect={handleHelpQuestionSelect}
+              onClose={handleCloseHelp}
+            />
+          </>
         ) : githubStep !== 'idle' ? (
-          renderGitHubUI()
+          <>
+            {renderQuotaExceeded()}
+            {renderGitHubUI()}
+          </>
         ) : undefined
       }
       enableAttachments={true}

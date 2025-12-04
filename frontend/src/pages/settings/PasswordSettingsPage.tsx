@@ -119,7 +119,7 @@ export default function PasswordSettingsPage() {
 
             {/* Password Form */}
             <form onSubmit={handleSubmit} className="space-y-6" aria-label="Change password form">
-              <div className="glass-strong rounded-xl p-6 border border-white/20">
+              <div className="glass-strong rounded p-6 border border-white/20">
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="currentPassword" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -187,7 +187,7 @@ export default function PasswordSettingsPage() {
                   tabIndex={-1}
                   role="alert"
                   aria-live="assertive"
-                  className="glass-strong rounded-xl p-4 border border-red-500/20 bg-red-500/5 focus:outline-none"
+                  className="glass-strong rounded p-4 border border-red-500/20 bg-red-500/5 focus:outline-none"
                 >
                   <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
                 </div>

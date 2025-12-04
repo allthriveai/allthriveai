@@ -114,15 +114,15 @@ class LoggingAuditor:
                 if severity_issues:
                     print(f'\n{severity} ({len(severity_issues)}):')
                     for issue in severity_issues:
-                        print(f"  📄 {issue['file']}:{issue['line']}")
-                        print(f"     {issue['message']}")
+                        print(f'  📄 {issue["file"]}:{issue["line"]}')
+                        print(f'     {issue["message"]}')
 
         # Print recommendations
         if self.recommendations:
             print('\n💡 RECOMMENDATIONS\n')
             for rec in self.recommendations:
-                print(f"  📄 {rec['file']}:{rec['line']}")
-                print(f"     {rec['message']}")
+                print(f'  📄 {rec["file"]}:{rec["line"]}')
+                print(f'     {rec["message"]}')
 
         # Summary
         print('\n' + '=' * 70)

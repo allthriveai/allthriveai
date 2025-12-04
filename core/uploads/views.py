@@ -4,6 +4,9 @@ API views for file uploads.
 
 import logging
 import mimetypes
+import os
+import re
+import unicodedata
 from io import BytesIO
 
 from django_ratelimit.decorators import ratelimit
@@ -16,6 +19,75 @@ from rest_framework.response import Response
 from services.integrations.storage.storage_service import get_storage_service
 
 logger = logging.getLogger(__name__)
+
+# Allowed image formats (validated via PIL)
+ALLOWED_IMAGE_FORMATS = {'JPEG', 'PNG', 'GIF', 'WEBP', 'BMP'}
+
+
+def sanitize_filename(filename: str) -> str:
+    """
+    Sanitize a filename to prevent path traversal and injection attacks.
+
+    - Removes directory components (path traversal prevention)
+    - Normalizes Unicode characters
+    - Removes dangerous characters
+    - Limits length
+    - Preserves file extension
+
+    Args:
+        filename: Original filename from upload
+
+    Returns:
+        Sanitized filename safe for storage
+    """
+    if not filename:
+        return 'unnamed_file'
+
+    # Get just the filename, removing any path components
+    filename = os.path.basename(filename)
+
+    # Normalize Unicode characters (NFC form)
+    filename = unicodedata.normalize('NFC', filename)
+
+    # Split name and extension
+    name, ext = os.path.splitext(filename)
+
+    # Remove or replace dangerous characters from name
+    # Allow only alphanumeric, dash, underscore, space, and period
+    name = re.sub(r'[^\w\s\-.]', '', name)
+
+    # Replace multiple spaces/underscores with single underscore
+    name = re.sub(r'[\s_]+', '_', name)
+
+    # Remove leading/trailing dots and underscores
+    name = name.strip('._')
+
+    # If name is empty after sanitization, use a default
+    if not name:
+        name = 'file'
+
+    # Limit name length (leaving room for extension)
+    max_name_length = 200
+    if len(name) > max_name_length:
+        name = name[:max_name_length]
+
+    # Sanitize extension (lowercase, alphanumeric only)
+    ext = ext.lower()
+    ext = re.sub(r'[^a-z0-9.]', '', ext)
+
+    # Ensure extension starts with a dot if present
+    if ext and not ext.startswith('.'):
+        ext = '.' + ext
+
+    # Combine and return
+    sanitized = name + ext
+
+    # Final length check
+    if len(sanitized) > 255:
+        sanitized = sanitized[:255]
+
+    logger.debug(f'Sanitized filename: {filename!r} -> {sanitized!r}')
+    return sanitized
 
 
 @api_view(['POST'])
@@ -46,6 +118,9 @@ def upload_image(request):
     if uploaded_file.size > max_size:
         return Response({'error': 'File too large. Maximum size: 10MB'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Sanitize the filename to prevent path traversal and injection
+    safe_filename = sanitize_filename(uploaded_file.name)
+
     try:
         # Read file data
         file_data = uploaded_file.read()
@@ -53,6 +128,14 @@ def upload_image(request):
         # Validate actual file content (not just header)
         try:
             img = Image.open(BytesIO(file_data))
+
+            # Validate image format against whitelist (prevents processing malicious files)
+            if img.format not in ALLOWED_IMAGE_FORMATS:
+                logger.warning(f'Disallowed image format: {img.format}')
+                return Response(
+                    {'error': f'Image format not allowed: {img.format}. Allowed: {", ".join(ALLOWED_IMAGE_FORMATS)}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             # Validate image dimensions
             width, height = img.size
@@ -69,17 +152,17 @@ def upload_image(request):
                 )
 
             # Optimize image (resize if too large, compress)
-            optimized_data = _optimize_image(img, uploaded_file.name)
+            optimized_data = _optimize_image(img, safe_filename)
 
         except Exception as e:
             logger.warning(f'Invalid image file: {e}')
             return Response({'error': 'Invalid or corrupted image file'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Upload to MinIO
+        # Upload to MinIO with sanitized filename
         storage = get_storage_service()
         url, error = storage.upload_file(
             file_data=optimized_data,
-            filename=uploaded_file.name,
+            filename=safe_filename,
             content_type='image/jpeg',  # Always save as JPEG after optimization
             user_id=request.user.id,
             folder=folder,
@@ -96,7 +179,8 @@ def upload_image(request):
         return Response(
             {
                 'url': url,
-                'filename': uploaded_file.name,
+                'filename': safe_filename,
+                'original_filename': uploaded_file.name,
                 'original_size': uploaded_file.size,
                 'optimized_size': len(optimized_data),
                 'is_public': is_public,
@@ -216,15 +300,18 @@ def upload_file(request):
         max_size_mb = max_size // (1024 * 1024)
         return Response({'error': f'File too large. Maximum size: {max_size_mb}MB'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Sanitize the filename to prevent path traversal and injection
+    safe_filename = sanitize_filename(uploaded_file.name)
+
     try:
         # Read file data
         file_data = uploaded_file.read()
 
-        # Upload to MinIO
+        # Upload to MinIO with sanitized filename
         storage = get_storage_service()
         url, error = storage.upload_file(
             file_data=file_data,
-            filename=uploaded_file.name,
+            filename=safe_filename,
             content_type=content_type,
             user_id=request.user.id,
             folder=folder,
@@ -241,7 +328,8 @@ def upload_file(request):
         return Response(
             {
                 'url': url,
-                'filename': uploaded_file.name,
+                'filename': safe_filename,
+                'original_filename': uploaded_file.name,
                 'file_type': content_type,
                 'file_size': uploaded_file.size,
                 'is_public': is_public,

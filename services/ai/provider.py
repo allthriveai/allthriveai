@@ -32,6 +32,25 @@ class AIProviderType(Enum):
     GEMINI = 'gemini'
 
 
+def _convert_url_for_docker(url: str) -> str:
+    """
+    Convert localhost URLs to Docker-internal hostnames when running inside Docker.
+
+    MinIO URLs stored as localhost:9000 won't work from inside containers.
+    This converts them to use the Docker service name (minio:9000).
+    """
+    import os
+
+    # Check if we're running inside Docker (this file exists in Docker containers)
+    if os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER'):
+        # Convert localhost MinIO URLs to use Docker service name
+        if 'localhost:9000' in url:
+            return url.replace('localhost:9000', 'minio:9000')
+        if '127.0.0.1:9000' in url:
+            return url.replace('127.0.0.1:9000', 'minio:9000')
+    return url
+
+
 class AIProvider:
     """
     Global AI provider class that can switch between Azure OpenAI, OpenAI, and Anthropic.
@@ -566,6 +585,7 @@ class AIProvider:
                 api_key=getattr(settings, 'AZURE_OPENAI_API_KEY', ''),
                 api_version=getattr(settings, 'AZURE_OPENAI_API_VERSION', '2024-02-15-preview'),
                 temperature=temperature,
+                streaming=True,  # Enable streaming for astream_events
                 **kwargs,
             )
 
@@ -742,3 +762,286 @@ class AIProvider:
                 exc_info=True,
             )
             raise
+
+    @traceable(name='ai_provider_complete_with_image', run_type='llm')
+    def complete_with_image(
+        self,
+        prompt: str,
+        image_url: str | None = None,
+        image_bytes: bytes | None = None,
+        model: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int | None = None,
+        timeout: int = 60,
+    ) -> str:
+        """
+        Generate a completion using an image as input (vision model).
+
+        Args:
+            prompt: The text prompt to send with the image
+            image_url: URL of the image to analyze (optional if image_bytes provided)
+            image_bytes: Raw bytes of the image (optional if image_url provided)
+            model: Model name (defaults to vision-capable model for provider)
+            temperature: Sampling temperature (0-1)
+            max_tokens: Maximum tokens to generate
+            timeout: Request timeout in seconds
+
+        Returns:
+            Generated text response
+
+        Raises:
+            ValueError: If neither image_url nor image_bytes provided
+            Exception: If the API call fails
+        """
+        if not image_url and not image_bytes:
+            raise ValueError('Either image_url or image_bytes must be provided')
+
+        try:
+            if self._provider == AIProviderType.GEMINI:
+                return self._complete_with_image_gemini(
+                    prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
+                )
+            elif self._provider == AIProviderType.OPENAI:
+                return self._complete_with_image_openai(
+                    prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
+                )
+            elif self._provider == AIProviderType.AZURE:
+                return self._complete_with_image_azure(
+                    prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
+                )
+            elif self._provider == AIProviderType.ANTHROPIC:
+                return self._complete_with_image_anthropic(
+                    prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
+                )
+            else:
+                raise ValueError(f'Vision not supported for provider: {self._provider}')
+        except Exception as e:
+            logger.error(
+                f'{self._provider.value} vision completion failed: {e}',
+                extra={
+                    'provider': self._provider.value,
+                    'model': model or 'default',
+                    'user_id': self.user_id,
+                    'error_type': type(e).__name__,
+                },
+                exc_info=True,
+            )
+            raise
+
+    def _complete_with_image_gemini(
+        self,
+        prompt: str,
+        image_url: str | None,
+        image_bytes: bytes | None,
+        model: str | None,
+        temperature: float,
+        max_tokens: int | None,
+        timeout: int,
+    ) -> str:
+        """Gemini vision completion."""
+        import httpx
+
+        # Default to Gemini image model from settings (must support vision/multimodal)
+        # Use GEMINI_IMAGE_MODEL as it's designed for multimodal tasks
+        model_name = model or getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-2.0-flash-exp')
+
+        generation_config = {'temperature': temperature}
+        if max_tokens:
+            generation_config['max_output_tokens'] = max_tokens
+
+        model_instance = self._client.GenerativeModel(model_name=model_name)
+
+        # Build content parts
+        parts = []
+
+        # Add image
+        if image_bytes:
+            parts.append({'mime_type': 'image/png', 'data': image_bytes})
+        elif image_url:
+            # Fetch image from URL (convert localhost to Docker hostname if needed)
+            fetch_url = _convert_url_for_docker(image_url)
+            response = httpx.get(fetch_url, timeout=30)
+            response.raise_for_status()
+            content_type = response.headers.get('content-type', 'image/png')
+            parts.append({'mime_type': content_type, 'data': response.content})
+
+        # Add text prompt
+        parts.append(prompt)
+
+        request_options = {'timeout': timeout}
+        response = model_instance.generate_content(
+            parts,
+            generation_config=generation_config,
+            request_options=request_options,
+        )
+
+        # Store token usage
+        if hasattr(response, 'usage_metadata'):
+            self.last_usage = {
+                'prompt_tokens': response.usage_metadata.prompt_token_count,
+                'completion_tokens': response.usage_metadata.candidates_token_count,
+                'total_tokens': response.usage_metadata.total_token_count,
+            }
+
+        return response.text
+
+    def _complete_with_image_openai(
+        self,
+        prompt: str,
+        image_url: str | None,
+        image_bytes: bytes | None,
+        model: str | None,
+        temperature: float,
+        max_tokens: int | None,
+        timeout: int,
+    ) -> str:
+        """OpenAI vision completion."""
+        import base64
+
+        model_name = model or 'gpt-4o'
+
+        # Build image content
+        if image_bytes:
+            base64_image = base64.b64encode(image_bytes).decode('utf-8')
+            image_content = {'type': 'image_url', 'image_url': {'url': f'data:image/png;base64,{base64_image}'}}
+        else:
+            image_content = {'type': 'image_url', 'image_url': {'url': image_url}}
+
+        messages = [
+            {
+                'role': 'user',
+                'content': [
+                    image_content,
+                    {'type': 'text', 'text': prompt},
+                ],
+            }
+        ]
+
+        response = self._client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=timeout,
+        )
+
+        if hasattr(response, 'usage'):
+            self.last_usage = {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
+                'total_tokens': response.usage.total_tokens,
+            }
+
+        return response.choices[0].message.content
+
+    def _complete_with_image_azure(
+        self,
+        prompt: str,
+        image_url: str | None,
+        image_bytes: bytes | None,
+        model: str | None,
+        temperature: float,
+        max_tokens: int | None,
+        timeout: int,
+    ) -> str:
+        """Azure OpenAI vision completion."""
+        import base64
+
+        deployment_name = model or getattr(settings, 'AZURE_OPENAI_VISION_DEPLOYMENT', 'gpt-4o')
+
+        # Build image content
+        if image_bytes:
+            base64_image = base64.b64encode(image_bytes).decode('utf-8')
+            image_content = {'type': 'image_url', 'image_url': {'url': f'data:image/png;base64,{base64_image}'}}
+        else:
+            image_content = {'type': 'image_url', 'image_url': {'url': image_url}}
+
+        messages = [
+            {
+                'role': 'user',
+                'content': [
+                    image_content,
+                    {'type': 'text', 'text': prompt},
+                ],
+            }
+        ]
+
+        response = self._client.chat.completions.create(
+            model=deployment_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=timeout,
+        )
+
+        if hasattr(response, 'usage'):
+            self.last_usage = {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
+                'total_tokens': response.usage.total_tokens,
+            }
+
+        return response.choices[0].message.content
+
+    def _complete_with_image_anthropic(
+        self,
+        prompt: str,
+        image_url: str | None,
+        image_bytes: bytes | None,
+        model: str | None,
+        temperature: float,
+        max_tokens: int | None,
+        timeout: int,
+    ) -> str:
+        """Anthropic Claude vision completion."""
+        import base64
+
+        import httpx
+
+        model_name = model or 'claude-3-5-sonnet-20241022'
+        max_tokens = max_tokens or 1024
+
+        # Get image data
+        if image_bytes:
+            image_data = base64.b64encode(image_bytes).decode('utf-8')
+            media_type = 'image/png'
+        else:
+            # Fetch image from URL
+            response = httpx.get(image_url, timeout=30)
+            response.raise_for_status()
+            image_data = base64.b64encode(response.content).decode('utf-8')
+            media_type = response.headers.get('content-type', 'image/png')
+
+        messages = [
+            {
+                'role': 'user',
+                'content': [
+                    {
+                        'type': 'image',
+                        'source': {
+                            'type': 'base64',
+                            'media_type': media_type,
+                            'data': image_data,
+                        },
+                    },
+                    {'type': 'text', 'text': prompt},
+                ],
+            }
+        ]
+
+        response = self._client.messages.create(
+            model=model_name,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            messages=messages,
+            timeout=timeout,
+        )
+
+        if hasattr(response, 'usage'):
+            self.last_usage = {
+                'prompt_tokens': response.usage.input_tokens,
+                'completion_tokens': response.usage.output_tokens,
+                'total_tokens': response.usage.input_tokens + response.usage.output_tokens,
+            }
+
+        return response.content[0].text

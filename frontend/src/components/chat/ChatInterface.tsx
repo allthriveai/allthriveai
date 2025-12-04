@@ -1,6 +1,66 @@
-import { XMarkIcon, PaperAirplaneIcon, PhotoIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PaperAirplaneIcon, PhotoIcon, XCircleIcon, DocumentIcon, FilmIcon } from '@heroicons/react/24/outline';
 import { useRef, useEffect, useState } from 'react';
 import type { ChatMessage, ChatConfig } from '@/types/chat';
+
+// Allowed file types (must match backend validation)
+const ALLOWED_FILE_TYPES = {
+  images: new Set([
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/bmp',
+  ]),
+  videos: new Set([
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'video/x-msvideo',
+  ]),
+  documents: new Set([
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+    'application/zip',
+    'application/x-zip-compressed',
+  ]),
+};
+
+// Size limits (must match backend)
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_DOC_SIZE = 25 * 1024 * 1024; // 25MB
+
+function isAllowedFileType(type: string): boolean {
+  return (
+    ALLOWED_FILE_TYPES.images.has(type) ||
+    ALLOWED_FILE_TYPES.videos.has(type) ||
+    ALLOWED_FILE_TYPES.documents.has(type)
+  );
+}
+
+function getMaxSizeForType(type: string): number {
+  if (ALLOWED_FILE_TYPES.images.has(type)) return MAX_IMAGE_SIZE;
+  if (ALLOWED_FILE_TYPES.videos.has(type)) return MAX_VIDEO_SIZE;
+  return MAX_DOC_SIZE;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(type: string) {
+  if (ALLOWED_FILE_TYPES.images.has(type)) return PhotoIcon;
+  if (ALLOWED_FILE_TYPES.videos.has(type)) return FilmIcon;
+  return DocumentIcon;
+}
 
 interface ChatInterfaceProps {
   isOpen: boolean;
@@ -41,8 +101,44 @@ export function ChatInterface({
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const dragCounterRef = useRef(0);
+
+  // Clear file error after 5 seconds
+  useEffect(() => {
+    if (fileError) {
+      const timer = setTimeout(() => setFileError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [fileError]);
+
+  // Validate and filter files
+  const validateFiles = (files: File[]): { valid: File[]; errors: string[] } => {
+    const valid: File[] = [];
+    const errors: string[] = [];
+
+    for (const file of files) {
+      // Check file type
+      if (!isAllowedFileType(file.type)) {
+        const ext = file.name.split('.').pop()?.toUpperCase() || 'Unknown';
+        errors.push(`${file.name}: .${ext} files are not supported`);
+        continue;
+      }
+
+      // Check file size
+      const maxSize = getMaxSizeForType(file.type);
+      if (file.size > maxSize) {
+        errors.push(`${file.name}: File too large (max ${formatFileSize(maxSize)})`);
+        continue;
+      }
+
+      valid.push(file);
+    }
+
+    return { valid, errors };
+  };
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -66,16 +162,60 @@ export function ChatInterface({
     setAttachments([]);
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    // Limit to 5 files max
-    setAttachments(prev => [...prev, ...files].slice(0, 5));
-    // Reset input so the same file can be selected again
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!enableAttachments) return;
+
+    dragCounterRef.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!enableAttachments) return;
+
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!enableAttachments) return;
+
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      // Validate files before adding
+      const { valid, errors } = validateFiles(files);
+
+      if (errors.length > 0) {
+        setFileError(errors.join('\n'));
+      }
+
+      if (valid.length > 0) {
+        // Limit to 5 files max
+        setAttachments(prev => [...prev, ...valid].slice(0, 5));
+      }
+    }
   };
 
   const renderMessage = (message: ChatMessage) => {
@@ -113,7 +253,31 @@ export function ChatInterface({
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         }}
         aria-hidden={!isOpen}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
       >
+        {/* Drag overlay */}
+        {isDragging && enableAttachments && (
+          <div className="absolute inset-0 z-50 bg-primary-500/20 border-2 border-dashed border-primary-500 rounded-lg flex items-center justify-center pointer-events-none">
+            <div className="bg-white dark:bg-gray-800 rounded-lg px-6 py-4 shadow-lg max-w-sm">
+              <div className="flex items-start gap-3">
+                <div className="flex gap-1">
+                  <PhotoIcon className="w-6 h-6 text-primary-500" />
+                  <FilmIcon className="w-6 h-6 text-primary-500" />
+                  <DocumentIcon className="w-6 h-6 text-primary-500" />
+                </div>
+                <div>
+                  <p className="text-lg font-medium text-gray-900 dark:text-white">Drop files here</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Images, videos, PDFs, documents</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Up to 5 files</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
           {header ? (
@@ -148,6 +312,28 @@ export function ChatInterface({
         {error && (
           <div className="mx-4 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+          </div>
+        )}
+
+        {/* File Error Display */}
+        {fileError && (
+          <div className="mx-4 mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-start gap-2">
+              <XCircleIcon className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Some files couldn't be added</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 whitespace-pre-line">{fileError}</p>
+                <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                  Supported: Images (JPG, PNG, GIF, WebP), Videos (MP4, WebM), Documents (PDF, Word, Excel, PowerPoint, TXT, ZIP)
+                </p>
+              </div>
+              <button
+                onClick={() => setFileError(null)}
+                className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
+              >
+                <XMarkIcon className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
 
@@ -211,7 +397,10 @@ export function ChatInterface({
                       className="w-8 h-8 object-cover rounded"
                     />
                   ) : (
-                    <PhotoIcon className="w-5 h-5 text-gray-500" />
+                    (() => {
+                      const FileIcon = getFileIcon(file.type);
+                      return <FileIcon className="w-5 h-5 text-gray-500" />;
+                    })()
                   )}
                   <span className="max-w-[120px] truncate text-gray-700 dark:text-gray-300">
                     {file.name}
@@ -235,30 +424,6 @@ export function ChatInterface({
               <div className="flex-shrink-0 relative">
                 {customInputPrefix}
               </div>
-            )}
-
-            {/* Attachment Button */}
-            {enableAttachments && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  id="chat-file-input"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading || attachments.length >= 5}
-                  className="p-2 text-gray-500 hover:text-primary-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={attachments.length >= 5 ? 'Maximum 5 files' : 'Attach image'}
-                >
-                  <PhotoIcon className="w-5 h-5" />
-                </button>
-              </>
             )}
 
             <input

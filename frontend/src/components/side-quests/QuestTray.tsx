@@ -90,7 +90,7 @@ const getQuestIntroMessages = (quest: SideQuest) => {
   }
 
   // Reward reveal
-  messages.push(`Complete this quest to earn +${quest.pointsReward} XP`);
+  messages.push(`Complete this quest to earn +${quest.pointsReward} Points`);
 
   // Final call to action
   messages.push('Do you accept this quest?');
@@ -397,7 +397,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
           {/* Quest info badges */}
           {showButtons && (
             <div className="flex items-center gap-4 mt-6 mb-8 animate-fade-in">
-              {/* XP Reward */}
+              {/* Points Reward */}
               <div
                 className="flex items-center gap-2 px-4 py-2 rounded-full"
                 style={{
@@ -406,7 +406,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
                 }}
               >
                 <TrophyIcon className="w-5 h-5" style={{ color: questColors.colorFrom }} />
-                <span className="font-bold" style={{ color: questColors.colorFrom }}>+{sideQuest.pointsReward} XP</span>
+                <span className="font-bold" style={{ color: questColors.colorFrom }}>+{sideQuest.pointsReward} Points</span>
               </div>
 
               {/* Difficulty */}
@@ -567,7 +567,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Quest Info Bar */}
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            {/* XP Reward Badge */}
+            {/* Points Reward Badge */}
             <div
               className="flex items-center gap-2 px-3 py-1.5 rounded-full"
               style={{
@@ -576,7 +576,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
               }}
             >
               <TrophyIcon className="w-4 h-4" style={{ color: questColors.colorFrom }} />
-              <span className="text-sm font-bold" style={{ color: questColors.colorFrom }}>+{sideQuest.pointsReward} XP</span>
+              <span className="text-sm font-bold" style={{ color: questColors.colorFrom }}>+{sideQuest.pointsReward} Points</span>
             </div>
 
             {/* Difficulty Badge */}
@@ -634,7 +634,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
                 <span className="font-bold text-green-400">Quest Complete!</span>
               </div>
               <p className="text-sm text-secondary leading-relaxed">
-                {sideQuest.narrativeComplete || `You earned +${userQuest?.xpAwarded || sideQuest.pointsReward} XP!`}
+                {sideQuest.narrativeComplete || `You earned +${userQuest?.xpAwarded || sideQuest.pointsReward} Points!`}
               </p>
             </div>
           )}
@@ -772,7 +772,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
                 }}
               >
                 <CheckIcon className="w-5 h-5 text-green-400" />
-                <span className="text-green-400 font-medium">+{userQuest?.xpAwarded || sideQuest.pointsReward} XP Earned</span>
+                <span className="text-green-400 font-medium">+{userQuest?.xpAwarded || sideQuest.pointsReward} Points Earned</span>
               </div>
             </div>
           )}

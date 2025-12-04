@@ -11,4 +11,5 @@ export { ArchitectureSection } from './ArchitectureSection';
 export { DemoSection } from './DemoSection';
 export { ChallengesSection } from './ChallengesSection';
 export { LinksSection } from './LinksSection';
+export { SlideUpSection } from './SlideUpSection';
 export { CustomSection } from './CustomSection';

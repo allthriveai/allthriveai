@@ -124,6 +124,9 @@ class UserSubscription(models.Model):
     trial_start = models.DateTimeField(null=True, blank=True)
     trial_end = models.DateTimeField(null=True, blank=True)
     canceled_at = models.DateTimeField(null=True, blank=True)
+    cancel_at_period_end = models.BooleanField(
+        default=False, help_text='If True, subscription will cancel at current period end'
+    )
 
     # AI usage tracking (resets monthly)
     ai_requests_used_this_month = models.IntegerField(default=0)
@@ -155,15 +158,23 @@ class UserSubscription(models.Model):
         return self.status == 'trialing'
 
     def can_make_ai_request(self):
-        """Check if user can make another AI request."""
-        # Reset counter if new month
-        if self.ai_requests_reset_date and self.ai_requests_reset_date < timezone.now().date():
-            self.ai_requests_used_this_month = 0
-            self.ai_requests_reset_date = timezone.now().date()
-            self.save()
+        """
+        Check if user can make another AI request (read-only).
 
+        NOTE: This method does NOT reset the monthly counter. Counter resets
+        are handled by the reset_monthly_ai_requests_task Celery task.
+        For atomic check-and-reserve operations, use
+        core.billing.utils.check_and_reserve_ai_request() instead.
+        """
         # 0 means unlimited
         if self.tier.monthly_ai_requests == 0:
+            return True
+
+        # Check if reset date has passed - still allow request but don't mutate
+        # The scheduled task will handle the actual reset
+        if self.ai_requests_reset_date and self.ai_requests_reset_date < timezone.now().date():
+            # Counter should have been reset by scheduled task, but even if not,
+            # allow the request since a new period has started
             return True
 
         return self.ai_requests_used_this_month < self.tier.monthly_ai_requests

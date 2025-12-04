@@ -7,8 +7,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from services.gamification import BattleService
+from services.projects import ProjectService
 
-from .models import BattleInvitation, BattleStatus, BattleSubmission, InvitationStatus, PromptBattle
+from .models import BattleInvitation, BattleStatus, BattleSubmission, InvitationStatus, MatchSource, PromptBattle
 from .serializers import (
     BattleInvitationSerializer,
     BattleStatsSerializer,
@@ -121,6 +122,108 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
 
         serializer = self.get_serializer(battle)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def save_to_profile(self, request, pk=None):
+        """Save battle result as a project on user's profile."""
+        from core.projects.models import Project
+
+        battle = self.get_object()
+
+        # Validate user was a participant
+        if request.user not in [battle.challenger, battle.opponent]:
+            return Response({'error': 'You are not a participant in this battle.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Check battle is completed
+        if battle.status != BattleStatus.COMPLETED:
+            return Response({'error': 'Battle is not completed yet.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if already saved (prevent duplicates)
+        existing_project = Project.objects.filter(
+            user=request.user,
+            content__battleResult__battle_id=battle.id,
+        ).first()
+        if existing_project:
+            return Response(
+                {
+                    'project_id': existing_project.id,
+                    'slug': existing_project.slug,
+                    'message': 'Battle already saved to your profile!',
+                    'already_saved': True,
+                }
+            )
+
+        # Get user's submission
+        try:
+            my_submission = BattleSubmission.objects.get(battle=battle, user=request.user)
+        except BattleSubmission.DoesNotExist:
+            return Response({'error': 'No submission found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get opponent info and submission
+        opponent = battle.opponent if battle.challenger == request.user else battle.challenger
+        try:
+            opponent_submission = BattleSubmission.objects.get(battle=battle, user=opponent)
+        except BattleSubmission.DoesNotExist:
+            opponent_submission = None
+
+        # Determine win status
+        won = battle.winner_id == request.user.id if battle.winner_id else False
+        is_tie = battle.winner_id is None
+
+        # Check if opponent is AI (Pip)
+        is_ai_opponent = battle.match_source == MatchSource.AI_OPPONENT
+
+        # Build project content with both submissions
+        battle_result = {
+            'battle_id': battle.id,
+            'challenge_text': battle.challenge_text,
+            'won': won,
+            'is_tie': is_tie,
+            'my_submission': {
+                'prompt': my_submission.prompt_text,
+                'image_url': my_submission.generated_output_url,
+                'score': float(my_submission.score) if my_submission.score else None,
+            },
+            'opponent': {
+                'username': opponent.username,
+                'is_ai': is_ai_opponent,
+            },
+        }
+
+        # Include opponent submission if available
+        if opponent_submission:
+            battle_result['opponent_submission'] = {
+                'prompt': opponent_submission.prompt_text,
+                'image_url': opponent_submission.generated_output_url,
+                'score': float(opponent_submission.score) if opponent_submission.score else None,
+            }
+
+        # Truncate challenge text for title
+        challenge_preview = battle.challenge_text[:50]
+        if len(battle.challenge_text) > 50:
+            challenge_preview += '...'
+
+        # Create project
+        project, error = ProjectService.create_project(
+            user_id=request.user.id,
+            title=f'Battle: {challenge_preview}',
+            project_type='other',
+            description=f'Challenge: {battle.challenge_text}\n\nMy prompt: {my_submission.prompt_text}',
+            featured_image_url=my_submission.generated_output_url or '',
+            is_showcase=True,
+            content={'battleResult': battle_result},
+        )
+
+        if error:
+            return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                'project_id': project.id,
+                'slug': project.slug,
+                'message': 'Battle saved to your profile!',
+            }
+        )
 
 
 class BattleInvitationViewSet(viewsets.ReadOnlyModelViewSet):

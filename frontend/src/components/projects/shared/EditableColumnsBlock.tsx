@@ -168,6 +168,16 @@ function Column({
         return b;
       });
 
+      // Store original for rollback
+      const originalProject = project;
+
+      // Optimistic update
+      const optimisticProject = {
+        ...project,
+        content: { ...project.content, blocks: updatedBlocks },
+      };
+      onProjectUpdate(optimisticProject as Project);
+
       try {
         const updated = await updateProject(project.id, {
           content: { ...project.content, blocks: updatedBlocks },
@@ -175,6 +185,8 @@ function Column({
         onProjectUpdate(updated);
       } catch (error) {
         console.error('Failed to add block to column:', error);
+        // Rollback on error
+        onProjectUpdate(originalProject);
       } finally {
         setIsAdding(false);
       }
@@ -201,6 +213,16 @@ function Column({
         return b;
       });
 
+      // Store original for rollback
+      const originalProject = project;
+
+      // Optimistic update
+      const optimisticProject = {
+        ...project,
+        content: { ...project.content, blocks: updatedBlocks },
+      };
+      onProjectUpdate(optimisticProject as Project);
+
       try {
         const updated = await updateProject(project.id, {
           content: { ...project.content, blocks: updatedBlocks },
@@ -208,6 +230,8 @@ function Column({
         onProjectUpdate(updated);
       } catch (error) {
         console.error('Failed to delete block from column:', error);
+        // Rollback on error
+        onProjectUpdate(originalProject);
       } finally {
         setDeletingBlockId(null);
       }

@@ -60,7 +60,7 @@ export const getMenuSections = (
       { label: "This Week's Challenge", path: '#', icon: faTrophy },
       { label: 'Side Quests', path: '/play/side-quests', icon: faGamepad },
       { label: 'Prompt Battle', path: '/play/prompt-battle', icon: faTrophy },
-      { label: 'Quizzes', path: '/quick-quizzes', icon: faBrain },
+      { label: 'Quizzes', path: '/quizzes', icon: faBrain },
     ],
   },
   {
@@ -69,7 +69,7 @@ export const getMenuSections = (
     path: '/learn',
     items: [
       { label: 'Learning Paths', path: '#', icon: faGraduationCap },
-      { label: 'Quizzes', path: '/quick-quizzes', icon: faBrain },
+      { label: 'Quizzes', path: '/quizzes', icon: faBrain },
       { label: 'Mentorship Program', path: '#', icon: faUsers },
       { label: 'Tool Directory', path: '/tools', icon: faWrench },
     ],
@@ -101,7 +101,7 @@ export const getMenuSections = (
           { label: 'Whats New', path: '#', icon: faWandSparkles },
         ]
       },
-      { label: 'Pricing', path: '#', icon: faDollarSign },
+      { label: 'Pricing', path: '/pricing', icon: faDollarSign },
     ],
   },
   {
@@ -130,7 +130,7 @@ export const getMenuSections = (
 export const ROUTE_PATTERNS: Record<string, (path: string, search: string, username?: string) => boolean> = {
   'EXPLORE': (path) => path === '/explore',
   'LEARN': (path) => path === '/learn',
-  'Quizzes': (path) => path === '/quick-quizzes',
+  'Quizzes': (path) => path === '/quizzes',
   'Side Quests': (path) => path === '/play/side-quests',
   'Prompt Battle': (path) => path === '/play/prompt-battle',
   'Chat': (_, search) => search.includes('chat='),

@@ -18,6 +18,8 @@ app.autodiscover_tasks(
         'core.integrations',
         'core.integrations.youtube',
         'core.agents',
+        'core.battles',  # Prompt battles tasks
+        'core.billing',  # Billing and token management tasks
         'services.weaviate',  # Weaviate sync tasks
     ]
 )
@@ -27,6 +29,7 @@ app.autodiscover_tasks(
 app.conf.imports = [
     'core.integrations.reddit_tasks',
     'core.integrations.rss_tasks',
+    'core.integrations.youtube_feed_tasks',
 ]
 
 # Task execution settings for scalability
@@ -36,11 +39,12 @@ app.conf.worker_prefetch_multiplier = 1  # Fetch one task at a time (fair distri
 app.conf.task_time_limit = 300  # 5 minutes hard limit
 app.conf.task_soft_time_limit = 240  # 4 minutes soft limit (task should handle gracefully)
 
-# Configure task queues for priority handling (YouTube integration)
+# Configure task queues for priority handling
 app.conf.task_queues = (
     Queue('default', routing_key='default'),
     Queue('youtube_sync', routing_key='youtube.sync'),
     Queue('youtube_import', routing_key='youtube.import'),
+    Queue('battles', routing_key='battles'),  # Prompt battles queue
 )
 
 # Route tasks to specific queues
@@ -52,6 +56,12 @@ app.conf.task_routes = {
     'core.integrations.youtube.tasks.sync_content_sources': {'queue': 'youtube_sync'},
     'core.integrations.youtube.tasks.import_youtube_video_task': {'queue': 'youtube_import'},
     'core.integrations.youtube.tasks.import_youtube_channel_task': {'queue': 'youtube_import'},
+    # Prompt battles tasks (using default queue for now)
+    'core.battles.tasks.generate_submission_image_task': {'queue': 'default'},
+    'core.battles.tasks.judge_battle_task': {'queue': 'default'},
+    'core.battles.tasks.complete_battle_task': {'queue': 'default'},
+    'core.battles.tasks.create_pip_submission_task': {'queue': 'default'},
+    'core.battles.tasks.handle_battle_timeout_task': {'queue': 'default'},
 }
 
 # Periodic tasks schedule (Celery Beat)
@@ -78,6 +88,14 @@ app.conf.beat_schedule = {
             'expires': 3600,  # Task expires after 1 hour if not picked up
         },
     },
+    'sync-youtube-feed-agents': {
+        'task': 'core.integrations.youtube_feed_tasks.sync_all_youtube_feed_agents_task',
+        'schedule': crontab(hour='*/2'),  # Every 2 hours
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour if not picked up
+            'queue': 'youtube_sync',
+        },
+    },
     # Weaviate personalization tasks
     'weaviate-update-engagement-metrics': {
         'task': 'services.weaviate.tasks.update_engagement_metrics',
@@ -91,6 +109,43 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=3, minute=0),  # Daily at 3 AM
         'options': {
             'expires': 7200,  # Expires after 2 hours
+        },
+    },
+    # Battle cleanup tasks
+    'cleanup-expired-matchmaking-queue': {
+        'task': 'core.battles.tasks.cleanup_expired_queue_entries',
+        'schedule': crontab(minute='*/5'),  # Every 5 minutes
+        'options': {
+            'expires': 300,  # Expires after 5 minutes
+        },
+    },
+    'cleanup-stale-battles': {
+        'task': 'core.battles.tasks.cleanup_stale_battles',
+        'schedule': crontab(minute='*/15'),  # Every 15 minutes
+        'options': {
+            'expires': 900,  # Expires after 15 minutes
+        },
+    },
+    # Billing tasks
+    'billing-check-low-token-balances': {
+        'task': 'core.billing.tasks.check_low_token_balances_task',
+        'schedule': crontab(hour='*/6'),  # Every 6 hours
+        'options': {
+            'expires': 3600,  # Expires after 1 hour
+        },
+    },
+    'billing-reset-monthly-ai-requests': {
+        'task': 'core.billing.tasks.reset_monthly_ai_requests_task',
+        'schedule': crontab(hour=0, minute=5),  # Daily at 00:05 AM
+        'options': {
+            'expires': 3600,  # Expires after 1 hour
+        },
+    },
+    'billing-check-subscription-quotas': {
+        'task': 'core.billing.tasks.check_subscription_quotas_task',
+        'schedule': crontab(hour='*/12'),  # Twice daily
+        'options': {
+            'expires': 3600,  # Expires after 1 hour
         },
     },
 }

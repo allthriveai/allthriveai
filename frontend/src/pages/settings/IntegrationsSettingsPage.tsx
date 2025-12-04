@@ -537,7 +537,7 @@ export default function IntegrationsSettingsPage() {
               <div
                 role="alert"
                 aria-live="assertive"
-                className={`mb-6 glass-strong rounded-xl p-5 border ${
+                className={`mb-6 glass-strong rounded p-5 border ${
                   errorMessage.variant === 'error' ? 'border-red-500/20 bg-red-500/5' :
                   errorMessage.variant === 'warning' ? 'border-yellow-500/20 bg-yellow-500/5' :
                   'border-blue-500/20 bg-blue-500/5'
@@ -598,7 +598,7 @@ export default function IntegrationsSettingsPage() {
               <div
                 role="status"
                 aria-live="polite"
-                className="mb-6 glass-strong rounded-xl p-4 border border-green-500/20 bg-green-500/5"
+                className="mb-6 glass-strong rounded p-4 border border-green-500/20 bg-green-500/5"
               >
                 <p className="text-sm text-green-600 dark:text-green-400">{successMessage}</p>
               </div>
@@ -634,12 +634,12 @@ export default function IntegrationsSettingsPage() {
               {integrations.map((integration) => (
                 <div
                   key={integration.id}
-                  className="glass-strong rounded-xl p-6 border border-white/20 flex flex-col"
+                  className="glass-strong rounded p-6 border border-white/20 flex flex-col"
                 >
                   {/* Header with icon and badges */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                      <div className="w-14 h-14 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
                         <FontAwesomeIcon icon={integration.icon} className="text-3xl text-slate-700 dark:text-slate-300" />
                       </div>
                       <div>
@@ -836,7 +836,7 @@ export default function IntegrationsSettingsPage() {
         {/* Disconnect Confirmation Modal */}
         {showDisconnectModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg max-w-md w-full mx-4 p-6">
+            <div className="bg-white dark:bg-slate-900 rounded shadow-lg max-w-md w-full mx-4 p-6">
               <div className="flex items-start gap-4 mb-4">
                 <div className="text-3xl">⚠️</div>
                 <div className="flex-1">

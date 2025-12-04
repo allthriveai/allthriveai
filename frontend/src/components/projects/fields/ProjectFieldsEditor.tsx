@@ -2,7 +2,6 @@
  * ProjectFieldsEditor - Reusable, composable project fields editor
  *
  * This component provides a scalable, template-based system for editing project fields.
- * It can be used in both quick-edit trays and full editor pages, with the same consistent fields.
  *
  * Design principles:
  * - Composable: Each field is a separate component that can be arranged in any order

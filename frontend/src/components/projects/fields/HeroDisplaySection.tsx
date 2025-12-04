@@ -2,8 +2,7 @@
  * HeroDisplaySection - Reusable hero display field with full upload/input UI
  * Part of the scalable ProjectFieldsEditor system
  *
- * This component provides a complete hero display management interface that can be
- * used in both the quick-edit tray and the full page editor.
+ * This component provides a complete hero display management interface.
  */
 
 import {

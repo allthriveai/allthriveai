@@ -1,6 +1,6 @@
 /**
  * ProjectSettingsSection - Reusable project settings UI
- * Used in both ProjectEditTray and ProjectEditorPage
+ * Used in project editing components
  */
 
 import { useState } from 'react';

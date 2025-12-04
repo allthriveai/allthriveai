@@ -187,43 +187,45 @@ export default function ThriveCirclePage() {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent" />
               <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Circle Header */}
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-8 gap-4">
-                  <div className="flex-1">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-neon text-xs font-medium mb-4 tracking-wider uppercase">
-                      <span className="luminous-dot animate-pulse" />
-                      <FontAwesomeIcon icon={faCalendarWeek} />
-                      <span>{formatWeekDates()}</span>
-                    </div>
-                    <h1 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3 mb-2">
+                {/* Hero Banner - Matching Learn page style */}
+                <div className="relative -mx-4 sm:-mx-6 lg:-mx-8 -mt-8 mb-8 h-64 bg-gradient-to-r from-primary-600 to-primary-800 dark:from-primary-800 dark:to-primary-950">
+                  <div className="absolute inset-0 bg-grid-pattern opacity-10" />
+                  <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
+                    <div className="flex items-center gap-3 mb-2">
                       {myCircle?.tier && (
-                        <span className="text-4xl md:text-5xl">
+                        <span className="text-4xl">
                           {TIER_CONFIG[myCircle.tier]?.emoji || '🌱'}
                         </span>
                       )}
-                      {myCircle ? (
-                        <span>
-                          <span className={TIER_CONFIG[myCircle.tier]?.color || 'text-cyan-bright'}>
-                            {myCircle.tierDisplay || myCircle.tier?.charAt(0).toUpperCase() + myCircle.tier?.slice(1)}
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white/80 text-xs font-medium">
+                        <FontAwesomeIcon icon={faCalendarWeek} />
+                        <span>{formatWeekDates()}</span>
+                      </div>
+                      {myCircle && (
+                        <div className="inline-flex items-center gap-4 ml-auto text-sm">
+                          <span className="text-white/80">
+                            <span className="font-semibold text-white">{myCircle.memberCount}</span> members
                           </span>
-                          {' '}Circle
-                        </span>
+                          <span className="text-white/80">
+                            <span className="font-semibold text-emerald-300">{myCircle.activeMemberCount}</span> active
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <h1 className="text-4xl font-bold text-white mb-4">
+                      {myCircle ? (
+                        <>
+                          {myCircle.tierDisplay || myCircle.tier?.charAt(0).toUpperCase() + myCircle.tier?.slice(1)} Circle
+                        </>
                       ) : (
-                        <span>Your Circle</span>
+                        'Thrive Circle'
                       )}
                     </h1>
-                    {myCircle?.tier && (
-                      <p className="text-slate-300 text-sm md:text-base mb-3 max-w-xl">
-                        {TIER_CONFIG[myCircle.tier]?.description}
-                      </p>
-                    )}
-                    {myCircle && (
-                      <p className="text-slate-400 text-sm">
-                        <span className="text-cyan-bright font-medium">{myCircle.memberCount}</span> members
-                        <span className="text-slate-600 mx-2">•</span>
-                        <span className="text-emerald-400 font-medium">{myCircle.activeMemberCount}</span> active this week
-                      </p>
-                    )}
+                    <p className="text-xl text-primary-100">
+                      {myCircle?.tier
+                        ? TIER_CONFIG[myCircle.tier]?.description
+                        : 'A weekly community of ~25 learners at your level. Complete challenges together, give kudos to celebrate wins, and grow as a supportive community.'}
+                    </p>
                   </div>
                 </div>
 

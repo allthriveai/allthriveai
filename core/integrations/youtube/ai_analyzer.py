@@ -1,12 +1,14 @@
 """AI-powered analyzer for YouTube videos to extract tools, categories, and topics."""
 
+import json
 import logging
+import time
 from typing import Any
 
-from django.conf import settings
-
+from core.ai_usage.tracker import AIUsageTracker
 from core.taxonomy.models import Taxonomy
 from core.tools.models import Tool
+from services.ai.provider import AIProvider
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,7 @@ def analyze_youtube_video(video_data: dict[str, Any], user) -> dict[str, Any]:
 
     # Use AI to extract metadata
     try:
-        ai_result = _call_ai_analyzer(context)
+        ai_result = _call_ai_analyzer(context, user=user)
 
         # Match tools from database
         tools = _match_tools(ai_result.get('tools', []))
@@ -68,27 +70,19 @@ def _prepare_analysis_context(video_data: dict[str, Any]) -> str:
     return '\n'.join(context_parts)
 
 
-def _call_ai_analyzer(context: str) -> dict[str, list[str]]:
+def _call_ai_analyzer(context: str, user=None) -> dict[str, list[str]]:
     """
     Call AI service to analyze video content.
 
-    Uses Azure OpenAI or OpenAI to extract tools, categories, and topics.
+    Uses the AI gateway (AIProvider) to extract tools, categories, and topics.
+    The gateway automatically selects the configured provider (Azure, OpenAI, Anthropic, Gemini).
+
+    Args:
+        context: Text context for AI analysis
+        user: Django User instance (optional, for AI usage tracking)
     """
-    try:
-        from langchain_core.messages import HumanMessage, SystemMessage
-        from langchain_openai import AzureChatOpenAI
-
-        # Initialize LLM
-        llm = AzureChatOpenAI(
-            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
-            api_key=settings.AZURE_OPENAI_API_KEY,
-            api_version=settings.AZURE_OPENAI_API_VERSION,
-            deployment_name=settings.AZURE_OPENAI_DEPLOYMENT_NAME,
-            temperature=0.3,  # Lower temperature for more consistent extraction
-        )
-
-        # System prompt for structured extraction
-        system_prompt = """You are an expert at analyzing technical content and extracting metadata.
+    # System prompt for structured extraction
+    system_prompt = """You are an expert at analyzing technical content and extracting metadata.
 
 From the video information provided, extract:
 1. **Tools/Technologies**: Specific tools, frameworks, libraries, or technologies mentioned or demonstrated
@@ -112,14 +106,35 @@ Respond in this exact JSON format:
   "topics": ["topic1", "topic2", ...]
 }"""
 
-        messages = [SystemMessage(content=system_prompt), HumanMessage(content=f'Analyze this video:\n\n{context}')]
+    try:
+        # Initialize AI provider (uses DEFAULT_AI_PROVIDER from settings)
+        user_id = user.id if user else None
+        ai = AIProvider(user_id=user_id)
 
-        response = llm.invoke(messages)
+        start_time = time.time()
+        response = ai.complete(
+            prompt=f'Analyze this video:\n\n{context}',
+            system_message=system_prompt,
+            temperature=0.3,  # Lower temperature for more consistent extraction
+            max_tokens=1024,
+        )
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        # Track AI usage for cost reporting
+        if user and ai.last_usage:
+            AIUsageTracker.track_usage(
+                user=user,
+                feature='youtube_analysis',
+                provider=ai.current_provider,
+                model=ai.current_model,
+                input_tokens=ai.last_usage.get('prompt_tokens', 0),
+                output_tokens=ai.last_usage.get('completion_tokens', 0),
+                latency_ms=latency_ms,
+                status='success',
+            )
 
         # Parse JSON response
-        import json
-
-        result = json.loads(response.content)
+        result = json.loads(response)
 
         return {
             'tools': result.get('tools', []),

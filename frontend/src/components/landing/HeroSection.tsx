@@ -97,10 +97,10 @@ export function HeroSection({ onRequestInvite }: HeroSectionProps) {
               transition={{ duration: 0.7, delay: 0.1 }}
               className="mb-6"
             >
-              <h1 className="font-bold tracking-tight mb-4">
-                <span className="text-white text-4xl sm:text-5xl md:text-6xl lg:text-7xl block mb-2">Centralize Your</span>
+              <h1 className="font-bold tracking-tight mb-4 inline-flex flex-col w-fit mx-auto lg:mx-0">
+                <span className="text-white text-4xl sm:text-5xl md:text-6xl lg:text-7xl mb-2 pb-1">Centralize Your</span>
                 <span
-                  className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl bg-gradient-to-r from-cyan-400 via-teal-400 to-green-400 bg-clip-text text-transparent"
+                  className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl bg-gradient-to-r from-cyan-400 via-teal-400 to-green-400 bg-clip-text text-transparent pb-2"
                   style={{
                     backgroundSize: '200% 200%',
                     animation: 'gradient-shift 8s ease infinite',
@@ -110,7 +110,8 @@ export function HeroSection({ onRequestInvite }: HeroSectionProps) {
                 </span>
               </h1>
               <p className="text-lg sm:text-xl md:text-2xl text-gray-400 font-medium max-w-xl">
-                Create anywhere. Consolidate your AI projects. Get real feedback and learn something new with a community built for AI creators.
+                Bring your AI projects together, generate an{' '}
+                <span className="whitespace-nowrap">AI-powered</span> portfolio, and grow with a community of creators.
               </p>
             </motion.div>
 
@@ -123,7 +124,7 @@ export function HeroSection({ onRequestInvite }: HeroSectionProps) {
             >
               <button
                 onClick={onRequestInvite}
-                className="group relative px-8 py-4 rounded-xl bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-lg shadow-neon hover:shadow-neon-strong transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                className="group relative px-8 py-4 rounded-sm bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-lg shadow-neon hover:shadow-neon-strong transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span className="relative z-10 flex items-center gap-2">
                   Request Invitation

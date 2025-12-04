@@ -168,19 +168,19 @@ export default function ReferralsPage() {
             </div>
 
             {loadingReferrals ? (
-              <div className="glass-strong rounded-xl p-8 border border-white/20">
+              <div className="glass-strong rounded p-8 border border-white/20">
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
                 </div>
               </div>
             ) : error ? (
-              <div className="glass-strong rounded-xl p-6 border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/20">
+              <div className="glass-strong rounded p-6 border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/20">
                 <p className="text-sm text-red-900 dark:text-red-100">{error}</p>
               </div>
             ) : referralCode ? (
               <>
                 {/* Info Box */}
-                <div className="mb-6 glass-strong rounded-lg p-4 border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
+                <div className="mb-6 glass-strong rounded p-4 border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
                   <p className="text-sm text-blue-900 dark:text-blue-100">
                     <span className="font-semibold">How it works:</span> Share your referral code or link with friends.
                     When they sign up using your code, you'll both be eligible for rewards.
@@ -201,25 +201,25 @@ export default function ReferralsPage() {
                 {/* Referral Stats */}
                 {referralStats && (
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="glass-strong rounded-lg p-4 border border-white/20">
+                    <div className="glass-strong rounded p-4 border border-white/20">
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Referrals</p>
                       <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                         {referralStats.totalReferrals}
                       </p>
                     </div>
-                    <div className="glass-strong rounded-lg p-4 border border-white/20">
+                    <div className="glass-strong rounded p-4 border border-white/20">
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Pending</p>
                       <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                         {referralStats.pendingReferrals}
                       </p>
                     </div>
-                    <div className="glass-strong rounded-lg p-4 border border-white/20">
+                    <div className="glass-strong rounded p-4 border border-white/20">
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Completed</p>
                       <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                         {referralStats.completedReferrals}
                       </p>
                     </div>
-                    <div className="glass-strong rounded-lg p-4 border border-white/20">
+                    <div className="glass-strong rounded p-4 border border-white/20">
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Rewarded</p>
                       <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">
                         {referralStats.rewardedReferrals}
@@ -234,7 +234,7 @@ export default function ReferralsPage() {
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
                       Your Referrals
                     </h2>
-                    <div className="glass-strong rounded-xl border border-white/20 overflow-hidden">
+                    <div className="glass-strong rounded border border-white/20 overflow-hidden">
                       <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead className="bg-slate-50 dark:bg-slate-800/50">
@@ -278,7 +278,7 @@ export default function ReferralsPage() {
                 )}
               </>
             ) : (
-              <div className="glass-strong rounded-xl p-6 border border-white/20 text-center">
+              <div className="glass-strong rounded p-6 border border-white/20 text-center">
                 <p className="text-slate-600 dark:text-slate-400">
                   Failed to load referral information. Please try refreshing the page.
                 </p>

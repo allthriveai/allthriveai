@@ -7,7 +7,6 @@ import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import ProfilePage from '@/pages/ProfilePage';
 import ProjectDetailPage from '@/pages/ProjectDetailPage';
-import SectionEditorPage from '@/pages/SectionEditorPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
 import PasswordSettingsPage from '@/pages/settings/PasswordSettingsPage';
 import IntegrationsSettingsPage from '@/pages/settings/IntegrationsSettingsPage';
@@ -19,7 +18,6 @@ import TeamsSettingsPage from '@/pages/settings/TeamsSettingsPage';
 import ReferralsPage from '@/pages/settings/ReferralsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
-import StyleGuide2 from '@/pages/StyleGuide2';
 import NeonGlassStyleguide from '@/pages/NeonGlassStyleguide';
 import QuizListPage from '@/pages/quizzes/QuizListPage';
 import QuizPage from '@/pages/quizzes/QuizPage';
@@ -29,6 +27,7 @@ import ToolDetailPage from '@/pages/ToolDetailPage';
 import { ExplorePage } from '@/pages/ExplorePage';
 import PromptBattlePage from '@/pages/play/PromptBattlePage';
 import BattleDetailPage from '@/pages/play/BattleDetailPage';
+import { BattlesLobbyPage, BattlePage } from '@/pages/battles';
 import ThriveCirclePage from '@/pages/ThriveCirclePage';
 import SideQuestsPage from '@/pages/SideQuestsPage';
 import PricingPage from '@/pages/PricingPage';
@@ -64,14 +63,6 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/styleguide2"
-        element={
-          <ProtectedRoute>
-            <StyleGuide2 />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/styleguide-neon"
         element={
           <ProtectedRoute>
@@ -92,7 +83,7 @@ export function AppRoutes() {
 
       {/* Quiz routes - protected, must come before /:username routes */}
       <Route
-        path="/quick-quizzes"
+        path="/quizzes"
         element={
           <ProtectedRoute>
             <QuizListPage />
@@ -100,7 +91,7 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/quick-quizzes/:slug"
+        path="/quizzes/:slug"
         element={
           <ProtectedRoute>
             <QuizPage />
@@ -136,20 +127,34 @@ export function AppRoutes() {
         }
       />
 
-      {/* Play routes - protected */}
+      {/* Battles - new matchmaking UI */}
       <Route
-        path="/play/prompt-battle"
+        path="/battles"
         element={
           <ProtectedRoute>
-            <PromptBattlePage />
+            <BattlesLobbyPage />
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/battles/:battleId"
+        element={
+          <ProtectedRoute>
+            <BattlePage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Play routes - legacy, redirects to new battles */}
+      <Route
+        path="/play/prompt-battle"
+        element={<Navigate to="/battles" replace />}
       />
       <Route
         path="/play/prompt-battle/:battleId"
         element={
           <ProtectedRoute>
-            <BattleDetailPage />
+            <BattlePage />
           </ProtectedRoute>
         }
       />
@@ -264,14 +269,6 @@ export function AppRoutes() {
       />
       {/* Public profile route - shows only showcase when logged out */}
       <Route path="/:username" element={<ProfilePage />} />
-      <Route
-        path="/:username/:projectSlug/edit"
-        element={
-          <ProtectedRoute>
-            <SectionEditorPage />
-          </ProtectedRoute>
-        }
-      />
       <Route
         path="/:username/:projectSlug"
         element={

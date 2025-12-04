@@ -96,7 +96,7 @@ class Command(BaseCommand):
         """Display sync results for an agent."""
         if results['errors'] == 0:
             self.stdout.write(
-                self.style.SUCCESS(f'  ✅ {agent_name}: {results["created"]} created, ' f'{results["updated"]} updated')
+                self.style.SUCCESS(f'  ✅ {agent_name}: {results["created"]} created, {results["updated"]} updated')
             )
         else:
             self.stdout.write(

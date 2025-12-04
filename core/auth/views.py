@@ -282,8 +282,12 @@ def username_profile_view(request, username):
         status_code = 200
 
         # Track profile view for quest progress (only for authenticated users viewing others)
+        # Wrapped in try/except to prevent quest tracking errors from breaking profile views
         if request.user.is_authenticated and request.user != user:
-            track_profile_viewed(request.user, user)
+            try:
+                track_profile_viewed(request.user, user)
+            except Exception as e:
+                logger.warning(f'Failed to track profile view: {e}')
 
         # Cache successful responses
         cache.set(

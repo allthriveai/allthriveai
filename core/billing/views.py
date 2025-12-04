@@ -103,14 +103,14 @@ def stripe_webhook(request):
                 StripeService.handle_payment_intent_succeeded(event_data)
 
             elif event_type == 'payment_intent.payment_failed':
-                logger.warning(f"Payment failed for payment_intent: {event_data['object']['id']}")
+                logger.warning(f'Payment failed for payment_intent: {event_data["object"]["id"]}')
 
             # Invoice events
             elif event_type == 'invoice.payment_succeeded':
-                logger.info(f"Invoice payment succeeded: {event_data['object']['id']}")
+                logger.info(f'Invoice payment succeeded: {event_data["object"]["id"]}')
 
             elif event_type == 'invoice.payment_failed':
-                logger.warning(f"Invoice payment failed: {event_data['object']['id']}")
+                logger.warning(f'Invoice payment failed: {event_data["object"]["id"]}')
 
             else:
                 logger.info(f'Unhandled webhook event type: {event_type}')
@@ -382,7 +382,9 @@ def get_purchase_history_view(request):
 
     GET /api/v1/billing/purchases/
     """
-    purchases = request.user.token_purchases.filter(status='completed').order_by('-created_at')[:20]  # Last 20
+    purchases = (
+        request.user.token_purchases.filter(status='completed').select_related('package').order_by('-created_at')[:20]
+    )  # Last 20
     serializer = TokenPurchaseSerializer(purchases, many=True)
     return Response(serializer.data)
 
@@ -395,6 +397,72 @@ def get_subscription_history_view(request):
 
     GET /api/v1/billing/subscriptions/history/
     """
-    changes = request.user.subscription_changes.all()[:20]  # Last 20
+    changes = request.user.subscription_changes.select_related('from_tier', 'to_tier', 'subscription').all()[
+        :20
+    ]  # Last 20
     serializer = SubscriptionChangeSerializer(changes, many=True)
     return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_portal_session_view(request):
+    """
+    Create a Stripe Customer Portal session for managing billing.
+
+    POST /api/v1/billing/portal/
+
+    Body (optional):
+    {
+        "return_url": "https://example.com/account/settings/billing"
+    }
+
+    Returns:
+    {
+        "url": "https://billing.stripe.com/session/xxx"
+    }
+    """
+    try:
+        return_url = request.data.get('return_url')
+        result = StripeService.create_customer_portal_session(request.user, return_url)
+        return Response(result)
+    except StripeServiceError as e:
+        logger.error(f'Failed to create portal session: {e}')
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_invoices_view(request):
+    """
+    List user's invoices from Stripe.
+
+    GET /api/v1/billing/invoices/
+    GET /api/v1/billing/invoices/?limit=20
+
+    Returns:
+    {
+        "invoices": [
+            {
+                "id": "in_xxx",
+                "number": "ABC-001",
+                "amount_paid": 999,
+                "currency": "usd",
+                "status": "paid",
+                "created": 1699999999,
+                "invoice_pdf": "https://...",
+                "hosted_invoice_url": "https://..."
+            }
+        ],
+        "has_more": false
+    }
+    """
+    try:
+        limit = int(request.query_params.get('limit', 10))
+        result = StripeService.list_invoices(request.user, limit)
+        return Response(result)
+    except StripeServiceError as e:
+        logger.error(f'Failed to list invoices: {e}')
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except ValueError:
+        return Response({'error': 'Invalid limit parameter'}, status=status.HTTP_400_BAD_REQUEST)

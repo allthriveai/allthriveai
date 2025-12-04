@@ -18,6 +18,7 @@ from typing import Literal
 
 from django.core.cache import cache
 
+from core.ai_usage.tracker import AIUsageTracker
 from services.ai import AIProvider
 
 from .metrics import MetricsCollector
@@ -33,8 +34,12 @@ INTENT_DETECTION_PROMPT = """You are an intent classifier for AllThrive AI, a pl
 
 Your job is to analyze user messages and determine their intent from these categories:
 
-1. **support**: User needs help, has questions, troubleshooting, wants to learn how to use features
+1. **support**: User needs help, has questions, troubleshooting, wants to learn how to use features,
+   or shares files/images for context
    - Examples: "How do I add a project?", "I'm getting an error", "What does this button do?"
+   - IMPORTANT: If a user uploads/shares an image or file (indicated by markdown like `[Image: filename]`
+     or `[File: filename]`), this is NOT image generation. They are sharing context and likely need
+     support or want to discuss the uploaded content.
 
 2. **project-creation**: User wants to create, import, or add a new project
    - Examples: "Create a new project", "Import from GitHub", "Add my YouTube video"
@@ -42,8 +47,11 @@ Your job is to analyze user messages and determine their intent from these categ
 3. **discovery**: User wants to explore, search, or discover existing projects
    - Examples: "Show me AI projects", "Find similar projects", "What projects do I have?"
 
-4. **image-generation**: User wants to create, generate, or edit images, infographics, diagrams, or visuals
+4. **image-generation**: User EXPLICITLY wants to CREATE, GENERATE, or DESIGN NEW images, infographics,
+   diagrams, or visuals using AI
    - Examples: "Create an infographic", "Generate an image of...", "Make me a flowchart", "Design a banner"
+   - NOTE: Uploading an existing image is NOT image-generation. Only use this intent when user asks to
+     CREATE/GENERATE something new.
 
 Context about the user:
 - Integration type: {integration_type}
@@ -70,6 +78,7 @@ class IntentDetectionService:
         user_message: str,
         conversation_history: list[dict] | None = None,
         integration_type: str | None = None,
+        user=None,
     ) -> ChatMode:
         """
         Detect user intent using LLM reasoning.
@@ -78,6 +87,7 @@ class IntentDetectionService:
             user_message: The current user message
             conversation_history: Recent conversation messages for context
             integration_type: Optional integration context (github, youtube, etc.)
+            user: Django User instance (optional, for AI usage tracking)
 
         Returns:
             ChatMode: Detected intent category
@@ -133,20 +143,36 @@ class IntentDetectionService:
             # Track token usage for cost monitoring
             if self.provider.last_usage:
                 usage = self.provider.last_usage
+                prompt_tokens = usage.get('prompt_tokens', 0)
+                completion_tokens = usage.get('completion_tokens', 0)
+
                 MetricsCollector.record_tokens(
-                    self.provider.current_provider, self.provider.current_model, 'prompt', usage.get('prompt_tokens', 0)
+                    self.provider.current_provider, self.provider.current_model, 'prompt', prompt_tokens
                 )
                 MetricsCollector.record_tokens(
                     self.provider.current_provider,
                     self.provider.current_model,
                     'completion',
-                    usage.get('completion_tokens', 0),
+                    completion_tokens,
                 )
                 logger.debug(
-                    f'Token usage - Prompt: {usage.get("prompt_tokens", 0)}, '
-                    f'Completion: {usage.get("completion_tokens", 0)}, '
+                    f'Token usage - Prompt: {prompt_tokens}, '
+                    f'Completion: {completion_tokens}, '
                     f'Total: {usage.get("total_tokens", 0)}'
                 )
+
+                # Track in AIUsageTracker for cost reporting (if user provided)
+                if user:
+                    AIUsageTracker.track_usage(
+                        user=user,
+                        feature='intent_detection',
+                        provider=self.provider.current_provider,
+                        model=self.provider.current_model,
+                        input_tokens=prompt_tokens,
+                        output_tokens=completion_tokens,
+                        latency_ms=int(llm_duration * 1000),
+                        status='success',
+                    )
 
             # Parse result
             intent = result.strip().lower()

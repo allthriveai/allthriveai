@@ -191,6 +191,8 @@ urlpatterns = [
     path('integrations/tasks/<str:task_id>/', get_task_status, name='task_status'),
     # Billing endpoints
     path('billing/', include('core.billing.urls')),
+    # Platform stats endpoints
+    path('stats/', include('core.stats.urls')),
     # YouTube integration endpoints
     path('integrations/', include('core.integrations.youtube.urls')),
     # GitHub integration endpoints (legacy - use generic endpoints above)

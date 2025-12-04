@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { buildWebSocketUrl } from '@/utils/websocket';
 import type { CircleActivityEvent, CircleActivityType } from '@/components/thrive-circle/CircleActivityToast';
 import type { KudosType } from '@/types/models';
 
@@ -77,11 +78,12 @@ export function useCircleWebSocket({
 
     intentionalCloseRef.current = false;
 
-    // Build WebSocket URL
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
+    // Build WebSocket URL using shared utility (direct connection to backend)
     const csrfToken = getCookie('csrftoken');
-    const wsUrl = `${protocol}//${host}/ws/circle/${circleId}/${csrfToken ? `?csrf=${csrfToken}` : ''}`;
+    const wsUrl = buildWebSocketUrl(
+      `/ws/circle/${circleId}/`,
+      csrfToken ? { csrf: csrfToken } : undefined
+    );
 
     try {
       const ws = new WebSocket(wsUrl);

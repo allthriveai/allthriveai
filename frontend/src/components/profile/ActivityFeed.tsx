@@ -237,7 +237,7 @@ export function ActivityFeed() {
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Quiz Scores</h3>
           </div>
           <button
-            onClick={() => navigate('/quick-quizzes')}
+            onClick={() => navigate('/quizzes')}
             className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
           >
             View all quizzes →
@@ -249,7 +249,7 @@ export function ActivityFeed() {
             {statistics.quizScores.map((quiz: QuizScore) => (
               <div
                 key={quiz.id}
-                onClick={() => navigate(`/quick-quizzes/${quiz.quizSlug}`)}
+                onClick={() => navigate(`/quizzes/${quiz.quizSlug}`)}
                 className="flex items-center justify-between p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-colors border border-gray-200 dark:border-gray-700 cursor-pointer group"
               >
                 <div className="flex-1 min-w-0">
@@ -301,7 +301,7 @@ export function ActivityFeed() {
               Start taking quizzes to track your progress
             </p>
             <button
-              onClick={() => navigate('/quick-quizzes')}
+              onClick={() => navigate('/quizzes')}
               className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors"
             >
               Browse Quizzes

@@ -780,7 +780,7 @@ class CircleChallenge(models.Model):
         self.save(update_fields=['rewards_distributed'])
 
         logger.info(
-            f'Distributed {self.bonus_points} points to {active_members.count()} ' f'members for challenge {self.id}'
+            f'Distributed {self.bonus_points} points to {active_members.count()} members for challenge {self.id}'
         )
 
 

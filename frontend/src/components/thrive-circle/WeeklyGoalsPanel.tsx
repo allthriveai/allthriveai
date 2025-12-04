@@ -131,7 +131,7 @@ export function WeeklyGoalsPanel({ goals, isLoading }: WeeklyGoalsPanelProps) {
 
       <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
         <div className="text-xs text-muted text-center">
-          Complete goals to earn bonus XP!
+          Complete goals to earn bonus Points!
         </div>
       </div>
     </div>

@@ -131,7 +131,12 @@ class YouTubeService:
             api_key: Shared API key (for curated content)
         """
         self.oauth_token = oauth_token
-        self.api_key = api_key or getattr(settings, 'YOUTUBE_API_KEY', None)
+        # Fall back to GOOGLE_API_KEY if YOUTUBE_API_KEY not set
+        # Handle api_key=True as a flag to use settings-based key
+        if api_key is True or api_key is None:
+            self.api_key = getattr(settings, 'YOUTUBE_API_KEY', None) or getattr(settings, 'GOOGLE_API_KEY', None)
+        else:
+            self.api_key = api_key
 
         if not self.oauth_token and not self.api_key:
             raise ValueError('Either oauth_token or api_key required')

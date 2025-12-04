@@ -9,6 +9,7 @@ Handles:
 """
 
 import logging
+import time
 import uuid
 
 import requests
@@ -17,6 +18,13 @@ from celery import shared_task
 from channels.layers import get_channel_layer
 from django.contrib.auth import get_user_model
 
+from core.ai_usage.tracker import AIUsageTracker
+from core.billing.utils import (
+    TRANSIENT_ERRORS,
+    check_and_reserve_ai_request,
+    deduct_tokens,
+    get_subscription_status,
+)
 from services.agents.auth.checkpointer import cache_checkpoint
 from services.ai import AIProvider
 from services.integrations.storage import StorageService
@@ -55,6 +63,31 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
             logger.error(f'User not found: user_id={user_id}')
             return {'status': 'error', 'reason': 'user_not_found'}
 
+        # Atomically check AND reserve an AI request slot
+        # This prevents TOCTOU race conditions where concurrent requests could exceed quota
+        can_request, quota_reason = check_and_reserve_ai_request(user)
+        if not can_request:
+            logger.warning(f'User {user_id} quota exceeded: {quota_reason}')
+            # Get subscription status for frontend to show upgrade options
+            subscription_status = get_subscription_status(user)
+            async_to_sync(channel_layer.group_send)(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'quota_exceeded',
+                    'error': "You've reached your AI usage limit for this period.",
+                    'reason': quota_reason,
+                    'subscription': {
+                        'tier': subscription_status.get('tier', {}).get('name', 'Free'),
+                        'ai_requests': subscription_status.get('ai_requests', {}),
+                        'tokens': subscription_status.get('tokens', {}),
+                    },
+                    'can_purchase_tokens': True,
+                    'upgrade_url': '/settings/billing',
+                },
+            )
+            return {'status': 'quota_exceeded', 'reason': quota_reason}
+
         # Sanitize input
         prompt_filter = PromptInjectionFilter()
         is_safe, reason = prompt_filter.check_input(message)
@@ -85,12 +118,16 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         # Determine routing based on conversation context and message content
         is_project_conversation = conversation_id.startswith('project-')
 
+        # Fetch recent conversation history for context-aware intent detection
+        conversation_history = _get_conversation_history(conversation_id, limit=5)
+
         # Always run intent detection to catch image generation requests
         intent_service = get_intent_service()
         intent = intent_service.detect_intent(
             user_message=sanitized_message,
-            conversation_history=None,  # TODO: wire up actual history
+            conversation_history=conversation_history,
             integration_type=None,  # TODO: extract from conversation context
+            user=user,  # For AI usage tracking
         )
         logger.info(f'Detected intent: {intent} for conversation {conversation_id}')
 
@@ -144,20 +181,75 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         # Cache updated conversation state
         cache_checkpoint(conversation_id, {'last_message': sanitized_message}, ttl=900)
 
+        # Update conversation history cache for future intent detection
+        _update_conversation_history_cache(conversation_id, sanitized_message, 'user')
+
         # Record metrics with detected intent
         MetricsCollector.record_message(intent, user_id)
+
+        # If we reserved using token balance, now deduct the actual tokens
+        # (subscription quota was already incremented atomically in check_and_reserve_ai_request)
+        tokens_used = result.get('tokens_used', 0)
+        provider_used = result.get('provider', 'azure')
+        model_used = result.get('model', 'gpt-4')
+
+        if 'token balance' in quota_reason.lower():
+            # User's subscription quota was exhausted, deduct from tokens
+            token_amount = tokens_used if tokens_used > 0 else 500  # Default estimate
+            deduct_success = deduct_tokens(
+                user=user,
+                amount=token_amount,
+                description=f'AI request via {provider_used} {model_used}',
+                ai_provider=provider_used,
+                ai_model=model_used,
+            )
+            if deduct_success:
+                logger.info(f'Deducted {token_amount} tokens for user {user_id}')
+            else:
+                # Log but don't fail - the request already succeeded
+                logger.warning(f'Failed to deduct tokens for user {user_id}')
+
+        # Track detailed AI usage for analytics
+        if tokens_used > 0:
+            AIUsageTracker.track_usage(
+                user=user,
+                feature=f'chat_{intent}',
+                provider=provider_used,
+                model=model_used,
+                input_tokens=result.get('input_tokens', tokens_used // 2),
+                output_tokens=result.get('output_tokens', tokens_used // 2),
+                request_type='chat',
+                session_id=conversation_id,
+            )
 
         logger.info(f'Message processed successfully: conversation={conversation_id}, user={user_id}')
 
         return {'status': 'success', 'conversation_id': conversation_id}
 
-    except Exception as e:
-        logger.error(f'Failed to process message: {e}', exc_info=True)
-
-        # Record circuit breaker failure
+    except TRANSIENT_ERRORS as e:
+        # Transient errors (connection, timeout) - retry with exponential backoff
+        logger.warning(f'Transient error processing message, will retry: {e}')
         MetricsCollector.record_circuit_breaker_failure('langgraph_agent')
 
-        # Notify client of failure
+        try:
+            async_to_sync(channel_layer.group_send)(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'error',
+                    'error': 'Connection issue. Retrying...',
+                },
+            )
+        except Exception as notify_error:
+            logger.error(f'Failed to send error notification: {notify_error}')
+
+        raise self.retry(exc=e) from e
+
+    except Exception as e:
+        # Non-recoverable errors - don't retry, notify user
+        logger.error(f'Failed to process message (non-recoverable): {e}', exc_info=True)
+        MetricsCollector.record_circuit_breaker_failure('langgraph_agent')
+
         try:
             async_to_sync(channel_layer.group_send)(
                 channel_name,
@@ -170,8 +262,8 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         except Exception as notify_error:
             logger.error(f'Failed to send error notification: {notify_error}')
 
-        # Retry the task
-        raise self.retry(exc=e) from e
+        # Don't retry non-recoverable errors (bad input, auth issues, etc.)
+        return {'status': 'error', 'reason': str(e)}
 
 
 def _process_with_langgraph_agent(
@@ -208,6 +300,12 @@ def _process_with_langgraph_agent(
         """Async function to stream agent response and send to WebSocket."""
         nonlocal project_created
 
+        # Get a fresh channel layer inside the async context to avoid event loop issues
+        # channels_redis creates connections tied to the current event loop
+        from channels.layers import get_channel_layer as get_async_channel_layer
+
+        async_channel_layer = get_async_channel_layer()
+
         try:
             async for event in stream_agent_response(
                 user_message=message,
@@ -219,19 +317,25 @@ def _process_with_langgraph_agent(
 
                 if event_type == 'token':
                     # Stream text chunk to WebSocket
-                    await channel_layer.group_send(
+                    chunk_content = event.get('content', '')
+                    logger.info(
+                        f'[CHANNEL_SEND] Sending chunk to {channel_name}: {chunk_content[:50]}...'
+                        if len(str(chunk_content)) > 50
+                        else f'[CHANNEL_SEND] Sending chunk to {channel_name}: {chunk_content}'
+                    )
+                    await async_channel_layer.group_send(
                         channel_name,
                         {
                             'type': 'chat.message',
                             'event': 'chunk',
-                            'chunk': event.get('content', ''),
+                            'chunk': chunk_content,
                             'conversation_id': conversation_id,
                         },
                     )
 
                 elif event_type == 'tool_start':
                     # Notify frontend that a tool is being called
-                    await channel_layer.group_send(
+                    await async_channel_layer.group_send(
                         channel_name,
                         {
                             'type': 'chat.message',
@@ -245,7 +349,7 @@ def _process_with_langgraph_agent(
                 elif event_type == 'tool_end':
                     # Notify frontend that tool completed
                     tool_output = event.get('output', {})
-                    await channel_layer.group_send(
+                    await async_channel_layer.group_send(
                         channel_name,
                         {
                             'type': 'chat.message',
@@ -260,29 +364,75 @@ def _process_with_langgraph_agent(
                 elif event_type == 'complete':
                     project_created = event.get('project_created', False)
                     logger.info(f'Agent completed: project_created={project_created}')
+                    # Send completed event so frontend knows streaming is done
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'completed',
+                            'conversation_id': conversation_id,
+                            'project_created': project_created,
+                        },
+                    )
 
                 elif event_type == 'error':
                     error_msg = event.get('message', 'Unknown error')
                     logger.error(f'Agent error: {error_msg}')
-                    await channel_layer.group_send(
+                    # Check for content filter errors from Azure OpenAI
+                    if 'content_filter' in error_msg or 'ResponsibleAIPolicyViolation' in error_msg:
+                        user_message = (
+                            "I couldn't process that request due to content policy restrictions. "
+                            'Please try rephrasing your message or using a different image.'
+                        )
+                    else:
+                        user_message = 'I encountered an issue processing your request. Please try again.'
+                    await async_channel_layer.group_send(
                         channel_name,
                         {
                             'type': 'chat.message',
                             'event': 'chunk',
-                            'chunk': f'I encountered an issue: {error_msg}. Please try again.',
+                            'chunk': user_message,
+                            'conversation_id': conversation_id,
+                        },
+                    )
+                    # Send completed event so frontend stops loading
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'completed',
                             'conversation_id': conversation_id,
                         },
                     )
 
         except Exception as e:
             logger.error(f'Agent streaming error: {e}', exc_info=True)
-            await channel_layer.group_send(
+            # Check for content filter errors from Azure OpenAI
+            error_str = str(e)
+            if 'content_filter' in error_str or 'ResponsibleAIPolicyViolation' in error_str:
+                error_message = (
+                    "I couldn't process that request due to content policy restrictions. "
+                    'Please try rephrasing your message or using a different image.'
+                )
+            else:
+                error_message = (
+                    "I'm here to help! However, I encountered an issue processing your request. Please try again."
+                )
+            await async_channel_layer.group_send(
                 channel_name,
                 {
                     'type': 'chat.message',
                     'event': 'chunk',
-                    'chunk': "I'm here to help! However, I encountered an issue processing your request. "
-                    'Please try again.',
+                    'chunk': error_message,
+                    'conversation_id': conversation_id,
+                },
+            )
+            # Send completed event so frontend stops loading
+            await async_channel_layer.group_send(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'completed',
                     'conversation_id': conversation_id,
                 },
             )
@@ -297,13 +447,33 @@ def _process_with_langgraph_agent(
             loop.close()
     except Exception as e:
         logger.error(f'LangGraph agent error: {e}', exc_info=True)
+        # Check for content filter errors from Azure OpenAI
+        error_str = str(e)
+        if 'content_filter' in error_str or 'ResponsibleAIPolicyViolation' in error_str:
+            error_message = (
+                "I couldn't process that request due to content policy restrictions. "
+                'Please try rephrasing your message or using a different image.'
+            )
+        else:
+            error_message = (
+                "I'm here to help! However, I encountered an issue processing your request. Please try again."
+            )
         # Send error message to user (sync context, use async_to_sync)
         async_to_sync(channel_layer.group_send)(
             channel_name,
             {
                 'type': 'chat.message',
                 'event': 'chunk',
-                'chunk': "I'm here to help! However, I encountered an issue processing your request. Please try again.",
+                'chunk': error_message,
+                'conversation_id': conversation_id,
+            },
+        )
+        # Send completed event so frontend stops loading
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'completed',
                 'conversation_id': conversation_id,
             },
         )
@@ -338,12 +508,8 @@ def _process_with_ai_provider(
     from django.conf import settings
 
     provider_name = getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
-    if provider_name == 'azure':
-        model = getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
-    elif provider_name == 'openai':
-        model = 'gpt-4'
-    else:
-        model = None  # Let AIProvider pick a sensible default
+    # Let AIProvider pick the appropriate model based on the provider
+    model = None
 
     # Build system prompt based on detected intent
     system_message = _get_system_prompt_for_intent(intent)
@@ -385,6 +551,89 @@ def _process_with_ai_provider(
             )
 
     return {'project_created': False}
+
+
+def _get_conversation_history(conversation_id: str, limit: int = 5) -> list[dict]:
+    """
+    Fetch recent conversation history for context-aware intent detection.
+
+    Uses the LangGraph checkpointer cache first, then falls back to database
+    for conversations that persist messages.
+
+    Args:
+        conversation_id: The conversation identifier (e.g., 'project-123')
+        limit: Maximum number of messages to retrieve
+
+    Returns:
+        List of message dicts with 'sender' and 'content' keys
+    """
+    from django.core.cache import cache
+
+    # Try cache first (conversation state from LangGraph checkpointer)
+    cache_key = f'conversation_history:{conversation_id}'
+    cached_history = cache.get(cache_key)
+    if cached_history:
+        logger.debug(f'Cache hit for conversation history: {conversation_id}')
+        return cached_history[-limit:] if len(cached_history) > limit else cached_history
+
+    # For project conversations, try to get history from Message model
+    # Note: conversation_id is like 'project-123', not a database ID
+    # Messages are stored with the conversation foreign key
+    try:
+        from .models import Conversation, Message
+
+        # Try to find a conversation with matching ID pattern
+        # For now, we use the cache-based history from checkpointer
+        # Future: Store WebSocket messages in Message model for persistence
+        conversation = Conversation.objects.filter(title__icontains=conversation_id).first()
+
+        if conversation:
+            messages = Message.objects.filter(conversation=conversation).order_by('-created_at')[:limit]
+
+            history = [
+                {'sender': msg.role, 'content': msg.content[:500]}  # Truncate long messages
+                for msg in reversed(messages)
+            ]
+
+            # Cache for 5 minutes
+            cache.set(cache_key, history, timeout=300)
+            return history
+
+    except Exception as e:
+        logger.debug(f'Could not fetch conversation history from DB: {e}')
+
+    # Return empty history if nothing found
+    return []
+
+
+def _update_conversation_history_cache(conversation_id: str, content: str, sender: str) -> None:
+    """
+    Update the conversation history cache with a new message.
+
+    Args:
+        conversation_id: The conversation identifier
+        content: Message content (truncated to 500 chars)
+        sender: 'user' or 'assistant'
+    """
+    from django.core.cache import cache
+
+    cache_key = f'conversation_history:{conversation_id}'
+    history = cache.get(cache_key) or []
+
+    # Append new message
+    history.append(
+        {
+            'sender': sender,
+            'content': content[:500],  # Truncate to prevent cache bloat
+        }
+    )
+
+    # Keep only last 10 messages
+    if len(history) > 10:
+        history = history[-10:]
+
+    # Cache for 15 minutes (conversation session duration)
+    cache.set(cache_key, history, timeout=900)
 
 
 def _get_system_prompt_for_intent(intent: str) -> str:
@@ -490,13 +739,17 @@ def _process_image_generation(
             except Exception as e:
                 logger.warning(f'Failed to download reference image {url}: {e}')
 
-        # Generate image using Gemini
+        # Generate image using Gemini (with timing for usage tracking)
+        from django.conf import settings
+
+        start_time = time.time()
         ai = AIProvider(provider='gemini', user_id=user.id)
         image_bytes, mime_type, text_response = ai.generate_image(
             prompt=message,
             conversation_history=conversation_history,
             reference_images=reference_bytes if reference_bytes else None,
         )
+        latency_ms = int((time.time() - start_time) * 1000)
 
         if not image_bytes:
             # No image was generated - send error
@@ -507,6 +760,15 @@ def _process_image_generation(
                     'type': 'chat.message',
                     'event': 'chunk',
                     'chunk': error_message,
+                    'conversation_id': conversation_id,
+                },
+            )
+            # Send completed event so frontend stops loading
+            async_to_sync(channel_layer.group_send)(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'completed',
                     'conversation_id': conversation_id,
                 },
             )
@@ -534,9 +796,43 @@ def _process_image_generation(
                     'conversation_id': conversation_id,
                 },
             )
+            # Send completed event so frontend stops loading
+            async_to_sync(channel_layer.group_send)(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'completed',
+                    'conversation_id': conversation_id,
+                },
+            )
             return {'image_generated': False, 'session_id': session.id}
 
         logger.info(f'Image generated and uploaded: {image_url}')
+
+        # Track AI usage for image generation
+        try:
+            gemini_model = getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-3-pro-image-preview')
+            # Estimate tokens: prompt chars / 4 (rough approximation)
+            estimated_input_tokens = len(message) // 4
+            estimated_output_tokens = len(text_response) // 4 if text_response else 0
+
+            AIUsageTracker.track_usage(
+                user=user,
+                feature='image_generation',
+                provider='google',
+                model=gemini_model,
+                input_tokens=estimated_input_tokens,
+                output_tokens=estimated_output_tokens,
+                latency_ms=latency_ms,
+                status='success',
+                request_metadata={
+                    'session_id': session.id,
+                    'image_size_bytes': len(image_bytes),
+                    'estimated': True,
+                },
+            )
+        except Exception as tracking_error:
+            logger.warning(f'Failed to track image generation usage: {tracking_error}')
 
         # Track this iteration in the session
         iteration_order = session.iterations.count()
@@ -585,13 +881,34 @@ def _process_image_generation(
     except Exception as e:
         logger.error(f'Image generation failed: {e}', exc_info=True)
 
+        # Check for content filter errors from Azure OpenAI
+        error_str = str(e)
+        if 'content_filter' in error_str or 'ResponsibleAIPolicyViolation' in error_str:
+            error_message = (
+                "I couldn't process that request due to content policy restrictions. "
+                'Please try rephrasing your message or using a different image.'
+            )
+        else:
+            error_message = (
+                'I encountered an issue generating your image. Please try again with a different description!'
+            )
+
         # Send error message
         async_to_sync(channel_layer.group_send)(
             channel_name,
             {
                 'type': 'chat.message',
                 'event': 'chunk',
-                'chunk': 'I encountered an issue generating your image. Please try again with a different description!',
+                'chunk': error_message,
+                'conversation_id': conversation_id,
+            },
+        )
+        # Send completed event so frontend stops loading
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'completed',
                 'conversation_id': conversation_id,
             },
         )

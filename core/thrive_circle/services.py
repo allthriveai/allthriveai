@@ -252,7 +252,7 @@ class QuestCompletionService:
         # For progress-based quests, must reach target
         elif user_quest.current_progress < user_quest.target_progress:
             raise ValueError(
-                f'Quest requirements not met. ' f'Progress: {user_quest.current_progress}/{user_quest.target_progress}'
+                f'Quest requirements not met. Progress: {user_quest.current_progress}/{user_quest.target_progress}'
             )
 
     @classmethod

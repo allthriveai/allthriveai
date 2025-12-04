@@ -2,6 +2,7 @@ import { createContext, useState, useEffect, ReactNode } from 'react';
 import type { AuthState } from '@/types/models';
 import * as authService from '@/services/auth';
 import { ensureCsrfToken } from '@/services/api';
+import { setUser as setSentryUser } from '@/utils/sentry';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
@@ -37,6 +38,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
+      // Update Sentry user context
+      setSentryUser({
+        id: user.id.toString(),
+        email: user.email,
+        username: user.username,
+      });
     } catch {
       setAuthState({
         user: null,
@@ -44,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
+      // Clear Sentry user context
+      setSentryUser(null);
     }
   }
 
@@ -57,6 +66,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
+      // Update Sentry user context
+      setSentryUser({
+        id: user.id.toString(),
+        email: user.email,
+        username: user.username,
+      });
     } catch (error) {
       const errorMessage = (error && typeof error === 'object' && 'error' in error)
         ? String(error.error)
@@ -67,6 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: errorMessage,
       });
+      // Clear Sentry user context on login failure
+      setSentryUser(null);
       throw error;
     }
   }
@@ -81,6 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
+      // Clear Sentry user context on logout
+      setSentryUser(null);
     } catch (error) {
       const errorMessage = (error && typeof error === 'object' && 'error' in error)
         ? String(error.error)
@@ -101,6 +120,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: true,
       }));
+      // Update Sentry user context
+      setSentryUser({
+        id: user.id.toString(),
+        email: user.email,
+        username: user.username,
+      });
     } catch {
       setAuthState({
         user: null,
@@ -108,6 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
+      // Clear Sentry user context
+      setSentryUser(null);
     }
   }
 

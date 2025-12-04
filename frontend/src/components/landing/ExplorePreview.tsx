@@ -126,7 +126,7 @@ export function ExplorePreview() {
         >
           <Link
             to="/explore"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-medium hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all duration-300 group"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-sm border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-medium hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all duration-300 group"
           >
             Explore All Projects
             <ArrowRightIcon className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />

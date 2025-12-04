@@ -32,7 +32,7 @@ export default function ReferralsSettingsPage() {
             </div>
 
             {/* Referral Overview */}
-            <div className="glass-strong rounded-xl p-8 border border-white/20 mb-6">
+            <div className="glass-strong rounded p-8 border border-white/20 mb-6">
               <div className="flex items-start gap-4 mb-6">
                 <div className="p-3 bg-primary-500/10 rounded-lg">
                   <GiftIcon className="w-8 h-8 text-primary-600 dark:text-primary-400" />
@@ -128,7 +128,7 @@ export default function ReferralsSettingsPage() {
             </div>
 
             {/* How It Works */}
-            <div className="glass-strong rounded-xl p-6 border border-white/20 mb-6">
+            <div className="glass-strong rounded p-6 border border-white/20 mb-6">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 How It Works
               </h3>
@@ -176,7 +176,7 @@ export default function ReferralsSettingsPage() {
             </div>
 
             {/* Referral History */}
-            <div className="glass-strong rounded-xl p-6 border border-white/20">
+            <div className="glass-strong rounded p-6 border border-white/20">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Referral History
               </h3>

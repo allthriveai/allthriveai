@@ -8,6 +8,7 @@ configuration across Azure OpenAI, OpenAI, and Anthropic.
 import asyncio
 import json
 import logging
+import time
 from collections.abc import Sequence
 from functools import partial
 from typing import Annotated, TypedDict
@@ -16,6 +17,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, To
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 
+from core.ai_usage.tracker import AIUsageTracker
 from services.ai import AIProvider
 
 from .prompts import SYSTEM_PROMPT
@@ -251,24 +253,19 @@ async def stream_agent_response(user_message: str, user_id: int, username: str, 
     processed_stream_runs = set()  # Track run_ids we've already started streaming
     current_stream_run_id = None  # The run_id we're currently streaming from
 
+    # Track tokens for usage reporting
+    start_time = time.time()
+    total_output_chars = 0
+
     try:
         # Stream agent execution
         async for event in agent.astream_events(input_state, config, version='v1'):
             kind = event['event']
             run_id = event.get('run_id', '')
-            tags = event.get('tags', [])
 
-            # Stream LLM tokens - only from 'agent' node to avoid duplicates
+            # Stream LLM tokens
             if kind == 'on_chat_model_stream':
-                # Filter to only stream from the agent node
-                # Tags contain the node name that triggered the event
-                is_agent_stream = 'agent' in tags or 'seq:step:1' in tags
-
-                # Skip if not from agent and we have tags (definitive non-agent source)
-                if tags and not is_agent_stream:
-                    continue
-
-                # Track run_id to prevent duplicate streams
+                # Track run_id to prevent duplicate streams from multiple nodes
                 if run_id:
                     # If we've already processed this run and it's not the current one, skip
                     if run_id in processed_stream_runs and run_id != current_stream_run_id:
@@ -282,6 +279,13 @@ async def stream_agent_response(user_message: str, user_id: int, username: str, 
                 if content:
                     token_content = getattr(content, 'content', content) if hasattr(content, 'content') else content
                     if token_content:
+                        # Track output characters for token estimation
+                        total_output_chars += len(str(token_content))
+                        logger.debug(
+                            f'Streaming token: {token_content[:50]}...'
+                            if len(str(token_content)) > 50
+                            else f'Streaming token: {token_content}'
+                        )
                         yield {'type': 'token', 'content': token_content}
 
             # Tool execution started
@@ -349,6 +353,35 @@ async def stream_agent_response(user_message: str, user_id: int, username: str, 
                             ):
                                 project_created = True
                                 project_data = tool_output
+
+        # Track AI usage after streaming completes
+        try:
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
+            user = User.objects.get(id=user_id)
+
+            # Estimate tokens: ~4 chars per token (rough average)
+            estimated_input_tokens = len(user_message) // 4 + len(SYSTEM_PROMPT) // 4
+            estimated_output_tokens = total_output_chars // 4
+
+            latency_ms = int((time.time() - start_time) * 1000)
+
+            # Get provider info from AIProvider
+            ai_provider = AIProvider()
+            AIUsageTracker.track_usage(
+                user=user,
+                feature='langgraph_project_agent',
+                provider=ai_provider.current_provider,
+                model=ai_provider.current_model,
+                input_tokens=estimated_input_tokens,
+                output_tokens=estimated_output_tokens,
+                latency_ms=latency_ms,
+                status='success',
+                request_metadata={'session_id': session_id, 'estimated': True},
+            )
+        except Exception as tracking_error:
+            logger.warning(f'Failed to track LangGraph usage: {tracking_error}')
 
         yield {
             'type': 'complete',

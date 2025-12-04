@@ -25,4 +25,7 @@ urlpatterns = [
     path('tokens/balance/', views.get_token_balance_view, name='token-balance'),
     path('tokens/transactions/', views.get_token_transactions_view, name='token-transactions'),
     path('purchases/', views.get_purchase_history_view, name='purchase-history'),
+    # Customer Portal & Invoices (authenticated)
+    path('portal/', views.create_portal_session_view, name='customer-portal'),
+    path('invoices/', views.list_invoices_view, name='list-invoices'),
 ]

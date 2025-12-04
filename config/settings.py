@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'core.learning_paths',  # Auto-generated learning paths per topic
     'core.billing',  # Stripe subscriptions and token packages
     'core.ai_usage',  # AI usage tracking and cost analytics
+    'core.stats',  # Platform statistics
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -487,6 +488,7 @@ LOGGING = {
         'core': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
+            'propagate': False,
         },
         'core.billing': {
             'handlers': ['console', 'file'],
@@ -588,9 +590,11 @@ SOCIALACCOUNT_PROVIDERS = {
 
 # JWT Settings
 # Cookie domain for cross-subdomain support
-# For localhost:3000 and localhost:8000 to share cookies, use 'localhost'
+# For localhost development: use 'localhost' to share cookies between ports (3000 and 8000)
 # For production (e.g., api.example.com and app.example.com), use '.example.com'
-COOKIE_DOMAIN = config('COOKIE_DOMAIN', default='localhost')
+# If you experience cookie issues locally, try setting COOKIE_DOMAIN= (empty) to use host-only cookies
+_cookie_domain_raw = config('COOKIE_DOMAIN', default='localhost')
+COOKIE_DOMAIN = _cookie_domain_raw if _cookie_domain_raw else None
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),

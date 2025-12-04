@@ -249,10 +249,10 @@ def example_calculate_cau():
     cau_data = AIUsageTracker.get_cau(days=30)
 
     print('=== Cost per Active User (30 days) ===')
-    print(f"CAU: ${cau_data['cau']:.2f}")
-    print(f"Total Cost: ${cau_data['total_cost']:.2f}")
-    print(f"Active Users: {cau_data['active_users']}")
-    print(f"Period: {cau_data['start_date']} to {cau_data['end_date']}")
+    print(f'CAU: ${cau_data["cau"]:.2f}')
+    print(f'Total Cost: ${cau_data["total_cost"]:.2f}')
+    print(f'Active Users: {cau_data["active_users"]}')
+    print(f'Period: {cau_data["start_date"]} to {cau_data["end_date"]}')
 
     # Compare different time periods
     cau_7d = AIUsageTracker.get_cau(days=7)
@@ -260,9 +260,9 @@ def example_calculate_cau():
     cau_90d = AIUsageTracker.get_cau(days=90)
 
     print('\n=== CAU Trend Analysis ===')
-    print(f"7 days:  ${cau_7d['cau']:.2f} ({cau_7d['active_users']} users)")
-    print(f"30 days: ${cau_30d['cau']:.2f} ({cau_30d['active_users']} users)")
-    print(f"90 days: ${cau_90d['cau']:.2f} ({cau_90d['active_users']} users)")
+    print(f'7 days:  ${cau_7d["cau"]:.2f} ({cau_7d["active_users"]} users)')
+    print(f'30 days: ${cau_30d["cau"]:.2f} ({cau_30d["active_users"]} users)')
+    print(f'90 days: ${cau_90d["cau"]:.2f} ({cau_90d["active_users"]} users)')
 
     # Calculate if CAU is sustainable
     monthly_revenue_per_user = Decimal('29.99')  # Your subscription price
@@ -272,7 +272,7 @@ def example_calculate_cau():
 
         print('\n=== Unit Economics ===')
         print(f'Revenue per user: ${monthly_revenue_per_user:.2f}')
-        print(f"AI cost per user: ${cau_30d['cau']:.2f}")
+        print(f'AI cost per user: ${cau_30d["cau"]:.2f}')
         print(f'Gross margin: ${gross_margin:.2f} ({margin_percentage:.1f}%)')
 
         if margin_percentage < 70:

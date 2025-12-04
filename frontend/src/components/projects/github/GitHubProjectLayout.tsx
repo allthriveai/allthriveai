@@ -44,7 +44,7 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
   const analysis = project.content?.github?.analysis;
   const githubData = project.content?.github;
 
-  const [isEditMode, setIsEditMode] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false); // Default to published view
   const toggleEditMode = useCallback(() => setIsEditMode(prev => !prev), []);
   const isEditing = isOwner && isEditMode;
 

@@ -279,6 +279,7 @@ class StripeService:
             old_tier = user_subscription.tier
             user_subscription.status = 'canceled'
             user_subscription.canceled_at = timezone.now()
+            user_subscription.cancel_at_period_end = not immediate
 
             if immediate:
                 # Downgrade to free tier immediately
@@ -294,7 +295,7 @@ class StripeService:
                 change_type='canceled',
                 from_tier=old_tier,
                 to_tier=user_subscription.tier,
-                reason=f"User canceled subscription ({'immediate' if immediate else 'at period end'})",
+                reason=f'User canceled subscription ({"immediate" if immediate else "at period end"})',
             )
 
             logger.info(f'Canceled subscription {user_subscription.stripe_subscription_id} for user {user.id}')
@@ -464,7 +465,7 @@ class StripeService:
                 stripe_payment_intent_id=payment_intent.id,
             )
 
-            logger.info(f'Created payment intent {payment_intent.id} for user {user.id} ' f'to purchase {package.name}')
+            logger.info(f'Created payment intent {payment_intent.id} for user {user.id} to purchase {package.name}')
 
             return {
                 'payment_intent_id': payment_intent.id,
@@ -595,13 +596,101 @@ class StripeService:
 
             package.save()
 
-            logger.info(f'Synced package {package.name} to Stripe: ' f'product={product.id}, price={price.id}')
+            logger.info(f'Synced package {package.name} to Stripe: product={product.id}, price={price.id}')
 
             return package
 
         except stripe.error.StripeError as e:
             logger.error(f'Failed to sync package {package.slug} to Stripe: {e}')
             raise StripeServiceError(f'Failed to sync package to Stripe: {str(e)}') from e
+
+    # ===== Customer Portal & Invoices =====
+
+    @staticmethod
+    def create_customer_portal_session(user, return_url: str = None) -> dict[str, Any]:
+        """
+        Create a Stripe Customer Portal session for managing billing.
+
+        The Customer Portal allows users to update payment methods,
+        view invoices, and manage their subscription.
+
+        Args:
+            user: Django User instance
+            return_url: URL to redirect to after portal session (optional)
+
+        Returns:
+            Dict with portal session URL
+
+        Raises:
+            StripeServiceError: If portal session creation fails
+        """
+        try:
+            subscription = UserSubscription.objects.filter(user=user).first()
+            if not subscription or not subscription.stripe_customer_id:
+                raise StripeServiceError('No Stripe customer found')
+
+            if not return_url:
+                return_url = f'{settings.FRONTEND_URL}/account/settings/billing'
+
+            session = stripe.billing_portal.Session.create(
+                customer=subscription.stripe_customer_id,
+                return_url=return_url,
+            )
+
+            logger.info(f'Created portal session for user {user.id}')
+            return {'url': session.url}
+
+        except stripe.error.StripeError as e:
+            logger.error(f'Failed to create portal session for user {user.id}: {e}')
+            raise StripeServiceError(f'Failed to create portal session: {str(e)}') from e
+
+    @staticmethod
+    def list_invoices(user, limit: int = 10) -> dict[str, Any]:
+        """
+        List invoices from Stripe for a user.
+
+        Args:
+            user: Django User instance
+            limit: Maximum number of invoices to return (1-100)
+
+        Returns:
+            Dict with list of invoices and has_more flag
+
+        Raises:
+            StripeServiceError: If invoice retrieval fails
+        """
+        try:
+            subscription = UserSubscription.objects.filter(user=user).first()
+            if not subscription or not subscription.stripe_customer_id:
+                return {'invoices': [], 'has_more': False}
+
+            invoices = stripe.Invoice.list(
+                customer=subscription.stripe_customer_id,
+                limit=min(100, max(1, limit)),
+            )
+
+            logger.info(f'Retrieved {len(invoices.data)} invoices for user {user.id}')
+
+            return {
+                'invoices': [
+                    {
+                        'id': inv.id,
+                        'number': inv.number,
+                        'amount_paid': inv.amount_paid,
+                        'currency': inv.currency,
+                        'status': inv.status,
+                        'created': inv.created,
+                        'invoice_pdf': inv.invoice_pdf,
+                        'hosted_invoice_url': inv.hosted_invoice_url,
+                    }
+                    for inv in invoices.data
+                ],
+                'has_more': invoices.has_more,
+            }
+
+        except stripe.error.StripeError as e:
+            logger.error(f'Failed to list invoices for user {user.id}: {e}')
+            raise StripeServiceError(f'Failed to list invoices: {str(e)}') from e
 
     # ===== Webhook Handling =====
 
@@ -652,6 +741,9 @@ class StripeService:
             user_subscription.current_period_end = timezone.datetime.fromtimestamp(
                 stripe_subscription['current_period_end'], tz=UTC
             )
+
+            # Sync cancel_at_period_end from Stripe
+            user_subscription.cancel_at_period_end = stripe_subscription.get('cancel_at_period_end', False)
 
             user_subscription.save()
 
@@ -715,7 +807,7 @@ class StripeService:
                 reason='Subscription canceled via Stripe',
             )
 
-            logger.info(f'Downgraded user {user_subscription.user.id} to free tier ' f'due to subscription deletion')
+            logger.info(f'Downgraded user {user_subscription.user.id} to free tier due to subscription deletion')
 
         except UserSubscription.DoesNotExist:
             logger.warning(f'Received webhook for unknown subscription: {subscription_id}')

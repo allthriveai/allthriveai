@@ -127,14 +127,14 @@ export const featureContent = [
     title: 'Learn Through Doing',
     description:
       'Interactive quizzes and learning paths designed for AI enthusiasts. Test your knowledge on topics from prompt engineering to machine learning fundamentals.',
-    badge: 'Quick Quizzes',
+    badge: 'Quizzes',
     color: 'purple',
   },
   {
     id: 'quests',
     title: 'Earn While You Learn',
     description:
-      'Complete side quests to earn XP and level up your profile. Unlock achievements, climb the leaderboard, and track your progress through gamified challenges.',
+      'Complete side quests to earn Points and level up your profile. Unlock achievements, climb the leaderboard, and track your progress through gamified challenges.',
     badge: 'Side Quests',
     color: 'green',
   },

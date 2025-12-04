@@ -84,6 +84,39 @@ export interface SubscriptionStatus {
   };
   subscriptionStatus: string;
   currentPeriodEnd: string;
+  currentPeriodStart?: string;
+  cancelAtPeriodEnd?: boolean;
+}
+
+export interface Invoice {
+  id: string;
+  number: string | null;
+  amount_paid: number | null;
+  currency: string;
+  status: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
+  created: number;
+  invoice_pdf: string | null;
+  hosted_invoice_url: string | null;
+}
+
+export interface InvoicesResponse {
+  invoices: Invoice[];
+  has_more: boolean;
+}
+
+export interface PortalSessionResponse {
+  url: string;
+}
+
+export interface TokenTransaction {
+  id: number;
+  transactionType: 'purchase' | 'usage' | 'refund' | 'bonus';
+  amount: number;
+  balanceAfter: number;
+  description: string;
+  aiProvider: string | null;
+  aiModel: string | null;
+  createdAt: string;
 }
 
 // API Calls
@@ -96,14 +129,6 @@ export async function getSubscriptionTiers(): Promise<SubscriptionTier[]> {
   return response.data;
 }
 
-/**
- * Get user's current subscription
- * Note: This endpoint doesn't exist yet - use getSubscriptionStatus() instead
- */
-export async function getUserSubscription(): Promise<UserSubscription> {
-  const response = await api.get('/billing/subscription/');
-  return response.data;
-}
 
 /**
  * Get user's subscription status
@@ -146,15 +171,16 @@ export async function updateSubscription(tierSlug: string): Promise<{
 }
 
 /**
- * Cancel subscription (at end of period)
+ * Cancel subscription
+ * @param immediate - If true, cancel immediately. If false (default), cancel at end of billing period.
  */
-export async function cancelSubscription(): Promise<{
-  subscriptionId: string;
+export async function cancelSubscription(immediate = false): Promise<{
+  subscription_id: string;
   status: string;
-  message: string;
-  currentPeriodEnd: string;
+  cancel_at_period_end: boolean;
+  period_end: string;
 }> {
-  const response = await api.post('/billing/subscriptions/cancel/');
+  const response = await api.post('/billing/subscriptions/cancel/', { immediate });
   return response.data;
 }
 
@@ -192,7 +218,37 @@ export async function purchaseTokens(packageSlug: string): Promise<{
 /**
  * Get token transaction history
  */
-export async function getTokenTransactions(): Promise<any[]> {
+export async function getTokenTransactions(): Promise<TokenTransaction[]> {
   const response = await api.get('/billing/tokens/transactions/');
+  return response.data;
+}
+
+/**
+ * Get invoices from Stripe
+ */
+export async function getInvoices(limit = 10): Promise<InvoicesResponse> {
+  const response = await api.get(`/billing/invoices/?limit=${limit}`);
+  return response.data;
+}
+
+/**
+ * Create a Stripe Customer Portal session for managing payment methods
+ */
+export async function createPortalSession(returnUrl?: string): Promise<PortalSessionResponse> {
+  const response = await api.post('/billing/portal/', { return_url: returnUrl });
+  return response.data;
+}
+
+/**
+ * Reactivate a canceled subscription (if still in the grace period)
+ * This clears the cancel_at_period_end flag
+ */
+export async function reactivateSubscription(): Promise<{
+  subscription_id: string;
+  status: string;
+}> {
+  // Reactivating is done by updating to the same tier with cancel_at_period_end=false
+  // We'll use the update endpoint which clears the cancellation
+  const response = await api.post('/billing/subscriptions/update/', {});
   return response.data;
 }

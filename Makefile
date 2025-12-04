@@ -49,6 +49,9 @@ help:
 	@echo "  make test-backend    - Run all backend tests"
 	@echo "  make test-frontend   - Run all frontend tests"
 	@echo "  make test-username   - Run username/user isolation tests"
+	@echo "  make test-websocket  - Run WebSocket unit tests"
+	@echo "  make test-websocket-e2e - Run WebSocket end-to-end test"
+	@echo "  make test-proxy      - Test Docker proxy connectivity (run this first!)"
 	@echo "  make test-coverage   - Run backend tests with coverage report"
 	@echo ""
 	@echo "Code Quality:"
@@ -207,6 +210,32 @@ test-frontend:
 test-username:
 	@echo "Running username and user isolation tests..."
 	docker-compose exec web python manage.py test core.tests.test_user_username --verbosity=2
+
+test-websocket:
+	@echo "Running WebSocket unit tests..."
+	docker-compose exec web python manage.py test core.agents.tests.test_websocket --verbosity=2
+
+test-websocket-e2e:
+	@echo "Running WebSocket end-to-end connectivity test..."
+	@echo "Testing from backend container to verify WebSocket infrastructure..."
+	docker-compose exec web python scripts/test_websocket.py testuser testpass123
+
+test-proxy:
+	@echo "=== Testing Docker Network Connectivity ==="
+	@echo ""
+	@echo "1. Checking frontend can reach backend (web:8000)..."
+	@docker-compose exec -T frontend wget -q -O /dev/null http://web:8000/api/v1/auth/csrf/ 2>/dev/null && echo "   ✅ Frontend -> Backend: OK" || echo "   ❌ Frontend -> Backend: FAILED (check if web container is running)"
+	@echo ""
+	@echo "2. Checking VITE_API_PROXY_TARGET is set correctly..."
+	@docker-compose exec -T frontend sh -c 'echo "   VITE_API_PROXY_TARGET=$$VITE_API_PROXY_TARGET"'
+	@docker-compose exec -T frontend sh -c '[ "$$VITE_API_PROXY_TARGET" = "http://web:8000" ] && echo "   ✅ Proxy target correct" || echo "   ❌ Proxy target should be http://web:8000 (run: docker-compose up -d frontend)"'
+	@echo ""
+	@echo "3. Verifying proxy can fetch data..."
+	@docker-compose exec -T frontend wget -q -O - http://web:8000/api/v1/auth/csrf/ 2>/dev/null | grep -q csrfToken && echo "   ✅ API response valid" || echo "   ❌ API response invalid"
+	@echo ""
+	@echo "=== Proxy Configuration Summary ==="
+	@echo "For Docker: VITE_API_PROXY_TARGET is set in docker-compose.yml"
+	@echo "For local dev (non-Docker): Set VITE_API_PROXY_TARGET=http://localhost:8000 in frontend/.env"
 
 test-coverage:
 	@echo "Running backend tests with coverage..."

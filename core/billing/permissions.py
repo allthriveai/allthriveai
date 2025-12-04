@@ -81,8 +81,7 @@ class RequiresFeature(permissions.BasePermission):
             }
             feature_display = feature_names.get(self.feature_name, self.feature_name)
             self.message = (
-                f'{feature_display} is not available in your current subscription tier. '
-                f'Upgrade to access this feature.'
+                f'{feature_display} is not available in your current subscription tier. Upgrade to access this feature.'
             )
 
         return has_access
@@ -154,7 +153,7 @@ class CanMakeAIRequest(permissions.BasePermission):
 
         if not can_request:
             self.message = (
-                f'AI request limit exceeded. {reason}. ' 'Purchase tokens or upgrade your subscription to continue.'
+                f'AI request limit exceeded. {reason}. Purchase tokens or upgrade your subscription to continue.'
             )
 
         return can_request

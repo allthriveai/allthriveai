@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGraduationCap, faScroll, faTrophy, faBolt, faPlay, faClock, faCheck, faStar } from '@fortawesome/free-solid-svg-icons';
 
@@ -32,9 +32,9 @@ const learningTypes = [
 // Visual preview for Interactive Courses
 function CoursePreview() {
   return (
-    <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-2xl border border-cyan-500/20 p-6 flex flex-col">
+    <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-sm border border-cyan-500/20 p-6 flex flex-col">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/30 to-green-500/30 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-sm bg-gradient-to-br from-cyan-500/30 to-green-500/30 flex items-center justify-center">
           <FontAwesomeIcon icon={faGraduationCap} className="w-6 h-6 text-cyan-400" />
         </div>
         <div>
@@ -47,7 +47,7 @@ function CoursePreview() {
         {['Introduction to Prompts', 'Writing Clear Instructions', 'Advanced Techniques', 'Real-World Examples'].map((lesson, i) => (
           <div
             key={lesson}
-            className={`flex items-center gap-3 p-3 rounded-xl ${
+            className={`flex items-center gap-3 p-3 rounded-sm ${
               i < 2 ? 'bg-green-500/10 border border-green-500/20' : 'bg-white/5 border border-white/10'
             }`}
           >
@@ -57,7 +57,7 @@ function CoursePreview() {
               {i < 2 ? <FontAwesomeIcon icon={faCheck} className="w-3 h-3" /> : i + 1}
             </div>
             <span className={i < 2 ? 'text-green-400' : 'text-gray-400'}>{lesson}</span>
-            {i < 2 && <span className="ml-auto text-green-400 text-xs">+25 XP</span>}
+            {i < 2 && <span className="ml-auto text-green-400 text-xs">+25 Points</span>}
           </div>
         ))}
       </div>
@@ -83,7 +83,7 @@ function CoursePreview() {
 // Visual preview for Side Quests - RPG-style quest intro
 function QuestPreview() {
   return (
-    <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-2xl border border-purple-500/20 p-6 flex flex-col">
+    <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-sm border border-purple-500/20 p-6 flex flex-col">
       {/* Quest scroll header */}
       <div className="flex items-center justify-center mb-4">
         <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center border-2 border-purple-500/30">
@@ -100,7 +100,7 @@ function QuestPreview() {
       </div>
 
       {/* Mission briefing */}
-      <div className="flex-1 bg-purple-500/10 rounded-xl border border-purple-500/20 p-4 mb-4">
+      <div className="flex-1 bg-purple-500/10 rounded-sm border border-purple-500/20 p-4 mb-4">
         <div className="text-xs text-purple-400 font-medium uppercase tracking-wide mb-2">Your Mission</div>
         <h4 className="text-white font-bold text-lg mb-2">Banana Time</h4>
         <p className="text-gray-300 text-sm leading-relaxed">
@@ -123,9 +123,9 @@ function QuestPreview() {
       <div className="flex items-center justify-between pt-4 border-t border-white/10">
         <div className="flex items-center gap-2">
           <FontAwesomeIcon icon={faBolt} className="w-4 h-4 text-amber-400" />
-          <span className="text-amber-400 font-bold">+20 XP</span>
+          <span className="text-amber-400 font-bold">+20 Points</span>
         </div>
-        <button className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold flex items-center gap-2 hover:shadow-lg hover:shadow-purple-500/30 transition-all">
+        <button className="px-5 py-2.5 rounded-sm bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold flex items-center gap-2 hover:shadow-lg hover:shadow-purple-500/30 transition-all">
           Accept Quest
         </button>
       </div>
@@ -136,7 +136,7 @@ function QuestPreview() {
 // Visual preview for Prompt Battles - Duel style
 function BattlePreview() {
   return (
-    <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-2xl border border-amber-500/20 p-5 flex flex-col overflow-hidden">
+    <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-sm border border-amber-500/20 p-5 flex flex-col overflow-hidden">
       {/* Header with timer */}
       <div className="flex items-center justify-between mb-3">
         <div className="text-xs text-amber-400 font-bold uppercase tracking-wider">Live Battle</div>
@@ -157,7 +157,7 @@ function BattlePreview() {
       <div className="flex-1 flex items-center gap-3">
         {/* Player 1 */}
         <div className="flex-1 flex flex-col items-center">
-          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-500/40 flex items-center justify-center mb-2 relative">
+          <div className="w-16 h-16 rounded-sm bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-500/40 flex items-center justify-center mb-2 relative">
             <span className="text-2xl">🌌</span>
             <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">47</div>
           </div>
@@ -178,7 +178,7 @@ function BattlePreview() {
 
         {/* Player 2 */}
         <div className="flex-1 flex flex-col items-center">
-          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-500/40 flex items-center justify-center mb-2 relative">
+          <div className="w-16 h-16 rounded-sm bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-500/40 flex items-center justify-center mb-2 relative">
             <span className="text-2xl">🏔️</span>
             <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-[10px] font-bold text-white">52</div>
           </div>
@@ -194,9 +194,9 @@ function BattlePreview() {
       <div className="flex items-center justify-between pt-3 border-t border-white/10 mt-3">
         <div className="flex items-center gap-2">
           <FontAwesomeIcon icon={faTrophy} className="w-4 h-4 text-amber-400" />
-          <span className="text-amber-400 font-bold text-sm">Win 250 XP</span>
+          <span className="text-amber-400 font-bold text-sm">Win 250 Points</span>
         </div>
-        <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:shadow-lg hover:shadow-amber-500/30 transition-all">
+        <button className="px-4 py-2 rounded-sm bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:shadow-lg hover:shadow-amber-500/30 transition-all">
           Enter Battle
         </button>
       </div>
@@ -211,7 +211,38 @@ const previews: Record<LearningType, React.ReactNode> = {
 };
 
 export function SideQuestsPreview() {
-  const [activeType, setActiveType] = useState<LearningType>('courses');
+  const [activeType, setActiveType] = useState<LearningType>('battles');
+  const [isPaused, setIsPaused] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-rotate through learning types
+  useEffect(() => {
+    if (isPaused) return;
+
+    const types: LearningType[] = ['battles', 'courses', 'quests'];
+
+    intervalRef.current = setInterval(() => {
+      setActiveType((current) => {
+        const currentIndex = types.indexOf(current);
+        const nextIndex = (currentIndex + 1) % types.length;
+        return types[nextIndex];
+      });
+    }, 5000); // Rotate every 5 seconds
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isPaused]);
+
+  // Pause auto-rotation when user manually selects a tab
+  const handleTabClick = (type: LearningType) => {
+    setActiveType(type);
+    setIsPaused(true);
+    // Resume auto-rotation after 10 seconds of inactivity
+    setTimeout(() => setIsPaused(false), 10000);
+  };
 
   return (
     <section className="relative py-24 overflow-hidden">
@@ -310,16 +341,16 @@ export function SideQuestsPreview() {
                   aria-selected={isActive}
                   aria-controls={`tabpanel-${type.id}`}
                   tabIndex={isActive ? 0 : -1}
-                  onClick={() => setActiveType(type.id)}
+                  onClick={() => handleTabClick(type.id)}
                   onKeyDown={handleKeyDown}
-                  className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#020617] ${colorClasses.focusRing} ${
+                  className={`w-full text-left p-5 rounded-sm border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#020617] ${colorClasses.focusRing} ${
                     isActive
                       ? `${colorClasses.activeBg} ${colorClasses.activeBorder}`
                       : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
                   }`}
                 >
                   <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorClasses.iconBg} flex items-center justify-center flex-shrink-0`} aria-hidden="true">
+                    <div className={`w-12 h-12 rounded-sm bg-gradient-to-br ${colorClasses.iconBg} flex items-center justify-center flex-shrink-0`} aria-hidden="true">
                       <FontAwesomeIcon icon={type.icon} className={`w-6 h-6 ${colorClasses.icon}`} />
                     </div>
                     <div>

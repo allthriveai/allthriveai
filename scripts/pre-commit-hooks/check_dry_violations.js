@@ -254,8 +254,8 @@ function main() {
     process.exit(0);
   }
 
-  let hasFindings = false;
-  let output = '';
+  let totalIssues = 0;
+  let fileCount = 0;
 
   files.forEach(file => {
     // Only check TS/TSX/JS/JSX files
@@ -263,25 +263,14 @@ function main() {
 
     const findings = checkFile(file);
     if (findings.length > 0) {
-      hasFindings = true;
-      output += formatFindings(file, findings);
+      fileCount++;
+      totalIssues += findings.length;
     }
   });
 
-  if (hasFindings) {
-    console.log('\n' + '='.repeat(70));
-    console.log('DRY VIOLATION CHECK - Potential code duplication detected');
-    console.log('='.repeat(70));
-    console.log(output);
-    console.log('-'.repeat(70));
-    console.log('RECOMMENDATIONS:');
-    console.log('  1. Extract repeated strings to constants');
-    console.log('  2. Create shared utility functions for duplicate logic');
-    console.log('  3. Extract repeated className strings to CSS modules or constants');
-    console.log('  4. Use custom hooks to share component logic');
-    console.log('-'.repeat(70));
-    console.log('\nThis is a WARNING - commit will proceed.');
-    console.log('Review findings and refactor if appropriate.\n');
+  if (totalIssues > 0) {
+    // Concise summary - just file count and total issues
+    console.log(`DRY: ${totalIssues} potential issue(s) in ${fileCount} file(s). Run with --verbose for details.`);
   }
 
   // Always return 0 (warning only)

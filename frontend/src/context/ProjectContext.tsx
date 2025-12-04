@@ -11,13 +11,6 @@ import { useProjectLike } from '@/hooks/useProjectLike';
 import { useProjectShare } from '@/hooks/useProjectShare';
 
 // ============================================================================
-// Constants
-// ============================================================================
-
-/** Keyboard shortcut for edit tray (owner only) */
-const EDIT_TRAY_SHORTCUT = 'e';
-
-// ============================================================================
 // Types
 // ============================================================================
 
@@ -45,11 +38,6 @@ interface ProjectContextValue {
   isCommentTrayOpen: boolean;
   openCommentTray: () => void;
   closeCommentTray: () => void;
-
-  // Edit tray
-  isEditTrayOpen: boolean;
-  openEditTray: () => void;
-  closeEditTray: () => void;
 
   // Tool tray (centralized to prevent stacking)
   isToolTrayOpen: boolean;
@@ -138,9 +126,6 @@ export function ProjectProvider({
   // Comment tray state
   const [isCommentTrayOpen, setIsCommentTrayOpen] = useState(false);
 
-  // Edit tray state
-  const [isEditTrayOpen, setIsEditTrayOpen] = useState(false);
-
   // Tool tray state (centralized)
   const [isToolTrayOpen, setIsToolTrayOpen] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string | null>(null);
@@ -148,7 +133,6 @@ export function ProjectProvider({
   // Close all trays helper - closes all sidebars/trays
   const closeAllTrays = useCallback(() => {
     setIsCommentTrayOpen(false);
-    setIsEditTrayOpen(false);
     setIsToolTrayOpen(false);
     setSelectedToolSlug(null);
   }, []);
@@ -160,13 +144,6 @@ export function ProjectProvider({
   }, [closeAllTrays]);
 
   const closeCommentTray = useCallback(() => setIsCommentTrayOpen(false), []);
-
-  const openEditTray = useCallback(() => {
-    closeAllTrays();
-    setIsEditTrayOpen(true);
-  }, [closeAllTrays]);
-
-  const closeEditTray = useCallback(() => setIsEditTrayOpen(false), []);
 
   const openToolTray = useCallback((toolSlug: string) => {
     closeAllTrays();
@@ -185,31 +162,6 @@ export function ProjectProvider({
     baseOpenShareModal();
   }, [closeAllTrays, baseOpenShareModal]);
 
-  // Keyboard shortcut: Press 'E' to toggle edit tray (owner only)
-  useEffect(() => {
-    if (!isOwner) return;
-
-    const handleKeyPress = (event: KeyboardEvent) => {
-      // Don't trigger if typing in an input/textarea
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      if (event.key.toLowerCase() === EDIT_TRAY_SHORTCUT) {
-        event.preventDefault();
-        // If edit tray is open, just close it; otherwise close all and open edit
-        if (isEditTrayOpen) {
-          closeEditTray();
-        } else {
-          openEditTray();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isOwner, isEditTrayOpen, openEditTray, closeEditTray]);
-
   const value: ProjectContextValue = {
     project,
     setProject,
@@ -225,9 +177,6 @@ export function ProjectProvider({
     isCommentTrayOpen,
     openCommentTray,
     closeCommentTray,
-    isEditTrayOpen,
-    openEditTray,
-    closeEditTray,
     isToolTrayOpen,
     selectedToolSlug,
     openToolTray,

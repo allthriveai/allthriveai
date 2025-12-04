@@ -31,7 +31,7 @@ def _generate_creative_journey_summary(iterations: list[dict]) -> tuple[str, str
         return 'Nano Banana Creation', 'An AI-generated image.'
 
     # Build the journey narrative
-    journey_text = '\n'.join([f"Iteration {i['order'] + 1}: User asked: \"{i['prompt']}\"" for i in iterations])
+    journey_text = '\n'.join([f'Iteration {i["order"] + 1}: User asked: "{i["prompt"]}"' for i in iterations])
 
     # Use AI to generate a creative summary
     prompt = f"""You are summarizing the creative journey of generating an AI image.
@@ -214,6 +214,7 @@ def detect_intent(request):
             user_message=user_message,
             conversation_history=conversation_history,
             integration_type=integration_type,
+            user=request.user,
         )
 
         # Get transition message
@@ -320,7 +321,7 @@ class CreateProjectFromImageView(APIView):
                     {
                         'type': 'heading',
                         'level': 3,
-                        'content': f"Iteration {iteration['order'] + 1}",
+                        'content': f'Iteration {iteration["order"] + 1}',
                     }
                 )
                 content_blocks.append(
@@ -333,7 +334,7 @@ class CreateProjectFromImageView(APIView):
                     {
                         'type': 'image',
                         'url': iteration['image_url'],
-                        'caption': f"Result of iteration {iteration['order'] + 1}",
+                        'caption': f'Result of iteration {iteration["order"] + 1}',
                     }
                 )
 

@@ -331,26 +331,54 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
 
         {/* BACKGROUND LAYER */}
         <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''}`}>
-            {heroElement.type === 'image' && (
-              <div className="relative w-full" style={{ minHeight: imageLoaded ? 'auto' : '400px' }}>
-                {/* Loading placeholder */}
-                {!imageLoaded && (
-                  <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800" style={{ backgroundSize: '200% 200%' }} />
-                )}
-                <img
-                  src={heroElement.url}
-                  alt={project.title}
-                  className={`w-full h-auto object-cover ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
-                  loading="lazy"
-                  onLoad={(e) => {
-                    const img = e.currentTarget;
-                    setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
-                    // Small delay to ensure smooth transition
-                    setTimeout(() => setImageLoaded(true), 50);
-                  }}
-                />
-              </div>
-            )}
+            {heroElement.type === 'image' && (() => {
+              // Check if this is a YouTube Short (vertical video) - show thumbnail with vertical aspect
+              const videoContent = project.content?.video || {};
+              const sectionContent = project.content?.sections?.[0]?.content || {};
+              const isYouTubeShort = videoContent.isShort || sectionContent.isShort || false;
+
+              if (isYouTubeShort) {
+                return (
+                  <div className="relative w-full flex justify-center bg-black pb-40 md:pb-0">
+                    <div className="relative w-full max-w-[280px]" style={{ aspectRatio: '9 / 16' }}>
+                      {!imageLoaded && (
+                        <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 rounded-lg" style={{ backgroundSize: '200% 200%' }} />
+                      )}
+                      <img
+                        src={heroElement.url}
+                        alt={project.title}
+                        className={`w-full h-full object-cover rounded-lg transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
+                        loading="lazy"
+                        onLoad={() => {
+                          setTimeout(() => setImageLoaded(true), 50);
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="relative w-full" style={{ minHeight: imageLoaded ? 'auto' : '400px' }}>
+                  {/* Loading placeholder */}
+                  {!imageLoaded && (
+                    <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800" style={{ backgroundSize: '200% 200%' }} />
+                  )}
+                  <img
+                    src={heroElement.url}
+                    alt={project.title}
+                    className={`w-full h-auto object-cover ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
+                    loading="lazy"
+                    onLoad={(e) => {
+                      const img = e.currentTarget;
+                      setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
+                      // Small delay to ensure smooth transition
+                      setTimeout(() => setImageLoaded(true), 50);
+                    }}
+                  />
+                </div>
+              );
+            })()}
 
             {isGradient && heroElement.type === 'gradient' && (
               <div className="w-full aspect-[4/3] flex items-center justify-center p-8 pb-48 md:pb-8 animate-gradient-flow relative overflow-hidden" style={heroElement.gradientStyle}>
@@ -364,12 +392,23 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
             )}
 
             {heroElement.type === 'video' && (() => {
+              // Check if this is a YouTube Short (vertical video)
+              const videoContent = project.content?.video || {};
+              const sectionContent = project.content?.sections?.[0]?.content || {};
+              const isYouTubeShort = videoContent.isShort || sectionContent.isShort || false;
+
               // Parse video URL to get embed URL
               const parseVideoUrl = (url: string) => {
+                // YouTube Shorts pattern
+                const shortsMatch = url.match(/youtube\.com\/shorts\/([\w-]{11})/);
+                if (shortsMatch) {
+                  return `https://www.youtube.com/embed/${shortsMatch[1]}?autoplay=0&mute=1&loop=1&controls=0`;
+                }
+
                 // YouTube patterns
                 const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
                 if (youtubeMatch) {
-                  return `https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=1&mute=1&loop=1&controls=0`;
+                  return `https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=0&mute=1&loop=1&controls=0`;
                 }
 
                 // Vimeo patterns
@@ -390,6 +429,24 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
 
               const embedUrl = parseVideoUrl(heroElement.url);
               const isEmbedUrl = embedUrl !== heroElement.url;
+
+              // YouTube Shorts use vertical 9:16 aspect ratio
+              // Note: YouTube iframes always render at 16:9, so we need extra height
+              // to accommodate the player while showing the vertical video properly
+              if (isYouTubeShort) {
+                return (
+                  <div className="relative w-full flex justify-center bg-black pb-40 md:pb-0">
+                    <div className="relative w-full max-w-[360px]" style={{ aspectRatio: '9 / 16' }}>
+                      <iframe
+                        src={embedUrl}
+                        className="absolute inset-0 w-full h-full"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  </div>
+                );
+              }
 
               return isEmbedUrl ? (
                 <div className="relative w-full aspect-video bg-black pb-40 md:pb-0">

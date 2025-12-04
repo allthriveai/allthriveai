@@ -7,6 +7,41 @@ from django.utils import timezone
 from core.users.models import User
 
 
+class BattlePhase(models.TextChoices):
+    """Phase choices for real-time battle state machine."""
+
+    WAITING = 'waiting', 'Waiting for Opponent'
+    COUNTDOWN = 'countdown', 'Countdown'
+    ACTIVE = 'active', 'Active'
+    GENERATING = 'generating', 'AI Generating'
+    JUDGING = 'judging', 'AI Judging'
+    REVEAL = 'reveal', 'Results Reveal'
+    COMPLETE = 'complete', 'Complete'
+
+
+class MatchSource(models.TextChoices):
+    """How the battle match was created."""
+
+    DIRECT = 'direct', 'Direct Challenge'
+    RANDOM = 'random', 'Random Match'
+    AI_OPPONENT = 'ai_opponent', 'AI Opponent'
+
+
+class MatchType(models.TextChoices):
+    """Type of matchmaking requested."""
+
+    RANDOM = 'random', 'Random Match'
+    AI_OPPONENT = 'ai', 'AI Opponent (Pip)'
+
+
+class VoteSource(models.TextChoices):
+    """Source of a battle vote."""
+
+    AI = 'ai', 'AI Judge'
+    COMMUNITY = 'community', 'Community Vote'
+    PANEL = 'panel', 'Judge Panel'
+
+
 class BattleStatus(models.TextChoices):
     """Status choices for prompt battles."""
 
@@ -39,6 +74,103 @@ class InvitationStatus(models.TextChoices):
     ACCEPTED = 'accepted', 'Accepted'
     DECLINED = 'declined', 'Declined'
     EXPIRED = 'expired', 'Expired'
+
+
+class ChallengeType(models.Model):
+    """Database-driven challenge type configuration.
+
+    Allows adding new challenge types without code changes.
+    Each challenge type defines templates, variables, and judging criteria.
+    """
+
+    key = models.CharField(
+        max_length=50, unique=True, help_text="Unique identifier (e.g., 'dreamscape', 'movie_poster')"
+    )
+    name = models.CharField(max_length=100, help_text='Display name for the challenge type')
+    description = models.TextField(help_text='Description of what this challenge type is about')
+
+    category = models.ForeignKey(
+        'core.Taxonomy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        limit_choices_to={'taxonomy_type': 'category'},
+        related_name='challenge_types',
+        help_text='Category this challenge type belongs to',
+    )
+
+    # Challenge templates with variable placeholders
+    templates = models.JSONField(
+        default=list,
+        help_text='List of challenge templates with {variable} placeholders',
+    )
+
+    # Variables for template substitution
+    variables = models.JSONField(
+        default=dict,
+        help_text='Variable options for template substitution: {"style": ["surreal", "cosmic"]}',
+    )
+
+    # Judging criteria (weights should sum to 100)
+    judging_criteria = models.JSONField(
+        default=list,
+        help_text='List of criteria: [{"name": "creativity", "weight": 30, "description": "..."}]',
+    )
+
+    # AI judging prompt (optional - uses default if empty)
+    ai_judge_prompt = models.TextField(
+        blank=True,
+        help_text='Custom AI judging prompt (uses default if empty)',
+    )
+
+    # Configuration
+    default_duration_minutes = models.IntegerField(default=3, help_text='Default battle duration in minutes')
+    min_submission_length = models.IntegerField(default=10, help_text='Minimum prompt length in characters')
+    max_submission_length = models.IntegerField(default=2000, help_text='Maximum prompt length in characters')
+
+    # Points configuration
+    winner_points = models.IntegerField(default=50, help_text='Points awarded to winner')
+    participation_points = models.IntegerField(default=10, help_text='Points for participation')
+
+    # Status
+    is_active = models.BooleanField(default=True, help_text='Whether this challenge type is available')
+    difficulty = models.CharField(
+        max_length=20,
+        choices=[('easy', 'Easy'), ('medium', 'Medium'), ('hard', 'Hard')],
+        default='medium',
+    )
+
+    # Ordering
+    order = models.IntegerField(default=0, help_text='Display order (lower = first)')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', 'name']
+        indexes = [
+            models.Index(fields=['is_active', 'order']),
+            models.Index(fields=['category', 'is_active']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def generate_challenge(self) -> str:
+        """Generate a random challenge from templates and variables."""
+        import random
+
+        if not self.templates:
+            return self.description
+
+        template = random.choice(self.templates)  # noqa: S311 - game randomization
+
+        for var_name, var_options in self.variables.items():
+            placeholder = '{' + var_name + '}'
+            if placeholder in template and var_options:
+                template = template.replace(placeholder, random.choice(var_options))  # noqa: S311
+
+        return template
 
 
 class PromptBattle(models.Model):
@@ -94,6 +226,37 @@ class PromptBattle(models.Model):
         help_text='Winner of the battle (determined by AI scoring)',
     )
 
+    # Real-time battle phase (state machine)
+    phase = models.CharField(
+        max_length=20,
+        choices=BattlePhase.choices,
+        default=BattlePhase.WAITING,
+        db_index=True,
+        help_text='Current phase of the real-time battle',
+    )
+
+    # Connection tracking for real-time battles
+    challenger_connected = models.BooleanField(default=False, help_text='Is challenger connected via WebSocket')
+    opponent_connected = models.BooleanField(default=False, help_text='Is opponent connected via WebSocket')
+
+    # Link to challenge type configuration
+    challenge_type = models.ForeignKey(
+        ChallengeType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='battles',
+        help_text='The challenge type configuration used for this battle',
+    )
+
+    # How the match was created
+    match_source = models.CharField(
+        max_length=20,
+        choices=MatchSource.choices,
+        default=MatchSource.DIRECT,
+        help_text='How this battle match was created',
+    )
+
     class Meta:
         ordering = ['-created_at']
         indexes = [
@@ -101,6 +264,11 @@ class PromptBattle(models.Model):
             models.Index(fields=['opponent', '-created_at']),
             models.Index(fields=['status', '-created_at']),
             models.Index(fields=['expires_at']),
+            # Phase is frequently queried in tasks and consumers
+            models.Index(fields=['phase', 'status']),
+            models.Index(fields=['phase', '-created_at']),
+            # Winner lookups for leaderboard
+            models.Index(fields=['winner', '-completed_at']),
         ]
 
     def __str__(self):
@@ -188,7 +356,10 @@ class BattleSubmission(models.Model):
     prompt_text = models.TextField(help_text='The prompt created by the user')
 
     submission_type = models.CharField(
-        max_length=20, choices=SubmissionType.choices, help_text='Type of submission (text or image prompt)'
+        max_length=20,
+        choices=SubmissionType.choices,
+        default=SubmissionType.IMAGE,
+        help_text='Type of submission (text or image prompt)',
     )
 
     generated_output_url = models.URLField(
@@ -198,6 +369,13 @@ class BattleSubmission(models.Model):
     generated_output_text = models.TextField(blank=True, help_text='Generated text output (if text submission)')
 
     score = models.FloatField(null=True, blank=True, help_text='AI-evaluated score (0-100)')
+
+    # Detailed scoring by criteria
+    criteria_scores = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Breakdown by judging criteria: {"creativity": 85, "relevance": 90}',
+    )
 
     evaluation_feedback = models.TextField(blank=True, help_text='AI feedback on the prompt quality')
 
@@ -317,4 +495,121 @@ class BattleInvitation(models.Model):
     @property
     def is_expired(self):
         """Check if invitation has expired."""
+        return timezone.now() > self.expires_at
+
+
+class BattleVote(models.Model):
+    """Vote on a battle submission.
+
+    Designed for future expansion to community judging.
+    Currently used for AI judge votes.
+    """
+
+    battle = models.ForeignKey(
+        PromptBattle,
+        on_delete=models.CASCADE,
+        related_name='votes',
+        help_text='The battle being voted on',
+    )
+
+    submission = models.ForeignKey(
+        BattleSubmission,
+        on_delete=models.CASCADE,
+        related_name='votes',
+        help_text='The submission being voted on',
+    )
+
+    voter = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='battle_votes_cast',
+        help_text='User who voted (null for AI judge)',
+    )
+
+    vote_source = models.CharField(
+        max_length=20,
+        choices=VoteSource.choices,
+        default=VoteSource.AI,
+        help_text='Source of this vote',
+    )
+
+    score = models.FloatField(help_text='Score given (0-100)')
+
+    criteria_scores = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Per-criteria breakdown: {"creativity": 85, "relevance": 90}',
+    )
+
+    feedback = models.TextField(blank=True, help_text='Feedback explaining the vote')
+
+    weight = models.FloatField(default=1.0, help_text='Vote weight for aggregation')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [['submission', 'voter', 'vote_source']]
+        indexes = [
+            models.Index(fields=['battle', 'vote_source']),
+            models.Index(fields=['submission', '-created_at']),
+        ]
+
+    def __str__(self):
+        voter_name = self.voter.username if self.voter else 'AI'
+        return f'Vote by {voter_name} on submission {self.submission_id}'
+
+
+class BattleMatchmakingQueue(models.Model):
+    """Queue for users waiting to be matched.
+
+    Supports random matching and future skill-based matching.
+    """
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='matchmaking_queue',
+        help_text='User waiting in queue',
+    )
+
+    match_type = models.CharField(
+        max_length=20,
+        choices=MatchType.choices,
+        default=MatchType.RANDOM,
+        help_text='Type of match requested',
+    )
+
+    challenge_type = models.ForeignKey(
+        ChallengeType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text='Preferred challenge type (null = any)',
+    )
+
+    queued_at = models.DateTimeField(auto_now_add=True, help_text='When user joined queue')
+
+    expires_at = models.DateTimeField(help_text='When queue entry expires')
+
+    class Meta:
+        verbose_name_plural = 'Battle matchmaking queue entries'
+        indexes = [
+            models.Index(fields=['match_type', 'queued_at']),
+            models.Index(fields=['expires_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} waiting for {self.get_match_type_display()}'
+
+    def save(self, *args, **kwargs):
+        """Set default expiration if not provided."""
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timezone.timedelta(minutes=5)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self):
+        """Check if queue entry has expired."""
         return timezone.now() > self.expires_at

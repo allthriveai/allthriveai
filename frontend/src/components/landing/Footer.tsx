@@ -11,16 +11,20 @@ export function Footer({ onOpenChat }: FooterProps) {
   const currentYear = new Date().getFullYear();
 
   const navigation = {
-    product: [
+    explore: [
       { name: 'Explore Projects', href: '/explore' },
-      { name: 'Pricing', href: '/pricing' },
+      { name: 'Learn', href: '/learn' },
+      { name: 'Tools', href: '/tools' },
+      { name: 'Thrive Circle', href: '/thrive-circle' },
     ],
-    company: [
+    play: [
+      { name: 'Prompt Battle', href: '/play/prompt-battle' },
+      { name: 'Side Quests', href: '/play/side-quests' },
+      { name: 'Quizzes', href: '/quizzes' },
+    ],
+    connect: [
       { name: 'About', href: '/about' },
-    ],
-    legal: [
-      { name: 'Privacy Policy', href: '/privacy' },
-      { name: 'Terms of Service', href: '/terms' },
+      { name: 'Pricing', href: '/pricing' },
     ],
     social: [
       { name: 'Twitter', icon: faXTwitter, href: 'https://twitter.com/allthriveai' },
@@ -30,7 +34,7 @@ export function Footer({ onOpenChat }: FooterProps) {
   };
 
   return (
-    <footer className="relative bg-[#020617] border-t border-white/5" role="contentinfo">
+    <footer className="relative bg-[#020617] border-t border-white/5 mt-16" role="contentinfo">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="flex flex-col md:flex-row md:justify-between gap-8 lg:gap-12">
           {/* Brand column */}
@@ -53,7 +57,7 @@ export function Footer({ onOpenChat }: FooterProps) {
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all duration-300"
+                  className="w-9 h-9 rounded-sm bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all duration-300"
                   aria-label={`Follow us on ${item.name}`}
                 >
                   <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
@@ -62,11 +66,11 @@ export function Footer({ onOpenChat }: FooterProps) {
             </div>
           </div>
 
-          {/* Product links */}
+          {/* Explore links */}
           <nav aria-label="Explore">
             <h3 className="text-white font-semibold mb-4">Explore</h3>
             <ul className="space-y-3">
-              {navigation.product.map((item) => (
+              {navigation.explore.map((item) => (
                 <li key={item.name}>
                   <Link
                     to={item.href}
@@ -79,11 +83,28 @@ export function Footer({ onOpenChat }: FooterProps) {
             </ul>
           </nav>
 
-          {/* About links */}
-          <nav aria-label="About">
-            <h3 className="text-white font-semibold mb-4">About</h3>
+          {/* Play links */}
+          <nav aria-label="Play">
+            <h3 className="text-white font-semibold mb-4">Play</h3>
             <ul className="space-y-3">
-              {navigation.company.map((item) => (
+              {navigation.play.map((item) => (
+                <li key={item.name}>
+                  <Link
+                    to={item.href}
+                    className="text-gray-400 hover:text-cyan-400 transition-colors text-sm"
+                  >
+                    {item.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {/* Connect links */}
+          <nav aria-label="Connect">
+            <h3 className="text-white font-semibold mb-4">Connect</h3>
+            <ul className="space-y-3">
+              {navigation.connect.map((item) => (
                 <li key={item.name}>
                   <Link
                     to={item.href}
@@ -102,26 +123,24 @@ export function Footer({ onOpenChat }: FooterProps) {
                   Contact Us
                 </button>
               </li>
-              {navigation.legal.map((item) => (
-                <li key={item.name}>
-                  <Link
-                    to={item.href}
-                    className="text-gray-400 hover:text-cyan-400 transition-colors text-sm"
-                  >
-                    {item.name}
-                  </Link>
-                </li>
-              ))}
             </ul>
           </nav>
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-10 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-gray-500 text-sm">
-            &copy; {currentYear} All Thrive. All rights reserved.
+        <div className="mt-10 pt-8 border-t border-white/5 flex flex-col lg:flex-row items-center justify-between gap-4">
+          <p className="text-gray-500 text-sm flex flex-wrap items-center justify-center lg:justify-start gap-x-1">
+            <span>&copy; {currentYear} All Thrive. All rights reserved.</span>
+            <span className="mx-2">·</span>
+            <Link to="/privacy" className="hover:text-cyan-400 transition-colors">
+              Privacy Policy
+            </Link>
+            <span className="mx-2">·</span>
+            <Link to="/terms" className="hover:text-cyan-400 transition-colors">
+              Terms of Service
+            </Link>
           </p>
-          <p className="text-gray-600 text-xs">
+          <p className="text-gray-500 text-sm">
             Create anywhere. Consolidate here. Thrive together.
           </p>
         </div>
