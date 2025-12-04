@@ -548,7 +548,7 @@ export function ExplorePage() {
                   </div>
                 ) : (
                   <>
-                    <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2">
+                    <div className="columns-1 sm:columns-2 lg:columns-4 gap-2">
                       {/* Interleave quizzes and projects with stable ordering */}
                       {mixedItems.map((item) => (
                         <FadeInItem key={item.stableKey}>

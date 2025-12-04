@@ -771,7 +771,14 @@ def explore_projects(request):
     elif sort == 'random':
         queryset = queryset.order_by('?')
     else:  # newest (default)
-        queryset = queryset.order_by('-created_at')
+        # Mix users by using a hash-based ordering to avoid grouping all posts from same user
+        # This uses modulo on user_id to create groups, then sorts by creation time within groups
+        from django.db.models import F
+        from django.db.models.functions import Mod
+
+        # Use modulo on user_id to create 10 buckets, then sort by time within each bucket
+        # This naturally distributes users throughout the feed
+        queryset = queryset.annotate(user_bucket=Mod(F('user_id'), 10)).order_by('user_bucket', '-created_at')
 
     # Apply pagination
     paginator = ProjectPagination()

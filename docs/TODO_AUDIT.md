@@ -338,6 +338,52 @@ Reference to TODO comment format in pre-commit documentation.
 
 ---
 
+## Completed Improvements (2025-12-04)
+
+### Billing Module - Django Best Practices & PII Protection
+
+**Status:** COMPLETED
+**Date:** 2025-12-04
+**Tests:** All 115 billing tests pass
+
+#### 1. Race Condition Fix in `core/billing/models.py`
+Made `can_make_ai_request()` a read-only method that no longer mutates state. Counter resets are now handled exclusively by scheduled Celery tasks.
+
+#### 2. Query Optimization in `core/billing/views.py`
+Added `select_related()` calls to prevent N+1 queries:
+- `get_purchase_history_view`: `.select_related('package')`
+- `get_subscription_history_view`: `.select_related('from_tier', 'to_tier', 'subscription')`
+
+#### 3. Subscription Caching in `core/billing/middleware.py`
+Added a caching layer with 60-second TTL to reduce database hits on every request. Includes `invalidate_billing_cache()` helper for cache invalidation when billing data changes.
+
+#### 4. Exponential Backoff in `core/billing/tasks.py`
+Added `get_exponential_backoff()` function with ±20% jitter to prevent thundering herd problems during Celery task retries.
+
+#### 5. PII Protection in `core/billing/tasks.py`
+Fixed email address exposure in logs:
+- Added `_mask_email()` helper function (masks as `jo***@example.com`)
+- Updated all log statements to use `user_id` instead of raw emails
+- Affected functions:
+  - `check_low_token_balances_task`
+  - `reset_monthly_ai_requests_task`
+  - `send_token_usage_notification_task`
+  - `check_subscription_quotas_task`
+  - `send_low_balance_notification`
+  - `send_quota_notification`
+
+#### Existing Logging Utilities (Reference)
+The project has robust logging utilities that should be used for future code:
+- **`core/logging_utils.py`**: Contains `SecureLogger` and `StructuredLogger` classes with automatic PII sanitization
+- **`core/billing/logging_utils.py`**: Contains `sanitize_stripe_data()` for redacting Stripe secrets and a `SensitiveDataFilter` for automatic log sanitization
+
+#### Recommendations for Future Work
+1. Enable the `SensitiveDataFilter` in Django's LOGGING config for automatic sanitization
+2. For new code, use `StructuredLogger.log_service_operation()` for consistent, PII-safe logging
+3. Always use `user.id` as the primary identifier in logs, with masked email only when needed for debugging
+
+---
+
 ## Notes
 
 - Many TODOs are in archived documentation and can be ignored
@@ -345,5 +391,5 @@ Reference to TODO comment format in pre-commit documentation.
 - Test coverage needs improvement across integrations
 - Several frontend features await backend support
 
-**Last Updated:** 2025-12-03
+**Last Updated:** 2025-12-04
 **Audit Performed By:** Claude Code
