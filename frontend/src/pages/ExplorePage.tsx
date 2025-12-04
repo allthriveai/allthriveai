@@ -429,10 +429,10 @@ export function ExplorePage() {
 
             {/* Error State */}
             {hasError && !isLoading && (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex items-center justify-center py-12" role="alert" aria-live="assertive">
                 <div className="text-center max-w-md mx-auto">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-label="Error icon">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                   </div>
@@ -456,7 +456,11 @@ export function ExplorePage() {
             {!hasError && (
               activeTab === 'profiles' ? (
               // Profiles Grid
-              <div>
+              <div
+                role="tabpanel"
+                id={`tabpanel-${activeTab}`}
+                aria-labelledby={`tab-${activeTab}`}
+              >
                 {isLoading ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
                     <LoadingSkeleton type="profile" count={12} />
@@ -483,9 +487,9 @@ export function ExplorePage() {
 
                 {/* Loading indicator for next page */}
                 {isFetchingNextProfiles && (
-                  <div className="flex justify-center py-8">
+                  <div className="flex justify-center py-8" role="status" aria-live="polite">
                     <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
-                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-label="Loading">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -498,7 +502,11 @@ export function ExplorePage() {
               </div>
             ) : (
               // Mixed Projects and Quizzes Grid
-              <>
+              <div
+                role="tabpanel"
+                id={`tabpanel-${activeTab}`}
+                aria-labelledby={`tab-${activeTab}`}
+              >
                 {isLoading ? (
                   <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2">
                     <LoadingSkeleton type="project" count={12} />
@@ -573,9 +581,9 @@ export function ExplorePage() {
 
                     {/* Loading indicator or Load More button */}
                     {isFetchingNextPage ? (
-                      <div className="flex justify-center py-8">
+                      <div className="flex justify-center py-8" role="status" aria-live="polite">
                         <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
-                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-label="Loading">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
@@ -598,7 +606,7 @@ export function ExplorePage() {
                     ) : null}
                   </>
                 )}
-              </>
+              </div>
             )
             )}
           </div>

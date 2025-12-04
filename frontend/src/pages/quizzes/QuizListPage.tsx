@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MagnifyingGlassIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { getQuizzes } from '@/services/quiz';
+import { QuizPreviewCard } from '@/components/quiz/QuizPreviewCard';
 import type { Quiz, QuizDifficulty, QuizFilters } from '@/components/quiz/types';
 
 export default function QuizListPage() {
@@ -87,27 +88,21 @@ export default function QuizListPage() {
     setSelectedDifficulties([]);
   };
 
-  const getDifficultyColor = (difficulty: QuizDifficulty) => {
-    switch (difficulty) {
-      case 'beginner':
-        return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
-      case 'intermediate':
-        return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300';
-      case 'advanced':
-        return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300';
-    }
-  };
-
   return (
     <DashboardLayout>
       {() => (
         <div className="h-full overflow-y-auto">
-          {/* Hero Banner */}
-          <div className="relative h-64 bg-gradient-to-r from-primary-600 to-primary-800 dark:from-primary-800 dark:to-primary-950">
-        <div className="absolute inset-0 bg-[url('/quiz-hero-pattern.svg')] opacity-10"></div>
+          {/* Hero Banner - Neon Glass Style */}
+          <div className="relative h-64 bg-[#020617] overflow-hidden">
+        {/* Ambient Glow Background */}
+        <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-pink-500/10 blur-[100px] pointer-events-none" />
+
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-          <h1 className="text-4xl font-bold text-white mb-4">Quick Quizzes</h1>
-          <p className="text-xl text-primary-100 max-w-2xl">
+          <h1 className="text-4xl font-bold text-white mb-4">
+            <span className="bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-500 bg-clip-text text-transparent">Quizzes</span>
+          </h1>
+          <p className="text-xl text-gray-300 max-w-2xl">
             Test your knowledge on AI frameworks, concepts, and best practices
           </p>
         </div>
@@ -119,13 +114,13 @@ export default function QuizListPage() {
           {/* Search Bar */}
           <div className="mb-4">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-cyan-400" />
               <input
                 type="text"
                 placeholder="Search quizzes by title, topic, or keyword..."
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:bg-white/10 transition-all"
               />
             </div>
           </div>
@@ -135,16 +130,16 @@ export default function QuizListPage() {
             {/* Topic Filters */}
             {availableTopics.length > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Topics:</span>
+                <span className="text-sm font-medium text-gray-300 whitespace-nowrap">Topics:</span>
                 <div className="flex flex-wrap gap-2">
                   {availableTopics.map(topic => (
                     <button
                       key={topic}
                       onClick={() => toggleTopic(topic)}
-                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
                         selectedTopics.includes(topic)
-                          ? 'bg-primary-600 text-white'
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                          ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30'
+                          : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-cyan-500/50'
                       }`}
                     >
                       {topic}
@@ -156,21 +151,21 @@ export default function QuizListPage() {
 
             {/* Divider */}
             {availableTopics.length > 0 && (
-              <div className="h-6 w-px bg-gray-300 dark:bg-gray-700" />
+              <div className="h-6 w-px bg-white/20" />
             )}
 
             {/* Difficulty Filters */}
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Difficulty:</span>
+              <span className="text-sm font-medium text-gray-300 whitespace-nowrap">Difficulty:</span>
               <div className="flex flex-wrap gap-2">
                 {(['beginner', 'intermediate', 'advanced'] as QuizDifficulty[]).map(difficulty => (
                   <button
                     key={difficulty}
                     onClick={() => toggleDifficulty(difficulty)}
-                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors capitalize ${
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-all capitalize ${
                       selectedDifficulties.includes(difficulty)
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30'
+                        : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-cyan-500/50'
                     }`}
                   >
                     {difficulty}
@@ -182,10 +177,10 @@ export default function QuizListPage() {
             {/* Clear Filters */}
             {(searchQuery || selectedTopics.length > 0 || selectedDifficulties.length > 0) && (
               <>
-                <div className="h-6 w-px bg-gray-300 dark:bg-gray-700" />
+                <div className="h-6 w-px bg-white/20" />
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-primary-600 dark:text-primary-400 hover:underline whitespace-nowrap"
+                  className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors whitespace-nowrap"
                 >
                   Clear all
                 </button>
@@ -196,16 +191,16 @@ export default function QuizListPage() {
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-primary-600"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading quizzes...</p>
+          <div className="text-center py-12 min-h-[400px] flex flex-col items-center justify-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white/10 border-t-cyan-500"></div>
+            <p className="mt-4 text-gray-400">Loading quizzes...</p>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-center">
-            <p className="text-red-700 dark:text-red-300">{error}</p>
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-center backdrop-blur-sm">
+            <p className="text-red-400">{error}</p>
           </div>
         )}
 
@@ -213,71 +208,22 @@ export default function QuizListPage() {
         {!loading && !error && (
           <>
             {quizzes.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-xl text-gray-600 dark:text-gray-400 mb-2">
+              <div className="text-center py-12 min-h-[400px] flex flex-col items-center justify-center">
+                <p className="text-xl text-gray-300 mb-2">
                   No quizzes found
                 </p>
-                <p className="text-gray-500 dark:text-gray-500">
+                <p className="text-gray-500">
                   Try adjusting your filters or search query
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {quizzes.map(quiz => (
-                  <div
+                  <QuizPreviewCard
                     key={quiz.id}
-                    onClick={() => navigate(`/quick-quizzes/${quiz.slug}`)}
-                    className="glass-strong rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative"
-                  >
-                    {/* Completion Badge */}
-                    {quiz.userCompleted && quiz.userLatestScore !== null && (
-                      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-green-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
-                        <CheckCircleIcon className="w-4 h-4" />
-                        {quiz.userLatestScore}%
-                      </div>
-                    )}
-
-                    {/* Thumbnail */}
-                    {quiz.bannerUrl ? (
-                      <img
-                        src={quiz.bannerUrl}
-                        alt={quiz.title}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-48 bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-                        <span className="text-white text-5xl font-bold opacity-50">?</span>
-                      </div>
-                    )}
-
-                    {/* Content */}
-                    <div className="p-6">
-                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                        {quiz.title}
-                      </h3>
-
-                      <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
-                        {quiz.description}
-                      </p>
-
-                      {/* Meta Info */}
-                      <div className="flex items-center justify-between text-sm mb-4">
-                        <span className="text-gray-500 dark:text-gray-500">
-                          {quiz.estimatedTime} min • {quiz.questionCount} questions
-                        </span>
-                      </div>
-
-                      {/* Tags */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getDifficultyColor(quiz.difficulty)}`}>
-                          {quiz.difficulty}
-                        </span>
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                          {quiz.topic}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                    quiz={quiz}
+                    variant="default"
+                  />
                 ))}
               </div>
             )}

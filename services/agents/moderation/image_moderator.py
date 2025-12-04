@@ -26,13 +26,34 @@ class ImageModerator:
         # Try to get client from AIProvider, but handle case where API key is missing
 
         try:
-            ai_provider = AIProvider()  # Uses default provider from settings
-            self.client = ai_provider.client
+            self.ai_provider = AIProvider()  # Uses default provider from settings
+            self.client = self.ai_provider.client
             self.has_client = True
         except (ValueError, Exception) as e:
             logger.warning(f'AI provider not configured for image moderation: {e}. Image moderation will be skipped.')
+            self.ai_provider = None
             self.client = None
             self.has_client = False
+
+    def _get_vision_model(self) -> str:
+        """Get the appropriate vision model based on the configured provider."""
+        from django.conf import settings
+
+        if not self.ai_provider:
+            return 'gpt-4o'  # Fallback, though this shouldn't be called if no provider
+
+        provider = self.ai_provider.current_provider
+
+        if provider == 'azure':
+            return getattr(settings, 'AZURE_OPENAI_VISION_DEPLOYMENT', 'gpt-4o')
+        elif provider == 'openai':
+            return 'gpt-4o'
+        elif provider == 'anthropic':
+            return 'claude-3-5-sonnet-20241022'
+        elif provider == 'gemini':
+            return getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-2.0-flash-exp')
+        else:
+            return 'gpt-4o'  # Default fallback
 
     @retry(
         stop=stop_after_attempt(3),
@@ -73,9 +94,9 @@ class ImageModerator:
             }
 
         try:
-            # Use GPT-4 Vision to analyze the image
+            # Use vision model from AI gateway to analyze the image
             response = self.client.chat.completions.create(
-                model='gpt-4o-mini',
+                model=self._get_vision_model(),
                 messages=[
                     {
                         'role': 'system',

@@ -6,4 +6,5 @@
  */
 
 export { DefaultProjectLayout } from './DefaultProjectLayout';
+export { VideoProjectLayout } from './VideoProjectLayout';
 export { ProjectLayoutRouter } from './ProjectLayoutRouter';

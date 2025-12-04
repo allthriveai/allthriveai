@@ -138,7 +138,7 @@ function renderElement(element: SlideUpElement | undefined) {
       // Render embedded video (YouTube/Vimeo/Loom)
       let embedUrl = '';
       if (videoInfo!.platform === 'youtube') {
-        embedUrl = `https://www.youtube.com/embed/${videoInfo!.id}?rel=0`;
+        embedUrl = `https://www.youtube.com/embed/${videoInfo!.id}?rel=0&autoplay=0`;
       } else if (videoInfo!.platform === 'vimeo') {
         embedUrl = `https://player.vimeo.com/video/${videoInfo!.id}`;
       } else if (videoInfo!.platform === 'loom') {

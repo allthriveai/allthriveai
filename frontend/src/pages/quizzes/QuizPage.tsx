@@ -140,7 +140,7 @@ export default function QuizPage() {
   };
 
   const handleBackToList = () => {
-    navigate('/quick-quizzes');
+    navigate('/quizzes');
   };
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -162,7 +162,7 @@ export default function QuizPage() {
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
                 <p className="text-red-700 dark:text-red-300 text-xl mb-4">{error}</p>
                 <button
-                  onClick={() => navigate('/quick-quizzes')}
+                  onClick={() => navigate('/quizzes')}
                   className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold transition-colors"
                 >
                   Back to Quizzes
@@ -265,7 +265,7 @@ export default function QuizPage() {
                 {/* Back Button */}
                 <div className="mt-8 text-center">
                   <button
-                    onClick={() => navigate('/quick-quizzes')}
+                    onClick={() => navigate('/quizzes')}
                     className="text-primary-600 dark:text-primary-400 hover:underline"
                   >
                     ← Back to all quizzes

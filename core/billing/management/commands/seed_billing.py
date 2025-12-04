@@ -223,16 +223,12 @@ class Command(BaseCommand):
             if isinstance(obj, SubscriptionTier):
                 StripeService.sync_subscription_tier_to_stripe(obj)
                 self.stdout.write(
-                    self.style.SUCCESS(
-                        f'    ✅ Synced to Stripe: {obj.name} ' f'(product={obj.stripe_product_id[:20]}...)'
-                    )
+                    self.style.SUCCESS(f'    ✅ Synced to Stripe: {obj.name} (product={obj.stripe_product_id[:20]}...)')
                 )
             elif isinstance(obj, TokenPackage):
                 StripeService.sync_token_package_to_stripe(obj)
                 self.stdout.write(
-                    self.style.SUCCESS(
-                        f'    ✅ Synced to Stripe: {obj.name} ' f'(product={obj.stripe_product_id[:20]}...)'
-                    )
+                    self.style.SUCCESS(f'    ✅ Synced to Stripe: {obj.name} (product={obj.stripe_product_id[:20]}...)')
                 )
         except StripeServiceError as e:
             self.stdout.write(self.style.ERROR(f'    ❌ Failed to sync {obj.name}: {e}'))

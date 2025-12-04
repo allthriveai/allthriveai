@@ -463,37 +463,77 @@ def public_user_projects(request, username):
             time.sleep(MIN_RESPONSE_TIME_SECONDS - elapsed)
         return Response({'error': 'User not found', 'showcase': [], 'playground': []}, status=404)
 
-    # Optimize query with select_related to prevent N+1 queries
-    # The serializer accesses user.username, so we fetch user data upfront
-    showcase_projects = (
-        Project.objects.select_related('user')
-        .filter(user=user, is_showcased=True, is_archived=False)
-        .order_by('-created_at')
-    )
+    try:
+        # Optimize query with select_related to prevent N+1 queries
+        # The serializer accesses user.username, so we fetch user data upfront
+        # For curation tier users (agents), order by video published_at if available
+        is_curation = user.tier == 'curation'
 
-    # If the requesting user is authenticated and viewing their own profile,
-    # include all projects (both showcase and non-showcase) in playground
-    if is_own_profile:
-        playground_projects = (
-            Project.objects.select_related('user').filter(user=user, is_archived=False).order_by('-created_at')
+        if is_curation:
+            # For curation agents, order by original publish date from the source
+            # YouTube videos: youtube_feed_video__published_at
+            # Reddit threads: reddit_thread__created_utc
+            # Fall back to created_at for other content types
+            from django.db.models.functions import Coalesce
+
+            showcase_projects = (
+                Project.objects.select_related('user')
+                .filter(user=user, is_showcased=True, is_archived=False)
+                .annotate(
+                    sort_date=Coalesce('youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at')
+                )
+                .order_by('-sort_date')
+            )
+        else:
+            showcase_projects = (
+                Project.objects.select_related('user')
+                .filter(user=user, is_showcased=True, is_archived=False)
+                .order_by('-created_at')
+            )
+
+        # If the requesting user is authenticated and viewing their own profile,
+        # include all projects (both showcase and non-showcase) in playground
+        if is_own_profile:
+            if is_curation:
+                from django.db.models.functions import Coalesce
+
+                playground_projects = (
+                    Project.objects.select_related('user')
+                    .filter(user=user, is_archived=False)
+                    .annotate(
+                        sort_date=Coalesce(
+                            'youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at'
+                        )
+                    )
+                    .order_by('-sort_date')
+                )
+            else:
+                playground_projects = (
+                    Project.objects.select_related('user').filter(user=user, is_archived=False).order_by('-created_at')
+                )
+
+            response_data = {
+                'showcase': ProjectSerializer(showcase_projects, many=True).data,
+                'playground': ProjectSerializer(playground_projects, many=True).data,
+            }
+            # Shorter cache for own projects (they change more frequently)
+            cache.set(cache_key, response_data, settings.CACHE_TTL.get('USER_PROJECTS', 60))
+        else:
+            # For non-authenticated users or other users, only return showcase
+            response_data = {
+                'showcase': ProjectSerializer(showcase_projects, many=True).data,
+                'playground': [],
+            }
+            # Longer cache for public projects
+            cache.set(cache_key, response_data, settings.CACHE_TTL.get('PUBLIC_PROJECTS', 180))
+
+        return Response(response_data)
+    except Exception as e:
+        logger.error(f'Error fetching projects for user {username}: {e}', exc_info=True)
+        return Response(
+            {'error': 'Failed to load projects', 'showcase': [], 'playground': []},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
-        response_data = {
-            'showcase': ProjectSerializer(showcase_projects, many=True).data,
-            'playground': ProjectSerializer(playground_projects, many=True).data,
-        }
-        # Shorter cache for own projects (they change more frequently)
-        cache.set(cache_key, response_data, settings.CACHE_TTL.get('USER_PROJECTS', 60))
-    else:
-        # For non-authenticated users or other users, only return showcase
-        response_data = {
-            'showcase': ProjectSerializer(showcase_projects, many=True).data,
-            'playground': [],
-        }
-        # Longer cache for public projects
-        cache.set(cache_key, response_data, settings.CACHE_TTL.get('PUBLIC_PROJECTS', 180))
-
-    return Response(response_data)
 
 
 @api_view(['GET'])

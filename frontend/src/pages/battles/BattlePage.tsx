@@ -1,0 +1,276 @@
+/**
+ * BattlePage
+ *
+ * Main page for an active prompt battle.
+ * Manages battle state and renders appropriate phase components.
+ */
+
+import { useCallback, useMemo, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
+import { api } from '@/services/api';
+
+import { useBattleWebSocket } from '@/hooks/useBattleWebSocket';
+import { useAuth } from '@/hooks/useAuth';
+import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import {
+  BattleArena,
+  BattleCountdown,
+  BattleResults,
+  GeneratingPhase,
+  WaitingForOpponent,
+  type PlayerStatus,
+} from '@/components/battles';
+
+export function BattlePage() {
+  const { battleId } = useParams<{ battleId: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isSavedToProfile, setIsSavedToProfile] = useState(false);
+
+  const handleError = useCallback((error: string) => {
+    console.error('[Battle] Error:', error);
+    // Could show toast notification here
+  }, []);
+
+  const handlePhaseChange = useCallback((phase: string) => {
+    console.log('[Battle] Phase changed:', phase);
+  }, []);
+
+  const handleMatchComplete = useCallback((winnerId: number | null) => {
+    console.log('[Battle] Match complete, winner:', winnerId);
+  }, []);
+
+  const {
+    battleState,
+    isConnected,
+    isConnecting,
+    opponentStatus,
+    countdownValue,
+    sendTyping,
+    submitPrompt,
+  } = useBattleWebSocket({
+    battleId: parseInt(battleId || '0', 10),
+    onError: handleError,
+    onPhaseChange: handlePhaseChange,
+    onMatchComplete: handleMatchComplete,
+  });
+
+  // Map backend opponent status to component status
+  const mappedOpponentStatus: PlayerStatus = useMemo(() => {
+    if (opponentStatus === 'typing') return 'typing';
+    if (opponentStatus === 'submitted') return 'submitted';
+    if (opponentStatus === 'disconnected') return 'disconnected';
+    if (battleState?.opponent.connected) return 'connected';
+    return 'idle';
+  }, [opponentStatus, battleState?.opponent.connected]);
+
+  // Current user's status
+  const myStatus: PlayerStatus = useMemo(() => {
+    if (battleState?.mySubmission) return 'submitted';
+    if (battleState?.myConnected) return 'connected';
+    return 'idle';
+  }, [battleState?.mySubmission, battleState?.myConnected]);
+
+  // Handle prompt submission
+  const handleSubmit = useCallback(
+    (prompt: string) => {
+      const success = submitPrompt(prompt);
+      if (!success) {
+        handleError('Failed to submit prompt. Please try again.');
+      }
+    },
+    [submitPrompt, handleError]
+  );
+
+  // Handle typing indicator
+  const handleTyping = useCallback(
+    (isTyping: boolean) => {
+      sendTyping(isTyping);
+    },
+    [sendTyping]
+  );
+
+  // Handle play again
+  const handlePlayAgain = useCallback(() => {
+    navigate('/battles');
+  }, [navigate]);
+
+  // Handle go home
+  const handleGoHome = useCallback(() => {
+    navigate('/');
+  }, [navigate]);
+
+  // Handle save to profile
+  const handleSaveToProfile = useCallback(async () => {
+    if (!battleId) return;
+    try {
+      const response = await api.post(`/api/v1/battles/${battleId}/save_to_profile/`);
+      setIsSavedToProfile(true);
+      // If already saved, it's still a success - just means it was saved before
+      if (response.data?.already_saved) {
+        console.log('[Battle] Battle was already saved to profile');
+      }
+    } catch (error) {
+      console.error('[Battle] Failed to save to profile:', error);
+      throw error;
+    }
+  }, [battleId]);
+
+  // Loading state
+  if (!battleId) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <ExclamationTriangleIcon className="w-12 h-12 text-rose-400 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">Invalid Battle</h2>
+            <p className="text-slate-400 mb-4">No battle ID provided.</p>
+            <button onClick={() => navigate('/battles')} className="btn-primary">
+              Find a Battle
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (isConnecting || !battleState) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center"
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+              className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-cyan-500/30 border-t-cyan-500"
+            />
+            <p className="text-slate-400">Connecting to battle...</p>
+          </motion.div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Connection error state
+  if (!isConnected && battleState.phase !== 'complete') {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center glass-card p-8 max-w-md">
+            <ExclamationTriangleIcon className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">Connection Lost</h2>
+            <p className="text-slate-400 mb-4">
+              Attempting to reconnect to the battle...
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => navigate('/battles')} className="btn-secondary">
+                <ArrowLeftIcon className="w-4 h-4 mr-2" />
+                Leave Battle
+              </button>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Current user info
+  const currentUser = {
+    id: user?.id || 0,
+    username: user?.username || 'You',
+    avatarUrl: user?.avatar_url,
+  };
+
+  // Render based on phase
+  const renderPhaseContent = () => {
+    switch (battleState.phase) {
+      case 'waiting':
+        return (
+          <WaitingForOpponent
+            opponentUsername={battleState.opponent.username}
+            opponentIsAi={battleState.matchSource === 'ai_opponent'}
+          />
+        );
+
+      case 'countdown':
+        return <BattleCountdown value={countdownValue} />;
+
+      case 'active':
+        return (
+          <>
+            {countdownValue !== null && <BattleCountdown value={countdownValue} />}
+            <BattleArena
+              challengeText={battleState.challengeText}
+              challengeType={battleState.challengeType}
+              currentUser={currentUser}
+              opponent={{
+                id: battleState.opponent.id,
+                username: battleState.opponent.username,
+                avatarUrl: battleState.opponent.avatarUrl,
+                isAi: battleState.matchSource === 'ai_opponent',
+              }}
+              currentUserStatus={myStatus}
+              opponentStatus={mappedOpponentStatus}
+              timeRemaining={battleState.timeRemaining}
+              hasSubmitted={!!battleState.mySubmission}
+              onSubmit={handleSubmit}
+              onTyping={handleTyping}
+            />
+          </>
+        );
+
+      case 'generating':
+      case 'judging':
+        return (
+          <GeneratingPhase
+            myImageGenerating={!battleState.mySubmission?.imageUrl}
+            opponentImageGenerating={battleState.phase === 'generating'}
+            myImageUrl={battleState.mySubmission?.imageUrl}
+            opponentUsername={battleState.opponent.username}
+          />
+        );
+
+      case 'reveal':
+      case 'complete':
+        return (
+          <BattleResults
+            mySubmission={battleState.mySubmission}
+            opponentSubmission={battleState.opponentSubmission}
+            myPlayer={currentUser}
+            opponent={{
+              id: battleState.opponent.id,
+              username: battleState.opponent.username,
+              avatarUrl: battleState.opponent.avatarUrl,
+              isAi: battleState.matchSource === 'ai_opponent',
+            }}
+            winnerId={battleState.winnerId}
+            onPlayAgain={handlePlayAgain}
+            onGoHome={handleGoHome}
+            onSaveToProfile={handleSaveToProfile}
+            isSaved={isSavedToProfile}
+          />
+        );
+
+      default:
+        return (
+          <div className="min-h-screen bg-background flex items-center justify-center">
+            <p className="text-slate-400">Unknown battle phase: {battleState.phase}</p>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="min-h-screen bg-background">{renderPhaseContent()}</div>
+    </DashboardLayout>
+  );
+}
+
+export default BattlePage;

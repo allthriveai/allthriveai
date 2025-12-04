@@ -279,8 +279,9 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-full">
-          <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-brand-primary animate-spin" />
+        <div className="flex items-center justify-center h-full" role="status" aria-live="polite">
+          <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-brand-primary animate-spin" aria-label="Loading profile" />
+          <span className="sr-only">Loading profile...</span>
         </div>
       </DashboardLayout>
     );
@@ -336,9 +337,9 @@ export default function ProfilePage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-brand-primary hover:text-white transition-colors"
-                      title={link.label}
+                      aria-label={`Visit ${displayUser?.fullName || displayUser?.username}'s ${link.label}`}
                     >
-                      <FontAwesomeIcon icon={link.icon} className="w-3.5 h-3.5" />
+                      <FontAwesomeIcon icon={link.icon} className="w-3.5 h-3.5" aria-hidden="true" />
                     </a>
                   ))}
                 </div>
@@ -397,8 +398,9 @@ export default function ProfilePage() {
                     <button
                       onClick={() => setSidebarOpen(false)}
                       className="hidden lg:block absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      aria-label="Collapse sidebar"
                     >
-                      <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4" />
+                      <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4" aria-hidden="true" />
                     </button>
 
                     {/* Avatar Section - Only show when banner is out of view */}
@@ -539,6 +541,7 @@ export default function ProfilePage() {
                                   setToolTrayOpen(true);
                                 }}
                                 className="px-2 py-1 text-xs bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 rounded-md border border-gray-200 dark:border-white/10 hover:bg-teal-50 dark:hover:bg-teal-900/20 hover:border-teal-500 hover:text-teal-700 dark:hover:text-teal-300 transition-colors cursor-pointer"
+                                aria-label={`View ${tool.name} tool details`}
                               >
                                 {tool.name}
                               </button>
@@ -557,8 +560,9 @@ export default function ProfilePage() {
                     <button
                       onClick={() => setSidebarOpen(true)}
                       className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      aria-label="Expand sidebar"
                     >
-                      <FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" />
+                      <FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" aria-hidden="true" />
                     </button>
 
                     {/* Profile Circle - Only show when banner is out of view */}
@@ -566,11 +570,12 @@ export default function ProfilePage() {
                       <button
                         onClick={() => setSidebarOpen(true)}
                         className="w-12 h-12 rounded-full ring-2 ring-brand-primary/30 overflow-hidden bg-gray-100 dark:bg-white/5 hover:ring-brand-primary transition-all animate-fade-in"
+                        aria-label={`View ${displayUser?.fullName || displayUser?.username}'s profile details`}
                       >
                         <img
                           src={displayUser?.avatarUrl || `https://ui-avatars.com/api/?name=${displayUser?.fullName || 'User'}&background=random`}
                           className="w-full h-full object-cover"
-                          alt="Profile"
+                          alt=""
                         />
                       </button>
                     )}
@@ -670,7 +675,11 @@ export default function ProfilePage() {
 
               {/* Top Header: Tabs & Actions */}
               <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-200 dark:border-gray-800 mb-6 md:mb-8 pt-2 gap-4">
-                <div className="flex items-baseline space-x-4 md:space-x-8 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 w-full md:w-auto">
+                <div
+                  className="flex items-baseline space-x-4 md:space-x-8 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 w-full md:w-auto"
+                  role="tablist"
+                  aria-label="Profile sections"
+                >
                   {/* Tabs with Icons */}
                   {tabs.map((tab) => {
                     const tabIcons = {
@@ -685,6 +694,11 @@ export default function ProfilePage() {
                       <button
                         key={tab.id}
                         onClick={() => handleTabChange(tab.id as any)}
+                        role="tab"
+                        aria-selected={activeTab === tab.id}
+                        aria-controls={`tabpanel-${tab.id}`}
+                        id={`tab-${tab.id}`}
+                        tabIndex={activeTab === tab.id ? 0 : -1}
                         className={`flex items-center gap-2 py-3 px-3 text-sm font-medium transition-all ${
                           activeTab === tab.id
                             ? 'glass-subtle text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 shadow-neon'
@@ -692,7 +706,7 @@ export default function ProfilePage() {
                         }`}
                         style={{ borderRadius: 'var(--radius)' }}
                       >
-                        <FontAwesomeIcon icon={tabIcons[tab.id as keyof typeof tabIcons]} className="w-3.5 h-3.5" />
+                        <FontAwesomeIcon icon={tabIcons[tab.id as keyof typeof tabIcons]} className="w-3.5 h-3.5" aria-hidden="true" />
                         {tab.label}
                       </button>
                     );
@@ -718,8 +732,10 @@ export default function ProfilePage() {
                             ? 'bg-teal-500/10 border-teal-500/50 text-teal-600 dark:text-teal-400'
                             : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10'
                         }`}
+                        aria-pressed={selectionMode}
+                        aria-label={selectionMode ? 'Cancel selection mode' : 'Enter selection mode'}
                       >
-                        <FontAwesomeIcon icon={faList} className="w-3 h-3" />
+                        <FontAwesomeIcon icon={faList} className="w-3 h-3" aria-hidden="true" />
                         {selectionMode ? 'Cancel' : 'Select'}
                       </button>
                     </div>
@@ -729,7 +745,12 @@ export default function ProfilePage() {
 
               {/* Masonry Grid Content - Only for Showcase and Playground */}
               {(activeTab === 'showcase' || activeTab === 'playground') && (
-                <div className="columns-1 md:columns-2 xl:columns-3 gap-6 pb-20 space-y-6">
+                <div
+                  className="columns-1 md:columns-2 xl:columns-3 gap-6 pb-20 space-y-6"
+                  role="tabpanel"
+                  id={`tabpanel-${activeTab}`}
+                  aria-labelledby={`tab-${activeTab}`}
+                >
                   {/* Showcase Tab */}
                   {activeTab === 'showcase' && (
                     projects.showcase.length > 0 ? (
@@ -786,7 +807,12 @@ export default function ProfilePage() {
 
               {/* Favorites Tab - Full width layout */}
               {activeTab === 'favorites' && (
-                <div className="pb-20">
+                <div
+                  className="pb-20"
+                  role="tabpanel"
+                  id="tabpanel-favorites"
+                  aria-labelledby="tab-favorites"
+                >
                   <FavoritesTab
                     username={username || user?.username || ''}
                     isOwnProfile={isOwnProfile}
@@ -796,7 +822,12 @@ export default function ProfilePage() {
 
               {/* Learning Tab - Full width layout */}
               {activeTab === 'learning' && (
-                <div className="pb-20">
+                <div
+                  className="pb-20"
+                  role="tabpanel"
+                  id="tabpanel-learning"
+                  aria-labelledby="tab-learning"
+                >
                   <LearningPathsTab
                     username={username || user?.username || ''}
                     isOwnProfile={isOwnProfile}
@@ -806,10 +837,16 @@ export default function ProfilePage() {
 
               {/* Activity Tab - Full width layout */}
               {activeTab === 'activity' && isOwnProfile && (
-                <ActivityInsightsTab
-                  username={username || ''}
-                  isOwnProfile={isOwnProfile}
-                />
+                <div
+                  role="tabpanel"
+                  id="tabpanel-activity"
+                  aria-labelledby="tab-activity"
+                >
+                  <ActivityInsightsTab
+                    username={username || ''}
+                    isOwnProfile={isOwnProfile}
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -824,12 +861,18 @@ export default function ProfilePage() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-dialog-title"
+            aria-describedby="delete-dialog-description"
+          >
             <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              <h3 id="delete-dialog-title" className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                 Delete {selectedProjectIds.size} project{selectedProjectIds.size > 1 ? 's' : ''}?
               </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
+              <p id="delete-dialog-description" className="text-gray-600 dark:text-gray-400 mb-6">
                 This action cannot be undone. The selected project{selectedProjectIds.size > 1 ? 's' : ''} will be permanently deleted.
                 {!isOwnProfile && isAdmin && (
                   <span className="block mt-2 text-amber-600 dark:text-amber-400 font-medium">
@@ -849,8 +892,9 @@ export default function ProfilePage() {
                   onClick={handleBulkDelete}
                   disabled={isDeleting}
                   className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  aria-busy={isDeleting}
                 >
-                  {isDeleting && <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />}
+                  {isDeleting && <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" aria-hidden="true" />}
                   {isDeleting ? 'Deleting...' : 'Delete'}
                 </button>
               </div>

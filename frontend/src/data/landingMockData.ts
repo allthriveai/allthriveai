@@ -127,7 +127,7 @@ export const featureContent = [
     title: 'Learn Through Doing',
     description:
       'Interactive quizzes and learning paths designed for AI enthusiasts. Test your knowledge on topics from prompt engineering to machine learning fundamentals.',
-    badge: 'Quick Quizzes',
+    badge: 'Quizzes',
     color: 'purple',
   },
   {

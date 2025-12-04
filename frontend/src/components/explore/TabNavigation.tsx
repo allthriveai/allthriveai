@@ -26,11 +26,20 @@ export function TabNavigation({ activeTab, onChange }: TabNavigationProps) {
   return (
     <div className="mb-6">
       {/* Desktop: Horizontal tabs */}
-      <div className="hidden sm:flex gap-2 overflow-x-auto pb-2">
+      <div
+        className="hidden sm:flex gap-2 overflow-x-auto pb-2"
+        role="tablist"
+        aria-label="Explore content tabs"
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onChange(tab.id)}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`tabpanel-${tab.id}`}
+            id={`tab-${tab.id}`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             className={`
               flex items-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap
               ${
@@ -41,7 +50,7 @@ export function TabNavigation({ activeTab, onChange }: TabNavigationProps) {
             `}
             style={{ borderRadius: 'var(--radius)' }}
           >
-            {tab.icon}
+            <span aria-hidden="true">{tab.icon}</span>
             <span>{tab.label}</span>
           </button>
         ))}
@@ -49,7 +58,11 @@ export function TabNavigation({ activeTab, onChange }: TabNavigationProps) {
 
       {/* Mobile: Dropdown */}
       <div className="sm:hidden">
+        <label htmlFor="explore-tab-select" className="sr-only">
+          Select explore tab
+        </label>
         <select
+          id="explore-tab-select"
           value={activeTab}
           onChange={(e) => onChange(e.target.value as ExploreTab)}
           className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:shadow-neon"

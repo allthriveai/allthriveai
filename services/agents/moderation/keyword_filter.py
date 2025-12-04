@@ -35,6 +35,8 @@ class KeywordFilter:
         r'\bnude',
         r'\bnaked\b',
         r'\berotic\b',
+        r'\bseductive\b',
+        r'\bsensual\b',
         r'\bblowjob',
         r'\bhandjob',
         r'\bmasturbat',

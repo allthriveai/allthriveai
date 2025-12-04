@@ -296,11 +296,47 @@ def deduct_tokens(user, amount: int, description: str = '', ai_provider: str = '
 
             logger.info(f'Deducted {amount} tokens from user {user.id} (balance: {token_balance.balance})')
 
+            # Trigger low balance notification if needed (async via Celery)
+            _check_and_notify_low_balance(user.id, amount, token_balance.balance)
+
             return True
 
     except Exception as e:
         logger.error(f'Failed to deduct tokens for user {user.id}: {e}')
         return False
+
+
+# Token balance thresholds for alerts (imported from tasks to keep consistent)
+LOW_BALANCE_THRESHOLD = 5000
+CRITICAL_BALANCE_THRESHOLD = 1000
+ZERO_BALANCE_THRESHOLD = 100
+
+
+def _check_and_notify_low_balance(user_id: int, tokens_used: int, balance_after: int):
+    """
+    Check if balance has dropped below threshold and trigger notification.
+
+    This is called after each token deduction to provide real-time alerts.
+
+    Args:
+        user_id: User ID
+        tokens_used: Number of tokens just used
+        balance_after: Token balance after deduction
+    """
+    # Only notify if balance dropped below a threshold
+    if balance_after >= LOW_BALANCE_THRESHOLD:
+        return
+
+    try:
+        # Import here to avoid circular imports
+        from core.billing.tasks import send_token_usage_notification_task
+
+        # Queue async notification task
+        send_token_usage_notification_task.delay(user_id, tokens_used, balance_after)
+        logger.debug(f'Queued low balance notification for user {user_id} (balance: {balance_after})')
+    except Exception as e:
+        # Don't fail the main operation if notification fails
+        logger.warning(f'Failed to queue low balance notification: {e}')
 
 
 def process_ai_request(user, tokens_used: int, ai_provider: str = '', ai_model: str = '') -> tuple[bool, str]:
@@ -380,7 +416,9 @@ def get_subscription_status(user) -> dict:
         'status': subscription.status,
         'is_active': subscription.is_active,
         'is_trial': subscription.is_trial,
+        'current_period_start': subscription.current_period_start,
         'current_period_end': subscription.current_period_end,
+        'cancel_at_period_end': subscription.cancel_at_period_end,
         'trial_end': subscription.trial_end,
         'ai_requests': {
             'limit': subscription.tier.monthly_ai_requests,

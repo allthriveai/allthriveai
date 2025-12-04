@@ -20,7 +20,7 @@ export function Footer({ onOpenChat }: FooterProps) {
     play: [
       { name: 'Prompt Battle', href: '/play/prompt-battle' },
       { name: 'Side Quests', href: '/play/side-quests' },
-      { name: 'Quick Quizzes', href: '/quick-quizzes' },
+      { name: 'Quizzes', href: '/quizzes' },
     ],
     connect: [
       { name: 'About', href: '/about' },
@@ -34,7 +34,7 @@ export function Footer({ onOpenChat }: FooterProps) {
   };
 
   return (
-    <footer className="relative bg-[#020617] border-t border-white/5" role="contentinfo">
+    <footer className="relative bg-[#020617] border-t border-white/5 mt-16" role="contentinfo">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="flex flex-col md:flex-row md:justify-between gap-8 lg:gap-12">
           {/* Brand column */}

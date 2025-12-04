@@ -16,6 +16,7 @@ import { GitHubProjectPendingView } from '../github/GitHubProjectPendingView';
 import { FigmaProjectLayout } from '../figma/FigmaProjectLayout';
 import { FigmaProjectPendingView } from '../figma/FigmaProjectPendingView';
 import { RedditThreadLayout } from '../reddit/RedditThreadLayout';
+import { VideoProjectLayout } from './VideoProjectLayout';
 import { DefaultProjectLayout } from './DefaultProjectLayout';
 
 /**
@@ -68,6 +69,11 @@ export function ProjectLayoutRouter() {
   // Reddit Thread Layout
   if (project.type === 'reddit_thread') {
     return <RedditThreadLayout project={project} />;
+  }
+
+  // Video Layout - for YouTube and other video projects
+  if (project.type === 'video') {
+    return <VideoProjectLayout />;
   }
 
   // Default layout for all other project types:

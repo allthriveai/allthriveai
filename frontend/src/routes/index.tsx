@@ -27,6 +27,7 @@ import ToolDetailPage from '@/pages/ToolDetailPage';
 import { ExplorePage } from '@/pages/ExplorePage';
 import PromptBattlePage from '@/pages/play/PromptBattlePage';
 import BattleDetailPage from '@/pages/play/BattleDetailPage';
+import { BattlesLobbyPage, BattlePage } from '@/pages/battles';
 import ThriveCirclePage from '@/pages/ThriveCirclePage';
 import SideQuestsPage from '@/pages/SideQuestsPage';
 import PricingPage from '@/pages/PricingPage';
@@ -82,7 +83,7 @@ export function AppRoutes() {
 
       {/* Quiz routes - protected, must come before /:username routes */}
       <Route
-        path="/quick-quizzes"
+        path="/quizzes"
         element={
           <ProtectedRoute>
             <QuizListPage />
@@ -90,7 +91,7 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/quick-quizzes/:slug"
+        path="/quizzes/:slug"
         element={
           <ProtectedRoute>
             <QuizPage />
@@ -126,20 +127,34 @@ export function AppRoutes() {
         }
       />
 
-      {/* Play routes - protected */}
+      {/* Battles - new matchmaking UI */}
       <Route
-        path="/play/prompt-battle"
+        path="/battles"
         element={
           <ProtectedRoute>
-            <PromptBattlePage />
+            <BattlesLobbyPage />
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/battles/:battleId"
+        element={
+          <ProtectedRoute>
+            <BattlePage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Play routes - legacy, redirects to new battles */}
+      <Route
+        path="/play/prompt-battle"
+        element={<Navigate to="/battles" replace />}
       />
       <Route
         path="/play/prompt-battle/:battleId"
         element={
           <ProtectedRoute>
-            <BattleDetailPage />
+            <BattlePage />
           </ProtectedRoute>
         }
       />

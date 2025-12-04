@@ -84,15 +84,19 @@ export function SearchBarWithFilters({
     <div className="mb-6 space-y-3">
       {/* Search Bar */}
       <form onSubmit={handleSubmit}>
+        <label htmlFor="explore-search-input" className="sr-only">
+          Search projects with AI
+        </label>
         <div className="relative">
           {/* AI Sparkle Icon */}
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2" aria-hidden="true">
             <SparklesIcon className="w-5 h-5 text-primary-500 dark:text-primary-400" />
             <div className="h-5 w-px bg-gray-300 dark:bg-gray-600" />
           </div>
 
           {/* Search Input */}
           <input
+            id="explore-search-input"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}

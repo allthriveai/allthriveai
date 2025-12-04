@@ -509,7 +509,7 @@ export default function SideQuestsPage() {
                   const completedCount = category.progress?.completedQuests || 0;
                   const totalCount = category.progress?.totalQuests || categoryQuests.length;
                   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-                  const totalXP = categoryQuests.reduce((sum, q) => sum + q.pointsReward, 0);
+                  const totalPoints = categoryQuests.reduce((sum, q) => sum + q.pointsReward, 0);
                   const isComplete = progressPercent === 100;
                   const isExpanded = expandedCategory === category.slug;
 

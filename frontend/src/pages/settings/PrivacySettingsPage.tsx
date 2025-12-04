@@ -89,7 +89,7 @@ export default function PrivacySettingsPage() {
 
               <div className="space-y-4">
                 {/* Profile Public Toggle */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 pr-4">
                       <h3 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
@@ -113,7 +113,7 @@ export default function PrivacySettingsPage() {
                 </div>
 
                 {/* Playground Public Toggle */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 pr-4">
                       <h3 className="font-medium text-slate-900 dark:text-slate-100 mb-1">
@@ -144,7 +144,7 @@ export default function PrivacySettingsPage() {
                 AI & Machine Learning
               </h2>
 
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+              <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 pr-4">
                     <h3 className="font-medium text-slate-900 dark:text-slate-100 mb-1">

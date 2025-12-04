@@ -156,7 +156,7 @@ api.interceptors.response.use(
         const currentPath = window.location.pathname;
         // Public paths: /auth, /explore, and user profiles (/:username)
         // User profiles are single-segment paths that aren't known routes
-        const knownRoutes = ['/auth', '/about', '/about-us', '/styleguide', '/learn', '/quick-quizzes', '/tools', '/play', '/thrive-circle', '/account', '/dashboard'];
+        const knownRoutes = ['/auth', '/about', '/about-us', '/styleguide', '/learn', '/quizzes', '/tools', '/play', '/thrive-circle', '/account', '/dashboard'];
         const isKnownRoute = knownRoutes.some(route => currentPath === route || currentPath.startsWith(route + '/') || currentPath.startsWith(route + '?'));
         // Check if it's a user profile path (single segment that's not a known route)
         const isUserProfile = /^\/[a-zA-Z0-9_-]+$/.test(currentPath) && !isKnownRoute;

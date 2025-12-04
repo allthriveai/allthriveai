@@ -70,7 +70,7 @@ def track_quiz_completed(sender, instance, created, **kwargs):
 
     Awards progress toward quiz completion achievements.
     """
-    if created and instance.completed:
+    if created and instance.is_completed:
         try:
             # Track quiz completion
             unlocked = AchievementTracker.track_event(
@@ -104,7 +104,7 @@ def track_battle_submission(sender, instance, created, **kwargs):
 
             if unlocked:
                 logger.info(
-                    f'User {instance.user.username} unlocked {len(unlocked)} achievement(s) ' f'for battle submission'
+                    f'User {instance.user.username} unlocked {len(unlocked)} achievement(s) for battle submission'
                 )
         except Exception as e:
             logger.error(f'Error tracking battle submission achievement: {e}')
@@ -118,7 +118,7 @@ def track_side_quest_completed(sender, instance, created, **kwargs):
     Awards progress toward side quest achievements.
     """
     # Track completion (not just creation)
-    if not created and instance.completed and not getattr(instance, '_achievement_tracked', False):
+    if not created and instance.is_completed and not getattr(instance, '_achievement_tracked', False):
         try:
             # Mark as tracked to prevent duplicate signals
             instance._achievement_tracked = True
@@ -153,7 +153,7 @@ def track_comment_posted(sender, instance, created, **kwargs):
 
             if unlocked:
                 logger.info(
-                    f'User {instance.user.username} unlocked {len(unlocked)} achievement(s) ' f'for posting comment'
+                    f'User {instance.user.username} unlocked {len(unlocked)} achievement(s) for posting comment'
                 )
         except Exception as e:
             logger.error(f'Error tracking comment posting achievement: {e}')
@@ -173,7 +173,7 @@ def track_project_liked(sender, instance, created, **kwargs):
 
             if unlocked:
                 logger.info(
-                    f'User {instance.user.username} unlocked {len(unlocked)} achievement(s) ' f'for liking a project'
+                    f'User {instance.user.username} unlocked {len(unlocked)} achievement(s) for liking a project'
                 )
         except Exception as e:
             logger.error(f'Error tracking project like achievement: {e}')

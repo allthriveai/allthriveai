@@ -90,10 +90,10 @@ export default function LearnPage() {
       comingSoon: true,
     },
     {
-      title: 'Quick Quizzes',
+      title: 'Quizzes',
       description: 'Test your knowledge with quick quizzes on AI frameworks, concepts, and industry best practices.',
       icon: faBolt,
-      onClick: () => navigate('/quick-quizzes'),
+      onClick: () => navigate('/quizzes'),
       comingSoon: false,
     },
     {

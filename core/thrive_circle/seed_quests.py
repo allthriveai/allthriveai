@@ -45,8 +45,7 @@ def seed_categories():
             'name': 'Creative Maker',
             'slug': 'creative-maker',
             'description': (
-                'Show off your creativity! Create projects, generate images with Nano Banana, '
-                'and build your portfolio.'
+                'Show off your creativity! Create projects, generate images with Nano Banana, and build your portfolio.'
             ),
             'category_type': 'creative',
             'icon': 'faPaintBrush',

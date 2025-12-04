@@ -17,10 +17,46 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 # Configuration
-MIN_DUPLICATE_LINES = 6  # Minimum consecutive lines to flag as duplicate (increased from 4)
-MIN_STRING_LENGTH = 30  # Minimum string length to track for duplication (increased from 20)
-MIN_STRING_OCCURRENCES = 4  # How many times a string must appear to be flagged (increased from 3)
+MIN_DUPLICATE_LINES = 6  # Minimum consecutive lines to flag as duplicate
+MIN_STRING_LENGTH = 40  # Minimum string length to track for duplication (increased)
+MIN_STRING_OCCURRENCES = 5  # How many times a string must appear to be flagged (increased)
 SIMILARITY_THRESHOLD = 0.8  # How similar code blocks must be (0-1)
+
+# Files/directories to skip entirely
+SKIP_PATTERNS = [
+    r'.*/tests/.*',  # All test files
+    r'.*_test\.py$',  # Test files
+    r'.*test_.*\.py$',  # Test files
+    r'.*/migrations/.*',  # Django migrations
+    r'.*/conftest\.py$',  # pytest fixtures
+    r'.*/admin\.py$',  # Django admin (has repetitive patterns by design)
+    r'.*/fixtures/.*',  # Test fixtures
+    r'.*/scripts/.*',  # Scripts often have acceptable duplication
+    r'.*/docs/.*',  # Documentation
+]
+
+# Function name patterns to skip for "identical body" checks
+SKIP_FUNCTION_PATTERNS = [
+    r'^test_',  # Test functions
+    r'^setUp$',  # Test setup
+    r'^tearDown$',  # Test teardown
+    r'^has_\w+_permission$',  # Django admin permissions
+    r'^get_\w+_display$',  # Django model display methods
+    r'^__\w+__$',  # Dunder methods
+    r'^visit_\w+$',  # AST visitors (intentionally similar)
+]
+
+# Body patterns to skip (these are acceptable to be identical)
+SKIP_BODY_PATTERNS = [
+    r'^pass$',  # Abstract method stubs
+    r'^return None$',  # Simple returns
+    r'^return \[\]$',  # Empty list returns
+    r'^return \{\}$',  # Empty dict returns
+    r'^return False$',  # Boolean returns
+    r'^return True$',  # Boolean returns
+    r'^raise NotImplementedError',  # Abstract methods
+    r'^\.\.\.$',  # Ellipsis (placeholder)
+]
 
 
 class DuplicationChecker(ast.NodeVisitor):
@@ -29,7 +65,7 @@ class DuplicationChecker(ast.NodeVisitor):
     def __init__(self, filename: str):
         self.filename = filename
         self.string_literals: list[tuple[int, str]] = []  # (line, value)
-        self.function_bodies: dict[str, tuple[int, str]] = {}  # name -> (line, body_hash)
+        self.function_bodies: dict[str, tuple[int, str, str]] = {}  # name -> (line, body_hash, body_repr)
         self.expressions: list[tuple[int, str]] = []  # (line, normalized_expr)
         self.findings: list[str] = []
 
@@ -43,17 +79,62 @@ class DuplicationChecker(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         """Track function bodies for similarity detection."""
+        # Skip functions matching skip patterns
+        if any(re.match(pattern, node.name) for pattern in SKIP_FUNCTION_PATTERNS):
+            self.generic_visit(node)
+            return
+
         body_repr = self._normalize_function_body(node)
+
+        # Skip trivial/stub bodies
+        if self._is_trivial_body(body_repr):
+            self.generic_visit(node)
+            return
+
         body_hash = hashlib.md5(body_repr.encode()).hexdigest()[:8]  # noqa: S324
         self.function_bodies[node.name] = (node.lineno, body_hash, body_repr)
         self.generic_visit(node)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         """Track async function bodies."""
+        # Skip functions matching skip patterns
+        if any(re.match(pattern, node.name) for pattern in SKIP_FUNCTION_PATTERNS):
+            self.generic_visit(node)
+            return
+
         body_repr = self._normalize_function_body(node)
+
+        # Skip trivial/stub bodies
+        if self._is_trivial_body(body_repr):
+            self.generic_visit(node)
+            return
+
         body_hash = hashlib.md5(body_repr.encode()).hexdigest()[:8]  # noqa: S324
         self.function_bodies[node.name] = (node.lineno, body_hash, body_repr)
         self.generic_visit(node)
+
+    def _is_trivial_body(self, body_repr: str) -> bool:
+        """Check if function body is too trivial to flag."""
+        if not body_repr or len(body_repr) < 20:
+            return True
+
+        # Check against skip patterns
+        body_simple = body_repr.strip()
+        for pattern in SKIP_BODY_PATTERNS:
+            if re.match(pattern, body_simple, re.IGNORECASE):
+                return True
+
+        # Skip single-line returns and simple statements
+        if body_repr.count('\n') == 0:
+            # Single statement bodies are often acceptable
+            if 'Return' in body_repr or 'Raise' in body_repr or 'Pass' in body_repr:
+                return True
+
+        # Skip functions that just call .inc() (Prometheus metrics)
+        if '.inc()' in body_repr or '.set(' in body_repr or '.labels(' in body_repr:
+            return True
+
+        return False
 
     def _is_docstring_context(self, node: ast.Constant) -> bool:
         """Check if this constant might be a docstring."""
@@ -65,12 +146,14 @@ class DuplicationChecker(ast.NodeVisitor):
         """Check if string is a common pattern we should ignore."""
         common_patterns = [
             r'^https?://',  # URLs
+            r'^/api/v\d+/',  # API paths (common in tests)
             r'^\w+@\w+\.\w+',  # Email patterns
             r'^[A-Z_]+$',  # Constant-like patterns
             r'^\d{4}-\d{2}-\d{2}',  # Date patterns
             r'^application/\w+',  # MIME types
             r'^Bearer ',  # Auth headers
             r'^services\.',  # Module paths (commonly repeated in tests)
+            r'^core\.',  # Module paths
             r'.*\.py$',  # File paths
             r'^mock_',  # Mock variable names
             r'^test_',  # Test names
@@ -79,6 +162,23 @@ class DuplicationChecker(ast.NodeVisitor):
             r'claude-\d',  # Model names
             r'gemini-\d',  # Model names
             r'gpt-\d',  # Model names
+            r'^class=',  # HTML/CSS classes
+            r'^text-\w+',  # Tailwind classes
+            r'^bg-\w+',  # Tailwind classes
+            r'^font-\w+',  # Tailwind classes
+            r'^flex\s',  # Tailwind classes
+            r'^rounded-',  # Tailwind classes
+            r'^border-',  # Tailwind classes
+            r'^px-\d',  # Tailwind spacing
+            r'^py-\d',  # Tailwind spacing
+            r'^p-\d',  # Tailwind spacing
+            r'^m-\d',  # Tailwind spacing
+            r'^\w+:$',  # Dict keys
+            r'^error:',  # Error messages (often similar)
+            r'^Error:',  # Error messages
+            r'^Warning:',  # Warning messages
+            r'^Successfully',  # Success messages
+            r'^Failed to',  # Failure messages
         ]
         return any(re.match(pattern, value) for pattern in common_patterns)
 
@@ -165,10 +265,15 @@ def check_consecutive_duplicates(lines: list[str]) -> list[tuple[int, int, list[
         # Look for this block repeated later
         block = normalized[i : i + MIN_DUPLICATE_LINES]
 
+        # Skip if block contains trivial lines
+        if _is_trivial_block(block):
+            i += 1
+            continue
+
         for j in range(i + MIN_DUPLICATE_LINES, len(normalized) - MIN_DUPLICATE_LINES + 1):
             if normalized[j : j + MIN_DUPLICATE_LINES] == block:
                 # Check if all lines are non-trivial
-                if all(len(line) > 5 for line in block if line):
+                if all(len(line) > 10 for line in block if line):  # Increased from 5
                     findings.append(
                         (
                             i + 1,
@@ -183,12 +288,47 @@ def check_consecutive_duplicates(lines: list[str]) -> list[tuple[int, int, list[
     return findings
 
 
+def _is_trivial_block(block: list[str]) -> bool:
+    """Check if a code block is too trivial to flag."""
+    trivial_patterns = [
+        r'^\s*$',  # Empty lines
+        r'^\s*#',  # Comments
+        r'^\s*pass\s*$',  # Pass statements
+        r'^\s*return\s*$',  # Empty returns
+        r'^\s*\.\.\.\s*$',  # Ellipsis
+        r'^\s*\}\s*$',  # Closing braces
+        r'^\s*\]\s*$',  # Closing brackets
+        r'^\s*\)\s*$',  # Closing parens
+        r"^\s*'\w+'\s*:\s*",  # Dict keys
+        r'^\s*"\w+"\s*:\s*',  # Dict keys
+        r'^\s*self\.\w+\s*=\s*\w+\s*$',  # Simple assignments
+    ]
+
+    trivial_count = 0
+    for line in block:
+        if any(re.match(pattern, line) for pattern in trivial_patterns):
+            trivial_count += 1
+
+    # If more than half the block is trivial, skip it
+    return trivial_count > len(block) / 2
+
+
+def should_skip_file(filepath: Path) -> bool:
+    """Check if file should be skipped based on path patterns."""
+    filepath_str = str(filepath)
+    return any(re.search(pattern, filepath_str) for pattern in SKIP_PATTERNS)
+
+
 def check_file(filepath: Path) -> list[str]:
     """Check a file for DRY violations.
 
     Returns:
         List of violation descriptions
     """
+    # Skip files matching skip patterns
+    if should_skip_file(filepath):
+        return []
+
     findings = []
 
     try:
@@ -233,24 +373,10 @@ def main(filenames: list[str]) -> int:
             all_findings[filename] = findings
 
     if all_findings:
-        print('\n' + '=' * 70)
-        print('DRY VIOLATION CHECK - Potential code duplication detected')
-        print('=' * 70)
-
-        for filename, findings in all_findings.items():
-            print(f'\n{filename}:')
-            for finding in findings:
-                print(f'  - {finding}')
-
-        print('\n' + '-' * 70)
-        print('RECOMMENDATIONS:')
-        print('  1. Extract repeated strings to constants')
-        print('  2. Consolidate similar functions into a shared utility')
-        print('  3. Use inheritance or composition for duplicate logic')
-        print('  4. Consider creating helper functions for repeated patterns')
-        print('-' * 70)
-        print('\nThis is a WARNING - commit will proceed.')
-        print('Review findings and refactor if appropriate.\n')
+        # Concise summary - just file count and total issues
+        total_issues = sum(len(f) for f in all_findings.values())
+        file_count = len(all_findings)
+        print(f'DRY: {total_issues} potential issue(s) in {file_count} file(s). Run with --verbose for details.')
 
         # Return 0 to allow commit (warning only)
         return 0

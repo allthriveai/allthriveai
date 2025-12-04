@@ -16,7 +16,7 @@ export default function NotificationsSettingsPage() {
               </p>
             </div>
 
-            <div className="glass-strong rounded-xl p-12 border border-white/20 text-center">
+            <div className="glass-strong rounded p-12 border border-white/20 text-center">
               <div className="w-16 h-16 bg-primary-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-3xl">🔔</span>
               </div>

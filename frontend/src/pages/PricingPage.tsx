@@ -13,11 +13,112 @@ import {
   ArrowRightIcon,
   AcademicCapIcon,
   SparklesIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 
 export default function PricingPage() {
   const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual');
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const faqs = [
+    {
+      question: 'Can I change plans anytime?',
+      answer: 'Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we\'ll prorate the difference.',
+    },
+    {
+      question: 'What happens to my AI request quota?',
+      answer: 'Your monthly AI request quota resets on your billing cycle date. Unused requests don\'t roll over, but you can purchase token packages for additional capacity. Token packages are available for purchase after signup and never expire.',
+    },
+    {
+      question: 'Do you offer refunds?',
+      answer: 'We offer a 14-day money-back guarantee on all paid plans. No questions asked.',
+    },
+  ];
+
+  // Fallback tiers when API is unavailable
+  const fallbackTiers = [
+    {
+      slug: 'free-explorer',
+      name: 'Free Explorer',
+      description: 'Get started with AI learning basics',
+      tierType: 'free',
+      priceMonthly: '0.00',
+      priceAnnual: '0.00',
+      trialPeriodDays: 0,
+      monthlyAiRequests: 50,
+      features: {
+        aiMentor: true,
+        quests: true,
+        projects: true,
+        circles: false,
+        marketplace: false,
+        go1Courses: false,
+        analytics: false,
+        creatorTools: false,
+      },
+    },
+    {
+      slug: 'community-pro',
+      name: 'Community Pro',
+      description: 'Connect and grow with the community',
+      tierType: 'community_pro',
+      priceMonthly: '9.99',
+      priceAnnual: '101.90',
+      trialPeriodDays: 14,
+      monthlyAiRequests: 500,
+      features: {
+        aiMentor: true,
+        quests: true,
+        projects: true,
+        circles: true,
+        marketplace: true,
+        go1Courses: false,
+        analytics: false,
+        creatorTools: false,
+      },
+    },
+    {
+      slug: 'pro-learn',
+      name: 'Pro Learn',
+      description: 'Unlock professional courses and analytics',
+      tierType: 'pro_learn',
+      priceMonthly: '29.99',
+      priceAnnual: '305.90',
+      trialPeriodDays: 14,
+      monthlyAiRequests: 2000,
+      features: {
+        aiMentor: true,
+        quests: true,
+        projects: true,
+        circles: true,
+        marketplace: true,
+        go1Courses: true,
+        analytics: true,
+        creatorTools: false,
+      },
+    },
+    {
+      slug: 'creator-mentor',
+      name: 'Creator & Mentor',
+      description: 'Build and sell your own courses',
+      tierType: 'creator_mentor',
+      priceMonthly: '79.99',
+      priceAnnual: '815.90',
+      trialPeriodDays: 14,
+      monthlyAiRequests: 0,
+      features: {
+        aiMentor: true,
+        quests: true,
+        projects: true,
+        circles: true,
+        marketplace: true,
+        go1Courses: true,
+        analytics: true,
+        creatorTools: true,
+      },
+    },
+  ];
 
   // Fetch available tiers
   const { data: tiers, isLoading: tiersLoading } = useQuery({
@@ -66,7 +167,10 @@ export default function PricingPage() {
   // Tier order for display
   const tierOrder = ['free', 'community_pro', 'pro_learn', 'creator_mentor'];
 
-  const sortedTiers = tiers?.sort((a, b) => {
+  // Use API tiers or fallback to static tiers
+  const displayTiers = tiers && tiers.length > 0 ? tiers : fallbackTiers;
+
+  const sortedTiers = [...displayTiers].sort((a, b) => {
     return tierOrder.indexOf(a.tierType) - tierOrder.indexOf(b.tierType);
   });
 
@@ -110,17 +214,6 @@ export default function PricingPage() {
         };
     }
   };
-
-  if (tiersLoading) {
-    return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
-        <div className="relative">
-          <div className="w-16 h-16 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
-          <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-green-400/50 rounded-full animate-spin animation-delay-150" />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#020617] relative overflow-hidden">
@@ -238,13 +331,13 @@ export default function PricingPage() {
                   )}
 
                   {/* Tier Icon & Name */}
-                  <div className="mb-6">
-                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${style.gradient} mb-4`}>
-                      <TierIcon className="w-6 h-6 text-white" />
+                  <div className="mb-6 text-center">
+                    <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${style.gradient} mb-4 shadow-lg`}>
+                      <TierIcon className="w-7 h-7 text-white" />
                     </div>
-                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${style.badge} mb-3`}>
+                    <h3 className="text-xl font-bold text-white mb-2">
                       {tier.name}
-                    </div>
+                    </h3>
                     {tier.description && (
                       <p className="text-sm text-gray-400 min-h-[40px]">
                         {tier.description}
@@ -326,36 +419,33 @@ export default function PricingPage() {
               <p className="text-gray-400">Everything you need to know about our plans</p>
             </div>
 
-            <div className="max-w-3xl mx-auto space-y-4">
-              <div className="glass-card p-6">
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  Can I change plans anytime?
-                </h3>
-                <p className="text-gray-400">
-                  Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we'll prorate the difference.
-                </p>
-              </div>
-
-              <div className="glass-card p-6">
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  What happens to my AI request quota?
-                </h3>
-                <p className="text-gray-400">
-                  Your monthly AI request quota resets on your billing cycle date. Unused requests don't roll over, but you can purchase token packages for additional capacity.
-                </p>
-                <p className="text-sm text-gray-500 mt-2 italic">
-                  Token packages are available for purchase after signup and never expire.
-                </p>
-              </div>
-
-              <div className="glass-card p-6">
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  Do you offer refunds?
-                </h3>
-                <p className="text-gray-400">
-                  We offer a 14-day money-back guarantee on all paid plans. No questions asked.
-                </p>
-              </div>
+            <div className="max-w-5xl mx-auto space-y-2">
+              {faqs.map((faq, index) => (
+                <div key={index} className="glass-card overflow-hidden">
+                  <button
+                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                    className="w-full flex items-center justify-between px-6 py-3 text-left hover:bg-white/5 transition-colors"
+                  >
+                    <h3 className="text-base font-medium text-white pr-4">
+                      {faq.question}
+                    </h3>
+                    <ChevronDownIcon
+                      className={`w-5 h-5 text-cyan-400 flex-shrink-0 transition-transform duration-300 ${
+                        openFaq === index ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      openFaq === index ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <p className="px-6 pb-4 text-gray-400 text-sm">
+                      {faq.answer}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

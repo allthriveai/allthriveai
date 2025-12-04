@@ -416,7 +416,7 @@ def _process_with_langgraph_agent(
                 )
             else:
                 error_message = (
-                    "I'm here to help! However, I encountered an issue processing your request. " 'Please try again.'
+                    "I'm here to help! However, I encountered an issue processing your request. Please try again."
                 )
             await async_channel_layer.group_send(
                 channel_name,
@@ -456,7 +456,7 @@ def _process_with_langgraph_agent(
             )
         else:
             error_message = (
-                "I'm here to help! However, I encountered an issue processing your request. " 'Please try again.'
+                "I'm here to help! However, I encountered an issue processing your request. Please try again."
             )
         # Send error message to user (sync context, use async_to_sync)
         async_to_sync(channel_layer.group_send)(
@@ -508,12 +508,8 @@ def _process_with_ai_provider(
     from django.conf import settings
 
     provider_name = getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
-    if provider_name == 'azure':
-        model = getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
-    elif provider_name == 'openai':
-        model = 'gpt-4'
-    else:
-        model = None  # Let AIProvider pick a sensible default
+    # Let AIProvider pick the appropriate model based on the provider
+    model = None
 
     # Build system prompt based on detected intent
     system_message = _get_system_prompt_for_intent(intent)

@@ -161,10 +161,12 @@ class RedditSyncService:
         'chatgptprompts',
     ]
 
-    # Rate limiting settings
-    RATE_LIMIT_DELAY = 2.0  # Delay between requests in seconds
+    # Rate limiting settings - Reddit allows 100 requests per minute
+    # We use conservative delays to avoid hitting rate limits
+    RATE_LIMIT_DELAY = 1.0  # Delay between individual requests in seconds
+    AGENT_SYNC_DELAY = 10.0  # Delay between syncing different agents
     MAX_RETRIES = 3  # Maximum number of retry attempts
-    RETRY_BACKOFF = 5.0  # Initial backoff time for retries in seconds
+    RETRY_BACKOFF = 30.0  # Initial backoff time for retries in seconds (rate limit resets in ~60s)
 
     @classmethod
     def _moderate_content(cls, title: str, selftext: str, image_url: str, subreddit: str) -> tuple[bool, str, dict]:
@@ -327,12 +329,27 @@ class RedditSyncService:
             if 'preview' in post_data and 'images' in post_data['preview']:
                 images = post_data['preview']['images']
                 if images and len(images) > 0:
-                    # Get the highest resolution image
+                    # Get the highest resolution image from source (full size)
                     source = images[0].get('source', {})
                     image_url = source.get('url', '')
+                    source_width = source.get('width', 0)
+                    source_height = source.get('height', 0)
+
+                    # If source is available, use it (highest res)
+                    # Otherwise, get the highest resolution from resolutions array
+                    if not image_url:
+                        resolutions = images[0].get('resolutions', [])
+                        if resolutions:
+                            # Resolutions are sorted by size, last one is largest
+                            best_res = resolutions[-1]
+                            image_url = best_res.get('url', '')
+                            source_width = best_res.get('width', 0)
+                            source_height = best_res.get('height', 0)
+
                     # Reddit HTML-encodes the URLs, decode them
                     if image_url:
                         image_url = image_url.replace('&amp;', '&')
+                        logger.debug(f'Found preview image: {source_width}x{source_height} for {permalink}')
 
             # Fallback to url_overridden_by_dest (for direct image links)
             if not image_url and 'url_overridden_by_dest' in post_data:
@@ -551,7 +568,7 @@ class RedditSyncService:
         """Automatically tag a Reddit project with tools, categories, and topics using AI."""
         from core.taxonomy.models import Taxonomy
         from core.tools.models import Tool
-        from services.topic_extraction_service import TopicExtractionService
+        from services.ai.topic_extraction import TopicExtractionService
 
         link_flair = metrics.get('link_flair_text', '')
         selftext = metrics.get('selftext', '')
@@ -898,10 +915,10 @@ class RedditSyncService:
         }
 
         for i, agent in enumerate(active_agents):
-            # Add delay between agents (except for first agent)
+            # Add delay between agents (except for first agent) to avoid Reddit rate limits
             if i > 0:
-                logger.debug(f'Waiting {cls.RATE_LIMIT_DELAY}s before syncing next agent...')
-                time.sleep(cls.RATE_LIMIT_DELAY)
+                logger.info(f'Waiting {cls.AGENT_SYNC_DELAY}s before syncing next agent...')
+                time.sleep(cls.AGENT_SYNC_DELAY)
 
             results = cls.sync_agent(agent)
             overall_results['agents_synced'] += 1

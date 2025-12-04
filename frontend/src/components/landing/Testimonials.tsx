@@ -193,7 +193,7 @@ export function Testimonials() {
                 <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
                   {formatStat(stats.collectivePoints)}
                 </div>
-                <div className="text-gray-500 text-sm mt-1">Collective Points</div>
+                <div className="text-gray-500 text-sm mt-1">Total Points Won</div>
               </div>
             </>
           ) : (
@@ -205,7 +205,7 @@ export function Testimonials() {
                     ...
                   </div>
                   <div className="text-gray-500 text-sm mt-1">
-                    {i === 1 ? 'Active Creators' : i === 2 ? 'Projects Shared' : 'Collective Points'}
+                    {i === 1 ? 'Active Creators' : i === 2 ? 'Projects Shared' : 'Total Points Won'}
                   </div>
                 </div>
               ))}

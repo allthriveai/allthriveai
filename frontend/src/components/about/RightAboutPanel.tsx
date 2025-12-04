@@ -79,22 +79,22 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
             {/* Hero Statement */}
             <div className="glass-card neon-border p-5">
               <p className="text-lg font-bold text-white leading-relaxed">
-                All Thrive is one home where AI-curious creators{' '}
-                <span className="text-cyan-bright">learn</span>,{' '}
-                <span className="text-pink-accent">showcase</span>, and{' '}
-                <span className="text-emerald-400">thrive</span> together.
+                All Thrive is a community where AI-curious creators{' '}
+                <span className="text-cyan-bright">explore</span>,{' '}
+                <span className="text-pink-accent">build</span>, and{' '}
+                <span className="text-emerald-400">grow</span> together.
               </p>
             </div>
 
             {/* Problem & Solution */}
             <div className="space-y-4 text-slate-300 leading-relaxed">
               <p>
-                AI gives you hundreds of tools to create, prototype, and launch new ideas, but there&apos;s still no single
-                place to consolidate, showcase, and get feedback on all your projects, no matter which tools you used.
+                AI tools are everywhere, but finding your people and a space to actually learn and grow? That&apos;s harder.
+                Most communities feel like they&apos;re made for experts, not for people still figuring things out.
               </p>
               <p>
-                You juggle projects across platforms, struggle to decide where to start, and keep running into spaces
-                that act like you need to be a senior engineer before your work is worth sharing.
+                We built All Thrive for the curious ones. The people who want to experiment with AI, share what they&apos;re
+                building (even the messy stuff), and learn alongside others who are on the same journey.
               </p>
             </div>
 

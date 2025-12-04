@@ -839,7 +839,7 @@ class CircleViewSet(viewsets.ViewSet):
         if not circle:
             return Response(
                 {
-                    'detail': 'You are not in a circle this week. ' 'Circles are formed weekly - check back on Monday!',
+                    'detail': 'You are not in a circle this week. Circles are formed weekly - check back on Monday!',
                     'has_circle': False,
                 },
                 status=status.HTTP_404_NOT_FOUND,

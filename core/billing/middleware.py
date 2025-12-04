@@ -6,11 +6,34 @@ Adds subscription and billing context to all requests.
 
 import logging
 
+from django.core.cache import cache
 from django.utils.deprecation import MiddlewareMixin
 
-from .utils import get_or_create_token_balance, get_user_subscription
+from .models import UserSubscription, UserTokenBalance
 
 logger = logging.getLogger(__name__)
+
+# Cache TTL in seconds (short-lived to avoid stale data issues)
+BILLING_CACHE_TTL = 60  # 1 minute
+
+
+def _get_cache_key(user_id: int, key_type: str) -> str:
+    """Generate a cache key for billing data."""
+    return f'billing:{key_type}:{user_id}'
+
+
+def invalidate_billing_cache(user_id: int):
+    """
+    Invalidate all billing cache for a user.
+
+    Call this when subscription or token balance changes.
+    """
+    cache.delete_many(
+        [
+            _get_cache_key(user_id, 'subscription'),
+            _get_cache_key(user_id, 'token_balance'),
+        ]
+    )
 
 
 class BillingContextMiddleware(MiddlewareMixin):
@@ -46,13 +69,49 @@ class BillingContextMiddleware(MiddlewareMixin):
             return None
 
         try:
-            # Get user's subscription
-            subscription = get_user_subscription(request.user)
+            user_id = request.user.id
+
+            # Try to get subscription from cache first
+            subscription = None
+            cache_key = _get_cache_key(user_id, 'subscription')
+            cached_sub_id = cache.get(cache_key)
+
+            if cached_sub_id:
+                # Cache hit - fetch by ID (faster than user lookup)
+                try:
+                    subscription = UserSubscription.objects.select_related('tier').get(id=cached_sub_id)
+                except UserSubscription.DoesNotExist:
+                    # Cache was stale, clear it
+                    cache.delete(cache_key)
+                    cached_sub_id = None
+
+            if not cached_sub_id:
+                # Cache miss - fetch by user and cache the ID
+                try:
+                    subscription = UserSubscription.objects.select_related('tier').get(user=request.user)
+                    cache.set(cache_key, subscription.id, BILLING_CACHE_TTL)
+                except UserSubscription.DoesNotExist:
+                    subscription = None
+
             if subscription:
                 request.subscription = subscription
 
-                # Get token balance
-                token_balance = get_or_create_token_balance(request.user)
+                # Get token balance (also with caching)
+                token_balance = None
+                balance_cache_key = _get_cache_key(user_id, 'token_balance')
+                cached_balance_id = cache.get(balance_cache_key)
+
+                if cached_balance_id:
+                    try:
+                        token_balance = UserTokenBalance.objects.get(id=cached_balance_id)
+                    except UserTokenBalance.DoesNotExist:
+                        cache.delete(balance_cache_key)
+                        cached_balance_id = None
+
+                if not cached_balance_id:
+                    token_balance, _ = UserTokenBalance.objects.get_or_create(user=request.user)
+                    cache.set(balance_cache_key, token_balance.id, BILLING_CACHE_TTL)
+
                 request.token_balance = token_balance
 
                 # Build billing context
