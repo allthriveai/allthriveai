@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { renderContent } from '@/utils/markdown';
 import { useProjectContext } from '@/context/ProjectContext';
 import { updateProject } from '@/services/projects';
@@ -24,15 +24,12 @@ import type { ProjectSection, SectionType } from '@/types/sections';
 import { createDefaultSectionContent, generateSectionId } from '@/types/sections';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
-import { ProjectEditTray } from '../ProjectEditTray';
 import {
   CodeBracketIcon,
   EllipsisVerticalIcon,
-  PencilIcon,
   TrashIcon,
   EyeIcon,
   EyeSlashIcon,
-  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 
 /**
@@ -78,9 +75,6 @@ export function DefaultProjectLayout() {
     isCommentTrayOpen,
     openCommentTray,
     closeCommentTray,
-    isEditTrayOpen,
-    openEditTray,
-    closeEditTray,
     isToolTrayOpen,
     selectedToolSlug,
     openToolTray,
@@ -90,9 +84,9 @@ export function DefaultProjectLayout() {
     isAuthenticated,
   } = useProjectContext();
 
-  const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(true); // Default to edit mode for owners
+  const [isEditMode, setIsEditMode] = useState(false); // Default to published view
+  const [isSaving, setIsSaving] = useState(false);
 
   // Toggle between edit and published view
   const toggleEditMode = useCallback(() => {
@@ -156,8 +150,12 @@ export function DefaultProjectLayout() {
       sections: updatedSections,
     };
 
+    // Store original for rollback
+    const originalProject = project;
+
     // Optimistic update - show changes immediately
     setProject({ ...project, content: updatedContent });
+    setIsSaving(true);
 
     try {
       // Save to backend
@@ -166,9 +164,10 @@ export function DefaultProjectLayout() {
     } catch (error: any) {
       console.error('Failed to update section:', error);
       console.error('Error details:', error?.response?.data || error?.message || error);
-      // Revert on error - restore original project state
-      // For now, we'll keep the optimistic update even on failure
-      // to allow users to keep working
+      // Rollback on error
+      setProject(originalProject);
+    } finally {
+      setIsSaving(false);
     }
   }, [project, setProject, filterContentKeys]);
 
@@ -290,7 +289,7 @@ export function DefaultProjectLayout() {
   return (
     <>
       {/* Edit Mode Toggle for Owners */}
-      <EditModeIndicator isOwner={isOwner} isEditMode={isEditMode} onToggle={toggleEditMode} />
+      <EditModeIndicator isOwner={isOwner} isEditMode={isEditMode} onToggle={toggleEditMode} isSaving={isSaving} />
 
       {/* Full Height Hero Section */}
       <div className="relative min-h-screen w-full flex items-center overflow-hidden bg-gray-900">
@@ -327,29 +326,6 @@ export function DefaultProjectLayout() {
                 </button>
                 {showMenu && (
                   <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden z-50">
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        openEditTray();
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 flex items-center justify-between gap-3 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <PencilIcon className="w-4 h-4" />
-                        Quick Edit
-                      </div>
-                      <kbd className="px-2 py-0.5 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">E</kbd>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        navigate(`/${project.username}/${project.slug}/edit`);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 flex items-center gap-3 transition-colors"
-                    >
-                      <Squares2X2Icon className="w-4 h-4" />
-                      Edit Sections
-                    </button>
                     <button
                       onClick={() => {
                         handleToggleShowcase();
@@ -547,14 +523,6 @@ export function DefaultProjectLayout() {
           toolSlug={selectedToolSlug}
         />
       )}
-
-      {/* Edit Tray */}
-      <ProjectEditTray
-        isOpen={isEditTrayOpen}
-        onClose={closeEditTray}
-        project={project}
-        onProjectUpdate={setProject}
-      />
     </>
   );
 }

@@ -566,6 +566,7 @@ class AIProvider:
                 api_key=getattr(settings, 'AZURE_OPENAI_API_KEY', ''),
                 api_version=getattr(settings, 'AZURE_OPENAI_API_VERSION', '2024-02-15-preview'),
                 temperature=temperature,
+                streaming=True,  # Enable streaming for astream_events
                 **kwargs,
             )
 

@@ -6,6 +6,7 @@ import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalenda
 import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
 import { CommentTray } from '@/components/projects/CommentTray';
 import { QuestTray } from '@/components/side-quests/QuestTray';
+import { Footer } from '@/components/landing/Footer';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveQuest } from '@/hooks/useActiveQuest';
 import type { Project, UserSideQuest } from '@/types/models';
@@ -192,6 +193,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           <div className="pt-16">
             {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray }) : children}
           </div>
+          <Footer onOpenChat={handleMenuClick} />
         </main>
 
         {/* Right About Panel */}

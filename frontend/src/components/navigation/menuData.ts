@@ -101,7 +101,7 @@ export const getMenuSections = (
           { label: 'Whats New', path: '#', icon: faWandSparkles },
         ]
       },
-      { label: 'Pricing', path: '#', icon: faDollarSign },
+      { label: 'Pricing', path: '/pricing', icon: faDollarSign },
     ],
   },
   {

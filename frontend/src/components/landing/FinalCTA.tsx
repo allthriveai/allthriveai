@@ -72,7 +72,7 @@ export function FinalCTA({ onRequestInvite }: FinalCTAProps) {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <motion.button
               onClick={onRequestInvite}
-              className="group relative px-10 py-5 rounded-2xl bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-bold text-lg shadow-neon-strong hover:shadow-[0_0_40px_rgba(34,211,238,0.5)] transition-all duration-300"
+              className="group relative px-10 py-5 rounded-sm bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-bold text-lg shadow-neon-strong hover:shadow-[0_0_40px_rgba(34,211,238,0.5)] transition-all duration-300"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -98,7 +98,7 @@ export function FinalCTA({ onRequestInvite }: FinalCTAProps) {
 
             <Link
               to="/explore"
-              className="px-10 py-5 rounded-2xl border border-white/20 bg-white/5 text-white font-medium text-lg backdrop-blur-sm hover:bg-white/10 hover:border-cyan-500/30 transition-all duration-300"
+              className="px-10 py-5 rounded-sm border border-white/20 bg-white/5 text-white font-medium text-lg backdrop-blur-sm hover:bg-white/10 hover:border-cyan-500/30 transition-all duration-300"
             >
               Explore First
             </Link>

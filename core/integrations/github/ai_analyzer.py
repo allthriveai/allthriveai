@@ -2,10 +2,12 @@
 
 import json
 import logging
+import time
 
 from anthropic import AnthropicError
 from openai import OpenAIError
 
+from core.ai_usage.tracker import AIUsageTracker
 from core.integrations.base.parser import BaseParser
 from core.integrations.github.constants import (
     MAX_CATEGORIES_PER_PROJECT,
@@ -171,7 +173,7 @@ def _format_tree_for_prompt(tree: list) -> str:
     return '\n'.join(lines[:30]) if lines else 'Not available'  # Limit total lines
 
 
-def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '') -> dict:
+def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '', user=None) -> dict:
     """Generate section-based template content for a GitHub repo.
 
     This is the new template-based analyzer that generates structured sections
@@ -180,6 +182,7 @@ def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '') 
     Args:
         repo_data: Repository data from GitHub API
         readme_content: README content (optional)
+        user: Django User instance (optional, for AI usage tracking)
 
     Returns:
         dict with sections array and metadata for template v2 format
@@ -240,12 +243,28 @@ def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '') 
 
     try:
         ai = AIProvider()
+        start_time = time.time()
         response = ai.complete(
             prompt=prompt,
             model=None,
             temperature=0.7,
             max_tokens=2000,
         )
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        # Track AI usage for cost reporting
+        if user and ai.last_usage:
+            usage = ai.last_usage
+            AIUsageTracker.track_usage(
+                user=user,
+                feature='github_template_analysis',
+                provider=ai.current_provider,
+                model=ai.current_model,
+                input_tokens=usage.get('prompt_tokens', 0),
+                output_tokens=usage.get('completion_tokens', 0),
+                latency_ms=latency_ms,
+                status='success',
+            )
 
         logger.info(f'✅ Template AI response received for {name}')
 
@@ -636,12 +655,13 @@ def generate_blocks_from_repo_structure(repo_data: dict) -> list:
     return blocks
 
 
-def analyze_github_repo(repo_data: dict, readme_content: str = '') -> dict:
+def analyze_github_repo(repo_data: dict, readme_content: str = '', user=None) -> dict:
     """Use AI to analyze a GitHub repo and generate smart metadata.
 
     Args:
         repo_data: Repository data from GitHub API
         readme_content: README content (optional)
+        user: Django User instance (optional, for AI usage tracking)
 
     Returns:
         dict with:
@@ -721,12 +741,28 @@ Format your response as JSON:
     try:
         # Use default AI provider (Azure gateway) from settings
         ai = AIProvider()  # Uses DEFAULT_AI_PROVIDER from settings
+        start_time = time.time()
         response = ai.complete(
             prompt=prompt,
             model=None,  # Use default model/deployment from settings
             temperature=0.7,
             max_tokens=500,
         )
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        # Track AI usage for cost reporting
+        if user and ai.last_usage:
+            usage = ai.last_usage
+            AIUsageTracker.track_usage(
+                user=user,
+                feature='github_analysis',
+                provider=ai.current_provider,
+                model=ai.current_model,
+                input_tokens=usage.get('prompt_tokens', 0),
+                output_tokens=usage.get('completion_tokens', 0),
+                latency_ms=latency_ms,
+                status='success',
+            )
 
         logger.info(f'✅ AI response received for {name}, length: {len(response)} chars')
         logger.info(f'📨 AI raw response: {response}')  # Full response, not truncated

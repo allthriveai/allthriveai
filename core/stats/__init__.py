@@ -1,0 +1,1 @@
+"""Platform statistics app"""

@@ -18,6 +18,7 @@ export type SectionType =
   | 'demo'
   | 'challenges'
   | 'links'
+  | 'slideup'
   | 'custom';
 
 // ============================================================================
@@ -154,6 +155,21 @@ export interface LinksSectionContent {
 }
 
 // ============================================================================
+// SLIDEUP SECTION
+// ============================================================================
+
+export interface SlideUpElement {
+  type: 'image' | 'video' | 'text';
+  content: string;
+  caption?: string;
+}
+
+export interface SlideUpSectionContent {
+  element1: SlideUpElement;
+  element2?: SlideUpElement;
+}
+
+// ============================================================================
 // CUSTOM SECTION (free-form blocks)
 // ============================================================================
 
@@ -177,6 +193,7 @@ export type SectionContent =
   | DemoSectionContent
   | ChallengesSectionContent
   | LinksSectionContent
+  | SlideUpSectionContent
   | CustomSectionContent;
 
 // ============================================================================
@@ -222,6 +239,10 @@ export function isChallengesSection(section: ProjectSection): section is Project
 
 export function isLinksSection(section: ProjectSection): section is ProjectSection<LinksSectionContent> {
   return section.type === 'links';
+}
+
+export function isSlideUpSection(section: ProjectSection): section is ProjectSection<SlideUpSectionContent> {
+  return section.type === 'slideup';
 }
 
 export function isCustomSection(section: ProjectSection): section is ProjectSection<CustomSectionContent> {
@@ -271,6 +292,7 @@ export const DEFAULT_SECTION_ORDER: SectionType[] = [
   'overview',
   'features',
   'demo',
+  'slideup',
   'gallery',
   'tech_stack',
   'architecture',
@@ -348,6 +370,13 @@ export const SECTION_METADATA: Record<SectionType, SectionMetadata> = {
     icon: 'LinkIcon',
     defaultEnabled: false,
   },
+  slideup: {
+    type: 'slideup',
+    title: 'Slide Up',
+    description: 'Two-part interactive display with reveal animation',
+    icon: 'ArrowUpIcon',
+    defaultEnabled: false,
+  },
   custom: {
     type: 'custom',
     title: 'Custom Section',
@@ -404,6 +433,11 @@ export function createDefaultSectionContent(type: SectionType): SectionContent {
       return {
         links: [],
       } as LinksSectionContent;
+    case 'slideup':
+      return {
+        element1: { type: 'image', content: '' },
+        element2: { type: 'text', content: '' },
+      } as SlideUpSectionContent;
     case 'custom':
       return {
         title: 'Custom Section',

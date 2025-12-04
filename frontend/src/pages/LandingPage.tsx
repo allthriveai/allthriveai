@@ -6,6 +6,7 @@ import { HeroSection } from '@/components/landing/HeroSection';
 import { ExplorePreview } from '@/components/landing/ExplorePreview';
 import { AutomatedProfile } from '@/components/landing/AutomatedProfile';
 import { SideQuestsPreview } from '@/components/landing/SideQuestsPreview';
+import { Testimonials } from '@/components/landing/Testimonials';
 import { FinalCTA } from '@/components/landing/FinalCTA';
 import { Footer } from '@/components/landing/Footer';
 
@@ -34,10 +35,13 @@ export default function LandingPage() {
         {/* Section 4: Side Quests Preview */}
         <SideQuestsPreview />
 
-        {/* Section 5: Final CTA */}
+        {/* Section 5: Testimonials */}
+        <Testimonials />
+
+        {/* Section 6: Final CTA */}
         <FinalCTA onRequestInvite={handleRequestInvite} />
 
-        {/* Section 6: Footer */}
+        {/* Footer */}
         <Footer />
       </main>
 

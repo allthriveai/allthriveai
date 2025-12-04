@@ -4,6 +4,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { captureException } from './sentry';
 
 export interface ApiErrorResponse {
   message: string;
@@ -150,11 +151,23 @@ export function logError(
     stack: error instanceof Error ? error.stack : undefined,
   };
 
-  // In production, this would send to error tracking service (Sentry, etc.)
+  // Send to error tracking service (Sentry) in production
   if (import.meta.env.PROD) {
     console.error('[ERROR]', JSON.stringify(logEntry));
-    // TODO: Send to error tracking service
-    // Sentry.captureException(error, { contexts: { custom: logEntry } });
+
+    // Send to Sentry with full context
+    captureException(error, {
+      tags: {
+        context,
+        error_code: errorInfo.code || 'unknown',
+        error_status: errorInfo.status?.toString() || 'unknown',
+      },
+      extra: {
+        ...logEntry,
+        ...metadata,
+      },
+      level: errorInfo.status && errorInfo.status >= 500 ? 'error' : 'warning',
+    });
   } else {
     // Development: Pretty print to console
     console.group(`❌ ${context}`);

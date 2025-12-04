@@ -1,13 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SEO } from '@/components/common/SEO';
 import { Footer } from '@/components/landing/Footer';
 import { getSubscriptionTiers, getSubscriptionStatus } from '@/services/billing';
-import type { SubscriptionTier, SubscriptionStatus } from '@/services/billing';
+import type { SubscriptionTier } from '@/services/billing';
 import { CheckIcon } from '@heroicons/react/24/solid';
-import { SparklesIcon } from '@heroicons/react/24/outline';
+import {
+  RocketLaunchIcon,
+  BoltIcon,
+  StarIcon,
+  ArrowRightIcon,
+  AcademicCapIcon,
+  SparklesIcon,
+} from '@heroicons/react/24/outline';
 
 export default function PricingPage() {
   const navigate = useNavigate();
@@ -25,13 +31,11 @@ export default function PricingPage() {
     queryFn: getSubscriptionStatus,
   });
 
-  const handleSelectPlan = (tierSlug: string, tierName: string) => {
+  const handleSelectPlan = (tierSlug: string) => {
     if (tierSlug === 'free-explorer') {
-      // Free tier - no action needed
+      navigate('/auth');
       return;
     }
-
-    // Navigate to checkout page with selected tier
     navigate(`/checkout?tier=${tierSlug}`);
   };
 
@@ -41,19 +45,15 @@ export default function PricingPage() {
   const getFeatureList = (tier: SubscriptionTier): string[] => {
     const featureList: string[] = [];
 
-    // AI Requests
     if (tier.monthlyAiRequests === 0) {
       featureList.push('Unlimited AI chat & generation');
     } else {
       featureList.push(`${tier.monthlyAiRequests.toLocaleString()} AI chats/month`);
     }
 
-    // Core features
     if (tier.features.aiMentor) featureList.push('Pip AI assistant');
     if (tier.features.quests) featureList.push('Gamified learning quests');
     if (tier.features.projects) featureList.push('Shareable project portfolio');
-
-    // Premium features
     if (tier.features.circles) featureList.push('Community groups');
     if (tier.features.marketplace) featureList.push('Prompt & template marketplace');
     if (tier.features.go1Courses) featureList.push('10,000+ professional courses');
@@ -70,100 +70,149 @@ export default function PricingPage() {
     return tierOrder.indexOf(a.tierType) - tierOrder.indexOf(b.tierType);
   });
 
-  // Get tier color scheme
-  const getTierColor = (tierType: string) => {
+  // Get tier styling
+  const getTierStyle = (tierType: string) => {
     switch (tierType) {
       case 'free':
         return {
-          badge: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-          button: 'bg-gray-600 hover:bg-gray-700 text-white',
-          border: 'border-gray-200 dark:border-gray-700',
+          icon: RocketLaunchIcon,
+          gradient: 'from-slate-500 to-slate-600',
+          glow: '',
+          badge: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
         };
       case 'community_pro':
         return {
-          badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-          button: 'bg-blue-600 hover:bg-blue-700 text-white',
-          border: 'border-blue-200 dark:border-blue-700',
+          icon: BoltIcon,
+          gradient: 'from-blue-500 to-cyan-500',
+          glow: 'shadow-neon',
+          badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
         };
       case 'pro_learn':
         return {
-          badge: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-          button: 'bg-purple-600 hover:bg-purple-700 text-white',
-          border: 'border-purple-200 dark:border-purple-700',
+          icon: AcademicCapIcon,
+          gradient: 'from-purple-500 to-pink-500',
+          glow: '',
+          badge: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
         };
       case 'creator_mentor':
         return {
-          badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-          button: 'bg-amber-600 hover:bg-amber-700 text-white',
-          border: 'border-amber-200 dark:border-amber-700',
+          icon: StarIcon,
+          gradient: 'from-amber-500 to-orange-500',
+          glow: '',
+          badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
         };
       default:
         return {
-          badge: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-          button: 'bg-gray-600 hover:bg-gray-700 text-white',
-          border: 'border-gray-200 dark:border-gray-700',
+          icon: RocketLaunchIcon,
+          gradient: 'from-slate-500 to-slate-600',
+          glow: '',
+          badge: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
         };
     }
   };
 
   if (tiersLoading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+          <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-green-400/50 rounded-full animate-spin animation-delay-150" />
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
+    <div className="min-h-screen bg-[#020617] relative overflow-hidden">
       <SEO
         title="Pricing - All Thrive AI"
         description="Choose the perfect plan for your AI learning journey"
       />
 
-      <div className="min-h-screen bg-gray-50 dark:bg-background py-12 px-4 sm:px-6 lg:px-8">
+      {/* Ambient Background Effects */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-cyan-500/5 to-transparent rounded-full" />
+      </div>
+
+      {/* Header */}
+      <header className="relative z-10">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <Link to="/" className="inline-block">
+              <span className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
+                All Thrive
+              </span>
+            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                to="/explore"
+                className="text-gray-400 hover:text-cyan-400 transition-colors text-sm font-medium"
+              >
+                Explore
+              </Link>
+              <Link
+                to="/auth"
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-sm hover:shadow-neon transition-all duration-300"
+              >
+                Get Started
+              </Link>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="relative z-10 py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-5xl font-extrabold text-gray-900 dark:text-white mb-4">
-              Choose Your Plan
+            <h1 className="text-5xl sm:text-6xl font-bold text-white mb-6">
+              Choose Your{' '}
+              <span className="text-gradient-cyan">Plan</span>
             </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-              Start free, upgrade as you grow. Cancel anytime.
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10">
+              Start free, upgrade as you grow. All plans include core AI features.
+              Cancel anytime.
             </p>
 
             {/* Billing Cycle Toggle */}
-            <div className="flex items-center justify-center space-x-4">
-              <span className={`text-sm font-medium ${billingCycle === 'monthly' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                Monthly
-              </span>
+            <div className="inline-flex items-center gap-3 p-1.5 rounded-full glass-panel">
               <button
-                onClick={() => setBillingCycle(billingCycle === 'annual' ? 'monthly' : 'annual')}
-                className="relative inline-flex h-6 w-11 items-center rounded-full bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                onClick={() => setBillingCycle('monthly')}
+                className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
+                  billingCycle === 'monthly'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25'
+                    : 'text-gray-400 hover:text-white'
+                }`}
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${billingCycle === 'annual' ? 'translate-x-6' : 'translate-x-1'}`}
-                />
+                Monthly
               </button>
-              <span className={`text-sm font-medium ${billingCycle === 'annual' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+              <button
+                onClick={() => setBillingCycle('annual')}
+                className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                  billingCycle === 'annual'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
                 Annual
-                <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
-                  Save 15%
+                <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs font-semibold">
+                  -15%
                 </span>
-              </span>
+              </button>
             </div>
           </div>
 
           {/* Pricing Cards */}
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-4 lg:gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 lg:gap-4">
             {sortedTiers?.map((tier) => {
-              const colors = getTierColor(tier.tierType);
+              const style = getTierStyle(tier.tierType);
+              const TierIcon = style.icon;
               const features = getFeatureList(tier);
               const isCurrentPlan = currentTierSlug === tier.slug;
+              const isPopular = tier.tierType === 'community_pro';
 
-              // Calculate pricing based on billing cycle
               const pricePerMonth = billingCycle === 'annual'
                 ? (parseFloat(tier.priceAnnual) / 12).toFixed(2)
                 : tier.priceMonthly;
@@ -172,29 +221,32 @@ export default function PricingPage() {
                 ? tier.priceAnnual
                 : tier.priceMonthly;
 
-              const isPopular = tier.tierType === 'pro_learn';
-
               return (
                 <div
                   key={tier.slug}
-                  className={`relative flex flex-col rounded-2xl border-2 ${colors.border} bg-white dark:bg-gray-800 p-8 shadow-xl ${isPopular ? 'ring-4 ring-purple-500 ring-opacity-50 scale-105' : ''}`}
+                  className={`relative flex flex-col glass-card p-6 ${
+                    isPopular ? 'neon-border lg:scale-105 lg:-my-4' : ''
+                  } ${style.glow}`}
                 >
                   {isPopular && (
-                    <div className="absolute -top-5 left-0 right-0 mx-auto w-fit">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-1 text-sm font-semibold text-white shadow-lg">
-                        <SparklesIcon className="h-4 w-4" />
+                    <div className="absolute -top-4 left-0 right-0 mx-auto w-fit">
+                      <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold shadow-lg shadow-purple-500/30">
+                        <SparklesIcon className="w-4 h-4" />
                         Most Popular
                       </span>
                     </div>
                   )}
 
-                  {/* Tier Name & Badge */}
-                  <div className="mb-4">
-                    <div className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${colors.badge} mb-3`}>
+                  {/* Tier Icon & Name */}
+                  <div className="mb-6">
+                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${style.gradient} mb-4`}>
+                      <TierIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${style.badge} mb-3`}>
                       {tier.name}
                     </div>
                     {tier.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 min-h-[40px]">
+                      <p className="text-sm text-gray-400 min-h-[40px]">
                         {tier.description}
                       </p>
                     )}
@@ -204,22 +256,18 @@ export default function PricingPage() {
                   <div className="mb-6">
                     {parseFloat(totalPrice) === 0 ? (
                       <div className="flex items-baseline">
-                        <span className="text-5xl font-extrabold text-gray-900 dark:text-white">
-                          Free
-                        </span>
+                        <span className="text-4xl font-bold text-white">Free</span>
                       </div>
                     ) : (
                       <>
                         <div className="flex items-baseline">
-                          <span className="text-5xl font-extrabold text-gray-900 dark:text-white">
+                          <span className="text-4xl font-bold text-white">
                             ${pricePerMonth}
                           </span>
-                          <span className="ml-1 text-xl font-medium text-gray-500 dark:text-gray-400">
-                            /mo
-                          </span>
+                          <span className="ml-1 text-lg text-gray-500">/mo</span>
                         </div>
                         {billingCycle === 'annual' && (
-                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          <p className="mt-1 text-sm text-gray-500">
                             ${totalPrice} billed annually
                           </p>
                         )}
@@ -229,25 +277,37 @@ export default function PricingPage() {
 
                   {/* CTA Button */}
                   <button
-                    onClick={() => handleSelectPlan(tier.slug, tier.name)}
+                    onClick={() => handleSelectPlan(tier.slug)}
                     disabled={isCurrentPlan}
-                    className={`w-full rounded-lg px-4 py-3 text-center text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 mb-6 ${
+                    className={`w-full mb-6 ${
                       isCurrentPlan
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                        : colors.button
+                        ? 'px-6 py-3 rounded-xl bg-gray-800 text-gray-500 cursor-not-allowed'
+                        : isPopular
+                        ? 'btn-primary'
+                        : 'btn-secondary'
                     }`}
                   >
-                    {isCurrentPlan ? 'Current Plan' : tier.tierType === 'free' ? 'Get Started' : 'Upgrade Now'}
+                    {isCurrentPlan ? (
+                      'Current Plan'
+                    ) : tier.tierType === 'free' ? (
+                      <span className="flex items-center justify-center gap-2">
+                        Get Started <ArrowRightIcon className="w-4 h-4" />
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        Upgrade Now <ArrowRightIcon className="w-4 h-4" />
+                      </span>
+                    )}
                   </button>
 
                   {/* Features List */}
                   <ul className="space-y-3 flex-1">
                     {features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start">
-                        <CheckIcon className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          {feature}
-                        </span>
+                      <li key={idx} className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-cyan-500/20 flex items-center justify-center mt-0.5">
+                          <CheckIcon className="w-3 h-3 text-cyan-400" />
+                        </div>
+                        <span className="text-sm text-gray-300">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -256,48 +316,74 @@ export default function PricingPage() {
             })}
           </div>
 
-          {/* Additional Info */}
-          <div className="mt-20 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Frequently Asked Questions
-            </h2>
-            <div className="max-w-3xl mx-auto space-y-6 text-left">
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          {/* FAQ Section */}
+          <div className="mt-24">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-white mb-4">
+                Frequently Asked{' '}
+                <span className="text-gradient-cyan">Questions</span>
+              </h2>
+              <p className="text-gray-400">Everything you need to know about our plans</p>
+            </div>
+
+            <div className="max-w-3xl mx-auto space-y-4">
+              <div className="glass-card p-6">
+                <h3 className="text-lg font-semibold text-white mb-2">
                   Can I change plans anytime?
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-400">
                   Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we'll prorate the difference.
                 </p>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              <div className="glass-card p-6">
+                <h3 className="text-lg font-semibold text-white mb-2">
                   What happens to my AI request quota?
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-400">
                   Your monthly AI request quota resets on your billing cycle date. Unused requests don't roll over, but you can purchase token packages for additional capacity.
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 italic">
+                <p className="text-sm text-gray-500 mt-2 italic">
                   Token packages are available for purchase after signup and never expire.
                 </p>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              <div className="glass-card p-6">
+                <h3 className="text-lg font-semibold text-white mb-2">
                   Do you offer refunds?
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-400">
                   We offer a 14-day money-back guarantee on all paid plans. No questions asked.
                 </p>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <Footer />
+          {/* CTA Footer */}
+          <div className="mt-24 text-center">
+            <div className="relative inline-block">
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-3xl blur-xl" />
+              <div className="relative glass-panel p-12 rounded-3xl border border-white/10">
+                <h2 className="text-3xl font-bold text-white mb-4">
+                  Ready to start your AI journey?
+                </h2>
+                <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                  Join thousands of learners building their AI skills with All Thrive.
+                </p>
+                <Link
+                  to="/auth"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold hover:shadow-neon transition-all duration-300"
+                >
+                  Get Started Free <ArrowRightIcon className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </DashboardLayout>
+
+      {/* Footer */}
+      <Footer />
+    </div>
   );
 }

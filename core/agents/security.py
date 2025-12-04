@@ -16,6 +16,43 @@ from django.core.cache import cache
 logger = logging.getLogger(__name__)
 
 
+def _is_emoji(char: str) -> bool:
+    """
+    Check if a character is an emoji.
+
+    Covers common emoji Unicode ranges including:
+    - Emoticons, Dingbats, Symbols
+    - Supplemental symbols, Pictographs
+    - Transport/map symbols, Enclosed characters
+    - Regional indicators, Skin tone modifiers
+    """
+    code = ord(char)
+    return (
+        # Miscellaneous Symbols and Pictographs
+        0x1F300 <= code <= 0x1F9FF
+        # Emoticons
+        or 0x1F600 <= code <= 0x1F64F
+        # Transport and Map Symbols
+        or 0x1F680 <= code <= 0x1F6FF
+        # Supplemental Symbols and Pictographs
+        or 0x1FA00 <= code <= 0x1FAFF
+        # Dingbats
+        or 0x2700 <= code <= 0x27BF
+        # Miscellaneous Symbols
+        or 0x2600 <= code <= 0x26FF
+        # Enclosed Alphanumeric Supplement
+        or 0x1F100 <= code <= 0x1F1FF
+        # Regional Indicator Symbols (flags)
+        or 0x1F1E0 <= code <= 0x1F1FF
+        # Variation selectors (emoji modifiers)
+        or 0xFE00 <= code <= 0xFE0F
+        # Skin tone modifiers
+        or 0x1F3FB <= code <= 0x1F3FF
+        # Zero-width joiner (used in compound emojis)
+        or code == 0x200D
+    )
+
+
 class PromptInjectionFilter:
     """
     Detects and filters malicious prompt injection attempts.
@@ -79,9 +116,9 @@ class PromptInjectionFilter:
                 return False, 'Suspicious content detected'
 
         # Check for excessive special characters (often used in injection)
-        special_char_ratio = sum(1 for c in user_message if not c.isalnum() and not c.isspace()) / max(
-            len(user_message), 1
-        )
+        # Exclude emojis from special character count - they're legitimate user input
+        special_chars = sum(1 for c in user_message if not c.isalnum() and not c.isspace() and not _is_emoji(c))
+        special_char_ratio = special_chars / max(len(user_message), 1)
         if special_char_ratio > 0.3:
             return False, 'Too many special characters'
 

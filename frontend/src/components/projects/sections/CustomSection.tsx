@@ -234,7 +234,7 @@ export function CustomSection({ content, isEditing, onUpdate }: CustomSectionPro
         <div className="flex items-center gap-4 mb-8">
           <InlineEditableTitle
             value={title || 'Custom Section'}
-            isEditable={true}
+            isEditable={isEditing}
             onChange={handleTitleChange}
             placeholder="Section title..."
             className="text-2xl font-bold text-gray-900 dark:text-white"
@@ -247,7 +247,7 @@ export function CustomSection({ content, isEditing, onUpdate }: CustomSectionPro
         <EditableBlocksContainer
           blocks={blocks || []}
           onBlocksChange={handleBlocksChange}
-          isEditing={true}
+          isEditing={isEditing}
         />
       </section>
     );

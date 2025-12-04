@@ -149,6 +149,18 @@ class User(AbstractUser):
         null=True, blank=True, help_text='Timestamp of most recently earned achievement'
     )
 
+    # Additional achievement tracking fields
+    battle_types_tried = models.IntegerField(default=0, help_text='Number of different battle types participated in')
+    new_users_welcomed = models.IntegerField(default=0, help_text='Number of new users welcomed to the community')
+    perfect_quiz_scores = models.IntegerField(default=0, help_text='Number of quizzes completed with perfect scores')
+    weekly_goals_completed = models.IntegerField(default=0, help_text='Number of weekly goals completed')
+    weekly_points_gained = models.IntegerField(default=0, help_text='Points gained in the current week')
+    broke_streak_record = models.BooleanField(default=False, help_text='Whether user broke their own streak record')
+    days_active_this_month = models.IntegerField(default=0, help_text='Number of days active in current month')
+    achievement_categories_earned = models.IntegerField(
+        default=0, help_text='Number of unique achievement categories with at least one earned achievement'
+    )
+
     class Meta:
         ordering = ['-date_joined']
         indexes = [

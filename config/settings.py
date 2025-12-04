@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'core.learning_paths',  # Auto-generated learning paths per topic
     'core.billing',  # Stripe subscriptions and token packages
     'core.ai_usage',  # AI usage tracking and cost analytics
+    'core.stats',  # Platform statistics
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -487,6 +488,7 @@ LOGGING = {
         'core': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
+            'propagate': False,
         },
         'core.billing': {
             'handlers': ['console', 'file'],

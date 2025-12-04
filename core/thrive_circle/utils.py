@@ -112,9 +112,9 @@ def check_weekly_goals(user, activity_type):
         goal.completed_at = timezone.now()
         goal.save()
 
-        # Award bonus XP with _skip_goal_check=True to prevent infinite recursion
+        # Award bonus points with _skip_goal_check=True to prevent infinite recursion
         user.tier_status.add_xp(
-            goal.xp_reward,
+            goal.points_reward,
             'weekly_goal',
             f'Completed: {goal.get_goal_type_display()}',
             _skip_goal_check=True,  # Prevent recursion!

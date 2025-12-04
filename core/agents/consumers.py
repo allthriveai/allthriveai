@@ -12,8 +12,11 @@ import json
 import logging
 from typing import Any
 
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
+
+from core.projects.models import Project
 
 from .metrics import MetricsCollector
 from .security import RateLimiter
@@ -57,6 +60,29 @@ class ChatConsumer(AsyncWebsocketConsumer):
             logger.warning(f'Unauthenticated WebSocket connection attempt for conversation {self.conversation_id}')
             await self.close(code=4001)
             return
+
+        # Validate conversation access authorization
+        # For project-{id} conversations, verify the user owns the project
+        # Note: Frontend uses Date.now() for temp conversation IDs (13+ digits)
+        # Actual project IDs are much smaller (typically < 1 billion)
+        if self.conversation_id.startswith('project-'):
+            try:
+                project_id = int(self.conversation_id.replace('project-', ''))
+                # Only check authorization for reasonable project IDs
+                # Date.now() produces 13-digit numbers (> 1 trillion), skip those
+                if project_id < 1_000_000_000:  # Less than 1 billion = real project ID
+                    has_access = await self._check_project_access(project_id)
+                    if not has_access:
+                        logger.warning(
+                            f'Unauthorized project access attempt: user={self.user.id}, project={project_id}'
+                        )
+                        await self.close(code=4003)
+                        return
+                # else: timestamp-based temp ID, allow connection
+            except (ValueError, TypeError):
+                logger.warning(f'Invalid project conversation ID format: {self.conversation_id}')
+                await self.close(code=4003)
+                return
 
         # Join Redis channel for this conversation
         await self.channel_layer.group_add(
@@ -140,7 +166,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
         Receive message from Redis Pub/Sub (sent by Celery task).
         Forward to WebSocket client.
         """
-        await self.send(text_data=json.dumps(event))
+        event_type = event.get('event')
+        logger.info(f'[WS_SEND] Forwarding to client: event={event_type}, conversation={event.get("conversation_id")}')
+
+        # Send to WebSocket client
+        json_data = json.dumps(event)
+        await self.send(text_data=json_data)
+        logger.info(f'[WS_SENT] Successfully sent to client: event={event_type}, bytes={len(json_data)}')
 
     async def send_error(self, error_message: str):
         """Send error message to client"""
@@ -153,3 +185,32 @@ class ChatConsumer(AsyncWebsocketConsumer):
         from datetime import datetime
 
         return datetime.utcnow().isoformat() + 'Z'
+
+    @database_sync_to_async
+    def _check_project_access(self, project_id: int) -> bool:
+        """
+        Check if the current user has access to the specified project.
+
+        Returns True if:
+        - User is the project owner
+        - User is a collaborator on the project
+
+        Args:
+            project_id: The project ID to check access for
+
+        Returns:
+            bool: True if user has access, False otherwise
+        """
+        try:
+            project = Project.objects.get(id=project_id)
+            # Check if user is owner
+            if project.user_id == self.user.id:
+                return True
+            # Check if user is a collaborator (if collaborators field exists)
+            if hasattr(project, 'collaborators') and project.collaborators.filter(id=self.user.id).exists():
+                return True
+            return False
+        except Project.DoesNotExist:
+            # Project doesn't exist - allow connection for creation flow
+            # The user will create this project during the conversation
+            return True

@@ -600,7 +600,7 @@ class Command(BaseCommand):
                 'points': 50,
                 'criteria_type': CriteriaType.THRESHOLD,
                 'criteria_value': 500,
-                'tracking_field': 'weekly_xp_gained',  # TODO: Need to track this
+                'tracking_field': 'weekly_points_gained',  # TODO: Need to track this
                 'rarity': AchievementRarity.RARE,
                 'order': 8,
             },

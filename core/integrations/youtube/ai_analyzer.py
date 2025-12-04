@@ -1,10 +1,12 @@
 """AI-powered analyzer for YouTube videos to extract tools, categories, and topics."""
 
 import logging
+import time
 from typing import Any
 
 from django.conf import settings
 
+from core.ai_usage.tracker import AIUsageTracker
 from core.taxonomy.models import Taxonomy
 from core.tools.models import Tool
 
@@ -34,7 +36,7 @@ def analyze_youtube_video(video_data: dict[str, Any], user) -> dict[str, Any]:
 
     # Use AI to extract metadata
     try:
-        ai_result = _call_ai_analyzer(context)
+        ai_result = _call_ai_analyzer(context, user=user)
 
         # Match tools from database
         tools = _match_tools(ai_result.get('tools', []))
@@ -68,11 +70,15 @@ def _prepare_analysis_context(video_data: dict[str, Any]) -> str:
     return '\n'.join(context_parts)
 
 
-def _call_ai_analyzer(context: str) -> dict[str, list[str]]:
+def _call_ai_analyzer(context: str, user=None) -> dict[str, list[str]]:
     """
     Call AI service to analyze video content.
 
     Uses Azure OpenAI or OpenAI to extract tools, categories, and topics.
+
+    Args:
+        context: Text context for AI analysis
+        user: Django User instance (optional, for AI usage tracking)
     """
     try:
         from langchain_core.messages import HumanMessage, SystemMessage
@@ -114,7 +120,25 @@ Respond in this exact JSON format:
 
         messages = [SystemMessage(content=system_prompt), HumanMessage(content=f'Analyze this video:\n\n{context}')]
 
+        start_time = time.time()
         response = llm.invoke(messages)
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        # Track AI usage for cost reporting
+        if user:
+            # LangChain responses may have usage metadata in response_metadata
+            usage_metadata = getattr(response, 'response_metadata', {})
+            token_usage = usage_metadata.get('token_usage', {})
+            AIUsageTracker.track_usage(
+                user=user,
+                feature='youtube_analysis',
+                provider='azure_openai',
+                model=settings.AZURE_OPENAI_DEPLOYMENT_NAME,
+                input_tokens=token_usage.get('prompt_tokens', 0),
+                output_tokens=token_usage.get('completion_tokens', 0),
+                latency_ms=latency_ms,
+                status='success',
+            )
 
         # Parse JSON response
         import json

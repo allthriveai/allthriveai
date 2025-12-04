@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { buildWebSocketUrl, logWebSocketUrl } from '@/utils/websocket';
 
 // Simple cookie reader for CSRF token (mirrors frontend/src/services/api.ts)
 function getCookie(name: string): string | null {
@@ -45,6 +46,32 @@ export interface WebSocketMessage {
     message?: string;
     error?: string;
   };
+  // Quota exceeded fields
+  reason?: string;
+  subscription?: {
+    tier?: string;
+    ai_requests?: {
+      limit?: number;
+      used?: number;
+      remaining?: number;
+    };
+    tokens?: {
+      balance?: number;
+    };
+  };
+  can_purchase_tokens?: boolean;
+  upgrade_url?: string;
+}
+
+export interface QuotaExceededInfo {
+  reason: string;
+  tier: string;
+  aiRequestsLimit: number;
+  aiRequestsUsed: number;
+  aiRequestsRemaining: number;
+  tokenBalance: number;
+  canPurchaseTokens: boolean;
+  upgradeUrl: string;
 }
 
 export interface ChatMessage {
@@ -65,6 +92,7 @@ interface UseIntelligentChatOptions {
   conversationId: string;
   onError?: (error: string) => void;
   onProjectCreated?: (projectUrl: string, projectTitle: string) => void;
+  onQuotaExceeded?: (info: QuotaExceededInfo) => void;
   autoReconnect?: boolean;
 }
 
@@ -72,6 +100,7 @@ export function useIntelligentChat({
   conversationId,
   onError,
   onProjectCreated,
+  onQuotaExceeded,
   autoReconnect = true
 }: UseIntelligentChatOptions) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -93,6 +122,29 @@ export function useIntelligentChat({
   const intentionalCloseRef = useRef(false);
   const connectFnRef = useRef<(() => void) | null>(null);
   const isConnectingRef = useRef(false); // Ref-based lock to prevent duplicate connections
+  const seenMessageIdsRef = useRef<Set<string>>(new Set()); // Track seen message IDs for deduplication
+
+  // Helper to add a message with deduplication
+  const addMessageWithDedup = useCallback((newMessage: ChatMessage) => {
+    // Check if we've already seen this message ID
+    if (seenMessageIdsRef.current.has(newMessage.id)) {
+      console.log(`[WebSocket] Duplicate message ignored: ${newMessage.id}`);
+      return;
+    }
+
+    // Mark as seen
+    seenMessageIdsRef.current.add(newMessage.id);
+
+    setMessages((prev) => {
+      // Also check in existing messages array (belt and suspenders)
+      if (prev.some(m => m.id === newMessage.id)) {
+        return prev;
+      }
+      const newMessages = [...prev, newMessage];
+      // Limit message history to prevent memory issues
+      return newMessages.slice(-MAX_MESSAGES);
+    });
+  }, []);
 
   // Clear all timers
   const clearTimers = useCallback(() => {
@@ -213,14 +265,12 @@ export function useIntelligentChat({
     }
 
     // Step 2: Connect to WebSocket with connection token
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // WebSocket connects directly to backend
-    const wsHost = import.meta.env.VITE_API_URL
-      ? import.meta.env.VITE_API_URL.replace(/^https?:\/\//, '')
-      : 'localhost:8000';
-    const wsUrl = `${protocol}//${wsHost}/ws/chat/${conversationId}/?connection_token=${connectionToken}`;
+    // Uses direct connection to backend (see src/utils/websocket.ts for architecture docs)
+    const wsUrl = buildWebSocketUrl(`/ws/chat/${conversationId}/`, {
+      connection_token: connectionToken,
+    });
 
-    console.log('[WebSocket] Creating connection to:', wsUrl.replace(/connection_token=[^&]+/, 'connection_token=***'));
+    logWebSocketUrl(wsUrl, '[WebSocket] Creating connection');
     try {
       const ws = new WebSocket(wsUrl);
 
@@ -249,6 +299,7 @@ export function useIntelligentChat({
       ws.onmessage = (event) => {
         try {
           const data: WebSocketMessage = JSON.parse(event.data);
+          console.log('[WebSocket] Received message:', data.event, data);
 
           // Ignore pong responses from server
           if (data.event === 'pong') {
@@ -274,13 +325,21 @@ export function useIntelligentChat({
             case 'chunk':
               // Append chunk to current message
               if (data.chunk) {
+                // If no message ID exists (e.g., error from image generation), create one
+                if (!currentMessageIdRef.current) {
+                  currentMessageIdRef.current = `msg-${Date.now()}`;
+                  currentMessageRef.current = '';
+                }
                 currentMessageRef.current += data.chunk;
 
                 // Update or add the assistant message
                 setMessages((prev) => {
-                  const existingIndex = prev.findIndex(m => m.id === currentMessageIdRef.current);
+                  // First, remove any "generating" type message since this chunk replaces it
+                  const filteredPrev = prev.filter(m => m.metadata?.type !== 'generating');
+
+                  const existingIndex = filteredPrev.findIndex(m => m.id === currentMessageIdRef.current);
                   if (existingIndex >= 0) {
-                    const updated = [...prev];
+                    const updated = [...filteredPrev];
                     updated[existingIndex] = {
                       ...updated[existingIndex],
                       content: currentMessageRef.current,
@@ -288,7 +347,7 @@ export function useIntelligentChat({
                     return updated;
                   } else {
                     const newMessages = [
-                      ...prev,
+                      ...filteredPrev,
                       {
                         id: currentMessageIdRef.current,
                         content: currentMessageRef.current,
@@ -322,28 +381,38 @@ export function useIntelligentChat({
             case 'image_generating':
               // Image generation started - show generating indicator
               console.log('[WebSocket] Image generation started');
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: `generating-${Date.now()}`,
-                  content: data.message || 'Creating your image with Nano Banana...',
-                  sender: 'assistant' as const,
-                  timestamp: new Date(),
-                  metadata: { type: 'generating' },
-                },
-              ]);
+              // Use a stable ID for generating state to prevent duplicates
+              const generatingId = `generating-${conversationId}`;
+              // Remove any existing generating message first, then add new one
+              setMessages((prev) => {
+                const filtered = prev.filter(m => m.id !== generatingId);
+                return [
+                  ...filtered,
+                  {
+                    id: generatingId,
+                    content: data.message || 'Creating your image with Nano Banana...',
+                    sender: 'assistant' as const,
+                    timestamp: new Date(),
+                    metadata: { type: 'generating' },
+                  },
+                ];
+              });
               break;
 
             case 'image_generated':
               // Image generated successfully - replace generating indicator with image
               console.log('[WebSocket] Image generated:', data.image_url, 'session:', data.session_id, 'iteration:', data.iteration_number);
+              // Use session_id and iteration for a stable, unique ID
+              const imageMessageId = `generated-image-${data.session_id || 'unknown'}-${data.iteration_number || Date.now()}`;
               setMessages((prev) => {
-                // Remove the generating indicator
-                const filtered = prev.filter(m => m.metadata?.type !== 'generating');
+                // Remove the generating indicator and check for duplicate
+                const filtered = prev.filter(m =>
+                  m.metadata?.type !== 'generating' && m.id !== imageMessageId
+                );
                 return [
                   ...filtered,
                   {
-                    id: `generated-image-${Date.now()}`,
+                    id: imageMessageId,
                     content: '', // No text content, just the image
                     sender: 'assistant' as const,
                     timestamp: new Date(),
@@ -357,6 +426,8 @@ export function useIntelligentChat({
                   },
                 ];
               });
+              // Track this message ID as seen
+              seenMessageIdsRef.current.add(imageMessageId);
               setIsLoading(false);
               break;
 
@@ -371,6 +442,32 @@ export function useIntelligentChat({
               currentMessageRef.current = '';
               currentMessageIdRef.current = '';
               onError?.(data.error || 'An error occurred');
+              break;
+
+            case 'quota_exceeded':
+              // User has exceeded their AI usage limit
+              console.log('[WebSocket] Quota exceeded:', data);
+              setIsLoading(false);
+              currentMessageRef.current = '';
+              currentMessageIdRef.current = '';
+
+              // Build quota info object for callback
+              const quotaInfo: QuotaExceededInfo = {
+                reason: data.reason || 'AI request limit exceeded',
+                tier: data.subscription?.tier || 'Free',
+                aiRequestsLimit: data.subscription?.ai_requests?.limit || 0,
+                aiRequestsUsed: data.subscription?.ai_requests?.used || 0,
+                aiRequestsRemaining: data.subscription?.ai_requests?.remaining || 0,
+                tokenBalance: data.subscription?.tokens?.balance || 0,
+                canPurchaseTokens: data.can_purchase_tokens || false,
+                upgradeUrl: data.upgrade_url || '/settings/billing',
+              };
+
+              // Call the quota exceeded callback if provided
+              onQuotaExceeded?.(quotaInfo);
+
+              // Also show error message
+              onError?.(data.error || 'You\'ve reached your AI usage limit. Please upgrade your plan or purchase tokens.');
               break;
 
             default:
@@ -450,23 +547,32 @@ export function useIntelligentChat({
       return;
     }
 
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      onError?.('WebSocket is not connected');
+    // Generate a unique ID for this message using timestamp + content hash
+    const messageId = `user-${Date.now()}-${content.slice(0, 20).replace(/\s/g, '')}`;
+
+    // Check for duplicate (rapid double-click prevention)
+    if (seenMessageIdsRef.current.has(messageId)) {
+      console.log(`[WebSocket] Duplicate user message ignored: ${messageId}`);
       return;
     }
 
-    // Add user message to chat
+    // Always add user message to chat immediately for instant feedback
+    // This ensures the user sees their message even if WebSocket is connecting
     const userMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
+      id: messageId,
       content,
       sender: 'user',
       timestamp: new Date(),
     };
-    setMessages((prev) => {
-      const newMessages = [...prev, userMessage];
-      // Limit message history to prevent memory issues
-      return newMessages.slice(-MAX_MESSAGES);
-    });
+    addMessageWithDedup(userMessage);
+
+    // Check WebSocket connection AFTER adding user message
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      onError?.('WebSocket is not connected. Attempting to reconnect...');
+      // Try to reconnect
+      connectFnRef.current?.();
+      return;
+    }
 
     // Send to WebSocket
     try {
@@ -475,7 +581,7 @@ export function useIntelligentChat({
       console.error('Failed to send message:', error);
       onError?.('Failed to send message');
     }
-  }, [onError]);
+  }, [onError, addMessageWithDedup]);
 
   // Connect on mount, disconnect on unmount
   useEffect(() => {

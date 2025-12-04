@@ -21,6 +21,7 @@ import {
   LightBulbIcon,
   LinkIcon,
   PlusCircleIcon,
+  ArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import type { SectionType } from '@/types/sections';
 
@@ -91,6 +92,13 @@ const SECTION_TYPE_OPTIONS: SectionTypeOption[] = [
     title: 'Resources',
     description: 'Documentation, blog posts, and related links',
     icon: LinkIcon,
+    category: 'secondary',
+  },
+  {
+    type: 'slideup',
+    title: 'Slide Up',
+    description: 'Two-part interactive display with reveal animation',
+    icon: ArrowUpIcon,
     category: 'secondary',
   },
   {

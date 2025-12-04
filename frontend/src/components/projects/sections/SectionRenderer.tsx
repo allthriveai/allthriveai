@@ -35,6 +35,7 @@ import { DemoSection } from './DemoSection';
 import { ChallengesSection } from './ChallengesSection';
 import { LinksSection } from './LinksSection';
 import { CustomSection } from './CustomSection';
+import { SlideUpSection } from './SlideUpSection';
 import { SectionTypePicker } from '../editor/SectionTypePicker';
 
 interface SectionRendererProps {
@@ -67,6 +68,8 @@ export function SectionRenderer({ section, isEditing, onUpdate }: SectionRendere
       return <ChallengesSection content={section.content as any} {...commonProps} />;
     case 'links':
       return <LinksSection content={section.content as any} {...commonProps} />;
+    case 'slideup':
+      return <SlideUpSection content={section.content as any} {...commonProps} />;
     case 'custom':
       return <CustomSection content={section.content as any} {...commonProps} />;
     default:

@@ -69,14 +69,14 @@ export function AutomatedProfile() {
                   className="relative h-full"
                 >
                   {/* Step card */}
-                  <div className="glass-card p-5 rounded-2xl border border-white/10 hover:border-cyan-500/30 transition-all duration-300 text-center group h-full">
+                  <div className="glass-card p-5 rounded-sm border border-white/10 hover:border-cyan-500/30 transition-all duration-300 text-center group h-full">
                     {/* Step number */}
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-gradient-to-r from-cyan-400 to-green-400 flex items-center justify-center text-[#020617] font-bold text-sm shadow-neon">
                       {step.id}
                     </div>
 
                     {/* Icon */}
-                    <div className="w-14 h-14 mx-auto mb-3 rounded-xl bg-gradient-to-br from-cyan-500/20 to-green-500/20 flex items-center justify-center group-hover:shadow-neon transition-all duration-300">
+                    <div className="w-14 h-14 mx-auto mb-3 rounded-sm bg-gradient-to-br from-cyan-500/20 to-green-500/20 flex items-center justify-center group-hover:shadow-neon transition-all duration-300">
                       {isSparkles ? (
                         <SparklesIcon className="w-7 h-7 text-cyan-400" />
                       ) : (
@@ -129,10 +129,10 @@ export function AutomatedProfile() {
           transition={{ duration: 0.7, delay: 0.3 }}
           className="mt-12"
         >
-          <div className="glass-card p-6 rounded-2xl border border-cyan-500/20">
+          <div className="glass-card p-6 rounded-sm border border-cyan-500/20">
             <div className="flex items-start gap-5">
               {/* Avatar */}
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-cyan-400 to-green-400 flex items-center justify-center text-2xl font-bold text-[#020617] flex-shrink-0">
+              <div className="w-16 h-16 rounded-sm bg-gradient-to-br from-cyan-400 to-green-400 flex items-center justify-center text-2xl font-bold text-[#020617] flex-shrink-0">
                 MK
               </div>
 
@@ -150,15 +150,15 @@ export function AutomatedProfile() {
 
                 {/* Auto-detected stats */}
                 <div className="flex flex-wrap gap-3">
-                  <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                  <div className="px-3 py-1.5 rounded-sm bg-white/5 border border-white/10">
                     <span className="text-cyan-400 font-semibold">5</span>
                     <span className="text-gray-400 text-sm ml-1">Projects</span>
                   </div>
-                  <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                  <div className="px-3 py-1.5 rounded-sm bg-white/5 border border-white/10">
                     <span className="text-cyan-400 font-semibold">4</span>
                     <span className="text-gray-400 text-sm ml-1">AI Tools</span>
                   </div>
-                  <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                  <div className="px-3 py-1.5 rounded-sm bg-white/5 border border-white/10">
                     <span className="text-cyan-400 font-semibold">320</span>
                     <span className="text-gray-400 text-sm ml-1">XP</span>
                   </div>

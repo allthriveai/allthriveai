@@ -188,10 +188,10 @@ export function ActiveQuestIndicator({ activeQuest, onClick, onAbandon, isAbando
                 <span className={config.color}>{sideQuest.difficulty}</span>
               </div>
 
-              {/* XP Reward */}
+              {/* Points Reward */}
               <div className="flex items-center gap-1">
                 <TrophyIcon className="w-3 h-3" style={{ color: questColors.colorFrom }} />
-                <span style={{ color: questColors.colorFrom }}>+{sideQuest.pointsReward} XP</span>
+                <span style={{ color: questColors.colorFrom }}>+{sideQuest.pointsReward} Points</span>
               </div>
             </div>
 

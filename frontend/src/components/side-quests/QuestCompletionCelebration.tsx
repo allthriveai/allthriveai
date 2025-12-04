@@ -159,7 +159,7 @@ export function QuestCompletionCelebration({ completedQuests, onClose }: QuestCo
               </p>
             )}
 
-            {/* XP Earned */}
+            {/* Points Earned */}
             <div
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6"
               style={{
@@ -168,7 +168,7 @@ export function QuestCompletionCelebration({ completedQuests, onClose }: QuestCo
               }}
             >
               <SparklesIcon className="w-5 h-5 text-green-400" />
-              <span className="text-green-400 font-bold text-lg">+{currentQuest.pointsAwarded} XP</span>
+              <span className="text-green-400 font-bold text-lg">+{currentQuest.pointsAwarded} Points</span>
             </div>
 
             {/* Progress indicator for multiple quests */}
@@ -203,10 +203,10 @@ export function QuestCompletionCelebration({ completedQuests, onClose }: QuestCo
               )}
             </button>
 
-            {/* Total XP summary for multiple quests */}
+            {/* Total Points summary for multiple quests */}
             {completedQuests.length > 1 && currentQuestIndex === completedQuests.length - 1 && (
               <p className="mt-3 text-sm text-slate-400">
-                Total earned: <span className="text-green-400 font-semibold">+{totalXP} XP</span>
+                Total earned: <span className="text-green-400 font-semibold">+{totalPoints} Points</span>
               </p>
             )}
           </div>

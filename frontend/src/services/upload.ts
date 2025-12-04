@@ -25,13 +25,24 @@ export async function uploadImage(
   formData.append('folder', folder);
   formData.append('is_public', String(isPublic));
 
-  const response = await api.post<UploadResponse>('/upload/image/', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  console.log('[upload] Uploading image:', file.name, 'to folder:', folder);
+  console.log('[upload] File type:', file.type, 'size:', file.size);
 
-  return response.data;
+  try {
+    const response = await api.post<UploadResponse>('/upload/image/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log('[upload] Image upload successful:', response.data.url);
+    return response.data;
+  } catch (error: any) {
+    console.error('[upload] Image upload failed:', error);
+    console.error('[upload] Status:', error?.statusCode);
+    console.error('[upload] Error details:', error?.details);
+    throw error;
+  }
 }
 
 export interface FileUploadResponse {

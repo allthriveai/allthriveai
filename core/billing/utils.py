@@ -6,6 +6,10 @@ Helper functions for billing operations, permissions, and token management.
 
 import logging
 
+from django.db import transaction
+from django.db.models import F
+from django.utils import timezone
+
 from .models import (
     SubscriptionTier,
     TokenTransaction,
@@ -14,6 +18,10 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# Transient errors that should be retried
+TRANSIENT_ERRORS = (ConnectionError, TimeoutError)
 
 
 def get_user_subscription(user) -> UserSubscription | None:
@@ -87,9 +95,11 @@ def can_access_feature(user, feature: str) -> bool:
 
 def can_make_ai_request(user) -> tuple[bool, str]:
     """
-    Check if a user can make an AI request.
+    Check if a user can make an AI request (read-only check).
 
     Checks both subscription limits and token balance.
+    NOTE: This is a non-atomic read. For actual deduction, use
+    check_and_reserve_ai_request() which is atomic.
 
     Args:
         user: Django User instance
@@ -101,8 +111,9 @@ def can_make_ai_request(user) -> tuple[bool, str]:
     if not subscription:
         return False, 'No subscription found'
 
-    # Check subscription AI request limit
-    if subscription.can_make_ai_request():
+    # Check if we need to reset the monthly counter (don't mutate here, just check)
+    can_use_subscription = _check_subscription_quota(subscription)
+    if can_use_subscription:
         return True, 'Within subscription limit'
 
     # Check token balance as fallback
@@ -111,6 +122,80 @@ def can_make_ai_request(user) -> tuple[bool, str]:
         return True, 'Using token balance'
 
     return False, 'AI request limit exceeded and no tokens available'
+
+
+def _check_subscription_quota(subscription: UserSubscription) -> bool:
+    """
+    Check if subscription has remaining AI requests (read-only).
+
+    Does NOT reset the counter - that should be done by a scheduled task.
+    """
+    # 0 means unlimited
+    if subscription.tier.monthly_ai_requests == 0:
+        return True
+
+    return subscription.ai_requests_used_this_month < subscription.tier.monthly_ai_requests
+
+
+def check_and_reserve_ai_request(user) -> tuple[bool, str]:
+    """
+    Atomically check AND reserve an AI request slot.
+
+    This prevents TOCTOU race conditions by combining the check and
+    deduction into a single atomic database operation.
+
+    Args:
+        user: Django User instance
+
+    Returns:
+        Tuple of (success: bool, message: str)
+    """
+    try:
+        with transaction.atomic():
+            # Lock the subscription row to prevent concurrent modifications
+            try:
+                subscription = UserSubscription.objects.select_for_update().get(user=user)
+            except UserSubscription.DoesNotExist:
+                return False, 'No subscription found'
+
+            # Check and reset monthly counter if needed
+            today = timezone.now().date()
+            if subscription.ai_requests_reset_date and subscription.ai_requests_reset_date < today:
+                # Reset the counter atomically
+                subscription.ai_requests_used_this_month = 0
+                subscription.ai_requests_reset_date = today
+                subscription.save(update_fields=['ai_requests_used_this_month', 'ai_requests_reset_date'])
+
+            # Check if within subscription limit (0 = unlimited)
+            if subscription.tier.monthly_ai_requests == 0:
+                # Unlimited - still increment for tracking purposes
+                UserSubscription.objects.filter(pk=subscription.pk).update(
+                    ai_requests_used_this_month=F('ai_requests_used_this_month') + 1
+                )
+                return True, 'Reserved from subscription (unlimited)'
+
+            if subscription.ai_requests_used_this_month < subscription.tier.monthly_ai_requests:
+                # Has remaining quota - atomically increment
+                UserSubscription.objects.filter(pk=subscription.pk).update(
+                    ai_requests_used_this_month=F('ai_requests_used_this_month') + 1
+                )
+                return True, 'Reserved from subscription quota'
+
+            # Subscription quota exhausted - try token balance
+            try:
+                token_balance = UserTokenBalance.objects.select_for_update().get(user=user)
+            except UserTokenBalance.DoesNotExist:
+                return False, 'AI request limit exceeded and no tokens available'
+
+            if token_balance.balance > 0:
+                # Has tokens - we'll deduct actual amount after processing
+                return True, 'Will use token balance'
+
+            return False, 'AI request limit exceeded and no tokens available'
+
+    except Exception as e:
+        logger.error(f'Error in check_and_reserve_ai_request: {e}')
+        return False, f'Error checking quota: {str(e)}'
 
 
 def deduct_ai_request_from_subscription(user) -> bool:
@@ -126,30 +211,29 @@ def deduct_ai_request_from_subscription(user) -> bool:
     Returns:
         True if deducted successfully, False otherwise
     """
-    from django.db.models import F
-
     try:
-        subscription = UserSubscription.objects.select_for_update().get(user=user)
+        with transaction.atomic():
+            subscription = UserSubscription.objects.select_for_update().get(user=user)
 
-        # Check if can make request
-        if not subscription.can_make_ai_request():
-            return False
+            # Check if can make request
+            if not subscription.can_make_ai_request():
+                return False
 
-        # Atomically increment counter using F() expression
-        # This prevents race conditions from concurrent requests
-        UserSubscription.objects.filter(pk=subscription.pk).update(
-            ai_requests_used_this_month=F('ai_requests_used_this_month') + 1
-        )
+            # Atomically increment counter using F() expression
+            # This prevents race conditions from concurrent requests
+            UserSubscription.objects.filter(pk=subscription.pk).update(
+                ai_requests_used_this_month=F('ai_requests_used_this_month') + 1
+            )
 
-        # Refresh from database to get updated value for logging
-        subscription.refresh_from_db()
+            # Refresh from database to get updated value for logging
+            subscription.refresh_from_db()
 
-        logger.debug(
-            f'Deducted AI request from user {user.id} subscription '
-            f'({subscription.ai_requests_used_this_month}/{subscription.tier.monthly_ai_requests})'
-        )
+            logger.debug(
+                f'Deducted AI request from user {user.id} subscription '
+                f'({subscription.ai_requests_used_this_month}/{subscription.tier.monthly_ai_requests})'
+            )
 
-        return True
+            return True
 
     except UserSubscription.DoesNotExist:
         logger.error(f'No subscription found for user {user.id}')
@@ -158,7 +242,10 @@ def deduct_ai_request_from_subscription(user) -> bool:
 
 def deduct_tokens(user, amount: int, description: str = '', ai_provider: str = '', ai_model: str = '') -> bool:
     """
-    Deduct tokens from user's balance.
+    Deduct tokens from user's balance atomically.
+
+    Uses select_for_update to prevent race conditions where multiple
+    concurrent requests could overdraw the balance.
 
     Args:
         user: Django User instance
@@ -171,32 +258,45 @@ def deduct_tokens(user, amount: int, description: str = '', ai_provider: str = '
         True if deducted successfully, False otherwise
     """
     try:
-        token_balance = get_or_create_token_balance(user)
+        with transaction.atomic():
+            # Lock the token balance row to prevent concurrent modifications
+            try:
+                token_balance = UserTokenBalance.objects.select_for_update().get(user=user)
+            except UserTokenBalance.DoesNotExist:
+                # Create balance if doesn't exist (unlikely but handle it)
+                token_balance, _ = UserTokenBalance.objects.get_or_create(user=user, defaults={'balance': 0})
+                token_balance = UserTokenBalance.objects.select_for_update().get(user=user)
 
-        # Check if sufficient balance
-        if not token_balance.has_sufficient_balance(amount):
-            logger.warning(
-                f'Insufficient token balance for user {user.id}: ' f'needed {amount}, has {token_balance.balance}'
+            # Check if sufficient balance (while holding lock)
+            if token_balance.balance < amount:
+                logger.warning(
+                    f'Insufficient token balance for user {user.id}: needed {amount}, has {token_balance.balance}'
+                )
+                return False
+
+            # Atomically deduct tokens using F() expression
+            UserTokenBalance.objects.filter(pk=token_balance.pk).update(
+                balance=F('balance') - amount,
+                total_used=F('total_used') + amount,
             )
-            return False
 
-        # Deduct tokens
-        token_balance.deduct_tokens(amount)
+            # Get updated balance for logging
+            token_balance.refresh_from_db()
 
-        # Log transaction
-        TokenTransaction.objects.create(
-            user=user,
-            transaction_type='usage',
-            amount=-amount,  # Negative for deduction
-            balance_after=token_balance.balance,
-            description=description or f'Used {amount} tokens',
-            ai_provider=ai_provider,
-            ai_model=ai_model,
-        )
+            # Log transaction
+            TokenTransaction.objects.create(
+                user=user,
+                transaction_type='usage',
+                amount=-amount,  # Negative for deduction
+                balance_after=token_balance.balance,
+                description=description or f'Used {amount} tokens',
+                ai_provider=ai_provider,
+                ai_model=ai_model,
+            )
 
-        logger.info(f'Deducted {amount} tokens from user {user.id} ' f'(balance: {token_balance.balance})')
+            logger.info(f'Deducted {amount} tokens from user {user.id} (balance: {token_balance.balance})')
 
-        return True
+            return True
 
     except Exception as e:
         logger.error(f'Failed to deduct tokens for user {user.id}: {e}')

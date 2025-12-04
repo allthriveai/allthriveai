@@ -163,7 +163,7 @@ export default function SideQuestsPage() {
         <div className="h-full flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-2">Join Side Quests</h1>
-            <p className="text-muted">Log in to discover and complete optional challenges for bonus XP</p>
+            <p className="text-muted">Log in to discover and complete optional challenges for bonus Points</p>
           </div>
         </div>
       </DashboardLayout>
@@ -597,7 +597,7 @@ export default function SideQuestsPage() {
                               </div>
                               <div className="flex items-center gap-1.5 text-xs">
                                 <FontAwesomeIcon icon={faTrophy} className="text-amber-400" />
-                                <span className="text-amber-400 font-medium">{totalXP} XP</span>
+                                <span className="text-amber-400 font-medium">{totalPoints} Points</span>
                               </div>
                               <div className="flex items-center gap-2 flex-1 min-w-[100px] max-w-[200px]">
                                 <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--glass-fill)' }}>
@@ -747,7 +747,7 @@ export default function SideQuestsPage() {
                                       )}
                                     </div>
 
-                                    {/* Right Side - XP & Difficulty */}
+                                    {/* Right Side - Points & Difficulty */}
                                     <div className="flex items-center gap-3 flex-shrink-0">
                                       <div className={`hidden sm:flex items-center gap-1 text-xs ${config.color}`}>
                                         <FontAwesomeIcon icon={config.icon} />

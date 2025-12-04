@@ -214,6 +214,7 @@ def detect_intent(request):
             user_message=user_message,
             conversation_history=conversation_history,
             integration_type=integration_type,
+            user=request.user,
         )
 
         # Get transition message
