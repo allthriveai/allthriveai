@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MagnifyingGlassIcon, CheckCircleIcon, SparklesIcon, ArrowRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { ToolRecommendationQuiz } from '@/components/tools/ToolRecommendationQuiz';
 import { getQuizzes } from '@/services/quiz';
 import { QuizPreviewCard } from '@/components/quiz/QuizPreviewCard';
 import type { Quiz, QuizDifficulty, QuizFilters } from '@/components/quiz/types';
@@ -14,7 +13,6 @@ export default function QuizListPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showToolQuiz, setShowToolQuiz] = useState(false);
 
   // Filter states from URL
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
@@ -111,51 +109,6 @@ export default function QuizListPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tool Finder Quiz Modal */}
-        {showToolQuiz && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 rounded-2xl border border-white/10 shadow-2xl">
-              <button
-                onClick={() => setShowToolQuiz(false)}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white transition-colors z-10"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-              <div className="p-6">
-                <ToolRecommendationQuiz
-                  onComplete={() => {}}
-                  onClose={() => setShowToolQuiz(false)}
-                  embedded
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tool Finder Card - Featured placement */}
-        <button
-          onClick={() => setShowToolQuiz(true)}
-          className="w-full mb-8 p-6 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10 border border-cyan-500/20 rounded-xl text-left hover:border-cyan-500/40 transition-all group"
-        >
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0">
-              <SparklesIcon className="w-7 h-7 text-cyan-400" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-lg font-semibold text-white">Find Your Perfect AI Tool</h3>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                  New
-                </span>
-              </div>
-              <p className="text-slate-400">
-                Not sure which AI tools to use? Take our quick quiz and get personalized recommendations based on your needs.
-              </p>
-            </div>
-            <ArrowRightIcon className="w-6 h-6 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all flex-shrink-0 mt-2" />
-          </div>
-        </button>
-
         {/* Search and Filters Section */}
         <div className="mb-8 bg-white/80 dark:bg-white/5 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-xl p-6 shadow-sm">
           {/* Search Bar */}

@@ -319,9 +319,10 @@ export default function SideQuestsPage() {
           </div>
         </header>
 
-        {/* Success notification */}
-        {successMessage && (
-          <div className="max-w-6xl mx-auto px-6 mt-4">
+        {/* Main Content Container */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+          {/* Success notification */}
+          {successMessage && (
             <div className="bg-green-500/10 dark:bg-green-500/10 border border-green-500/30 dark:border-green-500/30 rounded-lg p-3 flex items-center justify-between" role="alert">
               <div className="flex items-center gap-2">
                 <FontAwesomeIcon icon={faCheckCircle} className="text-green-600 dark:text-green-400" aria-hidden="true" />
@@ -331,10 +332,7 @@ export default function SideQuestsPage() {
                 <FontAwesomeIcon icon={faTimes} aria-hidden="true" />
               </button>
             </div>
-          </div>
-        )}
-
-        <div className="max-w-6xl mx-auto px-6 pb-8 space-y-10">
+          )}
           {/* Continue Playing - Active Quests */}
           {inProgressQuests.length > 0 && (
             <section>
@@ -374,7 +372,7 @@ export default function SideQuestsPage() {
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
-                className={`flex gap-4 overflow-x-auto scrollbar-hide pb-2 -mx-6 px-6 ${isDragging ? '' : 'snap-x snap-mandatory'} select-none`}
+                className={`flex gap-4 overflow-x-auto scrollbar-hide pb-2 ${isDragging ? '' : 'snap-x snap-mandatory'} select-none`}
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: 'grab' }}
               >
                 {inProgressQuests.map((userQuest) => {
@@ -463,7 +461,7 @@ export default function SideQuestsPage() {
 
           {/* Quest Paths - Game Library */}
           <section>
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-4">
               <FontAwesomeIcon icon={faCompass} className="text-cyan-400" />
               <h2 className="text-lg font-bold text-default">Quest Paths</h2>
             </div>

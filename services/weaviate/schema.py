@@ -23,6 +23,7 @@ class WeaviateSchema:
     PROJECT_COLLECTION = 'Project'
     USER_PROFILE_COLLECTION = 'UserProfile'
     TOOL_COLLECTION = 'Tool'
+    QUIZ_COLLECTION = 'Quiz'
 
     @classmethod
     def get_project_schema(cls) -> dict:
@@ -285,12 +286,113 @@ class WeaviateSchema:
         }
 
     @classmethod
+    def get_quiz_schema(cls) -> dict:
+        """
+        Schema for Quiz collection.
+
+        Stores quiz embeddings for semantic search across
+        learning content.
+        """
+        return {
+            'class': cls.QUIZ_COLLECTION,
+            'description': 'Quiz embeddings for semantic search',
+            'vectorizer': 'none',
+            'properties': [
+                {
+                    'name': 'quiz_id',
+                    'dataType': ['text'],  # UUID stored as text
+                    'description': 'Django Quiz model UUID',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'title',
+                    'dataType': ['text'],
+                    'description': 'Quiz title',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'combined_text',
+                    'dataType': ['text'],
+                    'description': 'Combined text for keyword search (title + description + topics)',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'description',
+                    'dataType': ['text'],
+                    'description': 'Quiz description',
+                    'indexFilterable': False,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'topic',
+                    'dataType': ['text'],
+                    'description': 'Main topic of the quiz',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'topics',
+                    'dataType': ['text[]'],
+                    'description': 'Topic tags',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'difficulty',
+                    'dataType': ['text'],
+                    'description': 'Difficulty level (beginner, intermediate, advanced)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'tool_names',
+                    'dataType': ['text[]'],
+                    'description': 'Names of tools covered in the quiz',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'category_names',
+                    'dataType': ['text[]'],
+                    'description': 'Category names',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'question_count',
+                    'dataType': ['int'],
+                    'description': 'Number of questions in the quiz',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'is_published',
+                    'dataType': ['boolean'],
+                    'description': 'Whether quiz is published',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'created_at',
+                    'dataType': ['date'],
+                    'description': 'Quiz creation timestamp',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+            ],
+        }
+
+    @classmethod
     def get_all_schemas(cls) -> list[dict]:
         """Get all collection schemas."""
         return [
             cls.get_project_schema(),
             cls.get_user_profile_schema(),
             cls.get_tool_schema(),
+            cls.get_quiz_schema(),
         ]
 
     @classmethod

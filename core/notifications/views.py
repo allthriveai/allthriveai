@@ -177,10 +177,10 @@ def update_preferences(request):
 @api_view(['GET', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def my_email_preferences(request):
-    """Get or update authenticated user's email preferences.
+    """Get or update authenticated user's notification preferences.
 
-    GET: Returns current email preferences
-    PATCH: Updates email preferences
+    GET: Returns current email and SMS preferences
+    PATCH: Updates email and SMS preferences
 
     PATCH body (JSON):
         email_battles: bool (optional)
@@ -188,16 +188,23 @@ def my_email_preferences(request):
         email_social: bool (optional)
         email_quests: bool (optional)
         email_marketing: bool (optional)
+        allow_sms_invitations: bool (optional)
+        phone_number: str (optional) - Phone number in E.164 format
 
     Returns:
         JSON response with preferences
     """
+    from core.sms.utils import ValidationError as PhoneValidationError
+    from core.sms.utils import normalize_phone_number
+
     # Get or create preferences for the user
     prefs, created = EmailPreferences.objects.get_or_create(user=request.user)
+    user = request.user
 
     if request.method == 'GET':
         return Response(
             {
+                # Email preferences
                 'email_billing': prefs.email_billing,
                 'email_welcome': prefs.email_welcome,
                 'email_battles': prefs.email_battles,
@@ -205,11 +212,16 @@ def my_email_preferences(request):
                 'email_social': prefs.email_social,
                 'email_quests': prefs.email_quests,
                 'email_marketing': prefs.email_marketing,
+                # SMS preferences (from User model)
+                'phone_number': user.phone_number or '',
+                'phone_verified': user.phone_verified,
+                'allow_sms_invitations': user.allow_sms_invitations,
             }
         )
 
     # PATCH: Update preferences
-    allowed_fields = [
+    # Email preference fields
+    email_fields = [
         'email_battles',
         'email_achievements',
         'email_social',
@@ -218,19 +230,54 @@ def my_email_preferences(request):
     ]
 
     updated = []
-    for field in allowed_fields:
+    for field in email_fields:
         if field in request.data:
             setattr(prefs, field, bool(request.data[field]))
             updated.append(field)
 
     if updated:
         prefs.save(update_fields=updated + ['updated_at'])
-        logger.info(f'User {request.user.id} ({mask_email(request.user.email)}) updated email preferences: {updated}')
+        logger.info(f'User {user.id} ({mask_email(user.email)}) updated email preferences: {updated}')
+
+    # SMS preference fields (on User model)
+    user_updated = []
+
+    # Handle SMS opt-in toggle
+    if 'allow_sms_invitations' in request.data:
+        user.allow_sms_invitations = bool(request.data['allow_sms_invitations'])
+        user_updated.append('allow_sms_invitations')
+
+    # Handle phone number update
+    if 'phone_number' in request.data:
+        phone_input = request.data['phone_number']
+        if phone_input:
+            try:
+                normalized_phone = normalize_phone_number(phone_input)
+                # Only update if phone changed
+                if normalized_phone != user.phone_number:
+                    user.phone_number = normalized_phone
+                    user.phone_verified = False  # Reset verification when phone changes
+                    user.phone_verified_at = None
+                    user_updated.extend(['phone_number', 'phone_verified', 'phone_verified_at'])
+            except PhoneValidationError as e:
+                return Response({'error': str(e)}, status=400)
+        else:
+            # Clear phone number
+            if user.phone_number:
+                user.phone_number = ''
+                user.phone_verified = False
+                user.phone_verified_at = None
+                user_updated.extend(['phone_number', 'phone_verified', 'phone_verified_at'])
+
+    if user_updated:
+        user.save(update_fields=user_updated)
+        logger.info(f'User {user.id} ({mask_email(user.email)}) updated SMS preferences: {user_updated}')
 
     return Response(
         {
             'success': True,
-            'updated': updated,
+            'updated': updated + user_updated,
+            # Email preferences
             'email_billing': prefs.email_billing,
             'email_welcome': prefs.email_welcome,
             'email_battles': prefs.email_battles,
@@ -238,5 +285,9 @@ def my_email_preferences(request):
             'email_social': prefs.email_social,
             'email_quests': prefs.email_quests,
             'email_marketing': prefs.email_marketing,
+            # SMS preferences
+            'phone_number': user.phone_number or '',
+            'phone_verified': user.phone_verified,
+            'allow_sms_invitations': user.allow_sms_invitations,
         }
     )

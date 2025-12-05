@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { ToolRecommendationQuiz } from '@/components/tools/ToolRecommendationQuiz';
 import { getQuiz, startQuiz, submitAnswer, completeQuiz } from '@/services/quiz';
 import { QuizCard } from '@/components/quiz/QuizCard';
 import { QuizProgress } from '@/components/quiz/QuizProgress';
@@ -13,6 +14,25 @@ type QuizState = 'intro' | 'taking' | 'feedback' | 'results';
 export default function QuizPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+
+  // Special case: Tool Recommendation Quiz
+  if (slug === 'find-your-perfect-ai-tool') {
+    return (
+      <DashboardLayout>
+        {() => (
+          <div className="flex-1 overflow-auto">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <ToolRecommendationQuiz
+                onComplete={() => {
+                  // Optionally navigate somewhere after completion
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </DashboardLayout>
+    );
+  }
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);

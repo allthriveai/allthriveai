@@ -8,6 +8,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { SparklesIcon, CpuChipIcon } from '@heroicons/react/24/solid';
 import { useState, useEffect } from 'react';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 // Rotating messages shown during image generation
 const GENERATING_MESSAGES = [
@@ -50,6 +51,7 @@ export function GeneratingPhase({
 }: GeneratingPhaseProps) {
   const bothGenerating = myImageGenerating && opponentImageGenerating;
   const myDone = !myImageGenerating && myImageUrl;
+  const prefersReducedMotion = useReducedMotion();
 
   // Select message array based on phase
   const messages = isJudging ? JUDGING_MESSAGES : GENERATING_MESSAGES;
@@ -97,12 +99,12 @@ export function GeneratingPhase({
           className="text-center mb-12"
         >
           <motion.div
-            animate={{ rotate: 360 }}
+            animate={prefersReducedMotion ? {} : { rotate: 360 }}
             transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
             className="inline-block mb-4"
           >
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500/20 to-pink-500/20 border border-cyan-500/30 flex items-center justify-center">
-              <CpuChipIcon className="w-10 h-10 text-cyan-400" />
+              <CpuChipIcon className="w-10 h-10 text-cyan-400" aria-hidden="true" />
             </div>
           </motion.div>
 
@@ -148,7 +150,7 @@ export function GeneratingPhase({
                 <div className="w-full h-full flex flex-col items-center justify-center">
                   {/* Animated sparkles */}
                   <motion.div
-                    animate={{
+                    animate={prefersReducedMotion ? {} : {
                       scale: [1, 1.2, 1],
                       opacity: [0.5, 1, 0.5],
                     }}
@@ -158,16 +160,16 @@ export function GeneratingPhase({
                       ease: 'easeInOut',
                     }}
                   >
-                    <SparklesIcon className="w-16 h-16 text-cyan-400/50" />
+                    <SparklesIcon className="w-16 h-16 text-cyan-400/50" aria-hidden="true" />
                   </motion.div>
 
                   {/* Progress dots */}
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex gap-2 mt-4" role="status" aria-label="Loading">
                     {[0, 1, 2].map((i) => (
                       <motion.div
                         key={i}
                         className="w-2 h-2 rounded-full bg-cyan-400"
-                        animate={{
+                        animate={prefersReducedMotion ? {} : {
                           scale: [1, 1.5, 1],
                           opacity: [0.3, 1, 0.3],
                         }}
@@ -203,7 +205,7 @@ export function GeneratingPhase({
               {/* Always show mystery for opponent */}
               <div className="w-full h-full flex flex-col items-center justify-center">
                 <motion.div
-                  animate={{
+                  animate={prefersReducedMotion ? {} : {
                     scale: [1, 1.1, 1],
                     rotate: [0, 5, -5, 0],
                   }}
@@ -213,6 +215,8 @@ export function GeneratingPhase({
                     ease: 'easeInOut',
                   }}
                   className="text-6xl"
+                  role="img"
+                  aria-label="Hidden submission"
                 >
                   🎭
                 </motion.div>
@@ -230,14 +234,14 @@ export function GeneratingPhase({
           className="text-center mt-8"
         >
           {/* Rotating status messages with smooth transitions */}
-          <div className="h-8 relative overflow-hidden">
+          <div className="h-8 relative overflow-hidden" role="status" aria-live="polite">
             <AnimatePresence mode="wait">
               <motion.p
                 key={isJudging ? `judging-${messageIndex}` : myDone ? 'done' : messageIndex}
-                initial={{ opacity: 0, y: 20 }}
+                initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.4, ease: 'easeInOut' }}
+                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -20 }}
+                transition={{ duration: prefersReducedMotion ? 0.1 : 0.4, ease: 'easeInOut' }}
                 className="text-slate-400 text-sm absolute inset-x-0"
               >
                 {isJudging
@@ -256,6 +260,7 @@ export function GeneratingPhase({
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8 }}
               className="flex justify-center gap-1.5 mt-4"
+              aria-hidden="true"
             >
               {messages.map((_, i) => (
                 <motion.div
@@ -264,7 +269,7 @@ export function GeneratingPhase({
                     i === messageIndex ? 'bg-cyan-400' : 'bg-slate-600'
                   }`}
                   animate={
-                    i === messageIndex
+                    i === messageIndex && !prefersReducedMotion
                       ? { scale: [1, 1.3, 1] }
                       : { scale: 1 }
                   }

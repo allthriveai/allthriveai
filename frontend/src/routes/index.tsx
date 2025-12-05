@@ -30,6 +30,7 @@ import ThriveCirclePage from '@/pages/ThriveCirclePage';
 import SideQuestsPage from '@/pages/SideQuestsPage';
 import PricingPage from '@/pages/PricingPage';
 import CheckoutPage from '@/pages/CheckoutPage';
+import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
 import PerksPage from '@/pages/PerksPage';
 import MarketplacePage from '@/pages/MarketplacePage';
 import GettingStartedPage from '@/pages/GettingStartedPage';
@@ -130,6 +131,16 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <CheckoutPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Checkout Success - protected route */}
+      <Route
+        path="/checkout/success"
+        element={
+          <ProtectedRoute>
+            <CheckoutSuccessPage />
           </ProtectedRoute>
         }
       />

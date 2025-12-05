@@ -91,6 +91,8 @@ const mockUser: User = {
   totalPoints: 100,
   isStaff: false,
   dateJoined: '2024-01-01T00:00:00Z',
+  role: 'explorer',
+  roleDisplay: 'Explorer',
 };
 
 const mockOtherUser: User = {
@@ -99,6 +101,16 @@ const mockOtherUser: User = {
   username: 'otheruser',
   email: 'other@example.com',
   fullName: 'Other User',
+};
+
+const mockCreatorUser: User = {
+  ...mockUser,
+  id: 3,
+  username: 'creatoruser',
+  email: 'creator@example.com',
+  fullName: 'Creator User',
+  role: 'creator',
+  roleDisplay: 'Creator',
 };
 
 const mockProject: Project = {
@@ -1037,6 +1049,186 @@ describe('ProfilePage - Select Button Conditional Rendering', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Select')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('ProfilePage - Creator Role Shop Tab Access Control', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [],
+      playground: [],
+    });
+  });
+
+  it('should show Shop tab for users with creator role viewing their own profile', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockCreatorUser,
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/creatoruser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Shop')).toBeInTheDocument();
+    });
+  });
+
+  it('should NOT show Shop tab for users without creator role viewing their own profile', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockUser, // explorer role
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Shop')).not.toBeInTheDocument();
+  });
+
+  it('should show Shop tab when viewing a creator user profile as a visitor', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockUser, // logged in as explorer
+      isAuthenticated: true,
+    });
+
+    vi.mocked(authService.getUserByUsername).mockResolvedValue(mockCreatorUser);
+
+    render(
+      <MemoryRouter initialEntries={['/creatoruser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Shop')).toBeInTheDocument();
+    });
+  });
+
+  it('should NOT show Shop tab when viewing a non-creator user profile as a visitor', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockCreatorUser, // logged in as creator
+      isAuthenticated: true,
+    });
+
+    vi.mocked(authService.getUserByUsername).mockResolvedValue(mockOtherUser); // viewing explorer profile
+
+    render(
+      <MemoryRouter initialEntries={['/otheruser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Shop')).not.toBeInTheDocument();
+  });
+
+  it('should redirect to showcase tab when non-creator tries to access marketplace tab via URL', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockUser, // explorer role
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser?tab=marketplace']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      // Shop tab should not be visible
+      expect(screen.queryByText('Shop')).not.toBeInTheDocument();
+      // Should show showcase tab instead
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
+    });
+  });
+
+  it('should allow creator to access marketplace tab via URL on their own profile', async () => {
+    mockUseAuth.mockReturnValue({
+      user: mockCreatorUser,
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/creatoruser?tab=marketplace']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Shop')).toBeInTheDocument();
+    });
+  });
+
+  it('should NOT show Shop tab for unauthenticated users viewing non-creator profile', async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+    });
+
+    vi.mocked(authService.getUserByUsername).mockResolvedValue(mockOtherUser);
+
+    render(
+      <MemoryRouter initialEntries={['/otheruser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Shop')).not.toBeInTheDocument();
+  });
+
+  it('should show Shop tab for unauthenticated users viewing creator profile', async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+    });
+
+    vi.mocked(authService.getUserByUsername).mockResolvedValue(mockCreatorUser);
+
+    render(
+      <MemoryRouter initialEntries={['/creatoruser']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Shop')).toBeInTheDocument();
     });
   });
 });

@@ -55,6 +55,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'heart_count',
             'is_liked_by_user',
             'content',
+            'published_date',
             'created_at',
             'updated_at',
         ]
@@ -282,8 +283,10 @@ class ProjectSerializer(serializers.ModelSerializer):
             'user_tags': 'userTags',
             'heart_count': 'heartCount',
             'is_liked_by_user': 'isLikedByUser',
+            'published_date': 'publishedDate',
             'created_at': 'createdAt',
             'updated_at': 'updatedAt',
+            'hide_categories': 'hideCategories',
         }
 
         # Create new dict with camelCase keys

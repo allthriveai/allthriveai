@@ -179,6 +179,35 @@ export interface ProjectContent {
     analysis_status?: 'pending' | 'complete' | 'failed';
     analysis?: any; // Figma analysis data
   };
+  // Battle result data (for saved prompt battles)
+  battleResult?: {
+    battleId: number;
+    challengeText: string;
+    challengeType?: {
+      key: string;
+      name: string;
+    };
+    won: boolean;
+    isTie: boolean;
+    mySubmission: {
+      prompt: string;
+      imageUrl?: string;
+      score?: number | null;
+      criteriaScores?: Record<string, number>;
+      feedback?: string;
+    };
+    opponent: {
+      username: string;
+      isAi: boolean;
+    };
+    opponentSubmission?: {
+      prompt: string;
+      imageUrl?: string;
+      score?: number | null;
+      criteriaScores?: Record<string, number>;
+      feedback?: string;
+    };
+  };
 }
 
 // Base block interface

@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
-import { ToolRecommendationQuiz } from '@/components/tools/ToolRecommendationQuiz';
 import { useOnboardingProgress, type ChecklistItem } from '@/hooks/useOnboardingProgress';
 import {
   CheckCircleIcon,
@@ -137,7 +135,6 @@ function ChecklistItemCard({ item }: { item: ChecklistItem }) {
 
 export default function GettingStartedPage() {
   const { progress, isLoading, error } = useOnboardingProgress();
-  const [showToolQuiz, setShowToolQuiz] = useState(false);
 
   if (isLoading) {
     return (
@@ -176,24 +173,6 @@ export default function GettingStartedPage() {
 
   const isComplete = progress.progress_percentage === 100;
 
-  // Show tool quiz if requested
-  if (showToolQuiz) {
-    return (
-      <DashboardLayout>
-        <SettingsLayout>
-          <div className="max-w-3xl mx-auto px-4 py-8">
-            <ToolRecommendationQuiz
-              onComplete={() => {
-                // Quiz completed - could track this
-              }}
-              onClose={() => setShowToolQuiz(false)}
-            />
-          </div>
-        </SettingsLayout>
-      </DashboardLayout>
-    );
-  }
-
   return (
     <DashboardLayout>
       <SettingsLayout>
@@ -215,9 +194,9 @@ export default function GettingStartedPage() {
         </div>
 
         {/* Tool Finder Card - Prominent placement */}
-        <button
-          onClick={() => setShowToolQuiz(true)}
-          className="w-full glass-panel p-6 mb-6 text-left hover:border-cyan-500/30 transition-all group"
+        <Link
+          to="/quizzes/find-your-perfect-ai-tool"
+          className="w-full glass-panel p-6 mb-6 text-left hover:border-cyan-500/30 transition-all group block"
         >
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0">
@@ -236,7 +215,7 @@ export default function GettingStartedPage() {
             </div>
             <ArrowRightIcon className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
           </div>
-        </button>
+        </Link>
 
         {/* Progress Card */}
         <div className="glass-panel p-6 mb-8">

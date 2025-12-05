@@ -1,6 +1,7 @@
 import { api } from './api';
 
-export interface EmailPreferences {
+export interface NotificationPreferences {
+  // Email preferences
   emailBilling: boolean;
   emailWelcome: boolean;
   emailBattles: boolean;
@@ -8,38 +9,62 @@ export interface EmailPreferences {
   emailSocial: boolean;
   emailQuests: boolean;
   emailMarketing: boolean;
+  // SMS preferences
+  phoneNumber: string;
+  phoneVerified: boolean;
+  allowSmsInvitations: boolean;
 }
 
-export interface UpdateEmailPreferencesRequest {
+// Backwards compatibility alias
+export type EmailPreferences = NotificationPreferences;
+
+export interface UpdateNotificationPreferencesRequest {
+  // Email preferences
   emailBattles?: boolean;
   emailAchievements?: boolean;
   emailSocial?: boolean;
   emailQuests?: boolean;
   emailMarketing?: boolean;
+  // SMS preferences
+  phoneNumber?: string;
+  allowSmsInvitations?: boolean;
 }
 
-export interface EmailPreferencesResponse extends EmailPreferences {
+// Backwards compatibility alias
+export type UpdateEmailPreferencesRequest = UpdateNotificationPreferencesRequest;
+
+export interface NotificationPreferencesResponse extends NotificationPreferences {
   success?: boolean;
   updated?: string[];
+  error?: string;
 }
 
+// Backwards compatibility alias
+export type EmailPreferencesResponse = NotificationPreferencesResponse;
+
 /**
- * Get current user's email notification preferences
+ * Get current user's notification preferences (email and SMS)
  */
-export async function getMyEmailPreferences(): Promise<EmailPreferences> {
-  const response = await api.get<EmailPreferencesResponse>('/notifications/me/preferences/');
+export async function getMyNotificationPreferences(): Promise<NotificationPreferences> {
+  const response = await api.get<NotificationPreferencesResponse>('/notifications/me/preferences/');
   return response.data;
 }
 
+// Backwards compatibility alias
+export const getMyEmailPreferences = getMyNotificationPreferences;
+
 /**
- * Update current user's email notification preferences
+ * Update current user's notification preferences (email and SMS)
  */
-export async function updateMyEmailPreferences(
-  preferences: UpdateEmailPreferencesRequest
-): Promise<EmailPreferencesResponse> {
-  const response = await api.patch<EmailPreferencesResponse>(
+export async function updateMyNotificationPreferences(
+  preferences: UpdateNotificationPreferencesRequest
+): Promise<NotificationPreferencesResponse> {
+  const response = await api.patch<NotificationPreferencesResponse>(
     '/notifications/me/preferences/',
     preferences
   );
   return response.data;
 }
+
+// Backwards compatibility alias
+export const updateMyEmailPreferences = updateMyNotificationPreferences;

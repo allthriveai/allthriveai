@@ -184,7 +184,7 @@ function InsightsCardsSection({ insights }: { insights: PersonalizedInsight[] })
 // Stats Summary
 function StatsSummarySection({ stats }: { stats: ActivityInsights['statsSummary'] }) {
   const statItems = [
-    { label: 'Total Points', value: stats.totalPoints.toLocaleString(), icon: faTrophy, color: 'text-yellow-500' },
+    { label: 'Prompt Battles', value: stats.battlesCount ?? 0, icon: faTrophy, color: 'text-yellow-500' },
     { label: 'Projects', value: stats.projectsCount, icon: faChartLine, color: 'text-blue-500' },
     { label: 'Quizzes Completed', value: stats.quizzesCompleted, icon: faGraduationCap, color: 'text-purple-500' },
     { label: 'Side Quests Completed', value: stats.sideQuestsCompleted, icon: faCompass, color: 'text-teal-500' },

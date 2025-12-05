@@ -28,7 +28,6 @@ export function BattlePage() {
   const { battleId } = useParams<{ battleId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [isSavedToProfile, setIsSavedToProfile] = useState(false);
   const [restBattleState, setRestBattleState] = useState<BattleState | null>(null);
   const [restLoading, setRestLoading] = useState(false);
   const [restError, setRestError] = useState<string | null>(null);
@@ -193,21 +192,6 @@ export function BattlePage() {
     navigate('/');
   }, [navigate]);
 
-  // Handle save to profile
-  const handleSaveToProfile = useCallback(async () => {
-    if (!battleId) return;
-    try {
-      const response = await api.post(`/me/battles/${battleId}/save_to_profile/`);
-      setIsSavedToProfile(true);
-      // If already saved, it's still a success - just means it was saved before
-      if (response.data?.already_saved) {
-        console.log('[Battle] Battle was already saved to profile');
-      }
-    } catch (error) {
-      console.error('[Battle] Failed to save to profile:', error);
-      throw error;
-    }
-  }, [battleId]);
 
   // Loading state
   if (!battleId) {
@@ -388,8 +372,6 @@ export function BattlePage() {
             onComplete={() => setRevealComplete(true)}
             onPlayAgain={handlePlayAgain}
             onGoHome={handleGoHome}
-            onSaveToProfile={handleSaveToProfile}
-            isSaved={isSavedToProfile}
           />
         );
 
@@ -412,8 +394,6 @@ export function BattlePage() {
             onComplete={() => setRevealComplete(true)}
             onPlayAgain={handlePlayAgain}
             onGoHome={handleGoHome}
-            onSaveToProfile={handleSaveToProfile}
-            isSaved={isSavedToProfile}
           />
         );
 

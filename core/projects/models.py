@@ -175,6 +175,14 @@ class Project(models.Model):
         blank=True,
         help_text='When engagement velocity was last calculated',
     )
+    # Original publication date for external content (RSS articles, news, etc.)
+    # For user-generated content, this defaults to created_at
+    published_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='Original publication date for external content (e.g., news articles)',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

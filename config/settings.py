@@ -311,6 +311,7 @@ AZURE_OPENAI_API_KEY = config('AZURE_OPENAI_API_KEY', default='')
 AZURE_OPENAI_ENDPOINT = config('AZURE_OPENAI_ENDPOINT', default='')
 AZURE_OPENAI_API_VERSION = config('AZURE_OPENAI_API_VERSION', default='2024-02-15-preview')
 AZURE_OPENAI_DEPLOYMENT_NAME = config('AZURE_OPENAI_DEPLOYMENT_NAME', default='gpt-4')
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT = config('AZURE_OPENAI_EMBEDDING_DEPLOYMENT', default='text-embedding-3-small')
 
 # Default AI Provider (options: azure, openai, anthropic)
 DEFAULT_AI_PROVIDER = config('DEFAULT_AI_PROVIDER', default='azure')

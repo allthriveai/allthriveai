@@ -1,10 +1,10 @@
 """
 Embedding generation service for Weaviate personalization.
 
-Uses OpenAI text-embedding-3-small for generating embeddings from
-project content, user preferences, and tool descriptions.
+Uses the AI gateway (Azure OpenAI or OpenAI based on DEFAULT_AI_PROVIDER setting)
+for generating embeddings from project content, user preferences, and tool descriptions.
 
-Includes circuit breaker pattern for resilience against OpenAI outages.
+Includes circuit breaker pattern for resilience against API outages.
 """
 
 import logging
@@ -109,39 +109,95 @@ class CircuitOpenError(EmbeddingServiceError):
 
 class EmbeddingService:
     """
-    Service for generating text embeddings using OpenAI.
+    Service for generating text embeddings using the AI gateway.
+
+    Supports Azure OpenAI and OpenAI based on DEFAULT_AI_PROVIDER setting.
 
     Handles embedding generation for:
     - Projects (title + description + topics + tools + categories)
     - User profiles (tags + bio + behavioral summary)
     - Tools (name + description + use cases)
 
-    Uses circuit breaker pattern to fail fast when OpenAI is unavailable,
+    Uses circuit breaker pattern to fail fast when the API is unavailable,
     preventing cascading failures and wasted API calls.
+
+    Configuration:
+    - DEFAULT_AI_PROVIDER: 'azure' or 'openai'
+    - AZURE_OPENAI_EMBEDDING_DEPLOYMENT: Name of the embedding deployment in Azure
+    - EMBEDDING_FALLBACK_TO_OPENAI: If True, falls back to OpenAI when Azure fails
     """
 
     # Shared circuit breaker for all embedding requests
     _circuit_breaker = CircuitBreaker(
         failure_threshold=5,  # Open after 5 consecutive failures
         recovery_timeout=60,  # Try again after 60 seconds
-        name='openai_embeddings',
+        name='ai_embeddings',
     )
 
     def __init__(self):
-        self.model = getattr(settings, 'WEAVIATE_EMBEDDING_MODEL', 'text-embedding-3-small')
         self._client = None
+        self._fallback_client = None
+        self._provider = getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
+        self._enable_fallback = getattr(settings, 'EMBEDDING_FALLBACK_TO_OPENAI', False)
+        self._using_fallback = False
+
+        # Use Azure deployment name for Azure, regular model name for OpenAI
+        if self._provider == 'azure':
+            self.model = getattr(settings, 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT', 'text-embedding-3-small')
+            self._fallback_model = getattr(settings, 'WEAVIATE_EMBEDDING_MODEL', 'text-embedding-3-small')
+        else:
+            self.model = getattr(settings, 'WEAVIATE_EMBEDDING_MODEL', 'text-embedding-3-small')
+            self._fallback_model = None
 
     @property
     def client(self):
-        """Lazy initialization of OpenAI client."""
+        """Lazy initialization of AI client based on DEFAULT_AI_PROVIDER."""
         if self._client is None:
+            if self._provider == 'azure':
+                from openai import AzureOpenAI
+
+                api_key = getattr(settings, 'AZURE_OPENAI_API_KEY', '')
+                endpoint = getattr(settings, 'AZURE_OPENAI_ENDPOINT', '')
+                api_version = getattr(settings, 'AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
+
+                if not api_key or not endpoint:
+                    raise ValueError(
+                        'Azure OpenAI credentials not configured for embeddings. '
+                        'Set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT.'
+                    )
+                self._client = AzureOpenAI(
+                    api_key=api_key,
+                    azure_endpoint=endpoint,
+                    api_version=api_version,
+                )
+            else:
+                # Fall back to direct OpenAI
+                from openai import OpenAI
+
+                api_key = getattr(settings, 'OPENAI_API_KEY', '')
+                if not api_key:
+                    raise ValueError('OPENAI_API_KEY not configured for embeddings')
+                self._client = OpenAI(api_key=api_key)
+
+        return self._client
+
+    @property
+    def fallback_client(self):
+        """Lazy initialization of fallback OpenAI client (when Azure fails)."""
+        if self._fallback_client is None and self._enable_fallback and self._provider == 'azure':
             from openai import OpenAI
 
             api_key = getattr(settings, 'OPENAI_API_KEY', '')
-            if not api_key:
-                raise ValueError('OPENAI_API_KEY not configured for embeddings')
-            self._client = OpenAI(api_key=api_key)
-        return self._client
+            if api_key:
+                self._fallback_client = OpenAI(api_key=api_key)
+                logger.info('Initialized OpenAI fallback client for embeddings')
+
+        return self._fallback_client
+
+    def _is_deployment_not_found_error(self, error: Exception) -> bool:
+        """Check if the error is a 404 deployment not found error."""
+        error_str = str(error).lower()
+        return '404' in error_str or 'deploymentnotfound' in error_str or 'not found' in error_str
 
     @property
     def circuit_state(self) -> str:
@@ -174,12 +230,12 @@ class EmbeddingService:
             )
             raise CircuitOpenError('OpenAI embedding API circuit breaker is open')
 
-        try:
-            # Truncate text if too long (max ~8000 tokens for embedding models)
-            truncated_text = text[:30000]  # Rough character limit
-            if len(text) > 30000:
-                logger.info(f'Truncated embedding text from {len(text)} to 30000 chars')
+        # Truncate text if too long (max ~8000 tokens for embedding models)
+        truncated_text = text[:30000]  # Rough character limit
+        if len(text) > 30000:
+            logger.info(f'Truncated embedding text from {len(text)} to 30000 chars')
 
+        try:
             response = self.client.embeddings.create(
                 model=self.model,
                 input=truncated_text,
@@ -187,17 +243,35 @@ class EmbeddingService:
 
             # Success - record it
             self._circuit_breaker.record_success()
+            self._using_fallback = False
             return response.data[0].embedding
 
         except CircuitOpenError:
             raise  # Re-raise circuit open errors
         except Exception as e:
+            # Check if we should try fallback for deployment not found errors
+            if self._is_deployment_not_found_error(e) and self.fallback_client is not None:
+                logger.warning(f'Azure deployment "{self.model}" not found, falling back to OpenAI: {e}')
+                try:
+                    response = self.fallback_client.embeddings.create(
+                        model=self._fallback_model,
+                        input=truncated_text,
+                    )
+                    self._circuit_breaker.record_success()
+                    self._using_fallback = True
+                    logger.info(f'Fallback to OpenAI {self._fallback_model} successful')
+                    return response.data[0].embedding
+                except Exception as fallback_error:
+                    logger.error(f'Fallback to OpenAI also failed: {fallback_error}')
+                    # Continue to record failure and raise original error
+
             # Record failure for circuit breaker
             self._circuit_breaker.record_failure()
             logger.error(
                 f'Failed to generate embedding: {e}',
                 extra={
                     'model': self.model,
+                    'provider': self._provider,
                     'text_length': len(text) if text else 0,
                     'circuit_state': self._circuit_breaker.state,
                 },
@@ -227,45 +301,59 @@ class EmbeddingService:
             logger.warning('Circuit breaker OPEN for batch embeddings, failing fast')
             raise CircuitOpenError('OpenAI embedding API circuit breaker is open')
 
-        try:
-            # Filter out empty texts and track indices
-            valid_texts = []
-            valid_indices = []
-            for i, text in enumerate(texts):
-                if text and text.strip():
-                    valid_texts.append(text[:30000])
-                    valid_indices.append(i)
+        # Filter out empty texts and track indices
+        valid_texts = []
+        valid_indices = []
+        for i, text in enumerate(texts):
+            if text and text.strip():
+                valid_texts.append(text[:30000])
+                valid_indices.append(i)
 
-            if not valid_texts:
-                return [[] for _ in texts]
+        if not valid_texts:
+            return [[] for _ in texts]
 
-            response = self.client.embeddings.create(
-                model=self.model,
+        def _create_embeddings(client, model):
+            """Helper to create embeddings and map results."""
+            response = client.embeddings.create(
+                model=model,
                 input=valid_texts,
             )
-
-            # Success - record it
-            self._circuit_breaker.record_success()
-
-            # Map embeddings back to original indices
             result = [[] for _ in texts]
             for i, embedding_data in enumerate(response.data):
                 original_idx = valid_indices[i]
                 result[original_idx] = embedding_data.embedding
+            return result
 
+        try:
+            result = _create_embeddings(self.client, self.model)
+            self._circuit_breaker.record_success()
+            self._using_fallback = False
             return result
 
         except CircuitOpenError:
             raise  # Re-raise circuit open errors
         except Exception as e:
+            # Check if we should try fallback for deployment not found errors
+            if self._is_deployment_not_found_error(e) and self.fallback_client is not None:
+                logger.warning(f'Azure deployment "{self.model}" not found for batch, falling back to OpenAI: {e}')
+                try:
+                    result = _create_embeddings(self.fallback_client, self._fallback_model)
+                    self._circuit_breaker.record_success()
+                    self._using_fallback = True
+                    logger.info(f'Batch fallback to OpenAI {self._fallback_model} successful')
+                    return result
+                except Exception as fallback_error:
+                    logger.error(f'Batch fallback to OpenAI also failed: {fallback_error}')
+
             # Record failure for circuit breaker
             self._circuit_breaker.record_failure()
             logger.error(
                 f'Failed to generate batch embeddings: {e}',
                 extra={
                     'model': self.model,
+                    'provider': self._provider,
                     'batch_size': len(texts),
-                    'valid_texts': len(valid_texts) if 'valid_texts' in dir() else 0,
+                    'valid_texts': len(valid_texts),
                     'circuit_state': self._circuit_breaker.state,
                 },
                 exc_info=True,

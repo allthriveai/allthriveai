@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { SEO } from '@/components/common/SEO';
 import { Footer } from '@/components/landing/Footer';
-import { getSubscriptionTiers, getSubscriptionStatus } from '@/services/billing';
+import { getSubscriptionTiers, getSubscriptionStatus, createCheckoutSession } from '@/services/billing';
 import type { SubscriptionTier } from '@/services/billing';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import {
@@ -15,11 +15,16 @@ import {
   SparklesIcon,
   ChevronDownIcon,
 } from '@heroicons/react/24/outline';
+import { analytics } from '@/utils/analytics';
 
 export default function PricingPage() {
   const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  useEffect(() => {
+    analytics.pricingPageViewed();
+  }, []);
 
   const faqs = [
     {
@@ -132,12 +137,42 @@ export default function PricingPage() {
     queryFn: getSubscriptionStatus,
   });
 
-  const handleSelectPlan = (tierSlug: string) => {
+  const handleSelectPlan = async (tierSlug: string) => {
+    // Find the tier to get details for analytics
+    const tier = tiers.find(t => t.slug === tierSlug);
+    const tierName = tier?.name || tierSlug;
+    const price = billingCycle === 'annual' ? parseFloat(tier?.priceAnnual || '0') : parseFloat(tier?.priceMonthly || '0');
+
+    // Track plan selection
+    analytics.pricingPlanSelected(tierName, billingCycle, price);
+
     if (tierSlug === 'free-explorer') {
       navigate('/auth');
       return;
     }
-    navigate(`/checkout?tier=${tierSlug}`);
+
+    try {
+      // Track checkout start
+      analytics.checkoutStarted(tierName, billingCycle, price);
+
+      // Create checkout session and redirect to Stripe
+      const successUrl = `${window.location.origin}/checkout/success`;
+      const cancelUrl = `${window.location.origin}/pricing`;
+
+      const { url } = await createCheckoutSession(
+        tierSlug,
+        billingCycle === 'annual' ? 'annual' : 'monthly',
+        successUrl,
+        cancelUrl
+      );
+
+      // Redirect to Stripe Checkout
+      window.location.href = url;
+    } catch (error) {
+      console.error('Failed to create checkout session:', error);
+      // Optionally show an error message to the user
+      alert('Failed to start checkout. Please try again.');
+    }
   };
 
   const currentTierSlug = subscriptionStatus?.tierSlug;
@@ -233,7 +268,12 @@ export default function PricingPage() {
       <header className="relative z-10">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
-            <Link to="/" className="inline-block">
+            <Link to="/" className="inline-flex items-center gap-3">
+              <img
+                src="/all-thrvie-logo.png"
+                alt="All Thrive"
+                className="h-10 w-10"
+              />
               <span className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
                 All Thrive
               </span>

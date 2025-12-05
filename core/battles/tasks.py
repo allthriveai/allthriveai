@@ -259,6 +259,10 @@ def complete_battle_task(self, battle_id: int) -> dict[str, Any]:
         service = BattleService()
         service.complete_battle(battle)
 
+        # Auto-save battle to participants' profiles (appears on explore feed)
+        save_results = service.auto_save_battle_to_profiles(battle)
+        logger.info(f'Battle {battle_id} auto-save results: {save_results}')
+
         # Notify completion
         async_to_sync(channel_layer.group_send)(
             group_name,
@@ -288,7 +292,7 @@ def complete_battle_task(self, battle_id: int) -> dict[str, Any]:
         )
 
         logger.info(f'Battle {battle_id} completed')
-        return {'status': 'success'}
+        return {'status': 'success', 'auto_save': save_results}
 
     except Exception as e:
         logger.error(f'Error completing battle {battle_id}: {e}', exc_info=True)

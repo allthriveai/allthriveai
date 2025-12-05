@@ -243,59 +243,201 @@ def seed_creative_quests(category):
     from core.thrive_circle.models import SideQuest
 
     quests = [
+        # === BEGINNER QUESTS ===
         {
-            'title': 'Portfolio Builder',
-            'description': 'Create a project to start building your portfolio!',
+            'title': 'First Creation',
+            'description': 'Create your very first project to start building your portfolio!',
             'quest_type': 'create_project',
             'difficulty': 'easy',
             'requirements': {'action': 'project_created', 'target': 1},
             'points_reward': 25,
             'order': 1,
-        },
-        {
-            'title': 'Portfolio Builder',
-            'description': 'Create 5 projects to showcase your work.',
-            'quest_type': 'create_project',
-            'difficulty': 'medium',
-            'requirements': {'action': 'project_created', 'target': 5},
-            'points_reward': 75,
-            'order': 2,
-        },
-        {
-            'title': 'Prolific Creator',
-            'description': 'Create 15 amazing projects.',
-            'quest_type': 'create_project',
-            'difficulty': 'hard',
-            'requirements': {'action': 'project_created', 'target': 15},
-            'points_reward': 150,
-            'order': 3,
+            'narrative_intro': (
+                'Welcome to the Creative Maker path! Every great portfolio starts with a single project. '
+                "Whether it's an AI chatbot, a design, or a prompt collection - let's showcase your first creation."
+            ),
+            'narrative_complete': (
+                "Congratulations! You've created your first project. This is the beginning of your creative journey. "
+                'Your work is now visible to the AllThrive community!'
+            ),
         },
         {
             'title': 'Banana Time',
-            'description': 'Generate an image with Nano Banana!',
+            'description': 'Generate your first AI image with Nano Banana!',
             'quest_type': 'generate_image',
             'difficulty': 'easy',
             'requirements': {'action': 'image_generated', 'target': 1},
             'points_reward': 20,
-            'order': 4,
+            'order': 2,
+            'narrative_intro': (
+                'Ready to create some AI art? Nano Banana is our friendly image generator. '
+                'Head to the Banana tool and bring your imagination to life!'
+            ),
+            'narrative_complete': (
+                'Look at you, digital artist! Your first AI-generated image is born. ' 'The possibilities are endless!'
+            ),
         },
         {
-            'title': 'Digital Artist',
-            'description': 'Generate 10 images with Nano Banana.',
-            'quest_type': 'generate_image',
-            'difficulty': 'medium',
-            'requirements': {'action': 'image_generated', 'target': 10},
-            'points_reward': 60,
-            'order': 5,
-        },
-        {
-            'title': 'GitHub Importer',
+            'title': 'GitHub Showcase',
             'description': 'Import a project from GitHub to showcase your code.',
             'quest_type': 'import_github',
             'difficulty': 'easy',
             'requirements': {'action': 'github_imported', 'target': 1},
             'points_reward': 30,
+            'order': 3,
+            'narrative_intro': (
+                "Got cool code on GitHub? Let's bring it over! Import a repository to auto-generate "
+                'a beautiful project page with AI-powered descriptions.'
+            ),
+            'narrative_complete': (
+                'Your GitHub project now has a home on AllThrive! ' 'The AI has helped create a polished showcase page.'
+            ),
+        },
+        # === GUIDED MULTI-STEP QUEST ===
+        {
+            'title': 'Complete Creator Journey',
+            'description': 'A guided adventure through all the creative tools on AllThrive.',
+            'quest_type': 'create_project',
+            'difficulty': 'medium',
+            'requirements': {'action': 'guided_steps', 'target': 4},
+            'points_reward': 100,
+            'order': 4,
+            'is_guided': True,
+            'estimated_minutes': 15,
+            'narrative_intro': (
+                'Welcome to the Complete Creator Journey! This guided quest will take you through '
+                "all the ways you can showcase your work on AllThrive. By the end, you'll be a pro "
+                'at using our creative tools.'
+            ),
+            'narrative_complete': (
+                "You've completed the Creator Journey! You now know all the ways to build your "
+                'portfolio on AllThrive. Keep creating and inspiring others!'
+            ),
+            'steps': [
+                {
+                    'id': 'step_create',
+                    'title': 'Create a Project',
+                    'description': 'Start by creating any type of project using the Project Agent.',
+                    'destination_url': '/projects/new',
+                    'action_trigger': 'project_created',
+                    'icon': 'plus',
+                },
+                {
+                    'id': 'step_banana',
+                    'title': 'Generate an Image',
+                    'description': 'Try out Nano Banana to create AI art.',
+                    'destination_url': '/tools/banana',
+                    'action_trigger': 'image_generated',
+                    'icon': 'sparkles',
+                },
+                {
+                    'id': 'step_describe',
+                    'title': 'Add a Rich Description',
+                    'description': 'Edit your project to add a detailed description.',
+                    'destination_url': '/projects',
+                    'action_trigger': 'description_added',
+                    'icon': 'pencil',
+                },
+                {
+                    'id': 'step_showcase',
+                    'title': 'Add to Showcase',
+                    'description': "Mark a project as 'Showcase' to feature it on your profile.",
+                    'destination_url': '/projects',
+                    'action_trigger': 'showcase_added',
+                    'icon': 'star',
+                },
+            ],
+        },
+        # === INTERMEDIATE QUESTS ===
+        {
+            'title': 'Portfolio Pro',
+            'description': 'Build a portfolio with 5 projects to showcase your range.',
+            'quest_type': 'create_project',
+            'difficulty': 'medium',
+            'requirements': {'action': 'project_created', 'target': 5},
+            'points_reward': 75,
+            'order': 5,
+            'narrative_intro': (
+                'Time to show your range! A diverse portfolio with multiple projects ' 'shows the depth of your skills.'
+            ),
+            'narrative_complete': (
+                'Impressive! You now have 5 projects in your portfolio. ' "That's a solid foundation!"
+            ),
+        },
+        {
+            'title': 'Digital Artist',
+            'description': 'Generate 10 unique images with Nano Banana.',
+            'quest_type': 'generate_image',
+            'difficulty': 'medium',
+            'requirements': {'action': 'image_generated', 'target': 10},
+            'points_reward': 60,
             'order': 6,
+            'narrative_intro': 'Practice makes perfect! Keep experimenting with different prompts and styles.',
+            'narrative_complete': "You're becoming a true digital artist! 10 AI creations and counting.",
+        },
+        {
+            'title': 'Code Portfolio',
+            'description': 'Import 3 GitHub repositories to showcase your coding projects.',
+            'quest_type': 'import_github',
+            'difficulty': 'medium',
+            'requirements': {'action': 'github_imported', 'target': 3},
+            'points_reward': 60,
+            'order': 7,
+        },
+        {
+            'title': 'Storyteller',
+            'description': 'Add detailed descriptions to 3 of your projects.',
+            'quest_type': 'add_description',
+            'difficulty': 'medium',
+            'requirements': {'action': 'description_added', 'target': 3, 'min_length': 100},
+            'points_reward': 45,
+            'order': 8,
+            'narrative_intro': ('Great projects deserve great descriptions! Tell the story behind your work.'),
+            'narrative_complete': (
+                'Your projects now have compelling stories. ' 'This helps others understand your creative process!'
+            ),
+        },
+        # === ADVANCED QUESTS ===
+        {
+            'title': 'Prolific Creator',
+            'description': 'Create 15 amazing projects across any category.',
+            'quest_type': 'create_project',
+            'difficulty': 'hard',
+            'requirements': {'action': 'project_created', 'target': 15},
+            'points_reward': 150,
+            'order': 9,
+            'narrative_complete': (
+                "15 projects! You're a true creative force on AllThrive. " 'Your portfolio is impressive!'
+            ),
+        },
+        {
+            'title': 'Gallery Master',
+            'description': 'Generate 50 images with Nano Banana to master AI art.',
+            'quest_type': 'generate_image',
+            'difficulty': 'hard',
+            'requirements': {'action': 'image_generated', 'target': 50},
+            'points_reward': 120,
+            'order': 10,
+            'narrative_complete': (
+                "50 AI images! You've truly mastered the art of AI generation. " 'Consider showcasing your best work!'
+            ),
+        },
+        # === EPIC QUEST ===
+        {
+            'title': 'Creative Legend',
+            'description': 'Create 30 projects and become a creative legend on AllThrive.',
+            'quest_type': 'create_project',
+            'difficulty': 'epic',
+            'requirements': {'action': 'project_created', 'target': 30},
+            'points_reward': 300,
+            'order': 11,
+            'narrative_intro': (
+                'This is the ultimate creative challenge. ' 'Only the most dedicated creators earn this badge.'
+            ),
+            'narrative_complete': (
+                'YOU ARE A CREATIVE LEGEND! 30 projects is an incredible achievement. '
+                'Your dedication to creating and sharing inspires the entire community!'
+            ),
         },
     ]
 
@@ -315,41 +457,221 @@ def seed_exploration_quests(category):
     from core.thrive_circle.models import SideQuest
 
     quests = [
+        # === BEGINNER EXPLORATION ===
         {
-            'title': 'Search Seeker',
-            'description': 'Use the semantic search feature to find interesting projects.',
+            'title': 'First Search',
+            'description': 'Use the semantic search to discover projects that match your interests.',
             'quest_type': 'use_search',
             'difficulty': 'easy',
             'requirements': {'action': 'search_used', 'target': 1},
             'points_reward': 15,
             'order': 1,
+            'narrative_intro': (
+                "AllThrive has a powerful semantic search that understands what you're looking for. "
+                'Try searching for topics that interest you - you might discover something amazing!'
+            ),
+            'narrative_complete': (
+                "Great job! You've discovered the power of semantic search. " 'Use it to find exactly what you need!'
+            ),
         },
         {
-            'title': 'Search Pro',
-            'description': "Perform 10 searches to find exactly what you're looking for.",
+            'title': 'Profile Hopper',
+            'description': 'Visit 5 different creator profiles to see what others are building.',
+            'quest_type': 'explore_profiles',
+            'difficulty': 'easy',
+            'requirements': {'action': 'profile_viewed', 'target': 5},
+            'points_reward': 20,
+            'order': 2,
+            'narrative_intro': (
+                'Each creator on AllThrive has a unique story. '
+                "Let's explore some profiles and see what inspires you!"
+            ),
+            'narrative_complete': (
+                "You've started building connections! " 'Keep exploring to find creators who inspire you.'
+            ),
+        },
+        # === GUIDED SITE TOUR ===
+        {
+            'title': 'AllThrive Grand Tour',
+            'description': 'A guided scavenger hunt through all the major features of AllThrive.',
+            'quest_type': 'visit_pages',
+            'difficulty': 'medium',
+            'requirements': {'action': 'guided_steps', 'target': 6},
+            'points_reward': 120,
+            'order': 3,
+            'is_guided': True,
+            'estimated_minutes': 10,
+            'narrative_intro': (
+                'Welcome to the AllThrive Grand Tour! This guided adventure will take you through '
+                "all the major features of our platform. By the end, you'll know exactly where to find "
+                'everything and what AllThrive has to offer.'
+            ),
+            'narrative_complete': (
+                "Congratulations, Explorer! You've completed the Grand Tour and discovered all that "
+                "AllThrive has to offer. You're now ready to make the most of the platform!"
+            ),
+            'steps': [
+                {
+                    'id': 'step_explore',
+                    'title': 'Visit Explore',
+                    'description': 'Check out the Explore page to discover projects from the community.',
+                    'destination_url': '/explore',
+                    'action_trigger': 'page_visit',
+                    'icon': 'compass',
+                },
+                {
+                    'id': 'step_learn',
+                    'title': 'Visit Learn',
+                    'description': 'Head to the Learn section to test your AI knowledge with quizzes.',
+                    'destination_url': '/learn',
+                    'action_trigger': 'page_visit',
+                    'icon': 'book',
+                },
+                {
+                    'id': 'step_play',
+                    'title': 'Visit Play',
+                    'description': 'Check out the Play section for Side Quests and Challenges.',
+                    'destination_url': '/play',
+                    'action_trigger': 'page_visit',
+                    'icon': 'gamepad',
+                },
+                {
+                    'id': 'step_tools',
+                    'title': 'Visit Tools',
+                    'description': 'Explore the Tools section to discover AI-powered utilities.',
+                    'destination_url': '/tools',
+                    'action_trigger': 'page_visit',
+                    'icon': 'wrench',
+                },
+                {
+                    'id': 'step_battles',
+                    'title': 'Visit Prompt Battles',
+                    'description': 'Check out Prompt Battles where AI creations compete!',
+                    'destination_url': '/battles',
+                    'action_trigger': 'page_visit',
+                    'icon': 'trophy',
+                },
+                {
+                    'id': 'step_marketplace',
+                    'title': 'Visit Marketplace',
+                    'description': 'Explore the Marketplace to discover digital products from creators.',
+                    'destination_url': '/marketplace',
+                    'action_trigger': 'page_visit',
+                    'icon': 'shop',
+                },
+            ],
+        },
+        # === INTERMEDIATE EXPLORATION ===
+        {
+            'title': 'Search Expert',
+            'description': 'Perform 10 different searches to master discovering content.',
             'quest_type': 'use_search',
             'difficulty': 'medium',
             'requirements': {'action': 'search_used', 'target': 10},
             'points_reward': 40,
-            'order': 2,
+            'order': 4,
+            'narrative_complete': (
+                "You've become a search expert! " "Now you can find exactly what you're looking for."
+            ),
         },
         {
-            'title': 'Profile Explorer',
-            'description': 'Visit 10 different creator profiles.',
-            'quest_type': 'explore_profiles',
-            'difficulty': 'easy',
-            'requirements': {'action': 'profile_viewed', 'target': 10},
-            'points_reward': 30,
-            'order': 3,
-        },
-        {
-            'title': 'Network Builder',
-            'description': 'Discover 25 creators on the platform.',
+            'title': 'Community Explorer',
+            'description': 'Visit 15 different creator profiles and discover their work.',
             'quest_type': 'explore_profiles',
             'difficulty': 'medium',
-            'requirements': {'action': 'profile_viewed', 'target': 25},
+            'requirements': {'action': 'profile_viewed', 'target': 15},
+            'points_reward': 45,
+            'order': 5,
+        },
+        {
+            'title': 'Project Hunter',
+            'description': 'View 20 different projects across the platform.',
+            'quest_type': 'visit_pages',
+            'difficulty': 'medium',
+            'requirements': {'action': 'project_viewed', 'target': 20},
+            'points_reward': 50,
+            'order': 6,
+            'narrative_intro': "There are amazing projects waiting to be discovered. Let's go hunting!",
+            'narrative_complete': "You've explored 20 projects! You're really getting to know the community.",
+        },
+        # === ADVANCED EXPLORATION ===
+        {
+            'title': 'Network Builder',
+            'description': 'Discover 30 creators on the platform by visiting their profiles.',
+            'quest_type': 'explore_profiles',
+            'difficulty': 'hard',
+            'requirements': {'action': 'profile_viewed', 'target': 30},
+            'points_reward': 80,
+            'order': 7,
+            'narrative_complete': (
+                "30 profiles explored! You're building quite the network. " 'Consider following some of these creators!'
+            ),
+        },
+        {
+            'title': 'Search Master',
+            'description': 'Perform 50 searches and become the ultimate discovery expert.',
+            'quest_type': 'use_search',
+            'difficulty': 'hard',
+            'requirements': {'action': 'search_used', 'target': 50},
+            'points_reward': 100,
+            'order': 8,
+        },
+        {
+            'title': 'Topic Voyager',
+            'description': 'Explore projects in 5 different topic categories.',
+            'quest_type': 'visit_pages',
+            'difficulty': 'medium',
+            'requirements': {'action': 'topic_explored', 'target': 5, 'unique_topics': True},
             'points_reward': 60,
-            'order': 4,
+            'order': 9,
+            'narrative_intro': (
+                'AllThrive has projects across many topics. ' "Let's see what different categories have to offer!"
+            ),
+            'narrative_complete': (
+                "You've explored 5 different topic areas. " 'Diversity of interests makes for a richer experience!'
+            ),
+        },
+        # === EASTER EGG / FUN QUESTS ===
+        {
+            'title': 'Night Owl',
+            'description': 'Visit the site between midnight and 4 AM. (Just kidding, any time works!)',
+            'quest_type': 'find_easter_egg',
+            'difficulty': 'easy',
+            'requirements': {'action': 'page_visit', 'target': 1, 'special': 'night_mode'},
+            'points_reward': 25,
+            'order': 10,
+            'narrative_intro': 'Some say the site looks different at night...',
+            'narrative_complete': 'You found the Night Owl easter egg! Thanks for exploring at all hours.',
+        },
+        {
+            'title': 'Style Guide Detective',
+            'description': 'Find and visit the secret style guide page.',
+            'quest_type': 'find_easter_egg',
+            'difficulty': 'medium',
+            'requirements': {'action': 'page_visit', 'target': 1, 'page': '/styleguide-neon'},
+            'points_reward': 50,
+            'order': 11,
+            'narrative_intro': (
+                "Rumor has it there's a hidden style guide page " 'showcasing the Neon Glass aesthetic...'
+            ),
+            'narrative_complete': (
+                'You found the style guide! ' 'Now you know the secrets behind the AllThrive design system.'
+            ),
+        },
+        # === EPIC EXPLORATION ===
+        {
+            'title': 'AllThrive Cartographer',
+            'description': 'Explore 100 unique projects and map the entire AllThrive universe.',
+            'quest_type': 'visit_pages',
+            'difficulty': 'epic',
+            'requirements': {'action': 'project_viewed', 'target': 100},
+            'points_reward': 200,
+            'order': 12,
+            'narrative_intro': 'Only true explorers take on this challenge. Can you discover 100 unique projects?',
+            'narrative_complete': (
+                "LEGENDARY! You've explored 100 projects and truly mapped the AllThrive universe. "
+                'Your knowledge of the community is unmatched!'
+            ),
         },
     ]
 

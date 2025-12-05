@@ -10,6 +10,7 @@ import { useProjectContext } from '@/context/ProjectContext';
 import { ProjectActions } from '../shared/ProjectActions';
 import { ShareModal } from '../shared/ShareModal';
 import { BattleResultSection } from '../sections/BattleResultSection';
+import { CommentTray } from '../CommentTray';
 
 export function BattleProjectLayout() {
   const {
@@ -25,6 +26,9 @@ export function BattleProjectLayout() {
     closeShareModal,
     handleDelete,
     isAuthenticated,
+    isCommentTrayOpen,
+    openCommentTray,
+    closeCommentTray,
   } = useProjectContext();
 
   // Get battle result data from project content
@@ -107,6 +111,7 @@ export function BattleProjectLayout() {
               onLikeClick={toggleLike}
               likeRewardId={likeRewardId}
               onShareClick={openShareModal}
+              onCommentClick={openCommentTray}
               variant="default"
             />
           </div>
@@ -120,6 +125,14 @@ export function BattleProjectLayout() {
         title={project.title}
         username={project.username}
         slug={project.slug}
+      />
+
+      {/* Comment Tray */}
+      <CommentTray
+        isOpen={isCommentTrayOpen}
+        onClose={closeCommentTray}
+        project={project}
+        isAuthenticated={isAuthenticated}
       />
     </>
   );

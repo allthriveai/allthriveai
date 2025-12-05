@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
-import { MagnifyingGlassIcon, SparklesIcon, XMarkIcon, FunnelIcon } from '@heroicons/react/24/outline';
-import { WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
+import { useState } from 'react';
+import { MagnifyingGlassIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { Taxonomy } from '@/types/models';
-import { getCategoryColorClasses } from '@/utils/categoryColors';
+import { FilterDropdown, SelectedFilters } from './FilterDropdown';
 
 interface SearchBarWithFiltersProps {
   onSearch: (query: string) => void;
@@ -30,17 +29,8 @@ export function SearchBarWithFilters({
   onTopicsChange,
   onToolsChange,
   showFilters = false,
-  openFiltersByDefault = false,
 }: SearchBarWithFiltersProps) {
   const [query, setQuery] = useState(initialValue);
-  const [showFilterDropdown, setShowFilterDropdown] = useState(openFiltersByDefault);
-
-  // Open filters when openFiltersByDefault changes to true
-  useEffect(() => {
-    if (openFiltersByDefault) {
-      setShowFilterDropdown(true);
-    }
-  }, [openFiltersByDefault]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,35 +44,24 @@ export function SearchBarWithFilters({
     onSearch('');
   };
 
-  const toggleTopic = (topicSlug: string) => {
-    if (!onTopicsChange) return;
-    if (selectedTopics.includes(topicSlug)) {
-      onTopicsChange(selectedTopics.filter(t => t !== topicSlug));
-    } else {
-      onTopicsChange([...selectedTopics, topicSlug]);
-    }
+  const handleRemoveCategory = (slug: string) => {
+    onTopicsChange?.(selectedTopics.filter((s) => s !== slug));
   };
 
-  const toggleTool = (toolSlug: string) => {
-    if (!onToolsChange) return;
-    if (selectedToolSlugs.includes(toolSlug)) {
-      onToolsChange(selectedToolSlugs.filter(t => t !== toolSlug));
-    } else {
-      onToolsChange([...selectedToolSlugs, toolSlug]);
-    }
+  const handleRemoveTool = (slug: string) => {
+    onToolsChange?.(selectedToolSlugs.filter((s) => s !== slug));
   };
 
-  const clearAllFilters = () => {
+  const handleClearAll = () => {
     onTopicsChange?.([]);
     onToolsChange?.([]);
   };
 
-  const activeFilterCount = selectedTopics.length + selectedToolSlugs.length;
-  const hasFilters = activeFilterCount > 0;
+  const totalSelected = selectedTopics.length + selectedToolSlugs.length;
 
   return (
-    <div className="mb-6 space-y-3">
-      {/* Search Bar */}
+    <div className="space-y-3">
+      {/* Search Bar with Filter Button Inside */}
       <form onSubmit={handleSubmit}>
         <label htmlFor="explore-search-input" className="sr-only">
           Search projects with AI
@@ -94,19 +73,19 @@ export function SearchBarWithFilters({
             <div className="h-5 w-px bg-gray-300 dark:bg-gray-600" />
           </div>
 
-          {/* Search Input */}
           <input
             id="explore-search-input"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
-            className="w-full pl-16 pr-32 py-3.5 text-base border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow hover:shadow-neon focus:shadow-neon"
-            style={{ borderRadius: 'var(--radius)' }}
+            className={`w-full pl-16 py-3 text-base border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow hover:shadow-sm ${
+              showFilters ? 'pr-36' : 'pr-20'
+            }`}
           />
 
-          {/* Right Side Buttons */}
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          {/* Right Side Buttons - Inside Input */}
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {/* Clear Button */}
             {query && (
               <button
@@ -119,32 +98,23 @@ export function SearchBarWithFilters({
               </button>
             )}
 
-            {/* Filter Toggle Button */}
+            {/* Filter Dropdown Button - Inside Input */}
             {showFilters && (
-              <button
-                type="button"
-                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                className={`p-1.5 rounded-md transition-all ${
-                  hasFilters || showFilterDropdown
-                    ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400'
-                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                }`}
-                aria-label="Toggle filters"
-              >
-                <FunnelIcon className="w-5 h-5" />
-                {hasFilters && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-teal-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
+              <FilterDropdown
+                categories={topics}
+                tools={tools}
+                selectedCategorySlugs={selectedTopics}
+                selectedToolSlugs={selectedToolSlugs}
+                onCategoriesChange={onTopicsChange || (() => {})}
+                onToolsChange={onToolsChange || (() => {})}
+                compact
+              />
             )}
 
             {/* Search Button */}
             <button
               type="submit"
-              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium transition-all flex items-center gap-1.5 hover:shadow-neon"
-              style={{ borderRadius: 'var(--radius)' }}
+              className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-md transition-all flex items-center gap-1.5"
               aria-label="Search"
             >
               <MagnifyingGlassIcon className="w-4 h-4" />
@@ -154,152 +124,17 @@ export function SearchBarWithFilters({
         </div>
       </form>
 
-      {/* Inline Filter Pills - Show active filters */}
-      {hasFilters && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500 dark:text-gray-400">Filters:</span>
-
-          {/* Active Topic Pills */}
-          {selectedTopics.map(topicSlug => {
-            const topic = topics.find(t => t.slug === topicSlug);
-            if (!topic) return null;
-            const colorClasses = getCategoryColorClasses(topic.color, true);
-            return (
-              <button
-                key={topicSlug}
-                onClick={() => toggleTopic(topicSlug)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${colorClasses.background}`}
-              >
-                {topic.name}
-                <XMarkIcon className="w-3 h-3" />
-              </button>
-            );
-          })}
-
-          {/* Active Tool Pills */}
-          {selectedToolSlugs.map(toolSlug => {
-            const tool = tools.find(t => t.slug === toolSlug);
-            return tool ? (
-              <button
-                key={toolSlug}
-                onClick={() => toggleTool(toolSlug)}
-                className="inline-flex items-center gap-1.5 px-2 py-1 bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 text-xs font-medium hover:bg-cyan-100 dark:hover:bg-cyan-900/50 transition-colors"
-                style={{ borderRadius: 'var(--radius)' }}
-              >
-                <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden bg-white border border-cyan-300 dark:border-cyan-700">
-                  {tool.logoUrl ? (
-                    <img src={tool.logoUrl} alt="" className="w-3 h-3 object-contain" />
-                  ) : (
-                    <WrenchScrewdriverIcon className="w-2 h-2 text-gray-400" />
-                  )}
-                </div>
-                {tool.name}
-                <XMarkIcon className="w-3 h-3" />
-              </button>
-            ) : null;
-          })}
-
-          {/* Clear All Button */}
-          <button
-            onClick={clearAllFilters}
-            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 underline"
-          >
-            Clear all
-          </button>
-        </div>
-      )}
-
-      {/* Filter Dropdown */}
-      {showFilterDropdown && showFilters && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 shadow-lg overflow-visible" style={{ borderRadius: 'var(--radius)' }}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white">Filters</h3>
-            <button
-              onClick={() => setShowFilterDropdown(false)}
-              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <XMarkIcon className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {/* Topics */}
-            {topics.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Topics
-                </h4>
-                <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
-                  {topics.map((topic) => {
-                    const isSelected = selectedTopics.includes(topic.slug);
-                    const colorClasses = getCategoryColorClasses(topic.color, isSelected);
-                    return (
-                      <button
-                        key={topic.slug}
-                        onClick={() => toggleTopic(topic.slug)}
-                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${colorClasses.background} ${colorClasses.hover}`}
-                      >
-                        {topic.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Tools - Circular logos with subtle styling */}
-            {tools.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Tools
-                </h4>
-                <div className="flex flex-wrap gap-2 max-h-64 overflow-visible p-2 -m-2">
-                  {tools.map((tool) => {
-                    const isSelected = selectedToolSlugs.includes(tool.slug);
-                    return (
-                      <button
-                        key={tool.slug}
-                        onClick={() => toggleTool(tool.slug)}
-                        className={`
-                          group flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 ease-out hover:scale-125 hover:z-10
-                          ${
-                            isSelected
-                              ? 'bg-cyan-100 dark:bg-cyan-900/50 border-cyan-400 dark:border-cyan-600'
-                              : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
-                          }
-                        `}
-                        title={tool.name}
-                      >
-                        {/* Circular logo */}
-                        <div className={`
-                          w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden bg-white border
-                          ${isSelected ? 'border-cyan-400 dark:border-cyan-600' : 'border-gray-200 dark:border-gray-600'}
-                        `}>
-                          {tool.logoUrl ? (
-                            <img
-                              src={tool.logoUrl}
-                              alt=""
-                              className="w-3.5 h-3.5 object-contain"
-                            />
-                          ) : (
-                            <WrenchScrewdriverIcon className="w-2.5 h-2.5 text-gray-400" />
-                          )}
-                        </div>
-                        {/* Tool name */}
-                        <span className={`
-                          text-xs font-medium truncate max-w-[80px]
-                          ${isSelected ? 'text-cyan-700 dark:text-cyan-300' : 'text-gray-600 dark:text-gray-300'}
-                        `}>
-                          {tool.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Selected Filters Pills */}
+      {showFilters && totalSelected > 0 && (
+        <SelectedFilters
+          categories={topics}
+          tools={tools}
+          selectedCategorySlugs={selectedTopics}
+          selectedToolSlugs={selectedToolSlugs}
+          onRemoveCategory={handleRemoveCategory}
+          onRemoveTool={handleRemoveTool}
+          onClearAll={handleClearAll}
+        />
       )}
     </div>
   );

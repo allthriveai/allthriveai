@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
-import { getMyEmailPreferences, updateMyEmailPreferences, type EmailPreferences } from '@/services/notifications';
+import { getMyNotificationPreferences, updateMyNotificationPreferences, type NotificationPreferences } from '@/services/notifications';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEnvelope, faTrophy, faUsers, faBell, faRocket, faStar, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faEnvelope, faTrophy, faUsers, faBell, faRocket, faStar, faSpinner, faMobileAlt, faCheckCircle, faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 
 interface NotificationToggleProps {
   id: string;
@@ -55,11 +55,13 @@ function NotificationToggle({ id, label, description, icon, enabled, disabled, o
 }
 
 export default function NotificationsSettingsPage() {
-  const [preferences, setPreferences] = useState<EmailPreferences | null>(null);
+  const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
 
   // Load preferences on mount
   useEffect(() => {
@@ -67,11 +69,12 @@ export default function NotificationsSettingsPage() {
       try {
         setIsLoading(true);
         setError(null);
-        const prefs = await getMyEmailPreferences();
+        const prefs = await getMyNotificationPreferences();
         setPreferences(prefs);
+        setPhoneInput(prefs.phoneNumber || '');
       } catch (err: any) {
-        console.error('Failed to load email preferences:', err);
-        setError(err?.error || 'Failed to load email preferences');
+        console.error('Failed to load notification preferences:', err);
+        setError(err?.error || 'Failed to load notification preferences');
       } finally {
         setIsLoading(false);
       }
@@ -79,7 +82,7 @@ export default function NotificationsSettingsPage() {
     loadPreferences();
   }, []);
 
-  const handleToggle = async (field: keyof EmailPreferences, value: boolean) => {
+  const handleToggle = async (field: keyof NotificationPreferences, value: boolean) => {
     if (!preferences) return;
 
     // Optimistically update UI
@@ -91,15 +94,43 @@ export default function NotificationsSettingsPage() {
       setIsSaving(true);
       // Only send the changed field
       const updateData = { [field]: value };
-      await updateMyEmailPreferences(updateData);
+      await updateMyNotificationPreferences(updateData);
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (err: any) {
-      console.error('Failed to update email preferences:', err);
+      console.error('Failed to update notification preferences:', err);
       // Revert on error
       setPreferences(preferences);
       setSaveStatus('error');
       setError(err?.error || 'Failed to update preferences');
+      setTimeout(() => {
+        setSaveStatus('idle');
+        setError(null);
+      }, 5000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePhoneSubmit = async () => {
+    if (!preferences) return;
+
+    try {
+      setIsSaving(true);
+      setError(null);
+      const result = await updateMyNotificationPreferences({ phoneNumber: phoneInput });
+      setPreferences({
+        ...preferences,
+        phoneNumber: result.phoneNumber,
+        phoneVerified: result.phoneVerified,
+      });
+      setIsEditingPhone(false);
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (err: any) {
+      console.error('Failed to update phone number:', err);
+      setError(err?.response?.data?.error || err?.error || 'Invalid phone number format');
+      setSaveStatus('error');
       setTimeout(() => {
         setSaveStatus('idle');
         setError(null);
@@ -116,10 +147,10 @@ export default function NotificationsSettingsPage() {
           {/* Header */}
           <div className="mb-6 md:mb-8">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-              Email Notifications
+              Notifications
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
-              Manage which emails you'd like to receive from AllThrive AI
+              Manage your email and SMS notification preferences
             </p>
           </div>
 
@@ -254,6 +285,108 @@ export default function NotificationsSettingsPage() {
                       enabled={preferences.emailMarketing}
                       onChange={(value) => handleToggle('emailMarketing', value)}
                     />
+                  </div>
+                </div>
+
+                {/* SMS Notifications */}
+                <div className="glass-strong rounded-xl p-6 border border-white/20">
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                      SMS Notifications
+                    </h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Receive text messages for battle invitations from friends
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Phone Number Input */}
+                    <div className="p-4 glass-subtle rounded-lg border border-white/10">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                          <FontAwesomeIcon icon={faMobileAlt} className="text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <label htmlFor="phone-number" className="block text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">
+                            Phone Number
+                          </label>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
+                            Add your phone number to receive battle invitations via SMS
+                          </p>
+
+                          {isEditingPhone || !preferences.phoneNumber ? (
+                            <div className="flex gap-2">
+                              <input
+                                id="phone-number"
+                                type="tel"
+                                value={phoneInput}
+                                onChange={(e) => setPhoneInput(e.target.value)}
+                                placeholder="+1 (555) 123-4567"
+                                className="flex-1 px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                              />
+                              <button
+                                onClick={handlePhoneSubmit}
+                                disabled={isSaving || !phoneInput}
+                                className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              >
+                                {isSaving ? 'Saving...' : 'Save'}
+                              </button>
+                              {preferences.phoneNumber && (
+                                <button
+                                  onClick={() => {
+                                    setPhoneInput(preferences.phoneNumber);
+                                    setIsEditingPhone(false);
+                                  }}
+                                  className="px-3 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 text-sm transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-slate-200">{preferences.phoneNumber}</span>
+                                {preferences.phoneVerified ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">
+                                    <FontAwesomeIcon icon={faCheckCircle} className="text-[10px]" />
+                                    Verified
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                    <FontAwesomeIcon icon={faExclamationCircle} className="text-[10px]" />
+                                    Unverified
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => setIsEditingPhone(true)}
+                                className="text-sm text-primary-400 hover:text-primary-300 transition-colors"
+                              >
+                                Change
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SMS Opt-in Toggle */}
+                    <NotificationToggle
+                      id="sms-invitations"
+                      label="Battle Invitations via SMS"
+                      description="Receive text messages when friends challenge you to prompt battles"
+                      icon={faMobileAlt}
+                      enabled={preferences.allowSmsInvitations}
+                      disabled={!preferences.phoneNumber}
+                      onChange={(value) => handleToggle('allowSmsInvitations', value)}
+                    />
+
+                    {!preferences.phoneNumber && (
+                      <p className="text-xs text-slate-500 italic pl-14">
+                        Add a phone number above to enable SMS notifications
+                      </p>
+                    )}
                   </div>
                 </div>
 

@@ -118,6 +118,7 @@ export interface StatsSummary {
   sideQuestsCompleted: number;
   currentStreak: number;
   longestStreak: number;
+  battlesCount?: number; // Optional for now, will be added to backend
 }
 
 export interface ActivityInsights {

@@ -6,12 +6,11 @@
  * Human battle opens modal with SMS invite or random match options.
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BoltIcon,
   UserGroupIcon,
-  CpuChipIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
   SparklesIcon,
@@ -20,6 +19,8 @@ import {
   CheckCircleIcon,
   GlobeAltIcon,
 } from '@heroicons/react/24/solid';
+
+const PIP_AVATAR_URL = '/chatbot-chat.webp';
 import { api } from '@/services/api';
 
 interface QueueStatus {
@@ -53,6 +54,39 @@ export function MatchmakingScreen({
   const [isSendingSms, setIsSendingSms] = useState(false);
   const [smsSuccess, setSmsSuccess] = useState<{ inviteUrl: string } | null>(null);
   const [smsError, setSmsError] = useState<string | null>(null);
+
+  // Accessibility: refs and state for focus management
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+
+  // Handle ESC key to close modal
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && showHumanModal) {
+      resetModal();
+    }
+  }, [showHumanModal]);
+
+  // Focus trap and keyboard handler for modal
+  useEffect(() => {
+    if (showHumanModal) {
+      // Store the previously focused element
+      previousActiveElement.current = document.activeElement as HTMLElement;
+
+      // Add ESC key listener
+      document.addEventListener('keydown', handleKeyDown);
+
+      // Focus the modal
+      setTimeout(() => {
+        modalRef.current?.focus();
+      }, 100);
+
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        // Restore focus when modal closes
+        previousActiveElement.current?.focus();
+      };
+    }
+  }, [showHumanModal, handleKeyDown]);
 
   const handleBattlePip = () => {
     setSelectedMode('ai');
@@ -156,6 +190,9 @@ export function MatchmakingScreen({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className="glass-card p-8 text-center"
+              role="status"
+              aria-live="polite"
+              aria-label={selectedMode === 'ai' ? 'Connecting to Pip' : 'Finding opponent'}
             >
               {/* Animated radar */}
               <div className="relative w-32 h-32 mx-auto mb-6">
@@ -226,10 +263,10 @@ export function MatchmakingScreen({
                 whileTap={{ scale: 0.98 }}
                 onClick={handleBattlePip}
                 disabled={isConnecting}
-                className="glass-card p-8 text-left group cursor-pointer hover:border-violet-500/50 transition-colors disabled:opacity-50"
+                className="glass-card p-8 text-center group cursor-pointer hover:border-violet-500/50 transition-colors disabled:opacity-50"
               >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center mb-5 group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-shadow">
-                  <CpuChipIcon className="w-8 h-8 text-violet-400" />
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 overflow-hidden mb-5 group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-shadow mx-auto">
+                  <img src={PIP_AVATAR_URL} alt="Pip" className="w-full h-full object-cover" />
                 </div>
 
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors">
@@ -240,7 +277,7 @@ export function MatchmakingScreen({
                   Challenge our AI companion. Perfect for practice and honing your prompting skills!
                 </p>
 
-                <div className="flex items-center gap-2 text-violet-400 text-sm font-medium">
+                <div className="flex items-center justify-center gap-2 text-violet-400 text-sm font-medium">
                   <SparklesIcon className="w-4 h-4" />
                   <span>Instant Match</span>
                 </div>
@@ -252,9 +289,9 @@ export function MatchmakingScreen({
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowHumanModal(true)}
                 disabled={isConnecting}
-                className="glass-card p-8 text-left group cursor-pointer hover:border-cyan-500/50 transition-colors disabled:opacity-50"
+                className="glass-card p-8 text-center group cursor-pointer hover:border-cyan-500/50 transition-colors disabled:opacity-50"
               >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center mb-5 group-hover:shadow-[0_0_30px_rgba(34,211,238,0.3)] transition-shadow">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center mb-5 group-hover:shadow-[0_0_30px_rgba(34,211,238,0.3)] transition-shadow mx-auto">
                   <UserGroupIcon className="w-8 h-8 text-cyan-400" />
                 </div>
 
@@ -266,7 +303,7 @@ export function MatchmakingScreen({
                   Challenge a friend or match with a random AllThrive member in real-time!
                 </p>
 
-                <div className="flex items-center gap-2 text-cyan-400 text-sm font-medium">
+                <div className="flex items-center justify-center gap-2 text-cyan-400 text-sm font-medium">
                   <BoltIcon className="w-4 h-4" />
                   <span>Live PvP</span>
                 </div>
@@ -321,12 +358,18 @@ export function MatchmakingScreen({
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onClick={(e) => e.target === e.currentTarget && resetModal()}
+            role="presentation"
           >
             <motion.div
+              ref={modalRef}
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="glass-card p-8 w-full max-w-md"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="battle-human-modal-title"
+              tabIndex={-1}
             >
               <AnimatePresence mode="wait">
                 {smsSuccess ? (
@@ -362,12 +405,13 @@ export function MatchmakingScreen({
                     exit={{ opacity: 0 }}
                   >
                     <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">Battle a Human</h3>
+                      <h3 id="battle-human-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">Battle a Human</h3>
                       <button
                         onClick={resetModal}
                         className="p-1 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                        aria-label="Close modal"
                       >
-                        <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-slate-400" />
+                        <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-slate-400" aria-hidden="true" />
                       </button>
                     </div>
 
@@ -434,18 +478,20 @@ export function MatchmakingScreen({
                         <button
                           onClick={() => setModalView('options')}
                           className="p-1.5 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                          aria-label="Go back to options"
                         >
-                          <svg className="w-5 h-5 text-gray-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-5 h-5 text-gray-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                           </svg>
                         </button>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Challenge a Friend</h3>
+                        <h3 id="battle-human-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">Challenge a Friend</h3>
                       </div>
                       <button
                         onClick={resetModal}
                         className="p-1 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                        aria-label="Close modal"
                       >
-                        <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-slate-400" />
+                        <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-slate-400" aria-hidden="true" />
                       </button>
                     </div>
 

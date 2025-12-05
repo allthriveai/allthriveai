@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import {
   TrophyIcon,
   SparklesIcon,
@@ -18,8 +19,6 @@ import {
   FireIcon,
   ArrowPathIcon,
   HomeIcon,
-  BookmarkIcon,
-  CheckIcon,
 } from '@heroicons/react/24/solid';
 
 interface Submission {
@@ -55,8 +54,6 @@ interface JudgingRevealProps {
   onComplete?: () => void;
   onPlayAgain?: () => void;
   onGoHome?: () => void;
-  onSaveToProfile?: () => Promise<void>;
-  isSaved?: boolean;
   isJudging?: boolean;
 }
 
@@ -82,24 +79,12 @@ export function JudgingReveal({
   onComplete,
   onPlayAgain,
   onGoHome,
-  onSaveToProfile,
-  isSaved = false,
   isJudging = false,
 }: JudgingRevealProps) {
   const [phase, setPhase] = useState<RevealPhase>('analyzing');
   const [messageIndex, setMessageIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSaveToProfile = async () => {
-    if (!onSaveToProfile || isSaving || isSaved) return;
-    setIsSaving(true);
-    try {
-      await onSaveToProfile();
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const prefersReducedMotion = useReducedMotion();
 
   const isWinner = winnerId === myPlayer.id;
   const isTie = winnerId === null && mySubmission?.score === opponentSubmission?.score;
@@ -379,9 +364,9 @@ export function JudgingReveal({
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      {/* Confetti effect for winner */}
-      {showConfetti && (
-        <div className="fixed inset-0 pointer-events-none z-50">
+      {/* Confetti effect for winner - hidden when reduced motion is preferred */}
+      {showConfetti && !prefersReducedMotion && (
+        <div className="fixed inset-0 pointer-events-none z-50" aria-hidden="true">
           {Array.from({ length: 50 }).map((_, i) => (
             <motion.div
               key={i}
@@ -688,12 +673,14 @@ export function JudgingReveal({
               exit={{ opacity: 0 }}
               transition={{ type: 'spring', stiffness: 200 }}
               className="text-center mt-10"
+              role="alert"
+              aria-live="assertive"
             >
               {isTie ? (
                 <div className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-slate-800/50 border border-slate-600">
-                  <StarIcon className="w-8 h-8 text-slate-400" />
+                  <StarIcon className="w-8 h-8 text-slate-400" aria-hidden="true" />
                   <span className="text-2xl font-bold text-slate-300">It's a Tie!</span>
-                  <StarIcon className="w-8 h-8 text-slate-400" />
+                  <StarIcon className="w-8 h-8 text-slate-400" aria-hidden="true" />
                 </div>
               ) : isWinner ? (
                 <motion.div
@@ -706,13 +693,13 @@ export function JudgingReveal({
                            shadow-[0_0_60px_rgba(251,191,36,0.3)]"
                 >
                   <motion.div
-                    animate={{
+                    animate={prefersReducedMotion ? {} : {
                       rotate: [0, -10, 10, -10, 10, 0],
                       scale: [1, 1.1, 1],
                     }}
                     transition={{ duration: 0.5, delay: 0.5 }}
                   >
-                    <TrophyIcon className="w-20 h-20 text-amber-400" />
+                    <TrophyIcon className="w-20 h-20 text-amber-400" aria-hidden="true" />
                   </motion.div>
                   <span className="text-4xl font-bold text-amber-300">Victory!</span>
                   <span className="text-slate-400">+50 XP earned</span>
@@ -737,34 +724,6 @@ export function JudgingReveal({
             transition={{ delay: 0.5 }}
             className="flex justify-center gap-4 flex-wrap mt-8"
           >
-            {onSaveToProfile && (
-              <button
-                onClick={handleSaveToProfile}
-                disabled={isSaving || isSaved}
-                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                  isSaved
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30 cursor-default'
-                    : 'bg-violet-500/20 text-violet-300 border border-violet-500/30 hover:bg-violet-500/30 hover:border-violet-500/50'
-                } ${isSaving ? 'opacity-50 cursor-wait' : ''}`}
-              >
-                {isSaved ? (
-                  <>
-                    <CheckIcon className="w-5 h-5" />
-                    Saved to Profile
-                  </>
-                ) : isSaving ? (
-                  <>
-                    <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <BookmarkIcon className="w-5 h-5" />
-                    Save to Profile
-                  </>
-                )}
-              </button>
-            )}
             {onPlayAgain && (
               <button
                 onClick={onPlayAgain}

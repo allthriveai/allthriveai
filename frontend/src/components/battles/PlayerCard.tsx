@@ -13,7 +13,8 @@ import {
   SparklesIcon,
   WifiIcon,
 } from '@heroicons/react/24/solid';
-import { CpuChipIcon } from '@heroicons/react/24/outline';
+
+const PIP_AVATAR_URL = '/chatbot-chat.webp';
 
 export type PlayerStatus = 'connected' | 'disconnected' | 'typing' | 'submitted' | 'idle';
 
@@ -99,13 +100,11 @@ export function PlayerCard({
         >
           {avatarUrl ? (
             <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
+          ) : isAi ? (
+            <img src={PIP_AVATAR_URL} alt="Pip" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              {isAi ? (
-                <CpuChipIcon className="w-10 h-10 text-cyan-400" />
-              ) : (
-                <UserCircleIcon className="w-16 h-16 text-slate-500" />
-              )}
+              <UserCircleIcon className="w-16 h-16 text-slate-500" />
             </div>
           )}
         </div>
