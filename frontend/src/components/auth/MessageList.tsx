@@ -19,17 +19,17 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
   }, [messages, isStreaming]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex-1 overflow-y-auto p-6 space-y-4">
       {messages.map((message) => (
         <ChatMessage key={message.id} message={message} />
       ))}
       {isStreaming && (
         <div className="flex justify-start mb-4">
-          <div className="bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded">
+          <div className="bg-white/5 border border-white/10 px-4 py-3 rounded-xl">
             <div className="flex space-x-2">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              <div className="w-2 h-2 bg-cyan-neon rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-cyan-neon rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-cyan-neon rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
             </div>
           </div>
         </div>

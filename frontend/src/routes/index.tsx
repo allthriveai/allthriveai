@@ -3,18 +3,15 @@ import { ProtectedRoute } from './ProtectedRoute';
 import LandingPage from '@/pages/LandingPage';
 import AboutPage from '@/pages/AboutPage';
 import AuthPage from '@/pages/AuthPage';
-import LoginPage from '@/pages/LoginPage';
-import SignupPage from '@/pages/SignupPage';
 import ProfilePage from '@/pages/ProfilePage';
 import ProjectDetailPage from '@/pages/ProjectDetailPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
-import PasswordSettingsPage from '@/pages/settings/PasswordSettingsPage';
 import IntegrationsSettingsPage from '@/pages/settings/IntegrationsSettingsPage';
 import PersonalizationSettingsPage from '@/pages/settings/PersonalizationSettingsPage';
 import NotificationsSettingsPage from '@/pages/settings/NotificationsSettingsPage';
 import BillingSettingsPage from '@/pages/settings/BillingSettingsPage';
+import CreatorSettingsPage from '@/pages/settings/CreatorSettingsPage';
 import PrivacySettingsPage from '@/pages/settings/PrivacySettingsPage';
-import TeamsSettingsPage from '@/pages/settings/TeamsSettingsPage';
 import ReferralsPage from '@/pages/settings/ReferralsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
@@ -27,11 +24,16 @@ import ToolDetailPage from '@/pages/ToolDetailPage';
 import { ExplorePage } from '@/pages/ExplorePage';
 import PromptBattlePage from '@/pages/play/PromptBattlePage';
 import BattleDetailPage from '@/pages/play/BattleDetailPage';
-import { BattlesLobbyPage, BattlePage } from '@/pages/battles';
+import { BattlesLobbyPage, BattlePage, BattleInvitePage } from '@/pages/battles';
+import { ChallengePage } from '@/pages/challenges';
 import ThriveCirclePage from '@/pages/ThriveCirclePage';
 import SideQuestsPage from '@/pages/SideQuestsPage';
 import PricingPage from '@/pages/PricingPage';
 import CheckoutPage from '@/pages/CheckoutPage';
+import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
+import PerksPage from '@/pages/PerksPage';
+import MarketplacePage from '@/pages/MarketplacePage';
+import GettingStartedPage from '@/pages/GettingStartedPage';
 
 export function AppRoutes() {
   return (
@@ -117,12 +119,28 @@ export function AppRoutes() {
       {/* Pricing - public route */}
       <Route path="/pricing" element={<PricingPage />} />
 
+      {/* Perks - public route (coming soon) */}
+      <Route path="/perks" element={<PerksPage />} />
+
+      {/* Marketplace - public route (coming soon) */}
+      <Route path="/marketplace" element={<MarketplacePage />} />
+
       {/* Checkout - protected route */}
       <Route
         path="/checkout"
         element={
           <ProtectedRoute>
             <CheckoutPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Checkout Success - protected route */}
+      <Route
+        path="/checkout/success"
+        element={
+          <ProtectedRoute>
+            <CheckoutSuccessPage />
           </ProtectedRoute>
         }
       />
@@ -144,6 +162,8 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      {/* Battle invitation link (from SMS) - public so users can see invitation before login */}
+      <Route path="/battle/invite/:token" element={<BattleInvitePage />} />
 
       {/* Play routes - legacy, redirects to new battles */}
       <Route
@@ -159,12 +179,45 @@ export function AppRoutes() {
         }
       />
 
+      {/* Weekly Challenges */}
+      <Route
+        path="/challenges"
+        element={
+          <ProtectedRoute>
+            <ChallengePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/challenges/:slug"
+        element={
+          <ProtectedRoute>
+            <ChallengePage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Alias for this week's challenge */}
+      <Route
+        path="/this-weeks-challenge"
+        element={<Navigate to="/challenges" replace />}
+      />
+
       {/* Thrive Circle - protected */}
       <Route
         path="/thrive-circle"
         element={
           <ProtectedRoute>
             <ThriveCirclePage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Getting Started - protected */}
+      <Route
+        path="/getting-started"
+        element={
+          <ProtectedRoute>
+            <GettingStartedPage />
           </ProtectedRoute>
         }
       />
@@ -200,14 +253,6 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <AccountSettingsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/account/settings/password"
-        element={
-          <ProtectedRoute>
-            <PasswordSettingsPage />
           </ProtectedRoute>
         }
       />
@@ -252,18 +297,18 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/account/settings/privacy"
+        path="/account/settings/creator"
         element={
           <ProtectedRoute>
-            <PrivacySettingsPage />
+            <CreatorSettingsPage />
           </ProtectedRoute>
         }
       />
       <Route
-        path="/account/settings/teams"
+        path="/account/settings/privacy"
         element={
           <ProtectedRoute>
-            <TeamsSettingsPage />
+            <PrivacySettingsPage />
           </ProtectedRoute>
         }
       />

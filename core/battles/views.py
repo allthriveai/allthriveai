@@ -3,13 +3,22 @@
 from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from core.logging_utils import StructuredLogger
 from services.gamification import BattleService
 from services.projects import ProjectService
 
-from .models import BattleInvitation, BattleStatus, BattleSubmission, InvitationStatus, MatchSource, PromptBattle
+from .models import (
+    BattleInvitation,
+    BattleStatus,
+    BattleSubmission,
+    InvitationStatus,
+    InvitationType,
+    MatchSource,
+    PromptBattle,
+)
 from .serializers import (
     BattleInvitationSerializer,
     BattleStatsSerializer,
@@ -103,7 +112,26 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         except ValueError as e:
+            StructuredLogger.log_validation_error(
+                message='Battle submission validation failed',
+                user=request.user,
+                errors={'validation': [str(e)]},
+            )
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            StructuredLogger.log_error(
+                message='Failed to submit battle prompt',
+                error=e,
+                user=request.user,
+                extra={
+                    'battle_id': battle.id,
+                    'submission_type': request.data.get('submission_type'),
+                },
+            )
+            return Response(
+                {'error': 'Failed to submit prompt. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
@@ -196,6 +224,19 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
                 'prompt': opponent_submission.prompt_text,
                 'image_url': opponent_submission.generated_output_url,
                 'score': float(opponent_submission.score) if opponent_submission.score else None,
+                'criteria_scores': opponent_submission.criteria_scores,
+                'feedback': opponent_submission.evaluation_feedback,
+            }
+
+        # Add criteria scores and feedback to my submission
+        battle_result['my_submission']['criteria_scores'] = my_submission.criteria_scores
+        battle_result['my_submission']['feedback'] = my_submission.evaluation_feedback
+
+        # Add challenge type info
+        if battle.challenge_type:
+            battle_result['challenge_type'] = {
+                'key': battle.challenge_type.key,
+                'name': battle.challenge_type.name,
             }
 
         # Truncate challenge text for title
@@ -203,15 +244,33 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
         if len(battle.challenge_text) > 50:
             challenge_preview += '...'
 
-        # Create project
+        # Generate tags based on battle content
+        tags = ['AI Image Generation', 'Prompt Battle']
+
+        # Add challenge type as a tag
+        if battle.challenge_type:
+            tags.append(battle.challenge_type.name)
+
+        # Add result tag
+        if won:
+            tags.append('Winner')
+        elif is_tie:
+            tags.append('Tie')
+
+        # Add AI opponent tag if applicable
+        if is_ai_opponent:
+            tags.append('vs AI')
+
+        # Create project with battle type
         project, error = ProjectService.create_project(
             user_id=request.user.id,
             title=f'Battle: {challenge_preview}',
-            project_type='other',
+            project_type='battle',
             description=f'Challenge: {battle.challenge_text}\n\nMy prompt: {my_submission.prompt_text}',
             featured_image_url=my_submission.generated_output_url or '',
             is_showcase=True,
             content={'battleResult': battle_result},
+            tags=tags,
         )
 
         if error:
@@ -221,6 +280,7 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
             {
                 'project_id': project.id,
                 'slug': project.slug,
+                'url': f'/{request.user.username}/{project.slug}/',
                 'message': 'Battle saved to your profile!',
             }
         )
@@ -335,6 +395,157 @@ class BattleInvitationViewSet(viewsets.ReadOnlyModelViewSet):
 
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'])
+    def send_sms(self, request):
+        """Send an SMS battle invitation to a phone number."""
+        from django.core.exceptions import ValidationError
+
+        from core.battles.models import ChallengeType
+        from core.sms.utils import normalize_phone_number
+
+        # Validate phone number
+        phone = request.data.get('phone_number', '').strip()
+        recipient_name = request.data.get('recipient_name', '').strip()
+        challenge_type_key = request.data.get('challenge_type')
+
+        if not phone:
+            return Response({'error': 'Phone number is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            normalized_phone = normalize_phone_number(phone)
+        except ValidationError as e:
+            return Response({'error': str(e.message)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get challenge type
+        challenge_type = None
+        if challenge_type_key:
+            try:
+                challenge_type = ChallengeType.objects.get(key=challenge_type_key, is_active=True)
+            except ChallengeType.DoesNotExist:
+                pass
+
+        if not challenge_type:
+            challenge_type = ChallengeType.objects.filter(is_active=True).first()
+
+        if not challenge_type:
+            return Response({'error': 'No challenge types available.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate challenge
+        challenge_text = challenge_type.generate_challenge()
+
+        # Create the battle (opponent will be set when they accept)
+        battle = PromptBattle.objects.create(
+            challenger=request.user,
+            opponent=None,  # Will be set when SMS recipient accepts
+            challenge_text=challenge_text,
+            challenge_type=challenge_type,
+            match_source=MatchSource.INVITATION,
+            duration_minutes=challenge_type.default_duration_minutes,
+            status=BattleStatus.PENDING,
+        )
+
+        # Create SMS invitation
+        invitation = BattleInvitation.objects.create(
+            battle=battle,
+            sender=request.user,
+            recipient=None,  # Will be set when user accepts
+            recipient_phone=normalized_phone,
+            recipient_name=recipient_name,
+            invitation_type=InvitationType.SMS,
+        )
+
+        # Send the SMS
+        try:
+            invitation.send_sms_invitation()
+        except ValidationError as e:
+            # Clean up if SMS fails
+            invitation.delete()
+            battle.delete()
+            return Response({'error': str(e.message)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = BattleInvitationSerializer(invitation)
+        return Response(
+            {
+                'invitation': serializer.data,
+                'invite_url': invitation.invite_url,
+                'message': f'SMS invitation sent to {normalized_phone[:6]}****',
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_invitation_by_token(request, token):
+    """Get invitation details by token (for SMS invitation links)."""
+    try:
+        invitation = BattleInvitation.objects.select_related('sender', 'battle').get(invite_token=token)
+    except BattleInvitation.DoesNotExist:
+        return Response({'error': 'Invitation not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if invitation.is_expired:
+        return Response({'error': 'Invitation has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if invitation.status != InvitationStatus.PENDING:
+        return Response({'error': 'Invitation has already been responded to.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(
+        {
+            'invitation_id': invitation.id,
+            'sender': {
+                'id': invitation.sender.id,
+                'username': invitation.sender.username,
+                'display_name': invitation.sender.display_name,
+                'avatar_url': invitation.sender.avatar_url,
+            },
+            'battle': {
+                'id': invitation.battle.id,
+                'topic': invitation.battle.topic,
+                'challenge_type': invitation.battle.challenge_type.name if invitation.battle.challenge_type else None,
+            },
+            'expires_at': invitation.expires_at.isoformat(),
+        }
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def accept_invitation_by_token(request, token):
+    """Accept an SMS invitation by token."""
+    try:
+        invitation = BattleInvitation.objects.select_related('sender', 'battle').get(invite_token=token)
+    except BattleInvitation.DoesNotExist:
+        return Response({'error': 'Invitation not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if invitation.is_expired:
+        return Response({'error': 'Invitation has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if invitation.status != InvitationStatus.PENDING:
+        return Response({'error': 'Invitation has already been responded to.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if invitation.sender == request.user:
+        return Response({'error': 'You cannot accept your own invitation.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        invitation.accept(accepting_user=request.user)
+        battle = invitation.battle
+        battle.refresh_from_db()
+
+        battle_serializer = PromptBattleSerializer(battle, context={'request': request})
+        return Response(battle_serializer.data)
+
+    except Exception as e:
+        StructuredLogger.log_error(
+            message='Failed to accept battle invitation',
+            error=e,
+            user=request.user,
+            extra={
+                'invitation_id': invitation.id,
+                'endpoint': '/battles/invitations/accept/',
+            },
+        )
+        return Response({'error': 'Failed to accept invitation. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])

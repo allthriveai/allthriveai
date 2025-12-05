@@ -10,6 +10,8 @@ from .auth.views import (
     UserProfileView,
     csrf_token,
     current_user,
+    deactivate_account,
+    delete_account,
     login_view,
     logout_view,
     oauth_callback,
@@ -23,9 +25,11 @@ from .auth.views_token import generate_ws_connection_token
 from .battles.views import (
     BattleInvitationViewSet,
     PromptBattleViewSet,
+    accept_invitation_by_token,
     battle_leaderboard,
     battle_stats,
     expire_battles,
+    get_invitation_by_token,
 )
 from .events.views import EventViewSet
 from .integrations.github.views import (
@@ -36,6 +40,7 @@ from .integrations.github.views import (
 from .integrations.views import import_from_url, list_integrations
 from .projects.comment_views import ProjectCommentViewSet
 from .projects.topic_suggestions import get_topic_suggestions
+from .projects.tracking_views import track_batch_clicks, track_project_click, track_project_view
 from .projects.views import (
     ProjectViewSet,
     delete_project_by_id,
@@ -58,9 +63,17 @@ from .social.views import (
 from .social.views import oauth_callback as social_oauth_callback
 from .taxonomy.views import TaxonomyViewSet, UserTagViewSet, track_interaction, user_personalization_overview
 from .thrive_circle.views import PointActivityViewSet, QuestCategoryViewSet, SideQuestViewSet, ThriveCircleViewSet
-from .tools.views import ToolBookmarkViewSet, ToolComparisonViewSet, ToolReviewViewSet, ToolViewSet
+from .tools.views import (
+    ToolBookmarkViewSet,
+    ToolComparisonViewSet,
+    ToolReviewViewSet,
+    ToolViewSet,
+    recommendation_quiz_questions,
+    recommendation_quiz_submit,
+)
 from .uploads.views import upload_file, upload_image
-from .users.views import explore_users
+from .users.invitation_views import request_invitation
+from .users.views import explore_users, onboarding_progress
 from .views import ai_analytics_views, csp_report, db_health
 
 # Main router for public/general endpoints
@@ -112,8 +125,14 @@ urlpatterns = [
     path('projects/explore/', explore_projects, name='explore_projects'),
     path('projects/topic-suggestions/', get_topic_suggestions, name='topic_suggestions'),
     path('projects/<int:project_id>/delete/', delete_project_by_id, name='delete_project_by_id'),
+    # Project tracking endpoints (analytics)
+    path('projects/<int:project_id>/track-view/', track_project_view, name='track_project_view'),
+    path('projects/track-click/', track_project_click, name='track_project_click'),
+    path('projects/track-clicks/', track_batch_clicks, name='track_batch_clicks'),
     path('search/semantic/', semantic_search, name='semantic_search'),
     path('users/explore/', explore_users, name='explore_users'),
+    # Invitation request (public, rate-limited)
+    path('invitations/request/', request_invitation, name='request_invitation'),
     # Public user endpoints
     path('users/<str:username>/', username_profile_view, name='public_user_profile'),
     path('users/<str:username>/projects/', public_user_projects, name='public_user_projects'),
@@ -163,7 +182,10 @@ urlpatterns = [
     path('me/activity/insights/', user_activity_insights, name='user_activity_insights'),
     path('me/personalization/', user_personalization_overview, name='user_personalization'),
     path('me/personalization/status/', personalization_status, name='personalization_status'),
+    path('me/onboarding-progress/', onboarding_progress, name='onboarding_progress'),
     path('me/interactions/', track_interaction, name='track_interaction'),
+    path('me/account/deactivate/', deactivate_account, name='deactivate_account'),
+    path('me/account/delete/', delete_account, name='delete_account'),
     path('me/', include(me_router.urls)),
     # Learning paths endpoints
     path('', include('core.learning_paths.urls')),
@@ -171,6 +193,9 @@ urlpatterns = [
     path('', include(taxonomy_router.urls)),
     # Tool endpoints
     path('', include(tool_router.urls)),
+    # Tool recommendation quiz endpoints (public)
+    path('tools/recommendation-quiz/questions/', recommendation_quiz_questions, name='recommendation_quiz_questions'),
+    path('tools/recommendation-quiz/submit/', recommendation_quiz_submit, name='recommendation_quiz_submit'),
     # Events endpoints
     path('', include(events_router.urls)),
     # Upload endpoints
@@ -202,11 +227,25 @@ urlpatterns = [
     path('battles/stats/', battle_stats, name='battle_stats'),
     path('battles/leaderboard/', battle_leaderboard, name='battle_leaderboard'),
     path('battles/expire/', expire_battles, name='expire_battles'),
+    # SMS battle invitation endpoints
+    path(
+        'battles/invitations/send_sms/',
+        BattleInvitationViewSet.as_view({'post': 'send_sms'}),
+        name='battle_invitation_send_sms',
+    ),
+    path('battles/invite/<str:token>/', get_invitation_by_token, name='invitation_by_token'),
+    path('battles/invite/<str:token>/accept/', accept_invitation_by_token, name='accept_invitation_by_token'),
+    # Weekly challenges endpoints
+    path('', include('core.challenges.urls')),
+    # Email notification endpoints
+    path('notifications/', include('core.notifications.urls')),
+    # Creator marketplace endpoints
+    path('marketplace/', include('core.marketplace.urls')),
 ]
 
 # Test-only endpoints (only available in DEBUG mode)
 if settings.DEBUG:
-    from .auth.test_views import test_login
+    from .auth.testing_views import test_login
 
     urlpatterns += [
         path('auth/test-login/', test_login, name='test_login'),

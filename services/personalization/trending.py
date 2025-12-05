@@ -198,7 +198,7 @@ class TrendingEngine:
         recent_cutoff = now - timedelta(hours=self.RECENT_WINDOW_HOURS)
         prev_cutoff = now - timedelta(hours=self.PREVIOUS_WINDOW_HOURS)
 
-        # Get ALL public projects with like count annotations
+        # Get ALL public projects with like and view count annotations
         all_projects = (
             Project.objects.filter(
                 is_private=False,
@@ -233,6 +233,30 @@ class TrendingEngine:
                 ),
                 # Total likes count
                 total_likes_count=Count('likes'),
+                # Count views in recent window (last 24 hours)
+                recent_views_count=Sum(
+                    Case(
+                        When(
+                            views__created_at__gte=recent_cutoff,
+                            views__created_at__lt=now,
+                            then=1,
+                        ),
+                        default=0,
+                        output_field=IntegerField(),
+                    )
+                ),
+                # Count views in previous window (24-48 hours ago)
+                prev_views_count=Sum(
+                    Case(
+                        When(
+                            views__created_at__gte=prev_cutoff,
+                            views__created_at__lt=recent_cutoff,
+                            then=1,
+                        ),
+                        default=0,
+                        output_field=IntegerField(),
+                    )
+                ),
             )
         )
 
@@ -241,9 +265,11 @@ class TrendingEngine:
         for project in all_projects:
             recent_likes = project.recent_likes_count or 0
             prev_likes = project.prev_likes_count or 0
+            recent_views = project.recent_views_count or 0
+            prev_views = project.prev_views_count or 0
 
             like_velocity = (recent_likes - prev_likes) / max(prev_likes, 1)
-            view_velocity = 0.0
+            view_velocity = (recent_views - prev_views) / max(prev_views, 1)
             velocity = (like_velocity * self.LIKE_WEIGHT) + (view_velocity * self.VIEW_WEIGHT)
 
             days_old = (now - project.created_at).days

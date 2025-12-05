@@ -302,61 +302,37 @@ export default function SideQuestsPage() {
   // Main Grid View - Game Library
   return (
     <DashboardLayout>
-      <div className="h-full overflow-y-auto" style={{ background: 'var(--bg-primary)' }}>
-        {/* Hero Header */}
-        <div
-          className="relative py-8 px-6 mb-6"
-          style={{
-            background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.1) 0%, rgba(74, 222, 128, 0.05) 50%, transparent 100%)',
-          }}
-        >
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center gap-4 mb-2">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.3), rgba(74, 222, 128, 0.2))',
-                }}
-              >
-                <FontAwesomeIcon icon={faGamepad} className="text-xl text-cyan-400" />
-              </div>
-              <div>
-                <h1
-                  className="text-2xl sm:text-3xl font-black"
-                  style={{
-                    background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}
-                >
-                  Side Quests
-                </h1>
-                <p className="text-muted text-sm">Embark on quests, forge new skills, and claim legendary rewards.</p>
-              </div>
-            </div>
+      <div className="h-full overflow-y-auto">
+        {/* Hero Banner - Neon Glass Style */}
+        <header className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden" aria-label="Side Quests page header">
+          {/* Ambient Glow Background */}
+          <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
+          <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-green-500/10 dark:bg-green-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
 
-            {/* Success notification */}
-            {successMessage && (
-              <div
-                className="mt-4 p-3 rounded-lg flex items-center justify-between"
-                style={{
-                  background: 'rgba(74, 222, 128, 0.1)',
-                  border: '1px solid rgba(74, 222, 128, 0.3)',
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <FontAwesomeIcon icon={faCheckCircle} className="text-green-400" />
-                  <p className="text-green-300 text-sm">{successMessage}</p>
-                </div>
-                <button onClick={() => setSuccessMessage(null)} className="text-green-400 hover:text-green-300">
-                  <FontAwesomeIcon icon={faTimes} />
-                </button>
-              </div>
-            )}
+          <div className="relative max-w-6xl mx-auto px-6 h-full flex flex-col justify-center">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-green-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-green-400 bg-clip-text text-transparent">Side Quests</span>
+            </h1>
+            <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl">
+              Embark on quests, forge new skills, and claim legendary rewards
+            </p>
           </div>
-        </div>
+        </header>
 
-        <div className="max-w-6xl mx-auto px-6 pb-8 space-y-10">
+        {/* Main Content Container */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+          {/* Success notification */}
+          {successMessage && (
+            <div className="bg-green-500/10 dark:bg-green-500/10 border border-green-500/30 dark:border-green-500/30 rounded-lg p-3 flex items-center justify-between" role="alert">
+              <div className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faCheckCircle} className="text-green-600 dark:text-green-400" aria-hidden="true" />
+                <p className="text-green-700 dark:text-green-300 text-sm">{successMessage}</p>
+              </div>
+              <button onClick={() => setSuccessMessage(null)} aria-label="Dismiss notification" className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300">
+                <FontAwesomeIcon icon={faTimes} aria-hidden="true" />
+              </button>
+            </div>
+          )}
           {/* Continue Playing - Active Quests */}
           {inProgressQuests.length > 0 && (
             <section>
@@ -396,7 +372,7 @@ export default function SideQuestsPage() {
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
-                className={`flex gap-4 overflow-x-auto scrollbar-hide pb-2 -mx-6 px-6 ${isDragging ? '' : 'snap-x snap-mandatory'} select-none`}
+                className={`flex gap-4 overflow-x-auto scrollbar-hide pb-2 ${isDragging ? '' : 'snap-x snap-mandatory'} select-none`}
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: 'grab' }}
               >
                 {inProgressQuests.map((userQuest) => {
@@ -485,7 +461,7 @@ export default function SideQuestsPage() {
 
           {/* Quest Paths - Game Library */}
           <section>
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-4">
               <FontAwesomeIcon icon={faCompass} className="text-cyan-400" />
               <h2 className="text-lg font-bold text-default">Quest Paths</h2>
             </div>

@@ -25,6 +25,21 @@ const BUTTON_FLEX_CONTAINER = 'flex items-center gap-3';
 const BUTTON_TITLE_STYLE = 'font-medium text-slate-900 dark:text-slate-100 text-sm';
 const BUTTON_SUBTITLE_STYLE = 'text-xs text-slate-600 dark:text-slate-400';
 
+// Product creation welcome message
+const PRODUCT_CREATION_WELCOME = `Ready to create your digital product! I can help you build:
+
+- **Courses** - Turn your knowledge into structured lessons
+- **Templates** - Create reusable frameworks and tools
+- **Prompt Packs** - Curated AI prompts for specific tasks
+- **Digital Downloads** - Guides, checklists, resources
+
+**Ways to get started:**
+1. **Import from YouTube** - I'll transform a video into a course
+2. **Describe your idea** - Tell me what you want to create
+3. **Upload content** - Share existing materials to structure
+
+What would you like to create?`;
+
 // Nano Banana welcome message for image generation
 const NANO_BANANA_WELCOME = `Hey there! I'm **Nano Banana**, your creative image assistant.
 
@@ -48,6 +63,7 @@ interface IntelligentChatPanelProps {
   conversationId?: string;
   welcomeMode?: boolean; // Show onboarding welcome message for new users
   supportMode?: boolean; // Start with help questions panel visible
+  productCreationMode?: boolean; // Start in product creation context
 }
 
 /**
@@ -66,6 +82,7 @@ export function IntelligentChatPanel({
   conversationId = 'default-conversation',
   welcomeMode = false,
   supportMode = false,
+  productCreationMode = false,
 }: IntelligentChatPanelProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -296,6 +313,11 @@ export function IntelligentChatPanel({
       case 'describe':
         sendMessage("I'd like to describe something to you");
         break;
+      case 'create-product':
+        // Set product creation context and show welcome
+        setHasInteracted(true);
+        sendMessage('I want to create a digital product to sell on the marketplace');
+        break;
     }
   }, [handleGitHubImport, sendMessage]);
 
@@ -489,6 +511,35 @@ export function IntelligentChatPanel({
     //     </div>
     //   );
     // }
+
+    // Product creation mode empty state
+    if (productCreationMode) {
+      return (
+        <div className="flex flex-col items-start justify-start h-full px-4 pt-4">
+          <div className="max-w-md">
+            <div className="mb-4 px-4 py-3 rounded-lg bg-gradient-to-br from-primary-50 to-cyan-50 dark:from-primary-900/20 dark:to-cyan-900/20 border border-primary-200 dark:border-primary-800">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">🛍️</span>
+                <p className="text-sm font-medium text-primary-800 dark:text-primary-200">
+                  Let's create your product!
+                </p>
+              </div>
+              <p className="text-sm text-primary-700 dark:text-primary-300 mb-3">
+                I can help you build courses, templates, prompt packs, and digital downloads.
+              </p>
+              <div className="space-y-1.5 text-xs text-primary-600 dark:text-primary-400">
+                <p>• <strong>Import from YouTube</strong> - Transform a video into a course</p>
+                <p>• <strong>Describe your idea</strong> - Tell me what you want to create</p>
+                <p>• <strong>Upload content</strong> - Share existing materials to structure</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 px-1">
+              Type a message below or click the + button for more options.
+            </p>
+          </div>
+        </div>
+      );
+    }
 
     // Default empty state
     return (
@@ -691,14 +742,14 @@ export function IntelligentChatPanel({
     return (
       <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
         <div
-          className={`max-w-md px-4 py-2 rounded-lg ${
+          className={`max-w-[85%] px-4 py-2 rounded-lg ${
             isUser
               ? 'bg-primary-600 text-white'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
           }`}
         >
           {isUser ? (
-            <span className="whitespace-pre-wrap">{message.content}</span>
+            <span className="whitespace-pre-wrap break-words">{message.content}</span>
           ) : (
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown
@@ -752,6 +803,11 @@ export function IntelligentChatPanel({
       header={
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
+            <img
+              src="/all-thrvie-logo.png"
+              alt="All Thrive"
+              className="h-6 w-auto"
+            />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               All Thrive AI Chat
             </h2>

@@ -8,6 +8,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { AppRoutes } from '@/routes';
 import { Sentry } from '@/utils/sentry';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { PostHogProvider } from '@/lib/analytics';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -53,21 +54,23 @@ function App() {
   return (
     <Sentry.ErrorBoundary fallback={<ErrorFallback />} showDialog={false}>
       <ErrorBoundary>
-        <ThemeProvider>
-          <QueryClientProvider client={queryClient}>
-            <SubscribeModalProvider>
-              <BrowserRouter>
-                <AuthProvider>
-                  <QuestCompletionProvider>
-                    <MainLayout>
-                      <AppRoutes />
-                    </MainLayout>
-                  </QuestCompletionProvider>
-                </AuthProvider>
-              </BrowserRouter>
-            </SubscribeModalProvider>
-          </QueryClientProvider>
-        </ThemeProvider>
+        <PostHogProvider>
+          <ThemeProvider>
+            <QueryClientProvider client={queryClient}>
+              <SubscribeModalProvider>
+                <BrowserRouter>
+                  <AuthProvider>
+                    <QuestCompletionProvider>
+                      <MainLayout>
+                        <AppRoutes />
+                      </MainLayout>
+                    </QuestCompletionProvider>
+                  </AuthProvider>
+                </BrowserRouter>
+              </SubscribeModalProvider>
+            </QueryClientProvider>
+          </ThemeProvider>
+        </PostHogProvider>
       </ErrorBoundary>
     </Sentry.ErrorBoundary>
   );

@@ -661,6 +661,141 @@ def reindex_projects_chunk(self, offset: int, limit: int):
         return {'status': 'error', 'offset': offset, 'error': str(e)}
 
 
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def sync_quiz_to_weaviate(self, quiz_id: str):
+    """
+    Sync a single quiz to Weaviate.
+
+    Called when a quiz is created or updated.
+    Generates embedding and upserts to Weaviate.
+
+    Args:
+        quiz_id: UUID of the quiz to sync (as string)
+    """
+    from core.quizzes.models import Quiz
+
+    try:
+        quiz = Quiz.objects.prefetch_related('tools', 'categories', 'questions').get(id=quiz_id)
+    except Quiz.DoesNotExist:
+        logger.warning(f'Quiz {quiz_id} not found, skipping Weaviate sync')
+        return {'status': 'skipped', 'reason': 'not_found'}
+
+    # Skip unpublished quizzes
+    if not quiz.is_published:
+        logger.info(f'Quiz {quiz_id} is not published, skipping Weaviate sync')
+        return {'status': 'skipped', 'reason': 'not_published'}
+
+    try:
+        client = WeaviateClient()
+
+        if not client.is_available():
+            logger.warning('Weaviate unavailable, retrying later')
+            raise self.retry(exc=WeaviateClientError('Weaviate unavailable'))
+
+        # Generate embedding
+        embedding_service = get_embedding_service()
+
+        # Build embedding text from quiz content
+        tool_names = list(quiz.tools.values_list('name', flat=True))
+        category_names = list(quiz.categories.values_list('name', flat=True))
+        topics = quiz.topics or []
+
+        embedding_text = (
+            f"{quiz.title}. {quiz.description or ''}. Topic: {quiz.topic or ''}. "
+            f"Topics: {', '.join(topics)}. Tools: {', '.join(tool_names)}. "
+            f"Categories: {', '.join(category_names)}."
+        )
+
+        embedding_vector = embedding_service.generate_embedding(embedding_text)
+
+        if not embedding_vector:
+            logger.warning(f'Failed to generate embedding for quiz {quiz_id}')
+            return {'status': 'failed', 'reason': 'embedding_failed'}
+
+        # Prepare properties
+        properties = {
+            'quiz_id': str(quiz.id),
+            'title': quiz.title,
+            'combined_text': embedding_text[:5000],
+            'description': quiz.description or '',
+            'topic': quiz.topic or '',
+            'topics': topics,
+            'difficulty': quiz.difficulty or 'beginner',
+            'tool_names': tool_names,
+            'category_names': category_names,
+            'question_count': quiz.questions.count(),
+            'is_published': quiz.is_published,
+            'created_at': quiz.created_at.isoformat(),
+        }
+
+        # Check if quiz already exists in Weaviate
+        existing = client.get_by_property(WeaviateSchema.QUIZ_COLLECTION, 'quiz_id', str(quiz_id))
+
+        if existing:
+            uuid = existing['_additional']['id']
+            client.update_object(
+                collection=WeaviateSchema.QUIZ_COLLECTION,
+                uuid=uuid,
+                properties=properties,
+                vector=embedding_vector,
+            )
+            logger.info(f'Updated quiz {quiz_id} in Weaviate')
+        else:
+            client.add_object(
+                collection=WeaviateSchema.QUIZ_COLLECTION,
+                properties=properties,
+                vector=embedding_vector,
+            )
+            logger.info(f'Added quiz {quiz_id} to Weaviate')
+
+        return {'status': 'success', 'quiz_id': str(quiz_id)}
+
+    except WeaviateClientError as e:
+        logger.error(f'Weaviate error syncing quiz {quiz_id}: {e}')
+        raise self.retry(exc=e) from e
+    except Exception as e:
+        logger.error(f'Error syncing quiz {quiz_id} to Weaviate: {e}', exc_info=True)
+        return {'status': 'error', 'error': str(e)}
+
+
+@shared_task
+def full_reindex_quizzes():
+    """
+    Full reindex of all published quizzes to Weaviate.
+
+    Called manually or scheduled periodically.
+    """
+    from core.quizzes.models import Quiz
+
+    logger.info('Starting full quiz reindex')
+
+    try:
+        client = WeaviateClient()
+        if not client.is_available():
+            logger.error('Weaviate unavailable, aborting quiz reindex')
+            return {'status': 'aborted', 'reason': 'weaviate_unavailable'}
+
+        # Get published quizzes
+        quizzes = Quiz.objects.filter(is_published=True).values_list('id', flat=True)
+        quiz_ids = [str(q) for q in quizzes]
+        total = len(quiz_ids)
+
+        if total == 0:
+            logger.warning('No published quizzes found for reindex')
+            return {'status': 'skipped', 'reason': 'no_quizzes', 'total': 0}
+
+        logger.info(f'Queueing {total} quiz reindex tasks')
+
+        for quiz_id in quiz_ids:
+            sync_quiz_to_weaviate.delay(quiz_id)
+
+        return {'status': 'queued', 'total_quizzes': total}
+
+    except Exception as e:
+        logger.error(f'Quiz reindex failed: {e}', exc_info=True)
+        return {'status': 'error', 'error': str(e)}
+
+
 @shared_task
 def full_reindex_users():
     """

@@ -2,17 +2,44 @@
  * GeneratingPhase Component
  *
  * Shown while AI is generating images for both players.
- * Features dramatic loading animation.
+ * Features dramatic loading animation with rotating status messages.
  */
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { SparklesIcon, CpuChipIcon } from '@heroicons/react/24/solid';
+import { useState, useEffect } from 'react';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
+
+// Rotating messages shown during image generation
+const GENERATING_MESSAGES = [
+  'Analyzing your creative prompt...',
+  'AI is interpreting your vision...',
+  'Rendering pixels with imagination...',
+  'Adding artistic flourishes...',
+  'Blending colors and concepts...',
+  'Crafting your masterpiece...',
+  'Neural networks working their magic...',
+  'Bringing your idea to life...',
+];
+
+// Rotating messages shown during AI judging
+const JUDGING_MESSAGES = [
+  'AI judges are reviewing the submissions...',
+  'Analyzing creativity and originality...',
+  'Evaluating visual composition...',
+  'Scoring prompt relevance...',
+  'Comparing artistic techniques...',
+  'Calculating final scores...',
+  'The judges are deliberating...',
+  'Almost ready to reveal the winner...',
+];
 
 interface GeneratingPhaseProps {
   myImageGenerating: boolean;
   opponentImageGenerating: boolean;
   myImageUrl?: string;
   opponentUsername: string;
+  isJudging?: boolean;
 }
 
 export function GeneratingPhase({
@@ -20,9 +47,28 @@ export function GeneratingPhase({
   opponentImageGenerating,
   myImageUrl,
   opponentUsername,
+  isJudging = false,
 }: GeneratingPhaseProps) {
   const bothGenerating = myImageGenerating && opponentImageGenerating;
   const myDone = !myImageGenerating && myImageUrl;
+  const prefersReducedMotion = useReducedMotion();
+
+  // Select message array based on phase
+  const messages = isJudging ? JUDGING_MESSAGES : GENERATING_MESSAGES;
+
+  // Rotating message state
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  // Rotate through messages every 3 seconds
+  useEffect(() => {
+    // Always rotate in judging phase, or while generating
+    if (isJudging || !myDone) {
+      const interval = setInterval(() => {
+        setMessageIndex((prev) => (prev + 1) % messages.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [myDone, isJudging, messages.length]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -53,20 +99,22 @@ export function GeneratingPhase({
           className="text-center mb-12"
         >
           <motion.div
-            animate={{ rotate: 360 }}
+            animate={prefersReducedMotion ? {} : { rotate: 360 }}
             transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
             className="inline-block mb-4"
           >
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500/20 to-pink-500/20 border border-cyan-500/30 flex items-center justify-center">
-              <CpuChipIcon className="w-10 h-10 text-cyan-400" />
+              <CpuChipIcon className="w-10 h-10 text-cyan-400" aria-hidden="true" />
             </div>
           </motion.div>
 
           <h1 className="text-3xl font-bold text-white mb-2">
-            AI is Creating Magic
+            {isJudging ? 'Judging in Progress' : 'AI is Creating Magic'}
           </h1>
           <p className="text-slate-400">
-            Generating images from your creative prompts...
+            {isJudging
+              ? 'Our AI panel is carefully evaluating both submissions...'
+              : 'Generating images from your creative prompts...'}
           </p>
         </motion.div>
 
@@ -102,7 +150,7 @@ export function GeneratingPhase({
                 <div className="w-full h-full flex flex-col items-center justify-center">
                   {/* Animated sparkles */}
                   <motion.div
-                    animate={{
+                    animate={prefersReducedMotion ? {} : {
                       scale: [1, 1.2, 1],
                       opacity: [0.5, 1, 0.5],
                     }}
@@ -112,16 +160,16 @@ export function GeneratingPhase({
                       ease: 'easeInOut',
                     }}
                   >
-                    <SparklesIcon className="w-16 h-16 text-cyan-400/50" />
+                    <SparklesIcon className="w-16 h-16 text-cyan-400/50" aria-hidden="true" />
                   </motion.div>
 
                   {/* Progress dots */}
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex gap-2 mt-4" role="status" aria-label="Loading">
                     {[0, 1, 2].map((i) => (
                       <motion.div
                         key={i}
                         className="w-2 h-2 rounded-full bg-cyan-400"
-                        animate={{
+                        animate={prefersReducedMotion ? {} : {
                           scale: [1, 1.5, 1],
                           opacity: [0.3, 1, 0.3],
                         }}
@@ -157,7 +205,7 @@ export function GeneratingPhase({
               {/* Always show mystery for opponent */}
               <div className="w-full h-full flex flex-col items-center justify-center">
                 <motion.div
-                  animate={{
+                  animate={prefersReducedMotion ? {} : {
                     scale: [1, 1.1, 1],
                     rotate: [0, 5, -5, 0],
                   }}
@@ -167,6 +215,8 @@ export function GeneratingPhase({
                     ease: 'easeInOut',
                   }}
                   className="text-6xl"
+                  role="img"
+                  aria-label="Hidden submission"
                 >
                   🎭
                 </motion.div>
@@ -176,20 +226,58 @@ export function GeneratingPhase({
           </motion.div>
         </div>
 
-        {/* Status message */}
+        {/* Status message with rotating text */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
           className="text-center mt-8"
         >
-          <p className="text-slate-400 text-sm">
-            {bothGenerating
-              ? 'Both images are being generated simultaneously...'
-              : myDone
-              ? "Your image is ready! Waiting for opponent's image..."
-              : 'Almost there...'}
-          </p>
+          {/* Rotating status messages with smooth transitions */}
+          <div className="h-8 relative overflow-hidden" role="status" aria-live="polite">
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={isJudging ? `judging-${messageIndex}` : myDone ? 'done' : messageIndex}
+                initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -20 }}
+                transition={{ duration: prefersReducedMotion ? 0.1 : 0.4, ease: 'easeInOut' }}
+                className="text-slate-400 text-sm absolute inset-x-0"
+              >
+                {isJudging
+                  ? messages[messageIndex]
+                  : myDone
+                  ? "Your image is ready! Waiting for opponent's image..."
+                  : messages[messageIndex]}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+
+          {/* Progress indicator */}
+          {(isJudging || !myDone) && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="flex justify-center gap-1.5 mt-4"
+              aria-hidden="true"
+            >
+              {messages.map((_, i) => (
+                <motion.div
+                  key={i}
+                  className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                    i === messageIndex ? 'bg-cyan-400' : 'bg-slate-600'
+                  }`}
+                  animate={
+                    i === messageIndex && !prefersReducedMotion
+                      ? { scale: [1, 1.3, 1] }
+                      : { scale: 1 }
+                  }
+                  transition={{ duration: 0.5 }}
+                />
+              ))}
+            </motion.div>
+          )}
 
           {/* Fun fact */}
           <motion.p

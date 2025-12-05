@@ -11,6 +11,7 @@ Handles:
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from django.conf import settings
@@ -293,6 +294,9 @@ Focus on visual impact and artistic interpretation of the user's direction.
         """
         Have AI judge the battle and determine a winner.
 
+        Uses parallel execution to judge both submissions simultaneously,
+        reducing judging time from ~20-40s to ~10-20s.
+
         Note: Judging costs are system costs, not charged to individual users.
         We still track usage for internal reporting/cost analysis.
 
@@ -321,22 +325,22 @@ Focus on visual impact and artistic interpretation of the user's direction.
             ]
         )
 
-        ai = AIProvider(provider='gemini')
         # Use Gemini image model - must support vision/multimodal
         judging_model = getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-2.0-flash-exp')
 
-        results = []
-        total_judging_tokens = 0
+        # Build judging prompt template
+        criteria_text = '\n'.join(
+            [f'- {c["name"]} (weight: {c["weight"]}%): {c.get("description", "")}' for c in criteria]
+        )
 
-        for submission in submissions:
+        def judge_single_submission(submission: BattleSubmission) -> dict | None:
+            """Judge a single submission. Called in parallel for each submission."""
             if not submission.generated_output_url:
                 logger.warning(f'Submission {submission.id} has no generated image')
-                continue
+                return None
 
-            # Build judging prompt with wrapped user content for safety
-            criteria_text = '\n'.join(
-                [f'- {c["name"]} (weight: {c["weight"]}%): {c.get("description", "")}' for c in criteria]
-            )
+            # Each thread gets its own AI provider instance
+            ai = AIProvider(provider='gemini')
 
             # Wrap user prompt to prevent injection attacks
             wrapped_user_prompt = wrap_user_prompt_for_ai(
@@ -381,8 +385,9 @@ Return ONLY the JSON, no other text.
                 )
 
                 # Track token usage from the AI call
+                tokens_used = 0
                 if ai.last_usage:
-                    total_judging_tokens += ai.last_usage.get('total_tokens', BATTLE_JUDGING_TOKENS_PER_SUBMISSION)
+                    tokens_used = ai.last_usage.get('total_tokens', BATTLE_JUDGING_TOKENS_PER_SUBMISSION)
 
                 # Parse response
                 eval_result = self._parse_judging_response(response)
@@ -408,27 +413,40 @@ Return ONLY the JSON, no other text.
                         feedback=eval_result.get('feedback', ''),
                     )
 
-                    results.append(
-                        {
-                            'submission_id': submission.id,
-                            'user_id': submission.user_id,
-                            'score': weighted_score,
-                            'criteria_scores': eval_result['scores'],
-                            'feedback': eval_result.get('feedback', ''),
-                        }
-                    )
-
                     logger.info(
                         f'Evaluated submission {submission.id}: score={weighted_score}',
                         extra={
                             'submission_id': submission.id,
                             'score': weighted_score,
-                            'tokens_used': ai.last_usage.get('total_tokens') if ai.last_usage else None,
+                            'tokens_used': tokens_used,
                         },
                     )
 
+                    return {
+                        'submission_id': submission.id,
+                        'user_id': submission.user_id,
+                        'score': weighted_score,
+                        'criteria_scores': eval_result['scores'],
+                        'feedback': eval_result.get('feedback', ''),
+                        'tokens_used': tokens_used,
+                    }
+
             except Exception as e:
                 logger.error(f'Error judging submission {submission.id}: {e}', exc_info=True)
+
+            return None
+
+        # Judge both submissions in parallel for ~2x speedup
+        results = []
+        total_judging_tokens = 0
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = {executor.submit(judge_single_submission, sub): sub for sub in submissions}
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    results.append(result)
+                    total_judging_tokens += result.get('tokens_used', 0)
 
         # Determine winner
         if results:
@@ -496,6 +514,151 @@ Return ONLY the JSON, no other text.
                     'is_winner': submission.user_id == battle.winner_id,
                 },
             )
+
+    def auto_save_battle_to_profiles(self, battle: PromptBattle) -> dict:
+        """
+        Automatically save battle results as projects for all human participants.
+
+        Creates a project entry for each participant (excluding AI/Pip) so battles
+        automatically appear on the explore feed and user profiles.
+
+        Args:
+            battle: The completed battle to save
+
+        Returns:
+            Dict with results for each participant
+        """
+        from core.projects.models import Project
+        from services.projects import ProjectService
+
+        results = {'saved': [], 'skipped': [], 'errors': []}
+
+        # Get all submissions
+        submissions = list(battle.submissions.select_related('user').all())
+        if len(submissions) < 2:
+            logger.warning(f'Battle {battle.id} has fewer than 2 submissions, skipping auto-save')
+            return results
+
+        # Check if opponent is AI (Pip) - battles with Pip only save for human player
+        is_ai_battle = battle.match_source == MatchSource.AI_OPPONENT
+
+        for submission in submissions:
+            user = submission.user
+
+            # Skip AI opponents (Pip doesn't need projects saved)
+            if is_ai_battle and user.username == 'pip':
+                results['skipped'].append({'user_id': user.id, 'reason': 'ai_opponent'})
+                continue
+
+            # Check if already saved (prevent duplicates)
+            existing_project = Project.objects.filter(
+                user=user,
+                content__battleResult__battle_id=battle.id,
+            ).first()
+
+            if existing_project:
+                results['skipped'].append(
+                    {
+                        'user_id': user.id,
+                        'reason': 'already_saved',
+                        'project_id': existing_project.id,
+                    }
+                )
+                continue
+
+            # Get opponent info
+            opponent = battle.opponent if battle.challenger_id == user.id else battle.challenger
+            try:
+                opponent_submission = next(s for s in submissions if s.user_id != user.id)
+            except StopIteration:
+                opponent_submission = None
+
+            # Determine win status for this user
+            won = battle.winner_id == user.id if battle.winner_id else False
+            is_tie = battle.winner_id is None
+
+            # Build project content
+            battle_result = {
+                'battle_id': battle.id,
+                'challenge_text': battle.challenge_text,
+                'won': won,
+                'is_tie': is_tie,
+                'my_submission': {
+                    'prompt': submission.prompt_text,
+                    'image_url': submission.generated_output_url,
+                    'score': float(submission.score) if submission.score else None,
+                    'criteria_scores': submission.criteria_scores,
+                    'feedback': submission.evaluation_feedback,
+                },
+                'opponent': {
+                    'username': opponent.username if opponent else 'Unknown',
+                    'is_ai': is_ai_battle,
+                },
+            }
+
+            # Include opponent submission if available
+            if opponent_submission:
+                battle_result['opponent_submission'] = {
+                    'prompt': opponent_submission.prompt_text,
+                    'image_url': opponent_submission.generated_output_url,
+                    'score': float(opponent_submission.score) if opponent_submission.score else None,
+                    'criteria_scores': opponent_submission.criteria_scores,
+                    'feedback': opponent_submission.evaluation_feedback,
+                }
+
+            # Add challenge type info
+            if battle.challenge_type:
+                battle_result['challenge_type'] = {
+                    'key': battle.challenge_type.key,
+                    'name': battle.challenge_type.name,
+                }
+
+            # Truncate challenge text for title
+            challenge_preview = battle.challenge_text[:50]
+            if len(battle.challenge_text) > 50:
+                challenge_preview += '...'
+
+            # Generate tags
+            tags = ['AI Image Generation', 'Prompt Battle']
+            if battle.challenge_type:
+                tags.append(battle.challenge_type.name)
+            if won:
+                tags.append('Winner')
+            elif is_tie:
+                tags.append('Tie')
+            if is_ai_battle:
+                tags.append('vs AI')
+
+            # Create project
+            try:
+                project, error = ProjectService.create_project(
+                    user_id=user.id,
+                    title=f'Battle: {challenge_preview}',
+                    project_type='battle',
+                    description=f'Challenge: {battle.challenge_text}\n\nMy prompt: {submission.prompt_text}',
+                    featured_image_url=submission.generated_output_url or '',
+                    is_showcase=True,
+                    content={'battleResult': battle_result},
+                    tags=tags,
+                )
+
+                if error:
+                    logger.error(f'Failed to auto-save battle {battle.id} for user {user.id}: {error}')
+                    results['errors'].append({'user_id': user.id, 'error': error})
+                else:
+                    logger.info(f'Auto-saved battle {battle.id} as project {project.id} for user {user.id}')
+                    results['saved'].append(
+                        {
+                            'user_id': user.id,
+                            'project_id': project.id,
+                            'slug': project.slug,
+                        }
+                    )
+            except Exception as e:
+                logger.error(f'Exception auto-saving battle {battle.id} for user {user.id}: {e}', exc_info=True)
+                results['errors'].append({'user_id': user.id, 'error': str(e)})
+
+        return results
 
     def _parse_judging_response(self, response: str) -> dict | None:
         """Parse the AI's judging response JSON."""

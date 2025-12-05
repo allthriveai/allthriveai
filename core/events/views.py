@@ -12,8 +12,8 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
-from core.events.models import Event
-from core.events.serializers import EventSerializer
+from core.events.models import Event, EventRSVP
+from core.events.serializers import EventRSVPSerializer, EventSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -156,3 +156,44 @@ class EventViewSet(viewsets.ModelViewSet):
                 {'error': 'An unexpected error occurred'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(detail=True, methods=['post', 'delete'])
+    def rsvp(self, request, pk=None):
+        """RSVP to an event or remove RSVP."""
+        event = self.get_object()
+
+        if request.method == 'POST':
+            # Create or update RSVP
+            rsvp_status = request.data.get('status', 'going')
+
+            if rsvp_status not in ['going', 'maybe', 'not_going']:
+                return Response(
+                    {'error': 'Invalid RSVP status. Must be one of: going, maybe, not_going'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            rsvp, created = EventRSVP.objects.update_or_create(
+                event=event, user=request.user, defaults={'status': rsvp_status}
+            )
+
+            serializer = EventRSVPSerializer(rsvp)
+            action_verb = 'created' if created else 'updated'
+            logger.info(f'RSVP {action_verb} for event {event.id} by user {request.user.username}: {rsvp_status}')
+
+            return Response(
+                {'message': f'RSVP {action_verb} successfully', 'rsvp': serializer.data},
+                status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+            )
+
+        elif request.method == 'DELETE':
+            # Remove RSVP
+            try:
+                rsvp = EventRSVP.objects.get(event=event, user=request.user)
+                rsvp.delete()
+                logger.info(f'RSVP deleted for event {event.id} by user {request.user.username}')
+                return Response({'message': 'RSVP removed successfully'}, status=status.HTTP_204_NO_CONTENT)
+            except EventRSVP.DoesNotExist:
+                return Response(
+                    {'error': 'No RSVP found for this event'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )

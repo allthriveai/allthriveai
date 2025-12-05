@@ -147,10 +147,10 @@ class ColdStartService:
             if category_preferences:
                 query = query.filter(categories__name__in=category_preferences)
 
-            # Order by popularity
+            # Order by newest first, then popularity
             projects = (
                 query.annotate(like_count=Count('likes'))
-                .order_by('-like_count', '-created_at')
+                .order_by('-created_at', '-like_count')
                 .distinct()
                 .select_related('user')
                 .prefetch_related('tools', 'categories', 'likes')
@@ -180,21 +180,20 @@ class ColdStartService:
     def _get_popular_feed(self, page: int, page_size: int) -> dict:
         """Get feed for cold-start users.
 
-        Shows liked projects first (by like count), then all remaining projects
-        by newest. This ensures popular content surfaces at the top while still
-        showing all projects - nothing is filtered out.
+        Shows newest projects first to ensure fresh content appears at the top,
+        with like count as a secondary sort for projects of similar age.
         """
         from core.projects.models import Project
 
-        # Sort by like count (popular first), then by newest
-        # Projects with 0 likes will appear after liked projects, sorted by recency
+        # Sort by newest first, then by like count for projects of similar age
+        # This ensures fresh, new projects appear at the top
         projects = (
             Project.objects.filter(
                 is_private=False,
                 is_archived=False,
             )
             .annotate(like_count=Count('likes'))
-            .order_by('-like_count', '-created_at')
+            .order_by('-created_at', '-like_count')
             .select_related('user')
             .prefetch_related('tools', 'categories', 'likes')
         )
@@ -211,7 +210,7 @@ class ColdStartService:
                 'page': page,
                 'page_size': page_size,
                 'total_candidates': total_count,
-                'algorithm': 'popular_then_newest',
+                'algorithm': 'newest_first',
             },
         }
 

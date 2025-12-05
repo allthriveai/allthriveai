@@ -1,18 +1,39 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import {
   CalendarIcon,
   MapPinIcon,
   LinkIcon,
   ClockIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
-import type { Event } from '@/services/eventsService';
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
+import type { Event, RSVPStatus } from '@/services/eventsService';
+import { eventsService } from '@/services/eventsService';
 
 interface EventsListProps {
   events: Event[];
   onEventClick?: (event: Event) => void;
+  onRSVPChange?: () => void;
 }
 
-export function EventsList({ events, onEventClick }: EventsListProps) {
+export function EventsList({ events, onEventClick, onRSVPChange }: EventsListProps) {
+  const [rsvpLoading, setRsvpLoading] = useState<Record<number, boolean>>({});
+
+  const handleRSVP = async (eventId: number, status: RSVPStatus, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRsvpLoading((prev) => ({ ...prev, [eventId]: true }));
+
+    try {
+      await eventsService.rsvpToEvent(eventId, status);
+      onRSVPChange?.();
+    } catch (error) {
+      console.error('Failed to RSVP:', error);
+    } finally {
+      setRsvpLoading((prev) => ({ ...prev, [eventId]: false }));
+    }
+  };
+
   if (events.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -117,6 +138,57 @@ export function EventsList({ events, onEventClick }: EventsListProps) {
                 <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mt-2">
                   {event.description}
                 </p>
+              )}
+
+              {/* RSVP Section - Only show for upcoming and ongoing events */}
+              {!event.is_past && (
+                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2 mb-2">
+                    <UserGroupIcon className="w-4 h-4" />
+                    <span className="text-xs font-medium">
+                      {event.going_count} going
+                      {event.maybe_count > 0 && `, ${event.maybe_count} maybe`}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => handleRSVP(event.id, 'going', e)}
+                      disabled={rsvpLoading[event.id]}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md transition-colors ${
+                        event.user_rsvp_status === 'going'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 ring-2 ring-green-500'
+                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {event.user_rsvp_status === 'going' && <CheckCircleIcon className="w-3 h-3" />}
+                      Going
+                    </button>
+                    <button
+                      onClick={(e) => handleRSVP(event.id, 'maybe', e)}
+                      disabled={rsvpLoading[event.id]}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md transition-colors ${
+                        event.user_rsvp_status === 'maybe'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ring-2 ring-blue-500'
+                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {event.user_rsvp_status === 'maybe' && <CheckCircleIcon className="w-3 h-3" />}
+                      Maybe
+                    </button>
+                    <button
+                      onClick={(e) => handleRSVP(event.id, 'not_going', e)}
+                      disabled={rsvpLoading[event.id]}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md transition-colors ${
+                        event.user_rsvp_status === 'not_going'
+                          ? 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200 ring-2 ring-gray-500'
+                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {event.user_rsvp_status === 'not_going' && <CheckCircleIcon className="w-3 h-3" />}
+                      Can't Go
+                    </button>
+                  </div>
+                </div>
               )}
 
               {/* Event URL */}

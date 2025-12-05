@@ -1,5 +1,17 @@
 import { API_BASE_URL, apiFetch } from '@/config/api';
 
+export type RSVPStatus = 'going' | 'maybe' | 'not_going';
+
+export interface EventRSVP {
+  id: number;
+  event: number;
+  user: number;
+  user_username: string;
+  status: RSVPStatus;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Event {
   id: number;
   title: string;
@@ -19,6 +31,10 @@ export interface Event {
   is_past: boolean;
   is_upcoming: boolean;
   is_ongoing: boolean;
+  rsvp_count: number;
+  going_count: number;
+  maybe_count: number;
+  user_rsvp_status: RSVPStatus | null;
 }
 
 export interface CreateEventData {
@@ -145,6 +161,30 @@ export const eventsService = {
     });
     if (!response.ok) {
       throw new Error('Failed to delete event');
+    }
+  },
+
+  // RSVP to an event
+  async rsvpToEvent(eventId: number, status: RSVPStatus): Promise<{ message: string; rsvp: EventRSVP }> {
+    const response = await apiFetch(`${EVENTS_API_URL}${eventId}/rsvp/`, {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to RSVP to event');
+    }
+    return response.json();
+  },
+
+  // Remove RSVP from an event
+  async removeRSVP(eventId: number): Promise<void> {
+    const response = await apiFetch(`${EVENTS_API_URL}${eventId}/rsvp/`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to remove RSVP');
     }
   },
 };

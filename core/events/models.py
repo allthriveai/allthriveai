@@ -90,6 +90,21 @@ class Event(models.Model):
         now = timezone.now()
         return self.start_date <= now <= self.end_date
 
+    @property
+    def rsvp_count(self):
+        """Total number of RSVPs."""
+        return self.rsvps.count()
+
+    @property
+    def going_count(self):
+        """Number of users marked as 'going'."""
+        return self.rsvps.filter(status='going').count()
+
+    @property
+    def maybe_count(self):
+        """Number of users marked as 'maybe'."""
+        return self.rsvps.filter(status='maybe').count()
+
     def clean(self):
         """Validate event data."""
         super().clean()
@@ -105,3 +120,36 @@ class Event(models.Model):
         # Log validation for audit
         if self.pk:
             logger.info(f'Event {self.pk} ({self.title}) validated successfully')
+
+
+class EventRSVP(models.Model):
+    """Model representing a user's RSVP to an event."""
+
+    RSVP_STATUS_CHOICES = [
+        ('going', 'Going'),
+        ('maybe', 'Maybe'),
+        ('not_going', 'Not Going'),
+    ]
+
+    event = models.ForeignKey(
+        Event, on_delete=models.CASCADE, related_name='rsvps', help_text="The event being RSVP'd to"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='event_rsvps', help_text="User who RSVP'd"
+    )
+    status = models.CharField(max_length=20, choices=RSVP_STATUS_CHOICES, default='going', help_text='RSVP status')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['event', 'user']
+        ordering = ['-created_at']
+        verbose_name = 'Event RSVP'
+        verbose_name_plural = 'Event RSVPs'
+        indexes = [
+            models.Index(fields=['event', 'status']),
+            models.Index(fields=['user', 'status']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} - {self.event.title} ({self.get_status_display()})'

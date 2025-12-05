@@ -94,6 +94,19 @@ def invalidate_user_cache(sender, instance, **kwargs):
         cache.delete(f'projects:{username}:own')
 
 
+@receiver(post_save, sender=User)
+def create_email_preferences(sender, instance, created, **kwargs):
+    """Create EmailPreferences for new users.
+
+    This ensures every user has email preferences from the moment they register.
+    """
+    if created:
+        from core.notifications.models import EmailPreferences
+
+        EmailPreferences.objects.get_or_create(user=instance)
+        logger.debug(f'Created email preferences for user {instance.id}')
+
+
 @receiver(social_account_added)
 def sync_github_to_integrations(sender, request, sociallogin, **kwargs):
     """

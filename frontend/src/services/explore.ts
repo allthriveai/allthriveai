@@ -2,7 +2,7 @@ import { api } from './api';
 import type { Project, PaginatedResponse } from '@/types/models';
 
 export interface ExploreParams {
-  tab?: 'for-you' | 'trending' | 'all';
+  tab?: 'for-you' | 'trending' | 'new' | 'news' | 'all';
   search?: string;
   categories?: number[];  // Category Taxonomy IDs (predefined)
   topics?: string[];      // Topic strings (user-generated)

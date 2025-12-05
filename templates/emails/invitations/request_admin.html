@@ -1,0 +1,37 @@
+{% extends "emails/base.html" %}
+{% block title %}New Invitation Request - AllThrive AI{% endblock %}
+
+{% block content %}
+<h1>New Invitation Request</h1>
+
+<p>Someone has requested to join AllThrive AI!</p>
+
+<div class="stats-box">
+    <div class="stat-item">
+        <div class="stat-label">Name</div>
+        <div class="stat-value">{{ requester_name }}</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-label">Email</div>
+        <div class="stat-value highlight">{{ requester_email }}</div>
+    </div>
+    {% if reason %}
+    <div class="stat-item">
+        <div class="stat-label">Why they want to join</div>
+        <div class="stat-value" style="font-size: 16px; font-weight: normal;">{{ reason }}</div>
+    </div>
+    {% endif %}
+    <div class="stat-item">
+        <div class="stat-label">Submitted</div>
+        <div class="stat-value" style="font-size: 14px; font-weight: normal;">{{ submitted_at }}</div>
+    </div>
+</div>
+
+<p style="text-align: center;">
+    <a href="{{ admin_url }}" class="btn">Review in Admin</a>
+</p>
+
+<p style="color: #94a3b8; font-size: 14px;">
+    You can approve or reject this request from the Django admin panel.
+</p>
+{% endblock %}

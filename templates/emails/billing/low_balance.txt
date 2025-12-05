@@ -1,0 +1,27 @@
+{% extends "emails/base.txt" %}
+
+{% block content %}
+Your Token Balance is Running Low
+==================================
+
+Hi {{ user.first_name|default:user.username }},
+
+{% if alert_level == 'critical' or alert_level == 'depleted' %}
+URGENT: Your AI token balance is critically low. You may not be able to use AI features soon.
+{% elif alert_level == 'warning' %}
+WARNING: Your token balance is getting low.
+{% else %}
+HEADS UP: Your token balance is running low.
+{% endif %}
+
+Current Balance: {{ balance|default:0 }} tokens
+{% if quota_exceeded %}
+Monthly AI Requests: Quota exceeded
+{% endif %}
+
+When you run out of tokens, you won't be able to use AI-powered features like Pip conversations, project analysis, and battle submissions.
+
+Purchase more tokens: {{ purchase_url }}
+
+Want unlimited AI access? Upgrade to Pro for unlimited monthly requests.
+{% endblock %}

@@ -2,14 +2,25 @@ import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { useAuth } from '@/hooks/useAuth';
-import { updateProfile } from '@/services/auth';
+import { updateProfile, deactivateAccount, deleteAccount } from '@/services/auth';
+import { useNavigate } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTriangleExclamation, faUserSlash, faTrash, faSpinner } from '@fortawesome/free-solid-svg-icons';
 
 export default function PrivacySettingsPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout: authLogout } = useAuth();
+  const navigate = useNavigate();
   const [playgroundIsPublic, setPlaygroundIsPublic] = useState(user?.playgroundIsPublic ?? true);
   const [isProfilePublic, setIsProfilePublic] = useState(user?.isProfilePublic ?? true);
   const [allowLlmTraining, setAllowLlmTraining] = useState(user?.allowLlmTraining ?? false);
   const [saving, setSaving] = useState(false);
+
+  // Account action modals
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [accountActionLoading, setAccountActionLoading] = useState(false);
+  const [accountActionError, setAccountActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -67,11 +78,62 @@ export default function PrivacySettingsPage() {
     }
   };
 
+  const handleDeactivateAccount = async () => {
+    try {
+      setAccountActionLoading(true);
+      setAccountActionError(null);
+      const result = await deactivateAccount();
+
+      if (result.success) {
+        // Log out user after deactivation
+        await authLogout();
+        navigate('/auth', {
+          state: {
+            message: 'Your account has been deactivated. Contact support to reactivate.'
+          }
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to deactivate account:', error);
+      setAccountActionError(error?.error || 'Failed to deactivate account. Please try again.');
+    } finally {
+      setAccountActionLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'DELETE MY ACCOUNT') {
+      setAccountActionError('Please type "DELETE MY ACCOUNT" to confirm.');
+      return;
+    }
+
+    try {
+      setAccountActionLoading(true);
+      setAccountActionError(null);
+      const result = await deleteAccount(deleteConfirmation);
+
+      if (result.success) {
+        // Log out user after deletion
+        await authLogout();
+        navigate('/auth', {
+          state: {
+            message: 'Your account has been permanently deleted.'
+          }
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to delete account:', error);
+      setAccountActionError(error?.error || 'Failed to delete account. Please try again.');
+    } finally {
+      setAccountActionLoading(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <SettingsLayout>
         <div className="p-8">
-          <div className="max-w-2xl">
+          <div>
             <div className="mb-8">
               <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
                 Privacy & Security
@@ -171,6 +233,73 @@ export default function PrivacySettingsPage() {
               </div>
             </div>
 
+            {/* Account Actions */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                Account Actions
+              </h2>
+
+              <div className="space-y-4">
+                {/* Deactivate Account */}
+                <div className="bg-white dark:bg-gray-800 rounded p-6 border border-orange-200 dark:border-orange-900/30">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 pr-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FontAwesomeIcon icon={faUserSlash} className="text-orange-600 dark:text-orange-400" />
+                        <h3 className="font-medium text-slate-900 dark:text-slate-100">
+                          Deactivate Account
+                        </h3>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                        Temporarily disable your account. Your profile and data will be hidden but can be restored later.
+                      </p>
+                      <ul className="text-xs text-slate-500 dark:text-slate-500 space-y-1 list-disc list-inside">
+                        <li>Your subscription will be canceled at the end of the current billing period</li>
+                        <li>Your profile will be hidden from other users</li>
+                        <li>All data is preserved for reactivation</li>
+                        <li>Contact support to reactivate</li>
+                      </ul>
+                    </div>
+                    <button
+                      onClick={() => setShowDeactivateModal(true)}
+                      className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors flex-shrink-0"
+                    >
+                      Deactivate
+                    </button>
+                  </div>
+                </div>
+
+                {/* Delete Account */}
+                <div className="bg-white dark:bg-gray-800 rounded p-6 border border-red-200 dark:border-red-900/30">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 pr-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FontAwesomeIcon icon={faTrash} className="text-red-600 dark:text-red-400" />
+                        <h3 className="font-medium text-slate-900 dark:text-slate-100">
+                          Delete Account Permanently
+                        </h3>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                        <strong className="text-red-600 dark:text-red-400">Warning:</strong> This action is irreversible. All your data will be permanently deleted.
+                      </p>
+                      <ul className="text-xs text-slate-500 dark:text-slate-500 space-y-1 list-disc list-inside">
+                        <li>Your subscription will be canceled immediately</li>
+                        <li>Your Stripe customer account will be deleted</li>
+                        <li>All projects, comments, and activity will be permanently deleted</li>
+                        <li>This action cannot be undone</li>
+                      </ul>
+                    </div>
+                    <button
+                      onClick={() => setShowDeleteModal(true)}
+                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex-shrink-0"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Info Box */}
             <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
               <div className="flex gap-3">
@@ -193,6 +322,137 @@ export default function PrivacySettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Deactivate Account Modal */}
+        {showDeactivateModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 border border-white/20">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center">
+                  <FontAwesomeIcon icon={faTriangleExclamation} className="text-2xl text-orange-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                    Deactivate Your Account?
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                    Are you sure you want to deactivate your account? This will:
+                  </p>
+                  <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside mb-4">
+                    <li>Hide your profile from other users</li>
+                    <li>Cancel your subscription at the end of the current billing period</li>
+                    <li>Preserve all your data for reactivation</li>
+                  </ul>
+                  <p className="text-xs text-slate-500 dark:text-slate-500">
+                    You can reactivate your account by contacting support.
+                  </p>
+                </div>
+              </div>
+
+              {accountActionError && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <p className="text-sm text-red-600 dark:text-red-400">{accountActionError}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowDeactivateModal(false);
+                    setAccountActionError(null);
+                  }}
+                  disabled={accountActionLoading}
+                  className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeactivateAccount}
+                  disabled={accountActionLoading}
+                  className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {accountActionLoading && <FontAwesomeIcon icon={faSpinner} spin />}
+                  {accountActionLoading ? 'Deactivating...' : 'Deactivate Account'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Account Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 border border-red-500/20">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <FontAwesomeIcon icon={faTrash} className="text-2xl text-red-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                    Permanently Delete Account?
+                  </h3>
+                  <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-3">
+                    Warning: This action cannot be undone!
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                    Deleting your account will:
+                  </p>
+                  <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside mb-4">
+                    <li>Cancel your subscription immediately</li>
+                    <li>Delete your Stripe customer account</li>
+                    <li>Permanently delete all projects and comments</li>
+                    <li>Remove all achievements and activity data</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
+                  Type <span className="font-mono font-bold text-red-600 dark:text-red-400">DELETE MY ACCOUNT</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmation}
+                  onChange={(e) => {
+                    setDeleteConfirmation(e.target.value);
+                    setAccountActionError(null);
+                  }}
+                  placeholder="DELETE MY ACCOUNT"
+                  disabled={accountActionLoading}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-slate-300 dark:border-gray-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
+                />
+              </div>
+
+              {accountActionError && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <p className="text-sm text-red-600 dark:text-red-400">{accountActionError}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteConfirmation('');
+                    setAccountActionError(null);
+                  }}
+                  disabled={accountActionLoading}
+                  className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={accountActionLoading || deleteConfirmation !== 'DELETE MY ACCOUNT'}
+                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {accountActionLoading && <FontAwesomeIcon icon={faSpinner} spin />}
+                  {accountActionLoading ? 'Deleting...' : 'Delete Permanently'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </SettingsLayout>
     </DashboardLayout>
   );

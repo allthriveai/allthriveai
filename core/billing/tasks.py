@@ -185,8 +185,7 @@ def reset_monthly_ai_requests_task(self):
 
                 if old_count > 0:
                     logger.info(
-                        f'Reset AI requests for user_id={subscription.user.id}: '
-                        f'{old_count} -> 0 (next reset: {today})'
+                        f'Reset AI requests for user_id={subscription.user.id}: {old_count} -> 0 (next reset: {today})'
                     )
                 reset_count += 1
 
@@ -339,35 +338,29 @@ def send_low_balance_notification(user, balance: int, alert_level: str, quota_ex
         quota_exceeded: Whether subscription quota has been exceeded
         subject: Email subject
     """
+    from core.notifications.tasks import send_email_task
 
-    # Build context for email template (kept for future email implementation)
-    _context = {  # noqa: F841 - reserved for future email template
-        'user': user,
-        'balance': balance,
-        'alert_level': alert_level,
-        'quota_exceeded': quota_exceeded,
-        'purchase_url': f'{settings.FRONTEND_URL}/settings/billing',
-        'low_threshold': LOW_BALANCE_THRESHOLD,
-        'critical_threshold': CRITICAL_BALANCE_THRESHOLD,
-    }
+    # Queue email task asynchronously
+    send_email_task.delay(
+        user_id=user.id,
+        email_type='billing/low_balance',
+        subject=subject,
+        context={
+            'balance': balance,
+            'alert_level': alert_level,
+            'quota_exceeded': quota_exceeded,
+            'purchase_url': f'{settings.FRONTEND_URL}/settings/billing',
+            'low_threshold': LOW_BALANCE_THRESHOLD,
+            'critical_threshold': CRITICAL_BALANCE_THRESHOLD,
+        },
+        force=True,  # Transactional - always send
+    )
 
-    # For now, just log the notification (with masked PII)
-    # In production, this would send an actual email
+    # Log notification (with masked PII)
     logger.info(
         f'LOW BALANCE NOTIFICATION: user_id={user.id} ({_mask_email(user.email)}) '
         f'balance={balance:,} level={alert_level} quota_exceeded={quota_exceeded}'
     )
-
-    # TODO: Implement actual email sending when email templates are ready
-    # html_message = render_to_string('billing/emails/low_balance.html', context)
-    # text_message = render_to_string('billing/emails/low_balance.txt', context)
-    # send_mail(
-    #     subject=subject,
-    #     message=text_message,
-    #     from_email=settings.DEFAULT_FROM_EMAIL,
-    #     recipient_list=[user.email],
-    #     html_message=html_message,
-    # )
 
 
 def send_quota_notification(user, used: int, limit: int, alert_level: str, has_tokens: bool, subject: str):
@@ -382,27 +375,31 @@ def send_quota_notification(user, used: int, limit: int, alert_level: str, has_t
         has_tokens: Whether user has token balance
         subject: Email subject
     """
+    from core.notifications.tasks import send_email_task
 
     remaining = max(0, limit - used)
     percentage = int((used / limit * 100) if limit > 0 else 100)
 
-    # Build context for email template (kept for future email implementation)
-    _context = {  # noqa: F841 - reserved for future email template
-        'user': user,
-        'used': used,
-        'limit': limit,
-        'remaining': remaining,
-        'percentage': percentage,
-        'alert_level': alert_level,
-        'has_tokens': has_tokens,
-        'purchase_url': f'{settings.FRONTEND_URL}/settings/billing',
-        'upgrade_url': f'{settings.FRONTEND_URL}/settings/billing',
-    }
+    # Queue email task asynchronously
+    send_email_task.delay(
+        user_id=user.id,
+        email_type='billing/quota_warning',
+        subject=subject,
+        context={
+            'used': used,
+            'limit': limit,
+            'remaining': remaining,
+            'percentage': percentage,
+            'alert_level': alert_level,
+            'has_tokens': has_tokens,
+            'purchase_url': f'{settings.FRONTEND_URL}/settings/billing',
+            'upgrade_url': f'{settings.FRONTEND_URL}/settings/billing',
+        },
+        force=True,  # Transactional - always send
+    )
 
-    # For now, just log the notification (with masked PII)
+    # Log notification (with masked PII)
     logger.info(
         f'QUOTA NOTIFICATION: user_id={user.id} ({_mask_email(user.email)}) '
         f'usage={used}/{limit} ({percentage}%) level={alert_level} has_tokens={has_tokens}'
     )
-
-    # TODO: Implement actual email sending when email templates are ready

@@ -15,6 +15,7 @@ from core.battles.models import (
     PromptBattle,
     SubmissionType,
 )
+from core.logging_utils import StructuredLogger
 from core.users.models import User
 from services.ai.provider import AIProvider
 
@@ -349,7 +350,15 @@ class BattleService:
 
         except Exception as e:
             # Log error but don't fail the submission
-            print(f'Error evaluating battle {battle.id}: {e}')
+            StructuredLogger.log_error(
+                message='Failed to evaluate battle submissions',
+                error=e,
+                extra={
+                    'battle_id': battle.id,
+                    'battle_type': battle.battle_type,
+                    'submission_count': len(submissions),
+                },
+            )
             battle.complete_battle()
 
     def _evaluate_submission(self, challenge: str, prompt: str, battle_type: str) -> tuple[float, str]:

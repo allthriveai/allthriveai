@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, memo } from 'react';
+import { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import type { Taxonomy, Project } from '@/types/models';
@@ -13,6 +13,7 @@ import { QuizPreviewCard } from '@/components/quiz/QuizPreviewCard';
 import { QuizOverlay } from '@/components/quiz/QuizOverlay';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { LoadingSkeleton } from '@/components/explore/LoadingSkeleton';
+import { MasonryGrid } from '@/components/common/MasonryGrid';
 import {
   exploreProjects,
   semanticSearch,
@@ -22,6 +23,7 @@ import {
 } from '@/services/explore';
 import { getQuizzes } from '@/services/quiz';
 import { useAuth } from '@/hooks/useAuth';
+import { trackProjectClick, getClickSourceFromTab } from '@/services/tracking';
 
 // Memoized wrapper for smooth fade-in animation on new items
 const FadeInItem = memo(function FadeInItem({
@@ -131,8 +133,19 @@ export function ExplorePage() {
   });
 
   // Fetch projects with infinite scroll (for most tabs)
+  // Map tab to API tab parameter
+  const getApiTab = () => {
+    switch (activeTab) {
+      case 'for-you': return 'for-you';
+      case 'trending': return 'trending';
+      case 'new': return 'new';
+      case 'news': return 'news';
+      default: return 'all';
+    }
+  };
+
   const exploreParamsBase = {
-    tab: activeTab === 'for-you' ? 'for-you' : activeTab === 'trending' ? 'trending' : activeTab === 'news' ? 'news' : 'all',
+    tab: getApiTab(),
     search: searchQuery || undefined,
     categories: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
     tools: selectedToolIds.length > 0 ? selectedToolIds : undefined,
@@ -237,7 +250,8 @@ export function ExplorePage() {
   const allProfiles = profilesData?.pages.flatMap(page => page.results) || [];
 
   const displayProjects = searchQuery && semanticResults ? semanticResults : allProjects;
-  const displayQuizzes = quizzesData?.results || [];
+  // Don't show quizzes in profiles or news tabs
+  const displayQuizzes = (activeTab !== 'profiles' && activeTab !== 'news') ? (quizzesData?.results || []) : [];
   const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isWaitingForFilters;
 
   // Determine if there's an error to display
@@ -329,6 +343,26 @@ export function ExplorePage() {
     setSelectedQuizSlug('');
   };
 
+  // Create a lookup map for project positions based on their index in mixedItems
+  const projectPositionMap = useMemo(() => {
+    const map = new Map<number, number>();
+    let projectIndex = 0;
+    mixedItems.forEach((item) => {
+      if (item.type === 'project') {
+        map.set(item.data.id, projectIndex);
+        projectIndex++;
+      }
+    });
+    return map;
+  }, [mixedItems]);
+
+  // Track click on project card (fire and forget - doesn't block navigation)
+  const handleProjectClick = useCallback((projectId: number) => {
+    const position = projectPositionMap.get(projectId);
+    const source = getClickSourceFromTab(activeTab);
+    trackProjectClick(projectId, source, position);
+  }, [activeTab, projectPositionMap]);
+
   // Intersection observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -367,8 +401,8 @@ export function ExplorePage() {
     };
   }, [activeTab, hasNextPage, hasNextProfiles, isFetchingNextPage, isFetchingNextProfiles, fetchNextPage, fetchNextProfiles]);
 
-  // Show filters only for certain tabs
-  const showFilters = activeTab === 'categories' || activeTab === 'tools';
+  // Show filters on all content tabs except profiles
+  const showFilters = activeTab !== 'profiles';
 
   // Handle welcome redirect from auth - open chat in welcome mode
   // Temporarily disabled to avoid auto-reopening the Add Project chat on Explore
@@ -405,24 +439,24 @@ export function ExplorePage() {
             </div>
 
             {/* Combined Glass Card with Tabs and Search */}
-            <div className="glass-subtle rounded border border-gray-200 dark:border-gray-700 p-6 mb-6">
+            <div className="glass-subtle rounded border border-gray-200 dark:border-gray-700 p-6 mb-6 relative z-20">
               {/* Tab Navigation */}
               <TabNavigation activeTab={activeTab} onChange={handleTabChange} />
 
               {/* Search Bar with Integrated Filters */}
-              <div className="mt-4">
+              <div className="mt-4 relative z-30">
                 <SearchBarWithFilters
                   onSearch={handleSearch}
                   placeholder="Search projects with AI..."
                   initialValue={searchQuery}
-                  topics={activeTab === 'categories' ? (taxonomyCategories ?? []) : []}
-                  tools={activeTab === 'tools' ? (filterOptions?.tools ?? []) : []}
+                  topics={taxonomyCategories ?? []}
+                  tools={filterOptions?.tools ?? []}
                   selectedTopics={selectedCategorySlugs}
                   selectedToolSlugs={selectedToolSlugs}
                   onTopicsChange={handleCategoriesChange}
                   onToolsChange={handleToolsChange}
                   showFilters={showFilters}
-                  openFiltersByDefault={activeTab === 'categories' || activeTab === 'tools'}
+                  openFiltersByDefault={false}
                 />
               </div>
             </div>
@@ -460,6 +494,7 @@ export function ExplorePage() {
                 role="tabpanel"
                 id={`tabpanel-${activeTab}`}
                 aria-labelledby={`tab-${activeTab}`}
+                className="relative z-10"
               >
                 {isLoading ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
@@ -506,11 +541,12 @@ export function ExplorePage() {
                 role="tabpanel"
                 id={`tabpanel-${activeTab}`}
                 aria-labelledby={`tab-${activeTab}`}
+                className="relative z-10"
               >
                 {isLoading ? (
-                  <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-2">
+                  <MasonryGrid>
                     <LoadingSkeleton type="project" count={12} />
-                  </div>
+                  </MasonryGrid>
                 ) : displayProjects.length === 0 && displayQuizzes.length === 0 ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center max-w-md mx-auto">
@@ -548,7 +584,7 @@ export function ExplorePage() {
                   </div>
                 ) : (
                   <>
-                    <div className="columns-1 sm:columns-2 lg:columns-4 gap-2">
+                    <MasonryGrid>
                       {/* Interleave quizzes and projects with stable ordering */}
                       {mixedItems.map((item) => (
                         <FadeInItem key={item.stableKey}>
@@ -565,11 +601,12 @@ export function ExplorePage() {
                               userAvatarUrl={item.data.userAvatarUrl}
                               isOwner={user?.username === item.data.username}
                               onCommentClick={openCommentPanel}
+                              onCardClick={handleProjectClick}
                             />
                           )}
                         </FadeInItem>
                       ))}
-                    </div>
+                    </MasonryGrid>
 
                     {/* Infinite scroll trigger */}
                     <div

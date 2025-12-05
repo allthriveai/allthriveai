@@ -52,6 +52,8 @@ class Project(models.Model):
         VIDEO = 'video', 'Video'
         REDDIT_THREAD = 'reddit_thread', 'Reddit Thread'
         RSS_ARTICLE = 'rss_article', 'RSS Article'
+        BATTLE = 'battle', 'Prompt Battle'
+        PRODUCT = 'product', 'Digital Product'
         OTHER = 'other', 'Other'
 
     class DifficultyLevel(models.TextChoices):
@@ -91,6 +93,11 @@ class Project(models.Model):
         default=False,
         help_text='Soft delete - hidden from all views',
     )
+    is_product = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Whether this project is a sellable digital product',
+    )
     # CharField supports both full URLs and relative paths (e.g., /path/to/image)
     banner_url = models.CharField(max_length=500, blank=True, default='', help_text='Banner image URL')
     # Featured image for cards and social sharing
@@ -112,6 +119,11 @@ class Project(models.Model):
         related_name='projects',
         limit_choices_to={'taxonomy_type': 'category', 'is_active': True},
         help_text='Categories that organize this project (from predefined Taxonomy)',
+    )
+    # Hide categories from public display (still used for filtering/organization)
+    hide_categories = models.BooleanField(
+        default=False,
+        help_text='If True, categories are hidden from public display but still used for filtering',
     )
     # User-generated topics (free-form, moderated)
     topics = ArrayField(
@@ -162,6 +174,14 @@ class Project(models.Model):
         null=True,
         blank=True,
         help_text='When engagement velocity was last calculated',
+    )
+    # Original publication date for external content (RSS articles, news, etc.)
+    # For user-generated content, this defaults to created_at
+    published_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='Original publication date for external content (e.g., news articles)',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -271,6 +291,117 @@ class ProjectLike(models.Model):
 
     def __str__(self):
         return f'{self.user.username} likes {self.project.title}'
+
+
+class ProjectView(models.Model):
+    """Track project views for trending algorithm.
+
+    Unlike likes, views are not unique per user - a user can view
+    a project multiple times and each view is recorded for velocity
+    calculations. Views are deduplicated within a short window (5 min)
+    to prevent spam.
+    """
+
+    class ViewSource(models.TextChoices):
+        EXPLORE = 'explore', 'Explore Feed'
+        PROFILE = 'profile', 'Profile Page'
+        DIRECT = 'direct', 'Direct Link'
+        SEARCH = 'search', 'Search Results'
+        EMBED = 'embed', 'Embedded View'
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='views')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='project_views',
+        help_text='User who viewed (null for anonymous)',
+    )
+    session_key = models.CharField(
+        max_length=40,
+        blank=True,
+        default='',
+        help_text='Session key for anonymous view deduplication',
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=ViewSource.choices,
+        default=ViewSource.DIRECT,
+        help_text='Where the view originated from',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['project', '-created_at']),
+            models.Index(fields=['project', 'created_at']),  # For velocity calculations
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['-created_at']),  # For cleanup queries
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        viewer = self.user.username if self.user else 'anonymous'
+        return f'{viewer} viewed {self.project.title}'
+
+
+class ProjectClick(models.Model):
+    """Track clicks from explore/search feeds for trending algorithm.
+
+    A click is recorded when a user clicks on a project card in a feed,
+    before they land on the project page. This captures intent even if
+    the user bounces quickly.
+    """
+
+    class ClickSource(models.TextChoices):
+        EXPLORE_FOR_YOU = 'explore_for_you', 'Explore: For You'
+        EXPLORE_TRENDING = 'explore_trending', 'Explore: Trending'
+        EXPLORE_NEW = 'explore_new', 'Explore: New'
+        EXPLORE_NEWS = 'explore_news', 'Explore: News'
+        SEARCH = 'search', 'Search Results'
+        PROFILE = 'profile', 'Profile Page'
+        RELATED = 'related', 'Related Projects'
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='clicks')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='project_clicks',
+        help_text='User who clicked (null for anonymous)',
+    )
+    session_key = models.CharField(
+        max_length=40,
+        blank=True,
+        default='',
+        help_text='Session key for anonymous click tracking',
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=ClickSource.choices,
+        help_text='Feed/context where the click occurred',
+    )
+    position = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Position in the feed where project was clicked (0-indexed)',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['project', '-created_at']),
+            models.Index(fields=['project', 'created_at']),  # For velocity calculations
+            models.Index(fields=['source', '-created_at']),  # For source analytics
+            models.Index(fields=['-created_at']),  # For cleanup queries
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        clicker = self.user.username if self.user else 'anonymous'
+        return f'{clicker} clicked {self.project.title} from {self.source}'
 
 
 class ProjectComment(models.Model):

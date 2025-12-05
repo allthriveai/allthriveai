@@ -92,19 +92,23 @@ export default function ToolDirectoryPage() {
     <DashboardLayout>
       {() => (
         <div className="flex-1 overflow-y-auto h-full">
-          <div className="max-w-6xl mx-auto p-8 pb-24">
-            {/* Header */}
-            <div className="mb-8">
-              <div className="flex items-center gap-3 mb-4">
-                <SparklesIcon className="w-8 h-8 text-primary-600 dark:text-primary-400" />
-                <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-                  Tool Directory
-                </h1>
-              </div>
-              <p className="text-lg text-gray-600 dark:text-gray-400">
+          {/* Hero Banner - Neon Glass Style */}
+          <header className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden" aria-label="Tool Directory page header">
+            {/* Ambient Glow Background */}
+            <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
+            <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-yellow-500/10 dark:bg-yellow-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
+
+            <div className="relative max-w-6xl mx-auto px-8 h-full flex flex-col justify-center">
+              <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-yellow-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-yellow-400 bg-clip-text text-transparent">Tool Directory</span>
+              </h1>
+              <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl">
                 Explore AI tools and technologies to enhance your workflow
               </p>
             </div>
+          </header>
+
+          <div className="max-w-6xl mx-auto p-8 pb-24">
 
             {/* Search Bar with Filters */}
             <div className="mb-6">
@@ -120,16 +124,17 @@ export default function ToolDirectoryPage() {
 
             {/* Results count */}
             {!isLoading && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6" role="status" aria-live="polite">
                 {tools.length} tool{tools.length !== 1 ? 's' : ''} found
               </p>
             )}
 
             {/* Loading State */}
             {isLoading && (
-              <div className="space-y-8 animate-pulse">
+              <div className="space-y-8 animate-pulse" role="status" aria-live="polite">
+                <span className="sr-only">Loading tools...</span>
                 {[1, 2, 3].map((i) => (
-                  <div key={i}>
+                  <div key={i} aria-hidden="true">
                     <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-16 mb-4" />
                     <div className="space-y-4">
                       {[1, 2, 3].map((j) => (
@@ -143,7 +148,7 @@ export default function ToolDirectoryPage() {
 
             {/* Error State */}
             {error && (
-              <div className="glass-subtle rounded-xl p-6 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+              <div className="glass-subtle rounded-xl p-6 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20" role="alert">
                 <p className="text-red-600 dark:text-red-400">{error}</p>
               </div>
             )}

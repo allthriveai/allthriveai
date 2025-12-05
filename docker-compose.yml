@@ -63,6 +63,8 @@ services:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - LINKEDIN_OAUTH_CLIENT_ID=${LINKEDIN_OAUTH_CLIENT_ID}
+      - LINKEDIN_OAUTH_CLIENT_SECRET=${LINKEDIN_OAUTH_CLIENT_SECRET}
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -71,6 +73,9 @@ services:
       - STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
     volumes:
       - .:/app
     depends_on:
@@ -104,6 +109,9 @@ services:
       - STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
     volumes:
       - .:/app
     depends_on:
@@ -113,7 +121,7 @@ services:
         condition: service_healthy
       weaviate:
         condition: service_healthy
-    command: celery -A config worker --pool=solo --loglevel=info
+    command: celery -A config worker --pool=solo --loglevel=info -Q celery,default,youtube_sync,youtube_import,battles
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME"]
       interval: 10s
@@ -143,6 +151,7 @@ services:
       celery:
         condition: service_healthy
     command: celery -A config beat --loglevel=info
+    container_name: allthriveai_celery-beat_1
 
   stripe-cli:
     image: stripe/stripe-cli:latest
@@ -173,6 +182,7 @@ services:
     depends_on:
       - web
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    container_name: allthriveai_frontend_1
 
   prometheus:
     image: prom/prometheus:latest
@@ -224,9 +234,12 @@ services:
       QUERY_DEFAULTS_LIMIT: 25
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
       PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
-      DEFAULT_VECTORIZER_MODULE: 'none'
-      ENABLE_MODULES: ''
+      DEFAULT_VECTORIZER_MODULE: 'text2vec-openai'
+      ENABLE_MODULES: 'text2vec-openai'
       CLUSTER_HOSTNAME: 'node1'
+      # Azure OpenAI configuration for vectorization
+      AZURE_APIKEY: ${AZURE_OPENAI_API_KEY}
+      OPENAI_APIKEY: ${OPENAI_API_KEY}
     volumes:
       - weaviate_data:/var/lib/weaviate
     healthcheck:

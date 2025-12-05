@@ -61,11 +61,16 @@ INSTALLED_APPS = [
     'core.billing',  # Stripe subscriptions and token packages
     'core.ai_usage',  # AI usage tracking and cost analytics
     'core.stats',  # Platform statistics
+    'core.notifications',  # Email notification system (AWS SES)
+    'core.sms',  # SMS notifications (Twilio)
+    'core.challenges',  # Weekly challenges with leaderboards
+    'core.marketplace',  # Creator marketplace for digital products
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.linkedin_oauth2',
 ]
 
 MIDDLEWARE = [
@@ -81,6 +86,7 @@ MIDDLEWARE = [
     'core.auth.oauth_middleware.OAuthJWTMiddleware',  # Set JWT cookies after OAuth login
     'core.billing.middleware.BillingContextMiddleware',  # Add billing context to requests
     'core.billing.middleware.AIRequestThrottleMiddleware',  # Add AI quota checking
+    'core.users.middleware.UserActivityMiddleware',  # Track user activity for battles
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
@@ -246,8 +252,12 @@ GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
 STRIPE_PUBLIC_KEY = config('STRIPE_PUBLIC_KEY', default='')
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
-GEMINI_MODEL_NAME = config('GEMINI_MODEL_NAME', default='gemini-1.5-flash')
-GEMINI_IMAGE_MODEL = config('GEMINI_IMAGE_MODEL', default='gemini-2.0-flash-exp')
+
+# reCAPTCHA v3 Configuration (for bot protection)
+# Get your keys from: https://www.google.com/recaptcha/admin
+RECAPTCHA_SECRET_KEY = config('RECAPTCHA_SECRET_KEY', default='')
+GEMINI_MODEL_NAME = config('GEMINI_MODEL_NAME', default='gemini-3-pro-preview')
+GEMINI_IMAGE_MODEL = config('GEMINI_IMAGE_MODEL', default='gemini-3-pro-image-preview')
 
 # Weaviate Vector Database Configuration
 WEAVIATE_HOST = config('WEAVIATE_HOST', default='localhost')
@@ -301,6 +311,7 @@ AZURE_OPENAI_API_KEY = config('AZURE_OPENAI_API_KEY', default='')
 AZURE_OPENAI_ENDPOINT = config('AZURE_OPENAI_ENDPOINT', default='')
 AZURE_OPENAI_API_VERSION = config('AZURE_OPENAI_API_VERSION', default='2024-02-15-preview')
 AZURE_OPENAI_DEPLOYMENT_NAME = config('AZURE_OPENAI_DEPLOYMENT_NAME', default='gpt-4')
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT = config('AZURE_OPENAI_EMBEDDING_DEPLOYMENT', default='text-embedding-3-small')
 
 # Default AI Provider (options: azure, openai, anthropic)
 DEFAULT_AI_PROVIDER = config('DEFAULT_AI_PROVIDER', default='azure')
@@ -441,12 +452,16 @@ LOGGING = {
         'require_debug_true': {
             '()': 'django.utils.log.RequireDebugTrue',
         },
+        'sanitize_sensitive_data': {
+            '()': 'core.billing.logging_utils.SensitiveDataFilter',
+        },
     },
     'handlers': {
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+            'filters': ['sanitize_sensitive_data'],
         },
         'file': {
             'level': 'INFO',
@@ -455,6 +470,7 @@ LOGGING = {
             'maxBytes': 1024 * 1024 * 15,  # 15MB
             'backupCount': 10,
             'formatter': 'verbose',
+            'filters': ['sanitize_sensitive_data'],
         },
         'security': {
             'level': 'WARNING',
@@ -530,19 +546,29 @@ SITE_ID = 1
 # Used in meta tags, canonical URLs, and sitemap protocol
 SITE_URL = config('SITE_URL', default=BACKEND_URL_DEFAULT)
 
-# Email Configuration
-if not DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = config('EMAIL_HOST', default='smtp.sendgrid.net')
-    EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-    EMAIL_USE_TLS = True
-    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@allthrive.ai')
-    ADMINS = [('Admin', config('ADMIN_EMAIL', default='admin@allthrive.ai'))]
-else:
+# Email Configuration (AWS SES)
+if DEBUG:
+    # Development: log emails to console
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = 'noreply@allthrive.ai'
+else:
+    # Production: use AWS SES
+    EMAIL_BACKEND = 'django_ses.SESBackend'
+    AWS_SES_REGION_NAME = config('AWS_SES_REGION', default='us-east-1')
+    AWS_SES_REGION_ENDPOINT = f'email.{AWS_SES_REGION_NAME}.amazonaws.com'
+    # SES credentials (uses IAM role if not set)
+    AWS_SES_ACCESS_KEY_ID = config('AWS_SES_ACCESS_KEY_ID', default='')
+    AWS_SES_SECRET_ACCESS_KEY = config('AWS_SES_SECRET_ACCESS_KEY', default='')
+    # Rate limiting (SES sandbox: 1/sec, production: 14/sec default)
+    AWS_SES_AUTO_THROTTLE = 0.5  # seconds between emails
+    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@allthrive.ai')
+    ADMINS = [('Admin', config('ADMIN_EMAIL', default='admin@allthrive.ai'))]
+
+# Twilio SMS Configuration
+# Uses ConsoleSMSProvider for development if not configured
+TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
+TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
+TWILIO_PHONE_NUMBER = config('TWILIO_PHONE_NUMBER', default='')
 
 # Django Allauth Configuration
 AUTHENTICATION_BACKENDS = [
@@ -584,6 +610,20 @@ SOCIALACCOUNT_PROVIDERS = {
         'SCOPE': [
             'user',
             'user:email',
+        ],
+    },
+    'linkedin_oauth2': {
+        'SCOPE': [
+            'openid',
+            'profile',
+            'email',
+        ],
+        'PROFILE_FIELDS': [
+            'id',
+            'first-name',
+            'last-name',
+            'email-address',
+            'picture-url',
         ],
     },
 }

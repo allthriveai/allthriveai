@@ -622,11 +622,12 @@ class PersonalizationEngine:
         from core.projects.models import Project
 
         # Note: Don't filter by is_published to include playground projects in explore
+        # Sort by newest first to show fresh content
         projects = (
             Project.objects.filter(is_private=False, is_archived=False)
             .exclude(id__in=exclude_ids)
             .annotate(like_count=Count('likes'))
-            .order_by('-like_count', '-created_at')
+            .order_by('-created_at', '-like_count')
             .select_related('user')
             .prefetch_related('tools', 'categories', 'likes')
         )

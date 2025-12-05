@@ -22,6 +22,9 @@ import {
   ChatBubbleLeftIcon,
   SwatchIcon,
   ChatBubbleOvalLeftEllipsisIcon,
+  TrophyIcon,
+  VideoCameraIcon,
+  NewspaperIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { toggleProjectLike, deleteProjectById } from '@/services/projects';
@@ -44,6 +47,7 @@ interface ProjectCardProps {
   onToggleShowcase?: (projectId: number) => void;
   userAvatarUrl?: string;  // Owner's avatar URL
   onCommentClick?: (project: Project) => void;  // Optional callback for page-level comment panel
+  onCardClick?: (projectId: number) => void;  // Optional callback for tracking clicks (called before navigation)
 }
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -52,12 +56,15 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   image_collection: PhotoIcon,
   prompt: ChatBubbleLeftRightIcon,
   reddit_thread: ChatBubbleOvalLeftEllipsisIcon,
+  video: VideoCameraIcon,
+  rss_article: NewspaperIcon,
+  battle: TrophyIcon,
   other: DocumentTextIcon,
 };
 
 const typeLabels = PROJECT_TYPE_LABELS;
 
-export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick }: ProjectCardProps) {
+export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick }: ProjectCardProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
@@ -94,6 +101,11 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     if (selectionMode && onSelect) {
       e.preventDefault();
       onSelect(project.id);
+      return;
+    }
+    // Track click before navigation (fire and forget)
+    if (onCardClick) {
+      onCardClick(project.id);
     }
   };
 
@@ -180,6 +192,19 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const getHeroElement = () => {
     const heroMode = project.content?.heroDisplayMode;
 
+    // For battle projects, show both submission images side by side
+    if (project.type === 'battle' && project.content?.battleResult) {
+      const battleResult = project.content.battleResult;
+      return {
+        type: 'battle' as const,
+        myImageUrl: battleResult.mySubmission?.imageUrl,
+        opponentImageUrl: battleResult.opponentSubmission?.imageUrl,
+        won: battleResult.won,
+        isTie: battleResult.isTie,
+        challengeText: battleResult.challengeText,
+      };
+    }
+
     // For Reddit threads, check if there's video data in the reddit metadata (fallback)
     if (project.type === 'reddit_thread' && !heroMode) {
       const redditData = project.content?.reddit;
@@ -254,17 +279,18 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const cardProps = selectionMode
     ? { onClick: handleClick, style: { cursor: 'pointer' } }
     : shouldLinkExternal
-    ? { href: project.externalUrl, target: '_blank', rel: 'noopener noreferrer' }
-    : { to: projectUrl };
+    ? { href: project.externalUrl, target: '_blank', rel: 'noopener noreferrer', onClick: handleClick }
+    : { to: projectUrl, onClick: handleClick };
 
   // Masonry variant - Flexible height for text, portrait for media
   if (variant === 'masonry') {
     const heroElement = getHeroElement();
     // Treat quote and slideup cards as media cards for styling purposes (dark mode overlay style)
-    const isMediaCard = ['image', 'video', 'slideshow', 'quote', 'slideup', 'gradient'].includes(heroElement.type) || (heroElement.type === 'image' && project.type !== 'github_repo');
+    const isMediaCard = ['image', 'video', 'slideshow', 'quote', 'slideup', 'gradient', 'battle'].includes(heroElement.type) || (heroElement.type === 'image' && project.type !== 'github_repo');
     const isQuote = heroElement.type === 'quote';
     const isSlideup = heroElement.type === 'slideup';
     const isGradient = heroElement.type === 'gradient';
+    const isBattle = heroElement.type === 'battle';
 
     // Get gradient colors for quote cards
     const gradientFrom = project.content?.heroGradientFrom || GRADIENT_OVERLAY.DEFAULT_FROM;
@@ -487,6 +513,93 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                     setTimeout(() => setImageLoaded(true), 50);
                   }}
                 />
+              </div>
+            )}
+
+            {/* Battle Card - Vertical 9:16 layout for mobile optimization */}
+            {isBattle && heroElement.type === 'battle' && (
+              <div className="relative w-full bg-slate-900 pb-40 md:pb-0">
+                <div className="relative w-full" style={{ aspectRatio: '9 / 16' }}>
+                  {/* Stacked vertical layout */}
+                  <div className="absolute inset-0 flex flex-col">
+                    {/* My submission - top half */}
+                    <div className="flex-1 relative overflow-hidden">
+                      {heroElement.myImageUrl ? (
+                        <img
+                          src={heroElement.myImageUrl}
+                          alt="Your submission"
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                          <span className="text-slate-600 text-sm">No image</span>
+                        </div>
+                      )}
+                      {/* Winner badge on my image */}
+                      {heroElement.won && (
+                        <div className="absolute top-2 left-2 p-1.5 rounded-full bg-amber-500 shadow-lg">
+                          <TrophyIcon className="w-4 h-4 text-white" />
+                        </div>
+                      )}
+                      {/* "YOU" label */}
+                      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/80 text-white">
+                        YOU
+                      </div>
+                    </div>
+
+                    {/* Divider gap */}
+                    <div className="h-1 bg-slate-900" />
+
+                    {/* Opponent submission - bottom half */}
+                    <div className="flex-1 relative overflow-hidden">
+                      {heroElement.opponentImageUrl ? (
+                        <img
+                          src={heroElement.opponentImageUrl}
+                          alt="Opponent submission"
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                          <span className="text-slate-600 text-sm">No image</span>
+                        </div>
+                      )}
+                      {/* Winner badge on opponent image */}
+                      {!heroElement.won && !heroElement.isTie && (
+                        <div className="absolute top-2 right-2 p-1.5 rounded-full bg-amber-500 shadow-lg">
+                          <TrophyIcon className="w-4 h-4 text-white" />
+                        </div>
+                      )}
+                      {/* "OPPONENT" label */}
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-violet-500/80 text-white">
+                        OPPONENT
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* VS Badge in center */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                    <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-cyan-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.4)]">
+                      <span className="text-xs font-black bg-gradient-to-r from-cyan-400 to-pink-400 bg-clip-text text-transparent">
+                        VS
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Result banner at top */}
+                  <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
+                    <div className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg ${
+                      heroElement.isTie
+                        ? 'bg-slate-700 text-slate-300'
+                        : heroElement.won
+                        ? 'bg-amber-500/90 text-white'
+                        : 'bg-slate-700 text-slate-300'
+                    }`}>
+                      {heroElement.isTie ? 'TIE' : heroElement.won ? 'VICTORY' : 'DEFEAT'}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

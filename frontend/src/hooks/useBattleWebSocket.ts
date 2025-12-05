@@ -79,6 +79,8 @@ interface WebSocketMessage {
   value?: number;
   submission_id?: number;
   battle_id?: number;
+  image_url?: string;
+  winner_id?: number | null;
 }
 
 interface UseBattleWebSocketOptions {
@@ -415,14 +417,50 @@ export function useBattleWebSocket({
               break;
 
             case 'judging_complete':
-              console.log('[Battle WS] Judging complete, winner:', data.winner_id);
+              console.log('[Battle WS] Judging complete, winner:', data.winner_id, 'results:', data.results);
               setBattleState((prev) => {
                 if (!prev) return null;
-                return {
+
+                // Update with winner and any results data
+                const newState = {
                   ...prev,
                   winnerId: data.winner_id as number | null,
                 };
+
+                // If results include submission data, update submissions
+                const results = data.results as Array<{
+                  submission_id?: number;
+                  user_id?: number;
+                  score?: number;
+                  criteria_scores?: Record<string, number>;
+                  feedback?: string;
+                }>;
+
+                if (results && Array.isArray(results)) {
+                  for (const result of results) {
+                    // Update my submission if this is mine
+                    if (prev.mySubmission && result.submission_id === prev.mySubmission.id) {
+                      newState.mySubmission = {
+                        ...prev.mySubmission,
+                        score: result.score,
+                        criteriaScores: result.criteria_scores,
+                        feedback: result.feedback,
+                      };
+                    }
+                  }
+                }
+
+                return newState;
               });
+              break;
+
+            case 'state_refresh':
+              // Server is telling us to request fresh state (after judging/completion)
+              console.log('[Battle WS] State refresh requested');
+              // Send request_state directly since requestState callback isn't available here
+              if (wsRef.current?.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({ type: 'request_state' }));
+              }
               break;
 
             case 'battle_complete':

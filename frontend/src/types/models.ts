@@ -120,6 +120,7 @@ export interface Project {
   toolsDetails?: Tool[]; // Full tool objects with details
   categories?: number[]; // Category taxonomy IDs (predefined)
   categoriesDetails?: Taxonomy[]; // Full category taxonomy objects
+  hideCategories?: boolean; // If true, categories are hidden from public display
   topics?: string[]; // User-generated topics (free-form, moderated)
   tagsManuallyEdited?: boolean; // If true, tags were manually edited by admin and won't be auto-updated
   heartCount: number;
@@ -177,6 +178,35 @@ export interface ProjectContent {
   figma?: {
     analysis_status?: 'pending' | 'complete' | 'failed';
     analysis?: any; // Figma analysis data
+  };
+  // Battle result data (for saved prompt battles)
+  battleResult?: {
+    battleId: number;
+    challengeText: string;
+    challengeType?: {
+      key: string;
+      name: string;
+    };
+    won: boolean;
+    isTie: boolean;
+    mySubmission: {
+      prompt: string;
+      imageUrl?: string;
+      score?: number | null;
+      criteriaScores?: Record<string, number>;
+      feedback?: string;
+    };
+    opponent: {
+      username: string;
+      isAi: boolean;
+    };
+    opponentSubmission?: {
+      prompt: string;
+      imageUrl?: string;
+      score?: number | null;
+      criteriaScores?: Record<string, number>;
+      feedback?: string;
+    };
   };
 }
 

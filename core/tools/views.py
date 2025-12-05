@@ -1,12 +1,14 @@
 from django.db.models import F, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
+from rest_framework.decorators import permission_classes as drf_permission_classes
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from .models import Tool, ToolBookmark, ToolComparison, ToolReview
+from .recommendation_service import get_recommendation_questions, get_tool_recommendations
 from .serializers import (
     ToolBookmarkSerializer,
     ToolComparisonSerializer,
@@ -285,3 +287,64 @@ class ToolBookmarkViewSet(viewsets.ModelViewSet):
         # Bookmark was created
         serializer = self.get_serializer(bookmark)
         return Response({'bookmarked': True, 'bookmark': serializer.data}, status=status.HTTP_201_CREATED)
+
+
+# Tool Recommendation Quiz Endpoints
+
+
+@api_view(['GET'])
+@drf_permission_classes([AllowAny])
+def recommendation_quiz_questions(request):
+    """
+    Get the questions for the tool recommendation quiz.
+
+    Returns a list of questions with options that help determine
+    which AI tools would be best for the user.
+    """
+    questions = get_recommendation_questions()
+    return Response(
+        {
+            'title': 'Find Your Perfect AI Tool',
+            'description': "Answer a few questions and we'll recommend the best AI tools for your needs.",
+            'questions': questions,
+            'total_questions': len(questions),
+        }
+    )
+
+
+@api_view(['POST'])
+@drf_permission_classes([AllowAny])
+def recommendation_quiz_submit(request):
+    """
+    Submit answers to the tool recommendation quiz and get recommendations.
+
+    Request body:
+    {
+        "answers": {
+            "primary_goal": "writing",
+            "experience_level": "beginner",
+            "budget": "free",
+            "use_frequency": "regular",
+            "important_features": ["ease_of_use", "quality"],
+            "specific_needs": ["browser"]
+        }
+    }
+
+    Returns recommended tools with match scores and reasons.
+    """
+    answers = request.data.get('answers', {})
+
+    if not answers:
+        return Response({'error': 'No answers provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get recommendations
+    limit = request.data.get('limit', 5)
+    recommendations = get_tool_recommendations(answers, limit=limit)
+
+    return Response(
+        {
+            'recommendations': recommendations,
+            'total': len(recommendations),
+            'answers_received': answers,
+        }
+    )

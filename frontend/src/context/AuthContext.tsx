@@ -3,6 +3,7 @@ import type { AuthState } from '@/types/models';
 import * as authService from '@/services/auth';
 import { ensureCsrfToken } from '@/services/api';
 import { setUser as setSentryUser } from '@/utils/sentry';
+import { analytics } from '@/utils/analytics';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
@@ -44,6 +45,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email,
         username: user.username,
       });
+      // Identify user in analytics
+      analytics.identifyUser(user.id.toString(), {
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        tier: user.subscription_tier,
+        totalPoints: user.total_points,
+      });
     } catch {
       setAuthState({
         user: null,
@@ -71,6 +80,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: user.id.toString(),
         email: user.email,
         username: user.username,
+      });
+      // Track login and identify user
+      analytics.loginCompleted('email');
+      analytics.identifyUser(user.id.toString(), {
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        tier: user.subscription_tier,
+        totalPoints: user.total_points,
       });
     } catch (error) {
       const errorMessage = (error && typeof error === 'object' && 'error' in error)
@@ -100,6 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       // Clear Sentry user context on logout
       setSentryUser(null);
+      // Reset analytics tracking
+      analytics.reset();
     } catch (error) {
       const errorMessage = (error && typeof error === 'object' && 'error' in error)
         ? String(error.error)

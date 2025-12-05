@@ -9,6 +9,7 @@ export { BattleCountdown } from './BattleCountdown';
 export { BattleResults } from './BattleResults';
 export { ChallengeDisplay } from './ChallengeDisplay';
 export { GeneratingPhase } from './GeneratingPhase';
+export { JudgingReveal } from './JudgingReveal';
 export { MatchmakingScreen } from './MatchmakingScreen';
 export { PlayerCard, type PlayerStatus } from './PlayerCard';
 export { PromptEditor } from './PromptEditor';

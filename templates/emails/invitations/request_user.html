@@ -1,0 +1,25 @@
+{% extends "emails/base.html" %}
+{% block title %}Request Received - AllThrive AI{% endblock %}
+
+{% block content %}
+<h1>We got your request!</h1>
+
+<p>Hi {{ requester_name }},</p>
+
+<p>Thanks for your interest in joining AllThrive AI! We've received your invitation request and will review it shortly.</p>
+
+<div class="alert alert-info">
+    <strong>What happens next?</strong><br>
+    We manually review each request to ensure our community stays awesome. You'll receive an email once your request has been reviewed.
+</div>
+
+<p>In the meantime, feel free to explore our public content:</p>
+
+<p style="text-align: center;">
+    <a href="{{ frontend_url }}/explore" class="btn">Explore Projects</a>
+</p>
+
+<p style="color: #94a3b8; font-size: 14px;">
+    If you have any questions, feel free to reach out to us at hello@allthrive.ai
+</p>
+{% endblock %}

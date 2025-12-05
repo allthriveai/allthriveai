@@ -13,3 +13,4 @@ export { ChallengesSection } from './ChallengesSection';
 export { LinksSection } from './LinksSection';
 export { SlideUpSection } from './SlideUpSection';
 export { CustomSection } from './CustomSection';
+export { BattleResultSection } from './BattleResultSection';

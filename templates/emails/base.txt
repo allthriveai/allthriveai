@@ -1,0 +1,6 @@
+{% block content %}{% endblock %}
+
+---
+AllThrive AI
+Manage preferences: {{ settings_url }}
+Unsubscribe: {{ unsubscribe_url }}

@@ -123,10 +123,10 @@ export function PromptEditor({
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <SparklesIcon className="w-5 h-5 text-cyan-400" />
+        <label htmlFor="prompt-editor-textarea" className="flex items-center gap-2 cursor-pointer">
+          <SparklesIcon className="w-5 h-5 text-cyan-400" aria-hidden="true" />
           <span className="text-white font-medium">Your Creative Direction</span>
-        </div>
+        </label>
 
         {localTimeRemaining !== null && localTimeRemaining !== undefined && (
           <motion.div
@@ -141,6 +141,9 @@ export function PromptEditor({
             `}
             animate={localTimeRemaining <= 30 ? { scale: [1, 1.05, 1] } : {}}
             transition={{ repeat: Infinity, duration: 0.5 }}
+            role="timer"
+            aria-live={localTimeRemaining <= 30 ? 'assertive' : 'polite'}
+            aria-label={`Time remaining: ${formatTime(localTimeRemaining)}`}
           >
             {formatTime(localTimeRemaining)}
           </motion.div>
@@ -156,6 +159,7 @@ export function PromptEditor({
         `}
       >
         <textarea
+          id="prompt-editor-textarea"
           value={prompt}
           onChange={(e) => handleChange(e.target.value)}
           onFocus={() => setIsFocused(true)}
@@ -164,6 +168,8 @@ export function PromptEditor({
           disabled={disabled}
           placeholder={placeholder}
           rows={6}
+          aria-describedby="prompt-char-count prompt-hint"
+          aria-invalid={isTooLong}
           className={`
             w-full p-4 pb-16
             bg-slate-900/50 backdrop-blur-xl
@@ -185,19 +191,23 @@ export function PromptEditor({
           {/* Character count */}
           <div className="flex items-center gap-3">
             <span
+              id="prompt-char-count"
               className={`
                 text-sm font-mono
                 ${isTooShort ? 'text-amber-400' : ''}
                 ${isTooLong ? 'text-rose-400' : ''}
                 ${isValid ? 'text-emerald-400' : 'text-slate-500'}
               `}
+              aria-live="polite"
+              aria-atomic="true"
             >
-              {charCount} / {maxLength}
+              <span className="sr-only">{charCount} of {maxLength} characters</span>
+              <span aria-hidden="true">{charCount} / {maxLength}</span>
             </span>
 
             {isTooShort && (
-              <span className="text-xs text-amber-400 flex items-center gap-1">
-                <ExclamationTriangleIcon className="w-3 h-3" />
+              <span className="text-xs text-amber-400 flex items-center gap-1" role="alert">
+                <ExclamationTriangleIcon className="w-3 h-3" aria-hidden="true" />
                 Min {minLength} chars
               </span>
             )}
@@ -225,9 +235,9 @@ export function PromptEditor({
       </div>
 
       {/* Tips */}
-      <p className="mt-2 text-xs text-slate-500">
+      <p id="prompt-hint" className="mt-2 text-xs text-slate-500">
         Pro tip: Be specific about colors, mood, composition, and style.{' '}
-        <span className="text-slate-600">Press ⌘+Enter to submit</span>
+        <kbd className="text-slate-600 font-mono">⌘+Enter</kbd> to submit
       </p>
     </motion.div>
   );

@@ -592,7 +592,7 @@ def explore_projects(request):
     """Explore projects with filtering, search, and pagination.
 
     Query parameters:
-    - tab: 'for-you' | 'trending' | 'all' (default: 'all')
+    - tab: 'for-you' | 'trending' | 'new' | 'news' | 'all' (default: 'all')
     - search: text search query
     - tools: comma-separated tool IDs
     - topics: comma-separated topic slugs
@@ -604,7 +604,9 @@ def explore_projects(request):
     """
     import logging
 
+    from django.contrib.postgres.search import TrigramWordSimilarity
     from django.db.models import Count, Q
+    from django.db.models.functions import Greatest
 
     logger = logging.getLogger(__name__)
 
@@ -623,9 +625,27 @@ def explore_projects(request):
         .prefetch_related('tools', 'likes')
     )
 
-    # Apply search filter
+    # Apply search filter with fuzzy matching (trigram similarity)
+    # This handles slight misspellings like "javascrpt" -> "javascript"
+    search_similarity_applied = False
     if search_query:
-        queryset = queryset.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
+        # First try exact/contains match for best performance on exact queries
+        exact_match = queryset.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
+
+        if exact_match.exists():
+            # Use exact match if found
+            queryset = exact_match
+        else:
+            # Fall back to trigram word similarity for fuzzy matching
+            # TrigramWordSimilarity finds similar words within text fields
+            queryset = queryset.annotate(
+                title_similarity=TrigramWordSimilarity(search_query, 'title'),
+                description_similarity=TrigramWordSimilarity(search_query, 'description'),
+                search_similarity=Greatest('title_similarity', 'description_similarity'),
+            ).filter(
+                search_similarity__gt=0.3  # Threshold for fuzzy match (0.3 = moderate tolerance)
+            )
+            search_similarity_applied = True
 
     # Apply tools filter - handle both array params (tools=1&tools=2) and comma-separated (tools=1,2)
     tools_list = request.GET.getlist('tools')
@@ -688,7 +708,14 @@ def explore_projects(request):
     # Apply tab-specific filters
     if tab == 'news':
         # Filter for RSS article projects only
-        queryset = queryset.filter(type='rss_article').order_by('-created_at')
+        # Sort by published_date (original article date) when available, otherwise by created_at
+        from django.db.models.functions import Coalesce
+
+        queryset = (
+            queryset.filter(type='rss_article')
+            .annotate(effective_date=Coalesce('published_date', 'created_at'))
+            .order_by('-effective_date')
+        )
 
     # Apply sorting or personalization based on tab
     elif tab == 'for-you':
@@ -761,8 +788,29 @@ def explore_projects(request):
             logger.error(f'Trending engine error: {e}', exc_info=True)
             # Fall through to default sorting
 
+    elif tab == 'new':
+        # Pure newest-first ordering without user bucket mixing
+        # Sort by published_date if available, otherwise by created_at
+        # This shows the most recently published content first (important for news articles)
+        from django.db.models.functions import Coalesce
+
+        queryset = queryset.annotate(effective_date=Coalesce('published_date', 'created_at')).order_by(
+            '-effective_date'
+        )
+
+        # Apply pagination
+        paginator = ProjectPagination()
+        paginator.page_size = min(int(request.GET.get('page_size', 30)), 100)
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = ProjectSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
     # Default sorting for 'all' tab or fallback
-    if sort == 'trending':
+    # If fuzzy search was applied, prioritize by similarity score
+    if search_similarity_applied:
+        # Order by similarity first, then by creation date
+        queryset = queryset.order_by('-search_similarity', '-created_at')
+    elif sort == 'trending':
         # Trending: most likes in the last 7 days
         queryset = queryset.annotate(recent_likes=Count('likes')).order_by('-recent_likes', '-created_at')
     elif sort == 'popular':
@@ -797,12 +845,20 @@ def semantic_search(request):
 
     Request body:
     - query: Search query text (required)
-    - limit: Maximum results (default: 50, max: 100)
+    - types: List of content types to search (default: all)
+             Options: 'projects', 'tools', 'quizzes', 'users'
+    - limit: Maximum results per type (default: 10, max: 50)
     - alpha: Weight for vector vs keyword (0=keyword, 1=vector, default: 0.7)
 
-    Returns projects matching the semantic query.
+    Returns results grouped by content type.
     """
     import logging
+
+    from django.db.models import Q
+
+    from core.quizzes.models import Quiz
+    from core.tools.models import Tool
+    from core.users.models import User
 
     logger = logging.getLogger(__name__)
 
@@ -814,69 +870,209 @@ def semantic_search(request):
     if request.user.is_authenticated:
         track_search_used(request.user, query)
 
-    limit = min(int(request.data.get('limit', 50)), 100)
+    # Get search parameters
+    requested_types = request.data.get('types', ['projects', 'tools', 'quizzes', 'users'])
+    if isinstance(requested_types, str):
+        requested_types = [requested_types]
+    valid_types = {'projects', 'tools', 'quizzes', 'users'}
+    types_to_search = [t for t in requested_types if t in valid_types]
+
+    limit = min(int(request.data.get('limit', 10)), 50)
     alpha = float(request.data.get('alpha', 0.7))
+
+    results = {
+        'projects': [],
+        'tools': [],
+        'quizzes': [],
+        'users': [],
+    }
+    search_type = 'text_fallback'
 
     try:
         from services.weaviate import get_embedding_service, get_weaviate_client
         from services.weaviate.schema import WeaviateSchema
 
         client = get_weaviate_client()
+        weaviate_available = client.is_available()
+        query_vector = None
 
-        if not client.is_available():
-            # Fallback to basic text search
-            logger.warning('Weaviate unavailable, falling back to text search')
-            from django.db.models import Q
+        if weaviate_available:
+            # Try to generate query embedding
+            try:
+                embedding_service = get_embedding_service()
+                query_vector = embedding_service.generate_embedding(query)
+                search_type = 'semantic'
+            except Exception as embed_error:
+                logger.warning(f'Embedding generation failed, falling back to text search: {embed_error}')
+                # Fall back to text search - still use Weaviate for keyword matching if available
+                search_type = 'text_fallback'
 
-            queryset = (
-                Project.objects.filter(
-                    is_private=False,
-                    is_archived=False,
+        # Search Projects
+        if 'projects' in types_to_search:
+            try:
+                if weaviate_available and query_vector:
+                    weaviate_results = client.hybrid_search(
+                        collection=WeaviateSchema.PROJECT_COLLECTION,
+                        query=query,
+                        vector=query_vector,
+                        alpha=alpha,
+                        limit=limit,
+                    )
+                    project_ids = [r.get('project_id') for r in weaviate_results if r.get('project_id')]
+                    projects = (
+                        Project.objects.filter(id__in=project_ids)
+                        .select_related('user')
+                        .prefetch_related('tools', 'categories', 'likes')
+                    )
+                    project_map = {p.id: p for p in projects}
+                    ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
+                else:
+                    # Text fallback
+                    ordered_projects = list(
+                        Project.objects.filter(is_private=False, is_archived=False)
+                        .filter(Q(title__icontains=query) | Q(description__icontains=query))
+                        .select_related('user')
+                        .prefetch_related('tools', 'categories', 'likes')
+                        .order_by('-created_at')[:limit]
+                    )
+
+                results['projects'] = [
+                    {
+                        'id': p.id,
+                        'title': p.title,
+                        'slug': p.slug,
+                        'description': (p.description or '')[:150],
+                        'username': p.user.username,
+                        'featured_image_url': p.featured_image_url,
+                        'url': f'/{p.user.username}/{p.slug}',
+                    }
+                    for p in ordered_projects
+                ]
+            except Exception as e:
+                logger.warning(f'Project search failed: {e}')
+
+        # Search Tools
+        if 'tools' in types_to_search:
+            try:
+                if weaviate_available and query_vector:
+                    weaviate_results = client.hybrid_search(
+                        collection=WeaviateSchema.TOOL_COLLECTION,
+                        query=query,
+                        vector=query_vector,
+                        alpha=alpha,
+                        limit=limit,
+                    )
+                    tool_ids = [r.get('tool_id') for r in weaviate_results if r.get('tool_id')]
+                    tools = Tool.objects.filter(id__in=tool_ids, is_active=True)
+                    tool_map = {t.id: t for t in tools}
+                    ordered_tools = [tool_map[tid] for tid in tool_ids if tid in tool_map]
+                else:
+                    ordered_tools = list(
+                        Tool.objects.filter(is_active=True)
+                        .filter(
+                            Q(name__icontains=query) | Q(description__icontains=query) | Q(tagline__icontains=query)
+                        )
+                        .order_by('-popularity_score')[:limit]
+                    )
+
+                results['tools'] = [
+                    {
+                        'id': t.id,
+                        'name': t.name,
+                        'slug': t.slug,
+                        'tagline': t.tagline or '',
+                        'logo_url': t.logo_url,
+                        'category': t.category,
+                        'url': f'/tools/{t.slug}',
+                    }
+                    for t in ordered_tools
+                ]
+            except Exception as e:
+                logger.warning(f'Tool search failed: {e}')
+
+        # Search Quizzes
+        if 'quizzes' in types_to_search:
+            try:
+                if weaviate_available and query_vector:
+                    weaviate_results = client.hybrid_search(
+                        collection=WeaviateSchema.QUIZ_COLLECTION,
+                        query=query,
+                        vector=query_vector,
+                        alpha=alpha,
+                        limit=limit,
+                    )
+                    quiz_ids = [r.get('quiz_id') for r in weaviate_results if r.get('quiz_id')]
+                    quizzes = Quiz.objects.filter(id__in=quiz_ids, is_published=True).prefetch_related('questions')
+                    quiz_map = {str(q.id): q for q in quizzes}
+                    ordered_quizzes = [quiz_map[qid] for qid in quiz_ids if qid in quiz_map]
+                else:
+                    ordered_quizzes = list(
+                        Quiz.objects.filter(is_published=True)
+                        .filter(Q(title__icontains=query) | Q(description__icontains=query) | Q(topic__icontains=query))
+                        .prefetch_related('questions')
+                        .order_by('-created_at')[:limit]
+                    )
+
+                results['quizzes'] = [
+                    {
+                        'id': str(q.id),
+                        'title': q.title,
+                        'slug': q.slug,
+                        'description': (q.description or '')[:150],
+                        'difficulty': q.difficulty,
+                        'topic': q.topic,
+                        'question_count': q.questions.count(),
+                        'thumbnail_url': q.thumbnail_url,
+                        'url': f'/quizzes/{q.slug}',
+                    }
+                    for q in ordered_quizzes
+                ]
+            except Exception as e:
+                logger.warning(f'Quiz search failed: {e}')
+
+        # Search Users
+        if 'users' in types_to_search:
+            try:
+                # Users always use text search (no Weaviate collection for user search)
+                users = list(
+                    User.objects.filter(is_active=True, is_profile_public=True)
+                    .filter(
+                        Q(username__icontains=query)
+                        | Q(first_name__icontains=query)
+                        | Q(last_name__icontains=query)
+                        | Q(bio__icontains=query)
+                    )
+                    .order_by('-date_joined')[:limit]
                 )
-                .filter(Q(title__icontains=query) | Q(description__icontains=query))
-                .select_related('user')
-                .prefetch_related('tools', 'categories', 'likes')
-                .order_by('-created_at')[:limit]
-            )
-            serializer = ProjectSerializer(queryset, many=True)
-            return Response(
-                {
-                    'results': serializer.data,
-                    'search_type': 'text_fallback',
-                }
-            )
 
-        # Generate query embedding
-        embedding_service = get_embedding_service()
-        query_vector = embedding_service.generate_embedding(query)
+                results['users'] = [
+                    {
+                        'id': u.id,
+                        'username': u.username,
+                        'full_name': u.get_full_name() or u.username,
+                        'avatar_url': u.avatar_url,
+                        'bio': (u.bio or '')[:100],
+                        'project_count': u.projects.filter(is_private=False, is_archived=False).count(),
+                        'url': f'/{u.username}',
+                    }
+                    for u in users
+                ]
+            except Exception as e:
+                logger.warning(f'User search failed: {e}')
 
-        # Perform hybrid search
-        results = client.hybrid_search(
-            collection=WeaviateSchema.PROJECT_COLLECTION,
-            query=query,
-            vector=query_vector if query_vector else None,
-            alpha=alpha,
-            limit=limit,
-        )
+        # Calculate total results
+        total_results = sum(len(v) for v in results.values())
 
-        # Get Django objects in order
-        project_ids = [r.get('project_id') for r in results if r.get('project_id')]
-        projects = (
-            Project.objects.filter(id__in=project_ids)
-            .select_related('user')
-            .prefetch_related('tools', 'categories', 'likes')
-        )
-
-        # Maintain search order
-        project_map = {p.id: p for p in projects}
-        ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
-
-        serializer = ProjectSerializer(ordered_projects, many=True)
         return Response(
             {
-                'results': serializer.data,
-                'search_type': 'semantic',
-                'alpha': alpha,
+                'query': query,
+                'search_type': search_type,
+                'results': results,
+                'meta': {
+                    'total_results': total_results,
+                    'weaviate_available': weaviate_available if 'weaviate_available' in dir() else False,
+                    'alpha': alpha,
+                },
             }
         )
 

@@ -10,3 +10,4 @@ class CoreConfig(AppConfig):
         import core.signals  # noqa
         import core.auth.oauth_middleware  # noqa - Register OAuth JWT signals
         import core.admin_site  # noqa - Apply custom admin configuration
+        import services.weaviate.signals  # noqa - Connect Weaviate sync signals

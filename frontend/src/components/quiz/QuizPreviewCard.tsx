@@ -48,6 +48,8 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
 
   const Component = onOpen ? 'button' : 'a';
   const linkProps = onOpen ? {} : { href: `/quizzes/${quiz.slug}` };
+  const CtaComponent = onOpen ? 'div' : 'button'; // Use div when wrapper is already a button
+  const ctaExtraProps = onOpen ? {} : { type: 'button' as const }; // Only add type when it's actually a button
 
   // Use category color if available, otherwise use difficulty color
   const categoryColor = quiz.categories?.[0]?.color;
@@ -216,8 +218,8 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
               {/* Pulsing Glow Behind Button */}
               <div className={`absolute -inset-1 ${colors.ctaBg} opacity-50 blur-lg group-hover/button:opacity-75 animate-pulse -z-10`} />
 
-              <button
-                type="button"
+              <CtaComponent
+                {...ctaExtraProps}
                 className={`
                   w-full ${isCompact ? 'px-4 py-2.5 text-sm' : 'px-6 py-3 text-base'} font-bold uppercase tracking-wide
                   relative overflow-hidden
@@ -254,7 +256,7 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
                     <TrophyIcon className={`${isCompact ? 'w-4 h-4' : 'w-5 h-5'} text-yellow-300 animate-bounce`} />
                   )}
                 </span>
-              </button>
+              </CtaComponent>
 
               {/* Attempt Counter & Score - if attempted */}
               {quiz.userAttemptCount > 0 && !isCompact && (

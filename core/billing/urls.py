@@ -17,6 +17,7 @@ urlpatterns = [
     # Subscription management (authenticated)
     path('status/', views.get_subscription_status_view, name='subscription-status'),
     path('subscriptions/create/', views.create_subscription_view, name='create-subscription'),
+    path('checkout/create/', views.create_checkout_session_view, name='create-checkout-session'),
     path('subscriptions/update/', views.update_subscription_view, name='update-subscription'),
     path('subscriptions/cancel/', views.cancel_subscription_view, name='cancel-subscription'),
     path('subscriptions/history/', views.get_subscription_history_view, name='subscription-history'),

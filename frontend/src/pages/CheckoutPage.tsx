@@ -12,7 +12,8 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SEO } from '@/components/common/SEO';
 import { StripePaymentForm } from '@/components/billing/StripePaymentForm';
 import { getSubscriptionTiers, getSubscriptionStatus, createSubscription } from '@/services/billing';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -38,14 +39,30 @@ export default function CheckoutPage() {
   const createSubscriptionMutation = useMutation({
     mutationFn: () => {
       if (!tierSlug) throw new Error('No tier selected');
+      console.log('[Checkout] Creating subscription:', { tierSlug, billingInterval });
       return createSubscription(tierSlug, billingInterval);
     },
     onSuccess: (data) => {
-      setClientSecret(data.clientSecret);
-      setError(null);
+      console.log('[Checkout] Subscription created successfully:', data);
+      if (data.clientSecret) {
+        setClientSecret(data.clientSecret);
+        setError(null);
+      } else {
+        console.error('[Checkout] No clientSecret in response:', data);
+        setError('Payment initialization failed: No client secret received. The subscription may already exist.');
+      }
     },
     onError: (err: any) => {
-      setError(err.error || 'Failed to initialize payment');
+      console.error('[Checkout] Subscription creation failed:', err);
+      // Extract error message from various response formats
+      const errorMessage =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.response?.data?.detail ||
+        err?.error ||
+        err?.message ||
+        'Failed to initialize payment. Please try again.';
+      setError(errorMessage);
     },
   });
 
@@ -70,11 +87,11 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Auto-create subscription when page loads
-    if (selectedTier && !clientSecret && !createSubscriptionMutation.isPending) {
+    // Auto-create subscription when page loads (wait for subscriptionStatus to load first)
+    if (selectedTier && !clientSecret && !createSubscriptionMutation.isPending && !error && subscriptionStatus !== undefined) {
       createSubscriptionMutation.mutate();
     }
-  }, [tierSlug, tiers, selectedTier, subscriptionStatus, clientSecret]);
+  }, [tierSlug, tiers, selectedTier, subscriptionStatus, clientSecret, error]);
 
   const handlePaymentSuccess = async () => {
     // Poll for subscription activation
@@ -247,10 +264,116 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* Error Message */}
+            {/* Error State UI */}
             {error && (
-              <div className="mt-6 px-4 py-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400">
-                {error}
+              <div className="mt-6 rounded-lg overflow-hidden" style={{ border: '1px solid var(--glass-border)' }}>
+                {/* Error scenarios with friendly UI */}
+                {/* Detect various "already subscribed" messages - check if they already have THIS tier */}
+                {((error.toLowerCase().includes('already') &&
+                  (error.toLowerCase().includes('subscription') || error.toLowerCase().includes('subscribed'))) ||
+                 error.toLowerCase().includes('active subscription') ||
+                 (error.toLowerCase().includes('cancel') && error.toLowerCase().includes('subscription')) ||
+                 (subscriptionStatus?.hasActiveSubscription && subscriptionStatus?.tierSlug === tierSlug)) ? (
+                  // Already subscribed - show success-like state
+                  <div className="p-6 text-center bg-gradient-to-br from-green-500/10 to-emerald-500/10">
+                    <CheckCircleIcon className="w-12 h-12 mx-auto mb-4 text-[var(--neon-green)]" />
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+                      You're Already Subscribed!
+                    </h3>
+                    <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-sm mx-auto">
+                      Great news - you already have an active {selectedTier.name} subscription.
+                      You can manage your subscription from your billing settings.
+                    </p>
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => navigate('/account/billing')}
+                        className="px-5 py-2.5 rounded-lg font-medium text-white transition-all"
+                        style={{ background: 'var(--gradient-primary)' }}
+                      >
+                        View Billing Settings
+                      </button>
+                      <button
+                        onClick={() => navigate('/pricing')}
+                        className="px-5 py-2.5 rounded-lg font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
+                        style={{ background: 'var(--glass-fill-subtle)' }}
+                      >
+                        See Other Plans
+                      </button>
+                    </div>
+                  </div>
+                ) : error.includes('client secret') || error.includes('initialization failed') ? (
+                  // Payment initialization failed - offer retry
+                  <div className="p-6 text-center bg-gradient-to-br from-amber-500/10 to-orange-500/10">
+                    <ExclamationTriangleIcon className="w-12 h-12 mx-auto mb-4 text-amber-400" />
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+                      Payment Setup Issue
+                    </h3>
+                    <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-sm mx-auto">
+                      We couldn't set up the payment form. This might be a temporary issue.
+                      Please try again or contact support if the problem persists.
+                    </p>
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => {
+                          setError(null);
+                          setClientSecret(null);
+                          createSubscriptionMutation.reset();
+                          createSubscriptionMutation.mutate();
+                        }}
+                        disabled={createSubscriptionMutation.isPending}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-white transition-all disabled:opacity-50"
+                        style={{ background: 'var(--gradient-primary)' }}
+                      >
+                        <ArrowPathIcon className={`w-4 h-4 ${createSubscriptionMutation.isPending ? 'animate-spin' : ''}`} />
+                        {createSubscriptionMutation.isPending ? 'Retrying...' : 'Try Again'}
+                      </button>
+                      <button
+                        onClick={() => navigate('/account/billing')}
+                        className="px-5 py-2.5 rounded-lg font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
+                        style={{ background: 'var(--glass-fill-subtle)' }}
+                      >
+                        Check Billing
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // Generic error - show message with retry
+                  <div className="p-6 text-center bg-gradient-to-br from-red-500/10 to-rose-500/10">
+                    <ExclamationTriangleIcon className="w-12 h-12 mx-auto mb-4 text-red-400" />
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+                      Something Went Wrong
+                    </h3>
+                    <p className="text-sm text-[var(--text-secondary)] mb-2 max-w-sm mx-auto">
+                      {error}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)] mb-6">
+                      If this continues, please contact support.
+                    </p>
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => {
+                          setError(null);
+                          setClientSecret(null);
+                          createSubscriptionMutation.reset();
+                          createSubscriptionMutation.mutate();
+                        }}
+                        disabled={createSubscriptionMutation.isPending}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-white transition-all disabled:opacity-50"
+                        style={{ background: 'var(--gradient-primary)' }}
+                      >
+                        <ArrowPathIcon className={`w-4 h-4 ${createSubscriptionMutation.isPending ? 'animate-spin' : ''}`} />
+                        {createSubscriptionMutation.isPending ? 'Retrying...' : 'Try Again'}
+                      </button>
+                      <button
+                        onClick={() => navigate('/pricing')}
+                        className="px-5 py-2.5 rounded-lg font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
+                        style={{ background: 'var(--glass-fill-subtle)' }}
+                      >
+                        Back to Pricing
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -272,6 +395,32 @@ export default function CheckoutPage() {
             </svg>
             <span>Secured by Stripe • SSL Encrypted</span>
           </div>
+
+          {/* Debug Panel - Development Only */}
+          {import.meta.env.DEV && (
+            <details className="mt-8 rounded-lg p-4 bg-slate-800/50 border border-slate-700">
+              <summary className="cursor-pointer text-sm font-mono text-slate-400 hover:text-slate-300">
+                Debug Info (Dev Only)
+              </summary>
+              <div className="mt-4 space-y-2 text-xs font-mono text-slate-500">
+                <p><span className="text-slate-400">Tier Slug:</span> {tierSlug || 'null'}</p>
+                <p><span className="text-slate-400">Selected Tier:</span> {selectedTier?.name || 'null'}</p>
+                <p><span className="text-slate-400">Billing Interval:</span> {billingInterval}</p>
+                <p><span className="text-slate-400">Has Client Secret:</span> {clientSecret ? 'Yes' : 'No'}</p>
+                <p><span className="text-slate-400">Mutation Pending:</span> {createSubscriptionMutation.isPending ? 'Yes' : 'No'}</p>
+                <p><span className="text-slate-400">Mutation Status:</span> {createSubscriptionMutation.status}</p>
+                <p><span className="text-slate-400">Current Subscription:</span> {subscriptionStatus?.tierSlug || 'none'}</p>
+                <p><span className="text-slate-400">Has Active Sub:</span> {subscriptionStatus?.hasActiveSubscription ? 'Yes' : 'No'}</p>
+                <p><span className="text-slate-400">Error:</span> {error || 'none'}</p>
+                {createSubscriptionMutation.error && (
+                  <p className="text-red-400">
+                    <span className="text-slate-400">Mutation Error:</span>{' '}
+                    {JSON.stringify(createSubscriptionMutation.error, null, 2)}
+                  </p>
+                )}
+              </div>
+            </details>
+          )}
         </div>
       </div>
     </DashboardLayout>

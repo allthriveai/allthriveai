@@ -68,5 +68,8 @@ export const PROJECT_TYPE_LABELS: Record<string, string> = {
   image_collection: 'Image Collection',
   prompt: 'Prompt',
   reddit_thread: 'Reddit Thread',
+  video: 'Video',
+  rss_article: 'Article',
+  battle: 'Prompt Battle',
   other: 'Project',
 };

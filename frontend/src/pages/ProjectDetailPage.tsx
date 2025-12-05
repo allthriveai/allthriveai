@@ -15,6 +15,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SEO } from '@/components/common/SEO';
 import { getProjectBySlug, deleteProject, updateProject } from '@/services/projects';
+import { trackProjectView, getViewSourceFromReferrer } from '@/services/tracking';
 import type { Project } from '@/types/models';
 import { useAuth } from '@/hooks/useAuth';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
@@ -51,6 +52,11 @@ export default function ProjectDetailPage() {
       try {
         const data = await getProjectBySlug(username, projectSlug);
         setProject(data);
+
+        // Track the view (fire and forget - don't block UI)
+        if (data.id) {
+          trackProjectView(data.id, getViewSourceFromReferrer());
+        }
       } catch (err) {
         console.error('Failed to load project:', err);
         setError('Project not found');

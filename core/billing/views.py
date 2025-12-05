@@ -88,8 +88,12 @@ def stripe_webhook(request):
         event_data = event['data']
 
         try:
+            # Checkout events
+            if event_type == 'checkout.session.completed':
+                StripeService.handle_checkout_session_completed(event_data)
+
             # Subscription events
-            if event_type == 'customer.subscription.created':
+            elif event_type == 'customer.subscription.created':
                 StripeService.handle_subscription_updated(event_data)
 
             elif event_type == 'customer.subscription.updated':
@@ -221,6 +225,55 @@ def create_subscription_view(request):
         return Response({'error': 'Tier not found'}, status=status.HTTP_404_NOT_FOUND)
     except StripeServiceError as e:
         logger.error(f'Failed to create subscription: {e}')
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_checkout_session_view(request):
+    """
+    Create a Stripe Checkout Session for subscription.
+
+    POST /api/v1/billing/checkout/create/
+
+    Body:
+    {
+        "tier_slug": "community-pro",
+        "billing_interval": "monthly" | "annual" (required),
+        "success_url": "{FRONTEND_URL}/pricing/success",
+        "cancel_url": "{FRONTEND_URL}/pricing"
+    }
+
+    Returns:
+    {
+        "session_id": "cs_xxx",
+        "url": "https://checkout.stripe.com/c/pay/cs_xxx"
+    }
+    """
+    serializer = CreateSubscriptionSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        tier = SubscriptionTier.objects.get(slug=serializer.validated_data['tier_slug'])
+        billing_interval = serializer.validated_data['billing_interval']
+
+        # Get success and cancel URLs from request, with defaults
+        from django.conf import settings
+
+        success_url = request.data.get('success_url', f'{settings.FRONTEND_URL}/pricing/success')
+        cancel_url = request.data.get('cancel_url', f'{settings.FRONTEND_URL}/pricing')
+
+        result = StripeService.create_checkout_session(request.user, tier, billing_interval, success_url, cancel_url)
+
+        return Response(result, status=status.HTTP_201_CREATED)
+
+    except SubscriptionTier.DoesNotExist:
+        logger.warning(f'User {request.user.id} attempted to subscribe to nonexistent tier')
+        return Response({'error': 'Tier not found'}, status=status.HTTP_404_NOT_FOUND)
+    except StripeServiceError as e:
+        logger.error(f'Failed to create checkout session: {e}')
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 

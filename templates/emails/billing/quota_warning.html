@@ -1,0 +1,62 @@
+{% extends "emails/base.html" %}
+
+{% block title %}AI Request Quota Update - AllThrive AI{% endblock %}
+
+{% block content %}
+<h1>Your AI Request Quota Update</h1>
+
+<p>Hi {{ user.first_name|default:user.username }},</p>
+
+{% if alert_level == 'exceeded' %}
+<div class="alert alert-critical">
+    <strong>Quota Reached:</strong> You've used all your monthly AI requests.
+</div>
+{% elif alert_level == 'critical' %}
+<div class="alert alert-warning">
+    <strong>Almost out:</strong> You've used {{ percentage }}% of your monthly AI requests.
+</div>
+{% else %}
+<div class="alert alert-info">
+    <strong>Usage update:</strong> You've used {{ percentage }}% of your monthly AI requests.
+</div>
+{% endif %}
+
+<div class="stats-box">
+    <div class="stat-item">
+        <div class="stat-label">Monthly Usage</div>
+        <div class="stat-value {% if alert_level == 'exceeded' %}critical{% elif alert_level == 'critical' %}warning{% else %}highlight{% endif %}">
+            {{ used }} / {{ limit }} requests
+        </div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-label">Remaining</div>
+        <div class="stat-value">{{ remaining }} requests</div>
+    </div>
+    {% if has_tokens %}
+    <div class="stat-item">
+        <div class="stat-label">Backup Tokens</div>
+        <div class="stat-value highlight">Available</div>
+    </div>
+    {% endif %}
+</div>
+
+{% if alert_level == 'exceeded' %}
+<p>Don't worry! You can continue using AI features by purchasing token packs or upgrading your plan.</p>
+{% elif not has_tokens %}
+<p>Once you reach your limit, you'll need additional tokens to continue using AI features. Consider purchasing a token pack as a backup.</p>
+{% else %}
+<p>You have backup tokens available, so you can continue using AI features even after reaching your monthly limit.</p>
+{% endif %}
+
+<p>
+    <a href="{{ purchase_url }}" class="btn">
+        {% if alert_level == 'exceeded' %}Get More AI Access{% else %}View Billing{% endif %}
+    </a>
+</p>
+
+{% if alert_level != 'exceeded' %}
+<p style="color: #94a3b8; font-size: 14px;">
+    Your quota resets on the 1st of each month.
+</p>
+{% endif %}
+{% endblock %}

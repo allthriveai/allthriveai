@@ -412,14 +412,6 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
 
   return (
     <>
-      {/* Backdrop - Clickable when open */}
-      <div
-        className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-300 ease-in-out ${
-          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={onClose}
-      />
-
       {/* Right Sidebar Drawer - Smooth slide animation */}
       <aside
         className={`fixed right-0 top-0 h-full w-full md:w-96 lg:w-[32rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ease-in-out ${

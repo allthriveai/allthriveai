@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
-import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { ArrowRightOnRectangleIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
 import type { User } from '@/types/models';
 
 interface UserMenuProps {
@@ -42,6 +42,15 @@ export function UserMenu({ user }: UserMenuProps) {
 
   const menuItems = [
     {
+      label: 'Getting Started',
+      icon: RocketLaunchIcon,
+      highlight: true,
+      onClick: () => {
+        navigate('/getting-started');
+        setIsOpen(false);
+      },
+    },
+    {
       label: 'My Profile',
       onClick: () => {
         navigate(`/${user.username}?tab=showcase`);
@@ -62,20 +71,11 @@ export function UserMenu({ user }: UserMenuProps) {
         setIsOpen(false);
       },
     },
-    {
-      label: 'Thrive Circle',
-      onClick: () => {
-        navigate('/thrive-circle');
-        setIsOpen(false);
-      },
-    },
   ];
 
   const handleAvatarClick = () => {
-    // Toggle dropdown
+    // Toggle dropdown only - don't navigate
     setIsOpen(!isOpen);
-    // Navigate to profile page
-    navigate(`/${user.username}?tab=showcase`);
   };
 
   return (
@@ -140,15 +140,25 @@ export function UserMenu({ user }: UserMenuProps) {
 
           {/* Menu Items */}
           <div className="py-1">
-            {menuItems.map((item) => (
-              <button
-                key={item.label}
-                onClick={item.onClick}
-                className="w-full text-left px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10 rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl"
-              >
-                {item.label}
-              </button>
-            ))}
+            {menuItems.map((item) => {
+              const Icon = 'icon' in item ? item.icon : null;
+              const isHighlight = 'highlight' in item && item.highlight;
+
+              return (
+                <button
+                  key={item.label}
+                  onClick={item.onClick}
+                  className={`w-full text-left px-4 py-2.5 text-sm rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl flex items-center gap-2 ${
+                    isHighlight
+                      ? 'text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 dark:hover:bg-cyan-500/20'
+                      : 'text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10'
+                  }`}
+                >
+                  {Icon && <Icon className="w-4 h-4" />}
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Logout */}

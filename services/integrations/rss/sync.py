@@ -328,6 +328,16 @@ class RSSFeedSyncService:
             max_items = agent.settings.get('max_items', 20)
             feed_items = feed_items[:max_items]
 
+            # Filter out items older than 2025 (only import recent content)
+            min_year = agent.settings.get('min_publish_year', 2025)
+            original_count = len(feed_items)
+            feed_items = [
+                item for item in feed_items if item.get('published_at') is None or item['published_at'].year >= min_year
+            ]
+            if len(feed_items) < original_count:
+                skipped = original_count - len(feed_items)
+                logger.info(f'Skipped {skipped} items published before {min_year}')
+
             # Process each item
             for item_data in feed_items:
                 try:

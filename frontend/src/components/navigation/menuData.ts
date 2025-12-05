@@ -22,6 +22,7 @@ import {
   faCog,
   faPuzzlePiece,
   faTicket,
+  faStore,
 } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
@@ -57,7 +58,7 @@ export const getMenuSections = (
     icon: faGamepad,
     path: '/play/side-quests',
     items: [
-      { label: "This Week's Challenge", path: '#', icon: faTrophy },
+      { label: "This Week's Challenge", path: '/challenges', icon: faTrophy },
       { label: 'Side Quests', path: '/play/side-quests', icon: faGamepad },
       { label: 'Prompt Battle', path: '/play/prompt-battle', icon: faTrophy },
       { label: 'Quizzes', path: '/quizzes', icon: faBrain },
@@ -70,7 +71,7 @@ export const getMenuSections = (
     items: [
       { label: 'Learning Paths', path: '#', icon: faGraduationCap },
       { label: 'Quizzes', path: '/quizzes', icon: faBrain },
-      { label: 'Mentorship Program', path: '#', icon: faUsers },
+      { label: 'Marketplace', path: '/marketplace', icon: faStore },
       { label: 'Tool Directory', path: '/tools', icon: faWrench },
     ],
   },
@@ -80,7 +81,7 @@ export const getMenuSections = (
     path: '/thrive-circle',
     items: [
       { label: 'Your Thrive Circle', path: '/thrive-circle', icon: faUserGroup },
-      { label: 'Perks', path: '#', icon: faGift },
+      { label: 'Perks', path: '/perks', icon: faGift },
       { label: 'Events Calendar', onClick: () => onMenuClick('Events Calendar'), icon: faCalendar },
     ],
   },
@@ -131,6 +132,7 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
   'EXPLORE': (path) => path === '/explore',
   'LEARN': (path) => path === '/learn',
   'Quizzes': (path) => path === '/quizzes',
+  "This Week's Challenge": (path) => path === '/challenges' || path.startsWith('/challenges/') || path === '/this-weeks-challenge',
   'Side Quests': (path) => path === '/play/side-quests',
   'Prompt Battle': (path) => path === '/play/prompt-battle',
   'Chat': (_, search) => search.includes('chat='),
@@ -141,6 +143,8 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
   'Activity & Points': (path, search, username) =>
     username ? path === `/${username}` && search.includes('tab=activity') : false,
   'Your Thrive Circle': (path) => path === '/thrive-circle',
+  'Perks': (path) => path === '/perks',
+  'Marketplace': (path) => path === '/marketplace',
   'Tool Directory': (path) => path === '/tools',
 };
 

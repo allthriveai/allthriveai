@@ -12,8 +12,10 @@ import logging
 from collections import Counter, defaultdict
 from datetime import timedelta
 
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
+
+from core.logging_utils import StructuredLogger
 
 logger = logging.getLogger(__name__)
 
@@ -26,63 +28,91 @@ class ActivityInsightsService:
 
     def get_full_insights(self):
         """Get comprehensive activity insights for the user."""
-        return {
-            'tool_engagement': self.get_tool_engagement(),
-            'topic_interests': self.get_topic_interests(),
-            'activity_trends': self.get_activity_trends(),
-            'points_by_category': self.get_points_by_category(),
-            'insights': self.get_personalized_insights(),
-            'stats_summary': self.get_stats_summary(),
-        }
+        try:
+            StructuredLogger.log_service_operation(
+                service_name='ActivityInsightsService',
+                operation='get_full_insights',
+                user=self.user,
+                success=True,
+            )
+
+            return {
+                'tool_engagement': self.get_tool_engagement(),
+                'topic_interests': self.get_topic_interests(),
+                'activity_trends': self.get_activity_trends(),
+                'points_by_category': self.get_points_by_category(),
+                'insights': self.get_personalized_insights(),
+                'stats_summary': self.get_stats_summary(),
+            }
+        except Exception as e:
+            StructuredLogger.log_error(
+                message='Failed to generate activity insights',
+                error=e,
+                user=self.user,
+                extra={'operation': 'get_full_insights'},
+            )
+            raise
 
     def get_tool_engagement(self):
         """
         Aggregate tool usage from user's projects.
         Returns tools sorted by usage frequency with metadata.
         """
-        from core.projects.models import Project
-        from core.tools.models import Tool
+        try:
+            from core.projects.models import Project
+            from core.tools.models import Tool
 
-        # Get all tools from user's projects (including non-showcased)
-        user_projects = Project.objects.filter(
-            user=self.user,
-            is_archived=False,
-        ).prefetch_related('tools')
+            # Get all tools from user's projects (including non-showcased)
+            user_projects = Project.objects.filter(
+                user=self.user,
+                is_archived=False,
+            ).prefetch_related('tools')
 
-        # Count tool usage
-        tool_counter = Counter()
-        for project in user_projects:
-            for tool in project.tools.all():
-                tool_counter[tool.id] += 1
+            # Count tool usage
+            tool_counter = Counter()
+            for project in user_projects:
+                for tool in project.tools.all():
+                    if tool and tool.id:  # Defensive check
+                        tool_counter[tool.id] += 1
 
-        if not tool_counter:
-            return []
+            if not tool_counter:
+                return []
 
-        # Get tool details
-        tool_ids = list(tool_counter.keys())
-        tools = Tool.objects.filter(id__in=tool_ids)
-        tool_map = {t.id: t for t in tools}
+            # Get tool details
+            tool_ids = list(tool_counter.keys())
+            tools = Tool.objects.filter(id__in=tool_ids)
+            tool_map = {t.id: t for t in tools}
 
-        # Build result sorted by usage
-        result = []
-        for tool_id, count in tool_counter.most_common(10):  # Top 10 tools
-            tool = tool_map.get(tool_id)
-            if tool:
-                result.append(
-                    {
-                        'id': tool.id,
-                        'name': tool.name,
-                        'slug': tool.slug,
-                        'logo_url': tool.logo_url or '',
-                        'category': tool.category,
-                        'category_display': (
-                            tool.get_category_display() if hasattr(tool, 'get_category_display') else tool.category
-                        ),
-                        'usage_count': count,
-                    }
-                )
+            # Build result sorted by usage
+            result = []
+            for tool_id, count in tool_counter.most_common(10):  # Top 10 tools
+                tool = tool_map.get(tool_id)
+                if tool:
+                    result.append(
+                        {
+                            'id': tool.id,
+                            'name': tool.name or 'Unknown Tool',
+                            'slug': tool.slug or '',
+                            'logo_url': tool.logo_url or '',
+                            'category': tool.category or '',
+                            'category_display': (
+                                tool.get_category_display()
+                                if hasattr(tool, 'get_category_display')
+                                else tool.category or ''
+                            ),
+                            'usage_count': count,
+                        }
+                    )
 
-        return result
+            return result
+        except Exception as e:
+            StructuredLogger.log_error(
+                message='Failed to get tool engagement',
+                error=e,
+                user=self.user,
+                extra={'operation': 'get_tool_engagement'},
+            )
+            return []  # Return empty list on error to prevent breaking the whole insights
 
     def get_side_quests_completed(self):
         """
@@ -400,44 +430,70 @@ class ActivityInsightsService:
 
     def get_stats_summary(self):
         """Get summary statistics for the user."""
-        from core.projects.models import Project
-        from core.quizzes.models import QuizAttempt
-        from core.thrive_circle.models import PointActivity, UserSideQuest
+        try:
+            from core.battles.models import PromptBattle
+            from core.projects.models import Project
+            from core.quizzes.models import QuizAttempt
+            from core.thrive_circle.models import PointActivity, UserSideQuest
 
-        # Total quizzes completed
-        quizzes_completed = QuizAttempt.objects.filter(
-            user=self.user,
-            completed_at__isnull=False,
-        ).count()
-
-        # Total projects
-        projects_count = Project.objects.filter(
-            user=self.user,
-            is_archived=False,
-        ).count()
-
-        # Total points earned
-        total_points = (
-            PointActivity.objects.filter(
+            # Total quizzes completed
+            quizzes_completed = QuizAttempt.objects.filter(
                 user=self.user,
-            ).aggregate(total=Sum('amount'))['total']
-            or 0
-        )
+                completed_at__isnull=False,
+            ).count()
 
-        # Side quests completed
-        side_quests_completed = UserSideQuest.objects.filter(
-            user=self.user,
-            is_completed=True,
-        ).count()
+            # Total projects
+            projects_count = Project.objects.filter(
+                user=self.user,
+                is_archived=False,
+            ).count()
 
-        return {
-            'quizzes_completed': quizzes_completed,
-            'projects_count': projects_count,
-            'total_points': total_points,
-            'side_quests_completed': side_quests_completed,
-            'current_streak': getattr(self.user, 'current_streak_days', 0),
-            'longest_streak': getattr(self.user, 'longest_streak_days', 0),
-        }
+            # Total points earned
+            total_points = (
+                PointActivity.objects.filter(
+                    user=self.user,
+                ).aggregate(total=Sum('amount'))['total']
+                or 0
+            )
+
+            # Side quests completed
+            side_quests_completed = UserSideQuest.objects.filter(
+                user=self.user,
+                is_completed=True,
+            ).count()
+
+            # Prompt battles participated in (completed battles only)
+            battles_count = PromptBattle.objects.filter(
+                Q(challenger=self.user) | Q(opponent=self.user),
+                status='completed',
+            ).count()
+
+            return {
+                'quizzes_completed': quizzes_completed,
+                'projects_count': projects_count,
+                'total_points': total_points,
+                'side_quests_completed': side_quests_completed,
+                'current_streak': getattr(self.user, 'current_streak_days', 0),
+                'longest_streak': getattr(self.user, 'longest_streak_days', 0),
+                'battles_count': battles_count,
+            }
+        except Exception as e:
+            StructuredLogger.log_error(
+                message='Failed to get stats summary',
+                error=e,
+                user=self.user,
+                extra={'operation': 'get_stats_summary'},
+            )
+            # Return default values on error
+            return {
+                'quizzes_completed': 0,
+                'projects_count': 0,
+                'total_points': 0,
+                'side_quests_completed': 0,
+                'current_streak': 0,
+                'longest_streak': 0,
+                'battles_count': 0,
+            }
 
     def _format_topic_display(self, topic_slug):
         """Convert topic slug to display name."""

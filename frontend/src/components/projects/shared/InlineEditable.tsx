@@ -111,7 +111,7 @@ export function InlineEditableTitle({
           onBlur={() => save()}
           onKeyDown={handleKeyDown}
           disabled={isSaving}
-          className={`w-full bg-transparent border-b-2 border-primary-500 focus:outline-none disabled:opacity-50 ${className}`}
+          className={`w-full bg-transparent border-b-2 border-primary-500 focus:outline-none disabled:opacity-50 text-gray-900 dark:text-white ${className}`}
           placeholder={placeholder}
           autoFocus
         />
@@ -216,7 +216,7 @@ export function InlineEditableText({
             onBlur={() => save()}
             onKeyDown={handleKeyDown}
             disabled={isSaving}
-            className={`w-full bg-transparent border-2 border-primary-500 rounded-lg p-2 focus:outline-none resize-none disabled:opacity-50 ${className}`}
+            className={`w-full bg-transparent border-2 border-primary-500 rounded-lg p-2 focus:outline-none resize-none disabled:opacity-50 text-gray-900 dark:text-white ${className}`}
             placeholder={placeholder}
             rows={rows}
             autoFocus
@@ -236,7 +236,7 @@ export function InlineEditableText({
           onBlur={() => save()}
           onKeyDown={handleKeyDown}
           disabled={isSaving}
-          className={`w-full bg-transparent border-b-2 border-primary-500 focus:outline-none disabled:opacity-50 ${className}`}
+          className={`w-full bg-transparent border-b-2 border-primary-500 focus:outline-none disabled:opacity-50 text-gray-900 dark:text-white ${className}`}
           placeholder={placeholder}
           autoFocus
         />

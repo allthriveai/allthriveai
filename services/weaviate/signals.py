@@ -34,7 +34,7 @@ def _should_sync_to_weaviate() -> bool:
     return bool(weaviate_url)
 
 
-@receiver(pre_save, sender='projects.Project')
+@receiver(pre_save, sender='core.Project')
 def track_project_visibility_change(sender, instance, **kwargs):
     """
     Track project visibility before save to detect changes.
@@ -53,7 +53,7 @@ def track_project_visibility_change(sender, instance, **kwargs):
             logger.debug(f'Error tracking project visibility: {e}')
 
 
-@receiver(post_save, sender='projects.Project')
+@receiver(post_save, sender='core.Project')
 def sync_project_on_save(sender, instance, created, **kwargs):
     """
     Sync project to Weaviate when saved.
@@ -97,7 +97,7 @@ def sync_project_on_save(sender, instance, created, **kwargs):
         logger.error(f'Failed to queue Weaviate sync for project {instance.id}: {e}')
 
 
-@receiver(post_delete, sender='projects.Project')
+@receiver(post_delete, sender='core.Project')
 def remove_project_on_delete(sender, instance, **kwargs):
     """
     Remove project from Weaviate when deleted.
@@ -120,7 +120,7 @@ def remove_project_on_delete(sender, instance, **kwargs):
         logger.error(f'Failed to remove project {instance.id} from Weaviate: {e}')
 
 
-@receiver(post_save, sender='taxonomy.UserTag')
+@receiver(post_save, sender='core.UserTag')
 def sync_user_profile_on_tag_change(sender, instance, created, **kwargs):
     """
     Sync user profile to Weaviate when UserTag changes.
@@ -138,7 +138,7 @@ def sync_user_profile_on_tag_change(sender, instance, created, **kwargs):
         logger.error(f'Failed to queue Weaviate sync for user {instance.user_id}: {e}')
 
 
-@receiver(post_save, sender='projects.ProjectLike')
+@receiver(post_save, sender='core.ProjectLike')
 def sync_on_like(sender, instance, created, **kwargs):
     """
     Update engagement metrics when a project is liked.

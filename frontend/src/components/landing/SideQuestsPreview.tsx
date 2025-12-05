@@ -11,7 +11,7 @@ const learningTypes = [
     title: 'Interactive Courses',
     description: 'Structured lessons with hands-on exercises and real-world projects',
     icon: faGraduationCap,
-    color: 'cyan',
+    color: 'amber',
   },
   {
     id: 'quests' as const,
@@ -25,20 +25,20 @@ const learningTypes = [
     title: 'Prompt Battles',
     description: 'Challenge other users to real-time prompt competitions',
     icon: faTrophy,
-    color: 'amber',
+    color: 'cyan',
   },
 ];
 
 // Visual preview for Interactive Courses
 function CoursePreview() {
   return (
-    <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-sm border border-cyan-500/20 p-6 flex flex-col">
+    <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-sm border border-amber-500/20 p-6 flex flex-col">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 rounded-sm bg-gradient-to-br from-cyan-500/30 to-green-500/30 flex items-center justify-center">
-          <FontAwesomeIcon icon={faGraduationCap} className="w-6 h-6 text-cyan-400" />
+        <div className="w-12 h-12 rounded-sm bg-gradient-to-br from-amber-500/30 to-orange-500/30 flex items-center justify-center">
+          <FontAwesomeIcon icon={faGraduationCap} className="w-6 h-6 text-amber-400" />
         </div>
         <div>
-          <div className="text-xs text-cyan-400 font-medium">COURSE</div>
+          <div className="text-xs text-amber-400 font-medium">COURSE</div>
           <h3 className="text-white font-bold">Prompt Engineering 101</h3>
         </div>
       </div>
@@ -65,11 +65,11 @@ function CoursePreview() {
       <div className="mt-4 pt-4 border-t border-white/10">
         <div className="flex items-center justify-between mb-2">
           <span className="text-gray-400 text-sm">Progress</span>
-          <span className="text-cyan-400 font-medium">50%</span>
+          <span className="text-amber-400 font-medium">50%</span>
         </div>
         <div className="h-2 rounded-full bg-white/10 overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-cyan-400 to-green-400"
+            className="h-full bg-gradient-to-r from-amber-400 to-orange-400"
             initial={{ width: 0 }}
             animate={{ width: '50%' }}
             transition={{ duration: 1, delay: 0.3 }}
@@ -133,71 +133,75 @@ function QuestPreview() {
   );
 }
 
-// Visual preview for Prompt Battles - Duel style
+// Visual preview for Prompt Battles - Neon blue with glowing VS
 function BattlePreview() {
   return (
-    <div className="h-full w-full bg-[#0a1628]/80 backdrop-blur-sm rounded-sm border border-amber-500/20 p-5 flex flex-col overflow-hidden">
-      {/* Header with timer */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-xs text-amber-400 font-bold uppercase tracking-wider">Live Battle</div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/30">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+    <div className="relative h-full w-full bg-[#0a1628]/90 backdrop-blur-sm rounded-sm border border-cyan-500/30 p-6 flex flex-col overflow-hidden">
+      {/* Background glows */}
+      <div className="absolute -left-8 top-1/4 w-32 h-32 rounded-full opacity-20 blur-2xl bg-cyan-400" />
+      <div className="absolute -right-8 bottom-1/4 w-32 h-32 rounded-full opacity-15 blur-2xl bg-pink-400" />
+
+      {/* Header */}
+      <div className="relative z-10 flex items-center justify-between mb-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-500/20 border border-rose-500/30">
+          <FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-rose-400" />
+          <span className="text-xs font-semibold text-rose-300 uppercase tracking-wide">Live Battle</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 border border-red-500/30">
           <FontAwesomeIcon icon={faClock} className="w-3 h-3 text-red-400" />
-          <span className="text-red-400 text-xs font-medium">2:34</span>
+          <span className="text-red-400 text-xs font-bold">2:34</span>
         </div>
       </div>
 
-      {/* Battle topic */}
-      <div className="text-center mb-4">
-        <h3 className="text-white font-bold text-lg">Surreal Landscapes</h3>
-        <p className="text-gray-500 text-xs">Challenge your friends to an epic prompt battle, who can create the best dreamscape?</p>
-      </div>
-
-      {/* Duel arena */}
-      <div className="flex-1 flex items-center gap-3">
+      {/* VS Layout */}
+      <div className="relative z-10 flex items-center justify-center gap-6 mb-6">
         {/* Player 1 */}
-        <div className="flex-1 flex flex-col items-center">
-          <div className="w-16 h-16 rounded-sm bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-500/40 flex items-center justify-center mb-2 relative">
-            <span className="text-2xl">🌌</span>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">47</div>
+        <div className="flex flex-col items-center">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg mb-2 shadow-lg shadow-cyan-500/30">
+            AD
           </div>
-          <span className="text-white text-sm font-medium">@dreamer</span>
-          <div className="flex items-center gap-1 mt-1">
-            <span className="text-cyan-400 text-xs font-bold">127</span>
-            <span className="text-gray-500 text-xs">votes</span>
-          </div>
+          <span className="text-white font-semibold text-sm">@aidesigner</span>
+          <span className="text-cyan-400 text-xs mt-1">Typing...</span>
         </div>
 
-        {/* VS */}
-        <div className="flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
-            <span className="text-white font-black text-sm">VS</span>
+        {/* VS Badge - Neon glow */}
+        <div className="relative">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-cyan-500/50 flex items-center justify-center relative shadow-[0_0_30px_rgba(34,211,238,0.5)]">
+            {/* Animated ring */}
+            <div className="absolute inset-0 rounded-full border-2 border-cyan-400/30 animate-ping" />
+            <span className="text-xl font-black bg-gradient-to-r from-cyan-400 to-pink-400 bg-clip-text text-transparent">
+              VS
+            </span>
           </div>
-          <div className="w-px h-8 bg-gradient-to-b from-amber-500/50 to-transparent mt-2" />
         </div>
 
         {/* Player 2 */}
-        <div className="flex-1 flex flex-col items-center">
-          <div className="w-16 h-16 rounded-sm bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-500/40 flex items-center justify-center mb-2 relative">
-            <span className="text-2xl">🏔️</span>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-[10px] font-bold text-white">52</div>
+        <div className="flex flex-col items-center">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg mb-2 shadow-lg shadow-pink-500/30">
+            PP
           </div>
-          <span className="text-white text-sm font-medium">@visionary</span>
-          <div className="flex items-center gap-1 mt-1">
-            <span className="text-purple-400 text-xs font-bold">119</span>
-            <span className="text-gray-500 text-xs">votes</span>
-          </div>
+          <span className="text-white font-semibold text-sm">@promptpro</span>
+          <span className="text-purple-400 text-xs mt-1">Ready</span>
         </div>
       </div>
 
+      {/* Challenge Display */}
+      <div className="relative z-10 bg-white/5 border border-cyan-500/20 rounded-lg p-4 mb-4">
+        <div className="text-xs text-cyan-400 font-medium uppercase tracking-wide mb-2">Challenge</div>
+        <p className="text-white text-sm font-medium leading-relaxed">
+          Create a prompt for a surreal dreamscape with floating islands and bioluminescent flora
+        </p>
+      </div>
+
       {/* Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-white/10 mt-3">
+      <div className="relative z-10 flex items-center justify-between pt-3 border-t border-white/10">
         <div className="flex items-center gap-2">
-          <FontAwesomeIcon icon={faTrophy} className="w-4 h-4 text-amber-400" />
-          <span className="text-amber-400 font-bold text-sm">Win 250 Points</span>
+          <FontAwesomeIcon icon={faTrophy} className="w-4 h-4 text-cyan-400" />
+          <span className="text-cyan-400 font-bold text-sm">+200 Points</span>
         </div>
-        <button className="px-4 py-2 rounded-sm bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:shadow-lg hover:shadow-amber-500/30 transition-all">
-          Enter Battle
+        <button className="px-4 py-2 rounded-sm bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-xs font-bold hover:shadow-lg hover:shadow-cyan-500/50 transition-all flex items-center gap-2">
+          <FontAwesomeIcon icon={faPlay} className="w-3 h-3" />
+          Join Battle
         </button>
       </div>
     </div>
@@ -367,7 +371,7 @@ export function SideQuestsPreview() {
 
           {/* Right - Preview */}
           <div
-            className="min-h-[400px] lg:min-h-0"
+            className="h-[420px]"
             id={`tabpanel-${activeType}`}
             role="tabpanel"
             aria-labelledby={`tab-${activeType}`}

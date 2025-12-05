@@ -150,10 +150,41 @@ export async function createSubscription(
   status: string;
 }> {
   const response = await api.post('/billing/subscriptions/create/', {
-    tierSlug,
-    billingInterval,
+    // Backend expects snake_case
+    tier_slug: tierSlug,
+    billing_interval: billingInterval,
   });
-  return response.data;
+  // Backend returns snake_case, transform to camelCase
+  const data = response.data;
+  return {
+    subscriptionId: data.subscription_id,
+    clientSecret: data.client_secret,
+    status: data.status,
+  };
+}
+
+/**
+ * Create a Stripe Checkout Session
+ */
+export async function createCheckoutSession(
+  tierSlug: string,
+  billingInterval: 'monthly' | 'annual',
+  successUrl: string,
+  cancelUrl: string
+): Promise<{
+  sessionId: string;
+  url: string;
+}> {
+  const response = await api.post('/billing/checkout/create/', {
+    tier_slug: tierSlug,
+    billing_interval: billingInterval,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+  });
+  return {
+    sessionId: response.data.session_id,
+    url: response.data.url,
+  };
 }
 
 /**

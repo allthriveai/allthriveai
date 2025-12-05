@@ -1,0 +1,36 @@
+{% extends "emails/base.txt" %}
+
+{% block content %}
+Your AI Request Quota Update
+============================
+
+Hi {{ user.first_name|default:user.username }},
+
+{% if alert_level == 'exceeded' %}
+QUOTA REACHED: You've used all your monthly AI requests.
+{% elif alert_level == 'critical' %}
+ALMOST OUT: You've used {{ percentage }}% of your monthly AI requests.
+{% else %}
+USAGE UPDATE: You've used {{ percentage }}% of your monthly AI requests.
+{% endif %}
+
+Monthly Usage: {{ used }} / {{ limit }} requests
+Remaining: {{ remaining }} requests
+{% if has_tokens %}
+Backup Tokens: Available
+{% endif %}
+
+{% if alert_level == 'exceeded' %}
+Don't worry! You can continue using AI features by purchasing token packs or upgrading your plan.
+{% elif not has_tokens %}
+Once you reach your limit, you'll need additional tokens to continue using AI features. Consider purchasing a token pack as a backup.
+{% else %}
+You have backup tokens available, so you can continue using AI features even after reaching your monthly limit.
+{% endif %}
+
+View billing options: {{ purchase_url }}
+
+{% if alert_level != 'exceeded' %}
+Your quota resets on the 1st of each month.
+{% endif %}
+{% endblock %}

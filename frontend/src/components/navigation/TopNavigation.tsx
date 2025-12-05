@@ -3,8 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { useActiveQuest } from '@/hooks/useActiveQuest';
+import { useSearchStore } from '@/hooks/useGlobalSearch';
 import {
-  HomeIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   Bars3Icon,
@@ -16,6 +16,7 @@ import { NavDropdown } from './NavDropdown';
 import { MobileMenu } from './MobileMenu';
 import { UserMenu } from './UserMenu';
 import { ActiveQuestIndicator } from '@/components/side-quests/ActiveQuestIndicator';
+import { GlobalSearchModal } from '@/components/search/GlobalSearchModal';
 
 interface TopNavigationProps {
   onMenuClick: (menuItem: string) => void;
@@ -30,7 +31,7 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const { openSearch } = useSearchStore();
 
   const menuSections = getMenuSections(onMenuClick, user?.username);
 
@@ -76,12 +77,13 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
               {/* Logo */}
               <button
                 onClick={() => navigate('/explore')}
-                className="flex items-center gap-2 text-gray-900 dark:text-white hover:text-teal-500 dark:hover:text-teal-400 transition-all duration-300 hover:scale-105"
+                className="flex items-center gap-2 text-gray-900 dark:text-white transition-all duration-300 hover:scale-105"
               >
-                <div className="p-1.5 rounded-lg bg-gradient-to-br from-teal-400/20 to-blue-500/20 backdrop-blur-sm">
-                  <HomeIcon className="w-5 h-5" />
-                </div>
-                <span className="font-bold text-lg hidden sm:block bg-gradient-to-r from-teal-600 to-blue-600 dark:from-teal-400 dark:to-blue-400 bg-clip-text text-transparent">All Thrive</span>
+                <img
+                  src="/all-thrvie-logo.png"
+                  alt="All Thrive"
+                  className="h-8 w-auto"
+                />
               </button>
 
               {/* Desktop Navigation Links */}
@@ -129,7 +131,7 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
 
               {/* Search Button */}
               <button
-                onClick={() => setSearchOpen(!searchOpen)}
+                onClick={openSearch}
                 className="p-2 rounded-xl hover:bg-white/[0.08] border border-transparent hover:border-white/30 transition-all duration-300 hover:scale-105"
                 aria-label="Search"
                 title="Search (⌘K)"
@@ -196,28 +198,8 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
         onAddProject={onAddProject}
       />
 
-      {/* Search Modal (Placeholder) - Liquid Glass */}
-      {searchOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-start justify-center pt-20 animate-fade-in"
-          onClick={() => setSearchOpen(false)}
-        >
-          <div
-            className="bg-white/20 dark:bg-black/30 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/30 dark:border-white/20 w-full max-w-2xl mx-4 p-6 animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <input
-              type="text"
-              placeholder="Search menu items, tools, projects..."
-              className="w-full px-4 py-3 bg-white/10 dark:bg-black/20 border border-white/30 dark:border-white/20 rounded-xl text-gray-900 dark:text-white placeholder-gray-600 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400/50 backdrop-blur-xl transition-all duration-300"
-              autoFocus
-            />
-            <p className="text-sm text-gray-700 dark:text-gray-300 mt-4">
-              Search functionality coming soon...
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Global Search Modal */}
+      <GlobalSearchModal />
     </>
   );
 }

@@ -20,6 +20,8 @@ app.autodiscover_tasks(
         'core.agents',
         'core.battles',  # Prompt battles tasks
         'core.billing',  # Billing and token management tasks
+        'core.notifications',  # Email notification tasks
+        'core.sms',  # SMS notification tasks
         'services.weaviate',  # Weaviate sync tasks
     ]
 )
@@ -41,6 +43,7 @@ app.conf.task_soft_time_limit = 240  # 4 minutes soft limit (task should handle 
 
 # Configure task queues for priority handling
 app.conf.task_queues = (
+    Queue('celery', routing_key='celery'),  # Default Celery queue
     Queue('default', routing_key='default'),
     Queue('youtube_sync', routing_key='youtube.sync'),
     Queue('youtube_import', routing_key='youtube.import'),

@@ -118,6 +118,7 @@ export interface StatsSummary {
   sideQuestsCompleted: number;
   currentStreak: number;
   longestStreak: number;
+  battlesCount?: number; // Optional for now, will be added to backend
 }
 
 export interface ActivityInsights {
@@ -179,4 +180,45 @@ export async function getActivityInsights(): Promise<ActivityInsights> {
 export async function updateProfile(data: Partial<User>): Promise<User> {
   const response = await api.patch<ApiResponse<User>>('/auth/me/', data);
   return response.data.data;
+}
+
+// Account Management
+export interface DeactivateAccountResponse {
+  success: boolean;
+  message: string;
+  subscription_canceled?: boolean;
+}
+
+export interface DeleteAccountResponse {
+  success: boolean;
+  message: string;
+  user_id: number;
+  email: string;
+}
+
+/**
+ * Deactivate user account (soft delete)
+ * - Marks account as inactive
+ * - Cancels subscription at period end
+ * - Data is retained for reactivation
+ */
+export async function deactivateAccount(): Promise<DeactivateAccountResponse> {
+  const response = await api.post<DeactivateAccountResponse>('/me/account/deactivate/');
+  return response.data;
+}
+
+/**
+ * Permanently delete user account
+ * WARNING: This is irreversible
+ * - Cancels subscription immediately
+ * - Deletes Stripe customer
+ * - Permanently deletes all user data
+ *
+ * @param confirmation - Must be exactly "DELETE MY ACCOUNT"
+ */
+export async function deleteAccount(confirmation: string): Promise<DeleteAccountResponse> {
+  const response = await api.post<DeleteAccountResponse>('/me/account/delete/', {
+    confirm: confirmation,
+  });
+  return response.data;
 }

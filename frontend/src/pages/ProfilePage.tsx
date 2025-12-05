@@ -10,9 +10,11 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useAchievements } from '@/hooks/useAchievements';
 import { ActivityInsightsTab } from '@/components/profile/ActivityInsightsTab';
 import { FavoritesTab } from '@/components/profile/FavoritesTab';
+import { MarketplaceTab } from '@/components/profile/MarketplaceTab';
 import { LearningPathsTab } from '@/components/learning';
 import { getRarityColorClasses } from '@/services/achievements';
 import { ToolTray } from '@/components/tools/ToolTray';
+import { MasonryGrid } from '@/components/common/MasonryGrid';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGithub,
@@ -38,6 +40,7 @@ import {
   faChartLine,
   faGraduationCap,
   faHeart,
+  faStore,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Helper to convert tier code to display name
@@ -77,9 +80,9 @@ export default function ProfilePage() {
   const [userNotFound, setUserNotFound] = useState(false);
 
   // Initialize activeTab from URL or default to 'showcase'
-  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | null;
-  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'favorites' | 'learning' | 'activity'>(
-    tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity'].includes(tabFromUrl) ? tabFromUrl : 'showcase'
+  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | null;
+  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace'>(
+    tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity', 'marketplace'].includes(tabFromUrl) ? tabFromUrl : 'showcase'
   );
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<number>>(new Set());
@@ -101,17 +104,23 @@ export default function ProfilePage() {
 
   // Sync activeTab with URL query parameter
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | null;
-    if (tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity'].includes(tabFromUrl)) {
+    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | null;
+    if (tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity', 'marketplace'].includes(tabFromUrl)) {
       // Security: only allow Activity and Learning tabs for authenticated users viewing their own profile
       if ((tabFromUrl === 'activity' || tabFromUrl === 'learning') && (!isAuthenticated || !isOwnProfile)) {
         setActiveTab('showcase');
         setSearchParams({ tab: 'showcase' });
         return;
       }
+      // Security: only allow Marketplace tab for users with creator role
+      if (tabFromUrl === 'marketplace' && displayUser?.role !== 'creator') {
+        setActiveTab('showcase');
+        setSearchParams({ tab: 'showcase' });
+        return;
+      }
       setActiveTab(tabFromUrl);
     }
-  }, [searchParams, isAuthenticated, isOwnProfile, setSearchParams]);
+  }, [searchParams, isAuthenticated, isOwnProfile, setSearchParams, displayUser?.role]);
 
   // Track scroll position to fix sidebar after banner
   useEffect(() => {
@@ -132,7 +141,7 @@ export default function ProfilePage() {
 
 
   // Update URL when tab changes
-  const handleTabChange = (tab: 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity') => {
+  const handleTabChange = (tab: 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace') => {
     setActiveTab(tab);
     setSearchParams({ tab });
     if (selectionMode) {
@@ -236,44 +245,52 @@ export default function ProfilePage() {
   // Tabs logic
   const showPlayground = isOwnProfile || (displayUser?.playgroundIsPublic !== false);
   const isCuration = isCurationTier(displayUser?.tier);
+  const isCreator = displayUser?.role === 'creator';
 
   // Build tabs array - exclude favorites, learning, activity, and playground for curation tier users (agents)
+  // Only show Shop tab for users with creator role
   const tabs = (() => {
     if (isAuthenticated && isOwnProfile) {
       if (isCuration) {
-        return [
-          { id: 'showcase', label: 'Posts' },
-        ] as const;
+        const baseTabs = [{ id: 'showcase', label: 'Posts' }];
+        if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
+        return baseTabs as { id: string; label: string }[];
       }
-      return [
+      const baseTabs = [
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
         { id: 'favorites', label: 'Favorites' },
-        { id: 'learning', label: 'Learning' },
-        { id: 'activity', label: 'Activity' },
-      ] as const;
+      ];
+      if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
+      baseTabs.push({ id: 'learning', label: 'Learning' });
+      baseTabs.push({ id: 'activity', label: 'Activity' });
+      return baseTabs as { id: string; label: string }[];
     }
     if (showPlayground) {
       if (isCuration) {
-        return [
-          { id: 'showcase', label: 'Posts' },
-        ] as const;
+        const baseTabs = [{ id: 'showcase', label: 'Posts' }];
+        if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
+        return baseTabs as { id: string; label: string }[];
       }
-      return [
+      const baseTabs = [
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
         { id: 'favorites', label: 'Favorites' },
-      ] as const;
+      ];
+      if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
+      return baseTabs as { id: string; label: string }[];
     }
     if (isCuration) {
-      return [
-        { id: 'showcase', label: 'Posts' },
-      ] as const;
+      const baseTabs = [{ id: 'showcase', label: 'Posts' }];
+      if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
+      return baseTabs as { id: string; label: string }[];
     }
-    return [
+    const baseTabs = [
       { id: 'showcase', label: 'Showcase' },
       { id: 'favorites', label: 'Favorites' },
-    ] as const;
+    ];
+    if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
+    return baseTabs as { id: string; label: string }[];
   })();
 
   if (isLoading) {
@@ -686,6 +703,7 @@ export default function ProfilePage() {
                       showcase: faTh,
                       playground: faFlask,
                       favorites: faHeart,
+                      marketplace: faStore,
                       learning: faGraduationCap,
                       activity: faChartLine,
                     };
@@ -746,11 +764,12 @@ export default function ProfilePage() {
               {/* Masonry Grid Content - Only for Showcase and Playground */}
               {(activeTab === 'showcase' || activeTab === 'playground') && (
                 <div
-                  className="columns-1 md:columns-2 xl:columns-3 gap-6 pb-20 space-y-6"
                   role="tabpanel"
                   id={`tabpanel-${activeTab}`}
                   aria-labelledby={`tab-${activeTab}`}
+                  className="pb-20"
                 >
+                <MasonryGrid>
                   {/* Showcase Tab */}
                   {activeTab === 'showcase' && (
                     projects.showcase.length > 0 ? (
@@ -802,6 +821,7 @@ export default function ProfilePage() {
                       </div>
                     )
                   )}
+                </MasonryGrid>
                 </div>
               )}
 
@@ -844,6 +864,21 @@ export default function ProfilePage() {
                 >
                   <ActivityInsightsTab
                     username={username || ''}
+                    isOwnProfile={isOwnProfile}
+                  />
+                </div>
+              )}
+
+              {/* Marketplace Tab - Full width layout */}
+              {activeTab === 'marketplace' && (
+                <div
+                  className="pb-20"
+                  role="tabpanel"
+                  id="tabpanel-marketplace"
+                  aria-labelledby="tab-marketplace"
+                >
+                  <MarketplaceTab
+                    username={username || user?.username || ''}
                     isOwnProfile={isOwnProfile}
                   />
                 </div>

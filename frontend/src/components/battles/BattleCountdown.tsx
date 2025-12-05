@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 interface BattleCountdownProps {
   value: number | null;
@@ -15,6 +16,7 @@ interface BattleCountdownProps {
 
 export function BattleCountdown({ value, onComplete }: BattleCountdownProps) {
   const [displayValue, setDisplayValue] = useState<number | string | null>(value);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (value === null) {
@@ -38,7 +40,13 @@ export function BattleCountdown({ value, onComplete }: BattleCountdownProps) {
   if (displayValue === null) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="countdown-label"
+      aria-describedby="countdown-status"
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={displayValue}
@@ -58,7 +66,7 @@ export function BattleCountdown({ value, onComplete }: BattleCountdownProps) {
               background:
                 'radial-gradient(circle, rgba(34, 211, 238, 0.3) 0%, rgba(34, 211, 238, 0) 70%)',
             }}
-            animate={{
+            animate={prefersReducedMotion ? {} : {
               scale: [1, 1.2, 1],
               opacity: [0.5, 0.8, 0.5],
             }}
@@ -72,7 +80,7 @@ export function BattleCountdown({ value, onComplete }: BattleCountdownProps) {
           {/* Inner pulsing ring */}
           <motion.div
             className="absolute inset-0 -m-8 rounded-full border-4 border-cyan-400/50"
-            animate={{
+            animate={prefersReducedMotion ? {} : {
               scale: [1, 1.1, 1],
               opacity: [0.3, 0.6, 0.3],
             }}
@@ -94,19 +102,28 @@ export function BattleCountdown({ value, onComplete }: BattleCountdownProps) {
             `}
           >
             <span
+              id="countdown-label"
               className={`
                 font-bold text-transparent bg-clip-text
                 bg-gradient-to-r from-cyan-300 via-cyan-400 to-teal-400
                 drop-shadow-[0_0_20px_rgba(34,211,238,0.8)]
                 ${typeof displayValue === 'number' ? 'text-8xl' : 'text-5xl'}
               `}
+              role="timer"
+              aria-live="assertive"
+              aria-atomic="true"
             >
-              {displayValue}
+              <span className="sr-only">
+                {typeof displayValue === 'number'
+                  ? `${displayValue} seconds until battle begins`
+                  : 'Battle starting now!'}
+              </span>
+              <span aria-hidden="true">{displayValue}</span>
             </span>
           </div>
 
-          {/* Sparkle particles */}
-          {[...Array(8)].map((_, i) => (
+          {/* Sparkle particles - hidden when reduced motion is preferred */}
+          {!prefersReducedMotion && [...Array(8)].map((_, i) => (
             <motion.div
               key={i}
               className="absolute w-2 h-2 rounded-full bg-cyan-400"
@@ -133,6 +150,7 @@ export function BattleCountdown({ value, onComplete }: BattleCountdownProps) {
 
       {/* Bottom text */}
       <motion.p
+        id="countdown-status"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="absolute bottom-1/4 text-xl text-slate-400 font-medium tracking-wider"

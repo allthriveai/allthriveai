@@ -1,0 +1,48 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Low Token Balance - AllThrive AI{% endblock %}
+
+{% block content %}
+<h1>Your Token Balance is Running Low</h1>
+
+<p>Hi {{ user.first_name|default:user.username }},</p>
+
+{% if alert_level == 'critical' or alert_level == 'depleted' %}
+<div class="alert alert-critical">
+    <strong>Urgent:</strong> Your AI token balance is critically low. You may not be able to use AI features soon.
+</div>
+{% elif alert_level == 'warning' %}
+<div class="alert alert-warning">
+    <strong>Warning:</strong> Your token balance is getting low.
+</div>
+{% else %}
+<div class="alert alert-info">
+    <strong>Heads up:</strong> Your token balance is running low.
+</div>
+{% endif %}
+
+<div class="stats-box">
+    <div class="stat-item">
+        <div class="stat-label">Current Balance</div>
+        <div class="stat-value {% if alert_level == 'critical' or alert_level == 'depleted' %}critical{% elif alert_level == 'warning' %}warning{% else %}highlight{% endif %}">
+            {{ balance|default:0 }} tokens
+        </div>
+    </div>
+    {% if quota_exceeded %}
+    <div class="stat-item">
+        <div class="stat-label">Monthly AI Requests</div>
+        <div class="stat-value warning">Quota exceeded</div>
+    </div>
+    {% endif %}
+</div>
+
+<p>When you run out of tokens, you won't be able to use AI-powered features like Pip conversations, project analysis, and battle submissions.</p>
+
+<p>
+    <a href="{{ purchase_url }}" class="btn">Purchase More Tokens</a>
+</p>
+
+<p style="color: #94a3b8; font-size: 14px;">
+    Want unlimited AI access? <a href="{{ purchase_url }}" style="color: #22d3ee;">Upgrade to Pro</a> for unlimited monthly requests.
+</p>
+{% endblock %}

@@ -106,9 +106,9 @@ class TestManualTagEditing:
         client = APIClient()
         client.force_authenticate(user=admin_user)
 
-        # Update tags
+        # Update tags - use /me/projects/ path since ProjectViewSet is registered there
         response = client.patch(
-            f'/api/v1/projects/{reddit_project.id}/update-tags/',
+            f'/api/v1/me/projects/{reddit_project.id}/update-tags/',
             {
                 'tools': [test_tool.id],
                 'categories': [test_category.id],
@@ -137,7 +137,7 @@ class TestManualTagEditing:
         client.force_authenticate(user=agent_user)
 
         response = client.patch(
-            f'/api/v1/projects/{reddit_project.id}/update-tags/',
+            f'/api/v1/me/projects/{reddit_project.id}/update-tags/',
             {
                 'topics': ['hacked'],
             },
@@ -297,7 +297,7 @@ class TestManualTagEditing:
 
         # Test invalid tools format
         response = client.patch(
-            f'/api/v1/projects/{reddit_project.id}/update-tags/',
+            f'/api/v1/me/projects/{reddit_project.id}/update-tags/',
             {'tools': 'not_a_list'},
             format='json',
         )
@@ -306,7 +306,7 @@ class TestManualTagEditing:
 
         # Test invalid categories format
         response = client.patch(
-            f'/api/v1/projects/{reddit_project.id}/update-tags/',
+            f'/api/v1/me/projects/{reddit_project.id}/update-tags/',
             {'categories': 123},
             format='json',
         )
@@ -315,7 +315,7 @@ class TestManualTagEditing:
 
         # Test invalid topics format
         response = client.patch(
-            f'/api/v1/projects/{reddit_project.id}/update-tags/',
+            f'/api/v1/me/projects/{reddit_project.id}/update-tags/',
             {'topics': 'not_a_list'},
             format='json',
         )

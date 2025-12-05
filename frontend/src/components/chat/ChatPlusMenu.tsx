@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faYoutube } from '@fortawesome/free-brands-svg-icons';
-import { faCircleQuestion, faCommentDots } from '@fortawesome/free-solid-svg-icons';
+import { faBagShopping, faCircleQuestion, faCommentDots } from '@fortawesome/free-solid-svg-icons';
+import { useAuth } from '@/hooks/useAuth';
 
-export type IntegrationType = 'github' | 'youtube' | 'create-visual' | 'ask-help' | 'describe';
+export type IntegrationType = 'github' | 'youtube' | 'create-visual' | 'ask-help' | 'describe' | 'create-product';
 
 interface ChatPlusMenuProps {
   onIntegrationSelect: (type: IntegrationType) => void;
@@ -59,13 +60,30 @@ const integrationOptions: IntegrationOption[] = [
     description: 'Browse common questions & get help',
     available: true,
   },
+  {
+    type: 'create-product',
+    label: 'Create Product',
+    icon: faBagShopping,
+    description: 'Create a course, template, or digital product',
+    available: true,
+  },
 ];
 
 export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, onOpenChange }: ChatPlusMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
-  // Debug: log state changes
-  console.log('[ChatPlusMenu] isOpen:', isOpen);
+  const { user } = useAuth();
+
+  // Filter integration options based on user role
+  // Only admins and creators can see "Create Product"
+  const isCreatorOrAdmin = user?.role === 'creator' || user?.role === 'admin';
+  const filteredOptions = integrationOptions.filter(option => {
+    if (option.type === 'create-product') {
+      return isCreatorOrAdmin;
+    }
+    return true;
+  });
+
 
   // Click-outside handler to close menu
   useEffect(() => {
@@ -95,18 +113,18 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
         case 'ArrowDown':
           event.preventDefault();
           setFocusedIndex((prev) =>
-            prev < integrationOptions.length - 1 ? prev + 1 : 0
+            prev < filteredOptions.length - 1 ? prev + 1 : 0
           );
           break;
         case 'ArrowUp':
           event.preventDefault();
           setFocusedIndex((prev) =>
-            prev > 0 ? prev - 1 : integrationOptions.length - 1
+            prev > 0 ? prev - 1 : filteredOptions.length - 1
           );
           break;
         case 'Enter':
-          if (focusedIndex >= 0 && focusedIndex < integrationOptions.length) {
-            handleSelect(integrationOptions[focusedIndex].type);
+          if (focusedIndex >= 0 && focusedIndex < filteredOptions.length) {
+            handleSelect(filteredOptions[focusedIndex].type);
           }
           break;
       }
@@ -114,7 +132,7 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, focusedIndex, onOpenChange]);
+  }, [isOpen, focusedIndex, onOpenChange, filteredOptions]);
 
   const handleSelect = (type: IntegrationType) => {
     onOpenChange(false);
@@ -125,9 +143,7 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
   const toggleMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('[ChatPlusMenu] toggleMenu called, disabled:', disabled, 'current isOpen:', isOpen);
     if (disabled) return;
-    console.log('[ChatPlusMenu] calling onOpenChange with:', !isOpen);
     onOpenChange(!isOpen);
     setFocusedIndex(0);
   };
@@ -157,7 +173,7 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
         >
           <div className="p-2">
             {/* Available integrations */}
-            {integrationOptions.map((option, index) => (
+            {filteredOptions.map((option, index) => (
               <button
                 key={option.type}
                 role="menuitem"

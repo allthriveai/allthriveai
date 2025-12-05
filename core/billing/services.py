@@ -411,6 +411,111 @@ class StripeService:
             logger.error(f'Failed to update subscription for user {user.id}: {e}')
             raise StripeServiceError(f'Failed to update subscription: {str(e)}') from e
 
+    # ===== Stripe Checkout Sessions =====
+
+    @staticmethod
+    @transaction.atomic
+    def create_checkout_session(
+        user, tier: SubscriptionTier, billing_interval: str, success_url: str, cancel_url: str
+    ) -> dict[str, Any]:
+        """
+        Create a Stripe Checkout Session for subscription.
+
+        Args:
+            user: Django User instance
+            tier: SubscriptionTier instance
+            billing_interval: 'monthly' or 'annual' (required)
+            success_url: URL to redirect to after successful payment
+            cancel_url: URL to redirect to if payment is cancelled
+
+        Returns:
+            Dict with checkout session details including url
+
+        Raises:
+            StripeServiceError: If checkout session creation fails
+        """
+        try:
+            # Validate billing interval
+            if billing_interval not in ['monthly', 'annual']:
+                raise StripeServiceError(f'Invalid billing interval: {billing_interval}')
+
+            # Get the appropriate Stripe price ID
+            stripe_price_id = (
+                tier.stripe_price_id_annual if billing_interval == 'annual' else tier.stripe_price_id_monthly
+            )
+
+            # Validate tier has Stripe price
+            if not stripe_price_id:
+                raise StripeServiceError(
+                    f"Tier {tier.name} doesn't have a Stripe price configured for {billing_interval} billing. "
+                    'Run: python manage.py seed_billing --with-stripe'
+                )
+
+            # Get or create Stripe customer
+            customer_id = StripeService.get_or_create_customer(user)
+
+            # Get or create user's subscription record
+            try:
+                user_subscription = UserSubscription.objects.select_for_update().get(user=user)
+            except UserSubscription.DoesNotExist:
+                user_subscription = UserSubscription.objects.create(
+                    user=user,
+                    tier=SubscriptionTier.objects.get(tier_type='free'),
+                    status='active',
+                )
+
+            # Check if user already has an active paid subscription
+            if (
+                user_subscription.stripe_subscription_id
+                and user_subscription.status == 'active'
+                and user_subscription.current_period_end is not None
+            ):
+                raise StripeServiceError(
+                    'You already have an active subscription. Please cancel your current subscription first, '
+                    'or use the update subscription endpoint to change tiers.'
+                )
+
+            # Create Stripe Checkout Session
+            session_params = {
+                'customer': customer_id,
+                'mode': 'subscription',
+                'line_items': [
+                    {
+                        'price': stripe_price_id,
+                        'quantity': 1,
+                    }
+                ],
+                'success_url': success_url,
+                'cancel_url': cancel_url,
+                'metadata': {
+                    'user_id': user.id,
+                    'tier_slug': tier.slug,
+                },
+                'subscription_data': {
+                    'metadata': {
+                        'user_id': user.id,
+                        'tier_slug': tier.slug,
+                    }
+                },
+            }
+
+            # Add trial period if applicable
+            if tier.trial_period_days > 0:
+                session_params['subscription_data']['trial_period_days'] = tier.trial_period_days
+
+            checkout_session = stripe.checkout.Session.create(**session_params)
+
+            logger.info(f'Created checkout session {checkout_session.id} for user {user.id} on tier {tier.slug}')
+
+            return {
+                'session_id': checkout_session.id,
+                'url': checkout_session.url,
+            }
+
+        except stripe.error.StripeError as e:
+            logger.error(f'Failed to create checkout session for user {user.id}: {e}')
+            raise StripeServiceError(f'Failed to create checkout session: {str(e)}') from e
+
     # ===== Token Purchase (One-time Payments) =====
 
     @staticmethod
@@ -811,3 +916,89 @@ class StripeService:
 
         except UserSubscription.DoesNotExist:
             logger.warning(f'Received webhook for unknown subscription: {subscription_id}')
+
+    @staticmethod
+    @transaction.atomic
+    def handle_checkout_session_completed(event_data: dict[str, Any]) -> None:
+        """
+        Handle checkout.session.completed webhook event.
+
+        Updates local subscription when checkout is completed.
+        """
+        session = event_data['object']
+        session_id = session['id']
+
+        try:
+            # Get the subscription ID from the session
+            subscription_id = session.get('subscription')
+            if not subscription_id:
+                logger.warning(f'Checkout session {session_id} has no subscription ID')
+                return
+
+            # Retrieve the full subscription object from Stripe
+            stripe_subscription = stripe.Subscription.retrieve(subscription_id)
+
+            # Get user ID from metadata
+            user_id = session['metadata'].get('user_id')
+            tier_slug = session['metadata'].get('tier_slug')
+
+            if not user_id or not tier_slug:
+                logger.error(f'Checkout session {session_id} missing user_id or tier_slug in metadata')
+                return
+
+            # Get or create user subscription
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
+            user = User.objects.get(id=user_id)
+            tier = SubscriptionTier.objects.get(slug=tier_slug)
+
+            try:
+                user_subscription = UserSubscription.objects.select_for_update().get(user=user)
+                old_tier = user_subscription.tier
+            except UserSubscription.DoesNotExist:
+                user_subscription = UserSubscription.objects.create(
+                    user=user,
+                    tier=SubscriptionTier.objects.get(tier_type='free'),
+                    status='active',
+                )
+                old_tier = user_subscription.tier
+
+            # Update subscription details
+            user_subscription.tier = tier
+            user_subscription.stripe_subscription_id = stripe_subscription.id
+            user_subscription.stripe_customer_id = session['customer']
+            user_subscription.status = stripe_subscription.status
+
+            # Set period dates
+            if hasattr(stripe_subscription, 'current_period_start') and stripe_subscription.current_period_start:
+                user_subscription.current_period_start = timezone.datetime.fromtimestamp(
+                    stripe_subscription.current_period_start, tz=UTC
+                )
+            if hasattr(stripe_subscription, 'current_period_end') and stripe_subscription.current_period_end:
+                user_subscription.current_period_end = timezone.datetime.fromtimestamp(
+                    stripe_subscription.current_period_end, tz=UTC
+                )
+
+            # Set trial dates if in trial
+            if hasattr(stripe_subscription, 'trial_start') and stripe_subscription.trial_start:
+                user_subscription.trial_start = timezone.datetime.fromtimestamp(stripe_subscription.trial_start, tz=UTC)
+            if hasattr(stripe_subscription, 'trial_end') and stripe_subscription.trial_end:
+                user_subscription.trial_end = timezone.datetime.fromtimestamp(stripe_subscription.trial_end, tz=UTC)
+
+            user_subscription.save()
+
+            # Log subscription change
+            SubscriptionChange.objects.create(
+                user=user,
+                subscription=user_subscription,
+                change_type='upgraded' if tier.price_monthly > old_tier.price_monthly else 'created',
+                from_tier=old_tier if old_tier.tier_type != 'free' else None,
+                to_tier=tier,
+                reason=f'User subscribed to {tier.name} via Checkout',
+            )
+
+            logger.info(f'Completed checkout session {session_id} for user {user.id} on tier {tier.slug}')
+
+        except Exception as e:
+            logger.error(f'Error handling checkout session completed: {e}', exc_info=True)

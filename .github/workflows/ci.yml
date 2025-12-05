@@ -23,7 +23,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
-
       redis:
         image: redis:7-alpine
         ports:
@@ -33,7 +32,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
-
     env:
       # Configure Django to use the Postgres service
       DATABASE_URL: postgresql://allthrive:allthrive@localhost:5432/allthrive_ai
@@ -53,7 +51,6 @@ jobs:
       COOKIE_DOMAIN: localhost
       # CSRF settings
       CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -112,216 +109,66 @@ jobs:
           name: security-coverage
         continue-on-error: true
 
-      - name: DB health endpoint smoke test
+      - name: Validate SEO endpoints (robots.txt, sitemap, AI manifest)
         run: |
           # Start server in background with logs
           python manage.py runserver 127.0.0.1:8000 > /tmp/server.log 2>&1 &
           SRV_PID=$!
+
           # Wait for server to start
-          sleep 3
-          # Try health endpoint and show response if it fails
           for i in {1..30}; do
             if curl -sSf http://127.0.0.1:8000/api/v1/db/health/ > /tmp/health_response.txt 2>&1; then
-              echo "✅ Healthcheck OK"
-              cat /tmp/health_response.txt
-              OK=1
+              echo "✅ Server ready"
               break
             fi
             sleep 1
           done
-          # Cleanup
-          kill $SRV_PID || true
-          # If failed, show server logs and response
-          if [ "${OK:-0}" != "1" ]; then
+
+          # Test DB health endpoint
+          if curl -sSf http://127.0.0.1:8000/api/v1/db/health/ > /tmp/health_response.txt 2>&1; then
+            echo "✅ DB Healthcheck OK"
+            cat /tmp/health_response.txt
+          else
             echo "❌ Healthcheck failed"
-            echo "Server logs:"
             tail -50 /tmp/server.log
-            echo "Health endpoint response:"
             cat /tmp/health_response.txt || echo "No response captured"
+            kill $SRV_PID || true
             exit 1
           fi
 
-  seo-privacy:
-    name: SEO & Privacy Tests
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: allthrive_ai
-          POSTGRES_USER: allthrive
-          POSTGRES_PASSWORD: allthrive
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U allthrive -d allthrive_ai"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      DATABASE_URL: postgresql://allthrive:allthrive@localhost:5432/allthrive_ai
-      SECRET_KEY: ci-secret-key
-      DEBUG: "False"
-      ALLOWED_HOSTS: "localhost,127.0.0.1"
-      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
-      PYTHONUNBUFFERED: "1"
-      REDIS_URL: redis://localhost:6379/0
-      CACHE_URL: redis://localhost:6379/2
-      CELERY_BROKER_URL: redis://localhost:6379/0
-      CELERY_RESULT_BACKEND: redis://localhost:6379/0
-      SITE_URL: http://localhost:8000
-      COOKIE_DOMAIN: localhost
-      CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-          cache-dependency-path: 'requirements.txt'
-
-      - name: Install dependencies
-        timeout-minutes: 15
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Wait for services
-        run: |
-          # Wait for Postgres
-          python - <<'PY'
-          import os, time, psycopg2
-          url = os.environ['DATABASE_URL']
-          for i in range(60):
-              try:
-                  psycopg2.connect(url).close()
-                  print('Postgres ready')
-                  break
-              except Exception as e:
-                  print('Waiting for Postgres...', e)
-                  time.sleep(1)
-          else:
-              raise SystemExit('Database not available')
-          PY
-          # Wait for Redis
-          python - <<'PY'
-          import redis, time
-          for i in range(60):
-              try:
-                  r = redis.from_url('redis://localhost:6379/0')
-                  r.ping()
-                  print('Redis ready')
-                  break
-              except Exception as e:
-                  print('Waiting for Redis...', e)
-                  time.sleep(1)
-          else:
-              raise SystemExit('Redis not available')
-          PY
-
-      - name: Run migrations
-        run: |
-          python manage.py migrate --noinput
-
-      - name: Run SEO & Privacy tests
-        run: |
-          python manage.py test core.tests.test_seo_privacy --verbosity=2
-
-      - name: Validate robots.txt
-        run: |
-          # Start server
-          python manage.py runserver 127.0.0.1:8000 >/dev/null 2>&1 &
-          SRV_PID=$!
-
-          # Wait for server
-          for i in {1..30}; do
-            if curl -sSf http://127.0.0.1:8000/robots.txt > /dev/null 2>&1; then
-              echo "Server ready"; break; fi; sleep 1; done
-
-          # Test robots.txt endpoint
-          curl -f http://127.0.0.1:8000/robots.txt
-
-          # Verify LLM crawlers are blocked
+          # Validate robots.txt
           if ! curl -s http://127.0.0.1:8000/robots.txt | grep -q "GPTBot"; then
-            echo "ERROR: robots.txt missing GPTBot blocking"
+            echo "❌ robots.txt missing GPTBot blocking"
+            kill $SRV_PID || true
             exit 1
           fi
-
           if ! curl -s http://127.0.0.1:8000/robots.txt | grep -q "ClaudeBot"; then
-            echo "ERROR: robots.txt missing ClaudeBot blocking"
+            echo "❌ robots.txt missing ClaudeBot blocking"
+            kill $SRV_PID || true
             exit 1
           fi
-
           echo "✅ robots.txt correctly blocks LLM crawlers"
 
-          kill $SRV_PID || true
-
-      - name: Validate sitemap
-        run: |
-          # Start server
-          python manage.py runserver 127.0.0.1:8000 >/dev/null 2>&1 &
-          SRV_PID=$!
-
-          # Wait for server
-          for i in {1..30}; do
-            if curl -sSf http://127.0.0.1:8000/sitemap.xml > /dev/null 2>&1; then
-              echo "Server ready"; break; fi; sleep 1; done
-
-          # Test sitemap endpoint
-          curl -f http://127.0.0.1:8000/sitemap.xml
-
-          # Verify sitemap is valid XML
+          # Validate sitemap.xml
           if ! curl -s http://127.0.0.1:8000/sitemap.xml | grep -q "<?xml"; then
-            echo "ERROR: sitemap.xml is not valid XML"
+            echo "❌ sitemap.xml is not valid XML"
+            kill $SRV_PID || true
             exit 1
           fi
-
           echo "✅ sitemap.xml is valid"
 
-          kill $SRV_PID || true
-
-      - name: Validate AI plugin manifest
-        run: |
-          # Start server
-          python manage.py runserver 127.0.0.1:8000 >/dev/null 2>&1 &
-          SRV_PID=$!
-
-          # Wait for server
-          for i in {1..30}; do
-            if curl -sSf http://127.0.0.1:8000/.well-known/ai-plugin.json > /dev/null 2>&1; then
-              echo "Server ready"; break; fi; sleep 1; done
-
-          # Test AI plugin manifest
-          curl -f http://127.0.0.1:8000/.well-known/ai-plugin.json
-
-          # Verify it's valid JSON
+          # Validate AI plugin manifest
           if ! curl -s http://127.0.0.1:8000/.well-known/ai-plugin.json | python -m json.tool > /dev/null; then
-            echo "ERROR: ai-plugin.json is not valid JSON"
+            echo "❌ ai-plugin.json is not valid JSON"
+            kill $SRV_PID || true
             exit 1
           fi
-
-          # Verify privacy language
           if ! curl -s http://127.0.0.1:8000/.well-known/ai-plugin.json | grep -q "PUBLIC"; then
-            echo "ERROR: ai-plugin.json missing PUBLIC data emphasis"
+            echo "❌ ai-plugin.json missing PUBLIC data emphasis"
+            kill $SRV_PID || true
             exit 1
           fi
-
           echo "✅ ai-plugin.json is valid with proper privacy boundaries"
 
+          # Cleanup
           kill $SRV_PID || true

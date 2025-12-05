@@ -116,7 +116,9 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         )
 
         # Determine routing based on conversation context and message content
+        # Both project and product creation conversations use the LangGraph agent with tools
         is_project_conversation = conversation_id.startswith('project-')
+        is_product_conversation = conversation_id.startswith('product-')
 
         # Fetch recent conversation history for context-aware intent detection
         conversation_history = _get_conversation_history(conversation_id, limit=5)
@@ -131,11 +133,11 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         )
         logger.info(f'Detected intent: {intent} for conversation {conversation_id}')
 
-        # For project conversations, default to project-creation unless
-        # we detect a specific intent like image-generation
-        if is_project_conversation and intent not in ('image-generation',):
+        # For project/product conversations, default to project-creation (which has tools)
+        # unless we detect a specific intent like image-generation
+        if (is_project_conversation or is_product_conversation) and intent not in ('image-generation',):
             intent = 'project-creation'
-            logger.info('Project conversation - overriding to project-creation')
+            logger.info('Project/product conversation - overriding to project-creation agent')
 
         # Route to appropriate processor based on intent
         if intent == 'project-creation':
@@ -706,6 +708,57 @@ def _process_image_generation(
     from .models import ImageGenerationIteration, ImageGenerationSession
 
     logger.info(f'Processing image generation: conversation={conversation_id}')
+
+    # Check if the message is too vague/generic and needs more details
+    vague_prompts = [
+        'create an image or infographic for me',
+        'create an image for me',
+        'create an infographic for me',
+        'make an image',
+        'make an infographic',
+        'generate an image',
+        'generate an infographic',
+        'i want an image',
+        'i want an infographic',
+        'create a visual',
+        'make a visual',
+    ]
+    normalized_message = message.lower().strip()
+    is_vague_request = any(
+        normalized_message == vague or normalized_message.startswith(vague) for vague in vague_prompts
+    )
+
+    if is_vague_request:
+        # Send a prompt asking for more details - use 'chunk' event for text display
+        response_text = (
+            'Great, can you please describe what you would like me to make? '
+            'I can make images and I am also great at making infographics!'
+        )
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'chunk',
+                'chunk': response_text,
+                'conversation_id': conversation_id,
+            },
+        )
+        # Send completed event to finalize the message
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'completed',
+                'conversation_id': conversation_id,
+                'mode': 'image-generation',
+            },
+        )
+        return {
+            'success': True,
+            'response': 'Asked for more details',
+            'image_generated': False,
+            'awaiting_description': True,
+        }
 
     # Get or create session for tracking iterations
     session, created = ImageGenerationSession.objects.get_or_create(
