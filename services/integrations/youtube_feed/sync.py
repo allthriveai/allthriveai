@@ -135,6 +135,19 @@ class YouTubeFeedSyncService:
                             results['skipped'] += 1
                             continue
 
+                    # Skip videos older than min_publish_year (default 2025)
+                    min_year = agent.settings.get('min_publish_year', 2025)
+                    published_at_str = video_info.get('published_at', '')
+                    if published_at_str:
+                        try:
+                            published_year = int(published_at_str[:4])
+                            if published_year < min_year:
+                                logger.debug(f'Skipping old video: {video_id} (published: {published_year})')
+                                results['skipped'] += 1
+                                continue
+                        except (ValueError, IndexError):
+                            pass  # If we can't parse the date, allow the video
+
                     cls._create_video_project(agent, video_info)
                     results['created'] += 1
                     logger.info(f'Created new video project: {video_info["title"][:50]}...')
