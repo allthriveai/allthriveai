@@ -2,7 +2,6 @@ import { ReactNode, useState, useRef, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   UserCircleIcon,
-  LockClosedIcon,
   BellIcon,
   CreditCardIcon,
   ShieldCheckIcon,
@@ -10,6 +9,7 @@ import {
   GiftIcon,
   SparklesIcon,
   PuzzlePieceIcon,
+  ShoppingBagIcon,
 } from '@heroicons/react/24/outline';
 
 interface SettingsSidebarItem {
@@ -27,11 +27,6 @@ const settingsNavItems: SettingsSidebarItem[] = [
     label: 'Edit Profile',
     path: '/account/settings',
     icon: UserCircleIcon,
-  },
-  {
-    label: 'Password',
-    path: '/account/settings/password',
-    icon: LockClosedIcon,
   },
   {
     label: 'Integrations',
@@ -57,6 +52,11 @@ const settingsNavItems: SettingsSidebarItem[] = [
     label: 'Billing',
     path: '/account/settings/billing',
     icon: CreditCardIcon,
+  },
+  {
+    label: 'Creator',
+    path: '/account/settings/creator',
+    icon: ShoppingBagIcon,
   },
   {
     label: 'Privacy & Security',
@@ -100,10 +100,10 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full overflow-hidden">
+    <div className="flex flex-col md:flex-row min-h-full">
       {/* Secondary Sidebar */}
-      <aside className="w-full md:w-64 glass-strong border-b md:border-b-0 md:border-r border-white/10 flex-shrink-0 z-20">
-        <div className="p-4 md:p-6">
+      <aside className="w-full md:w-64 glass-strong border-b md:border-b-0 md:border-r border-white/10 flex-shrink-0 z-20 md:min-h-full">
+        <div className="p-4 md:p-6 md:h-full">
           {/* Desktop Header */}
           <div className="hidden md:block">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
@@ -204,7 +204,7 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 md:overflow-y-auto">
         {children}
       </div>
     </div>

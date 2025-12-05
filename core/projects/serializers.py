@@ -50,6 +50,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'tools_details',
             'categories',
             'categories_details',
+            'hide_categories',
             'topics',
             'heart_count',
             'is_liked_by_user',

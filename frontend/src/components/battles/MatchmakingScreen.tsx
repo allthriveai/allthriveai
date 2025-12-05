@@ -2,7 +2,7 @@
  * MatchmakingScreen Component
  *
  * Pre-battle screen for finding opponents.
- * Offers quick match with Pip (AI) or random matchmaking.
+ * Offers quick match with Pip (AI), random matchmaking, or SMS challenge.
  */
 
 import { useState } from 'react';
@@ -14,7 +14,11 @@ import {
   MagnifyingGlassIcon,
   XMarkIcon,
   SparklesIcon,
+  DevicePhoneMobileIcon,
+  PaperAirplaneIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/solid';
+import { api } from '@/services/api';
 
 interface QueueStatus {
   inQueue: boolean;
@@ -40,6 +44,12 @@ export function MatchmakingScreen({
   onLeaveQueue,
 }: MatchmakingScreenProps) {
   const [selectedMode, setSelectedMode] = useState<'ai' | 'random' | null>(null);
+  const [showSmsModal, setShowSmsModal] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [friendName, setFriendName] = useState('');
+  const [isSendingSms, setIsSendingSms] = useState(false);
+  const [smsSuccess, setSmsSuccess] = useState<{ inviteUrl: string } | null>(null);
+  const [smsError, setSmsError] = useState<string | null>(null);
 
   const handleModeSelect = (mode: 'ai' | 'random') => {
     setSelectedMode(mode);
@@ -48,6 +58,38 @@ export function MatchmakingScreen({
     } else {
       onFindRandomMatch();
     }
+  };
+
+  const handleSendSms = async () => {
+    if (!phoneNumber.trim()) {
+      setSmsError('Please enter a phone number');
+      return;
+    }
+
+    setIsSendingSms(true);
+    setSmsError(null);
+
+    try {
+      const response = await api.post('/battles/invitations/send_sms/', {
+        phone_number: phoneNumber,
+        recipient_name: friendName,
+      });
+
+      setSmsSuccess({ inviteUrl: response.data.invite_url });
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      setSmsError(err.response?.data?.error || 'Failed to send SMS invitation');
+    } finally {
+      setIsSendingSms(false);
+    }
+  };
+
+  const resetSmsModal = () => {
+    setShowSmsModal(false);
+    setPhoneNumber('');
+    setFriendName('');
+    setSmsSuccess(null);
+    setSmsError(null);
   };
 
   return (
@@ -170,7 +212,7 @@ export function MatchmakingScreen({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="grid md:grid-cols-2 gap-6"
+              className="grid md:grid-cols-3 gap-6"
             >
               {/* Battle Pip */}
               <motion.button
@@ -178,18 +220,18 @@ export function MatchmakingScreen({
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleModeSelect('ai')}
                 disabled={isConnecting}
-                className="glass-card p-8 text-left group cursor-pointer hover:border-violet-500/50 transition-colors disabled:opacity-50"
+                className="glass-card p-6 text-left group cursor-pointer hover:border-violet-500/50 transition-colors disabled:opacity-50"
               >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center mb-6 group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-shadow">
-                  <CpuChipIcon className="w-8 h-8 text-violet-400" />
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center mb-4 group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-shadow">
+                  <CpuChipIcon className="w-7 h-7 text-violet-400" />
                 </div>
 
-                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-violet-300 transition-colors">
+                <h3 className="text-lg font-bold text-white mb-2 group-hover:text-violet-300 transition-colors">
                   Battle Pip
                 </h3>
 
                 <p className="text-slate-400 text-sm mb-4">
-                  Challenge our AI companion to a friendly duel. Perfect for practice!
+                  Challenge our AI companion. Perfect for practice!
                 </p>
 
                 <div className="flex items-center gap-2 text-violet-400 text-sm font-medium">
@@ -204,23 +246,49 @@ export function MatchmakingScreen({
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleModeSelect('random')}
                 disabled={isConnecting}
-                className="glass-card p-8 text-left group cursor-pointer hover:border-cyan-500/50 transition-colors disabled:opacity-50"
+                className="glass-card p-6 text-left group cursor-pointer hover:border-cyan-500/50 transition-colors disabled:opacity-50"
               >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center mb-6 group-hover:shadow-[0_0_30px_rgba(34,211,238,0.3)] transition-shadow">
-                  <UserGroupIcon className="w-8 h-8 text-cyan-400" />
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center mb-4 group-hover:shadow-[0_0_30px_rgba(34,211,238,0.3)] transition-shadow">
+                  <UserGroupIcon className="w-7 h-7 text-cyan-400" />
                 </div>
 
-                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors">
+                <h3 className="text-lg font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors">
                   Random Match
                 </h3>
 
                 <p className="text-slate-400 text-sm mb-4">
-                  Face off against another player in real-time. May the best prompt win!
+                  Face off against another player in real-time!
                 </p>
 
                 <div className="flex items-center gap-2 text-cyan-400 text-sm font-medium">
                   <BoltIcon className="w-4 h-4" />
                   <span>Live PvP</span>
+                </div>
+              </motion.button>
+
+              {/* Challenge a Friend */}
+              <motion.button
+                whileHover={{ scale: 1.02, y: -4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowSmsModal(true)}
+                disabled={isConnecting}
+                className="glass-card p-6 text-left group cursor-pointer hover:border-emerald-500/50 transition-colors disabled:opacity-50"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-green-500/20 flex items-center justify-center mb-4 group-hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] transition-shadow">
+                  <DevicePhoneMobileIcon className="w-7 h-7 text-emerald-400" />
+                </div>
+
+                <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-300 transition-colors">
+                  Challenge a Friend
+                </h3>
+
+                <p className="text-slate-400 text-sm mb-4">
+                  Send an SMS invite to battle anyone!
+                </p>
+
+                <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
+                  <PaperAirplaneIcon className="w-4 h-4" />
+                  <span>Text Invite</span>
                 </div>
               </motion.button>
             </motion.div>
@@ -263,6 +331,119 @@ export function MatchmakingScreen({
           </motion.div>
         )}
       </div>
+
+      {/* SMS Invitation Modal */}
+      <AnimatePresence>
+        {showSmsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={(e) => e.target === e.currentTarget && resetSmsModal()}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="glass-card p-8 w-full max-w-md"
+            >
+              {smsSuccess ? (
+                /* Success state */
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+                    <CheckCircleIcon className="w-10 h-10 text-emerald-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Challenge Sent!</h3>
+                  <p className="text-slate-400 mb-6">
+                    Your friend will receive an SMS with a link to accept the battle challenge.
+                  </p>
+                  <div className="bg-slate-800/50 rounded-lg p-3 mb-6">
+                    <p className="text-xs text-slate-500 mb-1">Share this link:</p>
+                    <p className="text-sm text-cyan-400 break-all">{smsSuccess.inviteUrl}</p>
+                  </div>
+                  <button onClick={resetSmsModal} className="btn-primary w-full">
+                    Done
+                  </button>
+                </div>
+              ) : (
+                /* Form state */
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-white">Challenge a Friend</h3>
+                    <button
+                      onClick={resetSmsModal}
+                      className="p-1 hover:bg-slate-800 rounded-lg transition-colors"
+                    >
+                      <XMarkIcon className="w-5 h-5 text-slate-400" />
+                    </button>
+                  </div>
+
+                  <p className="text-slate-400 text-sm mb-6">
+                    Enter your friend's phone number to send them a battle invitation via SMS.
+                  </p>
+
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Phone Number *
+                      </label>
+                      <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="+1 (555) 123-4567"
+                        className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Friend's Name <span className="text-slate-500">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={friendName}
+                        onChange={(e) => setFriendName(e.target.value)}
+                        placeholder="John"
+                        className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {smsError && (
+                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                      <p className="text-red-400 text-sm">{smsError}</p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleSendSms}
+                    disabled={isSendingSms || !phoneNumber.trim()}
+                    className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isSendingSms ? (
+                      <>
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                        />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <PaperAirplaneIcon className="w-5 h-5" />
+                        Send Challenge
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -208,11 +208,11 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
                         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
                           Upcoming Events
                         </h3>
-                        <EventsList events={displayedEvents} />
+                        <EventsList events={displayedEvents} onRSVPChange={loadEvents} />
                       </div>
                     </div>
                   ) : (
-                    <EventsList events={displayedEvents} />
+                    <EventsList events={displayedEvents} onRSVPChange={loadEvents} />
                   )}
                 </>
               )}

@@ -19,7 +19,17 @@ class ProjectService:
     """Service for creating and managing projects."""
 
     # Valid project types
-    VALID_TYPES = ['github_repo', 'figma_design', 'image_collection', 'prompt', 'other']
+    VALID_TYPES = [
+        'github_repo',
+        'figma_design',
+        'image_collection',
+        'prompt',
+        'video',
+        'reddit_thread',
+        'rss_article',
+        'battle',
+        'other',
+    ]
 
     # URL patterns
     GITHUB_URL_PATTERN = re.compile(r'https?://github\.com/[\w-]+/[\w-]+')
@@ -64,6 +74,7 @@ class ProjectService:
         featured_image_url: str | None = None,
         content: dict | None = None,
         external_url: str = '',
+        tags: list[str] | None = None,
     ) -> tuple[Project | None, str | None]:
         """
         Create a new project.
@@ -94,6 +105,11 @@ class ProjectService:
                 content=content or {},
                 external_url=external_url or '',
             )
+
+            # Add tags as topics if provided
+            if tags:
+                project.topics = tags
+                project.save(update_fields=['topics'])
 
             logger.info(f'Created project {project.id} for user {user.id}: {title}')
             return project, None

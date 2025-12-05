@@ -1,0 +1,21 @@
+New Invitation Request - AllThrive AI
+=====================================
+
+Someone has requested to join AllThrive AI!
+
+Details:
+--------
+Name: {{ requester_name }}
+Email: {{ requester_email }}
+{% if reason %}
+Why they want to join:
+{{ reason }}
+{% endif %}
+Submitted: {{ submitted_at }}
+
+Review this request in the admin panel:
+{{ admin_url }}
+
+---
+AllThrive AI
+{{ frontend_url }}

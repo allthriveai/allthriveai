@@ -10,6 +10,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useAchievements } from '@/hooks/useAchievements';
 import { ActivityInsightsTab } from '@/components/profile/ActivityInsightsTab';
 import { FavoritesTab } from '@/components/profile/FavoritesTab';
+import { MarketplaceTab } from '@/components/profile/MarketplaceTab';
 import { LearningPathsTab } from '@/components/learning';
 import { getRarityColorClasses } from '@/services/achievements';
 import { ToolTray } from '@/components/tools/ToolTray';
@@ -38,6 +39,7 @@ import {
   faChartLine,
   faGraduationCap,
   faHeart,
+  faStore,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Helper to convert tier code to display name
@@ -77,9 +79,9 @@ export default function ProfilePage() {
   const [userNotFound, setUserNotFound] = useState(false);
 
   // Initialize activeTab from URL or default to 'showcase'
-  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | null;
-  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'favorites' | 'learning' | 'activity'>(
-    tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity'].includes(tabFromUrl) ? tabFromUrl : 'showcase'
+  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | null;
+  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace'>(
+    tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity', 'marketplace'].includes(tabFromUrl) ? tabFromUrl : 'showcase'
   );
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<number>>(new Set());
@@ -101,8 +103,8 @@ export default function ProfilePage() {
 
   // Sync activeTab with URL query parameter
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | null;
-    if (tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity'].includes(tabFromUrl)) {
+    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | null;
+    if (tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity', 'marketplace'].includes(tabFromUrl)) {
       // Security: only allow Activity and Learning tabs for authenticated users viewing their own profile
       if ((tabFromUrl === 'activity' || tabFromUrl === 'learning') && (!isAuthenticated || !isOwnProfile)) {
         setActiveTab('showcase');
@@ -132,7 +134,7 @@ export default function ProfilePage() {
 
 
   // Update URL when tab changes
-  const handleTabChange = (tab: 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity') => {
+  const handleTabChange = (tab: 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace') => {
     setActiveTab(tab);
     setSearchParams({ tab });
     if (selectionMode) {
@@ -243,12 +245,14 @@ export default function ProfilePage() {
       if (isCuration) {
         return [
           { id: 'showcase', label: 'Posts' },
+          { id: 'marketplace', label: 'Shop' },
         ] as const;
       }
       return [
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
         { id: 'favorites', label: 'Favorites' },
+        { id: 'marketplace', label: 'Shop' },
         { id: 'learning', label: 'Learning' },
         { id: 'activity', label: 'Activity' },
       ] as const;
@@ -257,22 +261,26 @@ export default function ProfilePage() {
       if (isCuration) {
         return [
           { id: 'showcase', label: 'Posts' },
+          { id: 'marketplace', label: 'Shop' },
         ] as const;
       }
       return [
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
         { id: 'favorites', label: 'Favorites' },
+        { id: 'marketplace', label: 'Shop' },
       ] as const;
     }
     if (isCuration) {
       return [
         { id: 'showcase', label: 'Posts' },
+        { id: 'marketplace', label: 'Shop' },
       ] as const;
     }
     return [
       { id: 'showcase', label: 'Showcase' },
       { id: 'favorites', label: 'Favorites' },
+      { id: 'marketplace', label: 'Shop' },
     ] as const;
   })();
 
@@ -686,6 +694,7 @@ export default function ProfilePage() {
                       showcase: faTh,
                       playground: faFlask,
                       favorites: faHeart,
+                      marketplace: faStore,
                       learning: faGraduationCap,
                       activity: faChartLine,
                     };
@@ -844,6 +853,21 @@ export default function ProfilePage() {
                 >
                   <ActivityInsightsTab
                     username={username || ''}
+                    isOwnProfile={isOwnProfile}
+                  />
+                </div>
+              )}
+
+              {/* Marketplace Tab - Full width layout */}
+              {activeTab === 'marketplace' && (
+                <div
+                  className="pb-20"
+                  role="tabpanel"
+                  id="tabpanel-marketplace"
+                  aria-labelledby="tab-marketplace"
+                >
+                  <MarketplaceTab
+                    username={username || user?.username || ''}
                     isOwnProfile={isOwnProfile}
                   />
                 </div>

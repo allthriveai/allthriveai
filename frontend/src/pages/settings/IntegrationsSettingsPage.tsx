@@ -6,6 +6,7 @@ import { api } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faGitlab, faFigma, faInstagram, faTiktok, faYoutube } from '@fortawesome/free-brands-svg-icons';
+import { faChevronDown, faChevronUp, faCheck, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { VideoPickerModal } from '@/components/integrations/VideoPickerModal';
 import { YouTubeImportProgressModal } from '@/components/integrations/YouTubeImportProgressModal';
 import { getUserFriendlyError, type UserFriendlyError } from '@/utils/errorMessages';
@@ -96,6 +97,7 @@ export default function IntegrationsSettingsPage() {
   const [showImportProgress, setShowImportProgress] = useState(false);
   const [importSourceId, setImportSourceId] = useState<number | null>(null);
   const [importVideoCount, setImportVideoCount] = useState(0);
+  const [expandedIntegration, setExpandedIntegration] = useState<string | null>(null);
 
   // Fetch connection status on mount
   useEffect(() => {
@@ -521,9 +523,9 @@ export default function IntegrationsSettingsPage() {
     <DashboardLayout>
       <SettingsLayout>
         <div className="p-8">
-          <div className="max-w-3xl">
+          <div>
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-6">
               <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
                 Integrations
               </h1>
@@ -604,80 +606,81 @@ export default function IntegrationsSettingsPage() {
               </div>
             )}
 
-            {/* Info Banner */}
-            <div className="mb-8 p-6 glass-strong rounded-xl border border-blue-500/20 bg-blue-500/5">
-              <div className="flex gap-3">
-                <div className="text-2xl">ℹ️</div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                    Automatic Project Updates
-                  </h3>
-                  <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
-                    Connect your content platforms to automatically populate your project feed.
-                    When you post on these platforms, your content can be synced to your All Thrive profile.
-                  </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    Your credentials are encrypted and stored securely. You can disconnect at any time.
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* Loading State */}
             {loading ? (
               <div className="flex justify-center items-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
               </div>
             ) : (
-              /* Integrations Grid */
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {integrations.map((integration) => (
+              /* Integrations Accordion List */
+              <div className="space-y-2">
+              {integrations.map((integration) => {
+                const isExpanded = expandedIntegration === integration.id;
+                return (
                 <div
                   key={integration.id}
-                  className="glass-strong rounded p-6 border border-white/20 flex flex-col"
+                  className="glass-strong rounded-lg border border-white/20 overflow-hidden"
                 >
-                  {/* Header with icon and badges */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
-                        <FontAwesomeIcon icon={integration.icon} className="text-3xl text-slate-700 dark:text-slate-300" />
+                  {/* Accordion Header */}
+                  <button
+                    onClick={() => setExpandedIntegration(isExpanded ? null : integration.id)}
+                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Icon */}
+                      <div className="w-10 h-10 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
+                        <FontAwesomeIcon icon={integration.icon} className="text-xl text-slate-700 dark:text-slate-300" />
                       </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+
+                      {/* Name and status */}
+                      <div className="text-left">
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                           {integration.name}
                         </h3>
+                        {integration.isConnected && integration.username && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            @{integration.username}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Badges */}
+                      <div className="flex items-center gap-2">
                         {integration.isConnected && (
-                          <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
+                            <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
                             Connected
                           </span>
                         )}
                         {!integration.isAvailable && (
-                          <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full bg-slate-500/10 text-slate-600 dark:text-slate-400">
+                          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-500/10 text-slate-600 dark:text-slate-400">
                             Coming Soon
                           </span>
                         )}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Description */}
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 flex-grow">
-                    {integration.description}
-                  </p>
+                    {/* Chevron */}
+                    <FontAwesomeIcon
+                      icon={isExpanded ? faChevronUp : faChevronDown}
+                      className="text-slate-400 transition-transform"
+                    />
+                  </button>
 
-                  {/* Connected state details */}
-                  {integration.isConnected && integration.username && (
-                    <div className="mb-4 p-3 rounded-lg bg-white/5">
-                      <p className="text-sm text-slate-700 dark:text-slate-300">
-                        <span className="font-medium">Connected as:</span> @{integration.username}
+                  {/* Accordion Content */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4 pt-2 border-t border-white/10 bg-white/5">
+                      {/* Description */}
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        {integration.description}
                       </p>
-                      {integration.connectedAt && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+
+                      {/* Connected state details */}
+                      {integration.isConnected && integration.connectedAt && (
+                        <div className="mb-3 text-xs text-slate-500 dark:text-slate-400">
                           Connected {new Date(integration.connectedAt).toLocaleDateString()}
-                        </p>
+                        </div>
                       )}
-                    </div>
-                  )}
 
                   {/* YouTube import info */}
                   {integration.id === 'youtube' && integration.isConnected && (
@@ -719,100 +722,85 @@ export default function IntegrationsSettingsPage() {
                     </div>
                   )}
 
-                  {/* Sync toggle for connected integrations */}
-                  {integration.isConnected && integration.syncEnabled !== undefined && (
-                    <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-white/5">
-                      <button
-                        onClick={() => handleToggleSync(integration.id)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          integration.syncEnabled
-                            ? 'bg-primary-500'
-                            : 'bg-slate-300 dark:bg-slate-600'
-                        }`}
-                        aria-label={`Toggle automatic sync for ${integration.name}`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            integration.syncEnabled ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                      <span className="text-sm text-slate-700 dark:text-slate-300">
-                        Automatic sync {integration.syncEnabled ? 'enabled' : 'disabled'}
-                      </span>
+                      {/* Sync toggle for connected integrations */}
+                      {integration.isConnected && integration.syncEnabled !== undefined && (
+                        <div className="flex items-center gap-3 mb-3 p-3 rounded-lg bg-white/5">
+                          <button
+                            onClick={() => handleToggleSync(integration.id)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              integration.syncEnabled
+                                ? 'bg-primary-500'
+                                : 'bg-slate-300 dark:bg-slate-600'
+                            }`}
+                            aria-label={`Toggle automatic sync for ${integration.name}`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                integration.syncEnabled ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                          <span className="text-xs text-slate-700 dark:text-slate-300">
+                            Automatic sync {integration.syncEnabled ? 'enabled' : 'disabled'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* YouTube Sync Status */}
+                      {integration.id === 'youtube' && integration.isConnected && (
+                        <div className="mb-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+                            Last synced: <span className="font-medium text-slate-700 dark:text-slate-300">{formatLastSyncedTime(lastSyncedAt)}</span>
+                          </p>
+                          <button
+                            onClick={handleManualSync}
+                            disabled={isSyncing}
+                            className="w-full px-3 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isSyncing ? (
+                              <span className="flex items-center justify-center gap-2">
+                                <FontAwesomeIcon icon={faSpinner} spin />
+                                Syncing...
+                              </span>
+                            ) : (
+                              '🔄 Sync Now'
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Action button */}
+                      <div className="flex gap-2">
+                        {integration.isConnected ? (
+                          <button
+                            onClick={() => setShowDisconnectModal(integration.id)}
+                            className="flex-1 px-3 py-2 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors text-xs font-medium"
+                          >
+                            Disconnect
+                          </button>
+                        ) : integration.isAvailable ? (
+                          <button
+                            onClick={() => handleConnect(integration.id)}
+                            className="flex-1 px-3 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white transition-colors text-xs font-medium"
+                          >
+                            Connect
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="flex-1 px-3 py-2 rounded-lg bg-slate-500/10 text-slate-500 dark:text-slate-400 cursor-not-allowed text-xs font-medium"
+                          >
+                            Coming Soon
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
-
-                  {/* YouTube Sync Status */}
-                  {integration.id === 'youtube' && integration.isConnected && (
-                    <div className="mb-4 p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
-                        Last synced: <span className="font-medium text-slate-700 dark:text-slate-300">{formatLastSyncedTime(lastSyncedAt)}</span>
-                      </p>
-                      <button
-                        onClick={handleManualSync}
-                        disabled={isSyncing}
-                        className="w-full px-3 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isSyncing ? '⏳ Syncing...' : '🔄 Sync Now'}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Action button */}
-                  <div className="mt-auto">
-                    {integration.isConnected ? (
-                      <button
-                        onClick={() => setShowDisconnectModal(integration.id)}
-                        className="w-full px-4 py-2 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors text-sm font-medium"
-                      >
-                        Disconnect
-                      </button>
-                    ) : integration.isAvailable ? (
-                      <button
-                        onClick={() => handleConnect(integration.id)}
-                        className="w-full px-4 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white transition-colors text-sm font-medium"
-                      >
-                        Connect
-                      </button>
-                    ) : (
-                      <button
-                        disabled
-                        className="w-full px-4 py-2 rounded-lg bg-slate-500/10 text-slate-500 dark:text-slate-400 cursor-not-allowed text-sm font-medium"
-                      >
-                        Coming Soon
-                      </button>
-                    )}
-                  </div>
                 </div>
-              ))}
+                );
+              })}
               </div>
             )}
-
-            {/* Additional Info */}
-            <div className="mt-8 p-6 glass-strong rounded-xl border border-white/20">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">
-                How It Works
-              </h3>
-              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                <li className="flex gap-2">
-                  <span className="text-primary-500">1.</span>
-                  <span>Connect your account by authorizing All Thrive to access your public content</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary-500">2.</span>
-                  <span>Choose whether to enable automatic syncing or manually import content</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary-500">3.</span>
-                  <span>Your posts will appear in your project feed with proper attribution</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary-500">4.</span>
-                  <span>Edit, organize, or remove synced content anytime from your dashboard</span>
-                </li>
-              </ul>
-            </div>
           </div>
         </div>
 

@@ -20,4 +20,7 @@ urlpatterns = [
     # Stats and leaderboard
     path('stats/', views.battle_stats, name='battle-stats'),
     path('leaderboard/', views.battle_leaderboard, name='battle-leaderboard'),
+    # SMS invitation token-based endpoints
+    path('invite/<str:token>/', views.get_invitation_by_token, name='invitation-by-token'),
+    path('invite/<str:token>/accept/', views.accept_invitation_by_token, name='accept-invitation-by-token'),
 ]

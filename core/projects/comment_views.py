@@ -35,6 +35,63 @@ class ProjectCommentViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectCommentSerializer
     pagination_class = None  # Disable pagination for comments
 
+    def destroy(self, request, *args, **kwargs):
+        """
+        Delete a comment (only owner or admin can delete).
+
+        Overrides default ModelViewSet.destroy() to add permission checks.
+        """
+        from core.users.models import UserRole
+
+        start_time = time.time()
+        comment = self.get_object()
+        project_pk = self.kwargs.get('project_pk')
+
+        # Check permissions: owner or admin can delete
+        is_owner = comment.user == request.user
+        is_admin = request.user.role == UserRole.ADMIN
+
+        if not is_owner and not is_admin:
+            StructuredLogger.log_validation_error(
+                message='Unauthorized comment deletion attempt',
+                user=request.user,
+                errors={'comment_id': comment.id, 'reason': 'Not owner or admin'},
+                logger_instance=logger,
+            )
+            return Response(
+                {'error': 'You do not have permission to delete this comment'}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            comment.delete()
+
+            duration_ms = (time.time() - start_time) * 1000
+            StructuredLogger.log_service_operation(
+                service_name='CommentService',
+                operation='delete_comment',
+                user=request.user,
+                success=True,
+                duration_ms=duration_ms,
+                metadata={'comment_id': comment.id, 'project_id': project_pk},
+                logger_instance=logger,
+            )
+
+            return Response({'message': 'Comment deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
+        except Exception as error:
+            duration_ms = (time.time() - start_time) * 1000
+            StructuredLogger.log_service_operation(
+                service_name='CommentService',
+                operation='delete_comment',
+                user=request.user,
+                success=False,
+                duration_ms=duration_ms,
+                metadata={'comment_id': comment.id, 'project_id': project_pk},
+                error=error,
+                logger_instance=logger,
+            )
+            raise
+
     def get_throttles(self):
         """Apply throttling only to create action."""
         if self.action == 'create':

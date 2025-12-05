@@ -20,6 +20,7 @@ export type HelpCategory =
   | 'projects'
   | 'integrations'
   | 'content-creation'
+  | 'tools'
   | 'settings';
 
 export interface HelpCategoryInfo {
@@ -53,6 +54,12 @@ export const HELP_CATEGORIES: HelpCategoryInfo[] = [
     title: 'Content Creation',
     icon: '🎨',
     description: 'Creating visuals and media',
+  },
+  {
+    id: 'tools',
+    title: 'AI Tools',
+    icon: '🔧',
+    description: 'Find and explore AI tools',
   },
   {
     id: 'settings',
@@ -204,6 +211,36 @@ export const HELP_QUESTIONS: HelpQuestion[] = [
     keywords: ['image', 'project', 'convert', 'nano banana', 'generated'],
   },
 
+  // AI Tools
+  {
+    id: 'find-ai-tool',
+    question: 'Help me find the right AI tool',
+    category: 'tools',
+    chatMessage: 'I need help finding the perfect AI tool for my needs. Can you ask me some questions to recommend the best tools?',
+    keywords: ['find', 'recommend', 'tool', 'ai', 'which', 'best', 'help'],
+  },
+  {
+    id: 'tool-recommendation-quiz',
+    question: 'Take the Tool Finder Quiz',
+    category: 'tools',
+    chatMessage: 'I want to take the tool recommendation quiz to find the best AI tools for me.',
+    keywords: ['quiz', 'tool', 'finder', 'recommendation', 'test'],
+  },
+  {
+    id: 'explore-tools',
+    question: 'What AI tools are available?',
+    category: 'tools',
+    chatMessage: 'What AI tools are available in the directory? Can you show me some popular options?',
+    keywords: ['explore', 'browse', 'available', 'tools', 'directory', 'list'],
+  },
+  {
+    id: 'compare-tools',
+    question: 'How do I compare AI tools?',
+    category: 'tools',
+    chatMessage: 'How can I compare different AI tools to decide which one is best for my needs?',
+    keywords: ['compare', 'comparison', 'difference', 'vs', 'versus'],
+  },
+
   // Settings & Account
   {
     id: 'profile-settings',
@@ -265,9 +302,9 @@ export function searchHelpQuestions(query: string): HelpQuestion[] {
  */
 export function getFeaturedQuestions(): HelpQuestion[] {
   return [
+    HELP_QUESTIONS.find(q => q.id === 'find-ai-tool')!,
     HELP_QUESTIONS.find(q => q.id === 'add-first-project')!,
     HELP_QUESTIONS.find(q => q.id === 'import-github-repo')!,
-    HELP_QUESTIONS.find(q => q.id === 'import-youtube-videos')!,
     HELP_QUESTIONS.find(q => q.id === 'nano-banana')!,
     HELP_QUESTIONS.find(q => q.id === 'available-platforms')!,
     HELP_QUESTIONS.find(q => q.id === 'what-are-ai-agents')!,

@@ -19,6 +19,7 @@ from core.thrive_circle.signals import track_profile_viewed, track_user_login
 from core.throttles import AuthenticatedProfileThrottle, PublicProfileThrottle
 from core.users.models import User
 
+from .account_management import AccountManagementError, AccountManagementService
 from .serializers import UserSerializer, UserUpdateSerializer
 
 logger = logging.getLogger(__name__)
@@ -529,3 +530,88 @@ def user_activity(request):
             },
         }
     )
+
+
+# =============================================================================
+# Account Management - Deactivation & Deletion
+# =============================================================================
+
+
+@ratelimit(key='user', rate='3/h', method='POST', block=True)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def deactivate_account(request):
+    """
+    Deactivate user account (soft delete).
+
+    - Marks account as inactive
+    - Cancels subscription at period end
+    - Data is retained for reactivation
+
+    Rate limit: 3 requests per hour per user
+
+    Returns:
+        200: Account deactivated successfully
+        400: Error deactivating account
+    """
+    try:
+        result = AccountManagementService.deactivate_account(request.user)
+        return Response(result, status=status.HTTP_200_OK)
+    except AccountManagementError as e:
+        logger.warning(f'Failed to deactivate account for user {request.user.id}: {e}')
+        return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.error(f'Unexpected error deactivating account for user {request.user.id}: {e}')
+        return Response(
+            {'success': False, 'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@ratelimit(key='user', rate='2/h', method='POST', block=True)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_account(request):
+    """
+    Permanently delete user account.
+
+    - Cancels subscription immediately
+    - Deletes Stripe customer
+    - Permanently deletes all user data
+
+    WARNING: This action is irreversible.
+
+    Rate limit: 2 requests per hour per user
+
+    Required POST data:
+        confirm: Must be exactly "DELETE MY ACCOUNT" to confirm
+
+    Returns:
+        200: Account deleted successfully (user will be logged out)
+        400: Confirmation failed or error deleting account
+        403: Account cannot be deleted (e.g., pending payments)
+    """
+    # Require explicit confirmation
+    confirmation = request.data.get('confirm', '')
+    if confirmation != 'DELETE MY ACCOUNT':
+        return Response(
+            {'success': False, 'error': 'Confirmation text does not match. Please type exactly: DELETE MY ACCOUNT'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Check if account can be deleted
+    can_delete, reason = AccountManagementService.can_delete_account(request.user)
+    if not can_delete:
+        return Response({'success': False, 'error': reason}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        result = AccountManagementService.delete_account(request.user)
+        # User is deleted, they will be automatically logged out
+        return Response(result, status=status.HTTP_200_OK)
+    except AccountManagementError as e:
+        logger.warning(f'Failed to delete account for user {request.user.id}: {e}')
+        return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.error(f'Unexpected error deleting account for user {request.user.id}: {e}')
+        return Response(
+            {'success': False, 'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

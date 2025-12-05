@@ -691,14 +691,14 @@ export function IntelligentChatPanel({
     return (
       <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
         <div
-          className={`max-w-md px-4 py-2 rounded-lg ${
+          className={`max-w-[85%] px-4 py-2 rounded-lg ${
             isUser
               ? 'bg-primary-600 text-white'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
           }`}
         >
           {isUser ? (
-            <span className="whitespace-pre-wrap">{message.content}</span>
+            <span className="whitespace-pre-wrap break-words">{message.content}</span>
           ) : (
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown
@@ -752,6 +752,11 @@ export function IntelligentChatPanel({
       header={
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
+            <img
+              src="/all-thrvie-logo.png"
+              alt="All Thrive"
+              className="h-6 w-auto"
+            />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               All Thrive AI Chat
             </h2>

@@ -7,12 +7,14 @@ export type ChatStep =
   | 'username_custom'
   | 'name'
   | 'password'
-  | 'interests'
+  | 'profile_bio'
   | 'values'
-  | 'agreement'
+  | 'first_action'
   | 'complete';
 
 export type ChatMode = 'signup' | 'login' | 'oauth_setup';
+
+export type FirstAction = 'upload_project' | 'explore' | 'prompt_battle';
 
 export interface ChatMessage {
   id: string;
@@ -29,6 +31,7 @@ export interface AuthChatState {
   isStreaming: boolean;
   error: string | null;
   suggestedUsername: string | null;
+  firstAction: FirstAction | null;
 }
 
 export interface UseAuthChatStreamReturn {
@@ -40,17 +43,21 @@ export interface UseAuthChatStreamReturn {
   submitUsername: (username: string) => Promise<void>;
   submitName: (firstName: string, lastName: string) => Promise<void>;
   submitPassword: (password: string) => Promise<void>;
-  submitInterests: (interests: string[]) => Promise<void>;
+  submitBio: (bio: string) => Promise<void>;
+  skipBio: () => Promise<void>;
   agreeToValues: () => Promise<void>;
+  selectFirstAction: (action: FirstAction) => Promise<void>;
   clearError: () => void;
   beginEmailEntry: () => void;
 }
 
-// Re-export for convenience
-export type { ChatMessage };
-
 const API_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-const WELCOME_TEXT = 'Welcome to All Thrive. We are glad you are here.';
+
+const WELCOME_MESSAGE = `Hey there! 👋 I'm here to help you get started with All Thrive.
+
+Whether you're here to share your AI creations, learn new skills, or just explore what others are building - you're in the right place.
+
+Let's get you set up. How would you like to sign in?`;
 
 export function useAuthChatStream(): UseAuthChatStreamReturn {
   const [state, setState] = useState<AuthChatState>(() => ({
@@ -61,13 +68,14 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
       {
         id: 'welcome-msg',
         role: 'assistant',
-        content: WELCOME_TEXT,
+        content: WELCOME_MESSAGE,
         timestamp: new Date(),
       },
     ],
     isStreaming: false,
     error: null,
     suggestedUsername: null,
+    firstAction: null,
   }));
 
   const currentMessageRef = useRef<string>('');
@@ -92,6 +100,10 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
       ],
     }));
   }, [generateMessageId]);
+
+  const addAssistantMessage = useCallback((content: string) => {
+    addMessage('assistant', content);
+  }, [addMessage]);
 
   const streamChat = useCallback(async (action: string, data?: Record<string, unknown>) => {
     setState(prev => ({ ...prev, isStreaming: true, error: null }));
@@ -194,15 +206,17 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
                 });
 
                 // Request backend to issue cookies now that flow is complete
-                try {
-                  await fetch(`${API_URL}/auth/chat/finalize/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ session_id: data.session_id }),
-                  });
-                } catch (e) {
-                  console.error('Finalize auth chat failed:', e);
+                if (data.step === 'complete') {
+                  try {
+                    await fetch(`${API_URL}/auth/chat/finalize/`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({ session_id: data.session_id }),
+                    });
+                  } catch (e) {
+                    console.error('Finalize auth chat failed:', e);
+                  }
                 }
 
                 currentMessageRef.current = '';
@@ -240,17 +254,17 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
   }, [streamChat, addMessage]);
 
   const acceptUsername = useCallback(async () => {
-    addMessage('user', 'Yes');
+    addMessage('user', `I'll use @${state.suggestedUsername}`);
     await streamChat('accept_username');
-  }, [streamChat, addMessage]);
+  }, [streamChat, addMessage, state.suggestedUsername]);
 
   const rejectUsername = useCallback(async () => {
-    addMessage('user', 'No, I\'ll choose my own');
+    addMessage('user', 'I\'d like to choose my own username');
     await streamChat('reject_username');
   }, [streamChat, addMessage]);
 
   const submitUsername = useCallback(async (username: string) => {
-    addMessage('user', username);
+    addMessage('user', `@${username}`);
     await streamChat('submit_username', { username });
   }, [streamChat, addMessage]);
 
@@ -264,21 +278,30 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
     await streamChat('submit_password', { password });
   }, [streamChat, addMessage]);
 
-  const submitInterests = useCallback(async (interests: string[]) => {
-    const labels: Record<string, string> = {
-      explore: 'Explore',
-      share_skills: 'Share my skills',
-      invest: 'Invest in AI projects',
-      mentor: 'Mentor others',
-    };
-    const selectedLabels = interests.map(i => labels[i] || i);
-    addMessage('user', selectedLabels.join(', '));
-    await streamChat('submit_interests', { interests });
+  const submitBio = useCallback(async (bio: string) => {
+    addMessage('user', bio);
+    await streamChat('submit_bio', { bio });
+  }, [streamChat, addMessage]);
+
+  const skipBio = useCallback(async () => {
+    addMessage('user', 'I\'ll add this later');
+    await streamChat('skip_bio');
   }, [streamChat, addMessage]);
 
   const agreeToValues = useCallback(async () => {
-    addMessage('user', 'Yes, I agree');
+    addMessage('user', 'I agree to the community values');
     await streamChat('agree_values');
+  }, [streamChat, addMessage]);
+
+  const selectFirstAction = useCallback(async (action: FirstAction) => {
+    const labels: Record<FirstAction, string> = {
+      upload_project: 'I want to upload a project',
+      explore: 'I want to explore what others have built',
+      prompt_battle: 'I want to join a prompt battle',
+    };
+    addMessage('user', labels[action]);
+    setState(prev => ({ ...prev, firstAction: action }));
+    await streamChat('select_first_action', { action });
   }, [streamChat, addMessage]);
 
   const clearError = useCallback(() => {
@@ -286,9 +309,9 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
   }, []);
 
   const beginEmailEntry = useCallback(() => {
-    // Move UI to the email input step without hitting the backend yet
+    addAssistantMessage('Great choice! What\'s your email address?');
     setState(prev => ({ ...prev, step: 'email' }));
-  }, []);
+  }, [addAssistantMessage]);
 
   return {
     state,
@@ -299,8 +322,10 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
     submitUsername,
     submitName,
     submitPassword,
-    submitInterests,
+    submitBio,
+    skipBio,
     agreeToValues,
+    selectFirstAction,
     clearError,
     beginEmailEntry,
   };

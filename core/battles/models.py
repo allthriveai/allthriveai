@@ -411,11 +411,24 @@ class BattleSubmission(models.Model):
             raise ValidationError('Battle has expired.')
 
 
+class InvitationType(models.TextChoices):
+    """Type of battle invitation."""
+
+    PLATFORM = 'platform', 'Platform User'  # Invitation to existing user
+    SMS = 'sms', 'SMS'  # Invitation via SMS to phone number
+    RANDOM = 'random', 'Random Match'  # Random active user matching
+
+
 class BattleInvitation(models.Model):
     """Invitation for a prompt battle.
 
     When a user wants to challenge another user, an invitation is created.
     The opponent can accept or decline the invitation.
+
+    Supports three invitation types:
+    - Platform: Direct invitation to existing user
+    - SMS: Invitation via text message (recipient may not be a user yet)
+    - Random: Auto-match with active users
     """
 
     battle = models.OneToOneField(
@@ -429,11 +442,44 @@ class BattleInvitation(models.Model):
         User, on_delete=models.CASCADE, related_name='battle_invitations_sent', help_text='User who sent the invitation'
     )
 
+    # For platform invitations - the recipient user
     recipient = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='battle_invitations_received',
-        help_text='User who received the invitation',
+        null=True,
+        blank=True,
+        help_text='User who received the invitation (for platform invitations)',
+    )
+
+    # For SMS invitations - phone number and optional name
+    recipient_phone = models.CharField(
+        max_length=20,
+        blank=True,
+        db_index=True,
+        help_text='Phone number for SMS invitations (E.164 format)',
+    )
+    recipient_name = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text='Name of SMS recipient (for display purposes)',
+    )
+
+    # Invitation type
+    invitation_type = models.CharField(
+        max_length=20,
+        choices=InvitationType.choices,
+        default=InvitationType.PLATFORM,
+        db_index=True,
+    )
+
+    # Unique token for SMS invitation links
+    invite_token = models.CharField(
+        max_length=64,
+        blank=True,
+        unique=True,
+        null=True,
+        help_text='Unique token for SMS invitation links',
     )
 
     message = models.TextField(blank=True, help_text='Optional message from the challenger')
@@ -448,36 +494,69 @@ class BattleInvitation(models.Model):
 
     expires_at = models.DateTimeField(db_index=True, help_text='When the invitation expires (24 hours from creation)')
 
+    # SMS tracking
+    sms_sent_at = models.DateTimeField(null=True, blank=True, help_text='When SMS was sent')
+    sms_log_id = models.IntegerField(null=True, blank=True, help_text='ID of SMSLog record')
+
     class Meta:
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['recipient', 'status', '-created_at']),
             models.Index(fields=['sender', '-created_at']),
             models.Index(fields=['expires_at']),
+            models.Index(fields=['recipient_phone', 'status']),
+            models.Index(fields=['invitation_type', 'status']),
         ]
 
     def __str__(self):
-        return f'Invitation from {self.sender.username} to {self.recipient.username} ({self.status})'
+        if self.invitation_type == InvitationType.SMS:
+            return f'SMS Invitation from {self.sender.username} to {self.recipient_phone} ({self.status})'
+        elif self.recipient:
+            return f'Invitation from {self.sender.username} to {self.recipient.username} ({self.status})'
+        return f'Invitation from {self.sender.username} ({self.status})'
 
     def save(self, *args, **kwargs):
-        """Set expiration time on creation."""
+        """Set expiration time and generate token on creation."""
         if not self.expires_at:
             self.expires_at = timezone.now() + timezone.timedelta(hours=24)
+        # Generate invite token for SMS invitations
+        if self.invitation_type == InvitationType.SMS and not self.invite_token:
+            import secrets
+
+            self.invite_token = secrets.token_urlsafe(32)
         super().save(*args, **kwargs)
 
-    def accept(self):
-        """Accept the invitation and start the battle."""
+    def accept(self, accepting_user: 'User' = None):
+        """Accept the invitation and start the battle.
+
+        Args:
+            accepting_user: For SMS invitations, the user accepting via the link.
+                           For platform invitations, must match self.recipient.
+        """
         if self.status != InvitationStatus.PENDING:
             raise ValidationError('Can only accept pending invitations.')
 
         if self.is_expired:
             raise ValidationError('Invitation has expired.')
 
+        # Handle SMS invitations - set the recipient to the accepting user
+        if self.invitation_type == InvitationType.SMS:
+            if not accepting_user:
+                raise ValidationError('Accepting user required for SMS invitations.')
+            if accepting_user == self.sender:
+                raise ValidationError('Cannot accept your own invitation.')
+            # Set the recipient now that we know who accepted
+            self.recipient = accepting_user
+
         self.status = InvitationStatus.ACCEPTED
         self.responded_at = timezone.now()
-        self.save(update_fields=['status', 'responded_at'])
+        self.save(update_fields=['status', 'responded_at', 'recipient'])
 
-        # Start the battle
+        # Start the battle - for SMS invitations, add the accepting user as opponent
+        if self.invitation_type == InvitationType.SMS and accepting_user:
+            self.battle.opponent = accepting_user
+            self.battle.save(update_fields=['opponent'])
+
         self.battle.start_battle()
 
     def decline(self):
@@ -496,6 +575,48 @@ class BattleInvitation(models.Model):
     def is_expired(self):
         """Check if invitation has expired."""
         return timezone.now() > self.expires_at
+
+    @property
+    def invite_url(self) -> str:
+        """Get the full invite URL for SMS invitations."""
+        if not self.invite_token:
+            return ''
+        from django.conf import settings
+
+        frontend_url = settings.FRONTEND_URL
+        return f'{frontend_url}/battle/invite/{self.invite_token}'
+
+    def send_sms_invitation(self) -> bool:
+        """Send SMS invitation to recipient_phone.
+
+        Returns:
+            True if SMS was queued successfully
+        """
+        if self.invitation_type != InvitationType.SMS:
+            raise ValidationError('Can only send SMS for SMS-type invitations.')
+
+        if not self.recipient_phone:
+            raise ValidationError('No recipient phone number.')
+
+        if self.sms_sent_at:
+            raise ValidationError('SMS already sent.')
+
+        from core.sms.services import SMSService
+
+        sms_log = SMSService.send_battle_invitation(
+            to_phone=self.recipient_phone,
+            inviter_name=self.sender.display_name or self.sender.username,
+            battle_topic=self.battle.topic,
+            invitation_link=self.invite_url,
+            user=self.sender,
+            invitation_id=self.id,
+        )
+
+        self.sms_sent_at = timezone.now()
+        self.sms_log_id = sms_log.id
+        self.save(update_fields=['sms_sent_at', 'sms_log_id'])
+
+        return sms_log.status != 'failed'
 
 
 class BattleVote(models.Model):

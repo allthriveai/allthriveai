@@ -266,8 +266,6 @@ class ProjectAPITest(APITestCase):
 
     def test_admin_bulk_delete_any_projects(self):
         """Test that admins can bulk delete any projects."""
-        # TODO: Fix bulk delete endpoint - currently returns 400
-        self.skipTest('Bulk delete endpoint needs fixing')
         # Create admin user
         admin_user = User.objects.create_user(
             username='admin', email='admin@example.com', password='pass123', role=UserRole.ADMIN
@@ -280,7 +278,9 @@ class ProjectAPITest(APITestCase):
 
         # Admin bulk deletes all projects
         self.client.force_authenticate(user=admin_user)
-        response = self.client.post('/api/v1/me/projects/bulk-delete/', {'project_ids': [p1.id, p2.id, p3.id]})
+        response = self.client.post(
+            '/api/v1/me/projects/bulk-delete/', {'project_ids': [p1.id, p2.id, p3.id]}, format='json'
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['deleted_count'], 3)
 
@@ -317,8 +317,6 @@ class CommentPermissionsTest(APITestCase):
 
     def test_non_owner_cannot_delete_comment(self):
         """Test that non-owner cannot delete another user's comment."""
-        # TODO: Fix comment deletion permissions - currently allows non-owners to delete
-        self.skipTest('Comment deletion permissions need fixing')
         # Create comment as user1
         comment = ProjectComment.objects.create(
             user=self.user1, project=self.project, content='Test comment', moderation_status='approved'

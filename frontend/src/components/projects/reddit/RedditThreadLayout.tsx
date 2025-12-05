@@ -477,8 +477,8 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                 </div>
               )}
 
-              {/* Categories */}
-              {localProject.categoriesDetails && localProject.categoriesDetails.length > 0 && (
+              {/* Categories (hidden if hideCategories is true) */}
+              {!localProject.hideCategories && localProject.categoriesDetails && localProject.categoriesDetails.length > 0 && (
                 <div>
                   <h3 className={SECTION_HEADER_CLASS}>Category</h3>
                   <div className={TAG_CONTAINER_CLASS}>

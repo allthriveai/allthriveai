@@ -28,11 +28,12 @@ function LearnCard({ title, description, icon, onClick, comingSoon }: LearnCardP
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      aria-label={`${title}${comingSoon ? ' (Coming Soon)' : ''}`}
       className="glass-strong p-8 hover:-translate-y-1 cursor-pointer group relative overflow-hidden w-full text-left"
     >
       {/* Coming Soon Badge */}
       {comingSoon && (
-        <div className="absolute top-4 right-4 bg-primary-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
+        <div className="absolute top-4 right-4 bg-primary-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg" aria-hidden="true">
           Coming Soon
         </div>
       )}
@@ -109,16 +110,21 @@ export default function LearnPage() {
     <DashboardLayout>
       {() => (
         <div className="h-full overflow-y-auto">
-          {/* Hero Banner */}
-          <div className="relative h-64 bg-gradient-to-r from-primary-600 to-primary-800 dark:from-primary-800 dark:to-primary-950">
-            <div className="absolute inset-0 bg-[url('/learn-hero-pattern.svg')] opacity-10"></div>
+          {/* Hero Banner - Neon Glass Style */}
+          <header className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden" aria-label="Learn page header">
+            {/* Ambient Glow Background */}
+            <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
+            <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-purple-500/10 dark:bg-purple-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
+
             <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-              <h1 className="text-4xl font-bold text-white mb-4">Learn</h1>
-              <p className="text-xl text-primary-100 max-w-2xl">
+              <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-purple-400 bg-clip-text text-transparent">Learn</span>
+              </h1>
+              <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl">
                 Expand your AI knowledge with structured learning paths, interactive quizzes, and expert mentorship
               </p>
             </div>
-          </div>
+          </header>
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             {/* Cards Grid */}

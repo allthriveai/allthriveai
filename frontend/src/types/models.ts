@@ -120,6 +120,7 @@ export interface Project {
   toolsDetails?: Tool[]; // Full tool objects with details
   categories?: number[]; // Category taxonomy IDs (predefined)
   categoriesDetails?: Taxonomy[]; // Full category taxonomy objects
+  hideCategories?: boolean; // If true, categories are hidden from public display
   topics?: string[]; // User-generated topics (free-form, moderated)
   tagsManuallyEdited?: boolean; // If true, tags were manually edited by admin and won't be auto-updated
   heartCount: number;

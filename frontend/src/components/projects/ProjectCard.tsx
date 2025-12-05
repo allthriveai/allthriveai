@@ -22,6 +22,9 @@ import {
   ChatBubbleLeftIcon,
   SwatchIcon,
   ChatBubbleOvalLeftEllipsisIcon,
+  TrophyIcon,
+  VideoCameraIcon,
+  NewspaperIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { toggleProjectLike, deleteProjectById } from '@/services/projects';
@@ -52,6 +55,9 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   image_collection: PhotoIcon,
   prompt: ChatBubbleLeftRightIcon,
   reddit_thread: ChatBubbleOvalLeftEllipsisIcon,
+  video: VideoCameraIcon,
+  rss_article: NewspaperIcon,
+  battle: TrophyIcon,
   other: DocumentTextIcon,
 };
 
@@ -180,6 +186,19 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const getHeroElement = () => {
     const heroMode = project.content?.heroDisplayMode;
 
+    // For battle projects, show both submission images side by side
+    if (project.type === 'battle' && project.content?.battleResult) {
+      const battleResult = project.content.battleResult;
+      return {
+        type: 'battle' as const,
+        myImageUrl: battleResult.my_submission?.image_url,
+        opponentImageUrl: battleResult.opponent_submission?.image_url,
+        won: battleResult.won,
+        isTie: battleResult.is_tie,
+        challengeText: battleResult.challenge_text,
+      };
+    }
+
     // For Reddit threads, check if there's video data in the reddit metadata (fallback)
     if (project.type === 'reddit_thread' && !heroMode) {
       const redditData = project.content?.reddit;
@@ -261,10 +280,11 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   if (variant === 'masonry') {
     const heroElement = getHeroElement();
     // Treat quote and slideup cards as media cards for styling purposes (dark mode overlay style)
-    const isMediaCard = ['image', 'video', 'slideshow', 'quote', 'slideup', 'gradient'].includes(heroElement.type) || (heroElement.type === 'image' && project.type !== 'github_repo');
+    const isMediaCard = ['image', 'video', 'slideshow', 'quote', 'slideup', 'gradient', 'battle'].includes(heroElement.type) || (heroElement.type === 'image' && project.type !== 'github_repo');
     const isQuote = heroElement.type === 'quote';
     const isSlideup = heroElement.type === 'slideup';
     const isGradient = heroElement.type === 'gradient';
+    const isBattle = heroElement.type === 'battle';
 
     // Get gradient colors for quote cards
     const gradientFrom = project.content?.heroGradientFrom || GRADIENT_OVERLAY.DEFAULT_FROM;
@@ -487,6 +507,77 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                     setTimeout(() => setImageLoaded(true), 50);
                   }}
                 />
+              </div>
+            )}
+
+            {/* Battle Card - Side by side images with VS badge */}
+            {isBattle && heroElement.type === 'battle' && (
+              <div className="relative w-full bg-slate-900 pb-40 md:pb-0">
+                <div className="flex gap-1">
+                  {/* My submission */}
+                  <div className="flex-1 relative">
+                    {heroElement.myImageUrl ? (
+                      <img
+                        src={heroElement.myImageUrl}
+                        alt="Your submission"
+                        className="w-full aspect-square object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full aspect-square bg-slate-800 flex items-center justify-center">
+                        <span className="text-slate-600 text-sm">No image</span>
+                      </div>
+                    )}
+                    {/* Winner badge on my image */}
+                    {heroElement.won && (
+                      <div className="absolute top-2 left-2 p-1.5 rounded-full bg-amber-500 shadow-lg">
+                        <TrophyIcon className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Opponent submission */}
+                  <div className="flex-1 relative">
+                    {heroElement.opponentImageUrl ? (
+                      <img
+                        src={heroElement.opponentImageUrl}
+                        alt="Opponent submission"
+                        className="w-full aspect-square object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full aspect-square bg-slate-800 flex items-center justify-center">
+                        <span className="text-slate-600 text-sm">No image</span>
+                      </div>
+                    )}
+                    {/* Winner badge on opponent image */}
+                    {!heroElement.won && !heroElement.isTie && (
+                      <div className="absolute top-2 right-2 p-1.5 rounded-full bg-amber-500 shadow-lg">
+                        <TrophyIcon className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* VS Badge in center */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                  <div className="px-2 py-1 rounded-full bg-slate-800 border border-cyan-500/30 text-cyan-400 font-bold text-xs">
+                    VS
+                  </div>
+                </div>
+
+                {/* Result banner at top */}
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
+                  <div className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    heroElement.isTie
+                      ? 'bg-slate-700 text-slate-300'
+                      : heroElement.won
+                      ? 'bg-amber-500/80 text-white'
+                      : 'bg-slate-700 text-slate-300'
+                  }`}>
+                    {heroElement.isTie ? 'TIE' : heroElement.won ? 'VICTORY' : 'DEFEAT'}
+                  </div>
+                </div>
               </div>
             )}
 

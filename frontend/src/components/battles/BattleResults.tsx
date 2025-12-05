@@ -43,6 +43,7 @@ interface BattleResultsProps {
   onGoHome?: () => void;
   onSaveToProfile?: () => Promise<void>;
   isSaved?: boolean;
+  skipRevealAnimation?: boolean;
 }
 
 export function BattleResults({
@@ -55,8 +56,11 @@ export function BattleResults({
   onGoHome,
   onSaveToProfile,
   isSaved = false,
+  skipRevealAnimation = false,
 }: BattleResultsProps) {
-  const [revealPhase, setRevealPhase] = useState<'yours' | 'theirs' | 'winner'>('yours');
+  const [revealPhase, setRevealPhase] = useState<'yours' | 'theirs' | 'winner'>(
+    skipRevealAnimation ? 'winner' : 'yours'
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   const isWinner = winnerId === myPlayer.id;
@@ -72,15 +76,17 @@ export function BattleResults({
     }
   };
 
-  // Staged reveal animation
+  // Staged reveal animation (skip if already complete)
   useEffect(() => {
+    if (skipRevealAnimation) return;
+
     const timer1 = setTimeout(() => setRevealPhase('theirs'), 2000);
     const timer2 = setTimeout(() => setRevealPhase('winner'), 4000);
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
     };
-  }, []);
+  }, [skipRevealAnimation]);
 
   const renderScoreBreakdown = (scores?: Record<string, number>) => {
     if (!scores) return null;
@@ -173,7 +179,7 @@ export function BattleResults({
                 </span>
               )}
             </div>
-            {submission?.score !== undefined && revealed && (
+            {submission?.score != null && revealed && (
               <div className="flex items-center gap-1">
                 <SparklesIcon className="w-4 h-4 text-amber-400" />
                 <span className="font-bold text-white">{submission.score.toFixed(1)}</span>

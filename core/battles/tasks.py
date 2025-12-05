@@ -48,6 +48,11 @@ def generate_submission_image_task(self, submission_id: int) -> dict[str, Any]:
         logger.error(f'Submission not found: {submission_id}')
         return {'status': 'error', 'reason': 'submission_not_found'}
 
+    # Idempotency check: skip if already has generated image
+    if submission.generated_output_url:
+        logger.info(f'Submission {submission_id} already has image, skipping generation')
+        return {'status': 'skipped', 'reason': 'already_generated', 'image_url': submission.generated_output_url}
+
     battle = submission.battle
     channel_layer = get_channel_layer()
     group_name = f'battle_{battle.id}'
@@ -174,7 +179,7 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
             logger.error(f'Judging failed for battle {battle_id}: {results["error"]}')
             return {'status': 'error', 'reason': results['error']}
 
-        # Send judging results to room
+        # Send judging results to room with full submission data
         async_to_sync(channel_layer.group_send)(
             group_name,
             {
@@ -185,7 +190,10 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
             },
         )
 
-        # Transition to reveal phase
+        # Transition to reveal phase - SAVE TO DATABASE so state refresh includes opponent submission
+        battle.phase = BattlePhase.REVEAL
+        battle.save(update_fields=['phase'])
+
         async_to_sync(channel_layer.group_send)(
             group_name,
             {
@@ -195,10 +203,19 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
             },
         )
 
-        # Schedule battle completion after reveal period (10 seconds)
+        # Tell clients to refresh their state (includes opponent submission now)
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                'type': 'battle_event',
+                'event': 'state_refresh',
+            },
+        )
+
+        # Schedule battle completion after reveal period (2 seconds - enough for UI transition)
         complete_battle_task.apply_async(
             args=[battle_id],
-            countdown=10,
+            countdown=2,
         )
 
         logger.info(f'Battle {battle_id} judged: winner={results.get("winner_id")}')
@@ -261,6 +278,15 @@ def complete_battle_task(self, battle_id: int) -> dict[str, Any]:
             },
         )
 
+        # Tell clients to refresh their full state (final results)
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                'type': 'battle_event',
+                'event': 'state_refresh',
+            },
+        )
+
         logger.info(f'Battle {battle_id} completed')
         return {'status': 'success'}
 
@@ -280,7 +306,9 @@ def create_pip_submission_task(self, battle_id: int) -> dict[str, Any]:
     """
     Create Pip's submission for an AI opponent battle.
 
-    Called with a delay after user submits to simulate "thinking".
+    Called immediately when battle transitions to ACTIVE phase,
+    allowing Pip to generate their submission in parallel while
+    the user is crafting their prompt.
 
     Args:
         battle_id: ID of the PromptBattle

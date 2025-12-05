@@ -46,7 +46,7 @@ export function CircleChallengeCard({ challenge, variant = 'card' }: CircleChall
 
         {/* Content */}
         <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-4 mb-4">
             <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${colors.gradient} flex items-center justify-center ${colors.glow}`}>
               {challenge.isCompleted ? (
                 <FontAwesomeIcon icon={faCheck} className="text-2xl text-white" />
@@ -64,7 +64,9 @@ export function CircleChallengeCard({ challenge, variant = 'card' }: CircleChall
           </div>
 
           {challenge.description && (
-            <p className="text-sm text-slate-400 mb-6">{challenge.description}</p>
+            <div className="mb-6">
+              <p className="text-base text-gray-700 dark:text-slate-300 leading-relaxed">{challenge.description}</p>
+            </div>
           )}
 
           {/* Progress Section */}

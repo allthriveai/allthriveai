@@ -76,12 +76,13 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
               {/* Logo */}
               <button
                 onClick={() => navigate('/explore')}
-                className="flex items-center gap-2 text-gray-900 dark:text-white hover:text-teal-500 dark:hover:text-teal-400 transition-all duration-300 hover:scale-105"
+                className="flex items-center gap-2 text-gray-900 dark:text-white transition-all duration-300 hover:scale-105"
               >
-                <div className="p-1.5 rounded-lg bg-gradient-to-br from-teal-400/20 to-blue-500/20 backdrop-blur-sm">
-                  <HomeIcon className="w-5 h-5" />
-                </div>
-                <span className="font-bold text-lg hidden sm:block bg-gradient-to-r from-teal-600 to-blue-600 dark:from-teal-400 dark:to-blue-400 bg-clip-text text-transparent">All Thrive</span>
+                <img
+                  src="/all-thrvie-logo.png"
+                  alt="All Thrive"
+                  className="h-8 w-auto"
+                />
               </button>
 
               {/* Desktop Navigation Links */}

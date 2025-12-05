@@ -228,7 +228,7 @@ export function ChatInterface({
         className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
       >
         <div
-          className={`max-w-xs px-4 py-2 rounded-lg whitespace-pre-wrap ${
+          className={`max-w-[85%] sm:max-w-sm md:max-w-md px-4 py-2 rounded-lg whitespace-pre-wrap ${
             message.sender === 'user'
               ? 'bg-primary-600 text-white'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
@@ -244,11 +244,10 @@ export function ChatInterface({
     <>
       {/* Sliding Panel */}
       <div
-        className={`fixed right-0 top-16 w-full md:w-[480px] h-[calc(100vh-4rem)] border-l border-white/20 dark:border-white/10 flex flex-col shadow-2xl transition-all duration-300 z-40 ${
+        className={`fixed right-0 top-16 w-full md:w-[480px] h-[calc(100vh-4rem)] border-l border-gray-200 dark:border-gray-700 flex flex-col shadow-2xl transition-all duration-300 z-40 bg-white/95 dark:bg-gray-900/95 ${
           isOpen ? 'translate-x-0 opacity-100 visible' : 'translate-x-full opacity-0 invisible pointer-events-none'
         }`}
         style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         }}
@@ -279,14 +278,14 @@ export function ChatInterface({
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
           {header ? (
             header
           ) : headerContent ? (
             headerContent
           ) : (
             <>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text:white">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {config?.agentName || 'Chat'}
               </h2>
               <button
@@ -338,7 +337,7 @@ export function ChatInterface({
         )}
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
           {/* Custom content replaces entire messages area */}
           {customContent ? (
             customContent
@@ -381,7 +380,7 @@ export function ChatInterface({
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-200 dark:border-gray-800 p-4 flex-shrink-0 bg-white dark:bg-gray-900 overflow-visible relative">
+        <div className="border-t border-gray-200 dark:border-gray-800 p-3 sm:p-4 flex-shrink-0 bg-white dark:bg-gray-900 overflow-visible relative">
           {/* Attachment Preview */}
           {attachments.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">
@@ -402,7 +401,7 @@ export function ChatInterface({
                       return <FileIcon className="w-5 h-5 text-gray-500" />;
                     })()
                   )}
-                  <span className="max-w-[120px] truncate text-gray-700 dark:text-gray-300">
+                  <span className="max-w-[80px] sm:max-w-[120px] truncate text-gray-700 dark:text-gray-300">
                     {file.name}
                   </span>
                   <button
@@ -431,14 +430,15 @@ export function ChatInterface({
               type="text"
               placeholder={inputPlaceholder}
               disabled={isLoading}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text:white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all chat-input"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all chat-input"
             />
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2 shadow-sm"
+              aria-label="Send message"
             >
-              <PaperAirplaneIcon className="w-4 h-4" />
+              <PaperAirplaneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </form>
         </div>

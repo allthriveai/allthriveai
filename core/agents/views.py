@@ -17,7 +17,7 @@ from .serializers import ConversationSerializer, MessageSerializer
 logger = logging.getLogger(__name__)
 
 
-def _generate_creative_journey_summary(iterations: list[dict]) -> tuple[str, str]:
+def _generate_creative_journey_summary(iterations: list[dict]) -> tuple[str, str, str]:
     """
     Generate an AI summary of the creative journey from iterations.
 
@@ -25,50 +25,61 @@ def _generate_creative_journey_summary(iterations: list[dict]) -> tuple[str, str
         iterations: List of iteration data with prompt, gemini_response, order
 
     Returns:
-        Tuple of (title, summary_text)
+        Tuple of (title, summary_text, cleaned_prompt_description)
     """
     if not iterations:
-        return 'Nano Banana Creation', 'An AI-generated image.'
+        return 'Nano Banana Creation', 'An AI-generated image.', 'An AI-generated image.'
+
+    # Get the final prompt (last iteration) for the description
+    final_prompt = iterations[-1]['prompt'] if iterations else ''
 
     # Build the journey narrative
     journey_text = '\n'.join([f'Iteration {i["order"] + 1}: User asked: "{i["prompt"]}"' for i in iterations])
 
-    # Use AI to generate a creative summary
+    # Use AI to generate a creative summary and clean up the prompt
     prompt = f"""You are summarizing the creative journey of generating an AI image.
 
 The user went through {len(iterations)} iteration(s) to create their final image:
 
 {journey_text}
 
-Write TWO things:
+Write THREE things:
 1. A SHORT TITLE (5-8 words max) that captures what was created
 2. A BRIEF NARRATIVE (2-3 sentences) describing the creative journey - how the image evolved through iterations
+3. A CLEANED DESCRIPTION - take the final prompt and fix any spelling/grammar errors, but keep the original meaning and style. This should be 1-2 sentences max.
 
 Format your response EXACTLY like this:
 TITLE: [your title here]
 SUMMARY: [your summary here]
+DESCRIPTION: [cleaned version of the final prompt]
 
 Be creative and engaging but concise."""
 
     try:
         ai = AIProvider(provider='azure')
-        response = ai.complete(prompt=prompt, max_tokens=200, temperature=0.7)
+        response = ai.complete(prompt=prompt, max_tokens=300, temperature=0.7)
 
         # Parse the response
         lines = response.strip().split('\n')
         title = 'Nano Banana Creation'
         summary = ''
+        description = final_prompt  # Default to original prompt
 
         for line in lines:
             if line.startswith('TITLE:'):
                 title = line.replace('TITLE:', '').strip()
             elif line.startswith('SUMMARY:'):
                 summary = line.replace('SUMMARY:', '').strip()
+            elif line.startswith('DESCRIPTION:'):
+                description = line.replace('DESCRIPTION:', '').strip()
 
         if not summary:
             summary = response.strip()
 
-        return title, summary
+        if not description:
+            description = final_prompt
+
+        return title, summary, description
 
     except Exception as e:
         logger.error(f'Failed to generate creative journey summary: {e}')
@@ -77,6 +88,7 @@ Be creative and engaging but concise."""
         return (
             f'Nano Banana: {first_prompt[:50]}',
             f'Created through {len(iterations)} iteration(s), starting with: "{first_prompt}"',
+            final_prompt or first_prompt,
         )
 
 
@@ -297,8 +309,8 @@ class CreateProjectFromImageView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Generate title and summary
-        generated_title, summary = _generate_creative_journey_summary(iterations)
+        # Generate title, summary, and cleaned description
+        generated_title, summary, cleaned_description = _generate_creative_journey_summary(iterations)
         title = custom_title or generated_title
 
         # Build project content with creative journey
@@ -351,18 +363,38 @@ class CreateProjectFromImageView(APIView):
             'heroDisplayMode': 'image',
         }
 
-        # Create the project
+        # Create the project with the cleaned prompt as description
         try:
             project = Project.objects.create(
                 user=request.user,
                 title=title,
-                description=summary,
+                description=cleaned_description,  # Use the cleaned prompt as description
                 featured_image_url=session.final_image_url,
                 banner_url=session.final_image_url,
                 type='prompt',
                 content=project_content,
                 is_showcased=True,
+                hide_categories=True,  # Categories are for filtering only, not public display
             )
+
+            # Add tools - try to find "Nano Banana" or create AI image generation tools
+            from core.taxonomy.models import Category
+            from core.tools.models import Tool
+
+            # Try to add Nano Banana tool
+            nano_banana_tool = Tool.objects.filter(name__icontains='Nano Banana').first()
+            if not nano_banana_tool:
+                # Try to find any AI image generation tool
+                nano_banana_tool = Tool.objects.filter(name__icontains='image generation').first()
+            if nano_banana_tool:
+                project.tools.add(nano_banana_tool)
+
+            # Add relevant categories silently (not displayed but helps with organization)
+            ai_art_category = Category.objects.filter(
+                slug__in=['ai-art', 'ai-generated', 'generative-ai', 'art']
+            ).first()
+            if ai_art_category:
+                project.categories.add(ai_art_category)
 
             # Link project to session
             session.project = project

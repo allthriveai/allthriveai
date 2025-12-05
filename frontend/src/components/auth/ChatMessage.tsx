@@ -10,10 +10,10 @@ export function ChatMessage({ message }: ChatMessageProps) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
       <div
-        className={`max-w-[80%] px-4 py-3 rounded ${
+        className={`max-w-[80%] px-4 py-3 rounded-xl ${
           isUser
-            ? 'bg-gradient-primary text-white'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+            ? 'bg-cyan-500/20 border border-cyan-500/30 text-white'
+            : 'bg-white/5 border border-white/10 text-slate-200'
         }`}
       >
         <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>

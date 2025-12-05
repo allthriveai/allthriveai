@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from core.users.models import User
 
-from .models import BattleInvitation, BattleStatus, BattleSubmission, BattleType, PromptBattle
+from .models import BattleInvitation, BattleStatus, BattleSubmission, BattleType, ChallengeType, PromptBattle
 
 
 class BattleUserSerializer(serializers.ModelSerializer):
@@ -35,6 +35,7 @@ class BattleSubmissionSerializer(serializers.ModelSerializer):
             'generated_output_url',
             'generated_output_text',
             'score',
+            'criteria_scores',
             'evaluation_feedback',
             'submitted_at',
             'evaluated_at',
@@ -45,6 +46,7 @@ class BattleSubmissionSerializer(serializers.ModelSerializer):
             'user_avatar',
             'submitted_at',
             'score',
+            'criteria_scores',
             'evaluation_feedback',
             'evaluated_at',
         ]
@@ -60,6 +62,15 @@ class BattleSubmissionSerializer(serializers.ModelSerializer):
         return value
 
 
+class ChallengeTypeSerializer(serializers.ModelSerializer):
+    """Serializer for challenge type."""
+
+    class Meta:
+        model = ChallengeType
+        fields = ['key', 'name', 'description']
+        read_only_fields = ['key', 'name', 'description']
+
+
 class PromptBattleSerializer(serializers.ModelSerializer):
     """Serializer for prompt battles with full details."""
 
@@ -67,6 +78,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
     opponent_data = BattleUserSerializer(source='opponent', read_only=True)
     winner_data = BattleUserSerializer(source='winner', read_only=True)
     submissions = BattleSubmissionSerializer(many=True, read_only=True)
+    challenge_type = ChallengeTypeSerializer(read_only=True)
 
     time_remaining = serializers.SerializerMethodField()
     is_expired = serializers.ReadOnlyField()
@@ -82,8 +94,10 @@ class PromptBattleSerializer(serializers.ModelSerializer):
             'opponent',
             'opponent_data',
             'challenge_text',
+            'challenge_type',
             'status',
             'battle_type',
+            'match_source',
             'duration_minutes',
             'created_at',
             'started_at',
@@ -102,6 +116,8 @@ class PromptBattleSerializer(serializers.ModelSerializer):
             'challenger_data',
             'opponent_data',
             'winner_data',
+            'challenge_type',
+            'match_source',
             'created_at',
             'started_at',
             'expires_at',

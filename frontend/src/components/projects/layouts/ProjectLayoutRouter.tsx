@@ -17,6 +17,7 @@ import { FigmaProjectLayout } from '../figma/FigmaProjectLayout';
 import { FigmaProjectPendingView } from '../figma/FigmaProjectPendingView';
 import { RedditThreadLayout } from '../reddit/RedditThreadLayout';
 import { VideoProjectLayout } from './VideoProjectLayout';
+import { BattleProjectLayout } from './BattleProjectLayout';
 import { DefaultProjectLayout } from './DefaultProjectLayout';
 
 /**
@@ -74,6 +75,11 @@ export function ProjectLayoutRouter() {
   // Video Layout - for YouTube and other video projects
   if (project.type === 'video') {
     return <VideoProjectLayout />;
+  }
+
+  // Battle Layout - for saved prompt battle results
+  if (project.type === 'battle') {
+    return <BattleProjectLayout />;
   }
 
   // Default layout for all other project types:

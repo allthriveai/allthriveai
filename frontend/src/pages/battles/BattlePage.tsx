@@ -3,15 +3,16 @@
  *
  * Main page for an active prompt battle.
  * Manages battle state and renders appropriate phase components.
+ * Falls back to REST API for completed battles when WebSocket fails.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { api } from '@/services/api';
 
-import { useBattleWebSocket } from '@/hooks/useBattleWebSocket';
+import { useBattleWebSocket, type BattleState } from '@/hooks/useBattleWebSocket';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import {
@@ -28,6 +29,9 @@ export function BattlePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isSavedToProfile, setIsSavedToProfile] = useState(false);
+  const [restBattleState, setRestBattleState] = useState<BattleState | null>(null);
+  const [restLoading, setRestLoading] = useState(false);
+  const [restError, setRestError] = useState<string | null>(null);
 
   const handleError = useCallback((error: string) => {
     console.error('[Battle] Error:', error);
@@ -43,7 +47,7 @@ export function BattlePage() {
   }, []);
 
   const {
-    battleState,
+    battleState: wsBattleState,
     isConnected,
     isConnecting,
     opponentStatus,
@@ -56,6 +60,92 @@ export function BattlePage() {
     onPhaseChange: handlePhaseChange,
     onMatchComplete: handleMatchComplete,
   });
+
+  // Fallback to REST API when WebSocket fails (for completed battles)
+  useEffect(() => {
+    const fetchBattleViaRest = async () => {
+      if (!battleId || wsBattleState || isConnecting || !user) return;
+
+      // Only fetch via REST if WebSocket failed and we don't have state
+      setRestLoading(true);
+      setRestError(null);
+
+      try {
+        const response = await api.get(`/me/battles/${battleId}/`);
+        const data = response.data;
+
+        // Determine opponent based on challenger/opponent IDs
+        const isChallenger = data.challenger === user.id;
+        const opponentData = isChallenger ? data.opponent_data : data.challenger_data;
+
+        // Find my submission and opponent's submission from submissions array
+        const submissions = data.submissions || [];
+        const mySubmissionData = submissions.find(
+          (s: { user: number }) => s.user === user.id
+        );
+        const opponentSubmissionData = submissions.find(
+          (s: { user: number }) => s.user !== user.id
+        );
+
+        // Transform REST response to match WebSocket state format
+        const transformedState: BattleState = {
+          id: data.id,
+          phase: data.status === 'completed' ? 'complete' : data.status,
+          status: data.status,
+          challengeText: data.challenge_text,
+          challengeType: data.challenge_type
+            ? { key: data.challenge_type.key, name: data.challenge_type.name }
+            : null,
+          durationMinutes: data.duration_minutes,
+          timeRemaining: data.time_remaining,
+          myConnected: true,
+          opponent: {
+            id: opponentData?.id || 0,
+            username: opponentData?.username || 'Unknown',
+            avatarUrl: opponentData?.avatar_url,
+            connected: false,
+          },
+          mySubmission: mySubmissionData
+            ? {
+                id: mySubmissionData.id,
+                promptText: mySubmissionData.prompt_text,
+                imageUrl: mySubmissionData.generated_output_url,
+                score: mySubmissionData.score,
+                criteriaScores: mySubmissionData.criteria_scores,
+                feedback: mySubmissionData.evaluation_feedback,
+              }
+            : null,
+          opponentSubmission: opponentSubmissionData
+            ? {
+                id: opponentSubmissionData.id,
+                promptText: opponentSubmissionData.prompt_text,
+                imageUrl: opponentSubmissionData.generated_output_url,
+                score: opponentSubmissionData.score,
+                criteriaScores: opponentSubmissionData.criteria_scores,
+                feedback: opponentSubmissionData.evaluation_feedback,
+              }
+            : null,
+          winnerId: data.winner,
+          matchSource: data.match_source || 'unknown',
+        };
+
+        setRestBattleState(transformedState);
+        console.log('[Battle] Loaded battle via REST API:', transformedState);
+      } catch (error) {
+        console.error('[Battle] Failed to load battle via REST:', error);
+        setRestError('Failed to load battle data');
+      } finally {
+        setRestLoading(false);
+      }
+    };
+
+    // Small delay to let WebSocket attempt connection first
+    const timeout = setTimeout(fetchBattleViaRest, 2000);
+    return () => clearTimeout(timeout);
+  }, [battleId, wsBattleState, isConnecting, user]);
+
+  // Use WebSocket state if available, otherwise fallback to REST
+  const battleState = wsBattleState || restBattleState;
 
   // Map backend opponent status to component status
   const mappedOpponentStatus: PlayerStatus = useMemo(() => {
@@ -106,7 +196,7 @@ export function BattlePage() {
   const handleSaveToProfile = useCallback(async () => {
     if (!battleId) return;
     try {
-      const response = await api.post(`/api/v1/battles/${battleId}/save_to_profile/`);
+      const response = await api.post(`/me/battles/${battleId}/save_to_profile/`);
       setIsSavedToProfile(true);
       // If already saved, it's still a success - just means it was saved before
       if (response.data?.already_saved) {
@@ -136,7 +226,7 @@ export function BattlePage() {
     );
   }
 
-  if (isConnecting || !battleState) {
+  if ((isConnecting || restLoading) && !battleState) {
     return (
       <DashboardLayout>
         <div className="min-h-screen bg-background flex items-center justify-center">
@@ -150,15 +240,57 @@ export function BattlePage() {
               transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
               className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-cyan-500/30 border-t-cyan-500"
             />
-            <p className="text-slate-400">Connecting to battle...</p>
+            <p className="text-slate-400">
+              {restLoading ? 'Loading battle...' : 'Connecting to battle...'}
+            </p>
           </motion.div>
         </div>
       </DashboardLayout>
     );
   }
 
-  // Connection error state
-  if (!isConnected && battleState.phase !== 'complete') {
+  // Show error if both WebSocket and REST failed
+  if (!battleState && restError) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center glass-card p-8 max-w-md">
+            <ExclamationTriangleIcon className="w-12 h-12 text-rose-400 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">Failed to Load Battle</h2>
+            <p className="text-slate-400 mb-4">{restError}</p>
+            <button onClick={() => navigate('/battles')} className="btn-primary">
+              Back to Battles
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!battleState) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center"
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+              className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-cyan-500/30 border-t-cyan-500"
+            />
+            <p className="text-slate-400">Loading battle...</p>
+          </motion.div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Connection error state - only show if WebSocket is disconnected AND we don't have REST fallback data
+  // For completed battles loaded via REST, we don't need a WebSocket connection
+  if (!isConnected && battleState.phase !== 'complete' && !restBattleState) {
     return (
       <DashboardLayout>
         <div className="min-h-screen bg-background flex items-center justify-center">
@@ -233,6 +365,7 @@ export function BattlePage() {
             opponentImageGenerating={battleState.phase === 'generating'}
             myImageUrl={battleState.mySubmission?.imageUrl}
             opponentUsername={battleState.opponent.username}
+            isJudging={battleState.phase === 'judging'}
           />
         );
 
@@ -254,6 +387,7 @@ export function BattlePage() {
             onGoHome={handleGoHome}
             onSaveToProfile={handleSaveToProfile}
             isSaved={isSavedToProfile}
+            skipRevealAnimation={battleState.phase === 'complete'}
           />
         );
 

@@ -1,0 +1,1 @@
+export { ToolRecommendationQuiz } from './ToolRecommendationQuiz';

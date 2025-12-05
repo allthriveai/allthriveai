@@ -52,6 +52,8 @@ class Project(models.Model):
         VIDEO = 'video', 'Video'
         REDDIT_THREAD = 'reddit_thread', 'Reddit Thread'
         RSS_ARTICLE = 'rss_article', 'RSS Article'
+        BATTLE = 'battle', 'Prompt Battle'
+        PRODUCT = 'product', 'Digital Product'
         OTHER = 'other', 'Other'
 
     class DifficultyLevel(models.TextChoices):
@@ -91,6 +93,11 @@ class Project(models.Model):
         default=False,
         help_text='Soft delete - hidden from all views',
     )
+    is_product = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Whether this project is a sellable digital product',
+    )
     # CharField supports both full URLs and relative paths (e.g., /path/to/image)
     banner_url = models.CharField(max_length=500, blank=True, default='', help_text='Banner image URL')
     # Featured image for cards and social sharing
@@ -112,6 +119,11 @@ class Project(models.Model):
         related_name='projects',
         limit_choices_to={'taxonomy_type': 'category', 'is_active': True},
         help_text='Categories that organize this project (from predefined Taxonomy)',
+    )
+    # Hide categories from public display (still used for filtering/organization)
+    hide_categories = models.BooleanField(
+        default=False,
+        help_text='If True, categories are hidden from public display but still used for filtering',
     )
     # User-generated topics (free-form, moderated)
     topics = ArrayField(

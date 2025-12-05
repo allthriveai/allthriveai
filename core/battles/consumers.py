@@ -267,19 +267,18 @@ class BattleConsumer(AsyncWebsocketConsumer):
             )
         )
 
-        # If this is a Pip battle, trigger Pip's submission with a delay
-        is_pip_battle = await self._is_pip_battle(battle)
-        if is_pip_battle:
-            # Delay 2-5 seconds to simulate Pip "thinking"
-            import random
+        # OPTIMIZATION: Start image generation immediately for this submission
+        # Don't wait for opponent - this saves 5-15s in Pip battles since
+        # Pip's image is already generating from battle start
+        from core.battles.tasks import generate_submission_image_task
 
-            from core.battles.tasks import create_pip_submission_task
+        generate_submission_image_task.delay(submission.id)
+        logger.info(f'Started image generation immediately for submission {submission.id}')
 
-            delay = random.randint(2, 5)  # noqa: S311 - not cryptographic
-            create_pip_submission_task.apply_async(args=[battle.id], countdown=delay)
-        else:
-            # Check if both users have submitted
-            await self._check_both_submitted(battle)
+        # For Pip battles, Pip's submission is already triggered at battle start
+        # so we just need to check if both have submitted
+        # For PvP battles, check if both users have submitted
+        await self._check_both_submitted(battle)
 
     async def _check_both_connected(self):
         """Check if both users are connected and start countdown if so."""
@@ -333,6 +332,16 @@ class BattleConsumer(AsyncWebsocketConsumer):
 
             # Send updated battle state
             await self.send_battle_state()
+
+            # For Pip battles, start generating Pip's submission immediately
+            # This runs in parallel while user is crafting their prompt
+            if battle:
+                is_pip_battle = await self._is_pip_battle(battle)
+                if is_pip_battle:
+                    from core.battles.tasks import create_pip_submission_task
+
+                    # Start immediately - no artificial delay
+                    create_pip_submission_task.delay(battle.id)
 
             # Schedule timeout task for when battle duration expires
             if battle:
@@ -640,8 +649,35 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
     async def _handle_join_queue(self, match_type: str, challenge_type_key: str | None):
         """Handle user joining the matchmaking queue."""
         # Validate match type
-        if match_type not in ['random', 'ai']:
+        if match_type not in ['random', 'ai', 'active_user']:
             await self._send_error('Invalid match type')
+            return
+
+        # Handle active user matching - find someone who's online now
+        if match_type == 'active_user':
+            result = await self._find_active_user_match(challenge_type_key)
+            if result:
+                await self.send(
+                    text_data=json.dumps(
+                        {
+                            'event': 'match_found',
+                            'battle_id': result['battle_id'],
+                            'opponent': result['opponent'],
+                            'timestamp': self._get_timestamp(),
+                        }
+                    )
+                )
+            else:
+                # No active users available - fall back to queue
+                await self.send(
+                    text_data=json.dumps(
+                        {
+                            'event': 'no_active_users',
+                            'message': 'No active users available right now. Try again or battle Pip!',
+                            'timestamp': self._get_timestamp(),
+                        }
+                    )
+                )
             return
 
         # Handle AI opponent - instant match
@@ -948,6 +984,135 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
         )
 
         return battle
+
+    @database_sync_to_async
+    def _find_active_user_in_db(self, challenge_type_key: str | None) -> dict | None:
+        """
+        Find an active user to match with.
+
+        An active user is:
+        - Seen within the last 5 minutes
+        - Available for battles (is_available_for_battles=True)
+        - Not currently in an active battle
+        - Not ourselves
+        """
+        from django.db.models import Q
+
+        from core.battles.models import BattleInvitation, InvitationType
+        from core.users.models import UserRole
+
+        # Users seen in last 5 minutes, available for battles
+        active_threshold = timezone.now() - timedelta(minutes=5)
+
+        # Find active users who aren't in a battle
+        active_users = (
+            User.objects.filter(
+                last_seen_at__gte=active_threshold,
+                is_available_for_battles=True,
+            )
+            .exclude(id=self.user.id)  # Not ourselves
+            .exclude(role=UserRole.AGENT)  # Not AI agents like Pip
+            .exclude(
+                # Not in an active battle as challenger
+                Q(battles_as_challenger__status__in=[BattleStatus.PENDING, BattleStatus.ACTIVE])
+            )
+            .exclude(
+                # Not in an active battle as opponent
+                Q(battles_as_opponent__status__in=[BattleStatus.PENDING, BattleStatus.ACTIVE])
+            )
+            .order_by('-last_seen_at')  # Most recently active first
+        )
+
+        if not active_users.exists():
+            return None
+
+        # Get a random active user (to avoid always matching with same person)
+        import random
+
+        active_list = list(active_users[:10])  # Limit to 10 candidates
+        matched_user = random.choice(active_list)
+
+        # Get or create a challenge type
+        challenge_type = None
+        if challenge_type_key:
+            try:
+                challenge_type = ChallengeType.objects.get(key=challenge_type_key, is_active=True)
+            except ChallengeType.DoesNotExist:
+                pass
+
+        if not challenge_type:
+            challenge_type = ChallengeType.objects.filter(is_active=True).order_by('?').first()
+
+        if not challenge_type:
+            logger.warning('No active challenge types available')
+            return None
+
+        # Generate challenge
+        challenge_text = challenge_type.generate_challenge()
+
+        # Create the battle with an invitation
+        battle = PromptBattle.objects.create(
+            challenger=self.user,
+            opponent=matched_user,
+            challenge_text=challenge_text,
+            challenge_type=challenge_type,
+            match_source=MatchSource.RANDOM,  # Could add new source: ACTIVE_USER
+            duration_minutes=challenge_type.default_duration_minutes,
+            status=BattleStatus.PENDING,
+            phase=BattlePhase.WAITING,
+        )
+
+        # Create a RANDOM-type invitation so we can track this match
+        BattleInvitation.objects.create(
+            battle=battle,
+            sender=self.user,
+            recipient=matched_user,
+            invitation_type=InvitationType.RANDOM,
+            status='pending',
+        )
+
+        logger.info(
+            f'Active user match created: battle={battle.id}, challenger={self.user.id}, opponent={matched_user.id}',
+            extra={
+                'battle_id': battle.id,
+                'challenger_id': self.user.id,
+                'opponent_id': matched_user.id,
+                'match_type': 'active_user',
+            },
+        )
+
+        return {
+            'battle_id': battle.id,
+            'matched_user_id': matched_user.id,
+            'opponent': {
+                'id': matched_user.id,
+                'username': matched_user.username,
+                'is_ai': False,
+            },
+        }
+
+    async def _find_active_user_match(self, challenge_type_key: str | None) -> dict | None:
+        """Find an active user and notify them of the match."""
+        result = await self._find_active_user_in_db(challenge_type_key)
+
+        if result:
+            # Notify the matched user via WebSocket (if they're connected)
+            other_user_group = f'matchmaking_user_{result["matched_user_id"]}'
+            await self.channel_layer.group_send(
+                other_user_group,
+                {
+                    'type': 'matchmaking_event',
+                    'event': 'battle_invitation',
+                    'battle_id': result['battle_id'],
+                    'challenger': {
+                        'id': self.user.id,
+                        'username': self.user.username,
+                    },
+                    'message': f'{self.user.username} wants to battle you!',
+                },
+            )
+
+        return result
 
     async def _send_error(self, message: str):
         """Send error message to client."""

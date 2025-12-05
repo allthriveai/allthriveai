@@ -707,6 +707,57 @@ def _process_image_generation(
 
     logger.info(f'Processing image generation: conversation={conversation_id}')
 
+    # Check if the message is too vague/generic and needs more details
+    vague_prompts = [
+        'create an image or infographic for me',
+        'create an image for me',
+        'create an infographic for me',
+        'make an image',
+        'make an infographic',
+        'generate an image',
+        'generate an infographic',
+        'i want an image',
+        'i want an infographic',
+        'create a visual',
+        'make a visual',
+    ]
+    normalized_message = message.lower().strip()
+    is_vague_request = any(
+        normalized_message == vague or normalized_message.startswith(vague) for vague in vague_prompts
+    )
+
+    if is_vague_request:
+        # Send a prompt asking for more details - use 'chunk' event for text display
+        response_text = (
+            'Great, can you please describe what you would like me to make? '
+            'I can make images and I am also great at making infographics!'
+        )
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'chunk',
+                'chunk': response_text,
+                'conversation_id': conversation_id,
+            },
+        )
+        # Send completed event to finalize the message
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'completed',
+                'conversation_id': conversation_id,
+                'mode': 'image-generation',
+            },
+        )
+        return {
+            'success': True,
+            'response': 'Asked for more details',
+            'image_generated': False,
+            'awaiting_description': True,
+        }
+
     # Get or create session for tracking iterations
     session, created = ImageGenerationSession.objects.get_or_create(
         conversation_id=conversation_id,

@@ -161,12 +161,51 @@ class User(AbstractUser):
         default=0, help_text='Number of unique achievement categories with at least one earned achievement'
     )
 
+    # Activity tracking for real-time features (battles, presence)
+    last_seen_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='Last time user made an API request (for online status)',
+    )
+    is_available_for_battles = models.BooleanField(
+        default=True,
+        help_text='User is open to receiving random battle invitations from active users',
+    )
+
+    # Phone/SMS fields for battle invitations
+    phone_number = models.CharField(
+        max_length=20,
+        blank=True,
+        db_index=True,
+        help_text='Phone number in E.164 format (e.g., +14155551234)',
+    )
+    phone_verified = models.BooleanField(
+        default=False,
+        help_text='Whether phone number has been verified via SMS code',
+    )
+    phone_verified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When phone number was verified',
+    )
+    allow_sms_invitations = models.BooleanField(
+        default=True,
+        help_text='Allow receiving battle invitations via SMS',
+    )
+
     class Meta:
         ordering = ['-date_joined']
         indexes = [
             # Performance indexes for community circles (collaboration over competition)
             models.Index(fields=['tier'], name='user_tier_idx'),  # Query users in same tier circle
             models.Index(fields=['tier', '-date_joined'], name='user_tier_recent_idx'),  # Recent members in tier
+            # Activity tracking for battle matchmaking
+            models.Index(fields=['-last_seen_at'], name='user_last_seen_idx'),  # Find active users
+            models.Index(
+                fields=['is_available_for_battles', '-last_seen_at'],
+                name='user_battle_available_idx',
+            ),
         ]
         constraints = [
             models.CheckConstraint(check=models.Q(total_points__gte=0), name='user_points_non_negative'),

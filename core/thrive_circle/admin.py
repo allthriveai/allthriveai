@@ -1,6 +1,8 @@
 """Admin interface for Thrive Circle."""
 
+from django import forms
 from django.contrib import admin
+from django.utils.html import format_html
 
 from .models import (
     Circle,
@@ -8,6 +10,9 @@ from .models import (
     CircleMembership,
     Kudos,
     PointActivity,
+    QuestCategory,
+    SideQuest,
+    UserSideQuest,
 )
 
 
@@ -156,3 +161,258 @@ class KudosAdmin(admin.ModelAdmin):
         ('Kudos Details', {'fields': ('kudos_type', 'message')}),
         ('Timestamp', {'fields': ('created_at',)}),
     )
+
+
+# =============================================================================
+# Side Quests Admin
+# =============================================================================
+
+
+@admin.register(QuestCategory)
+class QuestCategoryAdmin(admin.ModelAdmin):
+    """Admin for Quest Categories."""
+
+    list_display = ['name', 'slug', 'category_type', 'color_badge', 'icon', 'order', 'is_active']
+    list_filter = ['category_type', 'is_active']
+    search_fields = ['name', 'slug', 'description']
+    prepopulated_fields = {'slug': ('name',)}
+    ordering = ['order', 'name']
+
+    fieldsets = (
+        (
+            '📂 Category Info',
+            {'fields': ('name', 'slug', 'description', 'category_type'), 'description': 'Basic category information'},
+        ),
+        ('🎨 Visual', {'fields': ('icon', 'color_from', 'color_to'), 'description': 'Visual styling for the category'}),
+        ('⚙️ Settings', {'fields': ('order', 'is_active'), 'description': 'Display order and activation status'}),
+    )
+
+    @admin.display(description='Color')
+    def color_badge(self, obj):
+        """Display color gradient badge."""
+        return format_html(
+            '<div style="background: linear-gradient(135deg, {}, {}); width: 100px; height: 20px; border-radius: 3px;"></div>',
+            obj.color_from,
+            obj.color_to,
+        )
+
+
+class SideQuestForm(forms.ModelForm):
+    """Custom form for Side Quests with better widgets."""
+
+    class Meta:
+        model = SideQuest
+        fields = '__all__'
+        widgets = {
+            'description': forms.Textarea(
+                attrs={'rows': 3, 'placeholder': 'Detailed description of what the user needs to do'}
+            ),
+            'requirements': forms.Textarea(
+                attrs={'rows': 4, 'placeholder': '{"target": 5, "action": "comment_created", "criteria": "any"}'}
+            ),
+            'steps': forms.Textarea(
+                attrs={
+                    'rows': 6,
+                    'placeholder': '[{"id": "step_1", "title": "...", "description": "...", "destination_url": "/learn"}]',
+                }
+            ),
+            'narrative_intro': forms.Textarea(
+                attrs={'rows': 2, 'placeholder': 'Welcome message when quest starts (encouraging tone)'}
+            ),
+            'narrative_complete': forms.Textarea(
+                attrs={'rows': 2, 'placeholder': 'Celebration message when quest completes'}
+            ),
+        }
+
+
+@admin.register(SideQuest)
+class SideQuestAdmin(admin.ModelAdmin):
+    """Admin for Side Quests - allows creating quests without code deployment."""
+
+    form = SideQuestForm
+
+    list_display = [
+        'title',
+        'category',
+        'difficulty_badge',
+        'points_reward',
+        'quest_type',
+        'active_status',
+        'completion_count',
+    ]
+    list_filter = [
+        'is_active',
+        'difficulty',
+        'quest_type',
+        'category',
+        'topic',
+        'is_daily',
+        'is_repeatable',
+    ]
+    search_fields = ['title', 'description', 'quest_type']
+    ordering = ['category__order', 'order', '-created_at']
+    readonly_fields = ['created_at', 'updated_at', 'quest_preview']
+
+    list_per_page = 50
+    save_on_top = True
+
+    fieldsets = (
+        (
+            '📝 Quest Basics',
+            {
+                'fields': ('title', 'description', 'quest_type', 'difficulty', 'category'),
+                'description': 'Core quest information',
+            },
+        ),
+        (
+            '🎯 Requirements & Rewards',
+            {
+                'fields': ('requirements', 'points_reward'),
+                'description': 'What users need to do and what they get. Use JSON format for requirements.',
+            },
+        ),
+        (
+            '🗂️ Topic & Level (Optional)',
+            {
+                'fields': ('topic', 'skill_level'),
+                'description': 'Optional topic-based filtering for personalized quest recommendations',
+                'classes': ('collapse',),
+            },
+        ),
+        (
+            '📖 Guided Quest (Multi-Step)',
+            {
+                'fields': ('is_guided', 'steps', 'narrative_intro', 'narrative_complete', 'estimated_minutes'),
+                'description': 'For multi-step guided quests with narrative',
+                'classes': ('collapse',),
+            },
+        ),
+        (
+            '⏰ Scheduling & Repeats',
+            {
+                'fields': (
+                    'is_active',
+                    'starts_at',
+                    'expires_at',
+                    'is_daily',
+                    'daily_reset_hour',
+                    'is_repeatable',
+                    'repeat_cooldown_hours',
+                ),
+                'description': 'Quest availability and repeatability settings',
+            },
+        ),
+        ('⚙️ Organization', {'fields': ('order',), 'description': 'Display order within category'}),
+        (
+            '📊 Preview & Meta',
+            {
+                'fields': ('quest_preview', 'created_at', 'updated_at'),
+                'classes': ('collapse',),
+            },
+        ),
+    )
+
+    actions = ['activate_quests', 'deactivate_quests', 'duplicate_quest']
+
+    @admin.display(description='Difficulty')
+    def difficulty_badge(self, obj):
+        """Display difficulty with color."""
+        colors = {
+            'easy': '#10b981',  # green
+            'medium': '#f59e0b',  # orange
+            'hard': '#ef4444',  # red
+            'epic': '#8b5cf6',  # purple
+        }
+        color = colors.get(obj.difficulty, 'gray')
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 2px 8px; border-radius: 3px; font-weight: bold; font-size: 11px;">{}</span>',
+            color,
+            obj.get_difficulty_display().upper(),
+        )
+
+    @admin.display(description='Status')
+    def active_status(self, obj):
+        """Display active status with icon."""
+        if obj.is_active:
+            return format_html('<span style="color: green; font-size: 18px;">●</span> Active')
+        return format_html('<span style="color: gray; font-size: 18px;">●</span> Inactive')
+
+    @admin.display(description='Completions')
+    def completion_count(self, obj):
+        """Display number of completions."""
+        count = UserSideQuest.objects.filter(side_quest=obj, status='completed').count()
+        return format_html('<strong>{}</strong> completions', count)
+
+    @admin.display(description='Quest Preview')
+    def quest_preview(self, obj):
+        """Display quest preview."""
+        return format_html(
+            '<div style="font-family: monospace; background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #3b82f6;">'
+            '<h3 style="margin-top: 0; color: #1f2937;">{}</h3>'
+            '<p style="color: #6b7280; margin: 8px 0;"><strong>Type:</strong> {}</p>'
+            '<p style="color: #6b7280; margin: 8px 0;"><strong>Description:</strong> {}</p>'
+            '<p style="color: #6b7280; margin: 8px 0;"><strong>Rewards:</strong> {} points</p>'
+            '<p style="color: #6b7280; margin: 8px 0;"><strong>Difficulty:</strong> {}</p>'
+            '{}'
+            '</div>',
+            obj.title,
+            obj.get_quest_type_display(),
+            obj.description[:200] + ('...' if len(obj.description) > 200 else ''),
+            obj.points_reward,
+            obj.get_difficulty_display(),
+            format_html(
+                '<p style="color: #10b981; margin: 8px 0;"><strong>✓ Guided Quest</strong> ({} steps)</p>',
+                len(obj.steps),
+            )
+            if obj.is_guided
+            else '',
+        )
+
+    @admin.action(description='✓ Activate selected quests')
+    def activate_quests(self, request, queryset):
+        """Activate selected quests."""
+        count = queryset.update(is_active=True)
+        self.message_user(request, f'{count} quest(s) activated.')
+
+    @admin.action(description='✗ Deactivate selected quests')
+    def deactivate_quests(self, request, queryset):
+        """Deactivate selected quests."""
+        count = queryset.update(is_active=False)
+        self.message_user(request, f'{count} quest(s) deactivated.')
+
+    @admin.action(description='📋 Duplicate selected quest')
+    def duplicate_quest(self, request, queryset):
+        """Duplicate a quest for easy creation of similar quests."""
+        for quest in queryset[:1]:  # Only duplicate first selected
+            quest.pk = None
+            quest.title = f'{quest.title} (Copy)'
+            quest.is_active = False
+            quest.save()
+            self.message_user(request, f'Duplicated quest: {quest.title}')
+
+
+@admin.register(UserSideQuest)
+class UserSideQuestAdmin(admin.ModelAdmin):
+    """Admin for User Side Quest Progress."""
+
+    list_display = ['user', 'side_quest', 'status', 'current_step_index', 'progress_display', 'started_at']
+    list_filter = ['status', 'side_quest__category', 'side_quest__difficulty', 'started_at']
+    search_fields = ['user__username', 'side_quest__title']
+    raw_id_fields = ['user', 'side_quest']
+    readonly_fields = ['started_at', 'completed_at', 'updated_at']
+    ordering = ['-started_at']
+
+    fieldsets = (
+        ('User & Quest', {'fields': ('user', 'side_quest')}),
+        ('Progress', {'fields': ('status', 'current_step_index', 'progress_data')}),
+        ('Timestamps', {'fields': ('started_at', 'updated_at', 'completed_at')}),
+    )
+
+    @admin.display(description='Progress')
+    def progress_display(self, obj):
+        """Display progress percentage."""
+        if obj.status == 'completed':
+            return format_html('<span style="color: green;">✓ 100%</span>')
+        elif obj.status == 'in_progress':
+            return format_html('<span style="color: orange;">⏳ In Progress</span>')
+        return format_html('<span style="color: gray;">Abandoned</span>')

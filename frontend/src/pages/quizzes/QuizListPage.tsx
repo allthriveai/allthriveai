@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MagnifyingGlassIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, CheckCircleIcon, SparklesIcon, ArrowRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { ToolRecommendationQuiz } from '@/components/tools/ToolRecommendationQuiz';
 import { getQuizzes } from '@/services/quiz';
 import { QuizPreviewCard } from '@/components/quiz/QuizPreviewCard';
 import type { Quiz, QuizDifficulty, QuizFilters } from '@/components/quiz/types';
@@ -13,6 +14,7 @@ export default function QuizListPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showToolQuiz, setShowToolQuiz] = useState(false);
 
   // Filter states from URL
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
@@ -93,34 +95,84 @@ export default function QuizListPage() {
       {() => (
         <div className="h-full overflow-y-auto">
           {/* Hero Banner - Neon Glass Style */}
-          <div className="relative h-64 bg-[#020617] overflow-hidden">
+          <header className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden" aria-label="Quizzes page header">
         {/* Ambient Glow Background */}
-        <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 blur-[120px] pointer-events-none" />
-        <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-pink-500/10 blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-pink-500/10 dark:bg-pink-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-          <h1 className="text-4xl font-bold text-white mb-4">
-            <span className="bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-500 bg-clip-text text-transparent">Quizzes</span>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-600 dark:from-cyan-400 dark:via-cyan-300 dark:to-cyan-500 bg-clip-text text-transparent">Quizzes</span>
           </h1>
-          <p className="text-xl text-gray-300 max-w-2xl">
+          <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl">
             Test your knowledge on AI frameworks, concepts, and best practices
           </p>
         </div>
-      </div>
+      </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Tool Finder Quiz Modal */}
+        {showToolQuiz && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 rounded-2xl border border-white/10 shadow-2xl">
+              <button
+                onClick={() => setShowToolQuiz(false)}
+                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white transition-colors z-10"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+              <div className="p-6">
+                <ToolRecommendationQuiz
+                  onComplete={() => {}}
+                  onClose={() => setShowToolQuiz(false)}
+                  embedded
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tool Finder Card - Featured placement */}
+        <button
+          onClick={() => setShowToolQuiz(true)}
+          className="w-full mb-8 p-6 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10 border border-cyan-500/20 rounded-xl text-left hover:border-cyan-500/40 transition-all group"
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0">
+              <SparklesIcon className="w-7 h-7 text-cyan-400" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-semibold text-white">Find Your Perfect AI Tool</h3>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                  New
+                </span>
+              </div>
+              <p className="text-slate-400">
+                Not sure which AI tools to use? Take our quick quiz and get personalized recommendations based on your needs.
+              </p>
+            </div>
+            <ArrowRightIcon className="w-6 h-6 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all flex-shrink-0 mt-2" />
+          </div>
+        </button>
+
         {/* Search and Filters Section */}
-        <div className="mb-8 glass-strong rounded-xl p-6">
+        <div className="mb-8 bg-white/80 dark:bg-white/5 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-xl p-6 shadow-sm">
           {/* Search Bar */}
           <div className="mb-4">
+            <label htmlFor="quiz-search" className="sr-only">
+              Search quizzes
+            </label>
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-cyan-400" />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-cyan-500 dark:text-cyan-400" aria-hidden="true" />
               <input
-                type="text"
+                id="quiz-search"
+                type="search"
                 placeholder="Search quizzes by title, topic, or keyword..."
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="w-full pl-10 pr-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:bg-white/10 transition-all"
+                aria-label="Search quizzes by title, topic, or keyword"
+                className="w-full pl-10 pr-4 py-3 rounded-lg bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 dark:focus:bg-white/10 transition-all"
               />
             </div>
           </div>
@@ -129,17 +181,19 @@ export default function QuizListPage() {
           <div className="flex flex-wrap items-center gap-4">
             {/* Topic Filters */}
             {availableTopics.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-300 whitespace-nowrap">Topics:</span>
+              <div className="flex items-center gap-2" role="group" aria-label="Filter by topic">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap" id="topic-filter-label">Topics:</span>
                 <div className="flex flex-wrap gap-2">
                   {availableTopics.map(topic => (
                     <button
                       key={topic}
                       onClick={() => toggleTopic(topic)}
+                      aria-pressed={selectedTopics.includes(topic)}
+                      aria-label={`Filter by ${topic}`}
                       className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
                         selectedTopics.includes(topic)
                           ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30'
-                          : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-cyan-500/50'
+                          : 'bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 hover:border-cyan-500/50'
                       }`}
                     >
                       {topic}
@@ -151,21 +205,23 @@ export default function QuizListPage() {
 
             {/* Divider */}
             {availableTopics.length > 0 && (
-              <div className="h-6 w-px bg-white/20" />
+              <div className="h-6 w-px bg-gray-300 dark:bg-white/20" />
             )}
 
             {/* Difficulty Filters */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-300 whitespace-nowrap">Difficulty:</span>
+            <div className="flex items-center gap-2" role="group" aria-label="Filter by difficulty">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap" id="difficulty-filter-label">Difficulty:</span>
               <div className="flex flex-wrap gap-2">
                 {(['beginner', 'intermediate', 'advanced'] as QuizDifficulty[]).map(difficulty => (
                   <button
                     key={difficulty}
                     onClick={() => toggleDifficulty(difficulty)}
+                    aria-pressed={selectedDifficulties.includes(difficulty)}
+                    aria-label={`Filter by ${difficulty} difficulty`}
                     className={`px-3 py-1 rounded-full text-sm font-medium transition-all capitalize ${
                       selectedDifficulties.includes(difficulty)
                         ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30'
-                        : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-cyan-500/50'
+                        : 'bg-gray-100 dark:bg-white/5 border border-gray-300 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 hover:border-cyan-500/50'
                     }`}
                   >
                     {difficulty}
@@ -177,10 +233,11 @@ export default function QuizListPage() {
             {/* Clear Filters */}
             {(searchQuery || selectedTopics.length > 0 || selectedDifficulties.length > 0) && (
               <>
-                <div className="h-6 w-px bg-white/20" />
+                <div className="h-6 w-px bg-gray-300 dark:bg-white/20" aria-hidden="true" />
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors whitespace-nowrap"
+                  aria-label="Clear all filters"
+                  className="text-sm text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 transition-colors whitespace-nowrap font-medium"
                 >
                   Clear all
                 </button>
@@ -191,16 +248,16 @@ export default function QuizListPage() {
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-12 min-h-[400px] flex flex-col items-center justify-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white/10 border-t-cyan-500"></div>
-            <p className="mt-4 text-gray-400">Loading quizzes...</p>
+          <div className="text-center py-12 min-h-[400px] flex flex-col items-center justify-center" role="status" aria-live="polite">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-white/10 border-t-cyan-500" aria-hidden="true"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading quizzes...</p>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-center backdrop-blur-sm">
-            <p className="text-red-400">{error}</p>
+          <div className="bg-red-500/10 dark:bg-red-500/10 border border-red-500/30 dark:border-red-500/30 rounded-lg p-4 text-center backdrop-blur-sm" role="alert">
+            <p className="text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 
@@ -209,10 +266,10 @@ export default function QuizListPage() {
           <>
             {quizzes.length === 0 ? (
               <div className="text-center py-12 min-h-[400px] flex flex-col items-center justify-center">
-                <p className="text-xl text-gray-300 mb-2">
+                <p className="text-xl text-gray-700 dark:text-gray-300 mb-2">
                   No quizzes found
                 </p>
-                <p className="text-gray-500">
+                <p className="text-gray-500 dark:text-gray-500">
                   Try adjusting your filters or search query
                 </p>
               </div>

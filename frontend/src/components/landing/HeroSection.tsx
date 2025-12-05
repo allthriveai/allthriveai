@@ -13,7 +13,12 @@ export function HeroSection({ onRequestInvite }: HeroSectionProps) {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8 lg:gap-12">
             <div className="flex-[3] text-center lg:text-left">
-              <a href="/" className="inline-block">
+              <a href="/" className="inline-flex items-center gap-3">
+                <img
+                  src="/all-thrvie-logo.png"
+                  alt="All Thrive"
+                  className="h-10 w-auto"
+                />
                 <span className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
                   All Thrive
                 </span>
@@ -157,7 +162,19 @@ export function HeroSection({ onRequestInvite }: HeroSectionProps) {
             <div className="relative aspect-square max-w-[420px] mx-auto lg:mr-auto lg:ml-0">
               {/* Glow effect behind cloud */}
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500/20 to-green-500/20 blur-3xl" />
-              <IconCloud />
+
+              {/* Center Logo */}
+              <div className="absolute inset-0 flex items-center justify-center z-0">
+                <img
+                  src="/all-thrvie-logo.png"
+                  alt="All Thrive"
+                  className="w-16 h-auto opacity-90 drop-shadow-2xl"
+                />
+              </div>
+
+              <div className="relative z-10">
+                <IconCloud />
+              </div>
             </div>
           </motion.div>
         </div>

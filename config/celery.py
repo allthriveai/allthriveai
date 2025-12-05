@@ -20,6 +20,7 @@ app.autodiscover_tasks(
         'core.agents',
         'core.battles',  # Prompt battles tasks
         'core.billing',  # Billing and token management tasks
+        'core.notifications',  # Email notification tasks
         'services.weaviate',  # Weaviate sync tasks
     ]
 )
