@@ -8,27 +8,27 @@ import { TrophyIcon, SparklesIcon, StarIcon } from '@heroicons/react/24/solid';
 
 interface BattleSubmission {
   prompt: string;
-  image_url?: string;
+  imageUrl?: string;
   score?: number | null;
-  criteria_scores?: Record<string, number>;
+  criteriaScores?: Record<string, number>;
   feedback?: string;
 }
 
 interface BattleResultContent {
-  battle_id: number;
-  challenge_text: string;
-  challenge_type?: {
+  battleId: number;
+  challengeText: string;
+  challengeType?: {
     key: string;
     name: string;
   };
   won: boolean;
-  is_tie: boolean;
-  my_submission: BattleSubmission;
+  isTie: boolean;
+  mySubmission: BattleSubmission;
   opponent: {
     username: string;
-    is_ai: boolean;
+    isAi: boolean;
   };
-  opponent_submission?: BattleSubmission;
+  opponentSubmission?: BattleSubmission;
 }
 
 interface BattleResultSectionProps {
@@ -93,9 +93,9 @@ function SubmissionCard({
 
       {/* Image */}
       <div className="aspect-square bg-slate-800/50 relative overflow-hidden">
-        {submission.image_url ? (
+        {submission.imageUrl ? (
           <img
-            src={submission.image_url}
+            src={submission.imageUrl}
             alt={`${username}'s creation`}
             className="w-full h-full object-cover"
           />
@@ -138,7 +138,7 @@ function SubmissionCard({
         )}
 
         {/* Score breakdown */}
-        <ScoreBreakdown scores={submission.criteria_scores} />
+        <ScoreBreakdown scores={submission.criteriaScores} />
 
         {/* Feedback */}
         {submission.feedback && (
@@ -162,17 +162,17 @@ export function BattleResultSection({ content }: BattleResultSectionProps) {
   }
 
   const {
-    challenge_text,
-    challenge_type,
+    challengeText,
+    challengeType,
     won,
-    is_tie,
-    my_submission,
+    isTie,
+    mySubmission,
     opponent,
-    opponent_submission,
+    opponentSubmission,
   } = content;
 
   // Provide default opponent if missing
-  const safeOpponent = opponent || { username: 'Opponent', is_ai: false };
+  const safeOpponent = opponent || { username: 'Opponent', isAi: false };
 
   return (
     <section className="project-section" data-section-type="battle-result">
@@ -180,20 +180,20 @@ export function BattleResultSection({ content }: BattleResultSectionProps) {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <h2 className="text-2xl font-bold text-white">Prompt Battle</h2>
-          {challenge_type && (
+          {challengeType && (
             <span className="px-3 py-1 rounded-full text-sm bg-violet-500/20 text-violet-300 border border-violet-500/30">
-              {challenge_type.name}
+              {challengeType.name}
             </span>
           )}
         </div>
         <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-500/10 to-violet-500/10 border border-cyan-500/20">
-          <p className="text-lg text-slate-200">{challenge_text || 'Challenge not available'}</p>
+          <p className="text-lg text-slate-200">{challengeText || 'Challenge not available'}</p>
         </div>
       </div>
 
       {/* Result Banner */}
       <div className="mb-8 text-center">
-        {is_tie ? (
+        {isTie ? (
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-slate-800/50 border border-slate-600">
             <StarIcon className="w-6 h-6 text-slate-400" />
             <span className="text-xl font-bold text-slate-300">It's a Tie!</span>
@@ -217,9 +217,9 @@ export function BattleResultSection({ content }: BattleResultSectionProps) {
       {/* Submissions Side by Side */}
       <div className="flex flex-col md:flex-row gap-6">
         {/* My Submission */}
-        {my_submission ? (
+        {mySubmission ? (
           <SubmissionCard
-            submission={my_submission}
+            submission={mySubmission}
             username="You"
             isWinner={won}
             isCurrentUser={true}
@@ -240,12 +240,12 @@ export function BattleResultSection({ content }: BattleResultSectionProps) {
         </div>
 
         {/* Opponent Submission */}
-        {opponent_submission ? (
+        {opponentSubmission ? (
           <SubmissionCard
-            submission={opponent_submission}
+            submission={opponentSubmission}
             username={safeOpponent.username}
-            isWinner={!won && !is_tie}
-            isAi={safeOpponent.is_ai}
+            isWinner={!won && !isTie}
+            isAi={safeOpponent.isAi}
           />
         ) : (
           <div className="flex-1 rounded-2xl bg-slate-900/50 border border-slate-700/50 flex items-center justify-center min-h-[400px]">

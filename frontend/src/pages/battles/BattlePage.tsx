@@ -18,8 +18,8 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import {
   BattleArena,
   BattleCountdown,
-  BattleResults,
   GeneratingPhase,
+  JudgingReveal,
   WaitingForOpponent,
   type PlayerStatus,
 } from '@/components/battles';
@@ -32,6 +32,7 @@ export function BattlePage() {
   const [restBattleState, setRestBattleState] = useState<BattleState | null>(null);
   const [restLoading, setRestLoading] = useState(false);
   const [restError, setRestError] = useState<string | null>(null);
+  const [_revealComplete, setRevealComplete] = useState(false);
 
   const handleError = useCallback((error: string) => {
     console.error('[Battle] Error:', error);
@@ -358,21 +359,21 @@ export function BattlePage() {
         );
 
       case 'generating':
-      case 'judging':
         return (
           <GeneratingPhase
             myImageGenerating={!battleState.mySubmission?.imageUrl}
-            opponentImageGenerating={battleState.phase === 'generating'}
+            opponentImageGenerating={true}
             myImageUrl={battleState.mySubmission?.imageUrl}
             opponentUsername={battleState.opponent.username}
-            isJudging={battleState.phase === 'judging'}
+            isJudging={false}
           />
         );
 
+      case 'judging':
       case 'reveal':
-      case 'complete':
+        // Use JudgingReveal for animated judging and reveal sequence
         return (
-          <BattleResults
+          <JudgingReveal
             mySubmission={battleState.mySubmission}
             opponentSubmission={battleState.opponentSubmission}
             myPlayer={currentUser}
@@ -383,11 +384,36 @@ export function BattlePage() {
               isAi: battleState.matchSource === 'ai_opponent',
             }}
             winnerId={battleState.winnerId}
+            isJudging={battleState.phase === 'judging' && !battleState.winnerId}
+            onComplete={() => setRevealComplete(true)}
             onPlayAgain={handlePlayAgain}
             onGoHome={handleGoHome}
             onSaveToProfile={handleSaveToProfile}
             isSaved={isSavedToProfile}
-            skipRevealAnimation={battleState.phase === 'complete'}
+          />
+        );
+
+      case 'complete':
+        // Use JudgingReveal for the animated reveal sequence
+        // It will show action buttons after the animation completes
+        return (
+          <JudgingReveal
+            mySubmission={battleState.mySubmission}
+            opponentSubmission={battleState.opponentSubmission}
+            myPlayer={currentUser}
+            opponent={{
+              id: battleState.opponent.id,
+              username: battleState.opponent.username,
+              avatarUrl: battleState.opponent.avatarUrl,
+              isAi: battleState.matchSource === 'ai_opponent',
+            }}
+            winnerId={battleState.winnerId}
+            isJudging={false}
+            onComplete={() => setRevealComplete(true)}
+            onPlayAgain={handlePlayAgain}
+            onGoHome={handleGoHome}
+            onSaveToProfile={handleSaveToProfile}
+            isSaved={isSavedToProfile}
           />
         );
 

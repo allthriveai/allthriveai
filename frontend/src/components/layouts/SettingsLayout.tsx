@@ -5,7 +5,6 @@ import {
   BellIcon,
   CreditCardIcon,
   ShieldCheckIcon,
-  UserGroupIcon,
   GiftIcon,
   SparklesIcon,
   PuzzlePieceIcon,
@@ -24,11 +23,6 @@ interface SettingsLayoutProps {
 }
 
 const settingsNavItems: SettingsSidebarItem[] = [
-  {
-    label: 'Getting Started',
-    path: '/getting-started',
-    icon: RocketLaunchIcon,
-  },
   {
     label: 'Edit Profile',
     path: '/account/settings',
@@ -70,9 +64,9 @@ const settingsNavItems: SettingsSidebarItem[] = [
     icon: ShieldCheckIcon,
   },
   {
-    label: 'Teams',
-    path: '/account/settings/teams',
-    icon: UserGroupIcon,
+    label: 'Getting Started',
+    path: '/getting-started',
+    icon: RocketLaunchIcon,
   },
 ];
 

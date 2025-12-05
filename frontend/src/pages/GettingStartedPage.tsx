@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { ToolRecommendationQuiz } from '@/components/tools/ToolRecommendationQuiz';
 import { useOnboardingProgress, type ChecklistItem } from '@/hooks/useOnboardingProgress';
 import {
@@ -141,12 +142,14 @@ export default function GettingStartedPage() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-slate-400">Loading your progress...</p>
+        <SettingsLayout>
+          <div className="min-h-[60vh] flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-slate-400">Loading your progress...</p>
+            </div>
           </div>
-        </div>
+        </SettingsLayout>
       </DashboardLayout>
     );
   }
@@ -154,17 +157,19 @@ export default function GettingStartedPage() {
   if (error || !progress) {
     return (
       <DashboardLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-rose-400 mb-4">{error || 'Something went wrong'}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="text-cyan-400 hover:underline"
-            >
-              Try again
-            </button>
+        <SettingsLayout>
+          <div className="min-h-[60vh] flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-rose-400 mb-4">{error || 'Something went wrong'}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-cyan-400 hover:underline"
+              >
+                Try again
+              </button>
+            </div>
           </div>
-        </div>
+        </SettingsLayout>
       </DashboardLayout>
     );
   }
@@ -175,23 +180,26 @@ export default function GettingStartedPage() {
   if (showToolQuiz) {
     return (
       <DashboardLayout>
-        <div className="max-w-3xl mx-auto px-4 py-8">
-          <ToolRecommendationQuiz
-            onComplete={() => {
-              // Quiz completed - could track this
-            }}
-            onClose={() => setShowToolQuiz(false)}
-          />
-        </div>
+        <SettingsLayout>
+          <div className="max-w-3xl mx-auto px-4 py-8">
+            <ToolRecommendationQuiz
+              onComplete={() => {
+                // Quiz completed - could track this
+              }}
+              onClose={() => setShowToolQuiz(false)}
+            />
+          </div>
+        </SettingsLayout>
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
+      <SettingsLayout>
+        <div className="max-w-3xl mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-neon text-xs font-medium mb-4 tracking-wider uppercase">
             <SparklesIcon className="w-3.5 h-3.5" />
             Getting Started
@@ -297,7 +305,8 @@ export default function GettingStartedPage() {
             </Link>
           </div>
         )}
-      </div>
+        </div>
+      </SettingsLayout>
     </DashboardLayout>
   );
 }

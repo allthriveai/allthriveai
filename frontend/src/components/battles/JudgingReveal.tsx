@@ -6,7 +6,7 @@
  * and finally announces the winner with celebration effects.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrophyIcon,
@@ -16,7 +16,10 @@ import {
   EyeIcon,
   LightBulbIcon,
   FireIcon,
-  CheckCircleIcon,
+  ArrowPathIcon,
+  HomeIcon,
+  BookmarkIcon,
+  CheckIcon,
 } from '@heroicons/react/24/solid';
 
 interface Submission {
@@ -50,6 +53,10 @@ interface JudgingRevealProps {
   opponent: Player;
   winnerId: number | null;
   onComplete?: () => void;
+  onPlayAgain?: () => void;
+  onGoHome?: () => void;
+  onSaveToProfile?: () => Promise<void>;
+  isSaved?: boolean;
   isJudging?: boolean;
 }
 
@@ -63,8 +70,8 @@ const ANALYSIS_MESSAGES = [
   { icon: StarIcon, text: 'Calculating final scores...' },
 ];
 
-// Criteria display order
-const CRITERIA_ORDER = ['Creativity', 'Relevance', 'Composition', 'Impact', 'Technical'];
+// Criteria display order - matches backend judging criteria
+const CRITERIA_ORDER = ['Creativity', 'Visual Impact', 'Relevance', 'Cohesion'];
 
 export function JudgingReveal({
   mySubmission,
@@ -73,11 +80,26 @@ export function JudgingReveal({
   opponent,
   winnerId,
   onComplete,
+  onPlayAgain,
+  onGoHome,
+  onSaveToProfile,
+  isSaved = false,
   isJudging = false,
 }: JudgingRevealProps) {
   const [phase, setPhase] = useState<RevealPhase>('analyzing');
   const [messageIndex, setMessageIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveToProfile = async () => {
+    if (!onSaveToProfile || isSaving || isSaved) return;
+    setIsSaving(true);
+    try {
+      await onSaveToProfile();
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const isWinner = winnerId === myPlayer.id;
   const isTie = winnerId === null && mySubmission?.score === opponentSubmission?.score;
@@ -706,6 +728,63 @@ export function JudgingReveal({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Action buttons - show when reveal is complete */}
+        {phase === 'complete' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="flex justify-center gap-4 flex-wrap mt-8"
+          >
+            {onSaveToProfile && (
+              <button
+                onClick={handleSaveToProfile}
+                disabled={isSaving || isSaved}
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
+                  isSaved
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/30 cursor-default'
+                    : 'bg-violet-500/20 text-violet-300 border border-violet-500/30 hover:bg-violet-500/30 hover:border-violet-500/50'
+                } ${isSaving ? 'opacity-50 cursor-wait' : ''}`}
+              >
+                {isSaved ? (
+                  <>
+                    <CheckIcon className="w-5 h-5" />
+                    Saved to Profile
+                  </>
+                ) : isSaving ? (
+                  <>
+                    <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <BookmarkIcon className="w-5 h-5" />
+                    Save to Profile
+                  </>
+                )}
+              </button>
+            )}
+            {onPlayAgain && (
+              <button
+                onClick={onPlayAgain}
+                className="btn-primary flex items-center gap-2 px-6 py-3"
+              >
+                <ArrowPathIcon className="w-5 h-5" />
+                Play Again
+              </button>
+            )}
+            {onGoHome && (
+              <button
+                onClick={onGoHome}
+                className="btn-secondary flex items-center gap-2 px-6 py-3"
+              >
+                <HomeIcon className="w-5 h-5" />
+                Back to Home
+              </button>
+            )}
+          </motion.div>
+        )}
       </div>
     </div>
   );

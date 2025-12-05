@@ -237,7 +237,8 @@ export function ExplorePage() {
   const allProfiles = profilesData?.pages.flatMap(page => page.results) || [];
 
   const displayProjects = searchQuery && semanticResults ? semanticResults : allProjects;
-  const displayQuizzes = quizzesData?.results || [];
+  // Don't show quizzes in profiles or news tabs
+  const displayQuizzes = (activeTab !== 'profiles' && activeTab !== 'news') ? (quizzesData?.results || []) : [];
   const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isWaitingForFilters;
 
   // Determine if there's an error to display

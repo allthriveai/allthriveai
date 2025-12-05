@@ -325,10 +325,12 @@ tools:
   # === CHAT & CONVERSATIONAL AI ===
   - name: ChatGPT
     company: OpenAI
-    tagline: AI-powered conversational assistant
+    tagline: Text and voice chat with GPT-5
     description: >
-      ChatGPT by OpenAI provides natural language interactions powered by GPT models.
-      Ideal for conversations, content creation, coding help, and more.
+      Web and mobile chat interface for OpenAI's GPT-5 model. Handles text conversations,
+      code generation, image creation via DALL-E, and file analysis. Connects to Gmail,
+      Google Calendar, and Dropbox. Includes voice mode, web browsing, and a shopping
+      assistant. Free tier available; Plus ($20/mo) adds GPT-5 Thinking mode.
     category: chat
     tool_type: ai_tool
     website_url: https://chat.openai.com
@@ -342,35 +344,38 @@ tools:
       - GPT
       - ChatBot
     key_features:
-      - title: Natural Conversations
-        description: Engage in human-like dialogue with context awareness
+      - title: GPT-5 with Thinking Mode
+        description: Choose Fast mode for quick replies or Thinking mode for multi-step reasoning
       - title: Code Generation
-        description: Generate, debug, and explain code in multiple languages
-      - title: Content Creation
-        description: Write articles, emails, stories, and more
-      - title: Image Understanding
-        description: Analyze and discuss images with GPT-4 Vision
-      - title: Web Browsing
-        description: Access real-time information from the web
+        description: Write, debug, and explain code with direct IDE integration (VS Code, Xcode, JetBrains)
+      - title: Image Generation
+        description: Create images with DALL-E or GPT's native image capabilities
+      - title: Google Connectors
+        description: Connect Gmail, Calendar, and Contacts to manage tasks and appointments
+      - title: Voice and Record
+        description: Voice conversations plus meeting transcription and summarization on macOS
     usage_tips:
-      - Be specific and detailed in your prompts for better results
-      - Use iterative refinement to improve responses
-      - Break complex tasks into smaller steps
-      - Provide examples of your desired output format
-      - Use system prompts to set context and behavior
+      - Use Thinking mode for complex reasoning tasks, Fast mode for quick answers
+      - Connect Google services to let ChatGPT manage calendar and email
+      - Upload files directly for document analysis
+      - Use the macOS app to edit code directly in your IDE
+      - Enable memory for personalized responses across sessions
     best_practices:
-      - Provide context for more relevant responses
-      - Use system messages to customize behavior
-      - Verify factual information independently
-      - Review and edit AI-generated code before use
-      - Keep conversations focused for better coherence
+      - Verify factual claims, especially for current events
+      - Review generated code before running in production
+      - Use specific prompts with examples for consistent output
+      - Break complex tasks into steps
+      - Check the model picker to ensure you're using the right mode
 
   - name: Claude
     company: Anthropic
-    tagline: AI assistant by Anthropic
+    tagline: Chat with 1M token context and coding tools
     description: >
-      Claude is an AI assistant created by Anthropic with a focus on being helpful,
-      harmless, and honest. Strong at analysis, coding, and creative writing.
+      Web chat interface for Anthropic's Claude Opus 4.5 and Sonnet 4 models. Features
+      a 1M token context window for analyzing entire codebases or long documents.
+      Includes Claude Code CLI for terminal-based coding, browser extension for Chrome,
+      Excel integration, and MCP connectors. Available on all major cloud platforms.
+      Free tier; Pro ($20/mo) and Max plans available.
     category: chat
     tool_type: ai_tool
     website_url: https://claude.ai
@@ -385,35 +390,38 @@ tools:
       - Analysis
       - Coding
     key_features:
-      - title: Extended Context
-        description: Handle up to 200K tokens for long documents and conversations
-      - title: Code Understanding
-        description: Analyze, generate, and debug complex codebases
-      - title: Nuanced Responses
-        description: Thoughtful, detailed, and well-reasoned answers
-      - title: Document Analysis
-        description: Upload and analyze PDFs, code files, and documents
-      - title: Artifacts
-        description: Create and iterate on code, documents, and visualizations
+      - title: 1M Token Context
+        description: Analyze entire codebases, books, or document collections in a single conversation
+      - title: Claude Code CLI
+        description: Terminal-based coding assistant with GitHub Actions integration and VS Code/JetBrains support
+      - title: Extended Thinking with Tools
+        description: Web search during reasoning for complex multi-step problems
+      - title: Files API and MCP
+        description: Upload files via API and connect external tools through Model Context Protocol
+      - title: Product Integrations
+        description: Chrome extension, Excel add-in, and Slack integration for Max users
     usage_tips:
-      - Leverage the long context window for document analysis
-      - Use for detailed code review and refactoring suggestions
-      - Great for ethical reasoning and nuanced discussions
-      - Upload files directly for comprehensive analysis
-      - Use artifacts for iterative document creation
+      - Use the full context window to paste entire repos for code review
+      - Try Claude Code for autonomous multi-file refactoring tasks
+      - Use artifacts to iterate on code, documents, or diagrams
+      - Connect MCP servers for custom tool integrations
+      - Use extended thinking mode for complex reasoning tasks
     best_practices:
-      - Provide full context upfront for complex tasks
-      - Use for research synthesis and summarization
-      - Excellent for technical writing and documentation
-      - Ask for reasoning and explanations
-      - Use for brainstorming and ideation
+      - Provide full context upfront rather than drip-feeding information
+      - Use for long-document analysis where context matters
+      - Review Claude Code changes before committing
+      - Specify output format when you need structured responses
+      - Use the API for programmatic access with caching
 
   - name: Gemini
     company: Google
-    tagline: Google's most capable AI model
+    tagline: Multimodal chat with Google integrations
     description: >
-      Gemini is Google's most capable and general AI model, built to be multimodal
-      from the ground up. It can understand and combine text, code, audio, image, and video.
+      Google's Gemini 3 Pro chat interface. Processes text, images, audio, and video
+      in a single conversation. Runs Python code inline, searches Google in real-time,
+      and integrates with Workspace (Docs, Sheets, Gmail). Gemini Agent can manage
+      Calendar, reminders, and inbox. Generates interactive layouts and simulations.
+      Free tier; Advanced ($20/mo) available.
     category: chat
     tool_type: ai_tool
     website_url: https://gemini.google.com
@@ -427,35 +435,38 @@ tools:
       - Gemini
       - DeepMind
     key_features:
-      - title: Native Multimodality
-        description: Process text, images, audio, and video seamlessly
-      - title: Google Integration
-        description: Deep integration with Google Workspace and Search
+      - title: Gemini 3 Pro
+        description: Latest model with 50% improvement over 2.5 Pro on benchmark tasks
+      - title: Gemini Agent
+        description: Manages Calendar, reminders, and inbox with multi-step task execution
       - title: Code Execution
-        description: Run Python code directly in conversations
-      - title: Long Context
-        description: Up to 1M token context window with Gemini 1.5
-      - title: Real-time Information
-        description: Access to current information via Google Search
+        description: Runs Python code directly in conversation for data analysis
+      - title: Generative Interfaces
+        description: Creates interactive layouts, calculators, and simulations in responses
+      - title: Deep Think Mode
+        description: Extended reasoning for creative, strategic, and iterative problems
     usage_tips:
-      - Use for tasks requiring multiple types of media
-      - Leverage Google Workspace integration for productivity
-      - Great for research with real-time web access
-      - Use code execution for data analysis
-      - Combine with Google services for enhanced capabilities
+      - Upload images, audio, or video for multimodal analysis
+      - Use Gemini Agent to schedule meetings or draft email replies
+      - Run Python code inline for quick data exploration
+      - Connect to Google Workspace for document collaboration
+      - Try Deep Think for complex planning tasks
     best_practices:
-      - Take advantage of multimodal capabilities
-      - Use for tasks requiring current information
-      - Leverage Google ecosystem integration
-      - Good for collaborative work with Google Docs
-      - Use for visual analysis and understanding
+      - Leverage multimodal input for richer context
+      - Use for tasks that benefit from Google Search integration
+      - Connect Workspace for productivity workflows
+      - Specify when you want interactive outputs vs plain text
+      - Use code execution for reproducible analysis
 
   - name: Grok
     company: xAI
-    tagline: AI assistant with real-time knowledge
+    tagline: Chat with 2M context and X integration
     description: >
-      Grok is xAI's conversational AI assistant with real-time access to information
-      from X (Twitter). Known for witty, rebellious personality and up-to-date knowledge.
+      xAI's Grok 4.1 chat assistant with real-time access to X (Twitter) data.
+      Features a 2M token context window for entire codebases or long documents.
+      Available in Fast mode for quick replies or Thinking mode for multi-step
+      reasoning. Accessed via grok.com, X app, or iOS/Android apps. API available
+      with agent tools and file uploads. Requires X Premium subscription.
     category: chat
     tool_type: ai_tool
     website_url: https://x.ai/grok
@@ -469,35 +480,38 @@ tools:
       - Real-time
       - X Integration
     key_features:
-      - title: Real-time X Access
-        description: Direct access to real-time information from X platform
-      - title: Rebellious Personality
-        description: Witty, humorous, and less restrained responses
-      - title: Current Events
-        description: Up-to-date knowledge of trending topics and news
-      - title: Uncensored Answers
-        description: Willing to tackle controversial questions
-      - title: Visual Understanding
-        description: Analyze and discuss images
+      - title: 2M Token Context
+        description: Massive context window fits entire codebases and long conversations
+      - title: Fast and Thinking Modes
+        description: Low-latency mode for quick replies or extended reasoning for complex tasks
+      - title: Real-time X Data
+        description: Direct access to trending topics and posts from X platform
+      - title: Files API
+        description: Upload documents and search knowledge base collections via API
+      - title: Remote MCP Tools
+        description: Connect external MCP servers for custom tool integrations
     usage_tips:
-      - Great for current events and trending topics
-      - Use for questions requiring real-time information
-      - Leverage X platform data for social insights
-      - Expect humorous and witty responses
-      - Good for unfiltered perspectives
+      - Use Thinking mode for complex reasoning, Fast mode for quick answers
+      - Leverage X integration for social trends and current events
+      - Upload large codebases using the full context window
+      - Use agent tools via API for automated workflows
+      - Search Collections for custom knowledge bases
     best_practices:
-      - Verify critical information from multiple sources
-      - Use for social media trends and analysis
-      - Good for creative and unconventional thinking
-      - Understand personality style before using
-      - Cross-reference factual claims
+      - Verify claims about current events from primary sources
+      - Use the model picker to select Fast vs Thinking mode
+      - Leverage the large context for document analysis
+      - Check API pricing—agent tools reduced by 50%
+      - Cross-reference with other sources for factual claims
 
   - name: Perplexity
     company: Perplexity AI
-    tagline: AI-powered answer engine
+    tagline: AI search with citations and focus modes
     description: >
-      Perplexity is an AI-powered search engine that provides direct answers with sources,
-      combining real-time web search with conversational AI.
+      AI-powered search engine that returns answers with source citations. Pro Search
+      for deep research, Focus modes for academic/SEC/Reddit filtering, and Spaces
+      for organizing work. Comet browser available. Integrations include Slack,
+      Firefox, and Samsung TVs. Handles 100M+ weekly queries. Free tier; Pro
+      ($20/mo) for unlimited Pro Search.
     category: research
     tool_type: ai_tool
     website_url: https://perplexity.ai
@@ -511,36 +525,39 @@ tools:
       - Web
       - AI Search
     key_features:
-      - title: Cited Answers
-        description: Every response includes verifiable source citations
-      - title: Real-time Search
-        description: Access current information from across the web
-      - title: Follow-up Questions
-        description: Dig deeper with conversational follow-ups
+      - title: Pro Search
+        description: Deep research mode for complex multi-step questions
       - title: Focus Modes
-        description: Search specific sources like academic papers or Reddit
-      - title: Collections
-        description: Save and organize research for later reference
+        description: Filter by Academic papers, SEC filings, Reddit, or specific domains
+      - title: Comet Browser
+        description: Chromium-based browser with integrated AI search and Background Assistants
+      - title: Spaces
+        description: Organize research projects and share with collaborators
+      - title: Sora 2 Pro
+        description: Video generation available within Perplexity interface
     usage_tips:
-      - Use for research that needs citations
-      - Ask follow-up questions to explore topics deeper
-      - Use Focus modes for specialized searches
-      - Check the sources provided for verification
-      - Save important searches to collections
+      - Use Academic focus for peer-reviewed research
+      - Use SEC focus for financial filings and company reports
+      - Save searches to Spaces for ongoing research projects
+      - Try Comet browser for integrated AI search experience
+      - Use Pro Search for questions requiring multi-step reasoning
     best_practices:
-      - Always verify sources for critical information
-      - Use Academic focus for scholarly research
-      - Combine with other tools for comprehensive research
-      - Great for current events and news
-      - Use for quick fact-checking
+      - Click source links to verify claims
+      - Use focus modes to filter result quality
+      - Combine with follow-up questions for deeper exploration
+      - Export or save to Spaces for later reference
+      - Use the API for programmatic access with academic filtering
 
   # === IMAGE GENERATION ===
   - name: Midjourney
     company: Midjourney
-    tagline: AI art generation platform
+    tagline: Text-to-image via Discord and web
     description: >
-      Midjourney creates stunning AI-generated images from text prompts.
-      Known for artistic, photorealistic, and stylized imagery.
+      Version 7 text-to-image generator accessed via Discord or midjourney.com.
+      Improved hand/body accuracy and text rendering. Draft Mode generates at 10x
+      speed for half the cost with voice input. Personalization learns your style
+      preferences. Supports style references, aspect ratios, and variations.
+      No free tier; starts at $10/mo.
     category: image
     tool_type: ai_tool
     website_url: https://midjourney.com
@@ -554,35 +571,38 @@ tools:
       - Design
       - AI Art
     key_features:
-      - title: High-Quality Images
-        description: Professional-grade AI art and illustrations
-      - title: Style Variety
-        description: From photorealistic to abstract and artistic
-      - title: Community Gallery
-        description: Browse and learn from millions of creations
-      - title: Variations
-        description: Generate variations and upscale images
+      - title: V7 Model
+        description: Better hands, bodies, text rendering, and prompt accuracy than V6
+      - title: Draft Mode
+        description: 10x faster generation at half the cost with voice input option
+      - title: Personalization
+        description: Rank 200 image pairs to teach AI your visual preferences
       - title: Style References
-        description: Use reference images to guide style
+        description: Use --sref to guide style from reference images
+      - title: Web Editor
+        description: Edit, upscale, and iterate on images in the browser
     usage_tips:
-      - Study prompt engineering for better results
-      - Use style references for consistent aesthetics
-      - Iterate with variations to refine output
-      - Use aspect ratio flags for different formats
-      - Explore the community gallery for inspiration
+      - Use Draft Mode for rapid iteration, switch to Turbo for final quality
+      - Set up personalization by ranking images to match your aesthetic
+      - Use --ar for aspect ratio (--ar 16:9, --ar 9:16, etc.)
+      - Reference styles with --sref [image URL]
+      - Use the web editor for inpainting and variations
     best_practices:
-      - Be descriptive and specific in prompts
-      - Use aspect ratios appropriately for use case
-      - Leverage community knowledge and examples
-      - Combine artistic styles creatively
-      - Use negative prompts to exclude unwanted elements
+      - Be specific about composition, lighting, and style
+      - Use personalization for consistent brand aesthetics
+      - Check the community gallery for prompt inspiration
+      - Start with Draft Mode, upscale winners
+      - Use --no to exclude unwanted elements
 
   - name: DALL-E
     company: OpenAI
-    tagline: AI system that creates realistic images from text
+    tagline: Image generation in ChatGPT
     description: >
-      DALL-E by OpenAI generates realistic images and art from natural language descriptions.
-      Known for creative interpretations and photorealistic capabilities.
+      DALL-E 3 image generation integrated into ChatGPT. ChatGPT refines prompts
+      automatically before generating. Outputs up to 1024x1792 or 1792x1024.
+      Supports natural and vivid styles. Inpainting for edits. GPT-4o also has
+      native image generation. Free tier via ChatGPT; API at $0.02-0.12/image.
+      Commercial use allowed without permission.
     category: image
     tool_type: ai_tool
     website_url: https://openai.com/dall-e-3
@@ -596,35 +616,38 @@ tools:
       - DALL-E
       - Text-to-Image
     key_features:
-      - title: Natural Language Understanding
-        description: Generates images from detailed text descriptions
       - title: ChatGPT Integration
-        description: Create images directly within ChatGPT
-      - title: Editing Capabilities
-        description: Edit and modify existing images
-      - title: High Resolution
-        description: Generate images up to 1024x1024 pixels
-      - title: Safety Features
-        description: Built-in content moderation and safety measures
+        description: ChatGPT refines your prompt before sending to DALL-E 3
+      - title: Style Options
+        description: Choose vivid (hyper-real, cinematic) or natural (realistic, subtle) styles
+      - title: Multiple Sizes
+        description: 1024x1024 square, 1792x1024 landscape, or 1024x1792 portrait
+      - title: Inpainting
+        description: Edit specific regions of generated images
+      - title: API Access
+        description: Programmatic generation at $0.02-0.12 per image
     usage_tips:
-      - Use detailed, descriptive prompts
-      - Specify style, lighting, and composition
-      - Leverage ChatGPT for prompt refinement
-      - Use inpainting for targeted edits
-      - Combine with other OpenAI tools
+      - Let ChatGPT refine your prompt for better results
+      - Specify aspect ratio for your use case
+      - Use vivid style for dramatic images, natural for subtle
+      - Request variations if first result is close but not right
+      - Use inpainting to fix specific areas
     best_practices:
-      - Be specific about desired style and mood
-      - Include details about perspective and framing
-      - Use iterative prompting for refinement
-      - Review and edit prompts for clarity
-      - Understand content policy limitations
+      - Be specific about composition and lighting
+      - Describe perspective and framing
+      - Review ChatGPT's refined prompt before generating
+      - Understand content policy limits (no public figures, violence)
+      - Use API for programmatic workflows
 
   - name: Stable Diffusion
     company: Stability AI
-    tagline: Open-source AI image generation
+    tagline: Open-source image model for local or cloud use
     description: >
-      Stable Diffusion is an open-source AI model for generating images from text.
-      Known for flexibility, community models, and local deployment options.
+      Open-source text-to-image model (SD 3.5 latest). Uses MMDiT-X transformer
+      architecture for improved text rendering and multi-resolution. Run locally
+      on RTX 3060+ or via cloud APIs (Replicate, Hugging Face). Thousands of
+      community fine-tunes on Civitai. ControlNet for composition control.
+      Free for local use; cloud API pricing varies.
     category: image
     tool_type: ai_tool
     website_url: https://stability.ai
@@ -638,35 +661,37 @@ tools:
       - Creative
       - Self-hosted
     key_features:
-      - title: Open Source
-        description: Run locally or use cloud services
+      - title: SD 3.5 Model
+        description: MMDiT-X architecture with readable text and improved coherence
+      - title: Local Deployment
+        description: Run on consumer GPUs (RTX 3060+) for free
       - title: Community Models
-        description: Thousands of fine-tuned models available
-      - title: Customization
-        description: Train custom models on your own data
+        description: Thousands of fine-tunes on Civitai and Hugging Face
       - title: ControlNet
-        description: Precise control over image composition
-      - title: Inpainting/Outpainting
-        description: Edit and extend existing images
+        description: Precise control over pose, depth, edges, and composition
+      - title: Training Support
+        description: Fine-tune on your own data with LoRA or full training
     usage_tips:
-      - Explore community models on Civitai and Hugging Face
-      - Use ControlNet for precise control
-      - Experiment with different samplers
-      - Adjust CFG scale for prompt adherence
-      - Use negative prompts effectively
+      - Use AUTOMATIC1111 or ComfyUI for local inference
+      - Browse Civitai for specialized models (anime, photorealistic, etc.)
+      - Apply ControlNet for pose/composition guidance
+      - Adjust CFG scale (7-12 typical) for prompt adherence
+      - Use negative prompts to exclude artifacts
     best_practices:
-      - Start with proven prompt templates
-      - Use appropriate models for your style
-      - Understand sampling parameters
-      - Leverage community resources and guides
-      - Consider local deployment for privacy
+      - Start with SD 3.5 Medium for best quality/speed balance
+      - Use appropriate samplers (DPM++ 2M Karras is reliable)
+      - Check model licenses before commercial use
+      - Leverage community resources for prompt techniques
+      - Consider local deployment for privacy-sensitive work
 
   - name: Ideogram
     company: Ideogram
-    tagline: AI that renders text beautifully
+    tagline: Text-to-image with accurate text rendering
     description: >
-      Ideogram is an AI image generation platform known for its exceptional ability
-      to accurately render text within images, solving a common AI image challenge.
+      Text-to-image generator known for accurately rendering text in images.
+      Best for logos, posters, and designs with typography. Supports multiple
+      styles and aspect ratios. Remix feature for iterating on creations.
+      Free tier with daily credits; paid plans for more.
     category: image
     tool_type: ai_tool
     website_url: https://ideogram.ai
@@ -681,34 +706,37 @@ tools:
       - AI Art
     key_features:
       - title: Text Rendering
-        description: Industry-leading text accuracy in generated images
-      - title: Typography
-        description: Create logos, posters, and designs with text
-      - title: Style Variety
-        description: Multiple artistic styles and rendering options
-      - title: High Quality
-        description: Detailed, production-ready outputs
-      - title: Remix Feature
-        description: Modify and iterate on existing creations
+        description: Accurate text in images—logos, signs, posters render correctly
+      - title: Typography Control
+        description: Specify font styles and placement in prompts
+      - title: Remix
+        description: Iterate on existing images with new prompts
+      - title: Style Presets
+        description: Multiple artistic styles from photorealistic to illustrated
+      - title: Aspect Ratios
+        description: Multiple sizes for different use cases
     usage_tips:
-      - Perfect for designs requiring text
-      - Use for logo concepts and typography
-      - Great for social media graphics
-      - Specify font styles in prompts
-      - Use for mockups and presentations
+      - Use for designs that require readable text
+      - Keep text short for best accuracy
+      - Specify text placement in prompt
+      - Use remix to iterate on close results
+      - Good for logo concepts and social graphics
     best_practices:
-      - Keep text concise for best results
-      - Specify text placement in prompts
-      - Use for branding and marketing materials
-      - Combine with design tools for finishing
-      - Iterate with remix for refinement
+      - Describe font style if you have a preference
+      - Use for mockups and marketing materials
+      - Combine with design tools for final polish
+      - Check text accuracy before using
+      - Iterate with remix rather than starting over
 
   - name: Leonardo AI
     company: Leonardo AI
-    tagline: Create production-quality visual assets with AI
+    tagline: Game and design asset generation
     description: >
-      Leonardo AI is a generative AI platform for creating production-quality
-      visual assets for games, design, and creative projects with fine-tuned control.
+      Image generator focused on game assets, textures, and character design.
+      Specialized fine-tuned models for different asset types. AI Canvas for
+      real-time editing. Character consistency across images. Texture and
+      material generation for 3D. Motion feature animates static images.
+      Free tier; paid plans from $12/mo.
     category: image
     tool_type: ai_tool
     website_url: https://leonardo.ai
@@ -722,37 +750,39 @@ tools:
       - Production Quality
       - Creative
     key_features:
-      - title: Fine-tuned Models
-        description: Specialized models for different asset types
+      - title: Asset-Specific Models
+        description: Fine-tuned models for characters, environments, textures, and items
       - title: AI Canvas
-        description: Real-time collaborative editing canvas
+        description: Real-time editing canvas with inpainting and outpainting
       - title: Character Consistency
-        description: Maintain character appearance across images
+        description: Maintain character appearance across multiple images
       - title: Texture Generation
-        description: Create seamless textures for 3D and games
-      - title: Motion Generation
-        description: Add motion to static images
+        description: Seamless textures and materials for 3D and games
+      - title: Image-to-Motion
+        description: Add motion and animation to static images
     usage_tips:
-      - Use specialized models for asset types
-      - Leverage AI Canvas for editing
-      - Great for game development assets
-      - Use for consistent character designs
-      - Perfect for texture and material creation
+      - Choose the right model for your asset type
+      - Use AI Canvas for iterative editing
+      - Enable character consistency for multi-image projects
+      - Generate seamless textures for 3D workflows
+      - Use motion feature for animated previews
     best_practices:
-      - Choose appropriate model for your use case
-      - Use reference images for consistency
-      - Leverage community fine-tunes
-      - Iterate with canvas editing
-      - Export at appropriate resolutions
+      - Use reference images for consistent style
+      - Leverage community fine-tunes for specialized styles
+      - Export at resolution appropriate for use case
+      - Combine with 3D tools for game development
+      - Check output for seamless tiling on textures
 
   # === VIDEO GENERATION ===
   - name: Veo 3
     company: Google DeepMind
-    tagline: State-of-the-art AI video generation
+    tagline: Text-to-video with native audio and dialogue
     description: >
-      Veo 3 is Google DeepMind's advanced AI video generation model that creates
-      high-quality, realistic videos from text prompts with impressive temporal
-      consistency and visual fidelity.
+      Google's video generator with native audio including dialogue, ambient sounds,
+      and sound effects synced to on-screen action. Produces 8K resolution clips up
+      to 8 seconds. Available in Google's AI Studio and Vertex AI. First model to
+      generate synchronized audio alongside video in a single pass. Strong at
+      realistic physics and coherent multi-scene narratives.
     category: video
     tool_type: ai_tool
     website_url: https://deepmind.google/technologies/veo/
@@ -791,10 +821,13 @@ tools:
 
   - name: Runway
     company: Runway
-    tagline: AI-powered creative suite for video
+    tagline: Video generation and editing platform with Gen-4
     description: >
-      Runway provides AI-powered video editing, generation, and effects
-      with cutting-edge generative AI models for creative professionals.
+      Web platform for video generation, editing, and effects. Gen-4 model generates
+      10-second clips with improved human motion and consistency. Gen-4.5 and Aleph
+      models available for higher quality. Features Act-One for performance capture
+      to animated characters, motion brush for selective animation, and video-to-video
+      style transfer. Free trial; Standard starts at $15/mo.
     category: video
     tool_type: ai_tool
     website_url: https://runwayml.com
@@ -833,10 +866,13 @@ tools:
 
   - name: Pika
     company: Pika Labs
-    tagline: Create and edit videos with AI
+    tagline: Video generation with 3D scene control
     description: >
-      Pika is an AI video generation platform that transforms ideas into
-      stunning videos with simple text prompts and image inputs.
+      Video generator at pika.art with 2.0 model for text-to-video and image-to-video.
+      Supports scene ingredients to blend multiple concepts, aspect ratios from 1:1 to
+      16:9, and video extensions. Pikaffects adds special effects like explosions,
+      melting, and crushing to existing footage. Also offers Pikalabs shorts for
+      quick social content. Free tier; paid plans for more generations.
     category: video
     tool_type: ai_tool
     website_url: https://pika.art
@@ -875,10 +911,13 @@ tools:
 
   - name: Luma Dream Machine
     company: Luma AI
-    tagline: AI video generation that brings imagination to life
+    tagline: Fast video generation with Ray 2 model
     description: >
-      Luma Dream Machine is an AI model that generates high-quality,
-      realistic videos from text and images with impressive speed.
+      Video generator at lumalabs.ai using Ray 2 model. Generates 5-second clips
+      from text or images in under 2 minutes. Known for realistic motion physics
+      and character consistency across shots. Supports keyframes to control start
+      and end frames, camera motion presets, and extending existing clips. API
+      available for integration. Free tier limited; paid plans for more renders.
     category: video
     tool_type: ai_tool
     website_url: https://lumalabs.ai/dream-machine
@@ -918,10 +957,13 @@ tools:
   # === AUDIO & MUSIC ===
   - name: ElevenLabs
     company: ElevenLabs
-    tagline: AI voice generation and cloning
+    tagline: Text-to-speech, voice cloning, and conversational AI
     description: >
-      ElevenLabs offers the most realistic AI voice generation platform
-      for text-to-speech, voice cloning, and audio content creation.
+      Voice synthesis platform at elevenlabs.io. Text-to-speech in 32 languages with
+      adjustable emotion, pace, and style. Clone voices from short audio samples.
+      Conversational AI 2.0 enables real-time voice agents with <1 second latency.
+      11.ai Reader app converts text to audio. API available for integration.
+      Eleven Music generates songs from prompts. Free tier; Starter at $5/mo.
     category: audio
     tool_type: ai_tool
     website_url: https://elevenlabs.io
@@ -960,10 +1002,13 @@ tools:
 
   - name: Suno
     company: Suno
-    tagline: Make any song you can imagine
+    tagline: Full song generation with vocals and lyrics
     description: >
-      Suno is an AI music generation platform that creates original songs
-      with vocals, instruments, and lyrics from simple text prompts.
+      Music generator at suno.com using v4.5 model. Creates 2-4 minute songs with
+      vocals, instruments, and lyrics from text prompts. Covers feature lets you
+      re-record existing songs in new styles. Stems mode outputs separate tracks for
+      vocals, drums, bass, and other instruments. ReMi assists with lyrics. Supports
+      all genres from pop to classical. Free tier with 50 credits/day; Pro at $10/mo.
     category: audio
     tool_type: ai_tool
     website_url: https://suno.ai
@@ -1002,10 +1047,13 @@ tools:
 
   - name: Udio
     company: Udio
-    tagline: Create music with AI
+    tagline: Music generation with audio conditioning
     description: >
-      Udio is an AI music generation platform that creates high-quality
-      songs with realistic vocals and professional production quality.
+      Music generator at udio.com producing songs up to 15 minutes. Known for cleaner
+      production and better vocal clarity than competitors. Audio conditioning lets you
+      upload reference tracks to guide the style. Inpainting allows editing specific
+      sections. Supports remixing and extending tracks. Genre-agnostic with strong
+      results for electronic, hip-hop, and pop. Free tier; Standard at $10/mo.
     category: audio
     tool_type: ai_tool
     website_url: https://udio.com
@@ -1045,10 +1093,13 @@ tools:
   # === CODE & DEVELOPMENT ===
   - name: GitHub Copilot
     company: Microsoft
-    tagline: AI pair programmer
+    tagline: Code completion and autonomous agents in VS Code
     description: >
-      GitHub Copilot suggests code and entire functions in real-time from your editor,
-      trained on billions of lines of code to help you write code faster.
+      AI coding assistant in VS Code, JetBrains, and Vim. Inline completions suggest
+      code as you type. Copilot Chat answers questions about your codebase. Agent
+      mode executes multi-step tasks autonomously with file edits and terminal access.
+      Copilot Workspace in GitHub.com automates issue-to-PR workflows. Custom agents
+      can be built for specialized tasks. Free tier; Pro at $10/mo.
     category: code
     tool_type: ai_tool
     website_url: https://github.com/features/copilot
@@ -1087,10 +1138,13 @@ tools:
 
   - name: Cursor
     company: Cursor
-    tagline: AI-first code editor
+    tagline: VS Code fork with deep AI integration
     description: >
-      Cursor is a code editor built from the ground up with AI at its core,
-      featuring AI chat, codebase-wide understanding, and natural language editing.
+      Code editor based on VS Code with integrated AI features. Cmd+K edits code
+      from natural language. Composer makes multi-file changes from a single prompt.
+      Agent mode runs terminal commands and iterates on errors. Chat references your
+      codebase with @-mentions. Supports Claude, GPT-4, and custom models. Uses your
+      existing VS Code extensions. Free tier; Pro at $20/mo with unlimited requests.
     category: code
     tool_type: ai_tool
     website_url: https://cursor.sh
@@ -1129,10 +1183,13 @@ tools:
 
   - name: Claude Code
     company: Anthropic
-    tagline: Agentic coding tool by Anthropic
+    tagline: Terminal-based agentic coding assistant
     description: >
-      Claude Code is an agentic command-line coding tool that understands your codebase,
-      executes commands, and helps with complex development tasks autonomously.
+      CLI tool installed via npm that runs in your terminal. Navigates codebases,
+      reads and edits files, runs tests, and executes commands autonomously. Uses
+      Claude Opus 4.5 and Sonnet 4 models. Supports MCP (Model Context Protocol) for
+      extending with custom tools. Handles multi-file refactoring, debugging, and
+      complex multi-step development tasks. Billed through Claude API usage.
     category: code
     tool_type: ai_tool
     website_url: https://docs.anthropic.com/en/docs/claude-code
@@ -1172,10 +1229,13 @@ tools:
 
   - name: Replit
     company: Replit
-    tagline: Build software faster with AI
+    tagline: Browser IDE with Agent for building full apps
     description: >
-      Replit is a collaborative browser-based IDE with built-in AI features
-      for code generation, explanation, and debugging.
+      Browser-based IDE at replit.com with Replit Agent 3 for building complete
+      applications from descriptions. Generates front-end, back-end, and database
+      with one-click deployment. Uses Gemini via Google partnership. Real-time
+      multiplayer editing for pair programming. Works on desktop and mobile.
+      Supports 50+ languages with instant hosting. Free tier; Core at $15/mo.
     category: code
     tool_type: ai_tool
     website_url: https://replit.com
@@ -1215,10 +1275,13 @@ tools:
   # === PRODUCTIVITY & WRITING ===
   - name: Notion AI
     company: Notion
-    tagline: AI-powered knowledge workspace
+    tagline: AI writing and search in your workspace
     description: >
-      Notion AI brings AI directly into your workspace for writing, brainstorming,
-      summarizing, and organizing information seamlessly.
+      AI features integrated into Notion workspaces. Generate drafts, summaries, and
+      action items from any page. Q&A searches across all your docs and databases.
+      AI Agents (Notion AI 3.0) automate workflows like updating task statuses and
+      sending reminders. Works inline while writing. Available as $10/mo add-on to
+      any Notion plan.
     category: productivity
     tool_type: ai_tool
     website_url: https://notion.so/product/ai
@@ -1257,10 +1320,13 @@ tools:
 
   - name: Grammarly
     company: Grammarly
-    tagline: AI writing assistant for clarity and correctness
+    tagline: Writing corrections and generative AI everywhere you type
     description: >
-      Grammarly is an AI-powered writing assistant that helps improve grammar,
-      spelling, style, and tone across all your writing.
+      Browser extension and desktop app that checks grammar, spelling, and tone as
+      you write. Works in Gmail, Docs, social media, and most text fields. GrammarlyGO
+      generates and rewrites text from prompts. Tone detector shows how your message
+      reads. Plagiarism checker on paid plans. Business plans add style guides and
+      analytics. Free tier; Premium at $12/mo.
     category: writing
     tool_type: ai_tool
     website_url: https://grammarly.com
@@ -1299,10 +1365,13 @@ tools:
 
   - name: Jasper
     company: Jasper
-    tagline: AI copilot for enterprise marketing teams
+    tagline: Marketing content platform with brand voice training
     description: >
-      Jasper is an AI content platform designed for marketing teams to create
-      on-brand content at scale with AI assistance.
+      Content generation platform for marketing teams at jasper.ai. Learns your brand
+      voice from existing content and style guides. Templates for ads, social posts,
+      emails, and landing pages. Campaigns organize assets around launches. Multi-user
+      collaboration with approval workflows. Image generation included. Integrates
+      with Google Docs, Chrome, and marketing tools. Starts at $39/mo per seat.
     category: writing
     tool_type: ai_tool
     website_url: https://jasper.ai
@@ -1342,10 +1411,13 @@ tools:
   # === RESEARCH & DATA ===
   - name: Hugging Face
     company: Hugging Face
-    tagline: The AI community building the future
+    tagline: Open-source model hub and ML infrastructure
     description: >
-      Hugging Face is the platform where the machine learning community collaborates
-      on models, datasets, and applications, hosting thousands of open-source models.
+      Platform at huggingface.co hosting 1M+ open-source models and datasets. Download
+      and fine-tune models for text, image, audio, and video. Spaces lets you deploy
+      demos with Gradio or Streamlit. Inference API runs models without your own GPU.
+      Transformers library is the standard for using models in Python. Free to use;
+      Pro at $9/mo adds private repos and compute.
     category: research
     tool_type: ai_tool
     website_url: https://huggingface.co
@@ -1384,10 +1456,13 @@ tools:
 
   - name: Replicate
     company: Replicate
-    tagline: Run AI with an API
+    tagline: Run open-source models via API
     description: >
-      Replicate lets you run machine learning models with a cloud API,
-      without managing infrastructure or understanding ML intricacies.
+      API platform at replicate.com for running ML models without managing GPUs.
+      Hosts Flux, Stable Diffusion, Whisper, LLaMA, and thousands of community models.
+      Pay per second of compute. Deploy your own models with Cog packaging. Webhooks
+      for async processing. Playground for testing. Used for prototyping and production
+      when you need specific open-source models. Credit-based billing.
     category: research
     tool_type: ai_tool
     website_url: https://replicate.com

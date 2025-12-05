@@ -12,7 +12,6 @@ import NotificationsSettingsPage from '@/pages/settings/NotificationsSettingsPag
 import BillingSettingsPage from '@/pages/settings/BillingSettingsPage';
 import CreatorSettingsPage from '@/pages/settings/CreatorSettingsPage';
 import PrivacySettingsPage from '@/pages/settings/PrivacySettingsPage';
-import TeamsSettingsPage from '@/pages/settings/TeamsSettingsPage';
 import ReferralsPage from '@/pages/settings/ReferralsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import StyleGuidePage from '@/pages/StyleGuidePage';
@@ -299,14 +298,6 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <PrivacySettingsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/account/settings/teams"
-        element={
-          <ProtectedRoute>
-            <TeamsSettingsPage />
           </ProtectedRoute>
         }
       />
