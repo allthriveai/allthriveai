@@ -22,6 +22,7 @@ app.autodiscover_tasks(
         'core.billing',  # Billing and token management tasks
         'core.notifications',  # Email notification tasks
         'core.sms',  # SMS notification tasks
+        'core.ai_usage',  # Admin analytics tasks
         'services.weaviate',  # Weaviate sync tasks
     ]
 )
@@ -149,6 +150,14 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour='*/12'),  # Twice daily
         'options': {
             'expires': 3600,  # Expires after 1 hour
+        },
+    },
+    # Admin analytics tasks
+    'analytics-aggregate-daily-stats': {
+        'task': 'core.ai_usage.tasks.aggregate_platform_daily_stats',
+        'schedule': crontab(hour=1, minute=0),  # Daily at 1:00 AM (after midnight rollover)
+        'options': {
+            'expires': 7200,  # Expires after 2 hours
         },
     },
 }

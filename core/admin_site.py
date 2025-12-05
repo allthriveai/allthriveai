@@ -85,12 +85,10 @@ class AllThriveAdminSite(AdminSite):
         }
 
         # Distribute models into groups
-        print('\n=== DEBUG: Admin Model Discovery ===')
         for app_label, app_data in app_dict.items():
             for model in app_data['models']:
                 model_key = f'{app_label}.{model["object_name"].lower()}'
                 group_label = model_groups.get(model_key)
-                print(f'Model: {model_key} -> Group: {group_label}')
 
                 if group_label:
                     # Find the group and add the model
@@ -99,7 +97,6 @@ class AllThriveAdminSite(AdminSite):
                             group['models'].append(model)
                             break
                 # System models and unmapped models are intentionally hidden
-        print('=== END DEBUG ===')
 
         # Filter out empty groups and format for Django admin
         app_list = []

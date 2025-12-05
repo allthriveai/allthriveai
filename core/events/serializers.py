@@ -32,6 +32,7 @@ class EventSerializer(serializers.ModelSerializer):
     created_by_username = serializers.SerializerMethodField()
     updated_by_username = serializers.SerializerMethodField()
     user_rsvp_status = serializers.SerializerMethodField()
+    attendees = serializers.SerializerMethodField()
 
     def get_created_by_username(self, obj):
         """Safely get created_by username."""
@@ -48,6 +49,18 @@ class EventSerializer(serializers.ModelSerializer):
             rsvp = obj.rsvps.filter(user=request.user).first()
             return rsvp.status if rsvp else None
         return None
+
+    def get_attendees(self, obj):
+        """Get list of users who RSVP'd 'going' to this event."""
+        going_rsvps = obj.rsvps.filter(status='going').select_related('user')[:10]
+        return [
+            {
+                'id': rsvp.user.id,
+                'username': rsvp.user.username,
+                'avatarUrl': rsvp.user.avatar_url,
+            }
+            for rsvp in going_rsvps
+        ]
 
     class Meta:
         model = Event
@@ -77,6 +90,7 @@ class EventSerializer(serializers.ModelSerializer):
             'going_count',
             'maybe_count',
             'user_rsvp_status',
+            'attendees',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'created_by', 'updated_by']
 

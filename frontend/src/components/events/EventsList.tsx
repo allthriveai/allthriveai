@@ -46,10 +46,10 @@ export function EventsList({ events, onEventClick, onRSVPChange }: EventsListPro
   }
 
   const formatEventDate = (event: Event) => {
-    const start = new Date(event.start_date);
-    const end = new Date(event.end_date);
+    const start = new Date(event.startDate);
+    const end = new Date(event.endDate);
 
-    if (event.is_all_day) {
+    if (event.isAllDay) {
       return format(start, 'MMMM d, yyyy');
     }
 
@@ -66,10 +66,10 @@ export function EventsList({ events, onEventClick, onRSVPChange }: EventsListPro
   };
 
   const getEventStatus = (event: Event) => {
-    if (event.is_ongoing) {
+    if (event.isOngoing) {
       return { label: 'Ongoing', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
     }
-    if (event.is_upcoming) {
+    if (event.isUpcoming) {
       return { label: 'Upcoming', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' };
     }
     return { label: 'Past', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' };
@@ -85,7 +85,7 @@ export function EventsList({ events, onEventClick, onRSVPChange }: EventsListPro
             key={event.id}
             onClick={() => onEventClick?.(event)}
             className={`p-4 rounded-lg border transition-all cursor-pointer ${
-              event.is_past
+              event.isPast
                 ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-75'
                 : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary-500 hover:shadow-md'
             }`}
@@ -117,7 +117,7 @@ export function EventsList({ events, onEventClick, onRSVPChange }: EventsListPro
             <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
               {/* Date/Time */}
               <div className="flex items-start gap-2">
-                {event.is_all_day ? (
+                {event.isAllDay ? (
                   <CalendarIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 ) : (
                   <ClockIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -141,13 +141,42 @@ export function EventsList({ events, onEventClick, onRSVPChange }: EventsListPro
               )}
 
               {/* RSVP Section - Only show for upcoming and ongoing events */}
-              {!event.is_past && (
+              {!event.isPast && (
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex items-center gap-2 mb-2">
+                    {/* Attendee avatars */}
+                    {event.attendees && event.attendees.length > 0 && (
+                      <div className="flex -space-x-2">
+                        {event.attendees.slice(0, 5).map((attendee) => (
+                          <div
+                            key={attendee.id}
+                            className="w-6 h-6 rounded-full border-2 border-white dark:border-gray-800 overflow-hidden flex-shrink-0"
+                            title={attendee.username}
+                          >
+                            {attendee.avatarUrl ? (
+                              <img
+                                src={attendee.avatarUrl}
+                                alt={attendee.username}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-primary-600 dark:text-primary-400 font-semibold text-xs">
+                                {attendee.username.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {event.goingCount > 5 && (
+                          <div className="w-6 h-6 rounded-full border-2 border-white dark:border-gray-800 bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 text-xs font-medium flex-shrink-0">
+                            +{event.goingCount - 5}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <UserGroupIcon className="w-4 h-4" />
                     <span className="text-xs font-medium">
-                      {event.going_count} going
-                      {event.maybe_count > 0 && `, ${event.maybe_count} maybe`}
+                      {event.goingCount} going
+                      {event.maybeCount > 0 && `, ${event.maybeCount} maybe`}
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -155,36 +184,36 @@ export function EventsList({ events, onEventClick, onRSVPChange }: EventsListPro
                       onClick={(e) => handleRSVP(event.id, 'going', e)}
                       disabled={rsvpLoading[event.id]}
                       className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md transition-colors ${
-                        event.user_rsvp_status === 'going'
+                        event.userRsvpStatus === 'going'
                           ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 ring-2 ring-green-500'
                           : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
-                      {event.user_rsvp_status === 'going' && <CheckCircleIcon className="w-3 h-3" />}
+                      {event.userRsvpStatus === 'going' && <CheckCircleIcon className="w-3 h-3" />}
                       Going
                     </button>
                     <button
                       onClick={(e) => handleRSVP(event.id, 'maybe', e)}
                       disabled={rsvpLoading[event.id]}
                       className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md transition-colors ${
-                        event.user_rsvp_status === 'maybe'
+                        event.userRsvpStatus === 'maybe'
                           ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ring-2 ring-blue-500'
                           : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
-                      {event.user_rsvp_status === 'maybe' && <CheckCircleIcon className="w-3 h-3" />}
+                      {event.userRsvpStatus === 'maybe' && <CheckCircleIcon className="w-3 h-3" />}
                       Maybe
                     </button>
                     <button
                       onClick={(e) => handleRSVP(event.id, 'not_going', e)}
                       disabled={rsvpLoading[event.id]}
                       className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md transition-colors ${
-                        event.user_rsvp_status === 'not_going'
+                        event.userRsvpStatus === 'not_going'
                           ? 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200 ring-2 ring-gray-500'
                           : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
-                      {event.user_rsvp_status === 'not_going' && <CheckCircleIcon className="w-3 h-3" />}
+                      {event.userRsvpStatus === 'not_going' && <CheckCircleIcon className="w-3 h-3" />}
                       Can't Go
                     </button>
                   </div>
@@ -192,9 +221,9 @@ export function EventsList({ events, onEventClick, onRSVPChange }: EventsListPro
               )}
 
               {/* Event URL */}
-              {event.event_url && (
+              {event.eventUrl && (
                 <a
-                  href={event.event_url}
+                  href={event.eventUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}

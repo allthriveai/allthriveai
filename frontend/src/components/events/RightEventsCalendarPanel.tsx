@@ -30,7 +30,7 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
 
   // Memoized filtered lists for performance
   const upcomingEvents = useMemo(
-    () => events.filter((e) => e.is_upcoming),
+    () => events.filter((e) => e.isUpcoming),
     [events]
   );
 

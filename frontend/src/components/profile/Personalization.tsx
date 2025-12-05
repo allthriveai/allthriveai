@@ -3,6 +3,12 @@ import {
   getUserPersonalization,
   bulkCreateTags,
   deleteUserTag,
+  getPersonalizationSettings,
+  updatePersonalizationSettings,
+  resetPersonalizationSettings,
+  exportPersonalizationData,
+  deletePersonalizationData,
+  type PersonalizationSettings,
 } from '@/services/personalization';
 import type { Taxonomy, UserTag, TaxonomyCategory } from '@/types/models';
 import {
@@ -14,6 +20,17 @@ import {
   SunIcon,
   MoonIcon,
   ComputerDesktopIcon,
+  AdjustmentsHorizontalIcon,
+  EyeIcon,
+  HeartIcon,
+  AcademicCapIcon,
+  UserGroupIcon,
+  ArrowPathIcon,
+  ShieldCheckIcon,
+  ClockIcon,
+  ArrowDownTrayIcon,
+  TrashIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -50,10 +67,137 @@ export function Personalization() {
   const [activeCategory, setActiveCategory] = useState<TaxonomyCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Personalization settings state
+  const [settings, setSettings] = useState<PersonalizationSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsSaving, setSavingSettings] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+
+  // Data management state
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+
   useEffect(() => {
     loadPersonalization();
+    loadSettings();
   }, []);
 
+  async function loadSettings() {
+    try {
+      setSettingsLoading(true);
+      setSettingsError(null);
+      const data = await getPersonalizationSettings();
+      setSettings(data);
+    } catch (err: any) {
+      console.error('Failed to load personalization settings:', err);
+      setSettingsError('Failed to load settings');
+    } finally {
+      setSettingsLoading(false);
+    }
+  }
+
+  async function handleToggleSetting(key: keyof PersonalizationSettings, value: boolean) {
+    if (!settings) return;
+
+    const previousSettings = settings;
+    // Optimistic update
+    setSettings({ ...settings, [key]: value });
+
+    try {
+      setSavingSettings(true);
+      const updated = await updatePersonalizationSettings({ [key]: value });
+      setSettings(updated);
+    } catch (err: any) {
+      console.error('Failed to update setting:', err);
+      setSettings(previousSettings); // Revert on error
+      setSettingsError('Failed to save setting');
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
+  async function handleSliderChange(value: number) {
+    if (!settings) return;
+
+    const previousSettings = settings;
+    setSettings({ ...settings, discovery_balance: value });
+
+    try {
+      setSavingSettings(true);
+      const updated = await updatePersonalizationSettings({ discovery_balance: value });
+      setSettings(updated);
+    } catch (err: any) {
+      console.error('Failed to update discovery balance:', err);
+      setSettings(previousSettings);
+      setSettingsError('Failed to save setting');
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
+  async function handleResetSettings() {
+    try {
+      setSavingSettings(true);
+      setSettingsError(null);
+      const result = await resetPersonalizationSettings();
+      setSettings(result.settings);
+    } catch (err: any) {
+      console.error('Failed to reset settings:', err);
+      setSettingsError('Failed to reset settings');
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
+  async function handleExportData() {
+    try {
+      setIsExporting(true);
+      setDataError(null);
+      const data = await exportPersonalizationData();
+
+      // Create and download JSON file
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `personalization-data-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Failed to export data:', err);
+      setDataError('Failed to export your data. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  async function handleDeleteData() {
+    try {
+      setIsDeleting(true);
+      setDataError(null);
+      await deletePersonalizationData();
+
+      // Clear local state
+      setManualTags([]);
+      setAutoTags([]);
+      setSelectedTaxonomies(new Set());
+      setSelectedTopicIds(new Set());
+      setSettings(null);
+      setShowDeleteConfirm(false);
+
+      // Reload settings (will create fresh defaults)
+      await loadSettings();
+    } catch (err: any) {
+      console.error('Failed to delete data:', err);
+      setDataError('Failed to delete your data. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   async function handleSaveTaxonomies() {
     try {
@@ -301,6 +445,276 @@ export function Personalization() {
             </div>
           </button>
         </div>
+      </div>
+
+      {/* Recommendation Controls */}
+      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <AdjustmentsHorizontalIcon className="w-5 h-5" />
+              Recommendation Controls
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Fine-tune what influences your personalized recommendations.
+            </p>
+          </div>
+          <button
+            onClick={handleResetSettings}
+            disabled={settingsSaving || settingsLoading}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+          >
+            <ArrowPathIcon className="w-4 h-4" />
+            Reset to Defaults
+          </button>
+        </div>
+
+        {settingsError && (
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-sm text-red-600 dark:text-red-400">{settingsError}</p>
+          </div>
+        )}
+
+        {settingsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : settings ? (
+          <div className="space-y-6">
+            {/* Recommendation Signals */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+                What should influence your recommendations?
+              </h4>
+              <div className="space-y-3">
+                {/* Topic selections toggle */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <TagIcon className="w-5 h-5 text-primary-500" />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Topic Selections</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Use your selected topics above</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleToggleSetting('use_topic_selections', !settings.use_topic_selections)}
+                    disabled={settingsSaving}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      settings.use_topic_selections
+                        ? 'bg-primary-500'
+                        : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        settings.use_topic_selections ? 'translate-x-6' : ''
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Learn from views toggle */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <EyeIcon className="w-5 h-5 text-blue-500" />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Views & Engagement</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Learn from projects you view</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleToggleSetting('learn_from_views', !settings.learn_from_views)}
+                    disabled={settingsSaving}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      settings.learn_from_views
+                        ? 'bg-primary-500'
+                        : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        settings.learn_from_views ? 'translate-x-6' : ''
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Learn from likes toggle */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <HeartIcon className="w-5 h-5 text-red-500" />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Likes & Bookmarks</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Learn from projects you like or save</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleToggleSetting('learn_from_likes', !settings.learn_from_likes)}
+                    disabled={settingsSaving}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      settings.learn_from_likes
+                        ? 'bg-primary-500'
+                        : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        settings.learn_from_likes ? 'translate-x-6' : ''
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Skill level toggle */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <AcademicCapIcon className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Skill Level</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Match content to your experience level</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleToggleSetting('consider_skill_level', !settings.consider_skill_level)}
+                    disabled={settingsSaving}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      settings.consider_skill_level
+                        ? 'bg-primary-500'
+                        : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        settings.consider_skill_level ? 'translate-x-6' : ''
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Social signals toggle */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <UserGroupIcon className="w-5 h-5 text-purple-500" />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Social Context</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Consider what people you follow like</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleToggleSetting('use_social_signals', !settings.use_social_signals)}
+                    disabled={settingsSaving}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      settings.use_social_signals
+                        ? 'bg-primary-500'
+                        : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        settings.use_social_signals ? 'translate-x-6' : ''
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Discovery Balance Slider */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+                Discovery vs Familiar
+              </h4>
+              <div className="space-y-3">
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                  <span>More of what I like</span>
+                  <span>Surprise me more</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={settings.discovery_balance}
+                  onChange={(e) => handleSliderChange(Number(e.target.value))}
+                  disabled={settingsSaving}
+                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                />
+                <div className="text-center">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {settings.discovery_balance < 33
+                      ? 'Mostly familiar content'
+                      : settings.discovery_balance > 66
+                        ? 'Lots of new discoveries'
+                        : 'Balanced mix'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Privacy Controls */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                <ShieldCheckIcon className="w-4 h-4" />
+                Privacy Controls
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Control what behavioral data we collect to improve recommendations.
+              </p>
+              <div className="space-y-3">
+                {/* Time tracking toggle */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <ClockIcon className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Time Tracking</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Track how long you view content</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleToggleSetting('allow_time_tracking', !settings.allow_time_tracking)}
+                    disabled={settingsSaving}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      settings.allow_time_tracking
+                        ? 'bg-primary-500'
+                        : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        settings.allow_time_tracking ? 'translate-x-6' : ''
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Scroll tracking toggle */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <EyeIcon className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Scroll Tracking</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Track scroll depth on content</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleToggleSetting('allow_scroll_tracking', !settings.allow_scroll_tracking)}
+                    disabled={settingsSaving}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      settings.allow_scroll_tracking
+                        ? 'bg-primary-500'
+                        : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        settings.allow_scroll_tracking ? 'translate-x-6' : ''
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* Topics Section */}
@@ -636,6 +1050,132 @@ export function Personalization() {
           </div>
         </div>
       )}
+
+      {/* Your Data Section */}
+      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-2 mb-4">
+          <ShieldCheckIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+            Your Data
+          </h3>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+          You have full control over your personalization data. Export a copy or delete it at any time.
+        </p>
+
+        {dataError && (
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-sm text-red-600 dark:text-red-400">{dataError}</p>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {/* Export Data */}
+          <div className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+            <div className="flex items-start gap-3">
+              <ArrowDownTrayIcon className="w-5 h-5 text-blue-500 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Export Your Data</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Download all your personalization data including settings, topics, and detected preferences as a JSON file.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleExportData}
+              disabled={isExporting}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
+            >
+              {isExporting ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <ArrowDownTrayIcon className="w-4 h-4" />
+                  Export
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Delete Data */}
+          <div className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex items-start gap-3">
+              <TrashIcon className="w-5 h-5 text-red-500 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Delete Personalization Data</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Permanently delete all your topics, detected preferences, interaction history, and settings.
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={isDeleting}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+            >
+              <TrashIcon className="w-4 h-4" />
+              Delete
+            </button>
+          </div>
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-md mx-4 shadow-xl border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <ExclamationTriangleIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Delete All Personalization Data?
+                </h4>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                This will permanently delete:
+              </p>
+              <ul className="text-sm text-gray-600 dark:text-gray-400 mb-6 space-y-1 ml-4">
+                <li>• All your selected topics and interests</li>
+                <li>• All auto-detected preferences</li>
+                <li>• Your interaction history</li>
+                <li>• Your recommendation settings</li>
+              </ul>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Your "For You" feed will be reset. This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteData}
+                  disabled={isDeleting}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <TrashIcon className="w-4 h-4" />
+                      Delete Everything
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

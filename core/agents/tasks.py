@@ -729,10 +729,14 @@ def _process_image_generation(
     )
 
     if is_vague_request:
-        # Send a prompt asking for more details - use 'chunk' event for text display
+        # Send a prompt asking for more details with explicit format choice
         response_text = (
-            'Great, can you please describe what you would like me to make? '
-            'I can make images and I am also great at making infographics!'
+            "I'd love to help! What topic would you like me to visualize?\n\n"
+            "Just describe what you want, and let me know if you'd prefer:\n"
+            '• An **infographic** (great for step-by-step guides, comparisons, or data)\n'
+            '• A **photo/image** (great for scenes, objects, or artistic visuals)\n\n'
+            'For example: "Create an infographic about making pour-over coffee" or '
+            '"Generate an image of a cozy coffee shop"'
         )
         async_to_sync(channel_layer.group_send)(
             channel_name,

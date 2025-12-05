@@ -14,6 +14,8 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from core.logging_utils import StructuredLogger
+
 logger = logging.getLogger(__name__)
 
 
@@ -114,7 +116,13 @@ def check_low_token_balances_task(self):
                     f'({_mask_email(user.email)}) (balance: {balance.balance})'
                 )
             except Exception as e:
-                logger.error(f'Failed to send notification to user_id={user.id}: {e}')
+                StructuredLogger.log_error(
+                    message='Failed to send low balance notification',
+                    error=e,
+                    user=user,
+                    extra={'balance': balance.balance, 'alert_level': alert_level},
+                    logger_instance=logger,
+                )
 
         # Also check for users at zero balance
         zero_balance_users = UserTokenBalance.objects.filter(
@@ -133,13 +141,23 @@ def check_low_token_balances_task(self):
                 )
                 notifications_sent += 1
             except Exception as e:
-                logger.error(f'Failed to send depleted notification to user_id={user.id}: {e}')
+                StructuredLogger.log_error(
+                    message='Failed to send depleted notification',
+                    error=e,
+                    user=user,
+                    logger_instance=logger,
+                )
 
         logger.info(f'Low balance check complete. Sent {notifications_sent} notifications.')
         return {'notifications_sent': notifications_sent}
 
     except Exception as e:
-        logger.error(f'Low balance check failed: {e}', exc_info=True)
+        StructuredLogger.log_error(
+            message='Low balance check task failed',
+            error=e,
+            extra={'retry_attempt': self.request.retries},
+            logger_instance=logger,
+        )
         countdown = get_exponential_backoff(self.request.retries)
         logger.info(f'Retrying low balance check in {countdown}s (attempt {self.request.retries + 1})')
         raise self.retry(exc=e, countdown=countdown) from e
@@ -193,7 +211,12 @@ def reset_monthly_ai_requests_task(self):
         return {'subscriptions_reset': reset_count}
 
     except Exception as e:
-        logger.error(f'Monthly reset failed: {e}', exc_info=True)
+        StructuredLogger.log_error(
+            message='Monthly AI request reset task failed',
+            error=e,
+            extra={'retry_attempt': self.request.retries},
+            logger_instance=logger,
+        )
         countdown = get_exponential_backoff(self.request.retries)
         logger.info(f'Retrying monthly reset in {countdown}s (attempt {self.request.retries + 1})')
         raise self.retry(exc=e, countdown=countdown) from e
@@ -247,10 +270,19 @@ def send_token_usage_notification_task(user_id: int, tokens_used: int, balance_a
         return {'notified': should_notify, 'alert_level': alert_level if should_notify else None}
 
     except User.DoesNotExist:
-        logger.warning(f'User {user_id} not found for token usage notification')
+        StructuredLogger.log_validation_error(
+            message='User not found for token usage notification',
+            errors={'user_id': f'User {user_id} does not exist'},
+            logger_instance=logger,
+        )
         return {'notified': False, 'error': 'user_not_found'}
     except Exception as e:
-        logger.error(f'Failed to send token usage notification: {e}', exc_info=True)
+        StructuredLogger.log_error(
+            message='Failed to send token usage notification',
+            error=e,
+            extra={'user_id': user_id, 'tokens_used': tokens_used, 'balance_after': balance_after},
+            logger_instance=logger,
+        )
         return {'notified': False, 'error': str(e)}
 
 
@@ -317,13 +349,23 @@ def check_subscription_quotas_task():
                 )
                 notifications_sent += 1
             except Exception as e:
-                logger.error(f'Failed to send quota notification to user_id={subscription.user.id}: {e}')
+                StructuredLogger.log_error(
+                    message='Failed to send quota notification',
+                    error=e,
+                    user=subscription.user,
+                    extra={'used': used, 'limit': limit, 'alert_level': alert_level},
+                    logger_instance=logger,
+                )
 
         logger.info(f'Quota check complete. Sent {notifications_sent} notifications.')
         return {'notifications_sent': notifications_sent}
 
     except Exception as e:
-        logger.error(f'Quota check failed: {e}', exc_info=True)
+        StructuredLogger.log_error(
+            message='Subscription quota check task failed',
+            error=e,
+            logger_instance=logger,
+        )
         return {'error': str(e)}
 
 

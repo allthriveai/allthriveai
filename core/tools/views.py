@@ -55,6 +55,16 @@ class ToolViewSet(viewsets.ReadOnlyModelViewSet):
         # Atomic increment at database level to prevent race conditions
         Tool.objects.filter(pk=instance.pk).update(view_count=F('view_count') + 1)
 
+        # Track engagement for vendor analytics
+        from core.vendors.services import track_tool_engagement
+
+        track_tool_engagement(
+            tool_id=instance.pk,
+            engagement_type='page_view',
+            request=request,
+            source_context=request.query_params.get('ref', 'direct'),
+        )
+
         # Refresh instance to get updated view_count for serializer
         instance.refresh_from_db()
         serializer = self.get_serializer(instance)
@@ -279,12 +289,25 @@ class ToolBookmarkViewSet(viewsets.ModelViewSet):
 
         bookmark, created = ToolBookmark.objects.get_or_create(user=request.user, tool=tool)
 
+        # Track engagement for vendor analytics
+        from core.vendors.services import track_tool_engagement
+
         if not created:
             # Bookmark exists, delete it
             bookmark.delete()
+            track_tool_engagement(
+                tool_id=tool_id,
+                engagement_type='unbookmark',
+                request=request,
+            )
             return Response({'bookmarked': False})
 
         # Bookmark was created
+        track_tool_engagement(
+            tool_id=tool_id,
+            engagement_type='bookmark',
+            request=request,
+        )
         serializer = self.get_serializer(bookmark)
         return Response({'bookmarked': True, 'bookmark': serializer.data}, status=status.HTTP_201_CREATED)
 

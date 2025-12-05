@@ -21,6 +21,7 @@ class UserRole(models.TextChoices):
     PATRON = 'patron', 'Patron'
     ADMIN = 'admin', 'Admin'
     AGENT = 'agent', 'Agent'
+    VENDOR = 'vendor', 'Vendor'  # Tool company representatives with analytics access
 
 
 class User(AbstractUser):
@@ -173,6 +174,10 @@ class User(AbstractUser):
         help_text='User is open to receiving random battle invitations from active users',
     )
 
+    # Social/Follow counts (denormalized for performance)
+    followers_count = models.PositiveIntegerField(default=0, help_text='Number of users following this user')
+    following_count = models.PositiveIntegerField(default=0, help_text='Number of users this user follows')
+
     # Phone/SMS fields for battle invitations
     phone_number = models.CharField(
         max_length=20,
@@ -293,6 +298,10 @@ class User(AbstractUser):
     @property
     def is_agent(self):
         return self.role == UserRole.AGENT
+
+    @property
+    def is_vendor(self):
+        return self.role == UserRole.VENDOR
 
     def has_role_permission(self, required_role: str) -> bool:
         """Check if user has at least the required role level."""
@@ -512,3 +521,121 @@ class User(AbstractUser):
     def tier_display(self):
         """Get human-readable tier name."""
         return dict(self.TIER_CHOICES).get(self.tier, 'Seedling')
+
+
+class UserFollow(models.Model):
+    """One-way follow relationship between users (Twitter-style)."""
+
+    follower = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='following_set',
+        help_text='The user who is following',
+    )
+    following = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='followers_set',
+        help_text='The user being followed',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['follower', 'following'],
+                name='unique_follow',
+            ),
+            models.CheckConstraint(
+                check=~models.Q(follower=models.F('following')),
+                name='no_self_follow',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['following', '-created_at'], name='userfollow_following_idx'),
+            models.Index(fields=['follower', '-created_at'], name='userfollow_follower_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.follower.username} -> {self.following.username}'
+
+
+class PersonalizationSettings(models.Model):
+    """
+    User-controlled personalization settings.
+
+    Controls which signals influence recommendations and privacy preferences.
+    """
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='personalization_settings',
+        help_text='User these settings belong to',
+    )
+
+    # Recommendation signal controls
+    use_topic_selections = models.BooleanField(
+        default=True,
+        help_text='Use manually selected topics for recommendations',
+    )
+    learn_from_views = models.BooleanField(
+        default=True,
+        help_text='Learn from projects user views',
+    )
+    learn_from_likes = models.BooleanField(
+        default=True,
+        help_text='Learn from projects user likes',
+    )
+    consider_skill_level = models.BooleanField(
+        default=True,
+        help_text='Match content difficulty to user skill level',
+    )
+    factor_content_difficulty = models.BooleanField(
+        default=True,
+        help_text='Consider content difficulty in recommendations',
+    )
+    use_social_signals = models.BooleanField(
+        default=True,
+        help_text='Use following/engagement patterns for recommendations',
+    )
+
+    # Discovery vs familiar balance (0=only familiar, 100=only new)
+    discovery_balance = models.IntegerField(
+        default=50,
+        help_text='Balance between familiar content (0) and new discovery (100)',
+    )
+
+    # Privacy/tracking controls
+    allow_time_tracking = models.BooleanField(
+        default=True,
+        help_text='Track time spent on pages for better recommendations',
+    )
+    allow_scroll_tracking = models.BooleanField(
+        default=True,
+        help_text='Track scroll depth to understand engagement',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Personalization Settings'
+        verbose_name_plural = 'Personalization Settings'
+
+    def __str__(self):
+        return f'PersonalizationSettings for {self.user.username}'
+
+    def reset_to_defaults(self):
+        """Reset all settings to default values."""
+        self.use_topic_selections = True
+        self.learn_from_views = True
+        self.learn_from_likes = True
+        self.consider_skill_level = True
+        self.factor_content_difficulty = True
+        self.use_social_signals = True
+        self.discovery_balance = 50
+        self.allow_time_tracking = True
+        self.allow_scroll_tracking = True
+        self.save()

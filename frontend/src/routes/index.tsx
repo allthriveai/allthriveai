@@ -34,6 +34,8 @@ import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
 import PerksPage from '@/pages/PerksPage';
 import MarketplacePage from '@/pages/MarketplacePage';
 import GettingStartedPage from '@/pages/GettingStartedPage';
+import VendorDashboardPage from '@/pages/VendorDashboardPage';
+import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
 
 export function AppRoutes() {
   return (
@@ -218,6 +220,26 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <GettingStartedPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Vendor Dashboard - protected, vendors only */}
+      <Route
+        path="/vendor/dashboard"
+        element={
+          <ProtectedRoute>
+            <VendorDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Admin Analytics Dashboard - protected, admins only */}
+      <Route
+        path="/admin/analytics"
+        element={
+          <ProtectedRoute>
+            <AdminAnalyticsPage />
           </ProtectedRoute>
         }
       />

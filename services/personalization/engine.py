@@ -4,7 +4,10 @@ Personalization engine with hybrid scoring algorithm.
 Combines multiple signals for "For You" feed:
 - Vector similarity (30%): Content-based from Weaviate
 - Explicit preferences (25%): UserTag matches
-- Behavioral signals (25%): Interaction history
+- Behavioral signals (25%): Interaction history + follow boost
+  - Penalize viewed/liked projects
+  - Boost projects from liked owners
+  - Boost projects from followed users (+0.4)
 - Collaborative filtering (15%): Similar users' likes
 - Popularity (5%): Baseline popularity score
 """
@@ -380,9 +383,13 @@ class PersonalizationEngine:
         """
         from core.projects.models import ProjectLike
         from core.taxonomy.models import UserInteraction, UserTag
+        from core.users.models import UserFollow
 
         # Get user's data for scoring
         user_tags = set(UserTag.objects.filter(user=user).values_list('name', flat=True))
+
+        # Get IDs of users the current user follows (for follow boost)
+        followed_user_ids = set(UserFollow.objects.filter(follower=user).values_list('following_id', flat=True))
         user_tool_tags = set(
             UserTag.objects.filter(user=user, taxonomy__taxonomy_type='tool').values_list('taxonomy__name', flat=True)
         )
@@ -459,6 +466,10 @@ class PersonalizationEngine:
                 owner_liked_count = owner_like_map.get(owner_id, 0)
                 if owner_liked_count > 0:
                     behavioral_score += min(owner_liked_count * 0.1, 0.3)
+
+                # Boost projects from followed users (significant boost)
+                if owner_id in followed_user_ids:
+                    behavioral_score += 0.4  # Strong boost for followed users' content
 
             behavioral_score = max(-1, min(1, behavioral_score))  # Clamp to [-1, 1]
 

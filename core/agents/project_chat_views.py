@@ -18,6 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from core.agents.circuit_breaker import CircuitBreakerOpenError, get_cached_faq_response, langraph_circuit_breaker
 from core.agents.security import output_validator, validate_chat_input
 from core.billing.permissions import CanMakeAIRequest
+from services.agents.hallucination_tracker import tracker
 from services.agents.project.agent import project_agent
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,7 @@ def project_chat_stream_v2(request):
                 full_response = ''
                 project_id = None
                 project_slug = None
+                tool_outputs = []  # Collect tool outputs for hallucination tracking
 
                 try:
                     # Wrap agent call with circuit breaker
@@ -120,6 +122,9 @@ def project_chat_stream_v2(request):
                                         result = (
                                             json.loads(msg.content) if isinstance(msg.content, str) else msg.content
                                         )
+                                        # Collect tool output for hallucination tracking
+                                        tool_outputs.append(result)
+
                                         if isinstance(result, dict) and result.get('success'):
                                             project_id = result.get('project_id')
                                             project_slug = result.get('slug')
@@ -137,6 +142,21 @@ def project_chat_stream_v2(request):
                     return
 
                 logger.info('[PROJECT_CHAT_V2] Agent completed')
+
+                # Fire-and-forget hallucination tracking (async background)
+                if full_response:
+                    try:
+                        tracker.track_response_async(
+                            response=full_response,
+                            tool_outputs=tool_outputs,
+                            session_id=session_id,
+                            user_id=request.user.id,
+                            feature='project_agent',
+                            metadata={'project_id': project_id, 'project_slug': project_slug},
+                        )
+                    except Exception as track_error:
+                        # Non-critical - just log and continue
+                        logger.warning(f'[PROJECT_CHAT_V2] Tracking failed: {track_error}')
 
                 # Send completion event
                 completion_data = {

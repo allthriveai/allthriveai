@@ -706,25 +706,22 @@ class AIProvider:
                 image_parts.append(types.Part.from_text(text='Please use these reference images for style guidance.'))
                 contents.append(types.Content(role='user', parts=image_parts))
 
-            # Build generation config - use high-res settings for Gemini 3 Pro Image
-            gen_config = types.GenerateContentConfig(
-                response_modalities=['TEXT', 'IMAGE'],
-            )
-
-            # Add image_config for high-resolution output if using Gemini 3 Pro Image
-            if 'gemini-3-pro' in model_name or 'image-preview' in model_name:
-                try:
-                    gen_config = types.GenerateContentConfig(
-                        response_modalities=['TEXT', 'IMAGE'],
-                        image_generation_config=types.ImageGenerationConfig(
-                            aspect_ratio='9:16',
-                            number_of_images=1,
-                        ),
-                    )
-                    logger.info(f'Using high-res image config for {model_name}')
-                except (TypeError, AttributeError) as e:
-                    # Fallback if ImageGenerationConfig not available in SDK version
-                    logger.warning(f'ImageGenerationConfig not available: {e}, using default config')
+            # Build generation config - always use 9:16 vertical aspect ratio for images
+            try:
+                gen_config = types.GenerateContentConfig(
+                    response_modalities=['TEXT', 'IMAGE'],
+                    image_generation_config=types.ImageGenerationConfig(
+                        aspect_ratio='9:16',
+                        number_of_images=1,
+                    ),
+                )
+                logger.info(f'Using 9:16 vertical aspect ratio for {model_name}')
+            except (TypeError, AttributeError) as e:
+                # Fallback if ImageGenerationConfig not available in SDK version
+                logger.warning(f'ImageGenerationConfig not available: {e}, using default config')
+                gen_config = types.GenerateContentConfig(
+                    response_modalities=['TEXT', 'IMAGE'],
+                )
 
             # Generate with image output enabled
             response = client.models.generate_content(

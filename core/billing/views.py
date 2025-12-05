@@ -15,6 +15,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.logging_utils import StructuredLogger
+
 from .models import SubscriptionTier, TokenPackage, WebhookEvent
 from .serializers import (
     CancelSubscriptionSerializer,
@@ -52,7 +54,13 @@ def stripe_webhook(request):
     sig_header = request.headers.get('stripe-signature')
 
     if not sig_header:
-        logger.warning('Webhook received without signature header')
+        StructuredLogger.log_service_operation(
+            service_name='StripeWebhook',
+            operation='receive',
+            success=False,
+            metadata={'reason': 'missing_signature_header'},
+            logger_instance=logger,
+        )
         return HttpResponse('Missing signature', status=400)
 
     try:
@@ -61,7 +69,13 @@ def stripe_webhook(request):
         event_id = event['id']
         event_type = event['type']
 
-        logger.info(f'Received Stripe webhook: {event_type} (ID: {event_id})')
+        StructuredLogger.log_service_operation(
+            service_name='StripeWebhook',
+            operation='receive',
+            success=True,
+            metadata={'event_type': event_type, 'event_id': event_id},
+            logger_instance=logger,
+        )
 
         # Check if we've already processed this event (idempotency)
         webhook_event, created = WebhookEvent.objects.get_or_create(
@@ -76,10 +90,16 @@ def stripe_webhook(request):
         # If event already exists and was processed, return success without reprocessing
         if not created:
             if webhook_event.processed:
-                logger.info(f'Webhook event {event_id} already processed, skipping')
+                logger.info(f'Webhook event {event_id} already processed, skipping')  # Info level ok
                 return HttpResponse('Webhook already processed', status=200)
             else:
-                logger.warning(f'Webhook event {event_id} exists but not completed - reprocessing')
+                StructuredLogger.log_service_operation(
+                    service_name='StripeWebhook',
+                    operation='reprocess',
+                    success=True,
+                    metadata={'event_id': event_id, 'reason': 'previous_incomplete'},
+                    logger_instance=logger,
+                )
 
         # Mark processing started
         webhook_event.mark_processing_started()
@@ -107,17 +127,29 @@ def stripe_webhook(request):
                 StripeService.handle_payment_intent_succeeded(event_data)
 
             elif event_type == 'payment_intent.payment_failed':
-                logger.warning(f'Payment failed for payment_intent: {event_data["object"]["id"]}')
+                StructuredLogger.log_service_operation(
+                    service_name='StripeWebhook',
+                    operation='payment_failed',
+                    success=False,
+                    metadata={'payment_intent_id': event_data['object']['id']},
+                    logger_instance=logger,
+                )
 
             # Invoice events
             elif event_type == 'invoice.payment_succeeded':
-                logger.info(f'Invoice payment succeeded: {event_data["object"]["id"]}')
+                logger.info(f'Invoice payment succeeded: {event_data["object"]["id"]}')  # Info level ok
 
             elif event_type == 'invoice.payment_failed':
-                logger.warning(f'Invoice payment failed: {event_data["object"]["id"]}')
+                StructuredLogger.log_service_operation(
+                    service_name='StripeWebhook',
+                    operation='invoice_payment_failed',
+                    success=False,
+                    metadata={'invoice_id': event_data['object']['id']},
+                    logger_instance=logger,
+                )
 
             else:
-                logger.info(f'Unhandled webhook event type: {event_type}')
+                logger.info(f'Unhandled webhook event type: {event_type}')  # Info level ok
 
             # Mark processing completed
             webhook_event.mark_processing_completed()
@@ -130,11 +162,19 @@ def stripe_webhook(request):
             raise
 
     except StripeServiceError as e:
-        logger.error(f'Webhook signature verification failed: {e}')
+        StructuredLogger.log_error(
+            message='Webhook signature verification failed',
+            error=e,
+            logger_instance=logger,
+        )
         return HttpResponse('Invalid signature', status=400)
 
     except Exception as e:
-        logger.error(f'Error processing webhook: {e}', exc_info=True)
+        StructuredLogger.log_error(
+            message='Error processing webhook',
+            error=e,
+            logger_instance=logger,
+        )
         return HttpResponse('Webhook processing failed', status=500)
 
 
@@ -221,10 +261,20 @@ def create_subscription_view(request):
         return Response(result, status=status.HTTP_201_CREATED)
 
     except SubscriptionTier.DoesNotExist:
-        logger.warning(f'User {request.user.id} attempted to subscribe to nonexistent tier')
+        StructuredLogger.log_validation_error(
+            message='Attempted to subscribe to nonexistent tier',
+            user=request.user,
+            errors={'tier_slug': 'Tier not found'},
+            logger_instance=logger,
+        )
         return Response({'error': 'Tier not found'}, status=status.HTTP_404_NOT_FOUND)
     except StripeServiceError as e:
-        logger.error(f'Failed to create subscription: {e}')
+        StructuredLogger.log_error(
+            message='Failed to create subscription',
+            error=e,
+            user=request.user,
+            logger_instance=logger,
+        )
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -270,10 +320,20 @@ def create_checkout_session_view(request):
         return Response(result, status=status.HTTP_201_CREATED)
 
     except SubscriptionTier.DoesNotExist:
-        logger.warning(f'User {request.user.id} attempted to subscribe to nonexistent tier')
+        StructuredLogger.log_validation_error(
+            message='Attempted to create checkout for nonexistent tier',
+            user=request.user,
+            errors={'tier_slug': 'Tier not found'},
+            logger_instance=logger,
+        )
         return Response({'error': 'Tier not found'}, status=status.HTTP_404_NOT_FOUND)
     except StripeServiceError as e:
-        logger.error(f'Failed to create checkout session: {e}')
+        StructuredLogger.log_error(
+            message='Failed to create checkout session',
+            error=e,
+            user=request.user,
+            logger_instance=logger,
+        )
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -311,10 +371,20 @@ def update_subscription_view(request):
         return Response(result)
 
     except SubscriptionTier.DoesNotExist:
-        logger.warning(f'User {request.user.id} attempted to update to nonexistent tier')
+        StructuredLogger.log_validation_error(
+            message='Attempted to update to nonexistent tier',
+            user=request.user,
+            errors={'tier_slug': 'Tier not found'},
+            logger_instance=logger,
+        )
         return Response({'error': 'Tier not found'}, status=status.HTTP_404_NOT_FOUND)
     except StripeServiceError as e:
-        logger.error(f'Failed to update subscription: {e}')
+        StructuredLogger.log_error(
+            message='Failed to update subscription',
+            error=e,
+            user=request.user,
+            logger_instance=logger,
+        )
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -351,7 +421,12 @@ def cancel_subscription_view(request):
         return Response(result)
 
     except StripeServiceError as e:
-        logger.error(f'Failed to cancel subscription: {e}')
+        StructuredLogger.log_error(
+            message='Failed to cancel subscription',
+            error=e,
+            user=request.user,
+            logger_instance=logger,
+        )
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -390,10 +465,20 @@ def create_token_purchase_view(request):
         return Response(result, status=status.HTTP_201_CREATED)
 
     except TokenPackage.DoesNotExist:
-        logger.warning(f'User {request.user.id} attempted to purchase nonexistent token package')
+        StructuredLogger.log_validation_error(
+            message='Attempted to purchase nonexistent token package',
+            user=request.user,
+            errors={'package_slug': 'Package not found'},
+            logger_instance=logger,
+        )
         return Response({'error': 'Package not found'}, status=status.HTTP_404_NOT_FOUND)
     except StripeServiceError as e:
-        logger.error(f'Failed to create token purchase: {e}')
+        StructuredLogger.log_error(
+            message='Failed to create token purchase',
+            error=e,
+            user=request.user,
+            logger_instance=logger,
+        )
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -480,7 +565,12 @@ def create_portal_session_view(request):
         result = StripeService.create_customer_portal_session(request.user, return_url)
         return Response(result)
     except StripeServiceError as e:
-        logger.error(f'Failed to create portal session: {e}')
+        StructuredLogger.log_error(
+            message='Failed to create portal session',
+            error=e,
+            user=request.user,
+            logger_instance=logger,
+        )
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -515,7 +605,12 @@ def list_invoices_view(request):
         result = StripeService.list_invoices(request.user, limit)
         return Response(result)
     except StripeServiceError as e:
-        logger.error(f'Failed to list invoices: {e}')
+        StructuredLogger.log_error(
+            message='Failed to list invoices',
+            error=e,
+            user=request.user,
+            logger_instance=logger,
+        )
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except ValueError:
         return Response({'error': 'Invalid limit parameter'}, status=status.HTTP_400_BAD_REQUEST)

@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 # AI Analytics Dashboard - must be imported to register custom admin views
 from .admin.ai_analytics_admin import register_ai_analytics_dashboard
-from .agents.models import Conversation, Message
+from .agents.models import Conversation, HallucinationMetrics, Message
 from .events.models import Event
 from .projects.models import CommentVote, ProjectComment
 from .quizzes.models import Quiz, QuizAttempt, QuizQuestion
@@ -33,6 +33,78 @@ class MessageAdmin(admin.ModelAdmin):
     @admin.display(description='Content')
     def content_preview(self, obj):
         return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
+
+
+@admin.register(HallucinationMetrics)
+class HallucinationMetricsAdmin(admin.ModelAdmin):
+    list_display = [
+        'id',
+        'feature',
+        'confidence_level',
+        'confidence_score',
+        'flags_display',
+        'has_concerns_display',
+        'user',
+        'created_at',
+    ]
+    list_filter = [
+        'feature',
+        'confidence_level',
+        'created_at',
+    ]
+    search_fields = ['session_id', 'user__username', 'response_text']
+    readonly_fields = ['created_at', 'response_preview']
+    ordering = ['-created_at']
+    raw_id_fields = ['user']
+    list_per_page = 50
+
+    fieldsets = (
+        (
+            'Session Info',
+            {
+                'fields': ('session_id', 'user', 'feature', 'created_at'),
+            },
+        ),
+        (
+            'Confidence Analysis',
+            {
+                'fields': ('confidence_level', 'confidence_score', 'flags'),
+            },
+        ),
+        (
+            'Response Data',
+            {
+                'fields': ('response_preview', 'response_text'),
+                'classes': ('collapse',),
+            },
+        ),
+        (
+            'Analysis Context',
+            {
+                'fields': ('tool_outputs', 'metadata'),
+                'classes': ('collapse',),
+            },
+        ),
+    )
+
+    @admin.display(description='Flags')
+    def flags_display(self, obj):
+        return ', '.join(obj.flags) if obj.flags else '-'
+
+    @admin.display(
+        description='Concerns',
+        boolean=True,
+    )
+    def has_concerns_display(self, obj):
+        return obj.has_concerns
+
+    @admin.display(description='Response Preview')
+    def response_preview(self, obj):
+        return obj.response_text[:200] + '...' if len(obj.response_text) > 200 else obj.response_text
+
+    def has_add_permission(self, request):
+        """Prevent manual creation - these are created via Celery tasks."""
+        return False
 
 
 @admin.register(User)

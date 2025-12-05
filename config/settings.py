@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'core.sms',  # SMS notifications (Twilio)
     'core.challenges',  # Weekly challenges with leaderboards
     'core.marketplace',  # Creator marketplace for digital products
+    'core.vendors',  # Vendor analytics for tool companies
     'allauth',
     'allauth.account',
     'allauth.socialaccount',

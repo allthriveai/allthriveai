@@ -2,7 +2,9 @@ from django.conf import settings
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .achievements.views import AchievementViewSet
+from core.ai_usage import views as admin_analytics_views
+
+from .achievements.views import AchievementViewSet, get_user_achievements
 from .agents.auth_chat_views import auth_chat_finalize, auth_chat_state, auth_chat_stream
 from .agents.project_chat_views import project_chat_stream_v2
 from .agents.views import ConversationViewSet, CreateProjectFromImageView, MessageViewSet, detect_intent
@@ -30,6 +32,7 @@ from .battles.views import (
     battle_stats,
     expire_battles,
     get_invitation_by_token,
+    get_user_battles,
 )
 from .events.views import EventViewSet
 from .integrations.github.views import (
@@ -73,7 +76,17 @@ from .tools.views import (
 )
 from .uploads.views import upload_file, upload_image
 from .users.invitation_views import request_invitation
-from .users.views import explore_users, onboarding_progress
+from .users.views import (
+    delete_personalization_data,
+    explore_users,
+    export_personalization_data,
+    list_followers,
+    list_following,
+    onboarding_progress,
+    personalization_settings,
+    reset_personalization_settings,
+    toggle_follow,
+)
 from .views import ai_analytics_views, csp_report, db_health
 
 # Main router for public/general endpoints
@@ -121,6 +134,18 @@ urlpatterns = [
     path('ai/analytics/system/', ai_analytics_views.system_ai_analytics, name='system_ai_analytics'),
     path('ai/analytics/user/<int:user_id>/reset/', ai_analytics_views.reset_user_spend, name='reset_user_spend'),
     path('ai/analytics/langsmith/health/', ai_analytics_views.langsmith_health, name='langsmith_health'),
+    # Admin Analytics Dashboard endpoints (admin-only)
+    path('admin/analytics/overview/', admin_analytics_views.dashboard_overview, name='admin_dashboard_overview'),
+    path('admin/analytics/timeseries/', admin_analytics_views.dashboard_timeseries, name='admin_dashboard_timeseries'),
+    path(
+        'admin/analytics/ai-breakdown/',
+        admin_analytics_views.dashboard_ai_breakdown,
+        name='admin_dashboard_ai_breakdown',
+    ),
+    path(
+        'admin/analytics/user-growth/', admin_analytics_views.dashboard_user_growth, name='admin_dashboard_user_growth'
+    ),
+    path('admin/analytics/content/', admin_analytics_views.dashboard_content_metrics, name='admin_dashboard_content'),
     # Explore endpoints (public)
     path('projects/explore/', explore_projects, name='explore_projects'),
     path('projects/topic-suggestions/', get_topic_suggestions, name='topic_suggestions'),
@@ -138,6 +163,14 @@ urlpatterns = [
     path('users/<str:username>/projects/', public_user_projects, name='public_user_projects'),
     path('users/<str:username>/projects/<str:slug>/', get_project_by_slug, name='get_project_by_slug'),
     path('users/<str:username>/liked-projects/', user_liked_projects, name='user_liked_projects'),
+    # Follow endpoints
+    path('users/<str:username>/follow/', toggle_follow, name='toggle_follow'),
+    path('users/<str:username>/followers/', list_followers, name='list_followers'),
+    path('users/<str:username>/following/', list_following, name='list_following'),
+    # User achievements endpoint
+    path('users/<str:username>/achievements/', get_user_achievements, name='user_achievements'),
+    # User battles endpoint (public)
+    path('users/<str:username>/battles/', get_user_battles, name='user_battles'),
     # Project comment endpoints
     path(
         'projects/<int:project_pk>/comments/',
@@ -182,6 +215,10 @@ urlpatterns = [
     path('me/activity/insights/', user_activity_insights, name='user_activity_insights'),
     path('me/personalization/', user_personalization_overview, name='user_personalization'),
     path('me/personalization/status/', personalization_status, name='personalization_status'),
+    path('me/personalization/settings/', personalization_settings, name='personalization_settings'),
+    path('me/personalization/settings/reset/', reset_personalization_settings, name='reset_personalization_settings'),
+    path('me/personalization/export/', export_personalization_data, name='export_personalization_data'),
+    path('me/personalization/delete/', delete_personalization_data, name='delete_personalization_data'),
     path('me/onboarding-progress/', onboarding_progress, name='onboarding_progress'),
     path('me/interactions/', track_interaction, name='track_interaction'),
     path('me/account/deactivate/', deactivate_account, name='deactivate_account'),
@@ -241,6 +278,8 @@ urlpatterns = [
     path('notifications/', include('core.notifications.urls')),
     # Creator marketplace endpoints
     path('marketplace/', include('core.marketplace.urls')),
+    # Vendor analytics endpoints
+    path('', include('core.vendors.urls')),
 ]
 
 # Test-only endpoints (only available in DEBUG mode)

@@ -117,6 +117,15 @@ export function getCategoryDisplay(category: string): string {
 }
 
 /**
+ * Fetch achievements for a specific user by username (public endpoint)
+ */
+export async function getUserAchievements(username: string): Promise<AchievementProgressData> {
+  const api = await getApiClient();
+  const response = await api.get(`/users/${username}/achievements/`);
+  return response.data;
+}
+
+/**
  * Get api client - deferred import to avoid circular dependencies
  */
 import type { AxiosInstance } from 'axios';

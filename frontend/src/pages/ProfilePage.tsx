@@ -1,20 +1,26 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
 import type { User, Project } from '@/types/models';
 import { getUserByUsername } from '@/services/auth';
 import { getUserProjects, bulkDeleteProjects } from '@/services/projects';
+import { followService } from '@/services/followService';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { useAchievements } from '@/hooks/useAchievements';
+import { getUserAchievements } from '@/services/achievements';
+import type { AchievementProgressData } from '@/types/achievements';
 import { ActivityInsightsTab } from '@/components/profile/ActivityInsightsTab';
 import { FavoritesTab } from '@/components/profile/FavoritesTab';
 import { MarketplaceTab } from '@/components/profile/MarketplaceTab';
 import { LearningPathsTab } from '@/components/learning';
-import { getRarityColorClasses } from '@/services/achievements';
+import { ProfileAchievementGrid } from '@/components/achievements/ProfileAchievementMini';
+import { BattlesTab } from '@/components/battles';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { MasonryGrid } from '@/components/common/MasonryGrid';
+import { FollowListModal } from '@/components/profile/FollowListModal';
+import { logError, parseApiError } from '@/utils/errorHandler';
+import NotFoundPage from '@/pages/NotFoundPage';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGithub,
@@ -41,6 +47,7 @@ import {
   faGraduationCap,
   faHeart,
   faStore,
+  faBolt,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Helper to convert tier code to display name
@@ -79,10 +86,12 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [userNotFound, setUserNotFound] = useState(false);
 
-  // Initialize activeTab from URL or default to 'showcase'
-  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | null;
-  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace'>(
-    tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity', 'marketplace'].includes(tabFromUrl) ? tabFromUrl : 'showcase'
+  // Initialize activeTab from URL or default to 'showcase' (or 'battles' for Pip)
+  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | 'battles' | null;
+  const isPipProfile = username?.toLowerCase() === 'pip';
+  const defaultTab = isPipProfile ? 'battles' : 'showcase';
+  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | 'battles'>(
+    tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity', 'marketplace', 'battles'].includes(tabFromUrl) ? tabFromUrl : defaultTab
   );
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<number>>(new Set());
@@ -95,17 +104,31 @@ export default function ProfilePage() {
   const [toolTrayOpen, setToolTrayOpen] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
 
-  const { achievementsByCategory, isLoading: isAchievementsLoading } = useAchievements();
+  // Follow state
+  const [isFollowing, setIsFollowing] = useState<boolean>(false);
+  const [followersCount, setFollowersCount] = useState<number>(0);
+  const [followingCount, setFollowingCount] = useState<number>(0);
+  const [isFollowLoading, setIsFollowLoading] = useState<boolean>(false);
+  const [followError, setFollowError] = useState<string | null>(null);
+  const [showFollowModal, setShowFollowModal] = useState<'followers' | 'following' | null>(null);
+
+  // Achievement state for the profile being viewed
+  const [achievementsByCategory, setAchievementsByCategory] = useState<AchievementProgressData | null>(null);
+  const [isAchievementsLoading, setIsAchievementsLoading] = useState(true);
 
   const isOwnProfile = username === user?.username;
   const displayUser = isOwnProfile ? user : profileUser;
   const isAdmin = user?.role === 'admin';
   const canManagePosts = isOwnProfile || isAdmin;
 
+  // Special handling for Pip's profile (AI agent with special features)
+  // Note: isPipProfile is already defined earlier for default tab selection
+  const isPip = isPipProfile;
+
   // Sync activeTab with URL query parameter
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | null;
-    if (tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity', 'marketplace'].includes(tabFromUrl)) {
+    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | 'battles' | null;
+    if (tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity', 'marketplace', 'battles'].includes(tabFromUrl)) {
       // Security: only allow Activity and Learning tabs for authenticated users viewing their own profile
       if ((tabFromUrl === 'activity' || tabFromUrl === 'learning') && (!isAuthenticated || !isOwnProfile)) {
         setActiveTab('showcase');
@@ -118,9 +141,15 @@ export default function ProfilePage() {
         setSearchParams({ tab: 'showcase' });
         return;
       }
+      // Battles tab is only available for Pip
+      if (tabFromUrl === 'battles' && !isPip) {
+        setActiveTab('showcase');
+        setSearchParams({ tab: 'showcase' });
+        return;
+      }
       setActiveTab(tabFromUrl);
     }
-  }, [searchParams, isAuthenticated, isOwnProfile, setSearchParams, displayUser?.role]);
+  }, [searchParams, isAuthenticated, isOwnProfile, setSearchParams, displayUser?.role, isPip]);
 
   // Track scroll position to fix sidebar after banner
   useEffect(() => {
@@ -141,7 +170,7 @@ export default function ProfilePage() {
 
 
   // Update URL when tab changes
-  const handleTabChange = (tab: 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace') => {
+  const handleTabChange = (tab: 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | 'battles') => {
     setActiveTab(tab);
     setSearchParams({ tab });
     if (selectionMode) {
@@ -171,6 +200,64 @@ export default function ProfilePage() {
       setProfileUser(user);
     }
   }, [username, user, isOwnProfile]);
+
+  // Fetch achievements for the profile being viewed
+  useEffect(() => {
+    if (!username) {
+      setAchievementsByCategory(null);
+      setIsAchievementsLoading(false);
+      return;
+    }
+
+    setIsAchievementsLoading(true);
+    getUserAchievements(username)
+      .then((data) => {
+        setAchievementsByCategory(data);
+      })
+      .catch((error) => {
+        logError('ProfilePage.fetchAchievements', error, { username });
+        setAchievementsByCategory(null);
+      })
+      .finally(() => {
+        setIsAchievementsLoading(false);
+      });
+  }, [username]);
+
+  // Update follow state when profile user changes
+  useEffect(() => {
+    if (profileUser) {
+      setIsFollowing(profileUser.isFollowing ?? false);
+      setFollowersCount(profileUser.followersCount ?? 0);
+      setFollowingCount(profileUser.followingCount ?? 0);
+    }
+  }, [profileUser]);
+
+  // Handle follow/unfollow
+  const handleToggleFollow = async () => {
+    if (!username || isFollowLoading || !isAuthenticated) return;
+
+    setIsFollowLoading(true);
+    setFollowError(null);
+    try {
+      if (isFollowing) {
+        const response = await followService.unfollowUser(username);
+        setIsFollowing(false);
+        setFollowersCount(response.followersCount);
+      } else {
+        const response = await followService.followUser(username);
+        setIsFollowing(true);
+        setFollowersCount(response.followersCount);
+      }
+    } catch (error) {
+      logError('ProfilePage.handleToggleFollow', error, { username, isFollowing });
+      const errorInfo = parseApiError(error);
+      setFollowError(errorInfo.message);
+      // Auto-clear error after 5 seconds
+      setTimeout(() => setFollowError(null), 5000);
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
 
   // Fetch projects
   useEffect(() => {
@@ -249,9 +336,14 @@ export default function ProfilePage() {
 
   // Build tabs array - exclude favorites, learning, activity, and playground for curation tier users (agents)
   // Only show Shop tab for users with creator role
+  // Special: Pip gets only a Battles tab (no Posts since Pip doesn't have projects)
   const tabs = (() => {
     if (isAuthenticated && isOwnProfile) {
       if (isCuration) {
+        // Pip only gets Battles tab, other curation users get Posts
+        if (isPip) {
+          return [{ id: 'battles', label: 'Battles' }] as { id: string; label: string }[];
+        }
         const baseTabs = [{ id: 'showcase', label: 'Posts' }];
         if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
         return baseTabs as { id: string; label: string }[];
@@ -268,6 +360,9 @@ export default function ProfilePage() {
     }
     if (showPlayground) {
       if (isCuration) {
+        if (isPip) {
+          return [{ id: 'battles', label: 'Battles' }] as { id: string; label: string }[];
+        }
         const baseTabs = [{ id: 'showcase', label: 'Posts' }];
         if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
         return baseTabs as { id: string; label: string }[];
@@ -281,6 +376,9 @@ export default function ProfilePage() {
       return baseTabs as { id: string; label: string }[];
     }
     if (isCuration) {
+      if (isPip) {
+        return [{ id: 'battles', label: 'Battles' }] as { id: string; label: string }[];
+      }
       const baseTabs = [{ id: 'showcase', label: 'Posts' }];
       if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
       return baseTabs as { id: string; label: string }[];
@@ -304,17 +402,9 @@ export default function ProfilePage() {
     );
   }
 
+  // If user not found, render the 404 page directly
   if (userNotFound) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">User Not Found</h1>
-            <p className="text-gray-600 dark:text-gray-400">The profile you're looking for doesn't exist.</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
+    return <NotFoundPage />;
   }
 
   return (
@@ -469,6 +559,58 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
+                    {/* Follow Section */}
+                    <div className="mb-6">
+                      {/* Follow/Unfollow Button - Only show for other users */}
+                      {!isOwnProfile && isAuthenticated && (
+                        <button
+                          onClick={handleToggleFollow}
+                          disabled={isFollowLoading}
+                          className={`w-full py-2.5 px-4 rounded-lg font-medium transition-all mb-4 flex items-center justify-center gap-2 ${
+                            isFollowing
+                              ? 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400'
+                              : 'bg-teal-500 text-white hover:bg-teal-600'
+                          }`}
+                        >
+                          {isFollowLoading ? (
+                            <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                          ) : isFollowing ? (
+                            'Following'
+                          ) : (
+                            <>
+                              <FontAwesomeIcon icon={faUserPlus} className="w-4 h-4" />
+                              Follow
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Follow Error Message */}
+                      {followError && (
+                        <div className="mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
+                          {followError}
+                        </div>
+                      )}
+
+                      {/* Follower/Following Stats */}
+                      <div className="flex gap-4 text-sm">
+                        <button
+                          onClick={() => setShowFollowModal('followers')}
+                          className="hover:underline text-gray-700 dark:text-gray-300"
+                        >
+                          <span className="font-bold">{followersCount}</span>
+                          <span className="text-gray-500 dark:text-gray-400 ml-1">Followers</span>
+                        </button>
+                        <button
+                          onClick={() => setShowFollowModal('following')}
+                          className="hover:underline text-gray-700 dark:text-gray-300"
+                        >
+                          <span className="font-bold">{followingCount}</span>
+                          <span className="text-gray-500 dark:text-gray-400 ml-1">Following</span>
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Social Links */}
                     {socialLinks.length > 0 && (
                       <div className="mb-6">
@@ -494,81 +636,75 @@ export default function ProfilePage() {
                     {displayUser?.bio && (
                       <div className="mb-6">
                         <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">About</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                          {displayUser.bio}
-                        </p>
+                        <div
+                          className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none"
+                          dangerouslySetInnerHTML={{ __html: displayUser.bio }}
+                        />
                       </div>
                     )}
 
-                    {/* Achievements - Hidden for curation tier */}
-                    {!isCuration && (
+                    {/* Achievements - Hidden for curation tier, but shown for Pip */}
+                    {(!isCuration || isPip) && (
                       <div className="mb-6">
                         <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Achievements</h4>
                         {achievementsByCategory && !isAchievementsLoading ? (() => {
                           const earnedAchievements = Object.values(achievementsByCategory)
                             .flat()
-                            .filter(a => a.is_earned)
-                            .slice(0, 6);
+                            .filter(a => a.isEarned);
 
                           if (earnedAchievements.length === 0) {
                             return <p className="text-sm text-gray-400 italic">No badges yet</p>;
                           }
 
                           return (
-                            <div className="grid grid-cols-3 gap-2">
-                              {earnedAchievements.map((achievement) => {
-                                const rarityColors = getRarityColorClasses(achievement.rarity);
-                                return (
-                                  <div
-                                    key={achievement.id}
-                                    className={`aspect-square rounded-lg bg-gradient-to-br ${rarityColors.from} ${rarityColors.to} flex items-center justify-center text-white shadow-sm cursor-help group relative`}
-                                    title={achievement.name}
-                                  >
-                                    <FontAwesomeIcon icon={faTrophy} className="text-sm" />
-                                  </div>
-                                );
-                              })}
-                            </div>
+                            <ProfileAchievementGrid
+                              achievements={earnedAchievements}
+                              maxDisplay={6}
+                            />
                           );
                         })() : (
-                          <div className="flex gap-2">
-                            {[1,2,3].map(i => <div key={i} className="w-full h-16 rounded-lg bg-gray-100 dark:bg-white/5 animate-pulse" />)}
+                          <div className="grid grid-cols-3 gap-2">
+                            {[1,2,3,4,5,6].map(i => (
+                              <div key={i} className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/5 animate-pulse" />
+                            ))}
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* Tools */}
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Tools</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {(() => {
-                          const allTools = [...projects.showcase, ...projects.playground]
-                            .flatMap(p => p.toolsDetails || [])
-                            .filter((tool, index, self) =>
-                              index === self.findIndex(t => t.id === tool.id)
-                            );
+                    {/* Tools - Hidden for Pip (AI opponent) */}
+                    {!isPip && (
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Tools</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {(() => {
+                            const allTools = [...projects.showcase, ...projects.playground]
+                              .flatMap(p => p.toolsDetails || [])
+                              .filter((tool, index, self) =>
+                                index === self.findIndex(t => t.id === tool.id)
+                              );
 
-                          return allTools.length > 0 ? (
-                            allTools.slice(0, 8).map((tool) => (
-                              <button
-                                key={tool.id}
-                                onClick={() => {
-                                  setSelectedToolSlug(tool.slug);
-                                  setToolTrayOpen(true);
-                                }}
-                                className="px-2 py-1 text-xs bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 rounded-md border border-gray-200 dark:border-white/10 hover:bg-teal-50 dark:hover:bg-teal-900/20 hover:border-teal-500 hover:text-teal-700 dark:hover:text-teal-300 transition-colors cursor-pointer"
-                                aria-label={`View ${tool.name} tool details`}
-                              >
-                                {tool.name}
-                              </button>
-                            ))
-                          ) : (
-                            <p className="text-sm text-gray-400 italic">No tools used yet</p>
-                          );
-                        })()}
+                            return allTools.length > 0 ? (
+                              allTools.slice(0, 8).map((tool) => (
+                                <button
+                                  key={tool.id}
+                                  onClick={() => {
+                                    setSelectedToolSlug(tool.slug);
+                                    setToolTrayOpen(true);
+                                  }}
+                                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 rounded-md border border-gray-200 dark:border-white/10 hover:bg-teal-50 dark:hover:bg-teal-900/20 hover:border-teal-500 hover:text-teal-700 dark:hover:text-teal-300 transition-colors cursor-pointer"
+                                  aria-label={`View ${tool.name} tool details`}
+                                >
+                                  {tool.name}
+                                </button>
+                              ))
+                            ) : (
+                              <p className="text-sm text-gray-400 italic">No tools used yet</p>
+                            );
+                          })()}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ) : (
                   /* Collapsed Sidebar View - Desktop Only (Sidebar is always expanded/stacked on mobile) */
@@ -706,6 +842,7 @@ export default function ProfilePage() {
                       marketplace: faStore,
                       learning: faGraduationCap,
                       activity: faChartLine,
+                      battles: faBolt,
                     };
 
                     return (
@@ -883,6 +1020,18 @@ export default function ProfilePage() {
                   />
                 </div>
               )}
+
+              {/* Battles Tab - Special tab for Pip to show all prompt battles */}
+              {activeTab === 'battles' && isPip && (
+                <div
+                  className="pb-20"
+                  role="tabpanel"
+                  id="tabpanel-battles"
+                  aria-labelledby="tab-battles"
+                >
+                  <BattlesTab username={username || ''} />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -935,6 +1084,16 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Follow List Modal */}
+        {showFollowModal && username && (
+          <FollowListModal
+            isOpen={!!showFollowModal}
+            onClose={() => setShowFollowModal(null)}
+            username={username}
+            type={showFollowModal}
+          />
         )}
       </div>
     </DashboardLayout>

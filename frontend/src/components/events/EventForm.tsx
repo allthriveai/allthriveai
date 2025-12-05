@@ -8,9 +8,9 @@ interface EventFormProps {
 
 interface ValidationErrors {
   title?: string;
-  start_date?: string;
-  end_date?: string;
-  event_url?: string;
+  startDate?: string;
+  endDate?: string;
+  eventUrl?: string;
   thumbnail?: string;
 }
 
@@ -27,21 +27,21 @@ function validateEventForm(data: CreateEventData): ValidationErrors {
   }
 
   // Start date validation
-  if (!data.start_date) {
-    errors.start_date = 'Start date is required';
+  if (!data.startDate) {
+    errors.startDate = 'Start date is required';
   }
 
   // End date validation
-  if (!data.end_date) {
-    errors.end_date = 'End date is required';
-  } else if (data.start_date && new Date(data.end_date) < new Date(data.start_date)) {
-    errors.end_date = 'End date must be after start date';
+  if (!data.endDate) {
+    errors.endDate = 'End date is required';
+  } else if (data.startDate && new Date(data.endDate) < new Date(data.startDate)) {
+    errors.endDate = 'End date must be after start date';
   }
 
   // URL validation
   const urlPattern = /^https?:\/\/.+/i;
-  if (data.event_url && !urlPattern.test(data.event_url)) {
-    errors.event_url = 'Please enter a valid URL starting with http:// or https://';
+  if (data.eventUrl && !urlPattern.test(data.eventUrl)) {
+    errors.eventUrl = 'Please enter a valid URL starting with http:// or https://';
   }
   if (data.thumbnail && !urlPattern.test(data.thumbnail)) {
     errors.thumbnail = 'Please enter a valid URL starting with http:// or https://';
@@ -54,14 +54,14 @@ export function EventForm({ onSubmit, onCancel }: EventFormProps) {
   const [formData, setFormData] = useState<CreateEventData>({
     title: '',
     description: '',
-    start_date: '',
-    end_date: '',
+    startDate: '',
+    endDate: '',
     location: '',
-    event_url: '',
-    is_all_day: false,
+    eventUrl: '',
+    isAllDay: false,
     color: '#3b82f6',
     thumbnail: '',
-    is_published: true,
+    isPublished: true,
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,45 +149,45 @@ export function EventForm({ onSubmit, onCancel }: EventFormProps) {
 
       {/* Start Date */}
       <div>
-        <label htmlFor="start_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Start Date & Time *
         </label>
         <input
           type="datetime-local"
-          id="start_date"
-          name="start_date"
-          value={formData.start_date}
+          id="startDate"
+          name="startDate"
+          value={formData.startDate}
           onChange={handleChange}
-          aria-invalid={!!fieldErrors.start_date}
-          aria-describedby={fieldErrors.start_date ? 'start-date-error' : undefined}
+          aria-invalid={!!fieldErrors.startDate}
+          aria-describedby={fieldErrors.startDate ? 'start-date-error' : undefined}
           className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-            fieldErrors.start_date ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+            fieldErrors.startDate ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
           }`}
         />
-        {fieldErrors.start_date && (
-          <p id="start-date-error" className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.start_date}</p>
+        {fieldErrors.startDate && (
+          <p id="start-date-error" className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.startDate}</p>
         )}
       </div>
 
       {/* End Date */}
       <div>
-        <label htmlFor="end_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           End Date & Time *
         </label>
         <input
           type="datetime-local"
-          id="end_date"
-          name="end_date"
-          value={formData.end_date}
+          id="endDate"
+          name="endDate"
+          value={formData.endDate}
           onChange={handleChange}
-          aria-invalid={!!fieldErrors.end_date}
-          aria-describedby={fieldErrors.end_date ? 'end-date-error' : undefined}
+          aria-invalid={!!fieldErrors.endDate}
+          aria-describedby={fieldErrors.endDate ? 'end-date-error' : undefined}
           className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-            fieldErrors.end_date ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+            fieldErrors.endDate ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
           }`}
         />
-        {fieldErrors.end_date && (
-          <p id="end-date-error" className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.end_date}</p>
+        {fieldErrors.endDate && (
+          <p id="end-date-error" className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.endDate}</p>
         )}
       </div>
 
@@ -195,13 +195,13 @@ export function EventForm({ onSubmit, onCancel }: EventFormProps) {
       <div className="flex items-center">
         <input
           type="checkbox"
-          id="is_all_day"
-          name="is_all_day"
-          checked={formData.is_all_day}
+          id="isAllDay"
+          name="isAllDay"
+          checked={formData.isAllDay}
           onChange={handleChange}
           className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
         />
-        <label htmlFor="is_all_day" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+        <label htmlFor="isAllDay" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
           All-day event
         </label>
       </div>
@@ -223,24 +223,24 @@ export function EventForm({ onSubmit, onCancel }: EventFormProps) {
 
       {/* Event URL */}
       <div>
-        <label htmlFor="event_url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor="eventUrl" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Event URL
         </label>
         <input
           type="url"
-          id="event_url"
-          name="event_url"
-          value={formData.event_url}
+          id="eventUrl"
+          name="eventUrl"
+          value={formData.eventUrl}
           onChange={handleChange}
           placeholder="https://..."
-          aria-invalid={!!fieldErrors.event_url}
-          aria-describedby={fieldErrors.event_url ? 'event-url-error' : undefined}
+          aria-invalid={!!fieldErrors.eventUrl}
+          aria-describedby={fieldErrors.eventUrl ? 'event-url-error' : undefined}
           className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-            fieldErrors.event_url ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+            fieldErrors.eventUrl ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
           }`}
         />
-        {fieldErrors.event_url && (
-          <p id="event-url-error" className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.event_url}</p>
+        {fieldErrors.eventUrl && (
+          <p id="event-url-error" className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.eventUrl}</p>
         )}
       </div>
 
@@ -289,13 +289,13 @@ export function EventForm({ onSubmit, onCancel }: EventFormProps) {
       <div className="flex items-center">
         <input
           type="checkbox"
-          id="is_published"
-          name="is_published"
-          checked={formData.is_published}
+          id="isPublished"
+          name="isPublished"
+          checked={formData.isPublished}
           onChange={handleChange}
           className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
         />
-        <label htmlFor="is_published" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+        <label htmlFor="isPublished" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
           Publish immediately
         </label>
       </div>

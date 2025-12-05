@@ -38,6 +38,10 @@ export interface User {
   tier?: TierName;
   tierDisplay?: string;
   totalPoints?: number;
+  // Follow fields
+  followersCount?: number;
+  followingCount?: number;
+  isFollowing?: boolean | null; // null when viewing own profile
 }
 
 // Authentication state

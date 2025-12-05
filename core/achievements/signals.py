@@ -23,8 +23,10 @@ def track_project_created(sender, instance, created, **kwargs):
     """
     if created:
         try:
-            # Track project creation
-            unlocked = AchievementTracker.track_event(user=instance.user, tracking_field='project_count', value=1)
+            # Track project creation (matches seed_achievements tracking_field)
+            unlocked = AchievementTracker.track_event(
+                user=instance.user, tracking_field='lifetime_projects_created', value=1
+            )
 
             if unlocked:
                 logger.info(
@@ -99,8 +101,10 @@ def track_battle_submission(sender, instance, created, **kwargs):
     """
     if created:
         try:
-            # Track battle participation
-            unlocked = AchievementTracker.track_event(user=instance.user, tracking_field='battle_count', value=1)
+            # Track battle participation (matches seed_achievements tracking_field)
+            unlocked = AchievementTracker.track_event(
+                user=instance.user, tracking_field='lifetime_battles_participated', value=1
+            )
 
             if unlocked:
                 logger.info(

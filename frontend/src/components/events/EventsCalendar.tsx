@@ -23,8 +23,8 @@ export function EventsCalendar({ events, onDateClick }: EventsCalendarProps) {
 
   const getEventsForDate = (date: Date): Event[] => {
     return events.filter((event) => {
-      const eventStart = new Date(event.start_date);
-      const eventEnd = new Date(event.end_date);
+      const eventStart = new Date(event.startDate);
+      const eventEnd = new Date(event.endDate);
       return date >= eventStart && date <= eventEnd;
     });
   };

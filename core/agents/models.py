@@ -175,3 +175,109 @@ class ImageGenerationIteration(models.Model):
 
     def __str__(self):
         return f'Iteration {self.order} - {self.prompt[:50]}...'
+
+
+class HallucinationMetrics(models.Model):
+    """
+    Lightweight LLM response quality tracking - ADMIN ONLY.
+
+    Zero user-facing impact:
+    - Inserted async via Celery (fire-and-forget)
+    - No queries in request path
+    - Used only for admin dashboards & analysis
+
+    Tracks confidence scores to identify hallucinations.
+    """
+
+    # Context (indexed for dashboard queries)
+    session_id = models.CharField(max_length=255, db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_index=False,  # Not needed for admin queries
+    )
+    feature = models.CharField(max_length=50, db_index=True, help_text='Agent type: project_agent, auth_chat, etc.')
+
+    # Quality metrics (what we care about)
+    confidence_level = models.CharField(
+        max_length=20,
+        db_index=True,
+        choices=[
+            ('high', 'High (80-100%)'),
+            ('medium', 'Medium (60-79%)'),
+            ('low', 'Low (40-59%)'),
+            ('uncertain', 'Uncertain (0-39%)'),
+        ],
+    )
+    confidence_score = models.FloatField(db_index=True, help_text='0.0-1.0')
+    flags = models.JSONField(default=list, help_text='Issues detected: overconfident, no_tool_citation, etc.')
+
+    # Response data (truncated for storage efficiency)
+    response_text = models.TextField(help_text='First 1000 chars of LLM response')
+
+    # Analysis context (JSONB for flexibility)
+    tool_outputs = models.JSONField(default=list, help_text='Tool results for verification')
+    metadata = models.JSONField(default=dict, help_text='Extra: latency_ms, token_count, etc.')
+
+    # Timestamp (for time-series analysis)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'agents_hallucination_metrics'
+        ordering = ['-created_at']
+        indexes = [
+            # Dashboard queries
+            models.Index(fields=['feature', '-created_at']),
+            models.Index(fields=['confidence_level', '-created_at']),
+            models.Index(fields=['confidence_score']),  # For aggregations
+        ]
+
+    def __str__(self):
+        return f'{self.feature} - {self.confidence_level} ({self.confidence_score:.2f})'
+
+    @property
+    def has_concerns(self) -> bool:
+        """Quick check if response has quality issues."""
+        return self.confidence_level in ['low', 'uncertain'] or len(self.flags) > 0
+
+    @classmethod
+    def get_summary_stats(cls, days: int = 7):
+        """
+        Admin dashboard summary statistics.
+
+        Returns:
+            {
+                'total': 1234,
+                'by_level': {'high': 980, 'medium': 200, ...},
+                'hallucination_rate': 0.04,
+                'avg_score': 0.87,
+            }
+        """
+        from datetime import timedelta
+
+        from django.db.models import Avg, Count
+        from django.utils import timezone
+
+        cutoff = timezone.now() - timedelta(days=days)
+        queryset = cls.objects.filter(created_at__gte=cutoff)
+
+        total = queryset.count()
+        if total == 0:
+            return {'total': 0, 'by_level': {}, 'hallucination_rate': 0.0, 'avg_score': 0.0}
+
+        by_level = dict(
+            queryset.values('confidence_level').annotate(count=Count('id')).values_list('confidence_level', 'count')
+        )
+        avg_score = queryset.aggregate(avg=Avg('confidence_score'))['avg'] or 0.0
+
+        uncertain_count = by_level.get('uncertain', 0)
+        hallucination_rate = (uncertain_count / total) if total > 0 else 0.0
+
+        return {
+            'total': total,
+            'by_level': by_level,
+            'hallucination_rate': hallucination_rate,
+            'avg_score': avg_score,
+        }

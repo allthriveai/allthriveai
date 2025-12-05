@@ -47,11 +47,16 @@ Your job is to analyze user messages and determine their intent from these categ
 3. **discovery**: User wants to explore, search, or discover existing projects
    - Examples: "Show me AI projects", "Find similar projects", "What projects do I have?"
 
-4. **image-generation**: User EXPLICITLY wants to CREATE, GENERATE, or DESIGN NEW images, infographics,
+4. **image-generation**: User wants to CREATE, GENERATE, or DESIGN images, infographics,
    diagrams, or visuals using AI
    - Examples: "Create an infographic", "Generate an image of...", "Make me a flowchart", "Design a banner"
-   - NOTE: Uploading an existing image is NOT image-generation. Only use this intent when user asks to
-     CREATE/GENERATE something new.
+   - IMPORTANT MODE CONTINUITY: If the recent conversation shows:
+     * The assistant mentioned "Nano Banana" or asked "what would you like me to create/make"
+     * The previous intent was image-generation
+     * The user is describing WHAT they want visualized (e.g., "a sunset", "coffee brewing steps", "show me...")
+     Then this is ALSO image-generation - the user is describing what image to create!
+   - "Show me X" or "X" when asked what to create = image-generation (they're describing the image)
+   - NOTE: Uploading an existing image is NOT image-generation.
 
 Context about the user:
 - Integration type: {integration_type}
@@ -264,9 +269,12 @@ class IntentDetectionService:
 
         if new_mode == 'image-generation':
             return (
-                "Hey there! I'm Nano Banana, your creative image assistant. "
-                'I can help you create infographics, diagrams, banners, and more. '
-                'What would you like me to create?'
+                "Hey there! I'm Nano Banana, your creative visual assistant!\n\n"
+                'I can create:\n'
+                '• **Infographics** - step-by-step guides, comparisons, data visualizations\n'
+                '• **Images** - scenes, objects, artistic visuals, illustrations\n\n'
+                "Just tell me what you'd like and specify the format. For example:\n"
+                '"Create an infographic about..." or "Generate an image of..."'
             )
 
         # support mode

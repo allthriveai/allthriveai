@@ -230,7 +230,7 @@ export function ChatInterface({
         <div
           className={`max-w-[85%] sm:max-w-sm md:max-w-md px-4 py-2 rounded-lg whitespace-pre-wrap ${
             message.sender === 'user'
-              ? 'bg-primary-600 text-white'
+              ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
           }`}
         >
