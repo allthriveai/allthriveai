@@ -181,17 +181,27 @@ class QuestCategoryAdmin(admin.ModelAdmin):
     fieldsets = (
         (
             '📂 Category Info',
-            {'fields': ('name', 'slug', 'description', 'category_type'), 'description': 'Basic category information'},
+            {
+                'fields': ('name', 'slug', 'description', 'category_type'),
+                'description': 'Basic category information',
+            },
         ),
-        ('🎨 Visual', {'fields': ('icon', 'color_from', 'color_to'), 'description': 'Visual styling for the category'}),
-        ('⚙️ Settings', {'fields': ('order', 'is_active'), 'description': 'Display order and activation status'}),
+        (
+            '🎨 Visual',
+            {'fields': ('icon', 'color_from', 'color_to'), 'description': 'Visual styling for the category'},
+        ),
+        (
+            '⚙️ Settings',
+            {'fields': ('order', 'is_active'), 'description': 'Display order and activation status'},
+        ),
     )
 
     @admin.display(description='Color')
     def color_badge(self, obj):
         """Display color gradient badge."""
         return format_html(
-            '<div style="background: linear-gradient(135deg, {}, {}); width: 100px; height: 20px; border-radius: 3px;"></div>',
+            '<div style="background: linear-gradient(135deg, {}, {}); width: 100px; height: 20px; '
+            'border-radius: 3px;"></div>',
             obj.color_from,
             obj.color_to,
         )
@@ -202,7 +212,30 @@ class SideQuestForm(forms.ModelForm):
 
     class Meta:
         model = SideQuest
-        fields = '__all__'
+        fields = [
+            'title',
+            'description',
+            'quest_type',
+            'difficulty',
+            'category',
+            'topic',
+            'skill_level',
+            'requirements',
+            'points_reward',
+            'order',
+            'is_guided',
+            'steps',
+            'narrative_intro',
+            'narrative_complete',
+            'estimated_minutes',
+            'is_active',
+            'starts_at',
+            'expires_at',
+            'is_daily',
+            'daily_reset_hour',
+            'is_repeatable',
+            'repeat_cooldown_hours',
+        ]
         widgets = {
             'description': forms.Textarea(
                 attrs={'rows': 3, 'placeholder': 'Detailed description of what the user needs to do'}
@@ -213,7 +246,9 @@ class SideQuestForm(forms.ModelForm):
             'steps': forms.Textarea(
                 attrs={
                     'rows': 6,
-                    'placeholder': '[{"id": "step_1", "title": "...", "description": "...", "destination_url": "/learn"}]',
+                    'placeholder': (
+                        '[{"id": "step_1", "title": "...", "description": "...", "destination_url": "/learn"}]'
+                    ),
                 }
             ),
             'narrative_intro': forms.Textarea(
@@ -268,14 +303,14 @@ class SideQuestAdmin(admin.ModelAdmin):
             '🎯 Requirements & Rewards',
             {
                 'fields': ('requirements', 'points_reward'),
-                'description': 'What users need to do and what they get. Use JSON format for requirements.',
+                'description': ('What users need to do and what they get. Use JSON format for requirements.'),
             },
         ),
         (
             '🗂️ Topic & Level (Optional)',
             {
                 'fields': ('topic', 'skill_level'),
-                'description': 'Optional topic-based filtering for personalized quest recommendations',
+                'description': ('Optional topic-based filtering for personalized quest recommendations'),
                 'classes': ('collapse',),
             },
         ),
@@ -302,7 +337,10 @@ class SideQuestAdmin(admin.ModelAdmin):
                 'description': 'Quest availability and repeatability settings',
             },
         ),
-        ('⚙️ Organization', {'fields': ('order',), 'description': 'Display order within category'}),
+        (
+            '⚙️ Organization',
+            {'fields': ('order',), 'description': 'Display order within category'},
+        ),
         (
             '📊 Preview & Meta',
             {
@@ -325,7 +363,8 @@ class SideQuestAdmin(admin.ModelAdmin):
         }
         color = colors.get(obj.difficulty, 'gray')
         return format_html(
-            '<span style="background-color: {}; color: white; padding: 2px 8px; border-radius: 3px; font-weight: bold; font-size: 11px;">{}</span>',
+            '<span style="background-color: {}; color: white; padding: 2px 8px; border-radius: 3px; '
+            'font-weight: bold; font-size: 11px;">{}</span>',
             color,
             obj.get_difficulty_display().upper(),
         )
@@ -347,7 +386,8 @@ class SideQuestAdmin(admin.ModelAdmin):
     def quest_preview(self, obj):
         """Display quest preview."""
         return format_html(
-            '<div style="font-family: monospace; background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #3b82f6;">'
+            '<div style="font-family: monospace; background: #f8f9fa; padding: 15px; '
+            'border-radius: 5px; border-left: 4px solid #3b82f6;">'
             '<h3 style="margin-top: 0; color: #1f2937;">{}</h3>'
             '<p style="color: #6b7280; margin: 8px 0;"><strong>Type:</strong> {}</p>'
             '<p style="color: #6b7280; margin: 8px 0;"><strong>Description:</strong> {}</p>'

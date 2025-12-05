@@ -166,16 +166,15 @@ export default function AccountSettingsPage() {
     <DashboardLayout>
       <SettingsLayout>
         <div className="p-4 md:p-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="mb-6 md:mb-8">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-                Edit Profile
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400">
-                Update your username and manage your account
-              </p>
-            </div>
+          {/* Header */}
+          <div className="mb-6 md:mb-8">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+              Edit Profile
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400">
+              Update your username and manage your account
+            </p>
+          </div>
 
           {/* Profile Form */}
           <form onSubmit={handleSubmit} className="space-y-8" aria-label="Edit profile form">
@@ -539,7 +538,6 @@ export default function AccountSettingsPage() {
               )}
             </div>
           </form>
-          </div>
         </div>
       </SettingsLayout>
     </DashboardLayout>

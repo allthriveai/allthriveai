@@ -144,8 +144,6 @@ class ToolRecommendationService:
         )
 
         # Build scoring criteria
-        scores = {}
-        match_reasons = {}
 
         # 1. Primary goal matching (40% weight)
         primary_goal = answers.get('primary_goal')

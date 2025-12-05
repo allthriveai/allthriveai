@@ -23,6 +23,7 @@ if 'testserver' not in settings.ALLOWED_HOSTS:
 import json
 import uuid
 
+import pytest
 from django.test import Client
 
 from core.projects.models import Project
@@ -67,6 +68,7 @@ def parse_streaming_response(response):
     return full_response.strip(), step, session_id, project_id, project_slug
 
 
+@pytest.mark.django_db
 def test_project_chat():
     """Test the complete project creation chat flow."""
     log('\n=== Testing Project Creation Chat Flow ===\n', BLUE)

@@ -71,20 +71,11 @@ export function UserMenu({ user }: UserMenuProps) {
         setIsOpen(false);
       },
     },
-    {
-      label: 'Thrive Circle',
-      onClick: () => {
-        navigate('/thrive-circle');
-        setIsOpen(false);
-      },
-    },
   ];
 
   const handleAvatarClick = () => {
-    // Toggle dropdown
+    // Toggle dropdown only - don't navigate
     setIsOpen(!isOpen);
-    // Navigate to profile page
-    navigate(`/${user.username}?tab=showcase`);
   };
 
   return (

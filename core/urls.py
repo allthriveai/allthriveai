@@ -240,7 +240,7 @@ urlpatterns = [
 
 # Test-only endpoints (only available in DEBUG mode)
 if settings.DEBUG:
-    from .auth.test_views import test_login
+    from .auth.testing_views import test_login
 
     urlpatterns += [
         path('auth/test-login/', test_login, name='test_login'),

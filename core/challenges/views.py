@@ -43,6 +43,7 @@ class WeeklyChallengeViewSet(viewsets.ReadOnlyModelViewSet):
     - GET /api/challenges/{slug}/my-submissions/ - User's submissions (authenticated)
     """
 
+    permission_classes = [permissions.AllowAny]
     queryset = WeeklyChallenge.objects.filter(
         status__in=[
             ChallengeStatus.ACTIVE,
@@ -52,7 +53,6 @@ class WeeklyChallengeViewSet(viewsets.ReadOnlyModelViewSet):
         ]
     ).select_related('sponsor')
     lookup_field = 'slug'
-    permission_classes = [permissions.AllowAny]
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -238,9 +238,7 @@ class WeeklyChallengeViewSet(viewsets.ReadOnlyModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        logger.info(
-            f'User {request.user.username} voted for submission {submission_id} ' f'in challenge {challenge.slug}'
-        )
+        logger.info(f'User {request.user.username} voted for submission {submission_id} in challenge {challenge.slug}')
 
         return Response(
             {

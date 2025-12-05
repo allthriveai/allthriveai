@@ -33,7 +33,11 @@ class Command(BaseCommand):
             {
                 'title': 'AI Landscapes: Nature Reimagined',
                 'slug': 'ai-landscapes-nature-reimagined',
-                'description': 'Use any AI image generator to create a landscape that reimagines nature in unexpected ways. Bioluminescent forests, crystal mountains, floating islands—let your imagination run wild!',
+                'description': (
+                    'Use any AI image generator to create a landscape that reimagines nature in '
+                    'unexpected ways. Bioluminescent forests, crystal mountains, floating islands—'
+                    'let your imagination run wild!'
+                ),
                 'prompt': 'Create an otherworldly landscape that reimagines nature',
                 'status': 'active',
                 'week_number': current_week,
@@ -86,14 +90,17 @@ class Command(BaseCommand):
             {
                 'title': 'Retro Futurism: Tomorrow Yesterday',
                 'slug': 'retro-futurism-tomorrow-yesterday',
-                'description': """Blend vintage aesthetics with futuristic concepts.
+                'description': (
+                    """Blend vintage aesthetics with futuristic concepts.
 
-Create AI art that imagines how people from the past envisioned the future - think 1950s space age, art deco robots, or Victorian steampunk technology.
+Create AI art that imagines how people from the past envisioned the future -
+think 1950s space age, art deco robots, or Victorian steampunk technology.
 
 **Guidelines:**
 - Combine retro and futuristic elements
 - Any AI tool allowed
-- Share your prompt for bonus community love!""",
+- Share your prompt for bonus community love!"""
+                ),
                 'prompt': 'A retro-futuristic scene blending vintage aesthetics with advanced technology',
                 'status': 'upcoming',
                 'week_number': current_week + 1,

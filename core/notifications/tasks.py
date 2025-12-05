@@ -143,9 +143,7 @@ def send_bulk_email_task(
             logger.error(f'Failed to queue email for user_id={user_id}: {e}')
             errors.append({'user_id': user_id, 'error': str(e)})
 
-    logger.info(
-        f'Bulk email task completed: type={email_type}, ' f'queued={queued}/{len(user_ids)}, errors={len(errors)}'
-    )
+    logger.info(f'Bulk email task completed: type={email_type}, queued={queued}/{len(user_ids)}, errors={len(errors)}')
 
     return {
         'success': len(errors) == 0,

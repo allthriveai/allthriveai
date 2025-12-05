@@ -25,7 +25,21 @@ class EventAdminForm(forms.ModelForm):
 
     class Meta:
         model = Event
-        fields = '__all__'
+        fields = [
+            'title',
+            'description',
+            'start_date',
+            'end_date',
+            'is_all_day',
+            'timezone_name',
+            'location',
+            'event_url',
+            'color',
+            'thumbnail',
+            'is_published',
+            'create_recurring',
+            'num_months',
+        ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -98,7 +112,10 @@ class EventAdmin(admin.ModelAdmin):
                     'create_recurring',
                     'num_months',
                 ),
-                'description': 'Create multiple monthly recurring events (e.g., monthly Zoom meetings). This only appears when creating a new event.',
+                'description': (
+                    'Create multiple monthly recurring events (e.g., monthly Zoom meetings). '
+                    'This only appears when creating a new event.'
+                ),
             },
         ),
         (
@@ -153,7 +170,8 @@ class EventAdmin(admin.ModelAdmin):
         now = timezone.now()
         if obj.is_ongoing:
             return format_html(
-                '<div style="padding: 10px; background-color: #dcfce7; border-left: 4px solid #22c55e; border-radius: 4px;">'
+                '<div style="padding: 10px; background-color: #dcfce7; border-left: 4px solid #22c55e; '
+                'border-radius: 4px;">'
                 '<strong style="color: #16a34a;">Event is currently ongoing</strong><br>'
                 '<span style="color: #166534; font-size: 12px;">Started: {} • Ends: {}</span>'
                 '</div>',
@@ -163,7 +181,8 @@ class EventAdmin(admin.ModelAdmin):
         elif obj.is_upcoming:
             days_until = (obj.start_date - now).days
             return format_html(
-                '<div style="padding: 10px; background-color: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 4px;">'
+                '<div style="padding: 10px; background-color: #dbeafe; border-left: 4px solid #3b82f6; '
+                'border-radius: 4px;">'
                 '<strong style="color: #1d4ed8;">Upcoming event</strong><br>'
                 '<span style="color: #1e40af; font-size: 12px;">Starts in {} days on {}</span>'
                 '</div>',
@@ -173,7 +192,8 @@ class EventAdmin(admin.ModelAdmin):
         else:
             days_ago = (now - obj.end_date).days
             return format_html(
-                '<div style="padding: 10px; background-color: #f1f5f9; border-left: 4px solid #94a3b8; border-radius: 4px;">'
+                '<div style="padding: 10px; background-color: #f1f5f9; border-left: 4px solid #94a3b8; '
+                'border-radius: 4px;">'
                 '<strong style="color: #64748b;">Past event</strong><br>'
                 '<span style="color: #475569; font-size: 12px;">Ended {} days ago on {}</span>'
                 '</div>',
@@ -231,7 +251,10 @@ class EventAdmin(admin.ModelAdmin):
         if events_created:
             self.message_user(
                 request,
-                f'✓ Successfully created {len(events_created)} recurring monthly events! Total events: {num_months} (including the original).',
+                (
+                    f'✓ Successfully created {len(events_created)} recurring monthly events! '
+                    f'Total events: {num_months} (including the original).'
+                ),
                 messages.SUCCESS,
             )
 

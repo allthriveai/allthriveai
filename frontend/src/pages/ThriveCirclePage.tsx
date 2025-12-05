@@ -108,7 +108,7 @@ export default function ThriveCirclePage() {
     return (
       <DashboardLayout>
         {() => (
-          <div className="min-h-screen bg-background relative overflow-hidden">
+          <div className="min-h-screen bg-gray-50 dark:bg-background relative overflow-hidden">
             {/* Ambient Background Effects */}
             <div className="fixed inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
             <div className="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
@@ -119,10 +119,10 @@ export default function ThriveCirclePage() {
                 <div className="w-20 h-20 rounded-2xl bg-cyan-500/20 flex items-center justify-center mx-auto mb-6 shadow-neon">
                   <FontAwesomeIcon icon={faUserGroup} className="text-4xl text-cyan-bright" />
                 </div>
-                <h1 className="text-3xl font-bold text-white mb-4">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
                   Join Your <span className="text-gradient-cyan">Circle</span>
                 </h1>
-                <p className="text-slate-400 mb-8 leading-relaxed">
+                <p className="text-gray-600 dark:text-slate-400 mb-8 leading-relaxed">
                   Every week, you'll be matched with ~25 fellow learners at your level.
                   Complete challenges together, give kudos, and grow as a community.
                 </p>
@@ -146,7 +146,7 @@ export default function ThriveCirclePage() {
     return (
       <DashboardLayout>
         {() => (
-          <div className="min-h-screen bg-background relative overflow-hidden">
+          <div className="min-h-screen bg-gray-50 dark:bg-background relative overflow-hidden">
             <div className="fixed inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
             <div className="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
 
@@ -155,7 +155,7 @@ export default function ThriveCirclePage() {
                 <div className="w-16 h-16 rounded-full bg-cyan-500/20 flex items-center justify-center mx-auto mb-4 shadow-neon">
                   <FontAwesomeIcon icon={faSpinner} spin className="text-2xl text-cyan-bright" />
                 </div>
-                <p className="text-slate-400">Loading your circle...</p>
+                <p className="text-gray-600 dark:text-slate-400">Loading your circle...</p>
               </div>
             </div>
           </div>
@@ -176,7 +176,7 @@ export default function ThriveCirclePage() {
   return (
     <DashboardLayout>
       {() => (
-        <div className="min-h-screen bg-background relative overflow-hidden">
+        <div className="min-h-screen bg-gray-50 dark:bg-background relative overflow-hidden">
           {/* Ambient Background Effects */}
           <div className="fixed inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
           <div className="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
@@ -241,8 +241,8 @@ export default function ThriveCirclePage() {
                   <CircleChallengeCard challenge={myCircle.activeChallenge} variant="hero" />
                 ) : (
                   <div className="glass-card neon-border p-8 text-center">
-                    <FontAwesomeIcon icon={faCalendarWeek} className="text-4xl text-cyan-bright/50 mb-4" />
-                    <p className="text-lg text-slate-400">
+                    <FontAwesomeIcon icon={faCalendarWeek} className="text-4xl text-cyan-600 dark:text-cyan-bright/50 mb-4" />
+                    <p className="text-lg text-gray-600 dark:text-slate-400">
                       {myCircle
                         ? 'No challenge this week. Check back on Monday!'
                         : 'Circles are formed every Monday. Check back soon!'}
@@ -253,7 +253,7 @@ export default function ThriveCirclePage() {
             </div>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16 space-y-6">
               {/* Row 1: Circle Members (50%) + Activity Feed (50%) */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Circle Members Grid */}

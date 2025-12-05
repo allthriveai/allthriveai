@@ -15,7 +15,9 @@ class Migration(migrations.Migration):
             field=models.JSONField(
                 blank=True,
                 default=list,
-                help_text='List of suggested AI tools: [{"name": "Midjourney", "url": "https://...", "icon": "..."}, ...]',
+                help_text=(
+                    'List of suggested AI tools: [{"name": "Midjourney", "url": "https://...", "icon": "..."}, ...]'
+                ),
             ),
         ),
     ]

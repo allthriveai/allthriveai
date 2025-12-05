@@ -106,6 +106,7 @@ class TestIntentDetectionAPI:
                 'message': 'What about projects?',
                 'conversation_history': [{'sender': 'user', 'content': 'Hi'}, {'sender': 'agent', 'content': 'Hello!'}],
             },
+            format='json',
         )
 
         assert response.status_code == status.HTTP_200_OK

@@ -25,6 +25,7 @@ class MatchSource(models.TextChoices):
     DIRECT = 'direct', 'Direct Challenge'
     RANDOM = 'random', 'Random Match'
     AI_OPPONENT = 'ai_opponent', 'AI Opponent'
+    INVITATION = 'invitation', 'SMS Invitation'
 
 
 class MatchType(models.TextChoices):
@@ -186,7 +187,12 @@ class PromptBattle(models.Model):
     )
 
     opponent = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='battles_received', help_text='User who was challenged'
+        User,
+        on_delete=models.CASCADE,
+        related_name='battles_received',
+        help_text='User who was challenged (null for SMS invitations until accepted)',
+        null=True,
+        blank=True,
     )
 
     challenge_text = models.TextField(help_text='The AI-generated challenge prompt for this battle')
@@ -605,8 +611,8 @@ class BattleInvitation(models.Model):
 
         sms_log = SMSService.send_battle_invitation(
             to_phone=self.recipient_phone,
-            inviter_name=self.sender.display_name or self.sender.username,
-            battle_topic=self.battle.topic,
+            inviter_name=self.sender.username,
+            battle_topic=self.battle.challenge_text[:50],  # First 50 chars of challenge
             invitation_link=self.invite_url,
             user=self.sender,
             invitation_id=self.id,

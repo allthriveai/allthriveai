@@ -272,8 +272,8 @@ class ChallengeSubmissionCreateSerializer(serializers.ModelSerializer):
             try:
                 project = Project.objects.get(id=data['project_id'], user=user)
                 data['project'] = project
-            except Project.DoesNotExist:
-                raise serializers.ValidationError({'project_id': 'Invalid project ID.'})
+            except Project.DoesNotExist as e:
+                raise serializers.ValidationError({'project_id': 'Invalid project ID.'}) from e
 
         # Require image or project
         if not data.get('image_url') and not data.get('project_id') and not data.get('external_url'):

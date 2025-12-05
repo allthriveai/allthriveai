@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
+import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/models';
 import {
@@ -233,6 +234,7 @@ export default function CreatorSettingsPage() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [isProductChatOpen, setIsProductChatOpen] = useState(false);
 
   // Fetch creator data (only if user has creator role)
   const fetchCreatorData = useCallback(async () => {
@@ -281,36 +283,6 @@ export default function CreatorSettingsPage() {
     }
   };
 
-  // Import from YouTube
-  const handleYouTubeImport = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!youtubeUrl.trim()) return;
-
-    setIsImporting(true);
-    setImportError(null);
-    setImportSuccess(null);
-
-    try {
-      const result = await importFromYouTube({
-        youtubeUrl: youtubeUrl.trim(),
-        productType: 'course',
-        price: '0.00',
-      });
-      setImportSuccess(result.message);
-      setYoutubeUrl('');
-      // Refresh products list
-      const productsData = await listMyProducts().catch(() => []);
-      setProducts(productsData);
-    } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'error' in error
-        ? String((error as { error: string }).error)
-        : 'Failed to import video. Please try again.';
-      setImportError(errorMessage);
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
   // Format currency
   const formatCurrency = (amount: string | number) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -324,9 +296,8 @@ export default function CreatorSettingsPage() {
     <DashboardLayout>
       <SettingsLayout>
         <div className="p-4 md:p-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="mb-6 md:mb-8">
+          {/* Header */}
+          <div className="mb-6 md:mb-8">
               <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
                 Creator Settings
               </h1>
@@ -445,13 +416,13 @@ export default function CreatorSettingsPage() {
                     <h3 className="text-lg font-semibold text-slate-100">
                       Your Products
                     </h3>
-                    <Link
-                      to="/creator/products/new"
+                    <button
+                      onClick={() => setIsProductChatOpen(true)}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg transition-colors"
                     >
                       <PlusIcon className="w-5 h-5" />
                       Add Product
-                    </Link>
+                    </button>
                   </div>
 
                   {products.length === 0 ? (
@@ -483,9 +454,16 @@ export default function CreatorSettingsPage() {
                 </div>
               </div>
             )}
-          </div>
         </div>
       </SettingsLayout>
+
+      {/* Product Creation Chat Tray */}
+      <IntelligentChatPanel
+        isOpen={isProductChatOpen}
+        onClose={() => setIsProductChatOpen(false)}
+        conversationId="product-creation"
+        productCreationMode={true}
+      />
     </DashboardLayout>
   );
 }

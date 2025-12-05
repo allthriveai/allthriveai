@@ -355,8 +355,8 @@ class SEOPerformanceTests(TestCase):
 
         # Count queries - should be minimal (one per sitemap section: projects, profiles, tools, static)
         # The sitemap has 4 sections, but static doesn't query the DB
-        # So we expect 3 queries: projects, users, tools
-        with self.assertNumQueries(3):  # 3 optimized queries (one per DB-backed sitemap)
+        # So we expect 4 queries: site, projects, users, tools
+        with self.assertNumQueries(4):  # 4 optimized queries (site + 3 DB-backed sitemaps)
             response = self.client.get('/sitemap.xml')
             self.assertEqual(response.status_code, 200)
 

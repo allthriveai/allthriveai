@@ -11,7 +11,11 @@ import {
   XMarkIcon,
   CheckIcon,
   MagnifyingGlassIcon,
+  SunIcon,
+  MoonIcon,
+  ComputerDesktopIcon,
 } from '@heroicons/react/24/outline';
+import { useTheme } from '@/hooks/useTheme';
 
 const COLOR_CLASSES: Record<string, string> = {
   blue: 'bg-blue-500',
@@ -32,6 +36,7 @@ const COLOR_CLASSES: Record<string, string> = {
 };
 
 export function Personalization() {
+  const { theme, toggleTheme } = useTheme();
   const [manualTags, setManualTags] = useState<UserTag[]>([]);
   const [autoTags, setAutoTags] = useState<UserTag[]>([]);
   const [taxonomies, setTaxonomies] = useState<Taxonomy[]>([]);
@@ -232,6 +237,71 @@ export function Personalization() {
           <p className="text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
+
+      {/* Theme Preference */}
+      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+          {theme === 'dark' ? <MoonIcon className="w-5 h-5" /> : <SunIcon className="w-5 h-5" />}
+          Appearance
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Choose how All Thrive looks to you. Your preference will be saved automatically.
+        </p>
+
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => theme === 'dark' && toggleTheme()}
+            className={`p-4 rounded-lg border-2 transition-all ${
+              theme === 'light'
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0">
+                <SunIcon className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-left flex-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-semibold text-gray-900 dark:text-white">Light</h4>
+                  {theme === 'light' && (
+                    <CheckIcon className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Bright and clear
+                </p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => theme === 'light' && toggleTheme()}
+            className={`p-4 rounded-lg border-2 transition-all ${
+              theme === 'dark'
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <MoonIcon className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-left flex-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-semibold text-gray-900 dark:text-white">Dark</h4>
+                  {theme === 'dark' && (
+                    <CheckIcon className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Easy on the eyes
+                </p>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
 
       {/* Topics Section */}
       <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">

@@ -50,8 +50,8 @@ def validate_youtube_url_strict(url: str) -> str:
     # Parse and validate the URL structure
     try:
         parsed = urlparse(url)
-    except Exception:
-        raise serializers.ValidationError('Invalid URL format')
+    except Exception as e:
+        raise serializers.ValidationError('Invalid URL format') from e
 
     # Verify scheme is http or https
     if parsed.scheme not in ('http', 'https'):

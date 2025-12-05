@@ -113,16 +113,15 @@ export default function NotificationsSettingsPage() {
     <DashboardLayout>
       <SettingsLayout>
         <div className="p-4 md:p-8">
-          <div className="max-w-3xl mx-auto">
-            {/* Header */}
-            <div className="mb-6 md:mb-8">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-                Email Notifications
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400">
-                Manage which emails you'd like to receive from AllThrive AI
-              </p>
-            </div>
+          {/* Header */}
+          <div className="mb-6 md:mb-8">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+              Email Notifications
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400">
+              Manage which emails you'd like to receive from AllThrive AI
+            </p>
+          </div>
 
             {/* Loading State */}
             {isLoading && (
@@ -267,7 +266,6 @@ export default function NotificationsSettingsPage() {
                 )}
               </div>
             )}
-          </div>
         </div>
       </SettingsLayout>
     </DashboardLayout>

@@ -35,7 +35,7 @@ export function Footer({ onOpenChat }: FooterProps) {
   };
 
   return (
-    <footer className="relative bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-white/5 mt-16" role="contentinfo">
+    <footer className="relative bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-white/5" role="contentinfo">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="flex flex-col md:flex-row md:justify-between gap-8 lg:gap-12">
           {/* Brand column */}

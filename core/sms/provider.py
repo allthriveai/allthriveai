@@ -133,9 +133,7 @@ class ConsoleSMSProvider(SMSProvider):
         self._message_counter += 1
         fake_sid = f'CONSOLE_{self._message_counter}'
 
-        logger.info(
-            f'\n' f'{"=" * 50}\n' f'[CONSOLE SMS] Would send to: {to}\n' f'{"=" * 50}\n' f'{body}\n' f'{"=" * 50}\n'
-        )
+        logger.info(f'\n{"=" * 50}\n[CONSOLE SMS] Would send to: {to}\n{"=" * 50}\n{body}\n{"=" * 50}\n')
 
         return SMSResult(
             success=True,

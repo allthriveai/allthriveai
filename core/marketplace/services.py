@@ -503,7 +503,7 @@ def _convert_to_blocks(course_structure: dict, video_info: dict) -> list[dict]:
             'type': 'cover',
             'data': {
                 'title': video_info['title'],
-                'subtitle': f"By {video_info['channel_name']}",
+                'subtitle': f'By {video_info["channel_name"]}',
                 'image_url': video_info['thumbnail_url'],
                 'video_embed': f'https://www.youtube.com/embed/{video_info["video_id"]}',
             },

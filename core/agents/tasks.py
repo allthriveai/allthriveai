@@ -116,7 +116,9 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         )
 
         # Determine routing based on conversation context and message content
+        # Both project and product creation conversations use the LangGraph agent with tools
         is_project_conversation = conversation_id.startswith('project-')
+        is_product_conversation = conversation_id.startswith('product-')
 
         # Fetch recent conversation history for context-aware intent detection
         conversation_history = _get_conversation_history(conversation_id, limit=5)
@@ -131,11 +133,11 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         )
         logger.info(f'Detected intent: {intent} for conversation {conversation_id}')
 
-        # For project conversations, default to project-creation unless
-        # we detect a specific intent like image-generation
-        if is_project_conversation and intent not in ('image-generation',):
+        # For project/product conversations, default to project-creation (which has tools)
+        # unless we detect a specific intent like image-generation
+        if (is_project_conversation or is_product_conversation) and intent not in ('image-generation',):
             intent = 'project-creation'
-            logger.info('Project conversation - overriding to project-creation')
+            logger.info('Project/product conversation - overriding to project-creation agent')
 
         # Route to appropriate processor based on intent
         if intent == 'project-creation':

@@ -18,21 +18,6 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-
-class YouTubeImportThrottle(UserRateThrottle):
-    """
-    Rate limit for YouTube imports to prevent abuse.
-
-    SECURITY: Limits imports to 5 per hour per user to:
-    - Prevent API abuse and excessive AI costs
-    - Protect against automated scraping attempts
-    - Ensure fair usage across users
-    """
-
-    rate = '5/hour'
-    scope = 'youtube_import'
-
-
 from .models import CreatorAccount, Order, Product, ProductAccess
 from .serializers import (
     CreatorAccountSerializer,
@@ -51,6 +36,21 @@ from .services import (
     get_creator_dashboard_stats,
     import_youtube_as_product,
 )
+
+
+class YouTubeImportThrottle(UserRateThrottle):
+    """
+    Rate limit for YouTube imports to prevent abuse.
+
+    SECURITY: Limits imports to 5 per hour per user to:
+    - Prevent API abuse and excessive AI costs
+    - Protect against automated scraping attempts
+    - Ensure fair usage across users
+    """
+
+    rate = '5/hour'
+    scope = 'youtube_import'
+
 
 logger = logging.getLogger(__name__)
 
@@ -280,7 +280,7 @@ class YouTubeImportView(APIView):
             logger.warning(f'YouTube transcript error: {e}')
             return Response(
                 {
-                    'error': 'Could not get video transcript. The video may not have captions available.',
+                    'error': ('Could not get video transcript. The video may not have captions available.'),
                     'detail': str(e),
                 },
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,

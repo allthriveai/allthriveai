@@ -10,6 +10,7 @@ import {
   SparklesIcon,
   PuzzlePieceIcon,
   ShoppingBagIcon,
+  RocketLaunchIcon,
 } from '@heroicons/react/24/outline';
 
 interface SettingsSidebarItem {
@@ -23,6 +24,11 @@ interface SettingsLayoutProps {
 }
 
 const settingsNavItems: SettingsSidebarItem[] = [
+  {
+    label: 'Getting Started',
+    path: '/getting-started',
+    icon: RocketLaunchIcon,
+  },
   {
     label: 'Edit Profile',
     path: '/account/settings',

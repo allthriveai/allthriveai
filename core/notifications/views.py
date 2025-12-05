@@ -62,16 +62,14 @@ def unsubscribe(request):
         if category:
             # Validate category against whitelist (prevents arbitrary attribute access)
             if category not in ALLOWED_UNSUBSCRIBE_CATEGORIES:
-                logger.warning(f'Invalid unsubscribe category attempted: {category!r} ' f'(user_id={prefs.user.id})')
+                logger.warning(f'Invalid unsubscribe category attempted: {category!r} (user_id={prefs.user.id})')
                 return JsonResponse({'error': 'Invalid category'}, status=400)
 
             # Unsubscribe from specific category
             field_name = f'email_{category}'
             setattr(prefs, field_name, False)
             prefs.save(update_fields=[field_name, 'updated_at'])
-            logger.info(
-                f'User {prefs.user.id} ({mask_email(prefs.user.email)}) ' f'unsubscribed from {category} emails'
-            )
+            logger.info(f'User {prefs.user.id} ({mask_email(prefs.user.email)}) unsubscribed from {category} emails')
         else:
             # Unsubscribe from all non-transactional emails
             prefs.email_battles = False
@@ -91,7 +89,7 @@ def unsubscribe(request):
                 ]
             )
             logger.info(
-                f'User {prefs.user.id} ({mask_email(prefs.user.email)}) ' f'unsubscribed from all promotional emails'
+                f'User {prefs.user.id} ({mask_email(prefs.user.email)}) unsubscribed from all promotional emails'
             )
 
         return JsonResponse({'success': True})
@@ -159,7 +157,7 @@ def update_preferences(request):
 
     if updated:
         prefs.save(update_fields=updated + ['updated_at'])
-        logger.info(f'User {prefs.user.id} ({mask_email(prefs.user.email)}) ' f'updated email preferences: {updated}')
+        logger.info(f'User {prefs.user.id} ({mask_email(prefs.user.email)}) updated email preferences: {updated}')
 
     return JsonResponse(
         {
@@ -227,9 +225,7 @@ def my_email_preferences(request):
 
     if updated:
         prefs.save(update_fields=updated + ['updated_at'])
-        logger.info(
-            f'User {request.user.id} ({mask_email(request.user.email)}) ' f'updated email preferences: {updated}'
-        )
+        logger.info(f'User {request.user.id} ({mask_email(request.user.email)}) updated email preferences: {updated}')
 
     return Response(
         {

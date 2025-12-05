@@ -127,16 +127,16 @@ export function MatchmakingScreen({
             className="inline-block mb-4"
           >
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-500 p-0.5">
-              <div className="w-full h-full rounded-2xl bg-slate-900 flex items-center justify-center">
+              <div className="w-full h-full rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center">
                 <BoltIcon className="w-10 h-10 text-cyan-400" />
               </div>
             </div>
           </motion.div>
 
-          <h1 className="text-4xl font-bold text-white mb-2">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
             Prompt <span className="text-gradient-cyan">Battles</span>
           </h1>
-          <p className="text-slate-400 text-lg">
+          <p className="text-gray-600 dark:text-slate-400 text-lg">
             Challenge others to an AI image generation duel!
           </p>
         </motion.div>
@@ -181,17 +181,17 @@ export function MatchmakingScreen({
                 </div>
               </div>
 
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 {selectedMode === 'ai' ? 'Connecting to Pip...' : 'Finding Opponent...'}
               </h2>
 
               {queueStatus.position > 0 && (
-                <p className="text-slate-400 mb-4">
-                  Position in queue: <span className="text-cyan-400 font-semibold">{queueStatus.position}</span>
+                <p className="text-gray-600 dark:text-slate-400 mb-4">
+                  Position in queue: <span className="text-cyan-600 dark:text-cyan-400 font-semibold">{queueStatus.position}</span>
                 </p>
               )}
 
-              <p className="text-slate-500 text-sm mb-6">
+              <p className="text-gray-500 dark:text-slate-500 text-sm mb-6">
                 {selectedMode === 'ai'
                   ? 'Pip is warming up for battle!'
                   : 'Looking for a worthy challenger...'}
@@ -226,11 +226,11 @@ export function MatchmakingScreen({
                   <CpuChipIcon className="w-7 h-7 text-violet-400" />
                 </div>
 
-                <h3 className="text-lg font-bold text-white mb-2 group-hover:text-violet-300 transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors">
                   Battle Pip
                 </h3>
 
-                <p className="text-slate-400 text-sm mb-4">
+                <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">
                   Challenge our AI companion. Perfect for practice!
                 </p>
 
@@ -252,11 +252,11 @@ export function MatchmakingScreen({
                   <UserGroupIcon className="w-7 h-7 text-cyan-400" />
                 </div>
 
-                <h3 className="text-lg font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
                   Random Match
                 </h3>
 
-                <p className="text-slate-400 text-sm mb-4">
+                <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">
                   Face off against another player in real-time!
                 </p>
 
@@ -278,11 +278,11 @@ export function MatchmakingScreen({
                   <DevicePhoneMobileIcon className="w-7 h-7 text-emerald-400" />
                 </div>
 
-                <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-300 transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors">
                   Challenge a Friend
                 </h3>
 
-                <p className="text-slate-400 text-sm mb-4">
+                <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">
                   Send an SMS invite to battle anyone!
                 </p>
 
@@ -303,7 +303,7 @@ export function MatchmakingScreen({
             transition={{ delay: 0.3 }}
             className="mt-12"
           >
-            <h3 className="text-center text-slate-500 text-sm font-medium mb-6 tracking-wider uppercase">
+            <h3 className="text-center text-gray-500 dark:text-slate-500 text-sm font-medium mb-6 tracking-wider uppercase">
               How It Works
             </h3>
 
@@ -321,10 +321,10 @@ export function MatchmakingScreen({
                   className="text-center"
                 >
                   <div className="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center mx-auto mb-2">
-                    <span className="text-cyan-400 font-bold">{item.step}</span>
+                    <span className="text-cyan-600 dark:text-cyan-400 font-bold">{item.step}</span>
                   </div>
-                  <h4 className="text-white font-medium text-sm">{item.title}</h4>
-                  <p className="text-slate-500 text-xs">{item.desc}</p>
+                  <h4 className="text-gray-900 dark:text-white font-medium text-sm">{item.title}</h4>
+                  <p className="text-gray-500 dark:text-slate-500 text-xs">{item.desc}</p>
                 </motion.div>
               ))}
             </div>
@@ -354,13 +354,13 @@ export function MatchmakingScreen({
                   <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
                     <CheckCircleIcon className="w-10 h-10 text-emerald-400" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Challenge Sent!</h3>
-                  <p className="text-slate-400 mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Challenge Sent!</h3>
+                  <p className="text-gray-600 dark:text-slate-400 mb-6">
                     Your friend will receive an SMS with a link to accept the battle challenge.
                   </p>
-                  <div className="bg-slate-800/50 rounded-lg p-3 mb-6">
-                    <p className="text-xs text-slate-500 mb-1">Share this link:</p>
-                    <p className="text-sm text-cyan-400 break-all">{smsSuccess.inviteUrl}</p>
+                  <div className="bg-gray-100 dark:bg-slate-800/50 rounded-lg p-3 mb-6">
+                    <p className="text-xs text-gray-500 dark:text-slate-500 mb-1">Share this link:</p>
+                    <p className="text-sm text-cyan-600 dark:text-cyan-400 break-all">{smsSuccess.inviteUrl}</p>
                   </div>
                   <button onClick={resetSmsModal} className="btn-primary w-full">
                     Done
@@ -370,22 +370,22 @@ export function MatchmakingScreen({
                 /* Form state */
                 <>
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-white">Challenge a Friend</h3>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Challenge a Friend</h3>
                     <button
                       onClick={resetSmsModal}
-                      className="p-1 hover:bg-slate-800 rounded-lg transition-colors"
+                      className="p-1 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
                     >
-                      <XMarkIcon className="w-5 h-5 text-slate-400" />
+                      <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-slate-400" />
                     </button>
                   </div>
 
-                  <p className="text-slate-400 text-sm mb-6">
+                  <p className="text-gray-600 dark:text-slate-400 text-sm mb-6">
                     Enter your friend's phone number to send them a battle invitation via SMS.
                   </p>
 
                   <div className="space-y-4 mb-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                         Phone Number *
                       </label>
                       <input
@@ -393,20 +393,20 @@ export function MatchmakingScreen({
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
                         placeholder="+1 (555) 123-4567"
-                        className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                        className="w-full px-4 py-3 bg-gray-100 dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Friend's Name <span className="text-slate-500">(optional)</span>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                        Friend's Name <span className="text-gray-500 dark:text-slate-500">(optional)</span>
                       </label>
                       <input
                         type="text"
                         value={friendName}
                         onChange={(e) => setFriendName(e.target.value)}
                         placeholder="John"
-                        className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                        className="w-full px-4 py-3 bg-gray-100 dark:bg-slate-800/50 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
                   </div>

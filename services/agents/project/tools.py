@@ -54,6 +54,16 @@ class ImportGitHubProjectInput(BaseModel):
     is_private: bool = Field(default=False, description='Whether to mark the project as private (hidden from public)')
 
 
+class CreateProductInput(BaseModel):
+    """Input for create_product tool."""
+
+    title: str = Field(description='The title/name of the product')
+    product_type: str = Field(description='Type of product: course, prompt_pack, template, or ebook')
+    description: str = Field(default='', description='Description of the product (optional)')
+    price: float = Field(default=0.0, description='Price in USD (0 for free)')
+    source_url: str = Field(default='', description='Source URL if imported from YouTube/external')
+
+
 # Tools
 @tool(args_schema=CreateProjectInput)
 def create_project(
@@ -401,7 +411,141 @@ def import_github_project(
     }
 
 
+@tool(args_schema=CreateProductInput)
+def create_product(
+    title: str,
+    product_type: str,
+    description: str = '',
+    price: float = 0.0,
+    source_url: str = '',
+    state: dict | None = None,
+) -> dict:
+    """
+    Create a new marketplace product for the user to sell.
+
+    Use this tool when the user wants to create a digital product such as:
+    - Courses: Educational content, tutorials, how-to guides
+    - Prompt Packs: Curated AI prompts for specific tasks
+    - Templates: Reusable frameworks, designs, or tools
+    - E-books: Digital books, guides, checklists
+
+    IMPORTANT: Product types must be one of: course, prompt_pack, template, ebook
+
+    Returns:
+        Dictionary with product details or error message
+    """
+    from decimal import Decimal
+
+    from django.contrib.auth import get_user_model
+
+    from core.marketplace.models import CreatorAccount, Product
+    from core.projects.models import Project
+
+    User = get_user_model()
+
+    logger.info(f'create_product called with state: {state}')
+
+    # Get user_id from injected graph state
+    if not state or 'user_id' not in state:
+        logger.error(f'User not authenticated - state: {state}')
+        return {'success': False, 'error': 'User not authenticated'}
+
+    user_id = state['user_id']
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'success': False, 'error': 'User not found'}
+
+    # Validate and normalize product type
+    product_type_map = {
+        'course': Product.ProductType.COURSE,
+        'prompt_pack': Product.ProductType.PROMPT_PACK,
+        'prompt': Product.ProductType.PROMPT_PACK,  # alias
+        'prompts': Product.ProductType.PROMPT_PACK,  # alias
+        'template': Product.ProductType.TEMPLATE,
+        'ebook': Product.ProductType.EBOOK,
+        'e-book': Product.ProductType.EBOOK,  # alias
+        'book': Product.ProductType.EBOOK,  # alias
+    }
+
+    normalized_type = product_type.lower().replace(' ', '_').replace('-', '_')
+    if normalized_type not in product_type_map:
+        return {
+            'success': False,
+            'error': f'Invalid product type "{product_type}". Must be one of: course, prompt_pack, template, ebook',
+        }
+
+    django_product_type = product_type_map[normalized_type]
+
+    # Determine source type from URL if provided
+    source_type = ''
+    if source_url:
+        if 'youtube.com' in source_url or 'youtu.be' in source_url:
+            source_type = 'youtube'
+        elif 'github.com' in source_url:
+            source_type = 'github'
+        else:
+            source_type = 'external'
+
+    logger.info(f'Creating product: user_id={user_id}, title={title}, type={django_product_type}, price={price}')
+
+    try:
+        # Create the underlying project for content storage
+        project = Project.objects.create(
+            user=user,
+            title=title,
+            description=description,
+            type=Project.ProjectType.PRODUCT,
+            is_product=True,
+            is_private=True,  # Start as draft (private)
+            external_url=source_url if source_url else '',
+            content={},
+        )
+
+        # Ensure creator account exists
+        CreatorAccount.objects.get_or_create(user=user)
+
+        # Create the product
+        product = Product.objects.create(
+            project=project,
+            creator=user,
+            product_type=django_product_type,
+            price=Decimal(str(price)),
+            status=Product.Status.DRAFT,
+            source_type=source_type,
+            source_url=source_url if source_url else '',
+        )
+
+        logger.info(f'Product created successfully: id={product.id}, project_id={project.id}')
+
+        # Build human-readable product type for message
+        type_display = {
+            'course': 'Course',
+            'prompt_pack': 'Prompt Pack',
+            'template': 'Template',
+            'ebook': 'E-Book',
+        }
+
+        return {
+            'success': True,
+            'product_id': product.id,
+            'project_id': project.id,
+            'slug': project.slug,
+            'title': project.title,
+            'product_type': django_product_type,
+            'price': float(price),
+            'url': f'/creator/{project.slug}',
+            'message': f"{type_display.get(django_product_type, 'Product')} '{project.title}' created as a draft! "
+            f'You can now edit it and add content before publishing.',
+        }
+
+    except Exception as e:
+        logger.exception(f'Error creating product: {e}')
+        return {'success': False, 'error': f'Failed to create product: {str(e)}'}
+
+
 # Tool list for agent
 # Note: fetch_github_metadata is kept for potential future use but not exposed to agent
 # GitHub imports require OAuth via import_github_project for ownership verification
-PROJECT_TOOLS = [create_project, extract_url_info, import_github_project]
+PROJECT_TOOLS = [create_project, extract_url_info, import_github_project, create_product]

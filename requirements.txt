@@ -65,6 +65,9 @@ boto3>=1.35.0
 # Email (AWS SES)
 django-ses>=4.3.0
 
+# SMS
+twilio>=9.0.0
+
 # Security
 bleach>=6.1.0
 django-ratelimit>=4.1.0

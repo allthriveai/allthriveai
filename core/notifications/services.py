@@ -119,8 +119,7 @@ class EmailService:
             log.error_message = str(e)[:1000]  # Truncate long error messages
             log.save(update_fields=['status', 'error_message'])
             logger.error(
-                f'Email failed: type={email_type.value}, user_id={user.id}, '
-                f'email={mask_email(user.email)}, error={e}'
+                f'Email failed: type={email_type.value}, user_id={user.id}, email={mask_email(user.email)}, error={e}'
             )
             raise
 

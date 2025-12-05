@@ -114,7 +114,6 @@ def finalize_challenge(challenge_id: str):
             submission.save(update_fields=['final_rank'])
 
         # Award prize points
-        prizes = challenge.prizes
         points_config = challenge.points_config
 
         for submission in submissions:
@@ -142,7 +141,7 @@ def finalize_challenge(challenge_id: str):
                     f'Rank #{rank} in challenge: {challenge.title}',
                 )
 
-                logger.info(f'Awarded {prize_points} points to {submission.user.username} ' f'for rank #{rank}')
+                logger.info(f'Awarded {prize_points} points to {submission.user.username} for rank #{rank}')
 
         # Update all participant stats
         participants = ChallengeParticipant.objects.filter(challenge=challenge)
@@ -156,7 +155,7 @@ def finalize_challenge(challenge_id: str):
         challenge.status = ChallengeStatus.COMPLETED
         challenge.save(update_fields=['status'])
 
-        logger.info(f'Challenge {challenge.title} finalized. ' f'{len(submissions)} submissions ranked.')
+        logger.info(f'Challenge {challenge.title} finalized. {len(submissions)} submissions ranked.')
 
 
 @shared_task(name='challenges.sync_leaderboard')

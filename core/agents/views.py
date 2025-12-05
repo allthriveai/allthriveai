@@ -45,8 +45,10 @@ The user went through {len(iterations)} iteration(s) to create their final image
 
 Write THREE things:
 1. A SHORT TITLE (5-8 words max) that captures what was created
-2. A BRIEF NARRATIVE (2-3 sentences) describing the creative journey - how the image evolved through iterations
-3. A CLEANED DESCRIPTION - take the final prompt and fix any spelling/grammar errors, but keep the original meaning and style. This should be 1-2 sentences max.
+2. A BRIEF NARRATIVE (2-3 sentences) describing the creative journey -
+   how the image evolved through iterations
+3. A CLEANED DESCRIPTION - take the final prompt and fix any spelling/grammar errors,
+   but keep the original meaning and style. This should be 1-2 sentences max.
 
 Format your response EXACTLY like this:
 TITLE: [your title here]

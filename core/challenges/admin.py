@@ -48,31 +48,67 @@ class WeeklyChallengeForm(forms.ModelForm):
 
     class Meta:
         model = WeeklyChallenge
-        fields = '__all__'
+        fields = [
+            'title',
+            'slug',
+            'description',
+            'prompt',
+            'status',
+            'week_number',
+            'year',
+            'starts_at',
+            'submission_deadline',
+            'voting_deadline',
+            'ends_at',
+            'max_submissions_per_user',
+            'allow_voting',
+            'require_project_link',
+            'allow_external_submissions',
+            'hero_image_url',
+            'theme_color',
+            'is_featured',
+            'sponsor',
+            'prizes',
+            'points_config',
+            'suggested_tools',
+            'created_by',
+        ]
         widgets = {
             'description': forms.Textarea(
                 attrs={
                     'rows': 4,
-                    'placeholder': 'Full challenge description and rules. This will be displayed on the challenge detail page.',
+                    'placeholder': (
+                        'Full challenge description and rules. This will be displayed on the challenge detail page.'
+                    ),
                 }
             ),
             'prompt': forms.Textarea(
                 attrs={
                     'rows': 3,
-                    'placeholder': 'The creative prompt for participants. E.g., "Create a landscape that reimagines nature..."',
+                    'placeholder': (
+                        'The creative prompt for participants. E.g., "Create a landscape that reimagines nature..."'
+                    ),
                 }
             ),
             'prizes': forms.Textarea(
                 attrs={
                     'rows': 5,
-                    'placeholder': '{"1st": {"type": "cash", "amount": 100, "description": "First place prize"}, "2nd": {...}}',
+                    'placeholder': (
+                        '{"1st": {"type": "cash", "amount": 100, "description": "First place prize"}, "2nd": {...}}'
+                    ),
                 }
             ),
             'points_config': forms.Textarea(
-                attrs={'rows': 5, 'placeholder': '{"submit": 50, "early_bird": 25, "vote_cast": 5, ...}'}
+                attrs={
+                    'rows': 5,
+                    'placeholder': '{"submit": 50, "early_bird": 25, "vote_cast": 5, ...}',
+                }
             ),
             'suggested_tools': forms.Textarea(
-                attrs={'rows': 4, 'placeholder': '[{"name": "Midjourney", "url": "https://...", "icon": "..."}, ...]'}
+                attrs={
+                    'rows': 4,
+                    'placeholder': '[{"name": "Midjourney", "url": "https://...", "icon": "..."}, ...]',
+                }
             ),
         }
         help_texts = {
@@ -80,7 +116,7 @@ class WeeklyChallengeForm(forms.ModelForm):
             'description': 'Detailed description of the challenge, rules, and judging criteria',
             'prompt': 'The actual creative prompt participants will respond to',
             'week_number': 'Week of the year (1-52)',
-            'status': 'Draft = not visible, Upcoming = visible but not started, Active = accepting submissions',
+            'status': ('Draft = not visible, Upcoming = visible but not started, Active = accepting submissions'),
             'theme_color': 'Color for UI styling (purple, cyan, green, orange, red, blue)',
             'prizes': 'JSON format prizes configuration',
             'points_config': 'Points awarded for different activities (leave empty for defaults)',
@@ -199,7 +235,8 @@ class WeeklyChallengeAdmin(admin.ModelAdmin):
         }
         color = colors.get(obj.status, 'gray')
         return format_html(
-            '<span style="background-color: {}; color: white; padding: 3px 10px; border-radius: 3px; font-weight: bold;">{}</span>',
+            '<span style="background-color: {}; color: white; padding: 3px 10px; '
+            'border-radius: 3px; font-weight: bold;">{}</span>',
             color,
             obj.get_status_display(),
         )

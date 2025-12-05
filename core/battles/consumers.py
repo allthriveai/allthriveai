@@ -1027,10 +1027,10 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
             return None
 
         # Get a random active user (to avoid always matching with same person)
-        import random
+        import secrets
 
         active_list = list(active_users[:10])  # Limit to 10 candidates
-        matched_user = random.choice(active_list)
+        matched_user = secrets.choice(active_list)
 
         # Get or create a challenge type
         challenge_type = None
