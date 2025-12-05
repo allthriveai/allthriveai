@@ -32,6 +32,7 @@ import {
   type PersonalizedInsight,
   type ActivityTrend,
 } from '@/services/auth';
+import { logError } from '@/utils/errorHandler';
 
 interface ActivityInsightsTabProps {
   username: string;
@@ -78,9 +79,15 @@ export function ActivityInsightsTab({ username, isOwnProfile }: ActivityInsights
         const data = await getActivityInsights();
         setInsights(data);
       } catch (err: any) {
-        console.error('Failed to load activity insights:', err);
-        const errorMessage = err?.response?.data?.detail ||
-                            err?.response?.data?.error ||
+        // Log to Sentry in production, console in development
+        logError('Failed to load activity insights', err, {
+          username,
+          isOwnProfile,
+          component: 'ActivityInsightsTab',
+        });
+
+        const errorMessage = err?.response?.data?.error ||
+                            err?.response?.data?.detail ||
                             err?.message ||
                             'Failed to load activity insights';
         setError(errorMessage);

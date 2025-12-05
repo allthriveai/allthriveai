@@ -11,6 +11,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { api } from '@/services/api';
+import { logError } from '@/utils/errorHandler';
 
 import { useBattleWebSocket, type BattleState } from '@/hooks/useBattleWebSocket';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,16 +35,18 @@ export function BattlePage() {
   const [_revealComplete, setRevealComplete] = useState(false);
 
   const handleError = useCallback((error: string) => {
-    console.error('[Battle] Error:', error);
-    // Could show toast notification here
+    logError('Battle error', new Error(error), {
+      component: 'BattlePage',
+      battleId,
+    });
+  }, [battleId]);
+
+  const handlePhaseChange = useCallback((_phase: string) => {
+    // Phase changes are normal operation, no logging needed
   }, []);
 
-  const handlePhaseChange = useCallback((phase: string) => {
-    console.log('[Battle] Phase changed:', phase);
-  }, []);
-
-  const handleMatchComplete = useCallback((winnerId: number | null) => {
-    console.log('[Battle] Match complete, winner:', winnerId);
+  const handleMatchComplete = useCallback((_winnerId: number | null) => {
+    // Match complete is normal operation, no logging needed
   }, []);
 
   const {
@@ -130,9 +133,12 @@ export function BattlePage() {
         };
 
         setRestBattleState(transformedState);
-        console.log('[Battle] Loaded battle via REST API:', transformedState);
       } catch (error) {
-        console.error('[Battle] Failed to load battle via REST:', error);
+        logError('Failed to load battle via REST API', error as Error, {
+          component: 'BattlePage',
+          battleId,
+          context: 'REST fallback',
+        });
         setRestError('Failed to load battle data');
       } finally {
         setRestLoading(false);

@@ -9,6 +9,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { logError } from '@/utils/errorHandler';
 import {
   TrophyIcon,
   ClockIcon,
@@ -35,7 +36,7 @@ import {
   type ChallengeSubmission,
   type LeaderboardEntry,
 } from '@/services/challenges';
-import { ChallengeSubmitModal } from '@/components/challenges/ChallengeSubmitModal';
+import { ChallengeSubmitTray } from '@/components/challenges/ChallengeSubmitTray';
 import { ChallengeLeaderboard } from '@/components/challenges/ChallengeLeaderboard';
 import { ChallengeSubmissionCard } from '@/components/challenges/ChallengeSubmissionCard';
 import { ToolTray } from '@/components/tools/ToolTray';
@@ -128,7 +129,12 @@ export default function ChallengePage() {
       setSubmissions(data.results);
       setTotalPages(data.totalPages);
     } catch (err) {
-      console.error('Failed to load submissions:', err);
+      logError('Failed to load submissions', err as Error, {
+        component: 'ChallengePage',
+        challengeSlug: challenge.slug,
+        sortBy,
+        page,
+      });
     } finally {
       setIsLoadingSubmissions(false);
     }
@@ -144,7 +150,10 @@ export default function ChallengePage() {
       setTotalParticipants(data.totalParticipants);
       setUserEntry(data.userEntry || null);
     } catch (err) {
-      console.error('Failed to load leaderboard:', err);
+      logError('Failed to load leaderboard', err as Error, {
+        component: 'ChallengePage',
+        challengeSlug: challenge.slug,
+      });
     }
   }, [challenge?.slug]);
 
@@ -187,7 +196,12 @@ export default function ChallengePage() {
       // Refresh leaderboard
       fetchLeaderboard();
     } catch (err) {
-      console.error('Vote failed:', err);
+      logError('Vote failed', err as Error, {
+        component: 'ChallengePage',
+        challengeSlug: challenge.slug,
+        submissionId: submission.id,
+        action: submission.hasVoted ? 'unvote' : 'vote',
+      });
     }
   };
 
@@ -671,16 +685,15 @@ export default function ChallengePage() {
             </div>
           </div>
 
-          {/* Submit Modal */}
-          <AnimatePresence>
-            {showSubmitModal && challenge && (
-              <ChallengeSubmitModal
-                challenge={challenge}
-                onClose={() => setShowSubmitModal(false)}
-                onSuccess={handleSubmissionSuccess}
-              />
-            )}
-          </AnimatePresence>
+          {/* Submit Tray */}
+          {challenge && (
+            <ChallengeSubmitTray
+              isOpen={showSubmitModal}
+              challenge={challenge}
+              onClose={() => setShowSubmitModal(false)}
+              onSuccess={handleSubmissionSuccess}
+            />
+          )}
 
           {/* Tool Tray */}
           {selectedToolSlug && (

@@ -293,6 +293,117 @@ class ProjectLike(models.Model):
         return f'{self.user.username} likes {self.project.title}'
 
 
+class ProjectView(models.Model):
+    """Track project views for trending algorithm.
+
+    Unlike likes, views are not unique per user - a user can view
+    a project multiple times and each view is recorded for velocity
+    calculations. Views are deduplicated within a short window (5 min)
+    to prevent spam.
+    """
+
+    class ViewSource(models.TextChoices):
+        EXPLORE = 'explore', 'Explore Feed'
+        PROFILE = 'profile', 'Profile Page'
+        DIRECT = 'direct', 'Direct Link'
+        SEARCH = 'search', 'Search Results'
+        EMBED = 'embed', 'Embedded View'
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='views')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='project_views',
+        help_text='User who viewed (null for anonymous)',
+    )
+    session_key = models.CharField(
+        max_length=40,
+        blank=True,
+        default='',
+        help_text='Session key for anonymous view deduplication',
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=ViewSource.choices,
+        default=ViewSource.DIRECT,
+        help_text='Where the view originated from',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['project', '-created_at']),
+            models.Index(fields=['project', 'created_at']),  # For velocity calculations
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['-created_at']),  # For cleanup queries
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        viewer = self.user.username if self.user else 'anonymous'
+        return f'{viewer} viewed {self.project.title}'
+
+
+class ProjectClick(models.Model):
+    """Track clicks from explore/search feeds for trending algorithm.
+
+    A click is recorded when a user clicks on a project card in a feed,
+    before they land on the project page. This captures intent even if
+    the user bounces quickly.
+    """
+
+    class ClickSource(models.TextChoices):
+        EXPLORE_FOR_YOU = 'explore_for_you', 'Explore: For You'
+        EXPLORE_TRENDING = 'explore_trending', 'Explore: Trending'
+        EXPLORE_NEW = 'explore_new', 'Explore: New'
+        EXPLORE_NEWS = 'explore_news', 'Explore: News'
+        SEARCH = 'search', 'Search Results'
+        PROFILE = 'profile', 'Profile Page'
+        RELATED = 'related', 'Related Projects'
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='clicks')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='project_clicks',
+        help_text='User who clicked (null for anonymous)',
+    )
+    session_key = models.CharField(
+        max_length=40,
+        blank=True,
+        default='',
+        help_text='Session key for anonymous click tracking',
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=ClickSource.choices,
+        help_text='Feed/context where the click occurred',
+    )
+    position = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Position in the feed where project was clicked (0-indexed)',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['project', '-created_at']),
+            models.Index(fields=['project', 'created_at']),  # For velocity calculations
+            models.Index(fields=['source', '-created_at']),  # For source analytics
+            models.Index(fields=['-created_at']),  # For cleanup queries
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        clicker = self.user.username if self.user else 'anonymous'
+        return f'{clicker} clicked {self.project.title} from {self.source}'
+
+
 class ProjectComment(models.Model):
     """User comments/feedback on projects with AI moderation."""
 

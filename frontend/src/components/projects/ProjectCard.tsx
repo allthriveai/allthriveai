@@ -47,6 +47,7 @@ interface ProjectCardProps {
   onToggleShowcase?: (projectId: number) => void;
   userAvatarUrl?: string;  // Owner's avatar URL
   onCommentClick?: (project: Project) => void;  // Optional callback for page-level comment panel
+  onCardClick?: (projectId: number) => void;  // Optional callback for tracking clicks (called before navigation)
 }
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -63,7 +64,7 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const typeLabels = PROJECT_TYPE_LABELS;
 
-export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick }: ProjectCardProps) {
+export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick }: ProjectCardProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
@@ -100,6 +101,11 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     if (selectionMode && onSelect) {
       e.preventDefault();
       onSelect(project.id);
+      return;
+    }
+    // Track click before navigation (fire and forget)
+    if (onCardClick) {
+      onCardClick(project.id);
     }
   };
 
@@ -273,8 +279,8 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const cardProps = selectionMode
     ? { onClick: handleClick, style: { cursor: 'pointer' } }
     : shouldLinkExternal
-    ? { href: project.externalUrl, target: '_blank', rel: 'noopener noreferrer' }
-    : { to: projectUrl };
+    ? { href: project.externalUrl, target: '_blank', rel: 'noopener noreferrer', onClick: handleClick }
+    : { to: projectUrl, onClick: handleClick };
 
   // Masonry variant - Flexible height for text, portrait for media
   if (variant === 'masonry') {

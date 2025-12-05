@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, memo } from 'react';
+import { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import type { Taxonomy, Project } from '@/types/models';
@@ -23,6 +23,7 @@ import {
 } from '@/services/explore';
 import { getQuizzes } from '@/services/quiz';
 import { useAuth } from '@/hooks/useAuth';
+import { trackProjectClick, getClickSourceFromTab } from '@/services/tracking';
 
 // Memoized wrapper for smooth fade-in animation on new items
 const FadeInItem = memo(function FadeInItem({
@@ -342,6 +343,26 @@ export function ExplorePage() {
     setSelectedQuizSlug('');
   };
 
+  // Create a lookup map for project positions based on their index in mixedItems
+  const projectPositionMap = useMemo(() => {
+    const map = new Map<number, number>();
+    let projectIndex = 0;
+    mixedItems.forEach((item) => {
+      if (item.type === 'project') {
+        map.set(item.data.id, projectIndex);
+        projectIndex++;
+      }
+    });
+    return map;
+  }, [mixedItems]);
+
+  // Track click on project card (fire and forget - doesn't block navigation)
+  const handleProjectClick = useCallback((projectId: number) => {
+    const position = projectPositionMap.get(projectId);
+    const source = getClickSourceFromTab(activeTab);
+    trackProjectClick(projectId, source, position);
+  }, [activeTab, projectPositionMap]);
+
   // Intersection observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -580,6 +601,7 @@ export function ExplorePage() {
                               userAvatarUrl={item.data.userAvatarUrl}
                               isOwner={user?.username === item.data.username}
                               onCommentClick={openCommentPanel}
+                              onCardClick={handleProjectClick}
                             />
                           )}
                         </FadeInItem>

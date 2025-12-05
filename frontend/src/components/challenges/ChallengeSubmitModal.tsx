@@ -17,6 +17,7 @@ import {
   type WeeklyChallenge,
   type CreateSubmissionData,
 } from '@/services/challenges';
+import { logError } from '@/utils/errorHandler';
 
 interface ChallengeSubmitModalProps {
   challenge: WeeklyChallenge;
@@ -91,6 +92,11 @@ export function ChallengeSubmitModal({
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to submit. Please try again.';
       setError(errorMessage);
+      logError('Failed to submit challenge entry', err as Error, {
+        component: 'ChallengeSubmitModal',
+        challengeSlug: challenge.slug,
+        data,
+      });
     } finally {
       setIsSubmitting(false);
     }

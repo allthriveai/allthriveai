@@ -84,8 +84,6 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
     return true;
   });
 
-  // Debug: log state changes
-  console.log('[ChatPlusMenu] isOpen:', isOpen);
 
   // Click-outside handler to close menu
   useEffect(() => {
@@ -145,9 +143,7 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
   const toggleMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('[ChatPlusMenu] toggleMenu called, disabled:', disabled, 'current isOpen:', isOpen);
     if (disabled) return;
-    console.log('[ChatPlusMenu] calling onOpenChange with:', !isOpen);
     onOpenChange(!isOpen);
     setFocusedIndex(0);
   };

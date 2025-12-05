@@ -24,6 +24,7 @@ from core.challenges.serializers import (
     WeeklyChallengeDetailSerializer,
     WeeklyChallengeListSerializer,
 )
+from core.logging_utils import StructuredLogger
 from core.users.models import User
 
 logger = logging.getLogger(__name__)
@@ -203,20 +204,35 @@ class WeeklyChallengeViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def submit(self, request, slug=None):
         """Submit an entry to the challenge."""
-        challenge = self.get_object()
+        try:
+            challenge = self.get_object()
 
-        serializer = ChallengeSubmissionCreateSerializer(
-            data=request.data, context={'request': request, 'challenge': challenge}
-        )
-        serializer.is_valid(raise_exception=True)
-        submission = serializer.save()
+            serializer = ChallengeSubmissionCreateSerializer(
+                data=request.data, context={'request': request, 'challenge': challenge}
+            )
+            serializer.is_valid(raise_exception=True)
+            submission = serializer.save()
 
-        logger.info(f'User {request.user.username} submitted to challenge {challenge.slug}')
+            StructuredLogger.log_service_operation(
+                service_name='ChallengeService',
+                operation='submit_entry',
+                user=request.user,
+                success=True,
+                metadata={'challenge_slug': challenge.slug, 'submission_id': submission.id},
+            )
 
-        return Response(
-            ChallengeSubmissionDetailSerializer(submission, context={'request': request}).data,
-            status=status.HTTP_201_CREATED,
-        )
+            return Response(
+                ChallengeSubmissionDetailSerializer(submission, context={'request': request}).data,
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            StructuredLogger.log_error(
+                message='Failed to submit challenge entry',
+                error=e,
+                user=request.user,
+                extra={'challenge_slug': slug, 'endpoint': '/challenges/submit/'},
+            )
+            raise
 
     @action(
         detail=True,

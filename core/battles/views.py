@@ -6,6 +6,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from core.logging_utils import StructuredLogger
 from services.gamification import BattleService
 from services.projects import ProjectService
 
@@ -111,7 +112,26 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         except ValueError as e:
+            StructuredLogger.log_validation_error(
+                message='Battle submission validation failed',
+                user=request.user,
+                errors={'validation': [str(e)]},
+            )
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            StructuredLogger.log_error(
+                message='Failed to submit battle prompt',
+                error=e,
+                user=request.user,
+                extra={
+                    'battle_id': battle.id,
+                    'submission_type': request.data.get('submission_type'),
+                },
+            )
+            return Response(
+                {'error': 'Failed to submit prompt. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
@@ -516,7 +536,16 @@ def accept_invitation_by_token(request, token):
         return Response(battle_serializer.data)
 
     except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        StructuredLogger.log_error(
+            message='Failed to accept battle invitation',
+            error=e,
+            user=request.user,
+            extra={
+                'invitation_id': invitation.id,
+                'endpoint': '/battles/invitations/accept/',
+            },
+        )
+        return Response({'error': 'Failed to accept invitation. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])

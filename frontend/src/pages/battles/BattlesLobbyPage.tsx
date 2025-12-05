@@ -11,18 +11,20 @@ import { useNavigate } from 'react-router-dom';
 import { useMatchmaking, type MatchFoundData } from '@/hooks/useMatchmaking';
 import { MatchmakingScreen } from '@/components/battles';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { logError } from '@/utils/errorHandler';
 
 export function BattlesLobbyPage() {
   const navigate = useNavigate();
 
   const handleError = useCallback((error: string) => {
-    console.error('[Matchmaking] Error:', error);
-    // Could show toast notification here
+    logError('Matchmaking error', new Error(error), {
+      component: 'BattlesLobbyPage',
+      context: 'matchmaking',
+    });
   }, []);
 
   const handleMatchFound = useCallback(
     (data: MatchFoundData) => {
-      console.log('[Matchmaking] Match found!', data);
       // Navigate to the battle
       navigate(`/battles/${data.battleId}`);
     },

@@ -156,12 +156,26 @@ export async function getAvailableSideQuests(filters?: {
   if (filters?.skillLevel) params.append('skill_level', filters.skillLevel);
   if (filters?.questType) params.append('quest_type', filters.questType);
 
-  const url = `/me/side-quests/${params.toString() ? `?${params.toString()}` : ''}`;
+  // Request all quests (default page_size is 10, we want all)
+  params.append('page_size', '100');
+  const url = `/me/side-quests/?${params.toString()}`;
   const response = await api.get(url);
 
   // Handle paginated response
   // Note: API interceptor already converts snake_case to camelCase
   const quests = response.data.results || response.data;
+
+  // Debug: log category slugs
+  console.log('[getAvailableSideQuests] Quests loaded:', quests.length);
+  if (quests.length > 0) {
+    console.log('[getAvailableSideQuests] Sample quest categorySlug:', quests[0].categorySlug);
+    const byCat = quests.reduce((acc: Record<string, number>, q: any) => {
+      acc[q.categorySlug || 'NO_CATEGORY'] = (acc[q.categorySlug || 'NO_CATEGORY'] || 0) + 1;
+      return acc;
+    }, {});
+    console.log('[getAvailableSideQuests] By category:', byCat);
+  }
+
   return quests as SideQuest[];
 }
 

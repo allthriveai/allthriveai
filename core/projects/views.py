@@ -604,7 +604,9 @@ def explore_projects(request):
     """
     import logging
 
+    from django.contrib.postgres.search import TrigramWordSimilarity
     from django.db.models import Count, Q
+    from django.db.models.functions import Greatest
 
     logger = logging.getLogger(__name__)
 
@@ -623,9 +625,27 @@ def explore_projects(request):
         .prefetch_related('tools', 'likes')
     )
 
-    # Apply search filter
+    # Apply search filter with fuzzy matching (trigram similarity)
+    # This handles slight misspellings like "javascrpt" -> "javascript"
+    search_similarity_applied = False
     if search_query:
-        queryset = queryset.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
+        # First try exact/contains match for best performance on exact queries
+        exact_match = queryset.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
+
+        if exact_match.exists():
+            # Use exact match if found
+            queryset = exact_match
+        else:
+            # Fall back to trigram word similarity for fuzzy matching
+            # TrigramWordSimilarity finds similar words within text fields
+            queryset = queryset.annotate(
+                title_similarity=TrigramWordSimilarity(search_query, 'title'),
+                description_similarity=TrigramWordSimilarity(search_query, 'description'),
+                search_similarity=Greatest('title_similarity', 'description_similarity'),
+            ).filter(
+                search_similarity__gt=0.3  # Threshold for fuzzy match (0.3 = moderate tolerance)
+            )
+            search_similarity_applied = True
 
     # Apply tools filter - handle both array params (tools=1&tools=2) and comma-separated (tools=1,2)
     tools_list = request.GET.getlist('tools')
@@ -786,7 +806,11 @@ def explore_projects(request):
         return paginator.get_paginated_response(serializer.data)
 
     # Default sorting for 'all' tab or fallback
-    if sort == 'trending':
+    # If fuzzy search was applied, prioritize by similarity score
+    if search_similarity_applied:
+        # Order by similarity first, then by creation date
+        queryset = queryset.order_by('-search_similarity', '-created_at')
+    elif sort == 'trending':
         # Trending: most likes in the last 7 days
         queryset = queryset.annotate(recent_likes=Count('likes')).order_by('-recent_likes', '-created_at')
     elif sort == 'popular':

@@ -381,6 +381,7 @@ def user_activity_insights(request):
         - stats_summary: Overview statistics
     """
     try:
+        from core.logging_utils import StructuredLogger
         from services.activity_insights import ActivityInsightsService
 
         service = ActivityInsightsService(request.user)
@@ -393,11 +394,19 @@ def user_activity_insights(request):
             }
         )
     except Exception as e:
-        logger.exception(f'Error in user_activity_insights: {e}')
+        StructuredLogger.log_error(
+            message='Failed to retrieve user activity insights',
+            error=e,
+            user=request.user,
+            extra={
+                'endpoint': '/me/activity/insights/',
+                'method': 'GET',
+            },
+        )
         return Response(
             {
                 'success': False,
-                'error': str(e),
+                'error': 'Failed to load activity insights. Please try again later.',
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
