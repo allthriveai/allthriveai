@@ -481,6 +481,19 @@ companies:
     headquarters: Hangzhou, China
     twitter_handle: alibabacloud
 
+  - name: LlamaIndex
+    tagline: Redefine document workflows with AI agents
+    description: >
+      LlamaIndex provides industry-leading document processing and core building blocks
+      for AI agents. Known for LlamaCloud for document parsing and LlamaIndex framework
+      for building data-augmented LLM applications. Powers AI solutions across industries.
+    website_url: https://www.llamaindex.ai
+    logo_url: /logos/llamaindex-logo.png
+    founded_year: 2022
+    headquarters: San Francisco, CA
+    twitter_handle: llama_index
+    github_url: https://github.com/run-llama/llama_index
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
@@ -2369,6 +2382,63 @@ tools:
       - date: '2025-11-10'
         title: Qdrant Cloud Inference
         description: Managed embeddings service integrated with Qdrant Cloud for simplified workflows.
+
+  - name: LlamaIndex
+    company: LlamaIndex
+    tagline: Data framework for LLM applications and AI agents
+    description: >
+      Open-source framework at llamaindex.ai for building context-augmented LLM applications.
+      Features data connectors for 160+ sources (APIs, PDFs, databases), advanced RAG with
+      query engines and chat engines, and workflow orchestration for multi-step AI tasks.
+      LlamaCloud offers managed document parsing and indexing with enterprise-grade processing.
+      Used for chatbots, agents, and semantic search. Framework-agnostic with Python and TypeScript
+      support. Open source with LlamaCloud offering 10k free credits.
+    category: code
+    tool_type: framework
+    website_url: https://www.llamaindex.ai
+    logo_url: /logos/llamaindex-logo.png
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - RAG
+      - Data Framework
+      - AI Agents
+      - LLM
+      - Open Source
+      - Document Processing
+    key_features:
+      - title: Data Connectors
+        description: 160+ integrations for loading data from APIs, databases, and documents
+      - title: Advanced RAG
+        description: Query engines with citation, context window optimization, and multi-document retrieval
+      - title: LlamaCloud
+        description: Managed parsing and indexing for complex documents with table extraction
+      - title: Workflow Orchestration
+        description: Build multi-step agentic workflows with state management
+      - title: Chat Engines
+        description: Conversational interfaces with memory and context management
+    usage_tips:
+      - Use data connectors to easily ingest from multiple sources
+      - Leverage query engines for advanced RAG with citations
+      - Use LlamaCloud for production document processing
+      - Implement workflows for complex multi-step agent tasks
+      - Enable observability with LlamaTrace for debugging
+    best_practices:
+      - Design index structure based on your query patterns
+      - Use appropriate chunking strategies for your documents
+      - Implement hybrid search combining vector and keyword retrieval
+      - Monitor and optimize prompt templates for your use case
+      - Use LlamaParse for complex documents with tables and figures
+    whats_new:
+      - date: '2025-12-01'
+        title: LlamaCloud GA Launch
+        description: Production-ready managed parsing and indexing with 10k free credits for new users.
+      - date: '2025-11-20'
+        title: Workflows 2.0 Release
+        description: Enhanced orchestration with visual debugging and improved state management.
+      - date: '2025-11-10'
+        title: LlamaParse Tables
+        description: Advanced table extraction and understanding for financial and technical documents.
 
   # === AGENT FRAMEWORKS ===
   - name: LangChain
