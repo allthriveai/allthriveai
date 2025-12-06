@@ -401,7 +401,7 @@ def _process_with_orchestrator(
                             'conversation_id': conversation_id,
                         },
                     )
-                    logger.warning(f"Agent error (continuing): {event.get('agent')} - {event.get('error')}")
+                    logger.warning(f'Agent error (continuing): {event.get("agent")} - {event.get("error")}')
 
                 elif event_type == 'agent_step':
                     # Notify frontend about agent transitions
@@ -417,7 +417,7 @@ def _process_with_orchestrator(
                             'conversation_id': conversation_id,
                         },
                     )
-                    logger.info(f"Agent step {event.get('step')}/{event.get('total')}: {event.get('agent')}")
+                    logger.info(f'Agent step {event.get("step")}/{event.get("total")}: {event.get("agent")}')
 
                 elif event_type == 'tool_start':
                     await async_channel_layer.group_send(

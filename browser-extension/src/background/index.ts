@@ -6,9 +6,8 @@
 import browser from 'webextension-polyfill';
 import type { AuthState, CreateProjectRequest, CreateProjectResponse, ExtensionMessage } from '../types';
 
-const API_BASE_URL = process.env.NODE_ENV === 'development'
-  ? 'http://localhost:8000'
-  : 'https://allthrive.ai';
+// TODO: Change to 'https://allthrive.ai' for production
+const API_BASE_URL = 'http://localhost:8000';
 
 // Handle extension installation
 browser.runtime.onInstalled.addListener(async (details) => {
@@ -100,7 +99,7 @@ async function checkAuth(): Promise<AuthState> {
     const result = await browser.storage.local.get(['authToken', 'user']);
     if (result.authToken && result.user) {
       // Verify token is still valid
-      const response = await fetch(`${API_BASE_URL}/api/extension/verify/`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/extension/verify/`, {
         headers: {
           'Authorization': `Bearer ${result.authToken}`,
         },
@@ -135,7 +134,7 @@ async function createProject(data: CreateProjectRequest): Promise<CreateProjectR
       return { success: false, error: 'Not authenticated' };
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/extension/clip/`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/extension/clip/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -195,7 +194,6 @@ async function quickClip(tabId: number): Promise<void> {
         description: content.excerpt,
         content: content.content,
         sourceUrl: content.url,
-        projectType: content.projectType || 'other',
         images: content.images?.map((img: { src: string }) => img.src),
       });
 

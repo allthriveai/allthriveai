@@ -10,14 +10,14 @@ const aiToolSlugs = [
   'openai',
   'anthropic',
   'huggingface',
-  'google',
+  'googlegemini',
   'meta',
   'nvidia',
   'pytorch',
   'tensorflow',
+  'langchain',
   'github',
   'python',
-  'javascript',
   'typescript',
   'react',
   'nodedotjs',
@@ -29,6 +29,11 @@ const aiToolSlugs = [
   'figma',
   'notion',
   'linear',
+];
+
+// Custom icons that aren't in Simple Icons (use local images)
+const customIconImages = [
+  '/lovable-icon-bg-light.png',
 ];
 
 const cloudProps: Omit<ComponentProps<typeof Cloud>, 'children'> = {
@@ -86,9 +91,20 @@ export function IconCloud() {
 
   const renderedIcons = useMemo(() => {
     if (!data) return null;
-    return Object.values(data.simpleIcons)
+
+    // Render Simple Icons
+    const simpleIcons = Object.values(data.simpleIcons)
       .filter((icon): icon is SimpleIcon => icon !== undefined)
       .map((icon) => renderCustomIcon(icon));
+
+    // Render custom image icons
+    const imageIcons = customIconImages.map((src, index) => (
+      <a key={`custom-${index}`} href="#" onClick={(e) => e.preventDefault()}>
+        <img src={src} alt="Lovable" width={42} height={42} style={{ borderRadius: '8px' }} />
+      </a>
+    ));
+
+    return [...simpleIcons, ...imageIcons];
   }, [data]);
 
   if (!renderedIcons) {

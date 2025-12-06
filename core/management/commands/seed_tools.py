@@ -10,8 +10,9 @@ Usage:
     python manage.py seed_tools --companies-only   # Only seed companies
     python manage.py seed_tools --dry-run          # Show what would be done
 
-The 'whats_new' field is preserved during updates as it's meant to be
-edited via Django admin and synced back via export_tools command.
+The 'whats_new' field uses YAML data if provided, otherwise preserves existing
+database values. This allows YAML to be the source of truth while also supporting
+admin edits that can be synced back via export_tools command.
 """
 
 from pathlib import Path
@@ -216,7 +217,11 @@ class Command(BaseCommand):
                 'is_featured': tool_data.get('is_featured', False),
                 'is_verified': tool_data.get('is_verified', False),
                 'company': company,
+                'whats_new': tool_data.get('whats_new', []),
             }
+
+            # Track if YAML has whats_new data
+            yaml_has_whats_new = bool(tool_data.get('whats_new'))
 
             tool, created = Tool.objects.get_or_create(
                 name=name,
@@ -227,16 +232,21 @@ class Command(BaseCommand):
                 stats['tools_created'] += 1
                 self.stdout.write(self.style.SUCCESS(f'  + Created: {name}'))
             else:
-                # Update existing tool, but preserve whats_new
+                # Update existing tool
+                # If YAML has whats_new, use it; otherwise preserve existing
                 existing_whats_new = tool.whats_new
                 for field, value in defaults.items():
                     if value is not None:
                         setattr(tool, field, value)
-                # Restore whats_new (editable field, preserved during sync)
-                tool.whats_new = existing_whats_new
+                # Only preserve existing whats_new if YAML doesn't have any
+                if not yaml_has_whats_new and existing_whats_new:
+                    tool.whats_new = existing_whats_new
                 tool.save()
                 stats['tools_updated'] += 1
-                self.stdout.write(self.style.WARNING(f'  ~ Updated: {name} (whats_new preserved)'))
+                if yaml_has_whats_new:
+                    self.stdout.write(self.style.WARNING(f'  ~ Updated: {name} (whats_new from YAML)'))
+                else:
+                    self.stdout.write(self.style.WARNING(f'  ~ Updated: {name} (whats_new preserved)'))
 
             # Track company linking
             if company and tool.company == company:
@@ -268,7 +278,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f'\n[DRY RUN] {total} total operations would be performed'))
         else:
             self.stdout.write(self.style.SUCCESS(f'\n✓ {total} total operations completed'))
-            self.stdout.write(self.style.NOTICE('\nNote: whats_new field is preserved during updates.'))
+            self.stdout.write(
+                self.style.NOTICE('\nNote: whats_new uses YAML if provided, otherwise preserves existing.')
+            )
             self.stdout.write(
                 self.style.NOTICE('Use "python manage.py export_tools" to sync admin changes back to YAML.')
             )

@@ -165,7 +165,7 @@ class ProfileSectionsSerializer(serializers.ModelSerializer):
 
             if section.get('type') not in valid_types:
                 raise serializers.ValidationError(
-                    f"Invalid section type: {section.get('type')}. Must be one of: {valid_types}"
+                    f'Invalid section type: {section.get("type")}. Must be one of: {valid_types}'
                 )
 
             if not isinstance(section.get('visible'), bool):

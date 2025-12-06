@@ -9,6 +9,23 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Drop indexes that will be re-created by the new tools app
+        migrations.RunSQL(
+            sql='DROP INDEX IF EXISTS tool_tags_gin_idx;',
+            reverse_sql='',  # No reverse needed
+        ),
+        migrations.RunSQL(
+            sql='DROP INDEX IF EXISTS tool_name_idx;',
+            reverse_sql='',
+        ),
+        migrations.RunSQL(
+            sql='DROP INDEX IF EXISTS tool_category_idx;',
+            reverse_sql='',
+        ),
+        migrations.RunSQL(
+            sql='DROP INDEX IF EXISTS tool_keywords_gin_idx;',
+            reverse_sql='',
+        ),
         migrations.RemoveField(
             model_name='tool',
             name='company',
@@ -21,6 +38,16 @@ class Migration(migrations.Migration):
             model_name='toolcomparison',
             name='tools',
         ),
+        # Remove unique_together BEFORE removing fields
+        migrations.AlterUniqueTogether(
+            name='toolbookmark',
+            unique_together=None,
+        ),
+        migrations.AlterUniqueTogether(
+            name='toolreview',
+            unique_together=None,
+        ),
+        # Now remove the fields
         migrations.RemoveField(
             model_name='toolbookmark',
             name='tool',
@@ -29,10 +56,6 @@ class Migration(migrations.Migration):
             model_name='toolreview',
             name='tool',
         ),
-        migrations.AlterUniqueTogether(
-            name='toolbookmark',
-            unique_together=None,
-        ),
         migrations.RemoveField(
             model_name='toolbookmark',
             name='user',
@@ -40,10 +63,6 @@ class Migration(migrations.Migration):
         migrations.RemoveField(
             model_name='toolcomparison',
             name='user',
-        ),
-        migrations.AlterUniqueTogether(
-            name='toolreview',
-            unique_together=None,
         ),
         migrations.RemoveField(
             model_name='toolreview',

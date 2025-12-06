@@ -11,6 +11,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Clear M2M join tables before altering FK to point to new tools.Tool table
+        migrations.RunSQL(
+            sql='DELETE FROM core_project_tools;',
+            reverse_sql='',
+        ),
+        migrations.RunSQL(
+            sql='DELETE FROM core_quiz_tools;',
+            reverse_sql='',
+        ),
         migrations.AlterField(
             model_name='project',
             name='tools',

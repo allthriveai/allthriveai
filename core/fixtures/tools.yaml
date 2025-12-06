@@ -317,6 +317,31 @@ companies:
     headquarters: San Francisco, CA
     twitter_handle: xai
 
+  - name: Lovable
+    tagline: Build full-stack apps through conversation
+    description: >
+      Lovable is an AI-powered platform for building web applications through
+      natural language conversation. Uses Claude AI to generate React, TypeScript,
+      and Tailwind CSS code from descriptions.
+    website_url: https://lovable.dev
+    logo_url: https://lovable.dev/favicon.ico
+    founded_year: 2024
+    headquarters: San Francisco, CA
+    twitter_handle: lovable_dev
+
+  - name: GitLab
+    tagline: The complete DevSecOps platform
+    description: >
+      GitLab is a comprehensive DevSecOps platform that unifies source code management,
+      CI/CD, security testing, and deployment into a single application. Features
+      GitLab Duo AI assistants for code suggestions and chat.
+    website_url: https://about.gitlab.com
+    logo_url: https://about.gitlab.com/images/press/press-kit-icon.svg
+    founded_year: 2014
+    headquarters: San Francisco, CA
+    twitter_handle: gitlab
+    github_url: https://github.com/gitlabhq
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
@@ -366,6 +391,16 @@ tools:
       - Use specific prompts with examples for consistent output
       - Break complex tasks into steps
       - Check the model picker to ensure you're using the right mode
+    whats_new:
+      - date: '2025-12-05'
+        title: GPT-5.2 Coming December 9
+        description: OpenAI accelerates release in response to Gemini 3 competition, prioritizing speed and reliability improvements.
+      - date: '2025-12-03'
+        title: Acquiring Neptune & Enterprise Expansion
+        description: OpenAI announces Neptune acquisition and ownership stake in Thrive Holdings for enterprise AI adoption.
+      - date: '2025-11-20'
+        title: GPT-5.1 with Adaptive Reasoning
+        description: GPT-5.1 now decides when to think before responding, delivering more thorough answers on complex questions.
 
   - name: Claude
     company: Anthropic
@@ -412,6 +447,16 @@ tools:
       - Review Claude Code changes before committing
       - Specify output format when you need structured responses
       - Use the API for programmatic access with caching
+    whats_new:
+      - date: '2025-12-03'
+        title: $200M Snowflake Enterprise Deal
+        description: Anthropic signs largest enterprise deal with Snowflake, signaling major push into corporate AI deployments.
+      - date: '2025-11-25'
+        title: Bun Acquisition for Performance
+        description: Anthropic acquires Bun runtime creators to accelerate Claude Code performance and developer tooling.
+      - date: '2025-11-18'
+        title: Claude for Nonprofits Program
+        description: New program provides discounted Claude access to qualifying nonprofit organizations.
 
   - name: Gemini
     company: Google
@@ -457,6 +502,16 @@ tools:
       - Connect Workspace for productivity workflows
       - Specify when you want interactive outputs vs plain text
       - Use code execution for reproducible analysis
+    whats_new:
+      - date: '2025-12-04'
+        title: Gemini 3 Launch with 650M Users
+        description: Google's most capable model debuts with 50% benchmark improvement and Deep Think reasoning mode.
+      - date: '2025-12-01'
+        title: 2.0 Flash Thinking Mode
+        description: Enhanced reasoning capabilities with transparent thought process for complex problem-solving.
+      - date: '2025-11-20'
+        title: Deep Research Improvements
+        description: Research mode now searches more sources and provides better synthesis of findings.
 
   - name: Grok
     company: xAI
@@ -502,6 +557,16 @@ tools:
       - Leverage the large context for document analysis
       - Check API pricing—agent tools reduced by 50%
       - Cross-reference with other sources for factual claims
+    whats_new:
+      - date: '2025-12-02'
+        title: Grok 4.1 Fast with 2M Context
+        description: New low-latency model maintains full context window for faster responses on complex queries.
+      - date: '2025-11-28'
+        title: Agent Tools API Launch
+        description: API now supports tool use, file uploads, and knowledge base search for building agents.
+      - date: '2025-11-15'
+        title: Grok 4.20 Christmas Teaser
+        description: xAI hints at major update coming December 25th with enhanced reasoning capabilities.
 
   - name: Perplexity
     company: Perplexity AI
@@ -547,6 +612,16 @@ tools:
       - Combine with follow-up questions for deeper exploration
       - Export or save to Spaces for later reference
       - Use the API for programmatic access with academic filtering
+    whats_new:
+      - date: '2025-12-03'
+        title: Comet Browser Launch
+        description: Chromium-based browser with integrated AI search, Background Assistants, and native content capture.
+      - date: '2025-11-25'
+        title: Sora 2 Pro Integration
+        description: Video generation now available within Perplexity interface for Pro subscribers.
+      - date: '2025-11-15'
+        title: Samsung TV Partnership
+        description: Perplexity AI now available on Samsung smart TVs for voice-activated search.
 
   # === IMAGE GENERATION ===
   - name: Midjourney
@@ -593,6 +668,16 @@ tools:
       - Check the community gallery for prompt inspiration
       - Start with Draft Mode, upscale winners
       - Use --no to exclude unwanted elements
+    whats_new:
+      - date: '2025-11-28'
+        title: V7 Model Release
+        description: Major upgrade with improved hands, text rendering, and prompt accuracy over V6.
+      - date: '2025-11-20'
+        title: Draft Mode with Voice Input
+        description: Generate images 10x faster at half cost, now with voice prompt support.
+      - date: '2025-11-10'
+        title: Web Editor Overhaul
+        description: New browser-based editing tools for inpainting, outpainting, and variations.
 
   - name: DALL-E
     company: OpenAI
@@ -638,6 +723,16 @@ tools:
       - Review ChatGPT's refined prompt before generating
       - Understand content policy limits (no public figures, violence)
       - Use API for programmatic workflows
+    whats_new:
+      - date: '2025-11-22'
+        title: GPT-4o Native Image Generation
+        description: GPT-4o now generates images directly without DALL-E, offering tighter text integration.
+      - date: '2025-11-15'
+        title: Improved Text Rendering
+        description: DALL-E 3 now handles multi-line text and complex typography more accurately.
+      - date: '2025-10-30'
+        title: API Price Reduction
+        description: Image generation API costs reduced by 30% across all resolution tiers.
 
   - name: Stable Diffusion
     company: Stability AI
@@ -683,6 +778,16 @@ tools:
       - Check model licenses before commercial use
       - Leverage community resources for prompt techniques
       - Consider local deployment for privacy-sensitive work
+    whats_new:
+      - date: '2025-11-30'
+        title: SD 3.5 Large Turbo Release
+        description: Fastest SD 3.5 variant yet, generating images in under 2 seconds on consumer GPUs.
+      - date: '2025-11-18'
+        title: ComfyUI Native Integration
+        description: Official ComfyUI nodes released for streamlined SD 3.5 workflows.
+      - date: '2025-11-05'
+        title: Stability AI Restructuring
+        description: Company focuses on enterprise licensing while maintaining open-source commitment.
 
   - name: Ideogram
     company: Ideogram
@@ -727,6 +832,16 @@ tools:
       - Combine with design tools for final polish
       - Check text accuracy before using
       - Iterate with remix rather than starting over
+    whats_new:
+      - date: '2025-12-01'
+        title: Ideogram 3.0 Launch
+        description: New model with 40% better text accuracy and support for longer text blocks.
+      - date: '2025-11-20'
+        title: Canvas Editor Beta
+        description: New editing interface for post-generation refinements and composition adjustments.
+      - date: '2025-11-10'
+        title: API General Availability
+        description: Public API now available for developers to integrate Ideogram into applications.
 
   - name: Leonardo AI
     company: Leonardo AI
@@ -772,6 +887,16 @@ tools:
       - Export at resolution appropriate for use case
       - Combine with 3D tools for game development
       - Check output for seamless tiling on textures
+    whats_new:
+      - date: '2025-11-28'
+        title: Phoenix 2.0 Model
+        description: New foundation model with 2x quality improvement for photorealistic assets.
+      - date: '2025-11-15'
+        title: 3D Texture Pipeline
+        description: Generate PBR-ready texture sets with normal, roughness, and displacement maps.
+      - date: '2025-11-01'
+        title: Real-Time Canvas Updates
+        description: AI Canvas now streams generation progress for faster iteration workflows.
 
   # === VIDEO GENERATION ===
   - name: Veo 3
@@ -818,6 +943,16 @@ tools:
       - Specify temporal aspects of scenes
       - Use for prototyping video concepts
       - Combine with video editing tools
+    whats_new:
+      - date: '2025-12-04'
+        title: Veo 3 with Native Audio
+        description: First model to generate synchronized dialogue, sound effects, and ambient audio with video.
+      - date: '2025-11-28'
+        title: 8K Resolution Support
+        description: Generate ultra-high-resolution clips up to 8 seconds for professional productions.
+      - date: '2025-11-15'
+        title: AI Studio Integration
+        description: Veo 3 now accessible directly in Google AI Studio for developers.
 
   - name: Runway
     company: Runway
@@ -863,6 +998,16 @@ tools:
       - Iterate on generations
       - Combine multiple AI tools
       - Export at appropriate quality
+    whats_new:
+      - date: '2025-12-01'
+        title: Gen-4.5 Tops Video Arena
+        description: Latest model ranked #1 on AI Video Arena, beating Veo 3 and Sora 2 in blind tests.
+      - date: '2025-11-25'
+        title: Native Audio Generation
+        description: Gen-4.5 now generates synchronized sound effects and ambient audio.
+      - date: '2025-11-10'
+        title: Aleph Private Preview
+        description: Next-gen model in testing with 2-minute continuous video generation.
 
   - name: Pika
     company: Pika Labs
@@ -908,6 +1053,16 @@ tools:
       - Use for concept visualization
       - Iterate on prompts
       - Combine with editing tools
+    whats_new:
+      - date: '2025-11-30'
+        title: Pika 2.0 Scene Ingredients
+        description: Blend multiple concepts and references into cohesive video scenes.
+      - date: '2025-11-18'
+        title: Pikaffects Special Effects
+        description: Add explosions, melting, crushing, and other VFX to existing footage.
+      - date: '2025-11-05'
+        title: Pikalabs Shorts Format
+        description: Quick vertical video generation optimized for TikTok and Instagram.
 
   - name: Luma Dream Machine
     company: Luma AI
@@ -953,6 +1108,16 @@ tools:
       - Describe motion explicitly
       - Iterate for best results
       - Export at appropriate resolution
+    whats_new:
+      - date: '2025-12-02'
+        title: Ray 2 Model Launch
+        description: New model with improved physics simulation and 2x faster generation times.
+      - date: '2025-11-22'
+        title: Keyframe Control
+        description: Specify start and end frames for precise control over generated motion.
+      - date: '2025-11-10'
+        title: API Rate Limits Increased
+        description: Pro users now get 5x higher API limits for production workloads.
 
   # === AUDIO & MUSIC ===
   - name: ElevenLabs
@@ -999,6 +1164,16 @@ tools:
       - Review and edit generated audio
       - Use SSML for fine control
       - Respect voice cloning ethics
+    whats_new:
+      - date: '2025-12-03'
+        title: Conversational AI 2.0
+        description: Real-time voice agents with sub-second latency for natural conversations.
+      - date: '2025-11-25'
+        title: ElevenReader Voice Chat
+        description: Mobile app now features interactive voice chat for reading any content aloud.
+      - date: '2025-11-15'
+        title: $6.6B Valuation
+        description: Series C funding values ElevenLabs at $6.6B, highlighting AI voice market growth.
 
   - name: Suno
     company: Suno
@@ -1044,6 +1219,16 @@ tools:
       - Iterate on generations
       - Use for demos and prototypes
       - Understand licensing terms
+    whats_new:
+      - date: '2025-12-01'
+        title: Warner Music Group Partnership
+        description: Landmark deal allows Suno to train on WMG catalog with revenue sharing for artists.
+      - date: '2025-11-20'
+        title: $500M Lawsuit Settlement
+        description: Settled copyright disputes with major labels, establishing AI music licensing framework.
+      - date: '2025-11-10'
+        title: $2.45B Valuation
+        description: Series C funding doubles valuation as AI music generation gains mainstream adoption.
 
   - name: Udio
     company: Udio
@@ -1089,6 +1274,16 @@ tools:
       - Review multiple generations
       - Understand usage rights
       - Use for inspiration and prototyping
+    whats_new:
+      - date: '2025-11-28'
+        title: 15-Minute Song Generation
+        description: Extended generation now produces full-length tracks up to 15 minutes.
+      - date: '2025-11-18'
+        title: Audio Conditioning Feature
+        description: Upload reference tracks to guide style and production quality of outputs.
+      - date: '2025-11-08'
+        title: Inpainting for Music
+        description: Edit specific sections of generated songs without regenerating the whole track.
 
   # === CODE & DEVELOPMENT ===
   - name: GitHub Copilot
@@ -1135,6 +1330,16 @@ tools:
       - Use as a learning tool
       - Combine with code review
       - Keep suggestions contextual
+    whats_new:
+      - date: '2025-12-02'
+        title: GPT-5.1-Codex-Max Support
+        description: Latest OpenAI coding model available for all Copilot users with 2x context window.
+      - date: '2025-11-25'
+        title: Claude Opus 4.5 Integration
+        description: Anthropic's most capable model now available as an option in Copilot settings.
+      - date: '2025-11-15'
+        title: Custom Agents Launch
+        description: Build and share specialized coding agents for team-specific workflows.
 
   - name: Cursor
     company: Cursor
@@ -1180,6 +1385,16 @@ tools:
       - Use for understanding unfamiliar code
       - Combine with manual coding
       - Maintain code quality standards
+    whats_new:
+      - date: '2025-12-01'
+        title: GPT-5.1-Codex-Max Support
+        description: OpenAI's latest coding model now available with enhanced multi-file reasoning.
+      - date: '2025-11-22'
+        title: Version 2.1 with AI Code Review
+        description: Automatic code review suggestions on save with security vulnerability detection.
+      - date: '2025-11-10'
+        title: $9.9B Valuation
+        description: Series C funding values Cursor as the leading AI-native code editor.
 
   - name: Claude Code
     company: Anthropic
@@ -1226,6 +1441,16 @@ tools:
       - Use git for safety
       - Provide context about project
       - Iterate on complex tasks
+    whats_new:
+      - date: '2025-12-03'
+        title: Claude Opus 4.5 Default
+        description: Claude Code now uses Opus 4.5 by default for improved reasoning and code quality.
+      - date: '2025-11-20'
+        title: GitHub Actions Integration
+        description: Run Claude Code in CI/CD pipelines for automated code review and fixes.
+      - date: '2025-11-10'
+        title: VS Code and JetBrains Support
+        description: Seamless integration with popular IDEs for hybrid terminal+editor workflows.
 
   - name: Replit
     company: Replit
@@ -1271,6 +1496,126 @@ tools:
       - Collaborate for pair programming
       - Deploy for quick demos
       - Use for coding education
+    whats_new:
+      - date: '2025-12-01'
+        title: Replit Agent 3 Launch
+        description: Build complete full-stack apps from descriptions with automatic deployment.
+      - date: '2025-11-22'
+        title: Google Partnership with Gemini
+        description: Gemini models now power Replit AI features through strategic partnership.
+      - date: '2025-11-08'
+        title: Mobile App Coding
+        description: Full coding capabilities now available on iOS and Android apps.
+
+  - name: Lovable
+    company: Lovable
+    tagline: Build full-stack apps through conversation with AI
+    description: >
+      AI-powered app builder at lovable.dev that creates web applications through natural
+      language conversation. Powered by Claude AI, generates React, TypeScript, and Tailwind
+      CSS code from descriptions. Includes visual editor, 40+ UI components, template
+      marketplace, and one-click deployment. Real-time collaboration and GitHub sync.
+      Free tier with 5 daily credits; Pro at $25/mo.
+    category: code
+    tool_type: ai_tool
+    website_url: https://lovable.dev
+    logo_url: https://lovable.dev/favicon.ico
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Code
+      - No-Code
+      - AI Builder
+      - React
+      - Full-Stack
+    key_features:
+      - title: Conversational Building
+        description: Describe what you want and Claude AI generates working code
+      - title: Visual Editor
+        description: Real-time design customization without coding knowledge
+      - title: Component Library
+        description: 40+ pre-built UI components including forms, dialogs, and cards
+      - title: Template Marketplace
+        description: Pre-designed solutions for ecommerce, portfolios, and blogs
+      - title: One-Click Deploy
+        description: Instant deployment with custom domain support
+    usage_tips:
+      - Describe your app in plain English for best results
+      - Use templates as starting points for faster builds
+      - Leverage the visual editor for design refinements
+      - Connect GitHub to sync and export your code
+      - Use dark mode toggle for theme-aware apps
+    best_practices:
+      - Start with a clear description of your app's purpose
+      - Build incrementally rather than all at once
+      - Review generated code before deploying to production
+      - Use the component library for consistent UI
+      - Test on mobile to verify responsive design
+    whats_new:
+      - date: '2025-12-03'
+        title: Claude Opus 4.5 Integration
+        description: Lovable now uses Anthropic's most capable model for improved code generation.
+      - date: '2025-11-20'
+        title: Lovable 2.0 Launch
+        description: Major update with multiplayer collaboration, enhanced security, and smarter AI.
+      - date: '2025-11-10'
+        title: Template Marketplace Expansion
+        description: 50+ new templates added including SaaS dashboards and admin panels.
+
+  - name: GitLab
+    company: GitLab
+    tagline: Complete DevSecOps platform with AI-powered Duo assistants
+    description: >
+      Comprehensive DevSecOps platform at gitlab.com that unifies source code management,
+      CI/CD pipelines, security testing, and deployment. GitLab Duo provides AI code
+      suggestions, chat, and code review. Supports self-hosted and cloud deployments.
+      Named Leader in Gartner Magic Quadrant for AI Code Assistants.
+      Free tier available; Premium at $29/user/mo, Ultimate at $99/user/mo.
+    category: code
+    tool_type: ai_tool
+    website_url: https://about.gitlab.com
+    logo_url: https://about.gitlab.com/images/press/press-kit-icon.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Code
+      - DevOps
+      - CI/CD
+      - Security
+      - Git
+    key_features:
+      - title: GitLab Duo Code Suggestions
+        description: AI-powered code completions and generation in your IDE
+      - title: GitLab Duo Chat
+        description: Natural language chat for code explanations, test generation, and refactoring
+      - title: GitLab Duo Code Review
+        description: Context-aware AI review that understands merge request intent
+      - title: CI/CD Pipelines
+        description: Automated build, test, and deployment workflows
+      - title: Security Scanning
+        description: SAST, DAST, dependency scanning, and container scanning built-in
+    usage_tips:
+      - Use Duo Chat for code explanations and test generation
+      - Enable Duo Code Suggestions in VS Code or JetBrains IDEs
+      - Leverage CI/CD templates for quick pipeline setup
+      - Use merge request reviews with Duo for faster code review
+      - Enable security scanning in your pipelines
+    best_practices:
+      - Configure branch protection rules for main branches
+      - Use GitLab CI/CD for automated testing before merge
+      - Enable security scanning early in the development cycle
+      - Use merge request approvals for code quality
+      - Leverage GitLab's built-in container registry
+    whats_new:
+      - date: '2025-12-02'
+        title: Duo Agent Platform Public Beta
+        description: AI agents for DevSecOps orchestration with asynchronous developer collaboration.
+      - date: '2025-11-15'
+        title: GitLab 18.0 with Duo Included
+        description: Duo Code Suggestions and Chat now included in Premium and Ultimate tiers at no extra cost.
+      - date: '2025-11-01'
+        title: Gartner Magic Quadrant Leader
+        description: Named Leader in AI Code Assistants for second consecutive year.
 
   # === PRODUCTIVITY & WRITING ===
   - name: Notion AI
@@ -1317,6 +1662,16 @@ tools:
       - Combine AI with structured data
       - Review AI-generated content
       - Use for brainstorming sessions
+    whats_new:
+      - date: '2025-11-28'
+        title: Notion AI 3.0 Agents
+        description: Autonomous agents that update task statuses, send reminders, and manage workflows.
+      - date: '2025-11-15'
+        title: Q&A Across All Docs
+        description: Ask questions that search and synthesize information from your entire workspace.
+      - date: '2025-11-05'
+        title: Connected Apps Integration
+        description: AI now pulls context from Slack, Google Drive, and other connected services.
 
   - name: Grammarly
     company: Grammarly
@@ -1362,6 +1717,16 @@ tools:
       - Use for professional communication
       - Combine with human editing
       - Customize for your domain
+    whats_new:
+      - date: '2025-11-25'
+        title: GrammarlyGO 2.0
+        description: Enhanced generative AI with longer-form content creation and style transfer.
+      - date: '2025-11-12'
+        title: Voice Detection
+        description: Analyzes and suggests improvements to maintain consistent brand voice.
+      - date: '2025-10-30'
+        title: Slack Integration
+        description: Real-time writing assistance now works directly in Slack messages.
 
   - name: Jasper
     company: Jasper
@@ -1407,6 +1772,16 @@ tools:
       - Combine with human editing
       - Maintain consistency across content
       - Track performance of AI content
+    whats_new:
+      - date: '2025-11-30'
+        title: Jasper 4.0 Platform
+        description: Unified marketing platform with campaign planning, asset creation, and analytics.
+      - date: '2025-11-18'
+        title: Video Script Generation
+        description: New templates for creating scripts optimized for YouTube, TikTok, and ads.
+      - date: '2025-11-05'
+        title: Performance Insights
+        description: AI-powered analytics show which content styles drive the best engagement.
 
   # === RESEARCH & DATA ===
   - name: Hugging Face
@@ -1453,6 +1828,16 @@ tools:
       - Use appropriate model sizes
       - Contribute improvements back
       - Follow community guidelines
+    whats_new:
+      - date: '2025-12-02'
+        title: 1M+ Models Milestone
+        description: Platform now hosts over one million open-source models across all modalities.
+      - date: '2025-11-20'
+        title: Transformers 5.0
+        description: Major library update with unified API for all model types and 2x inference speed.
+      - date: '2025-11-08'
+        title: Spaces Pro Launch
+        description: Enterprise-grade Spaces with GPU access, custom domains, and SLA guarantees.
 
   - name: Replicate
     company: Replicate
@@ -1498,6 +1883,16 @@ tools:
       - Use webhooks for async tasks
       - Monitor API usage
       - Version your model deployments
+    whats_new:
+      - date: '2025-11-28'
+        title: Flux 1.2 Default Model
+        description: Latest Flux model now default for image generation with improved photorealism.
+      - date: '2025-11-15'
+        title: Fine-Tuning API
+        description: Train custom models directly through Replicate without managing infrastructure.
+      - date: '2025-11-02'
+        title: Edge Deployments
+        description: Deploy models to edge locations for sub-100ms latency in key regions.
 
   # === AGENT FRAMEWORKS ===
   - name: Open Standard Agents
@@ -1544,6 +1939,16 @@ tools:
       - Participate in the community for updates
       - Document your agent's capabilities clearly
       - Consider backwards compatibility in implementations
+    whats_new:
+      - date: '2025-11-30'
+        title: OSSA v0.2.9 Foundation Release
+        description: Enterprise security models, A2A Protocol for multi-agent orchestration, and OpenTelemetry observability.
+      - date: '2025-11-15'
+        title: Conformance Testing Suite
+        description: New testing tools to validate agent implementations against the specification.
+      - date: '2025-10-20'
+        title: Framework Adapters
+        description: Official adapters for LangChain, CrewAI, and AutoGen now available via npm.
 
   # === UI COMPONENTS & DESIGN RESOURCES ===
   - name: 21st.dev
@@ -1590,3 +1995,13 @@ tools:
       - Consider accessibility when customizing components
       - Test components across different screen sizes
       - Credit original creators when appropriate
+    whats_new:
+      - date: '2025-11-28'
+        title: AI Component Generator
+        description: Describe a component in natural language and get working React/Tailwind code.
+      - date: '2025-11-12'
+        title: Figma Plugin Launch
+        description: Export components directly from Figma designs to 21st.dev format.
+      - date: '2025-10-30'
+        title: 10,000 Components Milestone
+        description: Community library reaches 10,000 curated, production-ready components.

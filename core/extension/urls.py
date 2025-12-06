@@ -8,6 +8,7 @@ from .views import (
     create_clipped_project,
     extension_auth_callback,
     extension_auth_page,
+    extension_categories,
     extension_user_info,
     verify_extension_token,
 )
@@ -20,4 +21,5 @@ urlpatterns = [
     path('verify/', verify_extension_token, name='extension_verify'),
     path('clip/', create_clipped_project, name='extension_clip'),
     path('me/', extension_user_info, name='extension_me'),
+    path('categories/', extension_categories, name='extension_categories'),
 ]

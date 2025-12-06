@@ -739,9 +739,9 @@ def sync_quiz_to_weaviate(self, quiz_id: str):
         topics = quiz.topics or []
 
         embedding_text = (
-            f"{quiz.title}. {quiz.description or ''}. Topic: {quiz.topic or ''}. "
-            f"Topics: {', '.join(topics)}. Tools: {', '.join(tool_names)}. "
-            f"Categories: {', '.join(category_names)}."
+            f'{quiz.title}. {quiz.description or ""}. Topic: {quiz.topic or ""}. '
+            f'Topics: {", ".join(topics)}. Tools: {", ".join(tool_names)}. '
+            f'Categories: {", ".join(category_names)}.'
         )
 
         embedding_vector = embedding_service.generate_embedding(embedding_text)

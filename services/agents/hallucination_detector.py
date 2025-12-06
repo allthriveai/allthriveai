@@ -275,7 +275,7 @@ class HallucinationDetector:
         elif score >= 0.5:
             return f'Low confidence - {len(warnings)} warnings detected, limited verification'
         else:
-            return f"Uncertain - {len(warnings)} critical issues: {', '.join(warnings[:2])}"
+            return f'Uncertain - {len(warnings)} critical issues: {", ".join(warnings[:2])}'
 
     def flag_hallucination(
         self,
@@ -316,7 +316,7 @@ class HallucinationDetector:
         )
 
         # Store in cache for recent tracking (last 1 hour)
-        cache_key = f"hallucination:{context.get('session_id', 'unknown')}:{datetime.now().timestamp()}"
+        cache_key = f'hallucination:{context.get("session_id", "unknown")}:{datetime.now().timestamp()}'
         self.cache.set(cache_key, report.__dict__, timeout=3600)
 
         # TODO: Store in database for long-term analysis

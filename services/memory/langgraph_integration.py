@@ -103,14 +103,14 @@ def _build_memory_summary(context: dict[str, Any]) -> str:
     if relevant:
         memory_texts = [m.get('text', '') for m in relevant[:3]]  # Top 3
         if memory_texts:
-            parts.append(f"Relevant context from previous conversations: {'; '.join(memory_texts)}")
+            parts.append(f'Relevant context from previous conversations: {"; ".join(memory_texts)}')
 
     # Add user preferences
     preferences = context.get('preferences', [])
     if preferences:
         pref_texts = [p.get('text', '') for p in preferences[:5]]  # Top 5
         if pref_texts:
-            parts.append(f"User preferences: {'; '.join(pref_texts)}")
+            parts.append(f'User preferences: {"; ".join(pref_texts)}')
 
     return ' | '.join(parts) if parts else ''
 

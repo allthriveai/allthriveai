@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import browser from 'webextension-polyfill';
-import type { ClippedContent, AuthState, ProjectType, CreateProjectRequest } from '../types';
+import type { ClippedContent, AuthState, CreateProjectRequest } from '../types';
 
 type ViewState = 'loading' | 'login' | 'clip' | 'preview' | 'success' | 'error';
 type ClipMode = 'full' | 'selection' | 'article';
+
+interface Category {
+  slug: string;
+  name: string;
+}
 
 const App: React.FC = () => {
   const [viewState, setViewState] = useState<ViewState>('loading');
@@ -16,16 +21,36 @@ const App: React.FC = () => {
   const [clipMode, setClipMode] = useState<ClipMode>('article');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [projectType, setProjectType] = useState<ProjectType>('other');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successUrl, setSuccessUrl] = useState<string | null>(null);
+  const [successTitle, setSuccessTitle] = useState<string>('');
 
   useEffect(() => {
     checkAuth();
+    fetchCategories();
   }, []);
+
+  const getApiBaseUrl = (): string => {
+    // TODO: Change to 'https://allthrive.ai' for production
+    return 'http://localhost:8000';
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/extension/categories/`);
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
+  };
 
   const checkAuth = async () => {
     try {
@@ -49,15 +74,8 @@ const App: React.FC = () => {
   const handleLogin = () => {
     // Open login page in new tab
     browser.tabs.create({
-      url: `${getApiBaseUrl()}/extension/auth/`,
+      url: `${getApiBaseUrl()}/api/v1/extension/auth/`,
     });
-  };
-
-  const getApiBaseUrl = (): string => {
-    // Check for local development
-    return process.env.NODE_ENV === 'development'
-      ? 'http://localhost:8000'
-      : 'https://allthrive.ai';
   };
 
   const handleClip = async () => {
@@ -81,7 +99,6 @@ const App: React.FC = () => {
         setClippedContent(content);
         setTitle(content.title);
         setDescription(content.excerpt || '');
-        setProjectType(content.projectType || 'other');
         setViewState('preview');
       }
     } catch (err) {
@@ -91,27 +108,37 @@ const App: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!clippedContent || !authState.token) return;
+    if (!clippedContent) return;
 
     setIsSubmitting(true);
     setError(null);
 
     try {
+      // Always fetch fresh token from storage to ensure we have the latest
+      const result = await browser.storage.local.get(['authToken']);
+      const token = result.authToken;
+
+      if (!token) {
+        setError('Not authenticated. Please log in again.');
+        setViewState('login');
+        return;
+      }
+
       const request: CreateProjectRequest = {
         title,
         description,
         content: clippedContent.content,
         sourceUrl: clippedContent.url,
-        projectType,
         images: clippedContent.images.map((img) => img.src),
         tags,
+        categories: selectedCategory ? [selectedCategory] : [],
       };
 
-      const response = await fetch(`${getApiBaseUrl()}/api/extension/clip/`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/extension/clip/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${authState.token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(request),
       });
@@ -119,11 +146,20 @@ const App: React.FC = () => {
       const data = await response.json();
 
       if (data.success && data.project) {
-        setSuccessUrl(data.project.url);
+        setSuccessUrl(`${getApiBaseUrl()}${data.project.url}`);
+        setSuccessTitle(data.project.title);
         setViewState('success');
       } else {
-        setError(data.error || 'Failed to create project');
-        setViewState('error');
+        // If auth failed, prompt re-login
+        if (response.status === 401) {
+          await browser.storage.local.remove(['authToken', 'user']);
+          setAuthState({ isAuthenticated: false, user: null, token: null });
+          setError('Session expired. Please log in again.');
+          setViewState('login');
+        } else {
+          setError(data.error || 'Failed to create project');
+          setViewState('error');
+        }
       }
     } catch (err) {
       console.error('Submit failed:', err);
@@ -278,24 +314,23 @@ const App: React.FC = () => {
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-300 mb-1">Project Type</label>
+        <label className="block text-sm font-medium text-slate-300 mb-1">Category</label>
         <select
-          value={projectType}
-          onChange={(e) => setProjectType(e.target.value as ProjectType)}
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
           className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
         >
-          <option value="ai_conversation">AI Conversation</option>
-          <option value="ai_image">AI Image</option>
-          <option value="ai_code">AI Code</option>
-          <option value="article">Article</option>
-          <option value="tutorial">Tutorial</option>
-          <option value="resource">Resource</option>
-          <option value="other">Other</option>
+          <option value="">Select a category...</option>
+          {categories.map((cat) => (
+            <option key={cat.slug} value={cat.slug}>
+              {cat.name}
+            </option>
+          ))}
         </select>
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-300 mb-1">Tags</label>
+        <label className="block text-sm font-medium text-slate-300 mb-1">Topics</label>
         <div className="flex gap-2 mb-2 flex-wrap">
           {tags.map((tag) => (
             <span
@@ -318,7 +353,7 @@ const App: React.FC = () => {
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
-            placeholder="Add a tag..."
+            placeholder="Add a topic..."
             className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
           />
           <button
@@ -379,13 +414,14 @@ const App: React.FC = () => {
 
   const renderSuccess = () => (
     <div className="p-6 text-center">
-      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary-500/20 flex items-center justify-center">
-        <svg className="w-8 h-8 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
+        <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
       </div>
       <h2 className="text-xl font-semibold text-white mb-2">Clipped Successfully!</h2>
-      <p className="text-slate-400 mb-6">Your project has been added to AllThrive.</p>
+      <p className="text-slate-400 mb-2">"{successTitle || title}" has been added to AllThrive.</p>
+      <p className="text-slate-500 text-sm mb-6">You can find it in your playground.</p>
       {successUrl && (
         <button
           onClick={() => browser.tabs.create({ url: successUrl })}
@@ -401,6 +437,9 @@ const App: React.FC = () => {
           setTitle('');
           setDescription('');
           setTags([]);
+          setSelectedCategory('');
+          setSuccessUrl(null);
+          setSuccessTitle('');
         }}
         className="w-full py-2 px-4 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
       >

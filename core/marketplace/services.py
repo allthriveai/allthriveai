@@ -1002,8 +1002,7 @@ class MarketplaceCheckoutService:
             )
 
             logger.info(
-                f'Created checkout for product {product.id}, buyer {user.id}, '
-                f'amount ${product.price}, order {order.id}'
+                f'Created checkout for product {product.id}, buyer {user.id}, amount ${product.price}, order {order.id}'
             )
 
             return {

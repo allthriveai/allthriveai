@@ -88,7 +88,7 @@ class GenerateProfileSectionsInput(BaseModel):
     template: str = Field(
         default='',
         description=(
-            'Profile template to use (explorer, builder, creator, curation, battle_bot). ' 'Auto-selects if empty.'
+            'Profile template to use (explorer, builder, creator, curation, battle_bot). Auto-selects if empty.'
         ),
     )
     sections_to_generate: list[str] = Field(
@@ -658,7 +658,7 @@ def save_profile_sections(
         if not isinstance(section, dict):
             return {'success': False, 'error': 'Invalid section format'}
         if section.get('type') not in VALID_SECTION_TYPES:
-            return {'success': False, 'error': f"Invalid section type: {section.get('type')}"}
+            return {'success': False, 'error': f'Invalid section type: {section.get("type")}'}
 
     # Save sections
     user.profile_sections = sections

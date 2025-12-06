@@ -29,7 +29,7 @@ turndownService.addRule('codeBlock', {
 });
 
 // Listen for messages from popup/background
-browser.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((message: ExtensionMessage): Promise<unknown> | undefined => {
   if (message.type === 'GET_PAGE_CONTENT') {
     const mode = (message.payload as { mode: string })?.mode || 'article';
     const content = extractContent(mode as 'full' | 'selection' | 'article');
@@ -52,7 +52,7 @@ browser.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRe
     return Promise.resolve({ success: true });
   }
 
-  return false;
+  return undefined;
 });
 
 function extractContent(mode: 'full' | 'selection' | 'article'): ClippedContent {

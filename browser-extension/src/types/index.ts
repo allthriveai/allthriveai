@@ -93,10 +93,10 @@ export interface CreateProjectRequest {
   description?: string;
   content: string;
   sourceUrl: string;
-  projectType: ProjectType;
   images?: string[];
   visibility?: 'public' | 'private' | 'unlisted';
   tags?: string[];
+  categories?: string[];
 }
 
 export interface CreateProjectResponse {
@@ -122,6 +122,7 @@ export type MessageType =
   | 'GET_SELECTION'
   | 'SELECTION_RESULT'
   | 'HIGHLIGHT_MODE'
+  | 'HIGHLIGHT_CONTENT'
   | 'SETTINGS_UPDATED';
 
 export interface ExtensionMessage {

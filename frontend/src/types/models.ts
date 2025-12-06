@@ -339,6 +339,12 @@ export interface ToolUseCase {
   example?: string;
 }
 
+export interface ToolWhatsNew {
+  date: string;
+  title: string;
+  description: string;
+}
+
 export interface Tool {
   id: number;
   name: string;
@@ -384,6 +390,7 @@ export interface Tool {
   bestPractices: string[];
   limitations: string[];
   alternatives: string[];
+  whatsNew: ToolWhatsNew[];
 
   // Technical
   modelInfo: Record<string, any>;

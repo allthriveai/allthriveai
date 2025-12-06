@@ -683,7 +683,7 @@ def scrape_webpage_for_project(
         apply_ai_metadata(project, analysis, content=content)
 
         logger.info(
-            f'Successfully imported {url} as project {project.id} ' f'with {len(content.get("sections", []))} sections'
+            f'Successfully imported {url} as project {project.id} with {len(content.get("sections", []))} sections'
         )
 
         return {

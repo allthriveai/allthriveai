@@ -44,7 +44,7 @@ export const mockProjects: Partial<Project>[] = [
     slug: 'conversational-chatbot',
     description: 'A multi-modal chatbot that can understand text, images, and voice',
     username: 'aiexplorer',
-    featuredImageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&h=400&fit=crop',
+    featuredImageUrl: 'https://images.unsplash.com/photo-1676299081847-824916de030a?w=600&h=400&fit=crop',
     heartCount: 189,
     isLikedByUser: false,
     content: {

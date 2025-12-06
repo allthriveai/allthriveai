@@ -11,6 +11,27 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Clear analytics data that references old tool IDs before altering FK
+        migrations.RunSQL(
+            sql='DELETE FROM vendors_toolcompetitorview;',
+            reverse_sql='',
+        ),
+        migrations.RunSQL(
+            sql='DELETE FROM vendors_tooldailystats;',
+            reverse_sql='',
+        ),
+        migrations.RunSQL(
+            sql='DELETE FROM vendors_toolengagement;',
+            reverse_sql='',
+        ),
+        migrations.RunSQL(
+            sql='DELETE FROM vendors_toolimpression;',
+            reverse_sql='',
+        ),
+        migrations.RunSQL(
+            sql='DELETE FROM vendors_vendortoolaccess;',
+            reverse_sql='',
+        ),
         migrations.AlterField(
             model_name='toolcompetitorview',
             name='tool_a',

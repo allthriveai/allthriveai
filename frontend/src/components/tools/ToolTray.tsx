@@ -321,23 +321,26 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
             )}
 
             {/* Latest updates and why they matter */}
-            {tool.bestPractices.length > 0 && (
+            {tool.whatsNew && tool.whatsNew.length > 0 && (
               <section className="bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
-                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-1 flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-2 flex items-center gap-2">
                   <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5" />
                   What's new & why it matters
                 </h2>
-                {(tool.lastVerifiedAt || tool.updatedAt) && (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
-                    Last updated:{' '}
-                    {new Date(tool.lastVerifiedAt || tool.updatedAt).toLocaleDateString()}
-                  </p>
-                )}
-                <ul className="space-y-1 text-sm">
-                  {tool.bestPractices.slice(0, 3).map((practice, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="mt-1 inline-block w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
-                      <span className="text-gray-700 dark:text-gray-300">{practice}</span>
+                <ul className="space-y-3 text-sm">
+                  {tool.whatsNew.slice(0, 3).map((update, idx) => (
+                    <li key={idx} className="border-l-2 border-primary-500 pl-3">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-medium text-gray-900 dark:text-white">{update.title}</span>
+                        {update.date && (
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                            {new Date(update.date).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      {update.description && (
+                        <p className="text-gray-600 dark:text-gray-400 text-xs">{update.description}</p>
+                      )}
                     </li>
                   ))}
                 </ul>

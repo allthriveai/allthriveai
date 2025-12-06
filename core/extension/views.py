@@ -17,6 +17,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from core.projects.models import Project
+from core.taxonomy.models import Taxonomy
 from core.users.models import User
 
 logger = logging.getLogger(__name__)
@@ -48,11 +49,11 @@ def extension_auth_page(request):
 
         import json
 
-        callback_url = f'/extension/auth/callback/?token={token}&user={json.dumps(user_data)}'
+        callback_url = f'/api/v1/extension/auth/callback/?token={token}&user={json.dumps(user_data)}'
         return HttpResponseRedirect(callback_url)
 
     # Not authenticated - redirect to login with return URL
-    login_url = '/login?next=/extension/auth/'
+    login_url = '/login?next=/api/v1/extension/auth/'
     return HttpResponseRedirect(login_url)
 
 
@@ -212,22 +213,11 @@ def create_clipped_project(request):
         return Response({'error': 'Content is required'}, status=400)
 
     source_url = request.data.get('sourceUrl', '')
-    project_type = request.data.get('projectType', 'other')
     description = request.data.get('description', '')
     images = request.data.get('images', [])
     tags = request.data.get('tags', [])
+    category_slugs = request.data.get('categories', [])
     visibility = request.data.get('visibility', 'public')
-
-    # Map project type to our model's types
-    type_mapping = {
-        'ai_conversation': Project.ProjectType.PROMPT,
-        'ai_image': Project.ProjectType.IMAGE,
-        'ai_code': Project.ProjectType.CODE,
-        'article': Project.ProjectType.PROMPT,
-        'tutorial': Project.ProjectType.PROMPT,
-        'resource': Project.ProjectType.PROMPT,
-        'other': Project.ProjectType.OTHER,
-    }
 
     try:
         # Create the project
@@ -236,12 +226,21 @@ def create_clipped_project(request):
             title=title[:200],  # Limit title length
             description=description[:500] if description else '',
             content=content,
-            type=type_mapping.get(project_type, Project.ProjectType.OTHER),
-            source_url=source_url[:500] if source_url else '',
+            type=Project.ProjectType.PROMPT,  # Default to Prompt for clipped content
+            external_url=source_url[:500] if source_url else '',
             is_private=visibility == 'private',
             is_showcased=True,  # Auto-showcase clipped projects
             topics=tags[:15] if tags else [],  # Limit to 15 tags
         )
+
+        # Handle categories
+        if category_slugs:
+            categories = Taxonomy.objects.filter(
+                slug__in=category_slugs,
+                taxonomy_type='category',
+                is_active=True,
+            )
+            project.categories.set(categories)
 
         # Handle images - store first image as featured
         if images and len(images) > 0:
@@ -294,4 +293,27 @@ def extension_user_info(request):
             'fullName': user.get_full_name(),
             'avatarUrl': user.avatar_url,
         }
+    )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def extension_categories(request):
+    """Get available categories for the extension dropdown.
+
+    Returns all active categories that can be assigned to projects.
+    """
+    categories = Taxonomy.objects.filter(
+        taxonomy_type='category',
+        is_active=True,
+    ).order_by('name')
+
+    return Response(
+        [
+            {
+                'slug': cat.slug,
+                'name': cat.name,
+            }
+            for cat in categories
+        ]
     )

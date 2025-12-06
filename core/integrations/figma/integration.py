@@ -360,16 +360,16 @@ class FigmaIntegration(BaseIntegration):
             # Create description from design info
             description_parts = []
             if design_info.get('pageCount'):
-                description_parts.append(f"{design_info['pageCount']} pages")
+                description_parts.append(f'{design_info["pageCount"]} pages')
             if design_info.get('componentCount'):
-                description_parts.append(f"{design_info['componentCount']} components")
+                description_parts.append(f'{design_info["componentCount"]} components')
             if design_info.get('styleCount'):
-                description_parts.append(f"{design_info['styleCount']} styles")
+                description_parts.append(f'{design_info["styleCount"]} styles')
 
             description = (
-                f"A {design_type.replace('_', ' ')} with " + ', '.join(description_parts)
+                f'A {design_type.replace("_", " ")} with ' + ', '.join(description_parts)
                 if description_parts
-                else f"A {design_type.replace('_', ' ')} created in Figma"
+                else f'A {design_type.replace("_", " ")} created in Figma'
             )
 
             # Create project

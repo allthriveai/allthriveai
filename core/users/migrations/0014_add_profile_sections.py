@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
             field=models.JSONField(
                 blank=True,
                 default=list,
-                help_text=('Ordered list of profile section configurations ' 'for the showcase tab'),
+                help_text=('Ordered list of profile section configurations for the showcase tab'),
             ),
         ),
     ]

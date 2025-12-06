@@ -57,7 +57,7 @@ class OrchestrationPlan:
                 depends_on = agent_config.get('depends_on')
                 sequence.append((agent_type, task, depends_on))
             except ValueError:
-                logger.warning(f"Unknown agent type: {agent_config.get('agent')}")
+                logger.warning(f'Unknown agent type: {agent_config.get("agent")}')
                 continue
         return sequence
 
@@ -96,7 +96,7 @@ class SupervisorAgent:
         context = ''
         if conversation_history:
             recent = conversation_history[-3:]
-            context = '\n'.join([f"{m.get('sender', 'user')}: {m.get('content', '')}" for m in recent])
+            context = '\n'.join([f'{m.get("sender", "user")}: {m.get("content", "")}' for m in recent])
             context = f'\n\nRecent conversation:\n{context}\n\n'
 
         prompt = f'{context}User request: {user_message}'
@@ -116,7 +116,7 @@ class SupervisorAgent:
             plan_data = self._extract_json_plan(result)
             plan = OrchestrationPlan(plan_data)
 
-            logger.info(f"Orchestration plan: type={plan.plan_type}, agents={[a.get('agent') for a in plan.agents]}")
+            logger.info(f'Orchestration plan: type={plan.plan_type}, agents={[a.get("agent") for a in plan.agents]}')
             return plan
 
         except Exception as e:
