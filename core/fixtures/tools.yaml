@@ -529,6 +529,17 @@ companies:
     twitter_handle: neo4j
     github_url: https://github.com/neo4j/neo4j
 
+  - name: AI Planet
+    tagline: Making AGI accessible to everyone
+    description: >
+      AI Planet is a platform democratizing AI and AGI development. Creator of OpenAGI framework
+      for building autonomous human-like agents. Provides tools and infrastructure for developers
+      to create specialized agents that automate and solve complex problems.
+    website_url: https://openagi.aiplanet.com
+    logo_url: /logos/openagi.png
+    founded_year: 2024
+    headquarters: San Francisco, CA
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
@@ -2645,6 +2656,63 @@ tools:
       - date: '2025-11-10'
         title: AuraDB Vector Index
         description: Native vector indexing in managed cloud for AI-powered semantic search.
+
+  - name: OpenAGI
+    company: AI Planet
+    tagline: Open-source framework for building autonomous human-like agents
+    description: >
+      Framework at openagi.aiplanet.com for creating autonomous agents that plan, reason, and
+      execute actions like humans. Provides components including Admin for orchestration, Workers
+      for task execution, Planner for task decomposition, and Memory for context retention. Supports
+      multiple LLMs and vector stores. Built-in use cases for movie recommendations, job search,
+      blog writing, news aggregation, and itinerary planning. Agents learn, improve, and become
+      autonomous over time. Open source with Python SDK.
+    category: code
+    tool_type: framework
+    website_url: https://openagi.aiplanet.com
+    logo_url: /logos/openagi.png
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - AI Agents
+      - AGI
+      - Autonomous Agents
+      - Open Source
+      - Python
+      - Framework
+    key_features:
+      - title: Admin Component
+        description: Orchestrate multi-agent workflows and coordinate autonomous execution
+      - title: Worker System
+        description: Execute specialized tasks with dedicated worker agents
+      - title: Intelligent Planner
+        description: Decompose complex tasks into actionable steps with reasoning
+      - title: Memory Management
+        description: Retain context and learn from past interactions for improvement
+      - title: Built-in Use Cases
+        description: Pre-built agents for recommendations, search, writing, and planning
+    usage_tips:
+      - Start with built-in use cases like blog writing or job search agents
+      - Use the planner component for complex multi-step workflows
+      - Leverage memory for agents that need to learn over time
+      - Integrate with your preferred LLM provider
+      - Customize workers for domain-specific tasks
+    best_practices:
+      - Design clear goals and constraints for your agents
+      - Implement proper error handling for autonomous execution
+      - Use memory strategically to improve agent performance
+      - Test agents in controlled environments before production
+      - Monitor agent decisions and actions for quality assurance
+    whats_new:
+      - date: '2025-12-01'
+        title: OpenAGI Framework Launch
+        description: Open-source release enabling developers to build autonomous human-like agents.
+      - date: '2025-11-20'
+        title: Multi-Agent Workflows
+        description: New admin component for orchestrating complex multi-agent collaborations.
+      - date: '2025-11-10'
+        title: Pre-built Agent Templates
+        description: Five ready-to-use agents for common use cases like writing and research.
 
   # === AGENT FRAMEWORKS ===
   - name: LangChain
