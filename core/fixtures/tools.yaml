@@ -119,7 +119,7 @@ companies:
       Runway is an applied AI research company building the next generation of
       creative tools powered by AI.
     website_url: https://runwayml.com
-    logo_url: https://assets-global.website-files.com/6502af467b2a8c4792ea2975/6502af467b2a8c4792ea2a05_icon.svg
+    logo_url: /logos/runway-logo.png
     founded_year: 2018
     headquarters: New York, NY
     twitter_handle: runwayml
@@ -1109,7 +1109,7 @@ tools:
     category: video
     tool_type: ai_tool
     website_url: https://runwayml.com
-    logo_url: https://assets-global.website-files.com/6502af467b2a8c4792ea2975/6502af467b2a8c4792ea2a05_icon.svg
+    logo_url: /logos/runway-logo.png
     pricing_model: freemium
     has_free_tier: true
     tags:
