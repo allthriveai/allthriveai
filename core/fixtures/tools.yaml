@@ -456,6 +456,19 @@ companies:
     twitter_handle: redisinc
     github_url: https://github.com/redis/redis
 
+  - name: Qdrant
+    tagline: High-performance vector search at scale
+    description: >
+      Qdrant is an open-source vector database and similarity search engine designed
+      for high-dimensional vectors. Powers AI applications with advanced filtering,
+      multitenancy, and cloud-native scalability. 27K+ GitHub stars.
+    website_url: https://qdrant.tech
+    logo_url: /logos/qdrant-logo.svg
+    founded_year: 2021
+    headquarters: Berlin, Germany
+    twitter_handle: qdrant_engine
+    github_url: https://github.com/qdrant/qdrant
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
@@ -2287,6 +2300,63 @@ tools:
       - date: '2025-11-01'
         title: SVS-VAMANA Algorithm
         description: New vector search algorithm for improved recall and performance at scale.
+
+  - name: Qdrant
+    company: Qdrant
+    tagline: Open-source vector database for AI applications
+    description: >
+      High-performance vector search engine at qdrant.tech designed for massive-scale AI
+      applications. Features advanced filtering, payload support with full-text search,
+      and tiered multitenancy. Cloud-native with vertical and horizontal scaling, zero-downtime
+      upgrades, and enterprise-grade managed cloud. ACORN algorithm for efficient indexing,
+      sparse vectors, and quantization for memory optimization. Used for RAG, recommendation
+      systems, and semantic search. Open source with Qdrant Cloud starting at $25/mo.
+    category: research
+    tool_type: platform
+    website_url: https://qdrant.tech
+    logo_url: /logos/qdrant-logo.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Vector Database
+      - Vector Search
+      - Open Source
+      - RAG
+      - Semantic Search
+      - AI Infrastructure
+    key_features:
+      - title: Advanced Filtering
+        description: Rich payload support with full-text search and complex query conditions
+      - title: Cloud-Native Scalability
+        description: Vertical and horizontal scaling with zero-downtime upgrades
+      - title: Tiered Multitenancy
+        description: Isolate data per tenant with cost-efficient resource allocation
+      - title: ACORN Algorithm
+        description: Efficient approximate nearest neighbor search with high recall
+      - title: Quantization Support
+        description: Reduce memory footprint with scalar, product, and binary quantization
+    usage_tips:
+      - Use payload filtering to combine vector search with metadata conditions
+      - Enable quantization to reduce memory usage for large-scale deployments
+      - Leverage sparse vectors for keyword-augmented semantic search
+      - Use tiered multitenancy for cost-efficient SaaS applications
+      - Monitor cluster health with built-in observability tools
+    best_practices:
+      - Choose appropriate HNSW parameters (ef_construct, m) for your use case
+      - Use collection aliases for zero-downtime index updates
+      - Implement proper error handling for distributed operations
+      - Use snapshots for backup and disaster recovery
+      - Optimize payload schema to minimize storage and improve query performance
+    whats_new:
+      - date: '2025-12-01'
+        title: Qdrant 1.16 Release
+        description: Tiered multitenancy, ACORN algorithm, and full-text search upgrades for better performance.
+      - date: '2025-11-20'
+        title: Qdrant Edge Private Beta
+        description: Run Qdrant on edge devices for local-first AI applications with privacy.
+      - date: '2025-11-10'
+        title: Qdrant Cloud Inference
+        description: Managed embeddings service integrated with Qdrant Cloud for simplified workflows.
 
   # === AGENT FRAMEWORKS ===
   - name: LangChain

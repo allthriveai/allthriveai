@@ -40,6 +40,7 @@ import VendorDashboardPage from '@/pages/VendorDashboardPage';
 import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
 import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
 import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
+import ExtensionPage from '@/pages/ExtensionPage';
 
 export function AppRoutes() {
   return (
@@ -300,7 +301,15 @@ export function AppRoutes() {
       <Route path="/login" element={<Navigate to="/auth" replace />} />
       <Route path="/signup" element={<Navigate to="/auth" replace />} />
 
-      {/* Extension auth - handles browser extension authentication */}
+      {/* Extension - landing page and auth */}
+      <Route
+        path="/extension"
+        element={
+          <ProtectedRoute>
+            <ExtensionPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/extension/auth" element={<ExtensionAuthPage />} />
 
       {/* Protected routes - Settings */}
