@@ -2332,6 +2332,63 @@ tools:
         title: JavaScript Support
         description: LangGraph now available for TypeScript/JavaScript alongside Python.
 
+  - name: LangSmith
+    company: LangChain
+    tagline: Observability, evaluation, and deployment for AI agents
+    description: >
+      LangSmith provides complete visibility into agent behavior with tracing, real-time
+      monitoring, evaluation, and deployment tools. Framework-agnostic platform works with
+      LangChain, LangGraph, or any AI framework. Trace agent execution step-by-step, monitor
+      business-critical metrics with live dashboards, get alerts on issues, and discover usage
+      patterns automatically. Includes prompt testing, dataset management, and production
+      deployment. Free tier available; paid plans from $39/mo.
+    category: code
+    tool_type: platform
+    website_url: https://www.langchain.com/langsmith/observability
+    logo_url: https://simpleicons.org/icons/langchain.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Observability
+      - Monitoring
+      - AI Agents
+      - Tracing
+      - Evaluation
+      - Production
+    key_features:
+      - title: Agent Tracing
+        description: Debug non-deterministic LLM behavior with step-by-step execution traces
+      - title: Live Dashboards
+        description: Track costs, latency, and response quality with real-time monitoring
+      - title: Automatic Insights
+        description: Discover usage patterns and issues with clustered conversation analysis
+      - title: Prompt Evaluation
+        description: Test and iterate on prompts with datasets and automated evaluations
+      - title: Production Deployment
+        description: Ship and scale agents with monitoring and alerting built-in
+    usage_tips:
+      - Set one environment variable to start tracing with LangChain or LangGraph
+      - Create custom dashboards to track business-critical metrics
+      - Use conversation clustering to understand user needs and find issues
+      - Enable OTel support to unify observability across services
+      - Leverage evaluation datasets for systematic prompt improvement
+    best_practices:
+      - Monitor key metrics like token usage, latency, and error rates in production
+      - Use tracing to debug issues before deploying to production
+      - Create evaluation datasets for regression testing prompt changes
+      - Set up alerts for critical failures or performance degradation
+      - Use insights to identify and address systemic issues proactively
+    whats_new:
+      - date: '2025-11-25'
+        title: OTel Support Launch
+        description: Unify observability stack with OpenTelemetry integration for cross-service tracing.
+      - date: '2025-11-15'
+        title: Agent Builder Beta
+        description: No-code agent creation with visual workflow editor integrated into LangSmith.
+      - date: '2025-11-01'
+        title: Self-Hosted Enterprise
+        description: Run LangSmith on your Kubernetes cluster with data staying in your environment.
+
   - name: CrewAI
     company: CrewAI
     tagline: Build and orchestrate multi-agent AI workflows
