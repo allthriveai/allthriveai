@@ -24,11 +24,11 @@ export interface QuestCategory {
 export interface OnboardingProgress {
   checklist: QuestItem[];
   categories: Record<string, QuestCategory>;
-  completed_count: number;
-  total_count: number;
-  progress_percentage: number;
-  earned_points: number;
-  total_points: number;
+  completedCount: number;
+  totalCount: number;
+  progressPercentage: number;
+  earnedPoints: number;
+  totalPoints: number;
 }
 
 interface UseOnboardingProgressReturn {
@@ -110,9 +110,9 @@ export function useOnboardingProgress(): UseOnboardingProgressReturn {
         ...data,
         checklist: updatedChecklist,
         categories: updatedCategories,
-        completed_count: completedCount,
-        progress_percentage: Math.round((completedCount / data.total_count) * 100),
-        earned_points: earnedPoints,
+        completedCount: completedCount,
+        progressPercentage: Math.round((completedCount / data.totalCount) * 100),
+        earnedPoints: earnedPoints,
       });
     } catch (err) {
       console.error('Failed to fetch quest progress:', err);
@@ -163,9 +163,9 @@ export function useOnboardingProgress(): UseOnboardingProgressReturn {
         ...prev,
         checklist: updatedChecklist,
         categories: updatedCategories,
-        completed_count: completedCount,
-        progress_percentage: Math.round((completedCount / prev.total_count) * 100),
-        earned_points: earnedPoints,
+        completedCount: completedCount,
+        progressPercentage: Math.round((completedCount / prev.totalCount) * 100),
+        earnedPoints: earnedPoints,
       };
     });
   }, [getClientCompletedQuests]);

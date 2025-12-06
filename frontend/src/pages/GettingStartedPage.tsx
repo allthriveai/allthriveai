@@ -216,8 +216,8 @@ export default function GettingStartedPage() {
     );
   }
 
-  const isComplete = progress.progress_percentage === 100;
-  const emberMessage = getEmberMessage(progress.progress_percentage, progress.completed_count);
+  const isComplete = progress.progressPercentage === 100;
+  const emberMessage = getEmberMessage(progress.progressPercentage, progress.completedCount);
 
   return (
     <DashboardLayout>
@@ -264,8 +264,8 @@ export default function GettingStartedPage() {
               <div className="text-right">
                 <p className="text-xs text-slate-400">Points Earned</p>
                 <p className="text-lg font-bold text-orange-400">
-                  {progress.earned_points}
-                  <span className="text-slate-500 text-sm font-normal"> / {progress.total_points}</span>
+                  {progress.earnedPoints}
+                  <span className="text-slate-500 text-sm font-normal"> / {progress.totalPoints}</span>
                 </p>
               </div>
             </motion.div>
@@ -280,16 +280,16 @@ export default function GettingStartedPage() {
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-slate-400">
-                {progress.completed_count} of {progress.total_count} quests completed
+                {progress.completedCount} of {progress.totalCount} quests completed
               </span>
               <span className="text-sm font-medium text-orange-400">
-                {progress.progress_percentage}%
+                {progress.progressPercentage}%
               </span>
             </div>
             <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: `${progress.progress_percentage}%` }}
+                animate={{ width: `${progress.progressPercentage}%` }}
                 transition={{ duration: 0.8, delay: 0.5 }}
                 className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full"
               />

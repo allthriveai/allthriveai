@@ -1552,7 +1552,7 @@ tools:
     category: code
     tool_type: ai_tool
     website_url: https://github.com/features/copilot
-    logo_url: https://github.githubassets.com/assets/copilot-logo.svg
+    logo_url: /logos/github-copilot-logo.png
     pricing_model: subscription
     has_free_tier: false
     tags:
