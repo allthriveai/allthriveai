@@ -157,6 +157,23 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
   const [showButtons, setShowButtons] = useState(false);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
 
+  // Track if tray should be rendered (for slide-out animation)
+  const [shouldRender, setShouldRender] = useState(false);
+
+  // Handle mount/unmount for animations
+  useEffect(() => {
+    if (isOpen && (quest || userQuest)) {
+      setShouldRender(true);
+    }
+  }, [isOpen, quest, userQuest]);
+
+  // Handle transition end to unmount after closing
+  const handleTransitionEnd = () => {
+    if (!isOpen) {
+      setShouldRender(false);
+    }
+  };
+
   // Determine the quest data source
   const sideQuest = userQuest?.sideQuest || quest;
   const isStarted = !!userQuest;
@@ -249,7 +266,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
     }
   };
 
-  if (!isOpen || !sideQuest) {
+  if (!shouldRender || !sideQuest) {
     return null;
   }
 
@@ -263,7 +280,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
   if (phase === 'intro' && !isStarted) {
     return (
       <div
-        className={`fixed right-0 top-0 bottom-0 w-full max-w-md shadow-2xl z-50 transform transition-transform duration-300 ${
+        className={`fixed right-0 top-0 bottom-0 w-full max-w-md shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{
@@ -274,6 +291,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
           boxShadow: `0 0 60px ${questColors.glow}`,
         }}
         onClick={handleSkipIntro}
+        onTransitionEnd={handleTransitionEnd}
       >
         {/* Animated background particles */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -485,7 +503,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
   // Details Phase - Quest Progress View
   return (
     <div
-      className={`fixed right-0 top-0 bottom-0 w-full max-w-md shadow-2xl z-50 transform transition-transform duration-300 ${
+      className={`fixed right-0 top-0 bottom-0 w-full max-w-md shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}
       style={{
@@ -495,6 +513,7 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
         borderLeft: `1px solid ${questColors.borderLight}`,
         boxShadow: `0 0 40px ${questColors.glow}`,
       }}
+      onTransitionEnd={handleTransitionEnd}
     >
       {/* Ambient glow effect */}
       <div

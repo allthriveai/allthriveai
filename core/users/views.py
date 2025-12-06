@@ -1,6 +1,7 @@
 import logging
+from collections import Counter
 
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -9,10 +10,16 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.logging_utils import StructuredLogger
-from core.tools.models import Tool
+from core.projects.models import Project
 
 from .models import PersonalizationSettings, User, UserFollow
-from .serializers import FollowerSerializer, PersonalizationSettingsSerializer, UserFollowSerializer
+from .serializers import (
+    FollowerSerializer,
+    PersonalizationSettingsSerializer,
+    ProfileSectionsSerializer,
+    UserFollowSerializer,
+    UserProfileWithSectionsSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +47,16 @@ def explore_users(request):
 
     Only returns users with at least one showcase project.
     """
+    # Prefetch showcase projects with their tools to avoid N+1 queries
+    showcase_projects_prefetch = Prefetch(
+        'projects',
+        queryset=Project.objects.filter(
+            is_showcased=True,
+            is_archived=False,
+        ).prefetch_related('tools'),
+        to_attr='showcase_projects_list',
+    )
+
     # Get users with showcase projects, annotate with counts
     queryset = (
         User.objects.filter(
@@ -55,6 +72,7 @@ def explore_users(request):
             ),
         )
         .filter(showcase_count__gt=0)  # Only users with showcase projects
+        .prefetch_related(showcase_projects_prefetch)
         .order_by('-showcase_count', '-date_joined')
         .distinct()
     )
@@ -88,16 +106,13 @@ def explore_users(request):
                 }
             )
 
-        # Get top 3 tools used across user's showcase projects
-        top_tools = (
-            Tool.objects.filter(
-                projects__user=user,
-                projects__is_showcased=True,
-                projects__is_archived=False,
-            )
-            .annotate(usage_count=Count('projects'))
-            .order_by('-usage_count')[:3]
-        )
+        # Get top 3 tools from prefetched showcase projects (no extra queries)
+        tool_counter = Counter()
+        for project in getattr(user, 'showcase_projects_list', []):
+            for tool in project.tools.all():
+                tool_counter[tool] += 1
+
+        top_tools = tool_counter.most_common(3)
         user_data['top_tools'] = [
             {
                 'id': tool.id,
@@ -105,7 +120,7 @@ def explore_users(request):
                 'slug': tool.slug,
                 'logo_url': tool.logo_url or '',
             }
-            for tool in top_tools
+            for tool, _ in top_tools
         ]
 
         users_data.append(user_data)
@@ -561,5 +576,111 @@ def delete_personalization_data(request):
                 'interactions': interactions_deleted,
                 'settings': 1 if settings_deleted else 0,
             },
+        }
+    )
+
+
+# ============================================================================
+# PROFILE SECTIONS API
+# ============================================================================
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_profile_sections(request, username):
+    """Get profile sections for a user's showcase.
+
+    Returns the profile sections configuration for display.
+    If no sections exist, returns default sections.
+
+    Public endpoint - anyone can view a user's profile sections.
+    """
+    user = get_object_or_404(User, username=username.lower())
+
+    # Initialize sections with defaults if empty
+    if not user.profile_sections:
+        user.profile_sections = User.get_default_profile_sections()
+        user.save(update_fields=['profile_sections'])
+
+    serializer = UserProfileWithSectionsSerializer(user, context={'request': request})
+    return Response(serializer.data)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_profile_sections(request, username):
+    """Update profile sections for the authenticated user.
+
+    Only the profile owner can update their sections.
+
+    Accepts partial updates - you can update individual sections
+    or the entire sections array.
+    """
+    user = get_object_or_404(User, username=username.lower())
+
+    # Only allow the owner to update their profile sections
+    if request.user.id != user.id:
+        return Response(
+            {'error': 'You can only update your own profile sections'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    serializer = ProfileSectionsSerializer(user, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        StructuredLogger.log_service_operation(
+            service_name='ProfileSections',
+            operation='update',
+            success=True,
+            metadata={
+                'user_id': user.id,
+                'sections_count': len(user.profile_sections),
+            },
+            logger_instance=logger,
+        )
+        return Response(serializer.data)
+
+    StructuredLogger.log_service_operation(
+        service_name='ProfileSections',
+        operation='update',
+        success=False,
+        metadata={'user_id': user.id, 'errors': serializer.errors},
+        logger_instance=logger,
+    )
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reset_profile_sections(request, username):
+    """Reset profile sections to defaults.
+
+    Only the profile owner can reset their sections.
+    """
+    user = get_object_or_404(User, username=username.lower())
+
+    # Only allow the owner to reset their profile sections
+    if request.user.id != user.id:
+        return Response(
+            {'error': 'You can only reset your own profile sections'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    user.profile_sections = User.get_default_profile_sections()
+    user.save(update_fields=['profile_sections'])
+
+    StructuredLogger.log_service_operation(
+        service_name='ProfileSections',
+        operation='reset',
+        success=True,
+        metadata={'user_id': user.id},
+        logger_instance=logger,
+    )
+
+    serializer = ProfileSectionsSerializer(user)
+    return Response(
+        {
+            'message': 'Profile sections reset to defaults',
+            'profile_sections': serializer.data['profile_sections'],
         }
     )

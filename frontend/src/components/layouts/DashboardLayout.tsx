@@ -54,7 +54,8 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
 
   // Stable conversationId that doesn't change on every render
   // This prevents the IntelligentChatPanel from reinitializing on parent re-renders
-  const conversationId = useMemo(() => `project-${Date.now()}`, []);
+  // Use 'chat-' prefix for general conversations (not 'project-' which forces project-creation mode)
+  const conversationId = useMemo(() => `chat-${Date.now()}`, []);
 
   // Auto-open about panel when prop is true
   useEffect(() => {

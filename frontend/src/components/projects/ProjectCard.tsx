@@ -25,9 +25,10 @@ import {
   TrophyIcon,
   VideoCameraIcon,
   NewspaperIcon,
+  MegaphoneIcon,
 } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
-import { toggleProjectLike, deleteProjectById } from '@/services/projects';
+import { HeartIcon as HeartIconSolid, MegaphoneIcon as MegaphoneIconSolid } from '@heroicons/react/24/solid';
+import { toggleProjectLike, deleteProjectById, toggleProjectPromotion } from '@/services/projects';
 import { ProjectModal } from './ProjectModal';
 import { CommentTray } from './CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
@@ -35,6 +36,7 @@ import { SlideUpHero } from './SlideUpHero';
 import { useAuth } from '@/hooks/useAuth';
 import { useReward } from 'react-rewards';
 import { getCategoryGradientStyle, getCategoryColors } from '@/utils/categoryColors';
+import { DynamicGradientCard } from './DynamicGradientCard';
 
 interface ProjectCardProps {
   project: Project;
@@ -78,6 +80,8 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   const [slideUpExpanded, setSlideUpExpanded] = useState(false);
   const [imageIsPortrait, setImageIsPortrait] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [isPromoted, setIsPromoted] = useState(project.isPromoted ?? false);
+  const [isPromoting, setIsPromoting] = useState(false);
   const Icon = typeIcons[project.type] || DocumentTextIcon;
   const projectUrl = `/${project.username}/${project.slug}`;
 
@@ -155,6 +159,23 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
     } catch (error) {
       console.error('Failed to delete project:', error);
       alert('Failed to delete project. Please try again.');
+    }
+  };
+
+  const handlePromoteClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isPromoting) return;
+
+    setIsPromoting(true);
+    try {
+      const result = await toggleProjectPromotion(project.id);
+      setIsPromoted(result.isPromoted);
+    } catch (error) {
+      console.error('Failed to toggle promotion:', error);
+      alert('Failed to toggle promotion. Please try again.');
+    } finally {
+      setIsPromoting(false);
     }
   };
 
@@ -270,6 +291,8 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       gradientStyle,
       title: project.title,
       categoryName: primaryCategory?.name, // Include category name for potential display
+      fromColor: from,
+      toColor: to,
     };
   };
 
@@ -355,6 +378,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
           </div>
         )}
 
+
         {/* BACKGROUND LAYER */}
         <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''}`}>
             {heroElement.type === 'image' && (() => {
@@ -407,14 +431,13 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
             })()}
 
             {isGradient && heroElement.type === 'gradient' && (
-              <div className="w-full aspect-[4/3] flex items-center justify-center p-8 pb-48 md:pb-8 animate-gradient-flow relative overflow-hidden" style={heroElement.gradientStyle}>
-                <div className="absolute inset-0 bg-noise-subtle opacity-50 mix-blend-overlay pointer-events-none" />
-                <div className="text-center relative z-10">
-                  <h3 className="text-3xl font-bold text-white drop-shadow-lg">
-                    {heroElement.title}
-                  </h3>
-                </div>
-              </div>
+              <DynamicGradientCard
+                title={heroElement.title || ''}
+                fromColor={heroElement.fromColor || '#0F52BA'}
+                toColor={heroElement.toColor || '#0a3d8a'}
+                categoryName={heroElement.categoryName}
+                projectId={project.id}
+              />
             )}
 
             {heroElement.type === 'video' && (() => {
@@ -677,8 +700,9 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         {/* Always render footer absolute at bottom for seamless overlay look */}
         {/* Show by default on mobile (md:opacity-0), show on hover on desktop (md:group-hover:opacity-100) */}
         <div className="absolute bottom-0 left-0 right-0 z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-          {/* Gradient Background for smooth overlay fade - taller on gradient cards (desktop only) */}
-          <div className={`absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent -top-64 ${isGradient ? 'md:-top-96' : 'md:-top-40'}`} />
+          {/* Gradient Background for smooth overlay fade */}
+          {/* For gradient cards, use a subtle dark gradient that lets the animations show through */}
+          <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent ${isGradient ? '-top-full' : '-top-64 md:-top-40'}`} />
 
           <div className="relative p-5 pt-2">
             <h3 className="text-xl font-bold mb-1 line-clamp-2 leading-tight text-white drop-shadow-md">
@@ -790,6 +814,27 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
                     aria-label="More info"
                   >
                     <ChevronUpIcon className="w-4 h-4 text-white group-hover/more:scale-110 transition-transform drop-shadow-sm" />
+                  </button>
+                )}
+
+                {/* Admin Promote Button */}
+                {isAdmin && !selectionMode && (
+                  <button
+                    onClick={handlePromoteClick}
+                    disabled={isPromoting}
+                    className={`p-1.5 rounded-full transition-all hover:scale-105 group/promote backdrop-blur-md border disabled:opacity-50 ${
+                      isPromoted
+                        ? 'bg-amber-500 border-amber-400 hover:bg-amber-600 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                        : 'bg-white/10 border-white/10 hover:bg-white/20'
+                    }`}
+                    aria-label={isPromoted ? "Remove promotion" : "Promote to top of feed"}
+                    title={isPromoted ? "Remove from promoted (Admin)" : "Promote to top of feed (Admin)"}
+                  >
+                    {isPromoted ? (
+                      <MegaphoneIconSolid className="w-4 h-4 text-white group-hover/promote:scale-110 transition-transform drop-shadow-sm" />
+                    ) : (
+                      <MegaphoneIcon className="w-4 h-4 text-white group-hover/promote:scale-110 transition-transform drop-shadow-sm" />
+                    )}
                   </button>
                 )}
 

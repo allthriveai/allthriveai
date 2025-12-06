@@ -37,8 +37,6 @@ export interface User {
  * Explore projects with filtering, search, and pagination
  */
 export async function exploreProjects(params: ExploreParams): Promise<PaginatedResponse<Project>> {
-  console.log('[exploreProjects] Calling API with params:', params);
-
   // Build query string manually to avoid axios adding [] brackets to arrays
   const queryParams = new URLSearchParams();
 
@@ -61,13 +59,7 @@ export async function exploreProjects(params: ExploreParams): Promise<PaginatedR
   const queryString = queryParams.toString();
   const url = `/projects/explore/${queryString ? `?${queryString}` : ''}`;
 
-  console.log('[exploreProjects] URL:', url);
   const response = await api.get<PaginatedResponse<any>>(url);
-
-  // Log the raw response to see all fields
-  console.log('[exploreProjects] RAW response.data keys:', Object.keys(response.data));
-  console.log('[exploreProjects] RAW response.data.next:', response.data.next);
-  console.log('[exploreProjects] Full response.data:', JSON.stringify(response.data, null, 2).substring(0, 500));
 
   return response.data;
 }
@@ -83,13 +75,20 @@ export interface SemanticSearchFilters {
  * Semantic search with Weaviate
  *
  * Note: Currently uses basic text search. Will be upgraded to Weaviate vector search.
+ * The API returns: { query, search_type, results: { projects, tools, quizzes, users }, meta }
  */
 export async function semanticSearch(query: string, filters?: SemanticSearchFilters): Promise<Project[]> {
-  const response = await api.post<{ results: Project[] }>('/search/semantic/', {
+  const response = await api.post<{
+    query: string;
+    search_type: string;
+    results: { projects: Project[]; tools: any[]; quizzes: any[]; users: any[] };
+    meta: any;
+  }>('/search/semantic/', {
     query,
     filters
   });
-  return response.data.results;
+  // Extract projects array from the nested results
+  return response.data.results?.projects || [];
 }
 
 /**

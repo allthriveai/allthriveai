@@ -246,7 +246,6 @@ export function useMatchmaking({
         }, CONNECTION_TIMEOUT);
 
         ws.onopen = () => {
-          console.log('[Matchmaking] Connected');
           if (connectionTimeoutRef.current) {
             clearTimeout(connectionTimeoutRef.current);
             connectionTimeoutRef.current = null;
@@ -265,7 +264,6 @@ export function useMatchmaking({
         ws.onmessage = (event) => {
           try {
             const data: WebSocketMessage = JSON.parse(event.data);
-            console.log('[Matchmaking] Message:', data.event, data);
 
             if (data.event === 'pong') return;
 
@@ -348,7 +346,6 @@ export function useMatchmaking({
         };
 
         ws.onclose = (event) => {
-          console.log('[Matchmaking] Closed:', event.code);
           setIsConnected(false);
           setIsConnecting(false);
           isConnectingRef.current = false;

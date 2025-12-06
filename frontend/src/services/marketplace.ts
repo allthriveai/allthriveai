@@ -225,3 +225,133 @@ export async function isCreatorOnboarded(): Promise<boolean> {
   const account = await getCreatorAccount();
   return account?.isOnboarded ?? false;
 }
+
+// =============================================================================
+// Stripe Connect API (Creator Onboarding)
+// =============================================================================
+
+export interface StripeConnectStatus {
+  exists: boolean;
+  accountId?: string;
+  isOnboarded: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted?: boolean;
+  requirements?: unknown;
+}
+
+export interface StripeOnboardingResponse {
+  onboardingUrl: string;
+  message: string;
+}
+
+export interface StripeDashboardResponse {
+  dashboardUrl: string;
+}
+
+/**
+ * Start Stripe Connect onboarding process
+ * Returns a URL to redirect the user to Stripe's onboarding flow
+ */
+export async function startStripeOnboarding(
+  returnUrl?: string,
+  refreshUrl?: string
+): Promise<StripeOnboardingResponse> {
+  const response = await api.post<StripeOnboardingResponse>('/marketplace/connect/onboard/', {
+    return_url: returnUrl,
+    refresh_url: refreshUrl,
+  });
+  return response.data;
+}
+
+/**
+ * Check Stripe Connect account status
+ */
+export async function getStripeConnectStatus(): Promise<StripeConnectStatus> {
+  const response = await api.get<StripeConnectStatus>('/marketplace/connect/onboard/');
+  return response.data;
+}
+
+/**
+ * Get link to Stripe Express dashboard
+ */
+export async function getStripeDashboardLink(): Promise<string> {
+  const response = await api.get<StripeDashboardResponse>('/marketplace/connect/dashboard/');
+  return response.data.dashboardUrl;
+}
+
+// =============================================================================
+// Checkout API (Product Purchases)
+// =============================================================================
+
+export interface CheckoutResponse {
+  clientSecret: string;
+  orderId: number;
+  amount: number;
+  currency: string;
+  platformFee: number;
+  product: {
+    id: number;
+    title: string;
+    creator: string;
+  };
+}
+
+export interface OrderStatus {
+  id: number;
+  status: 'pending' | 'paid' | 'failed' | 'refunded';
+  amountPaid: number;
+  platformFee: number;
+  creatorPayout: number;
+  currency: string;
+  createdAt: string;
+  product: {
+    id: number;
+    title: string;
+  };
+  buyer?: string;
+  hasAccess: boolean;
+}
+
+export interface FreeAccessResponse {
+  success: boolean;
+  message: string;
+  productId: number;
+}
+
+/**
+ * Create a checkout session for purchasing a product
+ * Returns a client_secret for Stripe Elements
+ */
+export async function createProductCheckout(productId: number): Promise<CheckoutResponse> {
+  const response = await api.post<CheckoutResponse>(`/marketplace/checkout/${productId}/`);
+  return response.data;
+}
+
+/**
+ * Get access to a free product
+ */
+export async function claimFreeProduct(productId: number): Promise<FreeAccessResponse> {
+  const response = await api.post<FreeAccessResponse>(`/marketplace/checkout/${productId}/free/`);
+  return response.data;
+}
+
+/**
+ * Get order status
+ */
+export async function getOrderStatus(orderId: number): Promise<OrderStatus> {
+  const response = await api.get<OrderStatus>(`/marketplace/orders/${orderId}/`);
+  return response.data;
+}
+
+/**
+ * Check if user has access to a product
+ */
+export async function hasProductAccess(productId: number): Promise<boolean> {
+  try {
+    const library = await getMyLibrary();
+    return library.some(access => access.product?.id === productId);
+  } catch {
+    return false;
+  }
+}

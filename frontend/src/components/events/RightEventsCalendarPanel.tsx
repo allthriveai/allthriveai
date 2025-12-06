@@ -26,7 +26,24 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
   });
   const [deleting, setDeleting] = useState(false);
 
+  // Track if panel should be rendered (for slide-out animation)
+  const [shouldRender, setShouldRender] = useState(false);
+
   const isAdmin = user?.is_staff || user?.is_superuser;
+
+  // Handle mount/unmount for animations
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+    }
+  }, [isOpen]);
+
+  // Handle transition end to unmount after closing
+  const handleTransitionEnd = () => {
+    if (!isOpen) {
+      setShouldRender(false);
+    }
+  };
 
   // Memoized filtered lists for performance
   const upcomingEvents = useMemo(
@@ -91,15 +108,18 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
     }
   };
 
+  if (!shouldRender) return null;
+
   return (
     <>
       {/* Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-40 md:hidden"
-          onClick={onClose}
-        />
-      )}
+      <div
+        className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ease-in-out ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
       {/* Panel */}
       <div
@@ -111,6 +131,7 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         }}
+        onTransitionEnd={handleTransitionEnd}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">

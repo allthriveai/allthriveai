@@ -42,10 +42,10 @@ export default function IntegrationsSettingsPage() {
     {
       id: 'gitlab',
       name: 'GitLab',
-      description: 'Import your GitLab projects and showcase your work',
+      description: 'Automatically sync your GitLab repositories as projects',
       icon: faGitlab,
       isConnected: false,
-      isAvailable: false,
+      isAvailable: true,
     },
     {
       id: 'figma',
@@ -123,6 +123,28 @@ export default function IntegrationsSettingsPage() {
                     isConnected: true,
                     username: githubData.providerUsername || 'GitHub User',
                     connectedAt: githubData.connectedAt,
+                  }
+                : integration
+            )
+          );
+        }
+
+        // Check GitLab status
+        console.log('[IntegrationsSettingsPage] Fetching GitLab status...');
+        const gitlabResponse = await api.get('/social/status/gitlab/');
+        const gitlabData = gitlabResponse.data.data || gitlabResponse.data;
+        console.log('[IntegrationsSettingsPage] GitLab data:', gitlabData);
+
+        if (gitlabData.connected && isMounted) {
+          console.log('[IntegrationsSettingsPage] GitLab is connected');
+          setIntegrations(prev =>
+            prev.map(integration =>
+              integration.id === 'gitlab'
+                ? {
+                    ...integration,
+                    isConnected: true,
+                    username: gitlabData.providerUsername || 'GitLab User',
+                    connectedAt: gitlabData.connectedAt,
                   }
                 : integration
             )
@@ -262,6 +284,34 @@ export default function IntegrationsSettingsPage() {
         const friendlyError = getUserFriendlyError(error, 'youtube');
         setErrorMessage(friendlyError);
       }
+    } else if (integrationId === 'gitlab') {
+      try {
+        console.log('[IntegrationsSettingsPage] Initiating GitLab OAuth flow...');
+        const response = await api.get('/social/connect/gitlab/');
+        console.log('[IntegrationsSettingsPage] GitLab OAuth response:', response.data);
+
+        if (response.data.success && response.data.data?.authUrl) {
+          const authUrl = response.data.data.authUrl;
+          console.log('[IntegrationsSettingsPage] Redirecting to:', authUrl);
+          window.location.href = authUrl;
+        } else {
+          console.error('[IntegrationsSettingsPage] No authUrl in response');
+          setErrorMessage({
+            title: 'Connection Error',
+            message: 'Failed to get GitLab OAuth URL. Please try again later.',
+            variant: 'error',
+          });
+        }
+      } catch (error: any) {
+        console.error('[IntegrationsSettingsPage] Failed to initiate GitLab OAuth:', error);
+        console.error('[IntegrationsSettingsPage] Error details:', {
+          message: error.message,
+          statusCode: error.statusCode,
+          error: error.error
+        });
+        const friendlyError = getUserFriendlyError(error, 'gitlab');
+        setErrorMessage(friendlyError);
+      }
     } else {
       setErrorMessage({
         title: 'Coming Soon',
@@ -323,6 +373,29 @@ export default function IntegrationsSettingsPage() {
       } catch (error) {
         console.error('Failed to disconnect YouTube:', error);
         const friendlyError = getUserFriendlyError(error, 'youtube');
+        setErrorMessage(friendlyError);
+      }
+    } else if (integrationId === 'gitlab') {
+      try {
+        await api.post('/social/disconnect/gitlab/');
+
+        setIntegrations(prev =>
+          prev.map(integration =>
+            integration.id === 'gitlab'
+              ? {
+                  ...integration,
+                  isConnected: false,
+                  username: undefined,
+                  connectedAt: undefined,
+                }
+              : integration
+          )
+        );
+
+        setSuccessMessage(`${integrationName} disconnected successfully`);
+      } catch (error) {
+        console.error('Failed to disconnect GitLab:', error);
+        const friendlyError = getUserFriendlyError(error, 'gitlab');
         setErrorMessage(friendlyError);
       }
     } else {
@@ -829,7 +902,7 @@ export default function IntegrationsSettingsPage() {
                 <div className="text-3xl">⚠️</div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                    Disconnect {showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : 'Integration'}?
+                    Disconnect {showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : 'Integration'}?
                   </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     {showDisconnectModal === 'youtube'
@@ -849,12 +922,12 @@ export default function IntegrationsSettingsPage() {
                 </button>
                 <button
                   onClick={() => {
-                    const integrationName = showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : 'Integration';
+                    const integrationName = showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : 'Integration';
                     handleDisconnect(showDisconnectModal, integrationName);
                   }}
                   className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium text-sm"
                 >
-                  Keep Videos & Disconnect
+                  {showDisconnectModal === 'youtube' ? 'Keep Videos & Disconnect' : 'Disconnect'}
                 </button>
               </div>
             </div>

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class CommentCreateThrottle(UserRateThrottle):
     """Rate limit for comment creation to prevent spam."""
 
-    rate = '10/hour'
+    rate = '100/hour'  # Increased for development
 
 
 class ProjectCommentViewSet(viewsets.ModelViewSet):

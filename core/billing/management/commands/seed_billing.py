@@ -113,12 +113,12 @@ class Command(BaseCommand):
             {
                 'tier_type': 'creator_mentor',
                 'slug': 'creator-mentor',
-                'name': 'Creator / Mentor',
-                'description': 'Creator tools to monetize your expertise plus high AI quota',
-                'price_monthly': Decimal('100.00'),  # $100/month
-                'price_annual': Decimal('1020.00'),  # $1020/year (15% discount - save $180/year)
+                'name': 'Creator',
+                'description': 'Sell prompts, templates & courses. Free to join, 8% fee on sales.',
+                'price_monthly': Decimal('0.00'),  # Free - revenue from 8% marketplace fee
+                'price_annual': Decimal('0.00'),  # Free
                 'trial_period_days': 0,
-                'monthly_ai_requests': 5000,  # Very high limit (NOT unlimited - no one gets unlimited)
+                'monthly_ai_requests': 500,  # Reasonable limit for creators
                 'has_marketplace_access': True,
                 'has_go1_courses': False,  # Creators don't need courses - they CREATE content
                 'has_ai_mentor': True,

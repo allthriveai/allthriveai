@@ -2,8 +2,10 @@
  * Learning Paths Tab Component
  *
  * Displays user's learning paths and recommendations on their profile.
+ * Shows the "Find Your Perfect AI Tool" quiz prominently first for personalization.
  */
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSpinner,
@@ -12,6 +14,9 @@ import {
   faTrophy,
   faPlus,
   faBookOpen,
+  faWandMagicSparkles,
+  faCheckCircle,
+  faArrowRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { LearningPathCard } from './LearningPathCard';
 import { SkillLevelBadge } from './SkillLevelBadge';
@@ -21,7 +26,11 @@ import {
   useLearningPathRecommendations,
   useStartLearningPath,
 } from '@/hooks/useLearningPaths';
+import { useQuery } from '@tanstack/react-query';
+import { getQuiz, getQuizHistory } from '@/services/quiz';
 import type { UserLearningPath, TopicRecommendation } from '@/types/models';
+
+const PERSONALIZATION_QUIZ_SLUG = 'find-your-perfect-ai-tool';
 
 interface LearningPathsTabProps {
   username: string;
@@ -29,7 +38,28 @@ interface LearningPathsTabProps {
 }
 
 export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabProps) {
+  const navigate = useNavigate();
   const [selectedPath, setSelectedPath] = useState<UserLearningPath | null>(null);
+
+  // Fetch personalization quiz details
+  const { data: personalizationQuiz, isLoading: isLoadingQuiz } = useQuery({
+    queryKey: ['quiz', PERSONALIZATION_QUIZ_SLUG],
+    queryFn: () => getQuiz(PERSONALIZATION_QUIZ_SLUG),
+    enabled: isOwnProfile,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Check if user has completed the personalization quiz
+  const { data: quizHistory } = useQuery({
+    queryKey: ['quizHistory'],
+    queryFn: getQuizHistory,
+    enabled: isOwnProfile,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+
+  const hasCompletedPersonalizationQuiz = quizHistory?.attempts?.some(
+    (attempt) => attempt.quiz?.slug === PERSONALIZATION_QUIZ_SLUG && attempt.isCompleted
+  );
 
   // Use different hooks for own profile vs other users
   const {
@@ -79,6 +109,81 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
 
   return (
     <div className="space-y-8 pb-20">
+      {/* Personalization Quiz - Always show first for own profile */}
+      {isOwnProfile && personalizationQuiz && (
+        <section>
+          {!hasCompletedPersonalizationQuiz ? (
+            // User hasn't taken the quiz yet - show prominent CTA
+            <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 rounded-2xl p-6 md:p-8 text-white shadow-xl">
+              {/* Background decoration */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute -top-24 -right-24 w-64 h-64 bg-white rounded-full blur-3xl" />
+                <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-white rounded-full blur-3xl" />
+              </div>
+
+              <div className="relative z-10">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center flex-shrink-0">
+                    <FontAwesomeIcon icon={faWandMagicSparkles} className="w-7 h-7 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold mb-1">
+                      {personalizationQuiz.title}
+                    </h2>
+                    <p className="text-white/80 text-sm">
+                      Start here to personalize your learning experience
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-white/90 mb-6 max-w-2xl">
+                  {personalizationQuiz.description ||
+                    "Discover which AI tools match your workflow and interests. Your answers help us recommend the perfect learning paths, quizzes, and projects for you."}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-4">
+                  <button
+                    onClick={() => navigate(`/quizzes/${PERSONALIZATION_QUIZ_SLUG}`)}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 rounded-xl font-semibold hover:bg-white/90 transition-colors shadow-lg"
+                  >
+                    Take the Quiz
+                    <FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" />
+                  </button>
+                  <div className="flex items-center gap-3 text-white/70 text-sm">
+                    <span>{personalizationQuiz.questionCount || 10} questions</span>
+                    <span>•</span>
+                    <span>{personalizationQuiz.estimatedTime || 5} min</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // User has completed the quiz - show success state
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <FontAwesomeIcon icon={faCheckCircle} className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                    Your AI Tool Profile is Complete!
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    We're using your preferences to personalize recommendations below.
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate(`/quizzes/${PERSONALIZATION_QUIZ_SLUG}`)}
+                  className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
+                >
+                  Retake Quiz
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Active Learning Paths */}
       {activePaths.length > 0 && (
         <section>

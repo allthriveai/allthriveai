@@ -182,12 +182,15 @@ class ColdStartService:
 
         Shows newest projects first to ensure fresh content appears at the top,
         with like count as a secondary sort for projects of similar age.
+        Applies user diversity to prevent any single user from dominating the feed.
         """
         from core.projects.models import Project
 
+        from .diversity import apply_user_diversity
+
         # Sort by newest first, then by like count for projects of similar age
         # This ensures fresh, new projects appear at the top
-        projects = (
+        queryset = (
             Project.objects.filter(
                 is_private=False,
                 is_archived=False,
@@ -199,18 +202,28 @@ class ColdStartService:
         )
 
         # Get total count for pagination
-        total_count = projects.count()
+        total_count = queryset.count()
 
+        # Fetch extra projects to account for diversity filtering
+        # We need more than page_size because some will be filtered out
         start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
+        fetch_size = page_size * 3  # Fetch 3x to have enough variety
+        raw_projects = list(queryset[start_idx : start_idx + fetch_size])
+
+        # Apply user diversity - max 3 posts per user per page
+        diverse_projects = apply_user_diversity(
+            raw_projects,
+            max_per_user=3,
+            page_size=page_size,
+        )
 
         return {
-            'projects': list(projects[start_idx:end_idx]),
+            'projects': diverse_projects,
             'metadata': {
                 'page': page,
                 'page_size': page_size,
                 'total_candidates': total_count,
-                'algorithm': 'newest_first',
+                'algorithm': 'newest_first_diverse',
             },
         }
 

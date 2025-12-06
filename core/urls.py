@@ -6,6 +6,7 @@ from core.ai_usage import views as admin_analytics_views
 
 from .achievements.views import AchievementViewSet, get_user_achievements
 from .agents.auth_chat_views import auth_chat_finalize, auth_chat_state, auth_chat_stream
+from .agents.profile_views import profile_generate_auto, profile_generate_stream, profile_preview_sections
 from .agents.project_chat_views import project_chat_stream_v2
 from .agents.views import ConversationViewSet, CreateProjectFromImageView, MessageViewSet, detect_intent
 from .auth.views import (
@@ -40,6 +41,7 @@ from .integrations.github.views import (
     import_github_repo_async,
     list_user_repos,
 )
+from .integrations.gitlab.views import list_user_projects as list_gitlab_projects
 from .integrations.views import import_from_url, list_integrations
 from .projects.comment_views import ProjectCommentViewSet
 from .projects.topic_suggestions import get_topic_suggestions
@@ -52,6 +54,7 @@ from .projects.views import (
     personalization_status,
     public_user_projects,
     semantic_search,
+    toggle_project_promotion,
     user_liked_projects,
 )
 from .quizzes.views import QuizAttemptViewSet, QuizViewSet
@@ -75,17 +78,28 @@ from .tools.views import (
     recommendation_quiz_submit,
 )
 from .uploads.views import upload_file, upload_image
+from .users.invitation_api_views import (
+    approve_invitation,
+    bulk_approve_invitations,
+    bulk_reject_invitations,
+    invitation_stats,
+    list_invitations,
+    reject_invitation,
+)
 from .users.invitation_views import request_invitation
 from .users.views import (
     delete_personalization_data,
     explore_users,
     export_personalization_data,
+    get_profile_sections,
     list_followers,
     list_following,
     onboarding_progress,
     personalization_settings,
     reset_personalization_settings,
+    reset_profile_sections,
     toggle_follow,
+    update_profile_sections,
 )
 from .views import ai_analytics_views, csp_report, db_health
 
@@ -146,10 +160,18 @@ urlpatterns = [
         'admin/analytics/user-growth/', admin_analytics_views.dashboard_user_growth, name='admin_dashboard_user_growth'
     ),
     path('admin/analytics/content/', admin_analytics_views.dashboard_content_metrics, name='admin_dashboard_content'),
+    # Admin Invitation Management endpoints (admin-only)
+    path('admin/invitations/', list_invitations, name='admin_list_invitations'),
+    path('admin/invitations/stats/', invitation_stats, name='admin_invitation_stats'),
+    path('admin/invitations/<int:invitation_id>/approve/', approve_invitation, name='admin_approve_invitation'),
+    path('admin/invitations/<int:invitation_id>/reject/', reject_invitation, name='admin_reject_invitation'),
+    path('admin/invitations/bulk-approve/', bulk_approve_invitations, name='admin_bulk_approve_invitations'),
+    path('admin/invitations/bulk-reject/', bulk_reject_invitations, name='admin_bulk_reject_invitations'),
     # Explore endpoints (public)
     path('projects/explore/', explore_projects, name='explore_projects'),
     path('projects/topic-suggestions/', get_topic_suggestions, name='topic_suggestions'),
     path('projects/<int:project_id>/delete/', delete_project_by_id, name='delete_project_by_id'),
+    path('projects/<int:project_id>/toggle-promotion/', toggle_project_promotion, name='toggle_project_promotion'),
     # Project tracking endpoints (analytics)
     path('projects/<int:project_id>/track-view/', track_project_view, name='track_project_view'),
     path('projects/track-click/', track_project_click, name='track_project_click'),
@@ -169,6 +191,10 @@ urlpatterns = [
     path('users/<str:username>/following/', list_following, name='list_following'),
     # User achievements endpoint
     path('users/<str:username>/achievements/', get_user_achievements, name='user_achievements'),
+    # Profile sections endpoints
+    path('users/<str:username>/profile-sections/', get_profile_sections, name='get_profile_sections'),
+    path('users/<str:username>/profile-sections/update/', update_profile_sections, name='update_profile_sections'),
+    path('users/<str:username>/profile-sections/reset/', reset_profile_sections, name='reset_profile_sections'),
     # User battles endpoint (public)
     path('users/<str:username>/battles/', get_user_battles, name='user_battles'),
     # Project comment endpoints
@@ -206,6 +232,10 @@ urlpatterns = [
     path('auth/chat/finalize/', auth_chat_finalize, name='auth_chat_finalize'),
     # Project chat endpoint
     path('project/chat/stream/', project_chat_stream_v2, name='project_chat_stream'),
+    # Profile generation agent endpoints
+    path('profile/generate/stream/', profile_generate_stream, name='profile_generate_stream'),
+    path('profile/generate/auto/', profile_generate_auto, name='profile_generate_auto'),
+    path('profile/generate/preview/', profile_preview_sections, name='profile_preview_sections'),
     # Agent endpoints
     path('agents/detect-intent/', detect_intent, name='detect_intent'),
     path('agents/create-project-from-image/', CreateProjectFromImageView.as_view(), name='create_project_from_image'),
@@ -260,6 +290,8 @@ urlpatterns = [
     # GitHub integration endpoints (legacy - use generic endpoints above)
     path('github/repos/', list_user_repos, name='github_repos'),
     path('github/import/', import_github_repo_async, name='github_import'),
+    # GitLab integration endpoints
+    path('gitlab/projects/', list_gitlab_projects, name='gitlab_projects'),
     # Battle endpoints
     path('battles/stats/', battle_stats, name='battle_stats'),
     path('battles/leaderboard/', battle_leaderboard, name='battle_leaderboard'),

@@ -27,7 +27,7 @@ from .security import PromptInjectionFilter
 logger = logging.getLogger(__name__)
 
 # Intent types
-ChatMode = Literal['support', 'project-creation', 'discovery', 'image-generation']
+ChatMode = Literal['support', 'project-creation', 'discovery', 'image-generation', 'learning']
 
 
 INTENT_DETECTION_PROMPT = """You are an intent classifier for AllThrive AI, a platform for managing AI/ML projects.
@@ -41,13 +41,23 @@ Your job is to analyze user messages and determine their intent from these categ
      or `[File: filename]`), this is NOT image generation. They are sharing context and likely need
      support or want to discuss the uploaded content.
 
-2. **project-creation**: User wants to create, import, or add a new project
-   - Examples: "Create a new project", "Import from GitHub", "Add my YouTube video"
+2. **project-creation**: User wants to create, import, or add THEIR OWN new project
+   - Examples: "Create a new project", "Import from GitHub", "Add my YouTube video", "I want to add my repo"
+   - IMPORTANT: This is for when users want to ADD their own content to the platform
 
-3. **discovery**: User wants to explore, search, or discover existing projects
-   - Examples: "Show me AI projects", "Find similar projects", "What projects do I have?"
+3. **discovery**: User wants to explore, search, find, or discover EXISTING projects on the platform
+   - Examples: "Show me AI projects", "Find projects about LangGraph", "What's trending?",
+     "Recommend projects", "Search for machine learning", "Find similar projects", "What projects are there?"
+   - IMPORTANT: This is for when users want to BROWSE or SEARCH the platform's content
+   - Keywords: "find", "search", "show me", "recommend", "trending", "discover", "explore", "what projects"
 
-4. **image-generation**: User wants to CREATE, GENERATE, or DESIGN images, infographics,
+4. **learning**: User wants help with learning, quizzes, or educational content
+   - Examples: "Help me with this quiz", "I need a hint", "Explain this concept", "What's my progress?",
+     "What quiz should I take next?", "I'm stuck on question 3", "How am I doing in AI agents?"
+   - IMPORTANT: This is for when users need tutoring, hints, or want to track learning progress
+   - Keywords: "quiz", "hint", "explain", "learn", "progress", "stuck", "help me understand", "what should I learn"
+
+5. **image-generation**: User wants to CREATE, GENERATE, or DESIGN images, infographics,
    diagrams, or visuals using AI
    - Examples: "Create an infographic", "Generate an image of...", "Make me a flowchart", "Design a banner"
    - IMPORTANT MODE CONTINUITY: If the recent conversation shows:
@@ -64,7 +74,7 @@ Context about the user:
 
 User message: {user_message}
 
-Respond with ONLY the intent category (support, project-creation, discovery, or image-generation).
+Respond with ONLY the intent category (support, project-creation, discovery, image-generation, or learning).
 No explanation, just the category name.
 """
 
@@ -183,7 +193,7 @@ class IntentDetectionService:
             intent = result.strip().lower()
 
             # Validate intent
-            valid_intents: list[ChatMode] = ['support', 'project-creation', 'discovery', 'image-generation']
+            valid_intents: list[ChatMode] = ['support', 'project-creation', 'discovery', 'image-generation', 'learning']
             if intent not in valid_intents:
                 logger.warning(f'Invalid intent from LLM: {intent}, defaulting to support')
                 intent = 'support'
@@ -275,6 +285,17 @@ class IntentDetectionService:
                 '• **Images** - scenes, objects, artistic visuals, illustrations\n\n'
                 "Just tell me what you'd like and specify the format. For example:\n"
                 '"Create an infographic about..." or "Generate an image of..."'
+            )
+
+        if new_mode == 'learning':
+            return (
+                "Hi! I'm Scout, your learning guide! 🎯\n\n"
+                'I can help you with:\n'
+                '• Checking your learning progress\n'
+                '• Giving hints on quiz questions (without spoiling answers!)\n'
+                '• Explaining concepts from your lessons\n'
+                '• Recommending what to learn next\n\n'
+                'What would you like help with?'
             )
 
         # support mode

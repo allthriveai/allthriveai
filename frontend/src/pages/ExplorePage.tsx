@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import type { Taxonomy, Project } from '@/types/models';
@@ -25,37 +25,6 @@ import { getQuizzes } from '@/services/quiz';
 import { useAuth } from '@/hooks/useAuth';
 import { trackProjectClick, getClickSourceFromTab } from '@/services/tracking';
 
-// Memoized wrapper for smooth fade-in animation on new items
-const FadeInItem = memo(function FadeInItem({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    // Small delay to ensure DOM is ready, then trigger animation
-    const timer = requestAnimationFrame(() => {
-      setIsVisible(true);
-    });
-    return () => cancelAnimationFrame(timer);
-  }, []);
-
-  return (
-    <div
-      className={`break-inside-avoid mb-2 transition-all duration-300 ease-out ${
-        isVisible
-          ? 'opacity-100 translate-y-0'
-          : 'opacity-0 translate-y-4'
-      }`}
-      style={{
-        willChange: isVisible ? 'auto' : 'opacity, transform',
-      }}
-    >
-      {children}
-    </div>
-  );
-});
 
 export function ExplorePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -111,30 +80,22 @@ export function ExplorePage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Convert category slugs to IDs for API
-  const selectedCategoryIds = taxonomyCategories
-    ?.filter(cat => selectedCategorySlugs.includes(cat.slug))
-    .map(cat => cat.id) || [];
+  // Convert category slugs to IDs for API (memoized to prevent re-renders)
+  const selectedCategoryIds = useMemo(() => {
+    return taxonomyCategories
+      ?.filter(cat => selectedCategorySlugs.includes(cat.slug))
+      .map(cat => cat.id) || [];
+  }, [taxonomyCategories, selectedCategorySlugs]);
 
-  // Convert tool slugs to IDs for API
-  const selectedToolIds = filterOptions?.tools
-    .filter(tool => selectedToolSlugs.includes(tool.slug))
-    .map(tool => tool.id) || [];
+  // Convert tool slugs to IDs for API (memoized to prevent re-renders)
+  const selectedToolIds = useMemo(() => {
+    return filterOptions?.tools
+      .filter(tool => selectedToolSlugs.includes(tool.slug))
+      .map(tool => tool.id) || [];
+  }, [filterOptions, selectedToolSlugs]);
 
-  // Debug logging
-  console.log('[ExplorePage] State:', {
-    activeTab,
-    selectedCategorySlugs,
-    selectedCategoryIds,
-    selectedToolSlugs,
-    selectedToolIds,
-    taxonomyCategories: taxonomyCategories?.map(c => ({ id: c.id, slug: c.slug, name: c.name })),
-    filterOptions: filterOptions?.tools.map(t => ({ id: t.id, slug: t.slug, name: t.name })),
-  });
-
-  // Fetch projects with infinite scroll (for most tabs)
-  // Map tab to API tab parameter
-  const getApiTab = () => {
+  // Map tab to API tab parameter (memoized)
+  const apiTab = useMemo(() => {
     switch (activeTab) {
       case 'for-you': return 'for-you';
       case 'trending': return 'trending';
@@ -142,17 +103,16 @@ export function ExplorePage() {
       case 'news': return 'news';
       default: return 'all';
     }
-  };
+  }, [activeTab]);
 
-  const exploreParamsBase = {
-    tab: getApiTab(),
+  // Memoize params to prevent queryKey from changing on every render
+  const exploreParamsBase = useMemo(() => ({
+    tab: apiTab,
     search: searchQuery || undefined,
     categories: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
     tools: selectedToolIds.length > 0 ? selectedToolIds : undefined,
     page_size: 30,
-  } as const;
-
-  console.log('[ExplorePage] exploreParamsBase:', exploreParamsBase);
+  }), [apiTab, searchQuery, selectedCategoryIds, selectedToolIds]);
 
   const {
     data: projectsData,
@@ -165,30 +125,14 @@ export function ExplorePage() {
   } = useInfiniteQuery({
     queryKey: ['exploreProjects', exploreParamsBase],
     queryFn: async ({ pageParam = 1 }) => {
-      console.log('[useInfiniteQuery] queryFn called with pageParam:', pageParam);
-      const result = await exploreProjects({ ...exploreParamsBase, page: pageParam });
-      console.log('[useInfiniteQuery] queryFn result:', {
-        count: result.count,
-        next: result.next,
-        resultsLength: result.results?.length,
-        keys: Object.keys(result)
-      });
-      return result;
+      return await exploreProjects({ ...exploreParamsBase, page: pageParam });
     },
     getNextPageParam: (lastPage, allPages) => {
-      const nextPage = lastPage.next ? allPages.length + 1 : undefined;
-      console.log('[useInfiniteQuery] getNextPageParam:', {
-        lastPageNext: lastPage.next,
-        allPagesLength: allPages.length,
-        nextPage,
-        lastPageCount: lastPage.count,
-        lastPageResultsLength: lastPage.results?.length
-      });
-      return nextPage;
+      return lastPage.next ? allPages.length + 1 : undefined;
     },
     initialPageParam: 1,
-    staleTime: 0, // Disable caching for debugging
-    gcTime: 0, // Disable garbage collection time (formerly cacheTime)
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
     // Only run query if:
     // 1. Not on profiles tab
     // 2. If tools are selected, filterOptions must be loaded
@@ -207,6 +151,8 @@ export function ExplorePage() {
     queryKey: ['semanticSearch', searchQuery],
     queryFn: () => semanticSearch(searchQuery),
     enabled: !!searchQuery && activeTab !== 'profiles',
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch profiles with infinite scroll
@@ -226,6 +172,8 @@ export function ExplorePage() {
     },
     initialPageParam: 1,
     enabled: activeTab === 'profiles',
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch quizzes (exclude from profiles and news tabs)
@@ -236,6 +184,8 @@ export function ExplorePage() {
     queryKey: ['exploreQuizzes', searchQuery],
     queryFn: () => getQuizzes({ search: searchQuery || undefined }),
     enabled: activeTab !== 'profiles' && activeTab !== 'news',
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Determine which data to display
@@ -245,13 +195,37 @@ export function ExplorePage() {
     (selectedCategorySlugs.length > 0 && !taxonomyCategories) ||
     (selectedToolSlugs.length > 0 && !filterOptions);
 
-  // Flatten paginated results for infinite scroll
-  const allProjects = projectsData?.pages.flatMap(page => page.results) || [];
-  const allProfiles = profilesData?.pages.flatMap(page => page.results) || [];
+  // Flatten paginated results for infinite scroll and deduplicate by slug
+  const allProjects = useMemo(() => {
+    const projects = projectsData?.pages.flatMap(page => page.results) || [];
+    const seen = new Set<string>();
+    return projects.filter(project => {
+      const key = project.slug || String(project.id);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [projectsData]);
 
-  const displayProjects = searchQuery && semanticResults ? semanticResults : allProjects;
+  const allProfiles = useMemo(() => {
+    const profiles = profilesData?.pages.flatMap(page => page.results) || [];
+    const seen = new Set<number>();
+    return profiles.filter(profile => {
+      if (seen.has(profile.id)) return false;
+      seen.add(profile.id);
+      return true;
+    });
+  }, [profilesData]);
+
+  const displayProjects = useMemo(() => {
+    return searchQuery && semanticResults ? semanticResults : allProjects;
+  }, [searchQuery, semanticResults, allProjects]);
+
   // Don't show quizzes in profiles or news tabs
-  const displayQuizzes = (activeTab !== 'profiles' && activeTab !== 'news') ? (quizzesData?.results || []) : [];
+  const displayQuizzes = useMemo(() => {
+    if (activeTab === 'profiles' || activeTab === 'news') return [];
+    return quizzesData?.results || [];
+  }, [activeTab, quizzesData?.results]);
   const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isWaitingForFilters;
 
   // Determine if there's an error to display
@@ -368,15 +342,12 @@ export function ExplorePage() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          console.log('[InfiniteScroll] Observer triggered, hasNextPage:', hasNextPage, 'isFetching:', isFetchingNextPage);
           if (activeTab === 'profiles') {
             if (hasNextProfiles && !isFetchingNextProfiles) {
-              console.log('[InfiniteScroll] Fetching next profiles page');
               fetchNextProfiles();
             }
           } else {
             if (hasNextPage && !isFetchingNextPage) {
-              console.log('[InfiniteScroll] Fetching next projects page');
               fetchNextPage();
             }
           }
@@ -497,12 +468,12 @@ export function ExplorePage() {
                 className="relative z-10"
               >
                 {isLoading ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
                     <LoadingSkeleton type="profile" count={12} />
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
                       {allProfiles.map((profile) => (
                         <div
                           key={profile.id}
@@ -587,7 +558,7 @@ export function ExplorePage() {
                     <MasonryGrid>
                       {/* Interleave quizzes and projects with stable ordering */}
                       {mixedItems.map((item) => (
-                        <FadeInItem key={item.stableKey}>
+                        <div key={item.stableKey} className="break-inside-avoid mb-2">
                           {item.type === 'quiz' ? (
                             <QuizPreviewCard
                               quiz={item.data}
@@ -604,7 +575,7 @@ export function ExplorePage() {
                               onCardClick={handleProjectClick}
                             />
                           )}
-                        </FadeInItem>
+                        </div>
                       ))}
                     </MasonryGrid>
 

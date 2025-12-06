@@ -11,7 +11,12 @@ from .views import (
     CreatorAccountView,
     CreatorDashboardView,
     CreatorSalesView,
+    FreeProductAccessView,
+    OrderStatusView,
+    ProductCheckoutView,
     ProductViewSet,
+    StripeConnectDashboardView,
+    StripeConnectOnboardingView,
     UserLibraryView,
     YouTubeImportView,
     marketplace_browse,
@@ -29,10 +34,17 @@ urlpatterns = [
     path('creator/', CreatorAccountView.as_view(), name='creator-account'),
     path('creator/dashboard/', CreatorDashboardView.as_view(), name='creator-dashboard'),
     path('creator/sales/', CreatorSalesView.as_view(), name='creator-sales'),
+    # Stripe Connect (creator onboarding for payouts)
+    path('connect/onboard/', StripeConnectOnboardingView.as_view(), name='stripe-connect-onboard'),
+    path('connect/dashboard/', StripeConnectDashboardView.as_view(), name='stripe-connect-dashboard'),
     # AI Import endpoints
     path('import/youtube/', YouTubeImportView.as_view(), name='import-youtube'),
     # Products router (CRUD)
     path('', include(router.urls)),
+    # Checkout endpoints
+    path('checkout/<int:product_id>/', ProductCheckoutView.as_view(), name='product-checkout'),
+    path('checkout/<int:product_id>/free/', FreeProductAccessView.as_view(), name='free-product-access'),
+    path('orders/<int:order_id>/', OrderStatusView.as_view(), name='order-status'),
     # User library (purchased products)
     path('library/', UserLibraryView.as_view(), name='user-library'),
     # Public browse endpoints

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { getTools, getToolCategories, getToolCompanies } from '@/services/tools';
+import { getTools, getToolCategories, getToolCompanies, prefetchTool } from '@/services/tools';
 import { ToolSearchBar, type ToolFilters } from '@/components/tools/ToolSearchBar';
 import type { Tool } from '@/types/models';
 import { SparklesIcon } from '@heroicons/react/24/outline';
@@ -185,6 +185,7 @@ export default function ToolDirectoryPage() {
                               replace={isToolTrayOpen}
                               className="block text-left glass-subtle p-6 border border-gray-200 dark:border-gray-800 hover:border-cyan-400 dark:hover:border-cyan-600 transition-all hover:shadow-neon"
                               style={{ borderRadius: 'var(--radius)' }}
+                              onMouseEnter={() => prefetchTool(tool.slug)}
                             >
                               <div className="flex items-start gap-4">
                                 <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center overflow-hidden bg-white border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>

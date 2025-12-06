@@ -1,12 +1,16 @@
 import { Page } from '@playwright/test';
 
+// Use environment variables with fallbacks for local development
 export const TEST_USER = {
-  username: 'e2e-test-user',
-  email: 'e2e-test@example.com',
-  password: 'e2eTestPass123!',
+  username: process.env.TEST_USER_USERNAME || 'e2e-test-user',
+  email: process.env.TEST_USER_EMAIL || 'e2e-test@example.com',
+  password: process.env.TEST_USER_PASSWORD || 'e2eTestPassword123',
 };
 
-export const TEST_PROJECT_SLUG = 'e2e-test-project';
+export const TEST_PROJECT_SLUG = process.env.TEST_PROJECT_SLUG || 'e2e-test-project';
+
+// API base URL - use proxy in dev, direct in CI
+export const API_BASE_URL = 'http://localhost:8000';
 
 /**
  * Wait for the React app to recognize the authenticated user
@@ -74,8 +78,8 @@ export async function loginViaAPI(page: Page) {
   console.log(`✓ Logged in as: ${loginResult.username}`);
 
   // Reload to initialize AuthContext with the new cookies
-  await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForTimeout(1000);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1500);
 }
 
 /**

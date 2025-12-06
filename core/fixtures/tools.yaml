@@ -1498,3 +1498,49 @@ tools:
       - Use webhooks for async tasks
       - Monitor API usage
       - Version your model deployments
+
+  # === UI COMPONENTS & DESIGN RESOURCES ===
+  - name: 21st.dev
+    tagline: Discover community-made UI components
+    description: >
+      21st.dev is a community-driven platform for discovering and sharing high-quality
+      React UI components built with Tailwind CSS. Browse thousands of ready-to-use
+      components including buttons, cards, modals, forms, marketing blocks, hero sections,
+      and advanced shader effects. Copy and remix components shared by the community
+      to accelerate your frontend development.
+    category: design
+    tool_type: component_library
+    website_url: https://21st.dev
+    logo_url: https://21st.dev/favicon.ico
+    pricing_model: free
+    has_free_tier: true
+    tags:
+      - React
+      - Tailwind CSS
+      - UI Components
+      - Design System
+      - Frontend
+      - Community
+    key_features:
+      - title: Extensive Component Library
+        description: Thousands of UI components organized by category - buttons, cards, inputs, modals, and more
+      - title: Marketing Blocks
+        description: Ready-made hero sections, CTAs, pricing tables, and testimonial blocks
+      - title: Copy & Remix
+        description: One-click copy of component code with easy customization
+      - title: Community Contributions
+        description: Components shared by designers and developers worldwide
+      - title: Tailwind CSS Native
+        description: All components built with Tailwind for easy integration
+    usage_tips:
+      - Browse components by category to find what you need
+      - Copy component code directly into your React project
+      - Customize Tailwind classes to match your design system
+      - Explore shader effects for advanced visual elements
+      - Use marketing blocks to quickly build landing pages
+    best_practices:
+      - Review component code before using in production
+      - Adapt components to your existing design system
+      - Consider accessibility when customizing components
+      - Test components across different screen sizes
+      - Credit original creators when appropriate

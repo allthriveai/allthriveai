@@ -78,6 +78,13 @@ class User(AbstractUser):
         ),
     )
 
+    # Profile Showcase Sections - Customizable personal homepage
+    profile_sections = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Ordered list of profile section configurations for the showcase tab',
+    )
+
     # Gamification System - Single Source of Truth
     # Tier choices and thresholds
     TIER_CHOICES = [
@@ -521,6 +528,74 @@ class User(AbstractUser):
     def tier_display(self):
         """Get human-readable tier name."""
         return dict(self.TIER_CHOICES).get(self.tier, 'Seedling')
+
+    # ============================================================================
+    # PROFILE SHOWCASE METHODS
+    # ============================================================================
+
+    @classmethod
+    def get_default_profile_sections(cls):
+        """
+        Generate default profile sections for new users.
+
+        Returns a list of section configurations with sensible defaults.
+        """
+        import uuid
+
+        return [
+            {
+                'id': str(uuid.uuid4()),
+                'type': 'hero',
+                'visible': True,
+                'order': 0,
+                'content': {},
+            },
+            {
+                'id': str(uuid.uuid4()),
+                'type': 'about',
+                'visible': True,
+                'order': 1,
+                'content': {'blocks': []},
+            },
+            {
+                'id': str(uuid.uuid4()),
+                'type': 'featured_projects',
+                'visible': True,
+                'order': 2,
+                'content': {'projectIds': [], 'maxProjects': 6},
+            },
+            {
+                'id': str(uuid.uuid4()),
+                'type': 'skills',
+                'visible': True,
+                'order': 3,
+                'content': {'skills': []},
+            },
+            {
+                'id': str(uuid.uuid4()),
+                'type': 'stats',
+                'visible': False,
+                'order': 4,
+                'content': {'showXp': True, 'showLevel': True, 'showAchievements': True},
+            },
+            {
+                'id': str(uuid.uuid4()),
+                'type': 'links',
+                'visible': True,
+                'order': 5,
+                'content': {'links': []},
+            },
+        ]
+
+    def initialize_profile_sections(self):
+        """
+        Initialize profile sections with defaults if not already set.
+
+        Call this after user creation or during migration.
+        """
+        if not self.profile_sections:
+            self.profile_sections = self.get_default_profile_sections()
+            self.save(update_fields=['profile_sections'])
 
 
 class UserFollow(models.Model):

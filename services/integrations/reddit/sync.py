@@ -324,9 +324,18 @@ class RedditSyncService:
 
             # Try to get full-size image
             image_url = ''
+            post_hint = post_data.get('post_hint', '')
 
-            # Check for preview images (most common)
-            if 'preview' in post_data and 'images' in post_data['preview']:
+            # Priority 1: For image posts, check for direct i.redd.it URL (original, full-size)
+            # These are uncompressed originals, better than preview URLs
+            if post_hint == 'image':
+                url = post_data.get('url', '')
+                if 'i.redd.it' in url or 'i.imgur.com' in url:
+                    image_url = url
+                    logger.debug(f'Using direct image URL: {url} for {permalink}')
+
+            # Priority 2: Check for preview images (WebP compressed, but high-res)
+            if not image_url and 'preview' in post_data and 'images' in post_data['preview']:
                 images = post_data['preview']['images']
                 if images and len(images) > 0:
                     # Get the highest resolution image from source (full size)

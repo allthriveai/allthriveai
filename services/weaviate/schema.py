@@ -123,6 +123,20 @@ class WeaviateSchema:
                     'indexSearchable': False,
                 },
                 {
+                    'name': 'promotion_score',
+                    'dataType': ['number'],
+                    'description': 'Quality signal from admin promotions (0-1 scale, decays over time)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'was_promoted',
+                    'dataType': ['boolean'],
+                    'description': 'Whether project was ever promoted (for quality training)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
                     'name': 'created_at',
                     'dataType': ['date'],
                     'description': 'Project creation timestamp',

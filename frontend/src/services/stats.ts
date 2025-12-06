@@ -14,14 +14,7 @@ export interface PlatformStats {
  * Public endpoint for landing page
  */
 export async function getPlatformStats(): Promise<PlatformStats> {
-  console.log('[getPlatformStats] Making API call...');
   const response = await api.get('/stats/platform/');
-  console.log('[getPlatformStats] Full response:', response);
-  console.log('[getPlatformStats] Response data:', response.data);
-  console.log('[getPlatformStats] Data type:', typeof response.data);
-  console.log('[getPlatformStats] Data keys:', response.data ? Object.keys(response.data) : 'no data');
-  console.log('[getPlatformStats] activeCreators:', response.data?.activeCreators);
-  console.log('[getPlatformStats] active_creators:', response.data?.active_creators);
   return response.data;
 }
 

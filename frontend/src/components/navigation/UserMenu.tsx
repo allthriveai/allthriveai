@@ -49,15 +49,6 @@ export function UserMenu({ user }: UserMenuProps) {
 
   const menuItems = [
     {
-      label: 'Getting Started',
-      icon: RocketLaunchIcon,
-      highlight: true,
-      onClick: () => {
-        navigate('/getting-started');
-        setIsOpen(false);
-      },
-    },
-    {
       label: 'My Profile',
       onClick: () => {
         navigate(`/${user.username}?tab=showcase`);
@@ -78,6 +69,15 @@ export function UserMenu({ user }: UserMenuProps) {
         setIsOpen(false);
       },
     },
+    {
+      label: 'Getting Started',
+      icon: RocketLaunchIcon,
+      highlight: true,
+      onClick: () => {
+        navigate('/getting-started');
+        setIsOpen(false);
+      },
+    },
   ];
 
   // Dashboard submenu items - only visible to admins and vendors
@@ -85,7 +85,7 @@ export function UserMenu({ user }: UserMenuProps) {
     ...(user.role === 'admin'
       ? [
           {
-            label: 'Platform Analytics',
+            label: 'Admin',
             onClick: () => {
               navigate('/admin/analytics');
               setIsOpen(false);

@@ -41,7 +41,7 @@ class OAuthProviderConfig:
             'authorize_url': 'https://gitlab.com/oauth/authorize',
             'token_url': 'https://gitlab.com/oauth/token',
             'user_info_url': 'https://gitlab.com/api/v4/user',
-            'scopes': ['read_user', 'api'],
+            'scopes': ['read_user'],
             'client_id_setting': 'GITLAB_OAUTH_CLIENT_ID',
             'client_secret_setting': 'GITLAB_OAUTH_CLIENT_SECRET',
         },

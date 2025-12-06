@@ -2,7 +2,7 @@
  * RightAboutPanel - About Us slide-out tray with Neon Glass aesthetic
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons';
 import { AboutContent } from './AboutContent';
@@ -14,25 +14,45 @@ interface RightAboutPanelProps {
 }
 
 export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
+  // Track if panel should be rendered (for slide-out animation)
+  const [shouldRender, setShouldRender] = useState(false);
+
+  // Handle mount/unmount for animations
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+    }
+  }, [isOpen]);
+
+  // Handle transition end to unmount after closing
+  const handleTransitionEnd = () => {
+    if (!isOpen) {
+      setShouldRender(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       analytics.aboutPanelOpened();
     }
   }, [isOpen]);
 
+  if (!shouldRender) return null;
+
   return (
     <>
       {/* Backdrop overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
-          onClick={onClose}
-        />
-      )}
+      <div
+        className={`fixed inset-0 bg-background/80 backdrop-blur-sm z-40 transition-opacity duration-300 ease-in-out ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
       {/* Sliding Panel */}
       <div
-        className={`fixed right-0 top-0 w-full md:w-[520px] h-full flex flex-col z-50 transition-transform duration-300 ease-out ${
+        className={`fixed right-0 top-0 w-full md:w-[520px] h-full flex flex-col z-50 transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{
@@ -41,6 +61,7 @@ export function RightAboutPanel({ isOpen, onClose }: RightAboutPanelProps) {
           WebkitBackdropFilter: 'blur(20px)',
           borderLeft: '1px solid rgba(14, 165, 233, 0.2)',
         }}
+        onTransitionEnd={handleTransitionEnd}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-white/10 flex-shrink-0">

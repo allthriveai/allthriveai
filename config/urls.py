@@ -25,7 +25,7 @@ sitemaps = {
 }
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('thrive-manage/', admin.site.urls),  # Obscured admin URL to reduce automated attacks
     path('db/health/', db_health, name='db-health-root'),
     # Prometheus metrics endpoint
     path('metrics', include('django_prometheus.urls')),

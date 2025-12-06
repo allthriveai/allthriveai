@@ -124,9 +124,30 @@ def stripe_webhook(request):
 
             # Payment events
             elif event_type == 'payment_intent.succeeded':
-                StripeService.handle_payment_intent_succeeded(event_data)
+                # Check if this is a marketplace purchase or billing purchase
+                payment_intent = event_data['object']
+                metadata = payment_intent.get('metadata', {})
+
+                if metadata.get('platform') == 'allthrive_marketplace':
+                    # Marketplace product purchase
+                    from core.marketplace.services import MarketplaceCheckoutService
+
+                    MarketplaceCheckoutService.handle_payment_success(payment_intent['id'])
+                    logger.info(f'Processed marketplace payment: {payment_intent["id"]}')
+                else:
+                    # Billing purchase (token packages)
+                    StripeService.handle_payment_intent_succeeded(event_data)
 
             elif event_type == 'payment_intent.payment_failed':
+                # Check if this is a marketplace purchase
+                payment_intent = event_data['object']
+                metadata = payment_intent.get('metadata', {})
+
+                if metadata.get('platform') == 'allthrive_marketplace':
+                    from core.marketplace.services import MarketplaceCheckoutService
+
+                    MarketplaceCheckoutService.handle_payment_failure(payment_intent['id'])
+
                 StructuredLogger.log_service_operation(
                     service_name='StripeWebhook',
                     operation='payment_failed',

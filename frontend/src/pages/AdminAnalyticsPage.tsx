@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/services/api';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { AdminLayout } from '@/components/layouts/AdminLayout';
 import {
   ChartBarIcon,
   UsersIcon,
@@ -178,22 +179,18 @@ export default function AdminAnalyticsPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        {/* Header */}
-        <header className="mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-neon text-xs font-medium mb-6 tracking-wider uppercase">
-            <span className="luminous-dot animate-pulse" />
-            Admin Only
-          </div>
+      <AdminLayout>
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          {/* Header */}
+          <header className="mb-8">
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              Platform <span className="text-gradient-cyan">Analytics</span>
+            </h1>
 
-          <h1 className="mb-4">
-            Platform <span className="text-gradient-cyan">Analytics</span>
-          </h1>
-
-          <p className="text-xl text-slate-400 max-w-2xl leading-relaxed">
-            Real-time insights into platform performance, user behavior, and AI usage.
-          </p>
-        </header>
+            <p className="text-slate-400">
+              Real-time insights into platform performance, user behavior, and AI usage.
+            </p>
+          </header>
 
         {/* Time Period Selector */}
         <div className="mb-8 flex justify-end">
@@ -294,7 +291,8 @@ export default function AdminAnalyticsPage() {
             <RevenueDashboard />
           )}
         </div>
-      </div>
+        </div>
+      </AdminLayout>
     </DashboardLayout>
   );
 }

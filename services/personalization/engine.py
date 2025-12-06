@@ -38,6 +38,7 @@ class ScoredProject:
     behavioral_score: float = 0.0
     collaborative_score: float = 0.0
     popularity_score: float = 0.0
+    promotion_score: float = 0.0  # Quality signal from admin promotions
     diversity_boost: float = 0.0
 
     def to_dict(self) -> dict:
@@ -50,6 +51,7 @@ class ScoredProject:
                 'behavioral': round(self.behavioral_score, 4),
                 'collaborative': round(self.collaborative_score, 4),
                 'popularity': round(self.popularity_score, 4),
+                'promotion': round(self.promotion_score, 4),
                 'diversity_boost': round(self.diversity_boost, 4),
             },
         }
@@ -72,12 +74,14 @@ class PersonalizationEngine:
     """
 
     # Configurable weights for hybrid scoring
+    # Total = 1.0 (vector + explicit + behavioral + collaborative + popularity + promotion)
     WEIGHTS = {
-        'vector_similarity': 0.30,
-        'explicit_preferences': 0.25,
-        'behavioral_signals': 0.25,
-        'collaborative': 0.15,
+        'vector_similarity': 0.27,
+        'explicit_preferences': 0.23,
+        'behavioral_signals': 0.23,
+        'collaborative': 0.14,
         'popularity': 0.05,
+        'promotion': 0.08,  # Quality signal from admin-promoted content
     }
 
     # Number of candidate projects to fetch from Weaviate
@@ -482,6 +486,10 @@ class PersonalizationEngine:
 
             popularity_score = (like_count / max_like_count) * 0.5 + (velocity / max_velocity) * 0.5
 
+            # 6. Promotion score (quality signal from admin-promoted content)
+            # This helps train the algorithm on what good content looks like
+            promotion_score = candidate.get('promotion_score', 0.0)
+
             # Combine with weights
             total_score = (
                 (vector_score * self.WEIGHTS['vector_similarity'])
@@ -489,6 +497,7 @@ class PersonalizationEngine:
                 + (behavioral_score * self.WEIGHTS['behavioral_signals'])
                 + (collaborative_score * self.WEIGHTS['collaborative'])
                 + (popularity_score * self.WEIGHTS['popularity'])
+                + (promotion_score * self.WEIGHTS['promotion'])
             )
 
             scored_projects.append(
@@ -500,6 +509,7 @@ class PersonalizationEngine:
                     behavioral_score=behavioral_score,
                     collaborative_score=collaborative_score,
                     popularity_score=popularity_score,
+                    promotion_score=promotion_score,
                 )
             )
 

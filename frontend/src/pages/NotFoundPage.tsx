@@ -276,45 +276,45 @@ export default function NotFoundPage() {
         onTouchStart={handleFire}
       >
         {/* Logo, Score & Timer Display */}
-        <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
-          {/* AllThrive Logo */}
-          <Link to="/" className="flex items-center gap-2 mr-2">
+        <div className="absolute top-4 left-4 md:top-6 md:left-6 z-20 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+          {/* AllThrive Logo - Hidden on mobile, shown in top pill instead */}
+          <Link to="/" className="hidden sm:flex items-center gap-2 mr-2">
             <img
               src="/all-thrvie-logo.png"
               alt="AllThrive"
               className="h-8 w-auto"
             />
           </Link>
-          <div className="glass-subtle px-4 py-2 rounded-xl border border-cyan-500/20">
-            <span className="text-cyan-neon font-mono text-lg">SCORE: {score}</span>
+          <div className="glass-subtle px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-cyan-500/20">
+            <span className="text-cyan-neon font-mono text-sm sm:text-lg">SCORE: {score}</span>
           </div>
-          <div className="glass-subtle px-4 py-2 rounded-xl border border-pink-accent/20">
-            <span className="text-pink-accent font-mono text-lg">
+          <div className="glass-subtle px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-pink-accent/20">
+            <span className="text-pink-accent font-mono text-sm sm:text-lg">
               TIME: {(Math.max(0, GAME_TIME_LIMIT - elapsedTime) / 10).toFixed(1)}s
             </span>
           </div>
         </div>
 
-        {/* Instructions */}
+        {/* Instructions - hidden on mobile to avoid overlap */}
         <motion.div
-          className="absolute top-6 right-6 z-20 text-right"
+          className="absolute top-4 right-4 md:top-6 md:right-6 z-20 text-right hidden sm:block"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <div className="glass-subtle px-4 py-2 rounded-xl border border-cyan-500/20">
-            <p className="text-slate-400 text-sm">Move mouse to aim</p>
-            <p className="text-cyan-neon text-sm">Click/Tap to fire faster!</p>
+          <div className="glass-subtle px-3 py-2 md:px-4 rounded-xl border border-cyan-500/20">
+            <p className="text-slate-400 text-xs md:text-sm">Move mouse to aim</p>
+            <p className="text-cyan-neon text-xs md:text-sm">Click/Tap to fire faster!</p>
           </div>
         </motion.div>
 
         {/* 404 Digits */}
-        <div className="absolute inset-0 flex items-start justify-center pt-[15%]">
+        <div className="absolute inset-0 flex items-start justify-center pt-[20%] sm:pt-[15%]">
           <AnimatePresence>
             {digits.map((digit) => (
               <motion.div
                 key={digit.id}
-                className="relative mx-4"
+                className="relative mx-1 sm:mx-4"
                 style={{
                   left: `${digit.x - 50}%`,
                 }}
@@ -333,7 +333,7 @@ export default function NotFoundPage() {
               >
                 {/* Health bar */}
                 {!digit.destroyed && (
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-24 h-2 bg-slate-800/50 rounded-full overflow-hidden">
+                  <div className="absolute -top-6 sm:-top-8 left-1/2 -translate-x-1/2 w-16 sm:w-24 h-1.5 sm:h-2 bg-slate-800/50 rounded-full overflow-hidden">
                     <motion.div
                       className="h-full bg-gradient-to-r from-cyan-500 to-pink-accent"
                       initial={{ width: '100%' }}
@@ -345,7 +345,7 @@ export default function NotFoundPage() {
 
                 {/* Digit character */}
                 <motion.span
-                  className={`text-[120px] md:text-[180px] font-black select-none ${
+                  className={`text-[80px] sm:text-[120px] md:text-[180px] font-black select-none ${
                     digit.destroyed
                       ? 'text-transparent'
                       : 'text-transparent bg-clip-text bg-gradient-to-b from-cyan-400 via-cyan-500 to-pink-accent'
@@ -472,7 +472,7 @@ export default function NotFoundPage() {
           >
             <FontAwesomeIcon
               icon={faRocket}
-              className="text-4xl md:text-5xl text-cyan-400 drop-shadow-[0_0_15px_rgba(14,165,233,0.8)]"
+              className="text-3xl sm:text-4xl md:text-5xl text-cyan-400 drop-shadow-[0_0_15px_rgba(14,165,233,0.8)]"
               style={{ transform: 'rotate(-45deg)' }}
             />
 
@@ -501,20 +501,20 @@ export default function NotFoundPage() {
         <AnimatePresence>
           {gameWon && (
             <motion.div
-              className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-background/80 backdrop-blur-sm"
+              className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-background/80 backdrop-blur-sm px-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
               <motion.div
-                className="text-center"
+                className="text-center w-full max-w-md"
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.2, type: 'spring' }}
               >
                 {/* AllThrive Logo on Victory */}
                 <motion.div
-                  className="flex justify-center mb-6"
+                  className="flex justify-center mb-4 sm:mb-6"
                   initial={{ y: -20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
@@ -523,13 +523,13 @@ export default function NotFoundPage() {
                     <img
                       src="/all-thrvie-logo.png"
                       alt="AllThrive"
-                      className="h-12 w-auto"
+                      className="h-10 sm:h-12 w-auto"
                     />
                   </Link>
                 </motion.div>
 
                 <motion.h2
-                  className="text-5xl md:text-7xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-accent"
+                  className="text-3xl sm:text-5xl md:text-7xl font-black mb-3 sm:mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-accent"
                   animate={{
                     textShadow: [
                       '0 0 20px rgba(14, 165, 233, 0.5)',
@@ -542,20 +542,20 @@ export default function NotFoundPage() {
                   404 DESTROYED!
                 </motion.h2>
 
-                <div className="mb-6 space-y-1">
-                  <p className="text-slate-400">Time Remaining: {(finalTime / 10).toFixed(1)}s</p>
-                  <p className="text-slate-400">Hit Score: {score}</p>
-                  <p className="text-slate-400">Time Bonus: +{timeBonus}</p>
-                  <p className="text-3xl text-cyan-neon font-bold mt-2">
+                <div className="mb-4 sm:mb-6 space-y-0.5 sm:space-y-1">
+                  <p className="text-slate-400 text-sm sm:text-base">Time Remaining: {(finalTime / 10).toFixed(1)}s</p>
+                  <p className="text-slate-400 text-sm sm:text-base">Hit Score: {score}</p>
+                  <p className="text-slate-400 text-sm sm:text-base">Time Bonus: +{timeBonus}</p>
+                  <p className="text-2xl sm:text-3xl text-cyan-neon font-bold mt-2">
                     Final Score: {score + timeBonus}
                   </p>
                 </div>
-                <p className="text-slate-400 mb-8">The error has been vaporized!</p>
+                <p className="text-slate-400 text-sm sm:text-base mb-6 sm:mb-8">The error has been vaporized!</p>
 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
                   <Link
                     to="/"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-white font-semibold rounded-xl transition-all shadow-neon hover:shadow-neon-lg"
+                    className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-white font-semibold rounded-xl transition-all shadow-neon hover:shadow-neon-lg text-sm sm:text-base"
                   >
                     <FontAwesomeIcon icon={faHome} />
                     Go Home
@@ -563,7 +563,7 @@ export default function NotFoundPage() {
 
                   <button
                     onClick={resetGame}
-                    className="inline-flex items-center gap-2 px-6 py-3 glass-subtle border border-cyan-500/30 hover:border-cyan-500/50 text-cyan-neon font-semibold rounded-xl transition-all"
+                    className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 glass-subtle border border-cyan-500/30 hover:border-cyan-500/50 text-cyan-neon font-semibold rounded-xl transition-all text-sm sm:text-base"
                   >
                     <FontAwesomeIcon icon={faRocket} />
                     Play Again
@@ -574,24 +574,46 @@ export default function NotFoundPage() {
           )}
         </AnimatePresence>
 
-        {/* Page Not Found Pill - centered at top */}
+        {/* Page Not Found Pill - centered at top, mobile-friendly */}
         {!gameWon && (
           <motion.div
-            className="absolute top-6 left-0 right-0 flex justify-center z-20"
+            className="absolute top-20 sm:top-6 left-0 right-0 flex justify-center z-20 px-4"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <div className="glass-subtle px-5 py-2.5 rounded-xl border border-pink-accent/30 flex items-center gap-3">
-              <span className="text-white font-semibold">Lost in the cosmos</span>
-              <span className="text-slate-400 text-sm hidden sm:inline">Fight your way back &amp; destroy the 404!</span>
+            <div className="glass-subtle px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-pink-accent/30 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 max-w-full">
+              {/* Mobile: Show logo inline */}
+              <Link to="/" className="flex sm:hidden items-center gap-2">
+                <img
+                  src="/all-thrvie-logo.png"
+                  alt="AllThrive"
+                  className="h-6 w-auto"
+                />
+              </Link>
+              <span className="text-white font-semibold text-sm sm:text-base text-center">Lost in the cosmos</span>
+              <span className="text-slate-400 text-xs sm:text-sm hidden sm:inline">Fight your way back &amp; destroy the 404!</span>
               <Link
                 to="/"
-                className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-neon text-sm font-medium rounded-lg transition-all"
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-neon text-xs sm:text-sm font-medium rounded-lg transition-all"
               >
                 <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
                 Home
               </Link>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Mobile touch hint - only visible on small screens */}
+        {!gameWon && (
+          <motion.div
+            className="absolute bottom-6 left-0 right-0 flex justify-center z-20 px-4 sm:hidden"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+          >
+            <div className="glass-subtle px-3 py-2 rounded-xl border border-cyan-500/20 text-center">
+              <p className="text-cyan-neon text-xs">Drag to move &bull; Tap to fire faster!</p>
             </div>
           </motion.div>
         )}

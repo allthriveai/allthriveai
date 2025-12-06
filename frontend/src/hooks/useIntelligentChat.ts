@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { buildWebSocketUrl, logWebSocketUrl } from '@/utils/websocket';
+import { saveChatMessages, loadChatMessages, clearChatMessages } from '@/utils/chatStorage';
+import { logError } from '@/utils/errorHandler';
 
 // Simple cookie reader for CSRF token (mirrors frontend/src/services/api.ts)
 function getCookie(name: string): string | null {
@@ -104,7 +106,11 @@ export function useIntelligentChat({
   autoReconnect = true
 }: UseIntelligentChatOptions) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Initialize messages from localStorage
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    // Only load from storage on initial render
+    return loadChatMessages(conversationId);
+  });
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -128,7 +134,6 @@ export function useIntelligentChat({
   const addMessageWithDedup = useCallback((newMessage: ChatMessage) => {
     // Check if we've already seen this message ID
     if (seenMessageIdsRef.current.has(newMessage.id)) {
-      console.log(`[WebSocket] Duplicate message ignored: ${newMessage.id}`);
       return;
     }
 
@@ -197,23 +202,18 @@ export function useIntelligentChat({
 
   // Connect to WebSocket
   const connect = useCallback(async () => {
-    console.log('[WebSocket] Attempting connection...', { isAuthenticated, authLoading, conversationId, isConnecting, isConnectingRef: isConnectingRef.current });
     if (authLoading) {
-      console.log('[WebSocket] Waiting for auth to load...');
       return;
     }
     if (!isAuthenticated) {
-      console.warn('[WebSocket] Not authenticated, aborting connection');
       onError?.('Please log in to use chat');
       return;
     }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      console.warn('[WebSocket] Already connected');
       return;
     }
     // Use ref-based lock to prevent race conditions with React StrictMode
     if (isConnecting || isConnectingRef.current) {
-      console.warn('[WebSocket] Connection already in progress (ref check)');
       return;
     }
 
@@ -230,7 +230,6 @@ export function useIntelligentChat({
     setIsConnecting(true);
 
     // Step 1: Fetch connection token from backend
-    console.log('[WebSocket] Fetching connection token...');
     let connectionToken: string;
     try {
       const csrfToken = getCookie('csrftoken');
@@ -248,14 +247,11 @@ export function useIntelligentChat({
       });
 
       if (!response.ok) {
-        // Helpful for debugging in devtools
-        console.error('[WebSocket] ws-connection-token failed with status', response.status);
         throw new Error(`Failed to fetch connection token: ${response.status}`);
       }
 
       const data = await response.json();
       connectionToken = data.connection_token;
-      console.log('[WebSocket] Connection token received');
     } catch (error) {
       console.error('[WebSocket] Failed to fetch connection token:', error);
       setIsConnecting(false);
@@ -284,7 +280,6 @@ export function useIntelligentChat({
       }, CONNECTION_TIMEOUT);
 
       ws.onopen = () => {
-        console.log('[WebSocket] Connection opened');
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
@@ -299,7 +294,6 @@ export function useIntelligentChat({
       ws.onmessage = (event) => {
         try {
           const data: WebSocketMessage = JSON.parse(event.data);
-          console.log('[WebSocket] Received message:', data.event, data);
 
           // Ignore pong responses from server
           if (data.event === 'pong') {
@@ -364,12 +358,10 @@ export function useIntelligentChat({
 
             case 'tool_start':
               // Tool execution started - could show a loading indicator
-              console.log(`[WebSocket] Tool started: ${data.tool}`);
               break;
 
             case 'tool_end':
               // Tool execution completed - check for project creation
-              console.log(`[WebSocket] Tool ended: ${data.tool}`, data.output);
               // Handle both create_project and import_github_project
               if ((data.tool === 'create_project' || data.tool === 'import_github_project') &&
                   data.output?.success && data.output?.url) {
@@ -380,7 +372,6 @@ export function useIntelligentChat({
 
             case 'image_generating':
               // Image generation started - show generating indicator
-              console.log('[WebSocket] Image generation started');
               // Use a stable ID for generating state to prevent duplicates
               const generatingId = `generating-${conversationId}`;
               // Remove any existing generating message first, then add new one
@@ -401,7 +392,6 @@ export function useIntelligentChat({
 
             case 'image_generated':
               // Image generated successfully - replace generating indicator with image
-              console.log('[WebSocket] Image generated:', data.image_url, 'session:', data.session_id, 'iteration:', data.iteration_number);
               // Use session_id and iteration for a stable, unique ID
               const imageMessageId = `generated-image-${data.session_id || 'unknown'}-${data.iteration_number || Date.now()}`;
               setMessages((prev) => {
@@ -446,7 +436,6 @@ export function useIntelligentChat({
 
             case 'quota_exceeded':
               // User has exceeded their AI usage limit
-              console.log('[WebSocket] Quota exceeded:', data);
               setIsLoading(false);
               currentMessageRef.current = '';
               currentMessageIdRef.current = '';
@@ -552,7 +541,6 @@ export function useIntelligentChat({
 
     // Check for duplicate (rapid double-click prevention)
     if (seenMessageIdsRef.current.has(messageId)) {
-      console.log(`[WebSocket] Duplicate user message ignored: ${messageId}`);
       return;
     }
 
@@ -603,10 +591,56 @@ export function useIntelligentChat({
   // Retry connection when auth finishes loading
   useEffect(() => {
     if (!authLoading && isAuthenticated && !wsRef.current && !isConnecting) {
-      console.log('[WebSocket] Auth loaded, attempting connection');
       connectFnRef.current?.();
     }
   }, [authLoading, isAuthenticated, isConnecting]);
+
+  // Debounced save to localStorage - prevents excessive writes during streaming
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedConversationRef = useRef<string>(conversationId);
+
+  useEffect(() => {
+    // Clear pending save if conversation changes
+    if (lastSavedConversationRef.current !== conversationId) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      lastSavedConversationRef.current = conversationId;
+    }
+
+    // Only save if we have messages (don't clear on unmount)
+    if (messages.length > 0) {
+      // Clear any pending save
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      // Debounce: wait 1 second after last message change before saving
+      saveTimeoutRef.current = setTimeout(() => {
+        saveChatMessages(conversationId, messages);
+      }, 1000);
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [messages, conversationId]);
+
+  // Clear messages for this conversation
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    // Clear any pending save timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    // Clear from storage using already-imported function
+    clearChatMessages(conversationId);
+  }, [conversationId]);
 
   return {
     messages,
@@ -617,5 +651,6 @@ export function useIntelligentChat({
     sendMessage,
     connect,
     disconnect,
+    clearMessages,
   };
 }

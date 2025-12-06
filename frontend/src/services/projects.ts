@@ -16,6 +16,8 @@ interface ProjectApiResponse {
   isHighlighted?: boolean;
   isPrivate?: boolean;
   isArchived: boolean;
+  isPromoted?: boolean;
+  promotedAt?: string;
   bannerUrl?: string;
   featuredImageUrl?: string;
   externalUrl?: string;
@@ -49,6 +51,8 @@ function transformProject(data: ProjectApiResponse): Project {
     isHighlighted: data.isHighlighted ?? false,
     isPrivate: data.isPrivate ?? false,
     isArchived: data.isArchived,
+    isPromoted: data.isPromoted ?? false,
+    promotedAt: data.promotedAt,
     bannerUrl: data.bannerUrl,
     featuredImageUrl: data.featuredImageUrl || '',
     externalUrl: data.externalUrl || '',
@@ -271,4 +275,26 @@ export async function createProjectFromImageSession(
     title: customTitle,
   });
   return response.data;
+}
+
+/**
+ * Toggle project promotion status (admin only)
+ * Promoted projects appear at the top of explore feeds
+ */
+export async function toggleProjectPromotion(projectId: number): Promise<{
+  isPromoted: boolean;
+  promotedAt: string | null;
+}> {
+  const response = await api.post<{
+    success: boolean;
+    data: {
+      id: number;
+      isPromoted: boolean;  // camelCase after API interceptor transform
+      promotedAt: string | null;
+    };
+  }>(`/projects/${projectId}/toggle-promotion/`);
+  return {
+    isPromoted: response.data.data.isPromoted,
+    promotedAt: response.data.data.promotedAt,
+  };
 }

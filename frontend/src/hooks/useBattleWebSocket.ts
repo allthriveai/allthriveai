@@ -309,7 +309,6 @@ export function useBattleWebSocket({
       }, CONNECTION_TIMEOUT);
 
       ws.onopen = () => {
-        console.log('[Battle WS] Connected');
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
@@ -324,7 +323,6 @@ export function useBattleWebSocket({
       ws.onmessage = (event) => {
         try {
           const data: WebSocketMessage = JSON.parse(event.data);
-          console.log('[Battle WS] Message:', data.event, data);
 
           if (data.event === 'pong') return;
 
@@ -379,7 +377,6 @@ export function useBattleWebSocket({
               break;
 
             case 'submission_confirmed':
-              console.log('[Battle WS] Submission confirmed:', data.submission_id);
               // Update battleState to reflect submission
               setBattleState((prev) => {
                 if (!prev) return null;
@@ -394,11 +391,9 @@ export function useBattleWebSocket({
               break;
 
             case 'image_generating':
-              console.log('[Battle WS] Image generating for user:', data.user_id);
               break;
 
             case 'image_generated':
-              console.log('[Battle WS] Image generated:', data.image_url);
               // Update my submission with the image if it's mine
               setBattleState((prev) => {
                 if (!prev || !prev.mySubmission) return prev;
@@ -417,7 +412,6 @@ export function useBattleWebSocket({
               break;
 
             case 'judging_complete':
-              console.log('[Battle WS] Judging complete, winner:', data.winner_id, 'results:', data.results);
               setBattleState((prev) => {
                 if (!prev) return null;
 
@@ -456,7 +450,6 @@ export function useBattleWebSocket({
 
             case 'state_refresh':
               // Server is telling us to request fresh state (after judging/completion)
-              console.log('[Battle WS] State refresh requested');
               // Send request_state directly since requestState callback isn't available here
               if (wsRef.current?.readyState === WebSocket.OPEN) {
                 wsRef.current.send(JSON.stringify({ type: 'request_state' }));
@@ -464,7 +457,6 @@ export function useBattleWebSocket({
               break;
 
             case 'battle_complete':
-              console.log('[Battle WS] Battle complete, winner:', data.winner_id);
               onMatchCompleteRef.current?.(data.winner_id as number | null);
               break;
 
@@ -486,7 +478,6 @@ export function useBattleWebSocket({
       };
 
       ws.onclose = (event) => {
-        console.log('[Battle WS] Closed:', event.code);
         setIsConnected(false);
         setIsConnecting(false);
         isConnectingRef.current = false;

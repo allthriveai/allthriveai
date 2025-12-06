@@ -172,3 +172,198 @@ jobs:
 
           # Cleanup
           kill $SRV_PID || true
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: test  # Run after backend tests pass
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: allthrive_ai
+          POSTGRES_USER: allthrive
+          POSTGRES_PASSWORD: allthrive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U allthrive -d allthrive_ai"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://allthrive:allthrive@localhost:5432/allthrive_ai
+      SECRET_KEY: ci-secret-key
+      # DEBUG must be True for test-login endpoint used by E2E tests
+      # This is safe because CI uses an ephemeral database with no real data
+      DEBUG: "True"
+      ALLOWED_HOSTS: "localhost,127.0.0.1"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+      PYTHONUNBUFFERED: "1"
+      REDIS_URL: redis://localhost:6379/0
+      CACHE_URL: redis://localhost:6379/2
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/0
+      SITE_URL: http://localhost:8000
+      COOKIE_DOMAIN: localhost
+      CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+      # E2E test credentials (from GitHub secrets)
+      TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
+      TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+      TEST_USER_USERNAME: ${{ secrets.E2E_TEST_USER_USERNAME }}
+      TEST_PROJECT_SLUG: ${{ secrets.E2E_TEST_PROJECT_SLUG }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ===== Backend Setup =====
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for Postgres
+        run: |
+          python - <<'PY'
+          import os, time, psycopg2
+          url = os.environ['DATABASE_URL']
+          for i in range(60):
+              try:
+                  psycopg2.connect(url).close()
+                  print('DB ready')
+                  break
+              except Exception as e:
+                  print('Waiting for DB...', e)
+                  time.sleep(1)
+          else:
+              raise SystemExit('Database not available')
+          PY
+
+      - name: Run Django migrations
+        run: |
+          python manage.py migrate --noinput
+
+      - name: Create E2E test user and data
+        run: |
+          python manage.py shell <<'SHELL'
+          from django.contrib.auth import get_user_model
+          from core.projects.models import Project
+          import os
+
+          User = get_user_model()
+
+          email = os.environ.get('TEST_USER_EMAIL', 'e2e-test@allthrive.ai')
+          password = os.environ.get('TEST_USER_PASSWORD', 'e2e-test-password-123')
+          username = os.environ.get('TEST_USER_USERNAME', 'e2e-test-user')
+          project_slug = os.environ.get('TEST_PROJECT_SLUG', 'e2e-test-project')
+
+          # Create test user if not exists
+          user, created = User.objects.get_or_create(
+              username=username,
+              defaults={
+                  'email': email,
+                  'is_active': True,
+              }
+          )
+          if created:
+              user.set_password(password)
+              user.save()
+              print(f'Created test user: {username}')
+          else:
+              print(f'Test user already exists: {username}')
+
+          # Create test project if not exists
+          project, created = Project.objects.get_or_create(
+              user=user,
+              slug=project_slug,
+              defaults={
+                  'title': 'E2E Test Project',
+                  'description': 'A project for E2E testing',
+                  'type': 'project',
+                  'is_private': False,
+              }
+          )
+          if created:
+              print(f'Created test project: {project_slug}')
+          else:
+              print(f'Test project already exists: {project_slug}')
+          SHELL
+
+      - name: Start Django backend
+        run: |
+          python manage.py runserver 127.0.0.1:8000 > /tmp/django.log 2>&1 &
+          echo $! > /tmp/django.pid
+
+          # Wait for backend to be ready
+          for i in {1..30}; do
+            if curl -sSf http://127.0.0.1:8000/api/v1/db/health/ > /dev/null 2>&1; then
+              echo "✅ Django backend ready"
+              break
+            fi
+            echo "Waiting for Django... ($i/30)"
+            sleep 2
+          done
+
+      # ===== Frontend Setup =====
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      # ===== Run E2E Tests =====
+      - name: Run Playwright E2E tests
+        working-directory: frontend
+        run: npx playwright test
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload test screenshots
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-screenshots
+          path: frontend/test-results/
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -f /tmp/django.pid ]; then
+            kill $(cat /tmp/django.pid) || true
+          fi

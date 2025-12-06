@@ -234,8 +234,8 @@ class Product(models.Model):
 
     @property
     def platform_fee_rate(self):
-        """Platform fee rate (5%)."""
-        return Decimal('0.05')
+        """Platform fee rate (8%)."""
+        return Decimal('0.08')
 
     def calculate_creator_payout(self, amount: Decimal, stripe_fee: Decimal = Decimal('0')) -> Decimal:
         """Calculate creator payout after platform fee and Stripe fees."""
@@ -341,7 +341,7 @@ class Order(models.Model):
     platform_fee = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        help_text='Platform fee (5%)',
+        help_text='Platform fee (8%)',
     )
     stripe_fee = models.DecimalField(
         max_digits=10,

@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { SEO } from '@/components/common/SEO';
 import { Footer } from '@/components/landing/Footer';
+import { Modal } from '@/components/ui/Modal';
 import { getSubscriptionTiers, getSubscriptionStatus, createCheckoutSession } from '@/services/billing';
 import type { SubscriptionTier } from '@/services/billing';
+import { api } from '@/services/api';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import {
   RocketLaunchIcon,
@@ -17,16 +20,221 @@ import {
 } from '@heroicons/react/24/outline';
 import { analytics } from '@/utils/analytics';
 
-export default function PricingPage() {
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
+
+type FormState = 'idle' | 'submitting' | 'success' | 'error';
+
+interface CreatorFormProps {
+  formState: FormState;
+  setFormState: (state: FormState) => void;
+  errorMessage: string;
+  setErrorMessage: (msg: string) => void;
+  formData: { name: string; email: string; reason: string; sellType: string };
+  setFormData: (data: { name: string; email: string; reason: string; sellType: string }) => void;
+}
+
+function CreatorRequestForm({
+  formState,
+  setFormState,
+  errorMessage,
+  setErrorMessage,
+  formData,
+  setFormData,
+}: CreatorFormProps) {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormState('submitting');
+    setErrorMessage('');
+
+    try {
+      let recaptchaToken = '';
+      if (executeRecaptcha) {
+        try {
+          recaptchaToken = await executeRecaptcha('creator_request');
+        } catch (recaptchaError) {
+          console.warn('reCAPTCHA failed, proceeding without token:', recaptchaError);
+        }
+      }
+
+      await api.post('/invitations/request/', {
+        name: formData.name,
+        email: formData.email,
+        reason: `[CREATOR REQUEST - Wants to sell: ${formData.sellType}] ${formData.reason}`,
+        recaptcha_token: recaptchaToken,
+        is_creator_request: true,
+      });
+      setFormState('success');
+    } catch (error: unknown) {
+      setFormState('error');
+      const err = error as { response?: { data?: { error?: string }; status?: number } };
+      if (err.response?.status === 409) {
+        setErrorMessage('This email has already submitted a request. Check your inbox!');
+      } else if (err.response?.status === 429) {
+        setErrorMessage('Too many requests. Please try again later.');
+      } else if (err.response?.status === 400 && err.response?.data?.error?.includes('reCAPTCHA')) {
+        setErrorMessage('Bot verification failed. Please try again.');
+      } else {
+        setErrorMessage(err.response?.data?.error || 'Something went wrong. Please try again.');
+      }
+    }
+  }, [executeRecaptcha, formData, setFormState, setErrorMessage]);
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="text-gray-400 mb-4">
+        Join our creator community! Tell us what you'd like to sell on All Thrive.
+      </p>
+
+      {errorMessage && (
+        <div className="p-3 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+          {errorMessage}
+        </div>
+      )}
+
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">
+          Name <span className="text-red-400">*</span>
+        </label>
+        <input
+          type="text"
+          id="name"
+          required
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="w-full px-4 py-2 rounded bg-[#0f172a] border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+          placeholder="Your name"
+          disabled={formState === 'submitting'}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
+          Email <span className="text-red-400">*</span>
+        </label>
+        <input
+          type="email"
+          id="email"
+          required
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          className="w-full px-4 py-2 rounded bg-[#0f172a] border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+          placeholder="you@example.com"
+          disabled={formState === 'submitting'}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="sellType" className="block text-sm font-medium text-gray-300 mb-1">
+          What do you want to sell? <span className="text-red-400">*</span>
+        </label>
+        <select
+          id="sellType"
+          required
+          value={formData.sellType}
+          onChange={(e) => setFormData({ ...formData, sellType: e.target.value })}
+          className="w-full px-4 py-2 rounded bg-[#0f172a] border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+          disabled={formState === 'submitting'}
+        >
+          <option value="">Select an option...</option>
+          <option value="Prompts & Templates">Prompts & Templates</option>
+          <option value="Courses & Tutorials">Courses & Tutorials</option>
+          <option value="AI Tools & Workflows">AI Tools & Workflows</option>
+          <option value="Coaching & Mentoring">Coaching & Mentoring</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="reason" className="block text-sm font-medium text-gray-300 mb-1">
+          Tell us more <span className="text-gray-500">(optional)</span>
+        </label>
+        <textarea
+          id="reason"
+          rows={3}
+          value={formData.reason}
+          onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+          className="w-full px-4 py-2 rounded bg-[#0f172a] border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors resize-none"
+          placeholder="Describe what you'd like to create and sell..."
+          disabled={formState === 'submitting'}
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={formState === 'submitting'}
+        className="w-full px-6 py-3 rounded bg-gradient-to-r from-emerald-400 to-teal-400 text-[#020617] font-semibold hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {formState === 'submitting' ? (
+          <>
+            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Submitting...
+          </>
+        ) : (
+          <>
+            Request to Join
+            <ArrowRightIcon className="w-4 h-4" />
+          </>
+        )}
+      </button>
+
+      <p className="text-xs text-gray-500 text-center">
+        This site is protected by reCAPTCHA and the Google{' '}
+        <a href="https://policies.google.com/privacy" className="text-cyan-400 hover:underline" target="_blank" rel="noopener noreferrer">
+          Privacy Policy
+        </a>{' '}
+        and{' '}
+        <a href="https://policies.google.com/terms" className="text-cyan-400 hover:underline" target="_blank" rel="noopener noreferrer">
+          Terms of Service
+        </a>{' '}
+        apply.
+      </p>
+    </form>
+  );
+}
+
+function PricingPageContent() {
   const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
+  const [creatorFormState, setCreatorFormState] = useState<FormState>('idle');
+  const [creatorErrorMessage, setCreatorErrorMessage] = useState('');
+  const [creatorFormData, setCreatorFormData] = useState({
+    name: '',
+    email: '',
+    reason: '',
+    sellType: '',
+  });
 
   useEffect(() => {
     analytics.pricingPageViewed();
   }, []);
 
+  const handleCreatorRequest = () => {
+    setIsCreatorModalOpen(true);
+    setCreatorFormState('idle');
+    setCreatorErrorMessage('');
+  };
+
+  const handleCloseCreatorModal = () => {
+    setIsCreatorModalOpen(false);
+    setTimeout(() => {
+      setCreatorFormData({ name: '', email: '', reason: '', sellType: '' });
+      setCreatorFormState('idle');
+      setCreatorErrorMessage('');
+    }, 200);
+  };
+
   const faqs = [
+    {
+      question: 'How does the Creator plan work?',
+      answer: 'The Creator plan is completely free to join. When you sell prompts, templates, or courses on our marketplace, we take a small 8% fee on each sale. You keep 92% of your earnings with no monthly costs or upfront fees.',
+    },
     {
       question: 'Can I change plans anytime?',
       answer: 'Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we\'ll prorate the difference.',
@@ -86,7 +294,7 @@ export default function PricingPage() {
     {
       slug: 'pro-learn',
       name: 'Pro Learn',
-      description: 'Unlock professional courses and analytics',
+      description: 'Learning paths & interactive courses',
       tierType: 'pro_learn',
       priceMonthly: '29.99',
       priceAnnual: '305.90',
@@ -105,12 +313,12 @@ export default function PricingPage() {
     },
     {
       slug: 'creator-mentor',
-      name: 'Creator & Mentor',
-      description: 'Build and sell your own courses',
+      name: 'Creator',
+      description: 'Sell courses, prompts & templates',
       tierType: 'creator_mentor',
-      priceMonthly: '79.99',
-      priceAnnual: '815.90',
-      trialPeriodDays: 14,
+      priceMonthly: '0.00',
+      priceAnnual: '0.00',
+      trialPeriodDays: 0,
       monthlyAiRequests: 0,
       features: {
         aiMentor: true,
@@ -118,7 +326,7 @@ export default function PricingPage() {
         projects: true,
         circles: true,
         marketplace: true,
-        go1Courses: true,
+        go1Courses: false,
         analytics: true,
         creatorTools: true,
       },
@@ -137,7 +345,7 @@ export default function PricingPage() {
     queryFn: getSubscriptionStatus,
   });
 
-  const handleSelectPlan = async (tierSlug: string) => {
+  const handleSelectPlan = async (tierSlug: string, tierType?: string) => {
     // Find the tier to get details for analytics
     const tier = tiers.find(t => t.slug === tierSlug);
     const tierName = tier?.name || tierSlug;
@@ -148,6 +356,12 @@ export default function PricingPage() {
 
     if (tierSlug === 'free-explorer') {
       navigate('/auth');
+      return;
+    }
+
+    // Creator tier opens the request modal
+    if (tierType === 'creator_mentor') {
+      handleCreatorRequest();
       return;
     }
 
@@ -181,9 +395,17 @@ export default function PricingPage() {
   const getFeatureList = (tier: SubscriptionTier): string[] => {
     const featureList: string[] = [];
 
-    if (tier.monthlyAiRequests === 0) {
-      featureList.push('Unlimited AI chat & generation');
-    } else {
+    // Creator tier gets special feature list
+    if (tier.tierType === 'creator_mentor') {
+      featureList.push('Sell prompts, templates & courses');
+      featureList.push('Only 8% fee on sales');
+      featureList.push('Creator analytics dashboard');
+      featureList.push('Shareable project portfolio');
+      featureList.push('Community groups');
+      return featureList;
+    }
+
+    if (tier.monthlyAiRequests > 0) {
       featureList.push(`${tier.monthlyAiRequests.toLocaleString()} AI chats/month`);
     }
 
@@ -192,7 +414,7 @@ export default function PricingPage() {
     if (tier.features.projects) featureList.push('Shareable project portfolio');
     if (tier.features.circles) featureList.push('Community groups');
     if (tier.features.marketplace) featureList.push('Prompt & template marketplace');
-    if (tier.features.go1Courses) featureList.push('10,000+ professional courses');
+    if (tier.features.go1Courses) featureList.push('Learning paths & interactive courses');
     if (tier.features.analytics) featureList.push('Portfolio analytics');
     if (tier.features.creatorTools) featureList.push('Sell courses & coaching');
 
@@ -236,9 +458,9 @@ export default function PricingPage() {
       case 'creator_mentor':
         return {
           icon: StarIcon,
-          gradient: 'from-amber-500 to-orange-500',
-          glow: '',
-          badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+          gradient: 'from-emerald-500 to-teal-500',
+          glow: 'shadow-[0_0_30px_rgba(16,185,129,0.2)]',
+          badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
         };
       default:
         return {
@@ -338,7 +560,7 @@ export default function PricingPage() {
           </div>
 
           {/* Pricing Cards */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 lg:gap-4">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 lg:gap-4 mt-12">
             {sortedTiers?.map((tier) => {
               const style = getTierStyle(tier.tierType);
               const TierIcon = style.icon;
@@ -387,7 +609,7 @@ export default function PricingPage() {
 
                   {/* Price */}
                   <div className="mb-6">
-                    {parseFloat(totalPrice) === 0 ? (
+                    {parseFloat(totalPrice) === 0 || tier.tierType === 'creator_mentor' ? (
                       <div className="flex items-baseline">
                         <span className="text-4xl font-bold text-white">Free</span>
                       </div>
@@ -410,7 +632,7 @@ export default function PricingPage() {
 
                   {/* CTA Button */}
                   <button
-                    onClick={() => handleSelectPlan(tier.slug)}
+                    onClick={() => handleSelectPlan(tier.slug, tier.tierType)}
                     disabled={isCurrentPlan}
                     className={`w-full mb-6 ${
                       isCurrentPlan
@@ -425,6 +647,10 @@ export default function PricingPage() {
                     ) : tier.tierType === 'free' ? (
                       <span className="flex items-center justify-center gap-2">
                         Get Started <ArrowRightIcon className="w-4 h-4" />
+                      </span>
+                    ) : tier.tierType === 'creator_mentor' ? (
+                      <span className="flex items-center justify-center gap-2">
+                        Request to Join <ArrowRightIcon className="w-4 h-4" />
                       </span>
                     ) : (
                       <span className="flex items-center justify-center gap-2">
@@ -514,6 +740,66 @@ export default function PricingPage() {
 
       {/* Footer */}
       <Footer />
+
+      {/* Creator Request Modal */}
+      <Modal
+        isOpen={isCreatorModalOpen}
+        onClose={handleCloseCreatorModal}
+        title={creatorFormState === 'success' ? 'Request Received!' : 'Become a Creator'}
+      >
+        {creatorFormState === 'success' ? (
+          <div className="text-center py-6">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-[#020617]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              Thanks for your interest!
+            </h3>
+            <p className="text-gray-400 mb-6">
+              We've received your creator application. We'll review it and get back to you soon!
+            </p>
+            <Link
+              to="/explore"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-400 to-teal-400 text-[#020617] font-semibold hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all duration-300"
+            >
+              Explore Projects
+              <ArrowRightIcon className="w-4 h-4" />
+            </Link>
+          </div>
+        ) : (
+          <CreatorRequestForm
+            formState={creatorFormState}
+            setFormState={setCreatorFormState}
+            errorMessage={creatorErrorMessage}
+            setErrorMessage={setCreatorErrorMessage}
+            formData={creatorFormData}
+            setFormData={setCreatorFormData}
+          />
+        )}
+      </Modal>
     </div>
   );
+}
+
+export default function PricingPage() {
+  if (RECAPTCHA_SITE_KEY) {
+    return (
+      <GoogleReCaptchaProvider reCaptchaKey={RECAPTCHA_SITE_KEY}>
+        <PricingPageContent />
+      </GoogleReCaptchaProvider>
+    );
+  }
+  return <PricingPageContent />;
 }

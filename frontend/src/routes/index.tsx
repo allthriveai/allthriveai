@@ -28,6 +28,7 @@ import { BattlesLobbyPage, BattlePage, BattleInvitePage } from '@/pages/battles'
 import { ChallengePage } from '@/pages/challenges';
 import ThriveCirclePage from '@/pages/ThriveCirclePage';
 import SideQuestsPage from '@/pages/SideQuestsPage';
+import EthicsDefenderGame from '@/pages/games/EthicsDefenderGame';
 import PricingPage from '@/pages/PricingPage';
 import CheckoutPage from '@/pages/CheckoutPage';
 import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
@@ -36,6 +37,7 @@ import MarketplacePage from '@/pages/MarketplacePage';
 import GettingStartedPage from '@/pages/GettingStartedPage';
 import VendorDashboardPage from '@/pages/VendorDashboardPage';
 import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
+import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
 
 export function AppRoutes() {
   return (
@@ -234,12 +236,20 @@ export function AppRoutes() {
         }
       />
 
-      {/* Admin Analytics Dashboard - protected, admins only */}
+      {/* Admin Dashboard - protected, admins only */}
       <Route
         path="/admin/analytics"
         element={
           <ProtectedRoute>
             <AdminAnalyticsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/invitations"
+        element={
+          <ProtectedRoute>
+            <AdminInvitationsPage />
           </ProtectedRoute>
         }
       />
@@ -250,6 +260,16 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <SideQuestsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Ethics Defender Game - protected */}
+      <Route
+        path="/play/ethics-defender"
+        element={
+          <ProtectedRoute>
+            <EthicsDefenderGame />
           </ProtectedRoute>
         }
       />

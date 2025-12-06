@@ -474,3 +474,199 @@ def product_public_detail(request, username, slug):
     data['has_access'] = has_access
 
     return Response(data)
+
+
+# =============================================================================
+# Stripe Connect & Checkout Views
+# =============================================================================
+
+
+class StripeConnectOnboardingView(APIView):
+    """
+    Stripe Connect onboarding for creators.
+
+    POST: Create Connect account and return onboarding URL
+    GET: Check onboarding status
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Create Stripe Connect account and return onboarding link."""
+        from django.conf import settings
+
+        from .services import StripeConnectError, StripeConnectService
+
+        try:
+            # Get return URLs from request or use defaults
+            frontend_url = settings.FRONTEND_URL
+            return_url = request.data.get('return_url', f'{frontend_url}/account/settings/creator?stripe_return=true')
+            refresh_url = request.data.get(
+                'refresh_url', f'{frontend_url}/account/settings/creator?stripe_refresh=true'
+            )
+
+            # Create account and get onboarding link
+            onboarding_url = StripeConnectService.create_onboarding_link(
+                user=request.user,
+                return_url=return_url,
+                refresh_url=refresh_url,
+            )
+
+            return Response(
+                {
+                    'onboarding_url': onboarding_url,
+                    'message': 'Redirect user to complete Stripe onboarding',
+                }
+            )
+
+        except StripeConnectError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    def get(self, request):
+        """Check Stripe Connect onboarding status."""
+        from .services import StripeConnectError, StripeConnectService
+
+        try:
+            status_info = StripeConnectService.check_account_status(request.user)
+            return Response(status_info)
+        except StripeConnectError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class StripeConnectDashboardView(APIView):
+    """Get link to Stripe Express dashboard for creators."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get Stripe dashboard link."""
+        from .services import StripeConnectError, StripeConnectService
+
+        try:
+            dashboard_url = StripeConnectService.create_dashboard_link(request.user)
+            return Response({'dashboard_url': dashboard_url})
+        except StripeConnectError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ProductCheckoutView(APIView):
+    """
+    Create checkout session for purchasing a product.
+
+    POST: Create PaymentIntent and return client_secret
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, product_id):
+        """Create checkout for a product."""
+        from .services import MarketplaceCheckoutError, MarketplaceCheckoutService
+
+        try:
+            product = Product.objects.select_related('project', 'creator').get(id=product_id)
+        except Product.DoesNotExist:
+            return Response(
+                {'error': 'Product not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            checkout_data = MarketplaceCheckoutService.create_checkout(
+                user=request.user,
+                product=product,
+            )
+            return Response(checkout_data)
+        except MarketplaceCheckoutError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class OrderStatusView(APIView):
+    """Get status of an order."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, order_id):
+        """Get order status."""
+        from .services import MarketplaceCheckoutError, MarketplaceCheckoutService
+
+        try:
+            order_data = MarketplaceCheckoutService.get_order_status(
+                order_id=order_id,
+                user=request.user,
+            )
+            return Response(order_data)
+        except MarketplaceCheckoutError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class FreeProductAccessView(APIView):
+    """
+    Grant access to free products.
+
+    POST: Grant immediate access to a free product
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, product_id):
+        """Grant access to a free product."""
+        try:
+            product = Product.objects.select_related('project', 'creator').get(id=product_id)
+        except Product.DoesNotExist:
+            return Response(
+                {'error': 'Product not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Validate product is free
+        if product.price > 0:
+            return Response(
+                {'error': 'This product is not free. Use checkout instead.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate product is published
+        if product.status != Product.Status.PUBLISHED:
+            return Response(
+                {'error': 'Product is not available'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if user already has access
+        if ProductAccess.objects.filter(user=request.user, product=product, is_active=True).exists():
+            return Response(
+                {'error': 'You already have access to this product'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Grant access (no payment required)
+        ProductAccess.objects.create(
+            user=request.user,
+            product=product,
+            is_active=True,
+        )
+
+        logger.info(f'Granted free access to product {product_id} for user {request.user.id}')
+
+        return Response(
+            {
+                'success': True,
+                'message': 'Access granted',
+                'product_id': product.id,
+            }
+        )

@@ -26,17 +26,13 @@ export default function BattleDetailPage() {
   const fetchBattle = async () => {
     try {
       const url = `${API_BASE_URL}/me/battles/${battleId}/`;
-      console.log('Fetching battle from:', url);
 
       const response = await fetch(url, {
         credentials: 'include',
       });
 
-      console.log('Battle fetch response:', response.status, response.statusText, response.url);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('Battle data:', data);
         setBattle(data);
         setLoading(false);
       } else {

@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGithub, faYoutube } from '@fortawesome/free-brands-svg-icons';
+import { faGithub, faGitlab, faYoutube } from '@fortawesome/free-brands-svg-icons';
 import { faBagShopping, faCircleQuestion, faCommentDots } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '@/hooks/useAuth';
 
-export type IntegrationType = 'github' | 'youtube' | 'create-visual' | 'ask-help' | 'describe' | 'create-product';
+export type IntegrationType = 'github' | 'gitlab' | 'youtube' | 'create-visual' | 'ask-help' | 'describe' | 'create-product';
 
 interface ChatPlusMenuProps {
   onIntegrationSelect: (type: IntegrationType) => void;
@@ -30,6 +30,13 @@ const integrationOptions: IntegrationOption[] = [
     label: 'Add from GitHub',
     icon: faGithub,
     description: 'Import a repository',
+    available: true,
+  },
+  {
+    type: 'gitlab',
+    label: 'Add from GitLab',
+    icon: faGitlab,
+    description: 'Import a project',
     available: true,
   },
   {

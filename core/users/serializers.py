@@ -30,12 +30,16 @@ class UserPublicSerializer(serializers.ModelSerializer):
     """
 
     is_following = serializers.SerializerMethodField()
+    full_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id',
             'username',
+            'first_name',
+            'last_name',
+            'full_name',
             'avatar_url',
             'bio',
             'tagline',
@@ -49,11 +53,17 @@ class UserPublicSerializer(serializers.ModelSerializer):
             'youtube_url',
             'instagram_url',
             'role',
+            'tier',
+            'total_points',
             'followers_count',
             'following_count',
             'is_following',
         ]
         read_only_fields = fields
+
+    def get_full_name(self, obj):
+        """Return user's full name."""
+        return f'{obj.first_name} {obj.last_name}'.strip() or obj.username
 
     def get_is_following(self, obj):
         """Check if the current user is following this user."""
@@ -124,3 +134,60 @@ class PersonalizationSettingsSerializer(serializers.ModelSerializer):
         if value < 0 or value > 100:
             raise serializers.ValidationError('Discovery balance must be between 0 and 100.')
         return value
+
+
+class ProfileSectionsSerializer(serializers.ModelSerializer):
+    """Serializer for user profile sections.
+
+    Handles the customizable showcase sections that make up a user's
+    personal homepage/profile showcase tab.
+    """
+
+    class Meta:
+        model = User
+        fields = ['profile_sections']
+
+    def validate_profile_sections(self, value):
+        """Validate the profile sections structure."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Profile sections must be a list.')
+
+        valid_types = {'hero', 'about', 'featured_projects', 'skills', 'stats', 'links', 'custom'}
+
+        for section in value:
+            if not isinstance(section, dict):
+                raise serializers.ValidationError('Each section must be an object.')
+
+            required_fields = {'id', 'type', 'visible', 'order', 'content'}
+            missing_fields = required_fields - set(section.keys())
+            if missing_fields:
+                raise serializers.ValidationError(f'Section missing required fields: {missing_fields}')
+
+            if section.get('type') not in valid_types:
+                raise serializers.ValidationError(
+                    f"Invalid section type: {section.get('type')}. Must be one of: {valid_types}"
+                )
+
+            if not isinstance(section.get('visible'), bool):
+                raise serializers.ValidationError('Section "visible" must be a boolean.')
+
+            if not isinstance(section.get('order'), int):
+                raise serializers.ValidationError('Section "order" must be an integer.')
+
+            if not isinstance(section.get('content'), dict):
+                raise serializers.ValidationError('Section "content" must be an object.')
+
+        return value
+
+
+class UserProfileWithSectionsSerializer(UserPublicSerializer):
+    """Extended user profile serializer including profile sections.
+
+    Used for the profile page showcase tab to include both public
+    profile information and the customizable sections.
+    """
+
+    profile_sections = serializers.JSONField(read_only=True)
+
+    class Meta(UserPublicSerializer.Meta):
+        fields = UserPublicSerializer.Meta.fields + ['profile_sections']

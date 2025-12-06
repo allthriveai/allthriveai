@@ -33,10 +33,6 @@ export function keysToCamel<T = any>(obj: any, depth: number = 0): T {
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const camelKey = snakeToCamel(key);
-      // Debug: log top-level keys for pagination responses
-      if (depth === 0 && (key === 'next' || key === 'previous' || key === 'count')) {
-        console.log(`[keysToCamel] Top-level key "${key}" => "${camelKey}", value:`, obj[key]);
-      }
       result[camelKey] = keysToCamel(obj[key], depth + 1);
     }
   }

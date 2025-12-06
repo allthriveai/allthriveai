@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGithub } from '@fortawesome/free-brands-svg-icons';
+import { faGithub, faGitlab } from '@fortawesome/free-brands-svg-icons';
 import { faStar, faCodeBranch, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './ChatInterface';
@@ -18,6 +18,11 @@ import {
   checkGitHubConnection,
   type GitHubRepository,
 } from '@/services/github';
+import {
+  fetchGitLabProjects,
+  checkGitLabConnection,
+  type GitLabProject,
+} from '@/services/gitlab';
 import { uploadFile, uploadImage } from '@/services/upload';
 // Constants
 const ONBOARDING_BUTTON_BASE = 'w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50';
@@ -96,12 +101,17 @@ export function IntelligentChatPanel({
   const [githubSearchQuery, setGithubSearchQuery] = useState('');
   const [githubMessage, setGithubMessage] = useState<string>('');
 
+  // GitLab integration state
+  const [gitlabStep, setGitlabStep] = useState<'idle' | 'loading' | 'connect' | 'projects' | 'importing'>('idle');
+  const [gitlabProjects, setGitlabProjects] = useState<GitLabProject[]>([]);
+  const [gitlabSearchQuery, setGitlabSearchQuery] = useState('');
+  const [gitlabMessage, setGitlabMessage] = useState<string>('');
+
   // Help mode state - start in help mode if supportMode prop is true
   const [helpMode, setHelpMode] = useState(supportMode);
 
   // Handle project creation - redirect to the new project page
   const handleProjectCreated = useCallback((projectUrl: string, projectTitle: string) => {
-    console.log(`[Chat] Project created: ${projectTitle} at ${projectUrl}`);
     // Close the chat panel and navigate to the project
     onClose();
     // Small delay to allow the chat to close smoothly
@@ -112,7 +122,6 @@ export function IntelligentChatPanel({
 
   // Handle quota exceeded - show upgrade prompt
   const handleQuotaExceeded = useCallback((info: QuotaExceededInfo) => {
-    console.log('[Chat] Quota exceeded:', info);
     setQuotaExceeded(info);
   }, []);
 
@@ -279,6 +288,70 @@ export function IntelligentChatPanel({
     setGithubSearchQuery('');
   };
 
+  // GitLab integration handlers
+  const handleGitLabImport = useCallback(async () => {
+    setGitlabStep('loading');
+    setGitlabMessage('Checking your GitLab connection...');
+    setHasInteracted(true);
+
+    try {
+      const isConnected = await checkGitLabConnection();
+
+      if (!isConnected) {
+        setGitlabStep('connect');
+        setGitlabMessage('You need to connect your GitLab account first.');
+        return;
+      }
+
+      // Fetch projects
+      setGitlabMessage('Loading your GitLab projects...');
+
+      try {
+        const fetchedProjects = await fetchGitLabProjects();
+        setGitlabProjects(fetchedProjects);
+        setGitlabStep('projects');
+        setGitlabMessage(`Found ${fetchedProjects.length} projects!`);
+      } catch (projectError: any) {
+        console.error('Failed to fetch GitLab projects:', projectError);
+        setGitlabMessage(projectError.message || 'Failed to load projects. Please try again.');
+        setGitlabStep('idle');
+      }
+    } catch (error) {
+      console.error('GitLab import error:', error);
+      setGitlabMessage('Something went wrong. Please try again.');
+      setGitlabStep('idle');
+    }
+  }, []);
+
+  const handleConnectGitLab = () => {
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const frontendUrl = window.location.origin;
+    const returnPath = window.location.pathname + window.location.search;
+
+    // Redirect to GitLab OAuth via social connect endpoint
+    const redirectUrl = `${backendUrl}/api/social/connect/gitlab/?next=${encodeURIComponent(frontendUrl + returnPath)}`;
+    window.location.href = redirectUrl;
+  };
+
+  const handleSelectGitLabProject = async (project: GitLabProject) => {
+    // Close the project picker UI
+    handleCancelGitLab();
+
+    // Use the AI agent to import the project with template-based analysis
+    const importMessage = `Import this GitLab project to my showcase: ${project.htmlUrl}`;
+
+    // Send message to the chat agent
+    setHasInteracted(true);
+    sendMessage(importMessage);
+  };
+
+  const handleCancelGitLab = () => {
+    setGitlabStep('idle');
+    setGitlabMessage('');
+    setGitlabProjects([]);
+    setGitlabSearchQuery('');
+  };
+
   // Help mode handlers
   const handleHelpQuestionSelect = useCallback((question: HelpQuestion) => {
     // Close help mode and send the question's message to the AI
@@ -295,6 +368,10 @@ export function IntelligentChatPanel({
       case 'github':
         // Use direct GitHub integration flow instead of AI
         handleGitHubImport();
+        break;
+      case 'gitlab':
+        // Use direct GitLab integration flow
+        handleGitLabImport();
         break;
       case 'youtube':
         sendMessage('I want to add a YouTube video to my project');
@@ -319,7 +396,7 @@ export function IntelligentChatPanel({
         sendMessage('I want to create a digital product to sell on the marketplace');
         break;
     }
-  }, [handleGitHubImport, sendMessage]);
+  }, [handleGitHubImport, handleGitLabImport, sendMessage]);
 
   // Render GitHub integration UI
   const renderGitHubUI = () => {
@@ -417,6 +494,113 @@ export function IntelligentChatPanel({
               {/* Cancel button */}
               <button
                 onClick={handleCancelGitHub}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Render GitLab integration UI
+  const renderGitLabUI = () => {
+    if (gitlabStep === 'idle') return null;
+
+    return (
+      <div className="flex flex-col items-start justify-start px-4 pt-4">
+        <div className="w-full max-w-md">
+          {/* Status message */}
+          {gitlabMessage && (
+            <div className="mb-4 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+              <p className="text-sm">{gitlabMessage}</p>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {(gitlabStep === 'loading' || gitlabStep === 'importing') && (
+            <div className="flex justify-center py-8">
+              <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-primary-500 animate-spin" />
+            </div>
+          )}
+
+          {/* Connect GitLab button */}
+          {gitlabStep === 'connect' && (
+            <div className="space-y-3">
+              <button
+                onClick={handleConnectGitLab}
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                <FontAwesomeIcon icon={faGitlab} />
+                Connect GitLab
+              </button>
+              <button
+                onClick={handleCancelGitLab}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {/* Project list */}
+          {gitlabStep === 'projects' && gitlabProjects.length > 0 && (
+            <div className="space-y-3">
+              {/* Search */}
+              <input
+                type="text"
+                placeholder="Search projects..."
+                value={gitlabSearchQuery}
+                onChange={(e) => setGitlabSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+              />
+
+              {/* Project list */}
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {gitlabProjects
+                  .filter((project) =>
+                    gitlabSearchQuery.trim() === ''
+                      ? true
+                      : project.name.toLowerCase().includes(gitlabSearchQuery.toLowerCase()) ||
+                        project.description?.toLowerCase().includes(gitlabSearchQuery.toLowerCase())
+                  )
+                  .slice(0, 20)
+                  .map((project) => (
+                    <button
+                      key={project.fullName}
+                      onClick={() => handleSelectGitLabProject(project)}
+                      className="w-full text-left px-3 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-500 transition-all text-sm"
+                    >
+                      <div className="font-medium text-gray-900 dark:text-white">{project.name}</div>
+                      {project.description && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                          {project.description}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-500">
+                        {project.language && <span>{project.language}</span>}
+                        {project.stars > 0 && (
+                          <span className="flex items-center gap-1">
+                            <FontAwesomeIcon icon={faStar} className="w-3 h-3" />
+                            {project.stars}
+                          </span>
+                        )}
+                        {project.forks > 0 && (
+                          <span className="flex items-center gap-1">
+                            <FontAwesomeIcon icon={faCodeBranch} className="w-3 h-3" />
+                            {project.forks}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+              </div>
+
+              {/* Cancel button */}
+              <button
+                onClick={handleCancelGitLab}
                 className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 Cancel
@@ -656,7 +840,6 @@ export function IntelligentChatPanel({
   // State for the ChatPlusMenu dropdown - lifted to parent to prevent state loss
   // when component re-renders due to WebSocket connection changes
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
-  console.log('[IntelligentChatPanel] plusMenuOpen:', plusMenuOpen);
 
   // Track current project ID for "Use as Featured Image" functionality
   // Extract from conversationId if it follows "project-{id}" pattern
@@ -673,7 +856,6 @@ export function IntelligentChatPanel({
 
     try {
       await setProjectFeaturedImage(currentProjectId, imageUrl);
-      console.log(`[IntelligentChatPanel] Set featured image for project ${currentProjectId}`);
     } catch (error) {
       console.error('[IntelligentChatPanel] Failed to set featured image:', error);
       throw error; // Re-throw so GeneratedImageMessage can show error state
@@ -684,7 +866,6 @@ export function IntelligentChatPanel({
   const handleCreateProjectFromImage = useCallback(async (sessionId: number) => {
     try {
       const result = await createProjectFromImageSession(sessionId);
-      console.log(`[IntelligentChatPanel] Created project from image session: ${result.project.title}`);
 
       return {
         projectUrl: result.project.url,
@@ -756,12 +937,30 @@ export function IntelligentChatPanel({
                 components={{
                   // Override default paragraph to not have bottom margin on last element
                   p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                  // Make links open in new tab
-                  a: ({ href, children }) => (
-                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline">
-                      {children}
-                    </a>
-                  ),
+                  // Handle links - internal links navigate, external open in new tab
+                  a: ({ href, children }) => {
+                    const isInternal = href?.startsWith('/');
+                    if (isInternal) {
+                      return (
+                        <a
+                          href={href}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onClose(); // Close the chat panel
+                            navigate(href || '/');
+                          }}
+                          className="text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
+                        >
+                          {children}
+                        </a>
+                      );
+                    }
+                    return (
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 hover:underline">
+                        {children}
+                      </a>
+                    );
+                  },
                   // Style code blocks
                   code: ({ children, node }) => {
                     // Check if this is a code block (has parent pre) or inline code
@@ -839,7 +1038,6 @@ export function IntelligentChatPanel({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Close button clicked');
                 onClose();
               }}
               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
@@ -867,6 +1065,11 @@ export function IntelligentChatPanel({
           <>
             {renderQuotaExceeded()}
             {renderGitHubUI()}
+          </>
+        ) : gitlabStep !== 'idle' ? (
+          <>
+            {renderQuotaExceeded()}
+            {renderGitLabUI()}
           </>
         ) : undefined
       }

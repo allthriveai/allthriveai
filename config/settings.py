@@ -269,6 +269,10 @@ WEAVIATE_EMBEDDING_MODEL = config('WEAVIATE_EMBEDDING_MODEL', default='text-embe
 WEAVIATE_BATCH_SIZE = config('WEAVIATE_BATCH_SIZE', default=100, cast=int)
 WEAVIATE_TIMEOUT = config('WEAVIATE_TIMEOUT', default=30, cast=int)  # seconds
 
+# Redis Agent Memory Server Configuration
+# Used for AI chat persistence, semantic search, and agent memory
+AGENT_MEMORY_SERVER_URL = config('AGENT_MEMORY_SERVER_URL', default='http://agent-memory:8000')
+
 # GitHub API Token (for project agent)
 GITHUB_API_TOKEN = config('GITHUB_API_TOKEN', default='')  # Optional, increases rate limit
 

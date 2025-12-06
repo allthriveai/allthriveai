@@ -68,11 +68,14 @@ export interface QuizAnswer {
 
 export interface QuizAttempt {
   id: string;
-  quizId: string;
-  userId: string;
+  quiz: Quiz;
+  quizId?: string;
+  userId?: string;
   answers: Record<string, QuizAnswer>;
   score: number;
   totalQuestions: number;
+  percentageScore: number;
+  isCompleted: boolean;
   startedAt: string;
   completedAt?: string;
 }

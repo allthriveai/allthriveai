@@ -117,6 +117,8 @@ export interface Project {
   isHighlighted: boolean; // Featured at top of profile (only one per user)
   isPrivate: boolean; // Hidden from explore feed and public views
   isArchived: boolean; // Soft delete - hidden from all views
+  isPromoted?: boolean; // Admin promoted - appears at top of explore feeds
+  promotedAt?: string; // When this project was promoted
   bannerUrl?: string; // Banner/cover image
   featuredImageUrl?: string;
   externalUrl?: string;

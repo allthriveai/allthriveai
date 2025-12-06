@@ -248,6 +248,46 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis Agent Memory Server - AI memory layer for chat persistence
+  # Provides semantic search, cross-device sync, and AI memory extraction
+  agent-memory:
+    image: redislabs/agent-memory-server:latest
+    restart: unless-stopped
+    ports:
+      - "8001:8000"  # API server (8001 to avoid conflict with Django)
+    environment:
+      - REDIS_URL=redis://redis:6379/4
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DISABLE_AUTH=true  # Disable auth for local dev (enable in production)
+      - LOG_LEVEL=INFO
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - agent-memory  # Optional: use `docker compose --profile agent-memory up`
+
+  # Background worker for agent memory (memory extraction, summarization)
+  agent-memory-worker:
+    image: redislabs/agent-memory-server:latest
+    restart: unless-stopped
+    environment:
+      - REDIS_URL=redis://redis:6379/4
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LOG_LEVEL=INFO
+    command: agent-memory task-worker --concurrency 5
+    depends_on:
+      redis:
+        condition: service_healthy
+      agent-memory:
+        condition: service_healthy
+    profiles:
+      - agent-memory  # Optional: use `docker compose --profile agent-memory up`
+
 volumes:
   postgres_data:
   minio_data:

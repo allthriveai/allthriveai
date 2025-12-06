@@ -75,7 +75,7 @@ export function buildWebSocketUrl(
  * @param url - The WebSocket URL to log
  * @param prefix - Optional prefix for the log message
  */
-export function logWebSocketUrl(url: string, prefix = '[WebSocket]'): void {
-  const maskedUrl = url.replace(/connection_token=[^&]+/, 'connection_token=***');
-  console.log(`${prefix} Connecting to:`, maskedUrl);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function logWebSocketUrl(_url: string, _prefix = '[WebSocket]'): void {
+  // No-op in production - logging suppressed for cleaner console output
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { getToolBySlug } from '@/services/tools';
 import { exploreProjects } from '@/services/explore';
@@ -33,19 +34,13 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
   const [showLinksDropdown, setShowLinksDropdown] = useState(false);
 
   // Track if tray should be rendered (for slide-out animation)
-  const [shouldRender, setShouldRender] = useState(false);
+  // Start with true so the tray renders immediately (closed position), allowing slide-in animation
+  const [shouldRender, setShouldRender] = useState(true);
 
   // Projects using this tool
   const [projectsUsingTool, setProjectsUsingTool] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [totalProjectCount, setTotalProjectCount] = useState(0);
-
-  // Handle mount/unmount for animations
-  useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true);
-    }
-  }, [isOpen]);
 
   // Handle transition end to unmount after closing
   const handleTransitionEnd = () => {
@@ -54,11 +49,13 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     }
   };
 
+  // Load tool data whenever toolSlug changes (regardless of isOpen state)
+  // This allows data to load while the tray is animating open
   useEffect(() => {
-    if (isOpen && toolSlug) {
+    if (toolSlug) {
       loadTool(toolSlug);
     }
-  }, [isOpen, toolSlug]);
+  }, [toolSlug]);
 
   async function loadTool(slug: string) {
     try {
@@ -410,8 +407,18 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     );
   };
 
-  return (
+  // Use portal to render tray at document body level to escape parent overflow/z-index constraints
+  return createPortal(
     <>
+      {/* Backdrop overlay */}
+      <div
+        className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ease-in-out ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
       {/* Right Sidebar Drawer - Smooth slide animation */}
       <aside
         className={`fixed right-0 top-0 h-full w-full md:w-96 lg:w-[32rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ease-in-out ${
@@ -426,6 +433,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
       >
         {renderContent()}
       </aside>
-    </>
+    </>,
+    document.body
   );
 }
