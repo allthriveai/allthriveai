@@ -516,6 +516,19 @@ companies:
     founded_year: 2024
     headquarters: San Francisco, CA
 
+  - name: Neo4j
+    tagline: The leading graph database platform
+    description: >
+      Neo4j is the world's leading graph database and analytics platform. Provides native graph
+      storage, processing, and ACID transactions. Known for Cypher query language, AuraDB managed
+      cloud, and graph data science for AI and ML. Powers knowledge graphs and connected data.
+    website_url: https://neo4j.com
+    logo_url: /logos/neoj4-logo.jpeg
+    founded_year: 2007
+    headquarters: San Mateo, CA
+    twitter_handle: neo4j
+    github_url: https://github.com/neo4j/neo4j
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
@@ -2575,6 +2588,63 @@ tools:
       - date: '2025-11-10'
         title: Community Hub 2.0
         description: Enhanced forums, study groups, and mentorship matching for better collaboration.
+
+  - name: Neo4j
+    company: Neo4j
+    tagline: Native graph database for knowledge graphs and AI systems
+    description: >
+      Industry-leading graph database at neo4j.com for connected data and relationships. Neo4j AuraDB
+      offers fully managed cloud database, while self-managed deployment available anywhere. Cypher
+      declarative query language optimized for graph traversal. Graph Data Science library with 65+
+      algorithms for analytics and ML. Neo4j Bloom for visual exploration. GraphQL integration for
+      low-code APIs. Used for knowledge graphs backing LLMs, fraud detection, recommendation engines,
+      and network analysis. Free tier on AuraDB; enterprise pricing available.
+    category: research
+    tool_type: platform
+    website_url: https://neo4j.com
+    logo_url: /logos/neoj4-logo.jpeg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Graph Database
+      - Knowledge Graph
+      - AI Systems
+      - Graph Analytics
+      - Cypher
+      - Open Source
+    key_features:
+      - title: Native Graph Storage
+        description: Purpose-built graph database with ACID transactions and index-free adjacency
+      - title: Cypher Query Language
+        description: Declarative language for pattern matching and graph traversal queries
+      - title: Neo4j AuraDB
+        description: Fully managed cloud database with auto-scaling and enterprise features
+      - title: Graph Data Science
+        description: 65+ algorithms for centrality, community detection, and ML pipelines
+      - title: Knowledge Graph for AI
+        description: Back LLMs with structured knowledge for better context and accuracy
+    usage_tips:
+      - Use Cypher's pattern matching for intuitive graph queries
+      - Leverage AuraDB for managed deployment without infrastructure overhead
+      - Apply Graph Data Science algorithms for insights and ML features
+      - Use Neo4j Bloom for visual graph exploration and analysis
+      - Integrate with LLMs via knowledge graphs for RAG applications
+    best_practices:
+      - Model relationships explicitly for optimal graph structure
+      - Use appropriate indexes for query performance
+      - Implement graph projections for large-scale analytics
+      - Monitor query performance with execution plans
+      - Use GraphQL for rapid API development with graph backends
+    whats_new:
+      - date: '2025-12-01'
+        title: Neo4j 5.25 Release
+        description: Enhanced vector search integration for hybrid knowledge graph and vector similarity queries.
+      - date: '2025-11-20'
+        title: GenAI Knowledge Graph
+        description: New templates and tools for integrating Neo4j with LangChain, LlamaIndex, and OpenAI.
+      - date: '2025-11-10'
+        title: AuraDB Vector Index
+        description: Native vector indexing in managed cloud for AI-powered semantic search.
 
   # === AGENT FRAMEWORKS ===
   - name: LangChain
