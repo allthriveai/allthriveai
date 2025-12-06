@@ -1,5 +1,6 @@
 """URL Import Service - Extract project data from any webpage."""
 
+from .ai_analyzer import analyze_webpage_for_template
 from .scraper import (
     AIExtractionError,
     ContentExtractionError,
@@ -16,4 +17,5 @@ __all__ = [
     'ContentExtractionError',
     'AIExtractionError',
     'scrape_url_for_project',
+    'analyze_webpage_for_template',
 ]

@@ -295,7 +295,7 @@ export function EditModeIndicator({ isOwner, isEditMode, onToggle, isSaving }: E
           className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-200 ${
             isEditMode
               ? 'left-6 bg-primary-500'
-              : 'left-0.5 bg-gray-400 dark:bg-gray-500'
+              : 'left-0.5 bg-green-500 dark:bg-green-400'
           }`}
         />
       </div>
@@ -317,7 +317,7 @@ export function EditModeIndicator({ isOwner, isEditMode, onToggle, isSaving }: E
           </span>
         ) : (
           <span className="flex items-center gap-1.5">
-            <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>

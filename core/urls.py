@@ -318,6 +318,8 @@ urlpatterns = [
     path('marketplace/', include('core.marketplace.urls')),
     # Vendor analytics endpoints
     path('', include('core.vendors.urls')),
+    # Browser extension API endpoints
+    path('extension/', include('core.extension.urls')),
 ]
 
 # Test-only endpoints (only available in DEBUG mode)

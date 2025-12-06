@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'core.challenges',  # Weekly challenges with leaderboards
     'core.marketplace',  # Creator marketplace for digital products
     'core.vendors',  # Vendor analytics for tool companies
+    'core.tools',  # AI tools and technology directory
     'allauth',
     'allauth.account',
     'allauth.socialaccount',

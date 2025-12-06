@@ -561,17 +561,16 @@ def scrape_webpage_for_project(
     state: dict | None = None,
 ) -> dict:
     """
-    Scrape any webpage and create a project from the extracted content.
+    Scrape any webpage and create a project with full AI analysis.
 
     Use this tool when the user provides a NON-GITHUB URL and wants to
-    import it as a project. This uses AI to extract:
-    - Title and description
-    - Image/logo
-    - Topics and tags
-    - Creator/organization info
-    - Key features
+    import it as a project. This uses AI to:
+    - Extract title, description, and metadata
+    - Generate structured sections (overview, features, tech stack, etc.)
+    - Assign categories, topics, and tools
+    - Create a beautiful portfolio page like GitHub imports
 
-    For GitHub URLs, use import_github_project instead (richer analysis).
+    For GitHub URLs, use import_github_project instead.
 
     Returns:
         Dictionary with success status, project details, or error message
@@ -580,8 +579,14 @@ def scrape_webpage_for_project(
 
     from django.contrib.auth import get_user_model
 
+    from core.integrations.github.helpers import apply_ai_metadata
     from core.projects.models import Project
-    from services.url_import import URLScraperError, scrape_url_for_project
+    from services.url_import import (
+        URLScraperError,
+        analyze_webpage_for_template,
+        scrape_url_for_project,
+    )
+    from services.url_import.scraper import fetch_webpage, html_to_text
 
     User = get_user_model()
 
@@ -610,10 +615,47 @@ def scrape_webpage_for_project(
         # Scrape the webpage using AI extraction
         extracted = scrape_url_for_project(url)
 
-        # Build content with extracted metadata
-        content = {
+        # Get raw text content for deeper analysis
+        try:
+            html_content = fetch_webpage(url)
+            text_content = html_to_text(html_content)
+        except Exception as e:
+            logger.warning(f'Failed to get text content for template analysis: {e}')
+            text_content = ''
+
+        # Build extracted data dict for template analysis
+        extracted_dict = {
+            'title': extracted.title,
+            'description': extracted.description,
+            'topics': extracted.topics or [],
+            'features': extracted.features or [],
+            'organization': extracted.organization,
             'source_url': url,
+            'image_url': extracted.image_url,
+            'links': extracted.links or {},
+        }
+
+        # Run template analysis for structured sections
+        logger.info(f'Running template analysis for {url}')
+        analysis = analyze_webpage_for_template(
+            extracted_data=extracted_dict,
+            text_content=text_content,
+            user=user,
+        )
+
+        # Get hero image from analysis
+        hero_image = analysis.get('hero_image') or extracted.image_url or ''
+
+        # Build content with template v2 sections
+        content = {
+            # Template version for frontend to detect new format
+            'templateVersion': analysis.get('templateVersion', 2),
+            # Structured sections for beautiful, consistent display
+            'sections': analysis.get('sections', []),
+            # Raw scraped data for reference
             'scraped_data': asdict(extracted),
+            # Source URL
+            'source_url': url,
         }
 
         # Add features if extracted
@@ -624,25 +666,25 @@ def scrape_webpage_for_project(
         if extracted.links:
             content['links'] = extracted.links
 
-        # Create the project
+        # Create the project with full metadata
         project = Project.objects.create(
             user=user,
             title=extracted.title or 'Imported Project',
-            description=extracted.description or '',
+            description=analysis.get('description') or extracted.description or '',
             type=Project.ProjectType.OTHER,
             external_url=url,
-            featured_image_url=extracted.image_url or '',
+            featured_image_url=hero_image,
             content=content,
             is_showcased=is_showcase,
             is_private=is_private,
         )
 
-        # Add topics if extracted
-        if extracted.topics:
-            project.topics = extracted.topics[:10]
-            project.save(update_fields=['topics'])
+        # Apply AI-suggested categories, topics, and tools
+        apply_ai_metadata(project, analysis, content=content)
 
-        logger.info(f'Successfully created project from URL: {project.id} - {project.title}')
+        logger.info(
+            f'Successfully imported {url} as project {project.id} ' f'with {len(content.get("sections", []))} sections'
+        )
 
         return {
             'success': True,
@@ -654,8 +696,9 @@ def scrape_webpage_for_project(
             'extracted': {
                 'title': extracted.title,
                 'description': extracted.description[:200] if extracted.description else None,
-                'image_url': extracted.image_url,
-                'topics': extracted.topics,
+                'image_url': hero_image,
+                'topics': analysis.get('topics', extracted.topics),
+                'sections_count': len(content.get('sections', [])),
             },
         }
 

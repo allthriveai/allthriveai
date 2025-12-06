@@ -96,7 +96,7 @@ companies:
       Midjourney is an independent research lab that produces an AI image generation
       program under the same name.
     website_url: https://midjourney.com
-    logo_url: https://cdn.worldvectorlogo.com/logos/midjourney.svg
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/e/e6/Midjourney_Emblem.svg
     founded_year: 2022
     headquarters: San Francisco, CA
     twitter_handle: midaborney
@@ -164,7 +164,7 @@ companies:
       Cursor is an AI-powered code editor built on VS Code, designed to help
       developers write code faster with AI assistance.
     website_url: https://cursor.sh
-    logo_url: https://cursor.sh/brand/icon.svg
+    logo_url: /cursor-logo.svg
     founded_year: 2023
     headquarters: San Francisco, CA
     twitter_handle: cursor_ai
@@ -1148,7 +1148,7 @@ tools:
     category: code
     tool_type: ai_tool
     website_url: https://cursor.sh
-    logo_url: https://cursor.sh/brand/icon.svg
+    logo_url: /cursor-logo.svg
     pricing_model: freemium
     has_free_tier: true
     tags:
@@ -1498,6 +1498,52 @@ tools:
       - Use webhooks for async tasks
       - Monitor API usage
       - Version your model deployments
+
+  # === AGENT FRAMEWORKS ===
+  - name: Open Standard Agents
+    tagline: Open specification for building AI agents
+    description: >
+      Open Standard Agents (OSSA) is an open specification for building interoperable
+      AI agents. Provides a standardized framework for agent communication, capabilities,
+      and tool integration. Enables agents from different vendors to work together
+      seamlessly. Includes specifications for agent identity, message formats, and
+      capability discovery. Community-driven project promoting AI agent interoperability.
+    category: code
+    tool_type: framework
+    website_url: https://openstandardagents.org
+    logo_url: https://openstandardagents.org/assets/brand/ossa-logo.svg
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - AI Agents
+      - Framework
+      - Open Source
+      - Interoperability
+      - Specification
+      - Standards
+    key_features:
+      - title: Agent Interoperability
+        description: Standard protocols for agents to communicate across platforms
+      - title: Capability Discovery
+        description: Agents can discover and advertise their capabilities
+      - title: Tool Integration
+        description: Standardized way to define and share agent tools
+      - title: Message Formats
+        description: Common message structures for agent communication
+      - title: Open Specification
+        description: Community-driven, vendor-neutral standard
+    usage_tips:
+      - Use for building agents that need to work with other systems
+      - Implement the spec for cross-platform agent compatibility
+      - Reference the specification when designing agent APIs
+      - Contribute to the standard as an early adopter
+      - Use as a foundation for multi-agent systems
+    best_practices:
+      - Follow the specification closely for compatibility
+      - Test interoperability with reference implementations
+      - Participate in the community for updates
+      - Document your agent's capabilities clearly
+      - Consider backwards compatibility in implementations
 
   # === UI COMPONENTS & DESIGN RESOURCES ===
   - name: 21st.dev

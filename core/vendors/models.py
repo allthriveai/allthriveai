@@ -32,7 +32,7 @@ class VendorToolAccess(models.Model):
         help_text='Vendor user who has access to this tool analytics',
     )
     tool = models.ForeignKey(
-        'core.Tool',
+        'tools.Tool',
         on_delete=models.CASCADE,
         related_name='vendor_access',
         help_text='Tool this vendor has analytics access to',
@@ -95,7 +95,7 @@ class ToolImpression(models.Model):
         TOOL_DETAIL = 'tool_detail', 'Tool Detail (Related)'
 
     tool = models.ForeignKey(
-        'core.Tool',
+        'tools.Tool',
         on_delete=models.CASCADE,
         related_name='impressions',
     )
@@ -179,7 +179,7 @@ class ToolEngagement(models.Model):
         COMPARISON_ADD = 'compare_add', 'Added to Comparison'
 
     tool = models.ForeignKey(
-        'core.Tool',
+        'tools.Tool',
         on_delete=models.CASCADE,
         related_name='engagements',
     )
@@ -258,12 +258,12 @@ class ToolCompetitorView(models.Model):
 
     # The two tools viewed in same session (ordered: tool_a.id < tool_b.id)
     tool_a = models.ForeignKey(
-        'core.Tool',
+        'tools.Tool',
         on_delete=models.CASCADE,
         related_name='competitor_views_a',
     )
     tool_b = models.ForeignKey(
-        'core.Tool',
+        'tools.Tool',
         on_delete=models.CASCADE,
         related_name='competitor_views_b',
     )
@@ -305,7 +305,7 @@ class ToolDailyStats(models.Model):
     """
 
     tool = models.ForeignKey(
-        'core.Tool',
+        'tools.Tool',
         on_delete=models.CASCADE,
         related_name='daily_stats',
     )

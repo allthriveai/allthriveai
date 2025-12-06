@@ -105,9 +105,9 @@ export function ProfileHeader({
   return (
     <div className="relative">
       {/* Banner Background */}
-      <div className="h-32 md:h-40 w-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 relative overflow-hidden">
-        {/* Ambient Glow Background */}
-        <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[400px] h-[250px] rounded-full bg-primary-500/20 dark:bg-primary-500/20 blur-[100px] pointer-events-none" />
+      <div className="h-32 md:h-40 w-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
+        {/* Ambient Glow Background - positioned behind avatar */}
+        <div className="absolute bottom-0 left-4 sm:left-6 lg:left-[calc((100%-80rem)/2+1.5rem)] translate-y-1/2 w-[300px] h-[300px] rounded-full bg-primary-500/25 dark:bg-primary-500/30 blur-[80px] pointer-events-none" />
         <div className="absolute top-1/4 right-1/4 w-[300px] h-[200px] rounded-full bg-cyan-500/15 dark:bg-cyan-500/15 blur-[80px] pointer-events-none" />
       </div>
 
