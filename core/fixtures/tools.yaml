@@ -299,7 +299,7 @@ companies:
       Replit is a collaborative browser-based IDE that allows users to write,
       run, and share code. Features built-in AI assistance for coding.
     website_url: https://replit.com
-    logo_url: https://replit.com/public/icons/favicon-196.png
+    logo_url: /logos/replit-color.svg
     founded_year: 2016
     headquarters: San Francisco, CA
     twitter_handle: Replit
@@ -1718,7 +1718,7 @@ tools:
     category: code
     tool_type: ai_tool
     website_url: https://replit.com
-    logo_url: https://replit.com/public/icons/favicon-196.png
+    logo_url: /logos/replit-color.svg
     pricing_model: freemium
     has_free_tier: true
     tags:
