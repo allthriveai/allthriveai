@@ -170,8 +170,8 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
 
     return (
       <>
-        {/* Header - Fixed */}
-        <div className="flex-shrink-0 px-5 py-3 border-b border-gray-200 dark:border-gray-800">
+        {/* Header - Fixed with opaque background for readability */}
+        <div className="flex-shrink-0 px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {/* Logo */}

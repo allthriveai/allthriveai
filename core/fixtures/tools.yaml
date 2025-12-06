@@ -505,6 +505,17 @@ companies:
     founded_year: 2024
     headquarters: San Francisco, CA
 
+  - name: HackerSquad
+    tagline: Code. Collaborate. Conquer.
+    description: >
+      HackerSquad is a thriving developer community platform hosting hackathons, workshops,
+      and tech talks. Offers DevRel solutions including strategic consulting, community management,
+      and content creation. Connects developers with resources, mentorship, and networking opportunities.
+    website_url: https://hackersquad.io
+    logo_url: /logos/hackersquad-logo.png
+    founded_year: 2024
+    headquarters: San Francisco, CA
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
@@ -2507,6 +2518,63 @@ tools:
       - date: '2025-11-10'
         title: Publisher Network Expansion
         description: Now distributing to 50K+ publishers and direct model provider integrations.
+
+  - name: HackerSquad
+    company: HackerSquad
+    tagline: Developer community platform with events and DevRel solutions
+    description: >
+      Platform at hackersquad.io connecting developers through hackathons, workshops, and tech
+      talks. Provides community hub for networking, mentorship, and collaboration. Offers developer
+      toolkit with resources, tutorials, and boilerplate code. DevRel solutions include strategic
+      consulting, community management, and content creation. Event marketplace for brand activation,
+      product feedback, and developer engagement managed end-to-end. Sponsorship and co-marketing
+      opportunities available. Used by companies for developer outreach and talent engagement.
+    category: code
+    tool_type: platform
+    website_url: https://hackersquad.io
+    logo_url: /logos/hackersquad-logo.png
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Developer Community
+      - Hackathons
+      - DevRel
+      - Networking
+      - Events
+      - Learning
+    key_features:
+      - title: Community Hub
+        description: Connect with peers, join forums, study groups, and contribute to open-source
+      - title: Developer Toolkit
+        description: Access resources, tutorials, and boilerplate code to kickstart projects
+      - title: Exclusive Events
+        description: Hackathons, workshops, and tech talks designed to challenge and inspire
+      - title: DevRel Solutions
+        description: Strategic consulting, community management, and content creation services
+      - title: Event Marketplace
+        description: Tailored events for product feedback, brand awareness, and engagement
+    usage_tips:
+      - Join study groups to connect with peers and share knowledge
+      - Participate in hackathons to showcase skills and win prizes
+      - Use boilerplate code to accelerate project development
+      - Leverage DevRel solutions for developer outreach strategies
+      - Sponsor events to engage top developer talent
+    best_practices:
+      - Actively participate in forums to build your network
+      - Attend workshops to stay updated with tech trends
+      - Contribute to open-source projects in the community
+      - Use the event marketplace for targeted developer engagement
+      - Establish long-term partnerships for ecosystem growth
+    whats_new:
+      - date: '2025-12-01'
+        title: Event Marketplace Launch
+        description: New platform for brands to engage developers through managed end-to-end events.
+      - date: '2025-11-20'
+        title: DevRel Solutions Expansion
+        description: Added strategic consulting and content creation services for developer outreach.
+      - date: '2025-11-10'
+        title: Community Hub 2.0
+        description: Enhanced forums, study groups, and mentorship matching for better collaboration.
 
   # === AGENT FRAMEWORKS ===
   - name: LangChain
