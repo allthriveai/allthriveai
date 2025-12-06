@@ -443,6 +443,19 @@ companies:
     twitter_handle: weaviate_io
     github_url: https://github.com/weaviate/weaviate
 
+  - name: Redis
+    tagline: The real-time data platform
+    description: >
+      Redis is an open-source, in-memory data structure store used as a database, cache,
+      and message broker. Known for speed and flexibility with support for vector search,
+      JSON documents, and real-time analytics. Powers AI applications with RedisVL.
+    website_url: https://redis.io
+    logo_url: https://redis.io/wp-content/uploads/2024/04/Logotype.svg
+    founded_year: 2009
+    headquarters: Mountain View, CA
+    twitter_handle: redisinc
+    github_url: https://github.com/redis/redis
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
@@ -2217,6 +2230,63 @@ tools:
       - date: '2025-11-01'
         title: Weaviate Agents Launch
         description: New Query Agent, Transformation Agent, and Personalization Agent for AI workflows.
+
+  - name: RedisVL
+    company: Redis
+    tagline: AI-native Python client for Redis vector search
+    description: >
+      Redis Vector Library (RedisVL) is a powerful Python client for leveraging Redis
+      for AI applications. Design search schemas from YAML or Python, perform advanced
+      vector search with complex filtering, and use built-in vectorizers for OpenAI and
+      other providers. Includes CLI for ease of use, semantic caching to reduce LLM costs,
+      and LLM message history storage. Framework-agnostic and works with LangChain, LlamaIndex,
+      or standalone. Open source with Redis Cloud or self-hosted Redis Stack.
+    category: research
+    tool_type: platform
+    website_url: https://docs.redisvl.com/en/latest/
+    logo_url: https://redis.io/wp-content/uploads/2024/04/Logotype.svg
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - Vector Search
+      - Redis
+      - Python
+      - Open Source
+      - RAG
+      - LLM Caching
+    key_features:
+      - title: Index Management
+        description: Design search schemas and indices from YAML, Python, or CLI
+      - title: Advanced Vector Search
+        description: Complex filtering with hybrid search combining vectors and metadata
+      - title: Embedding Creation
+        description: Built-in vectorizers for OpenAI and other supported providers
+      - title: Semantic Caching
+        description: Cache LLM results to increase QPS and decrease costs
+      - title: CLI Interface
+        description: Command-line tool for quick interactions and management
+    usage_tips:
+      - Use YAML schema definitions for declarative index management
+      - Enable semantic caching to reduce LLM API costs significantly
+      - Leverage hybrid search for better retrieval with metadata filtering
+      - Use the CLI for rapid prototyping and debugging
+      - Store LLM message history for conversational applications
+    best_practices:
+      - Design schemas with appropriate field types and indexing strategies
+      - Use Redis Cloud for managed hosting or Redis Stack for local development
+      - Implement semantic caching for frequently asked questions
+      - Monitor cache hit rates to optimize caching strategy
+      - Use vectorizers to simplify embedding pipeline management
+    whats_new:
+      - date: '2025-11-28'
+        title: RedisVL 0.3 Release
+        description: New semantic router for dynamic prompt routing and improved reranker support.
+      - date: '2025-11-15'
+        title: Embedding Cache Launch
+        description: Dedicated caching layer for embeddings to reduce vectorization costs.
+      - date: '2025-11-01'
+        title: SVS-VAMANA Algorithm
+        description: New vector search algorithm for improved recall and performance at scale.
 
   # === AGENT FRAMEWORKS ===
   - name: LangChain
