@@ -1,5 +1,5 @@
 /**
- * AllThrive Web Clipper Types
+ * All Thrive Web Clipper Types
  */
 
 export interface ClippedContent {
@@ -76,7 +76,7 @@ export interface AuthState {
 }
 
 export interface ClipperSettings {
-  /** AllThrive API base URL */
+  /** All Thrive API base URL */
   apiBaseUrl: string;
   /** Auto-detect content type */
   autoDetect: boolean;

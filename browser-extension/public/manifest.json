@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "AllThrive Web Clipper",
+  "name": "All Thrive Web Clipper",
   "version": "1.0.0",
-  "description": "Capture AI projects from any website and add them to your AllThrive profile",
+  "description": "Capture AI projects from any website and add them to your All Thrive profile",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -17,7 +17,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "Clip to AllThrive"
+    "default_title": "Clip to All Thrive"
   },
   "permissions": [
     "activeTab",
@@ -47,7 +47,7 @@
         "default": "Alt+Shift+A",
         "mac": "Alt+Shift+A"
       },
-      "description": "Open AllThrive Clipper"
+      "description": "Open All Thrive Clipper"
     },
     "quick_clip": {
       "suggested_key": {

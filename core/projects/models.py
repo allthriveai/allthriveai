@@ -14,7 +14,7 @@ class ProjectQuerySet(models.QuerySet):
 
     def for_user(self, user):
         """Return projects accessible to the given user."""
-        if user.is_staff:
+        if user.is_admin_role:
             return self.all()
         # User's own projects + all public projects from others
         return self.filter(models.Q(user=user) | models.Q(is_archived=False, is_private=False))

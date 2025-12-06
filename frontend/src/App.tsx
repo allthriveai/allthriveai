@@ -4,6 +4,8 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { QuestCompletionProvider } from '@/contexts/QuestCompletionContext';
 import { SubscribeModalProvider } from '@/components/billing';
+import { BattleNotificationProvider } from '@/components/battles/BattleNotificationProvider';
+import { SageOnboardingProvider } from '@/components/onboarding';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { AppRoutes } from '@/routes';
 import { Sentry } from '@/utils/sentry';
@@ -60,11 +62,15 @@ function App() {
               <SubscribeModalProvider>
                 <BrowserRouter>
                   <AuthProvider>
-                    <QuestCompletionProvider>
-                      <MainLayout>
-                        <AppRoutes />
-                      </MainLayout>
-                    </QuestCompletionProvider>
+                    <BattleNotificationProvider>
+                      <SageOnboardingProvider>
+                        <QuestCompletionProvider>
+                          <MainLayout>
+                            <AppRoutes />
+                          </MainLayout>
+                        </QuestCompletionProvider>
+                      </SageOnboardingProvider>
+                    </BattleNotificationProvider>
                   </AuthProvider>
                 </BrowserRouter>
               </SubscribeModalProvider>

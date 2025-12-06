@@ -39,6 +39,7 @@ import GettingStartedPage from '@/pages/GettingStartedPage';
 import VendorDashboardPage from '@/pages/VendorDashboardPage';
 import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
 import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
+import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
 
 export function AppRoutes() {
   return (
@@ -217,14 +218,23 @@ export function AppRoutes() {
         }
       />
 
-      {/* Getting Started - protected */}
+      {/* Ember's Onboarding - protected */}
       <Route
-        path="/getting-started"
+        path="/onboarding"
         element={
           <ProtectedRoute>
             <GettingStartedPage />
           </ProtectedRoute>
         }
+      />
+      {/* Legacy routes - redirect to onboarding */}
+      <Route
+        path="/getting-started"
+        element={<Navigate to="/onboarding" replace />}
+      />
+      <Route
+        path="/quests"
+        element={<Navigate to="/onboarding" replace />}
       />
 
       {/* Vendor Dashboard - protected, vendors only */}
@@ -289,6 +299,9 @@ export function AppRoutes() {
       {/* Redirect all other auth routes to /auth */}
       <Route path="/login" element={<Navigate to="/auth" replace />} />
       <Route path="/signup" element={<Navigate to="/auth" replace />} />
+
+      {/* Extension auth - handles browser extension authentication */}
+      <Route path="/extension/auth" element={<ExtensionAuthPage />} />
 
       {/* Protected routes - Settings */}
       <Route

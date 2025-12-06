@@ -28,7 +28,7 @@ companies:
       Anthropic is an AI safety company working to build reliable, interpretable,
       and steerable AI systems. Founded by former OpenAI researchers.
     website_url: https://anthropic.com
-    logo_url: https://mintlify.s3-us-west-1.amazonaws.com/anthropic/logo/light.svg
+    logo_url: /logos/claude-logo.svg
     founded_year: 2021
     headquarters: San Francisco, CA
     twitter_handle: AnthropicAI
@@ -96,7 +96,7 @@ companies:
       Midjourney is an independent research lab that produces an AI image generation
       program under the same name.
     website_url: https://midjourney.com
-    logo_url: https://upload.wikimedia.org/wikipedia/commons/e/e6/Midjourney_Emblem.svg
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Midjourney_Emblem.svg/240px-Midjourney_Emblem.svg.png
     founded_year: 2022
     headquarters: San Francisco, CA
     twitter_handle: midaborney
@@ -211,7 +211,7 @@ companies:
       Jasper is an AI content platform that helps marketing teams create
       on-brand content at scale.
     website_url: https://jasper.ai
-    logo_url: https://www.jasper.ai/hubfs/jasper-logo-purple.svg
+    logo_url: /logos/jasper-logo.svg
     founded_year: 2021
     headquarters: Austin, TX
     twitter_handle: heyjasperai
@@ -255,7 +255,7 @@ companies:
       Luma AI creates AI-powered 3D capture and video generation technology,
       including Dream Machine for video generation.
     website_url: https://lumalabs.ai
-    logo_url: https://lumalabs.ai/favicon.ico
+    logo_url: /logos/luma-dream-machine-logo.svg
     founded_year: 2021
     headquarters: Palo Alto, CA
     twitter_handle: LumaLabsAI
@@ -288,7 +288,7 @@ companies:
       Grammarly is an AI-powered writing assistant that helps users improve
       their grammar, spelling, style, and tone.
     website_url: https://grammarly.com
-    logo_url: https://static.grammarly.com/assets/files/cb6ce17d281d15f2c819035bcd430b0e/grammarly_logo.svg
+    logo_url: /logos/grammarly-logo.png
     founded_year: 2009
     headquarters: San Francisco, CA
     twitter_handle: Grammarly
@@ -312,7 +312,7 @@ companies:
       human scientific discovery and understand the true nature of the universe.
       Known for Grok, an AI assistant with real-time knowledge.
     website_url: https://x.ai
-    logo_url: https://upload.wikimedia.org/wikipedia/commons/a/a0/Grok-icon.svg
+    logo_url: /logos/grok-logo.jpeg
     founded_year: 2023
     headquarters: San Francisco, CA
     twitter_handle: xai
@@ -341,6 +341,94 @@ companies:
     headquarters: San Francisco, CA
     twitter_handle: gitlab
     github_url: https://github.com/gitlabhq
+
+  - name: CrewAI
+    tagline: The leading multi-agent platform
+    description: >
+      CrewAI is the leading platform for building, deploying, and managing AI agent
+      workflows. Features role-based agent design, hierarchical processes, and seamless
+      integration with any LLM provider.
+    website_url: https://www.crewai.com
+    logo_url: /logos/CrewAI-logo.svg
+    founded_year: 2023
+    headquarters: San Francisco, CA
+    twitter_handle: crewaiinc
+    github_url: https://github.com/crewaiinc/crewai
+
+  - name: Vapi
+    tagline: Voice AI agents for developers
+    description: >
+      Vapi is a platform for building, testing, and deploying advanced voice AI agents.
+      Provides infrastructure for creating custom voice assistants that handle customer
+      support, appointment booking, sales calls, and conversational applications.
+    website_url: https://vapi.ai
+    logo_url: /logos/vapi-logo.svg
+    founded_year: 2023
+    headquarters: San Francisco, CA
+    twitter_handle: Vapi_AI
+    github_url: https://github.com/VapiAI
+
+  - name: Figma
+    tagline: The collaborative interface design tool
+    description: >
+      Figma is a browser-based collaborative design platform for creating user interfaces,
+      prototypes, and design systems. Features real-time collaboration, auto-layout,
+      components, and Dev Mode for design-to-code handoff.
+    website_url: https://www.figma.com
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/3/33/Figma-logo.svg
+    founded_year: 2012
+    headquarters: San Francisco, CA
+    twitter_handle: figma
+
+  - name: CapCut
+    tagline: AI-powered video editor for everyone
+    description: >
+      CapCut is an all-in-one creative platform powered by AI for video editing and
+      image design. Owned by ByteDance, it offers professional editing tools with
+      AI-powered features across web, desktop, and mobile.
+    website_url: https://www.capcut.com
+    logo_url: /logos/capcput-logo.jpeg
+    founded_year: 2020
+    headquarters: Los Angeles, CA
+    twitter_handle: capcutapp
+
+  - name: Mistral AI
+    tagline: Frontier AI in your hands
+    description: >
+      Mistral AI is a French AI company building frontier language models with a focus
+      on open-source and enterprise deployments. Known for efficient, high-performance
+      models like Mistral Large, Mixtral, and Codestral.
+    website_url: https://mistral.ai
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/e/e6/Mistral_AI_logo_%282025%E2%80%93%29.svg
+    founded_year: 2023
+    headquarters: Paris, France
+    twitter_handle: MistralAI
+    github_url: https://github.com/mistralai
+
+  - name: Canva
+    tagline: Design anything, publish anywhere
+    description: >
+      Canva is an online design platform that makes it easy to create professional
+      graphics, presentations, videos, and print materials. Features AI-powered
+      design tools, millions of templates, and team collaboration.
+    website_url: https://www.canva.com
+    logo_url: /logos/canva-logo.svg
+    founded_year: 2012
+    headquarters: Sydney, Australia
+    twitter_handle: canva
+
+  - name: LangChain
+    tagline: Engineer reliable agents
+    description: >
+      LangChain is the #1 agent framework for building LLM-powered applications.
+      Includes LangGraph for custom agents and LangSmith for observability,
+      evaluation, and deployment. 100K+ GitHub stars, 90M monthly downloads.
+    website_url: https://www.langchain.com
+    logo_url: https://simpleicons.org/icons/langchain.svg
+    founded_year: 2022
+    headquarters: San Francisco, CA
+    twitter_handle: LangChainAI
+    github_url: https://github.com/langchain-ai/langchain
 
 
 # -----------------------------------------------------------------------------
@@ -414,7 +502,7 @@ tools:
     category: chat
     tool_type: ai_tool
     website_url: https://claude.ai
-    logo_url: https://mintlify.s3-us-west-1.amazonaws.com/anthropic/logo/light.svg
+    logo_url: /logos/claude-logo.svg
     pricing_model: freemium
     has_free_tier: true
     tags:
@@ -525,7 +613,7 @@ tools:
     category: chat
     tool_type: ai_tool
     website_url: https://x.ai/grok
-    logo_url: https://upload.wikimedia.org/wikipedia/commons/a/a0/Grok-icon.svg
+    logo_url: /logos/grok-logo.jpeg
     pricing_model: subscription
     has_free_tier: false
     tags:
@@ -567,6 +655,61 @@ tools:
       - date: '2025-11-15'
         title: Grok 4.20 Christmas Teaser
         description: xAI hints at major update coming December 25th with enhanced reasoning capabilities.
+
+  - name: Mistral
+    company: Mistral AI
+    tagline: Multilingual AI assistant with web search and canvas
+    description: >
+      Mistral AI's chat interface at chat.mistral.ai (Le Chat). Powered by Mistral Large
+      and other models. Features web search, canvas for document editing, code execution,
+      and image generation. Supports multiple languages with strong European language
+      performance. Agents marketplace for specialized assistants. Free tier; Pro at
+      €14.99/mo with priority access and higher limits.
+    category: chat
+    tool_type: ai_tool
+    website_url: https://chat.mistral.ai
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/e/e6/Mistral_AI_logo_%282025%E2%80%93%29.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - NLP
+      - Mistral
+      - Conversation
+      - Multilingual
+      - European AI
+    key_features:
+      - title: Mistral Large Model
+        description: Frontier-class reasoning with strong multilingual capabilities
+      - title: Web Search
+        description: Real-time information retrieval with cited sources
+      - title: Canvas Editor
+        description: Side-by-side document editing and collaboration with AI
+      - title: Code Execution
+        description: Run Python code directly in conversation for analysis
+      - title: Agents Marketplace
+        description: Pre-built and custom agents for specialized tasks
+    usage_tips:
+      - Use canvas mode for document editing and iteration
+      - Leverage web search for current information
+      - Try agents for specialized workflows
+      - Use French and European languages for optimal performance
+      - Enable code execution for data analysis
+    best_practices:
+      - Choose the right model tier for your task complexity
+      - Use specific prompts for better multilingual outputs
+      - Leverage canvas for longer document work
+      - Cross-reference web search results
+      - Use agents for repetitive specialized tasks
+    whats_new:
+      - date: '2025-12-01'
+        title: Mistral Large 3 Release
+        description: Latest flagship model with improved reasoning and 128K context window.
+      - date: '2025-11-20'
+        title: Canvas Feature Launch
+        description: Side-by-side document editing with AI assistance for writing and coding.
+      - date: '2025-11-08'
+        title: Agents Marketplace
+        description: Browse and deploy pre-built agents or create custom ones for your workflows.
 
   - name: Perplexity
     company: Perplexity AI
@@ -636,7 +779,7 @@ tools:
     category: image
     tool_type: ai_tool
     website_url: https://midjourney.com
-    logo_url: https://cdn.worldvectorlogo.com/logos/midjourney.svg
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Midjourney_Emblem.svg/240px-Midjourney_Emblem.svg.png
     pricing_model: subscription
     has_free_tier: false
     tags:
@@ -1076,7 +1219,7 @@ tools:
     category: video
     tool_type: ai_tool
     website_url: https://lumalabs.ai/dream-machine
-    logo_url: https://lumalabs.ai/favicon.ico
+    logo_url: /logos/luma-dream-machine-logo.svg
     pricing_model: freemium
     has_free_tier: true
     tags:
@@ -1118,6 +1261,61 @@ tools:
       - date: '2025-11-10'
         title: API Rate Limits Increased
         description: Pro users now get 5x higher API limits for production workloads.
+
+  - name: CapCut
+    company: CapCut
+    tagline: AI-powered video editing for creators
+    description: >
+      All-in-one creative platform powered by AI for video editing and image design.
+      Available on web, Windows, Mac, Android, and iOS. Features auto captions with
+      speech-to-text, text-to-speech voiceovers, background removal, video upscaling,
+      and AI image generation. Extensive template library for social media content.
+      Team collaboration with cloud storage. Free tier; Pro at $9.99/mo with 1TB storage.
+    category: video
+    tool_type: ai_tool
+    website_url: https://www.capcut.com
+    logo_url: /logos/capcput-logo.jpeg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Video Editing
+      - AI Video
+      - Social Media
+      - Content Creation
+      - Mobile
+    key_features:
+      - title: Auto Captions
+        description: AI-powered speech-to-text generates accurate subtitles automatically
+      - title: Text-to-Speech
+        description: Create voiceovers from text with multiple AI voice options
+      - title: Background Removal
+        description: Remove or replace backgrounds in videos and images with one click
+      - title: Video Upscaling
+        description: Enhance video resolution and quality with AI upscaling
+      - title: Template Library
+        description: Thousands of templates optimized for TikTok, Instagram, and YouTube
+    usage_tips:
+      - Use auto captions to increase video accessibility and engagement
+      - Leverage templates for quick social media content creation
+      - Use background removal for professional-looking product videos
+      - Export directly to TikTok, YouTube, and Instagram
+      - Use cloud storage for team collaboration on projects
+    best_practices:
+      - Match template aspect ratios to your target platform
+      - Review auto-generated captions for accuracy
+      - Use AI enhancement sparingly to maintain natural look
+      - Organize projects in cloud folders for easy access
+      - Export at platform-recommended quality settings
+    whats_new:
+      - date: '2025-12-01'
+        title: AI Video Generator
+        description: Generate video clips from text prompts with customizable styles and durations.
+      - date: '2025-11-18'
+        title: Pro Plan Storage Upgrade
+        description: Pro subscribers now get 1TB cloud storage, up from 100GB.
+      - date: '2025-11-05'
+        title: Collaborative Editing
+        description: Real-time team editing with shared project workspaces and version history.
 
   # === AUDIO & MUSIC ===
   - name: ElevenLabs
@@ -1174,6 +1372,62 @@ tools:
       - date: '2025-11-15'
         title: $6.6B Valuation
         description: Series C funding values ElevenLabs at $6.6B, highlighting AI voice market growth.
+
+  - name: Vapi
+    company: Vapi
+    tagline: Build and deploy voice AI agents in minutes
+    description: >
+      Developer platform for building, testing, and deploying voice AI agents. Supports
+      100+ languages with sub-500ms latency. Bring your own LLM, transcription, and
+      text-to-speech models. Features automated testing for hallucination detection,
+      A/B testing for prompt optimization, and tool calling for API integrations.
+      Enterprise-grade with 99.99% uptime, SOC2, HIPAA, and PCI compliance. Powers
+      150M+ calls across 350K+ developers. Usage-based pricing.
+    category: audio
+    tool_type: ai_tool
+    website_url: https://vapi.ai
+    logo_url: /logos/vapi-logo.svg
+    pricing_model: pay_per_use
+    has_free_tier: true
+    tags:
+      - Voice AI
+      - Conversational AI
+      - Voice Agents
+      - API
+      - Developer Tools
+    key_features:
+      - title: Voice Agent Builder
+        description: Create custom voice assistants for support, booking, sales, and more
+      - title: Multilingual Support
+        description: 100+ languages with natural-sounding voices
+      - title: Sub-500ms Latency
+        description: Real-time conversations with minimal delay
+      - title: Bring Your Own Models
+        description: Use any LLM, transcription, or TTS provider
+      - title: Automated Testing
+        description: Identify hallucination risks and optimize prompts with A/B testing
+    usage_tips:
+      - Start with pre-built templates for common use cases
+      - Use tool calling to connect agents to your APIs and databases
+      - Test extensively with automated hallucination detection
+      - A/B test different prompts and voices for optimization
+      - Monitor call analytics to improve agent performance
+    best_practices:
+      - Design clear conversation flows before building
+      - Handle edge cases and fallbacks gracefully
+      - Use appropriate voice personas for your brand
+      - Implement proper error handling for API integrations
+      - Monitor latency and quality metrics in production
+    whats_new:
+      - date: '2025-12-01'
+        title: 150M Calls Milestone
+        description: Platform reaches 150 million processed calls with 350K+ active developers.
+      - date: '2025-11-20'
+        title: Automated Testing Suite
+        description: New testing tools detect hallucinations and conversation failures before deployment.
+      - date: '2025-11-05'
+        title: Enterprise Compliance
+        description: SOC2 Type II, HIPAA, and PCI DSS compliance certifications completed.
 
   - name: Suno
     company: Suno
@@ -1408,7 +1662,7 @@ tools:
     category: code
     tool_type: ai_tool
     website_url: https://docs.anthropic.com/en/docs/claude-code
-    logo_url: https://mintlify.s3-us-west-1.amazonaws.com/anthropic/logo/light.svg
+    logo_url: /logos/claude-logo.svg
     pricing_model: pay_per_use
     has_free_tier: false
     tags:
@@ -1685,7 +1939,7 @@ tools:
     category: writing
     tool_type: ai_tool
     website_url: https://grammarly.com
-    logo_url: https://static.grammarly.com/assets/files/cb6ce17d281d15f2c819035bcd430b0e/grammarly_logo.svg
+    logo_url: /logos/grammarly-logo.png
     pricing_model: freemium
     has_free_tier: true
     tags:
@@ -1740,7 +1994,7 @@ tools:
     category: writing
     tool_type: ai_tool
     website_url: https://jasper.ai
-    logo_url: https://www.jasper.ai/hubfs/jasper-logo-purple.svg
+    logo_url: /logos/jasper-logo.svg
     pricing_model: subscription
     has_free_tier: false
     tags:
@@ -1895,6 +2149,119 @@ tools:
         description: Deploy models to edge locations for sub-100ms latency in key regions.
 
   # === AGENT FRAMEWORKS ===
+  - name: LangChain
+    company: LangChain
+    tagline: "The #1 framework for building AI agents"
+    description: >
+      Open-source framework for building LLM-powered applications. LangChain provides
+      composable building blocks for chains and agents. LangGraph enables custom agent
+      architectures with low-level control. LangSmith offers observability, evaluation,
+      and deployment. 100K+ GitHub stars, 90M monthly downloads, 1000+ integrations.
+      Open source core; LangSmith has free tier and enterprise plans.
+    category: code
+    tool_type: framework
+    website_url: https://www.langchain.com
+    logo_url: https://simpleicons.org/icons/langchain.svg
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - AI Agents
+      - Framework
+      - LLM
+      - Open Source
+      - Python
+      - JavaScript
+    key_features:
+      - title: LangChain Framework
+        description: Pre-built components for chains, agents, and retrieval systems
+      - title: LangGraph
+        description: Build custom agents with state machines and low-level control
+      - title: LangSmith
+        description: Trace, debug, evaluate, and deploy agents to production
+      - title: Model Agnostic
+        description: Works with OpenAI, Anthropic, Google, and 100+ LLM providers
+      - title: Rich Ecosystem
+        description: 1000+ integrations with vector stores, tools, and data sources
+    usage_tips:
+      - Start with LangChain for quick prototyping
+      - Use LangGraph for complex agent architectures
+      - Enable LangSmith tracing for debugging
+      - Use retrieval chains for RAG applications
+      - Leverage community templates and examples
+    best_practices:
+      - Structure agents with clear tool definitions
+      - Use streaming for better UX in long operations
+      - Implement proper error handling in chains
+      - Monitor with LangSmith in production
+      - Version your prompts and evaluate systematically
+    whats_new:
+      - date: '2025-12-01'
+        title: Deep Agents Launch
+        description: New framework for planning, memory, and sub-agent orchestration for complex tasks.
+      - date: '2025-11-20'
+        title: LangGraph 0.2
+        description: Enhanced state management, checkpointing, and human-in-the-loop support.
+      - date: '2025-11-08'
+        title: Agent Builder Beta
+        description: No-code agent creation in LangSmith with visual workflow editor.
+
+  - name: CrewAI
+    company: CrewAI
+    tagline: Build and orchestrate multi-agent AI workflows
+    description: >
+      Open-source Python framework for orchestrating role-playing AI agents. Define agents
+      with specific roles, goals, and backstories that collaborate on complex tasks. Supports
+      hierarchical and sequential processes, tool integration, and any LLM provider including
+      OpenAI, Anthropic, and local models. CrewAI Enterprise adds UI Studio for visual
+      workflow building and one-click deployment. 40K+ GitHub stars. Open source core;
+      Enterprise pricing available.
+    category: code
+    tool_type: framework
+    website_url: https://www.crewai.com
+    logo_url: /logos/CrewAI-logo.svg
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - AI Agents
+      - Framework
+      - Multi-Agent
+      - Open Source
+      - Python
+      - Orchestration
+    key_features:
+      - title: Role-Based Agents
+        description: Define agents with specific roles, goals, and backstories for focused task execution
+      - title: Flexible Processes
+        description: Sequential or hierarchical workflows with automatic task delegation
+      - title: Tool Integration
+        description: Connect agents to custom tools, APIs, and external services
+      - title: LLM Agnostic
+        description: Works with OpenAI, Anthropic, local models, and any LLM provider
+      - title: CrewAI Enterprise
+        description: Visual UI Studio, one-click deployment, and managed infrastructure
+    usage_tips:
+      - Define clear roles and goals for each agent in your crew
+      - Use hierarchical process for complex tasks requiring coordination
+      - Leverage tools to give agents access to external data and APIs
+      - Start with simple crews and add complexity incrementally
+      - Use memory features for agents that need context across tasks
+    best_practices:
+      - Keep agent responsibilities focused and well-defined
+      - Test individual agents before combining into crews
+      - Use appropriate LLMs for different agent roles (cheaper for simple, powerful for complex)
+      - Implement proper error handling for production deployments
+      - Monitor token usage when running multiple agents
+    whats_new:
+      - date: '2025-12-01'
+        title: CrewAI Enterprise Launch
+        description: Visual UI Studio for building workflows, one-click deployment, and enterprise support.
+      - date: '2025-11-20'
+        title: Flows Feature
+        description: New Flows API for building event-driven, stateful AI workflows with checkpoints.
+      - date: '2025-11-05'
+        title: 40K GitHub Stars
+        description: CrewAI reaches 40,000 stars, becoming the most popular multi-agent framework.
+
   - name: Open Standard Agents
     tagline: Open specification for building AI agents
     description: >
@@ -1951,6 +2318,116 @@ tools:
         description: Official adapters for LangChain, CrewAI, and AutoGen now available via npm.
 
   # === UI COMPONENTS & DESIGN RESOURCES ===
+  - name: Figma
+    company: Figma
+    tagline: Design, prototype, and collaborate in the browser
+    description: >
+      Browser-based collaborative design platform for creating user interfaces, prototypes,
+      and design systems. Real-time multiplayer editing lets teams design together. Features
+      auto-layout, components with variants, Dev Mode for design-to-code handoff, and
+      FigJam for whiteboarding. Figma AI assists with design suggestions and asset generation.
+      Extensive plugin ecosystem. Free tier; Professional at $15/editor/mo.
+    category: design
+    tool_type: ai_tool
+    website_url: https://www.figma.com
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/3/33/Figma-logo.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Design
+      - UI/UX
+      - Prototyping
+      - Collaboration
+      - Design Systems
+    key_features:
+      - title: Real-Time Collaboration
+        description: Multiple designers work simultaneously with live cursors and comments
+      - title: Components & Variants
+        description: Reusable design elements with multiple states and properties
+      - title: Auto Layout
+        description: Responsive designs that adapt to content changes automatically
+      - title: Dev Mode
+        description: Inspect designs, export assets, and generate code snippets
+      - title: Figma AI
+        description: AI-powered design suggestions, asset generation, and content filling
+    usage_tips:
+      - Use components for consistent design systems
+      - Enable auto-layout for responsive designs
+      - Use Dev Mode to streamline developer handoff
+      - Leverage plugins for extended functionality
+      - Use FigJam for brainstorming and planning
+    best_practices:
+      - Establish a component library early in projects
+      - Use naming conventions for organized layer management
+      - Create design tokens for consistent styling
+      - Document components with descriptions
+      - Use branches for exploring design variations
+    whats_new:
+      - date: '2025-12-01'
+        title: Figma AI General Availability
+        description: AI features now available to all users including visual search, layer renaming, and content generation.
+      - date: '2025-11-18'
+        title: Dev Mode 2.0
+        description: Enhanced code generation with framework-specific output for React, SwiftUI, and Flutter.
+      - date: '2025-11-05'
+        title: Variables 2.0
+        description: Advanced design tokens with modes, scoping, and improved organization for design systems.
+
+  - name: Canva
+    company: Canva
+    tagline: Design anything, publish anywhere
+    description: >
+      Online design platform for creating graphics, presentations, videos, and print
+      materials. Features Magic Studio AI tools for text-to-image generation, background
+      removal, Magic Write for copy, and Magic Design for instant layouts. 250M+ monthly
+      users with millions of templates and stock assets. Team collaboration with Brand
+      Kit for consistency. Free tier; Pro at $15/mo with premium assets and AI features.
+    category: design
+    tool_type: ai_tool
+    website_url: https://www.canva.com
+    logo_url: /logos/canva-logo.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Design
+      - Graphics
+      - Templates
+      - AI Design
+      - Social Media
+    key_features:
+      - title: Magic Studio AI
+        description: AI-powered tools for image generation, editing, and design automation
+      - title: Templates Library
+        description: Millions of customizable templates for any format or occasion
+      - title: Brand Kit
+        description: Store brand colors, fonts, and logos for consistent designs
+      - title: Video Editor
+        description: Create and edit videos with animations, music, and AI voiceover
+      - title: Team Collaboration
+        description: Real-time collaboration with comments, approvals, and sharing
+    usage_tips:
+      - Start with templates and customize to save time
+      - Use Magic Resize to adapt designs for multiple platforms
+      - Set up Brand Kit for consistent brand identity
+      - Use Magic Write for headline and copy suggestions
+      - Export directly to social platforms or print services
+    best_practices:
+      - Organize designs in folders and teams
+      - Use Brand Kit to maintain visual consistency
+      - Leverage templates for quick turnaround
+      - Review AI-generated content before publishing
+      - Use version history to track changes
+    whats_new:
+      - date: '2025-12-02'
+        title: Magic Studio 2.0
+        description: Enhanced AI suite with improved image generation, video editing, and design automation.
+      - date: '2025-11-20'
+        title: Dream Lab Integration
+        description: Text-to-image generation powered by proprietary AI model trained on licensed content.
+      - date: '2025-11-08'
+        title: Canva Sheets Launch
+        description: New spreadsheet product with AI-powered data visualization and chart generation.
+
   - name: 21st.dev
     tagline: Discover community-made UI components
     description: >

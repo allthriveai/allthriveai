@@ -227,12 +227,17 @@ def get_ai_breakdown(breakdown_type: str, days: int = 30) -> dict:
         field = 'ai_by_feature' if breakdown_type == 'feature' else 'ai_by_provider'
 
         for stat in stats:
-            data = getattr(stat, field)
-            for key, values in data.items():
+            data = getattr(stat, field) or {}
+            for key, value in data.items():
                 if key not in breakdown:
                     breakdown[key] = {'requests': 0, 'cost': 0}
-                breakdown[key]['requests'] += values.get('requests', 0)
-                breakdown[key]['cost'] += values.get('cost', 0)
+                # Handle both old format (just cost float) and new format (dict with requests/cost)
+                if isinstance(value, dict):
+                    breakdown[key]['requests'] += value.get('requests', 0)
+                    breakdown[key]['cost'] += value.get('cost', 0)
+                else:
+                    # Old format: value is just the cost
+                    breakdown[key]['cost'] += float(value or 0)
 
         # Sort by cost descending
         sorted_breakdown = dict(sorted(breakdown.items(), key=lambda x: x[1]['cost'], reverse=True))

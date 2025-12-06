@@ -36,7 +36,7 @@ def extension_auth_page(request):
     """
     if request.user.is_authenticated:
         # Generate extension token
-        token = generate_extension_token(request.user)
+        token = generate_extension_token_internal(request.user)
 
         # Build callback URL with token and user data
         user_data = {
@@ -48,12 +48,20 @@ def extension_auth_page(request):
         }
 
         import json
+        from urllib.parse import urlencode
 
-        callback_url = f'/api/v1/extension/auth/callback/?token={token}&user={json.dumps(user_data)}'
+        # URL-encode the user data to handle special characters
+        params = urlencode({'token': token, 'user': json.dumps(user_data)})
+        callback_url = f'/api/v1/extension/auth/callback/?{params}'
         return HttpResponseRedirect(callback_url)
 
-    # Not authenticated - redirect to login with return URL
-    login_url = '/login?next=/api/v1/extension/auth/'
+    # Not authenticated - redirect to frontend login with return URL
+    # The frontend runs on port 3000 in development
+    from django.conf import settings
+
+    frontend_url = settings.FRONTEND_URL
+    backend_url = settings.BACKEND_URL
+    login_url = f'{frontend_url}/login?next={backend_url}/api/v1/extension/auth/'
     return HttpResponseRedirect(login_url)
 
 
@@ -73,34 +81,6 @@ def extension_auth_callback(request):
             'status': 'success',
         }
     )
-
-
-def generate_extension_token(user: User) -> str:
-    """Generate a secure token for the browser extension.
-
-    Stores the token in the user's profile for verification.
-    """
-    token = secrets.token_urlsafe(32)
-
-    # Store token with expiry in user's extension_tokens (JSON field)
-    # You may need to add this field to the User model
-    expiry = timezone.now() + timezone.timedelta(days=EXTENSION_TOKEN_EXPIRY_DAYS)
-
-    # For now, use a simple approach - store in cache
-    from django.core.cache import cache
-
-    cache_key = f'extension_token:{token}'
-    cache.set(
-        cache_key,
-        {
-            'user_id': user.id,
-            'created_at': timezone.now().isoformat(),
-            'expires_at': expiry.isoformat(),
-        },
-        timeout=EXTENSION_TOKEN_EXPIRY_DAYS * 24 * 60 * 60,
-    )  # Cache for token lifetime
-
-    return token
 
 
 @api_view(['GET'])
@@ -272,6 +252,46 @@ def create_clipped_project(request):
             },
             status=500,
         )
+
+
+@api_view(['POST'])
+def generate_extension_token(request):
+    """Generate an extension token for the authenticated user.
+
+    This endpoint is called by the frontend ExtensionAuthPage when the user
+    is already authenticated. It returns a token that the extension stores.
+    """
+    if not request.user.is_authenticated:
+        return Response({'error': 'Not authenticated'}, status=401)
+
+    token = generate_extension_token_internal(request.user)
+    return Response({'token': token})
+
+
+def generate_extension_token_internal(user: User) -> str:
+    """Generate a secure token for the browser extension.
+
+    Stores the token in the user's profile for verification.
+    """
+    token = secrets.token_urlsafe(32)
+
+    # Store token with expiry in cache
+    expiry = timezone.now() + timezone.timedelta(days=EXTENSION_TOKEN_EXPIRY_DAYS)
+
+    from django.core.cache import cache
+
+    cache_key = f'extension_token:{token}'
+    cache.set(
+        cache_key,
+        {
+            'user_id': user.id,
+            'created_at': timezone.now().isoformat(),
+            'expires_at': expiry.isoformat(),
+        },
+        timeout=EXTENSION_TOKEN_EXPIRY_DAYS * 24 * 60 * 60,
+    )
+
+    return token
 
 
 @api_view(['GET'])

@@ -32,27 +32,27 @@ import {
 } from 'recharts';
 
 interface OverviewMetrics {
-  total_users: number;
-  active_users: number;
-  total_ai_cost: number;
-  total_projects: number;
+  totalUsers: number;
+  activeUsers: number;
+  totalAiCost: number;
+  totalProjects: number;
 }
 
 interface UserGrowthMetrics {
-  total_users: number;
-  new_users: number;
-  avg_dau: number;
-  avg_mau: number;
-  growth_rate: number;
+  totalUsers: number;
+  newUsers: number;
+  avgDau: number;
+  avgMau: number;
+  growthRate: number;
   stickiness: number;
 }
 
 interface ContentMetrics {
-  total_projects: number;
-  total_views: number;
-  total_clicks: number;
-  total_comments: number;
-  engagement_rate: number;
+  totalProjects: number;
+  totalViews: number;
+  totalClicks: number;
+  totalComments: number;
+  engagementRate: number;
 }
 
 interface TimeseriesDataPoint {
@@ -216,28 +216,28 @@ export default function AdminAnalyticsPage() {
           <KPICard
             icon={UsersIcon}
             title="Total Users"
-            value={(overview?.total_users ?? 0).toLocaleString()}
-            subtitle={`${(overview?.active_users ?? 0).toLocaleString()} active`}
+            value={(overview?.totalUsers ?? 0).toLocaleString()}
+            subtitle={`${(overview?.activeUsers ?? 0).toLocaleString()} active`}
             color="cyan"
           />
           <KPICard
             icon={CpuChipIcon}
             title="AI Cost"
-            value={`$${(overview?.total_ai_cost ?? 0).toFixed(2)}`}
+            value={`$${(overview?.totalAiCost ?? 0).toFixed(2)}`}
             subtitle={`Last ${days} days`}
             color="pink"
           />
           <KPICard
             icon={FolderIcon}
             title="Projects"
-            value={(overview?.total_projects ?? 0).toLocaleString()}
+            value={(overview?.totalProjects ?? 0).toLocaleString()}
             subtitle="Total created"
             color="teal"
           />
           <KPICard
             icon={SparklesIcon}
             title="Active Now"
-            value={(overview?.active_users ?? 0).toLocaleString()}
+            value={(overview?.activeUsers ?? 0).toLocaleString()}
             subtitle="Online users"
             color="purple"
           />
@@ -369,8 +369,8 @@ function UsersDashboard({ userGrowth, timeseriesData }: UsersDashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <MetricCard
           title="Growth Rate"
-          value={`${(userGrowth?.growth_rate ?? 0).toFixed(1)}%`}
-          trend={(userGrowth?.growth_rate ?? 0) > 0 ? 'up' : 'down'}
+          value={`${(userGrowth?.growthRate ?? 0).toFixed(1)}%`}
+          trend={(userGrowth?.growthRate ?? 0) > 0 ? 'up' : 'down'}
         />
         <MetricCard
           title="Stickiness"
@@ -379,7 +379,7 @@ function UsersDashboard({ userGrowth, timeseriesData }: UsersDashboardProps) {
         />
         <MetricCard
           title="Monthly Active"
-          value={(userGrowth?.avg_mau ?? 0).toLocaleString()}
+          value={(userGrowth?.avgMau ?? 0).toLocaleString()}
           subtitle="Average MAU"
         />
       </div>
@@ -468,9 +468,9 @@ function ContentDashboard({ contentMetrics, timeseriesData }: ContentDashboardPr
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <MetricCard title="Total Views" value={(contentMetrics?.total_views ?? 0).toLocaleString()} />
-        <MetricCard title="Total Clicks" value={(contentMetrics?.total_clicks ?? 0).toLocaleString()} />
-        <MetricCard title="Engagement Rate" value={`${(contentMetrics?.engagement_rate ?? 0).toFixed(1)}%`} trend="up" />
+        <MetricCard title="Total Views" value={(contentMetrics?.totalViews ?? 0).toLocaleString()} />
+        <MetricCard title="Total Clicks" value={(contentMetrics?.totalClicks ?? 0).toLocaleString()} />
+        <MetricCard title="Engagement Rate" value={`${(contentMetrics?.engagementRate ?? 0).toFixed(1)}%`} trend="up" />
       </div>
 
       <div className="glass-card p-8">

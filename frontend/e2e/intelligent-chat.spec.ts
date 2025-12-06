@@ -121,7 +121,7 @@ test.describe('Intelligent Chat', () => {
   });
 
   test.describe('Plus Menu and Integrations', () => {
-    test('should show plus menu with integration options', async ({ page }) => {
+    test('should show plus menu with primary integration options', async ({ page }) => {
       await page.goto('/explore');
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(2000);
@@ -133,12 +133,35 @@ test.describe('Intelligent Chat', () => {
       await plusButton.click();
       await page.waitForTimeout(500);
 
-      // Check for integration options
-      await expect(page.getByText('Add from GitHub')).toBeVisible();
-      await expect(page.getByText('Add from YouTube')).toBeVisible();
+      // Check for primary integration options (now the main visible options)
+      await expect(page.getByText('Import from URL')).toBeVisible();
       await expect(page.getByText('Create Image/Infographic')).toBeVisible();
-      await expect(page.getByText('Describe Anything')).toBeVisible();
       await expect(page.getByText('Ask for Help')).toBeVisible();
+      await expect(page.getByText('More Integrations')).toBeVisible();
+    });
+
+    test('should show secondary integrations in More Integrations submenu', async ({ page }) => {
+      await page.goto('/explore');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      await openChatPanel(page);
+
+      // Click the plus button to open integrations menu
+      const plusButton = page.locator('button[aria-label="Add integration"]');
+      await plusButton.click();
+      await page.waitForTimeout(500);
+
+      // Click "More Integrations" to open submenu
+      await page.getByText('More Integrations').click();
+      await page.waitForTimeout(500);
+
+      // Check for secondary integration options in submenu
+      await expect(page.getByText('Add from GitHub')).toBeVisible();
+      await expect(page.getByText('Add from GitLab')).toBeVisible();
+      await expect(page.getByText('Add from Figma')).toBeVisible();
+      await expect(page.getByText('Add from YouTube')).toBeVisible();
+      await expect(page.getByText('Describe Anything')).toBeVisible();
     });
 
     test('should open help questions panel when Ask for Help is clicked', async ({ page }) => {
@@ -182,14 +205,14 @@ test.describe('Intelligent Chat', () => {
       await page.waitForTimeout(500);
 
       // Verify menu is open
-      await expect(page.getByText('Add from GitHub')).toBeVisible();
+      await expect(page.getByText('Import from URL')).toBeVisible();
 
       // Click outside the menu (on the chat input)
       await page.getByPlaceholder('Ask me anything...').click();
       await page.waitForTimeout(500);
 
       // Menu should be closed
-      await expect(page.getByText('Add from GitHub')).not.toBeVisible();
+      await expect(page.getByText('Import from URL')).not.toBeVisible();
     });
   });
 

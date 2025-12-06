@@ -1,5 +1,5 @@
 /**
- * AllThrive Web Clipper - Content Script
+ * All Thrive Web Clipper - Content Script
  * Runs on all pages to extract content when requested
  */
 
@@ -382,4 +382,4 @@ function enableHighlightMode() {
 }
 
 // Initialize
-console.log('AllThrive Web Clipper loaded');
+console.log('All Thrive Web Clipper loaded');

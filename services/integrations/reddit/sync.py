@@ -480,8 +480,17 @@ class RedditSyncService:
             posts_to_process = []
             cutoff_time = agent.last_synced_at
 
+            # Get min_publish_year from settings (default 2025 - only import recent content)
+            min_year = agent.settings.get('min_publish_year', 2025)
+
             for post_data in posts:
                 post_published = post_data.get('published_utc')
+
+                # Skip posts older than min_publish_year
+                if post_published and post_published.year < min_year:
+                    logger.debug(f'Skipping post {post_data.get("reddit_post_id")} - published before {min_year}')
+                    continue
+
                 # Include post if:
                 # 1. No last sync (first time), OR
                 # 2. Post was published after last sync time, OR

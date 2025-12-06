@@ -6,6 +6,8 @@
 
 export { BattleArena } from './BattleArena';
 export { BattleCountdown } from './BattleCountdown';
+export { BattleInviteToast, BattleInviteToastContainer } from './BattleInviteToast';
+export { BattleNotificationProvider, useBattleNotificationContext } from './BattleNotificationProvider';
 export { BattleResults } from './BattleResults';
 export { BattlesTab } from './BattlesTab';
 export { ChallengeDisplay } from './ChallengeDisplay';

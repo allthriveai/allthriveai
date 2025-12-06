@@ -8,8 +8,9 @@ import logging
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
+
+from core.permissions import IsAdminRole
 
 from .cache_service import (
     get_ai_breakdown,
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def dashboard_overview(request):
     """
     GET /api/admin/analytics/overview/
@@ -53,7 +54,7 @@ def dashboard_overview(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def dashboard_timeseries(request):
     """
     GET /api/admin/analytics/timeseries/
@@ -93,7 +94,7 @@ def dashboard_timeseries(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def dashboard_ai_breakdown(request):
     """
     GET /api/admin/analytics/ai-breakdown/
@@ -133,7 +134,7 @@ def dashboard_ai_breakdown(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def dashboard_user_growth(request):
     """
     GET /api/admin/analytics/user-growth/
@@ -166,7 +167,7 @@ def dashboard_user_growth(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def dashboard_content_metrics(request):
     """
     GET /api/admin/analytics/content/

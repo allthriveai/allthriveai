@@ -2,7 +2,7 @@
  * BattlesLobbyPage
  *
  * Entry point for Prompt Battles - matchmaking screen.
- * Users can choose to battle Pip (AI) or find a random opponent.
+ * Users can choose to battle Pip (AI) or find an active opponent.
  */
 
 import { useCallback } from 'react';
@@ -21,6 +21,7 @@ export function BattlesLobbyPage() {
       component: 'BattlesLobbyPage',
       context: 'matchmaking',
     });
+    // Errors are handled by the MatchmakingScreen component via onError callback
   }, []);
 
   const handleMatchFound = useCallback(
@@ -36,12 +37,17 @@ export function BattlesLobbyPage() {
     isSearching,
     queueStatus,
     matchWithPip,
-    findRandomMatch,
+    findActiveUser,
     leaveQueue,
   } = useMatchmaking({
     onError: handleError,
     onMatchFound: handleMatchFound,
   });
+
+  // Use findActiveUser for "Find Opponent" - this notifies active users
+  const handleFindOpponent = useCallback(() => {
+    findActiveUser();
+  }, [findActiveUser]);
 
   return (
     <DashboardLayout>
@@ -50,7 +56,7 @@ export function BattlesLobbyPage() {
         queueStatus={queueStatus}
         isConnecting={isConnecting}
         onMatchWithPip={matchWithPip}
-        onFindRandomMatch={findRandomMatch}
+        onFindRandomMatch={handleFindOpponent}
         onLeaveQueue={leaveQueue}
       />
     </DashboardLayout>

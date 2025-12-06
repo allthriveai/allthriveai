@@ -1,5 +1,5 @@
 /**
- * AllThrive Web Clipper - Background Service Worker
+ * All Thrive Web Clipper - Background Service Worker
  * Handles authentication, API calls, and keyboard shortcuts
  */
 
@@ -12,7 +12,7 @@ const API_BASE_URL = 'http://localhost:8000';
 // Handle extension installation
 browser.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install') {
-    console.log('AllThrive Web Clipper installed');
+    console.log('All Thrive Web Clipper installed');
     // Initialize default settings
     await browser.storage.local.set({
       settings: {
@@ -58,30 +58,58 @@ browser.runtime.onMessage.addListener(async (message: ExtensionMessage, sender) 
   }
 });
 
-// Handle auth callback from AllThrive website
+// Handle auth callback from All Thrive website
 browser.webNavigation.onCompleted.addListener(async (details) => {
+  console.log('Navigation completed:', details.url);
+
   if (details.url.includes('/extension/auth/callback')) {
+    console.log('Auth callback detected!');
     try {
       // Extract token from URL
       const url = new URL(details.url);
       const token = url.searchParams.get('token');
       const userDataStr = url.searchParams.get('user');
 
+      console.log('Token found:', !!token);
+      console.log('User data found:', !!userDataStr);
+
       if (token && userDataStr) {
-        const user = JSON.parse(decodeURIComponent(userDataStr));
+        // searchParams.get already decodes the value, so just parse the JSON
+        let user;
+        try {
+          user = JSON.parse(userDataStr);
+        } catch (parseError) {
+          // If parsing fails, try decoding first (in case of double encoding)
+          console.log('Direct parse failed, trying decode first');
+          user = JSON.parse(decodeURIComponent(userDataStr));
+        }
+
+        console.log('User parsed:', user);
+
         await browser.storage.local.set({
           authToken: token,
           user: user,
         });
 
+        console.log('Token and user saved to storage');
+
+        // Verify storage
+        const saved = await browser.storage.local.get(['authToken', 'user']);
+        console.log('Verified storage - token exists:', !!saved.authToken);
+
         // Close the auth tab
         await browser.tabs.remove(details.tabId);
+        console.log('Auth tab closed');
 
-        // Notify popup
-        browser.runtime.sendMessage({
-          type: 'AUTH_STATUS',
-          payload: { isAuthenticated: true, user },
-        });
+        // Notify popup (may fail if popup is closed, that's ok)
+        try {
+          browser.runtime.sendMessage({
+            type: 'AUTH_STATUS',
+            payload: { isAuthenticated: true, user },
+          });
+        } catch (e) {
+          // Popup might be closed, that's fine
+        }
       }
     } catch (error) {
       console.error('Auth callback error:', error);
@@ -202,7 +230,7 @@ async function quickClip(tabId: number): Promise<void> {
         await browser.notifications.create({
           type: 'basic',
           iconUrl: 'icons/icon48.png',
-          title: 'Clipped to AllThrive',
+          title: 'Clipped to All Thrive',
           message: `"${content.title}" saved successfully!`,
         });
       } else {
@@ -228,7 +256,7 @@ async function quickClip(tabId: number): Promise<void> {
 // Context menu for right-click clipping
 browser.contextMenus?.create({
   id: 'clip-selection',
-  title: 'Clip to AllThrive',
+  title: 'Clip to All Thrive',
   contexts: ['selection', 'page', 'image'],
 });
 
@@ -255,4 +283,4 @@ browser.contextMenus?.onClicked.addListener(async (info, tab) => {
   }
 });
 
-console.log('AllThrive Web Clipper background service started');
+console.log('All Thrive Web Clipper background service started');

@@ -686,7 +686,9 @@ export default function ProfilePage() {
   }
 
   // Determine if we're on the Showcase tab (full-width layout)
-  const isShowcaseTab = activeTab === 'showcase';
+  // Curation tier users (AI agents like Reddit, YouTube, RSS agents) should NOT use
+  // the new ProfileSections layout - they use the classic sidebar + masonry grid
+  const isShowcaseTab = activeTab === 'showcase' && !isCuration;
 
   return (
     <DashboardLayout>
@@ -1356,6 +1358,39 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
+
+              {/* Showcase/Posts Tab for Curation Users - Uses MasonryGrid for project cards */}
+              {activeTab === 'showcase' && isCuration && (
+                <div
+                  role="tabpanel"
+                  id="tabpanel-showcase"
+                  aria-labelledby="tab-showcase"
+                  className="pb-20"
+                >
+                  <MasonryGrid>
+                    {projects.showcase.length > 0 ? (
+                      projects.showcase.map((project) => (
+                        <div key={project.id} className="break-inside-avoid mb-6">
+                          <ProjectCard
+                            project={project}
+                            onEdit={() => navigate(`/${username}/${project.slug}/edit`)}
+                            onDelete={async () => {}}
+                            isOwner={canManagePosts}
+                            variant="masonry"
+                            selectionMode={selectionMode}
+                            isSelected={selectedProjectIds.has(project.id)}
+                            onSelect={toggleSelection}
+                          />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-20 text-center">
+                        <p className="text-gray-500 dark:text-gray-400">No posts yet.</p>
+                      </div>
+                    )}
+                  </MasonryGrid>
+                </div>
+              )}
 
               {/* Playground Tab - Uses MasonryGrid for project cards */}
               {activeTab === 'playground' && (

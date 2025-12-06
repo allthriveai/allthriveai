@@ -13,10 +13,11 @@ from datetime import datetime
 from django.core.cache import cache
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.billing.permissions import RequiresAnalytics
+from core.permissions import IsAdminRole
 from services.ai.langsmith import langsmith_service
 
 
@@ -87,7 +88,7 @@ def user_ai_analytics(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def system_ai_analytics(request):
     """
     Get system-wide AI analytics (admin only).
@@ -190,7 +191,7 @@ def check_user_spend_limit(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def reset_user_spend(request, user_id):
     """
     Reset spend tracking for a specific user (admin only).
@@ -216,7 +217,7 @@ def reset_user_spend(request, user_id):
 
 
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def langsmith_health(request):
     """
     Check LangSmith integration health (admin only).

@@ -54,7 +54,10 @@ const App: React.FC = () => {
 
   const checkAuth = async () => {
     try {
+      console.log('Checking auth...');
       const result = await browser.storage.local.get(['authToken', 'user']);
+      console.log('Storage result - token exists:', !!result.authToken, 'user exists:', !!result.user);
+
       if (result.authToken && result.user) {
         setAuthState({
           isAuthenticated: true,
@@ -63,6 +66,7 @@ const App: React.FC = () => {
         });
         setViewState('clip');
       } else {
+        console.log('No auth token found, showing login');
         setViewState('login');
       }
     } catch (err) {
@@ -72,9 +76,12 @@ const App: React.FC = () => {
   };
 
   const handleLogin = () => {
-    // Open login page in new tab
+    // Open the frontend extension auth page
+    // This page checks if user is logged in and redirects to get the extension token
+    // In development, frontend is at port 3000
+    const frontendUrl = getApiBaseUrl().replace(':8000', ':3000');
     browser.tabs.create({
-      url: `${getApiBaseUrl()}/api/v1/extension/auth/`,
+      url: `${frontendUrl}/extension/auth`,
     });
   };
 
@@ -83,16 +90,46 @@ const App: React.FC = () => {
       setError(null);
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
 
-      if (!tab.id) {
+      if (!tab.id || !tab.url) {
         setError('No active tab found');
         return;
       }
 
-      // Send message to content script to get page content
-      const response = await browser.tabs.sendMessage(tab.id, {
-        type: 'GET_PAGE_CONTENT',
-        payload: { mode: clipMode },
-      });
+      // Skip special pages that can't be clipped
+      if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') ||
+          tab.url.startsWith('about:') || tab.url.startsWith('edge://')) {
+        setError('Cannot clip browser system pages. Please navigate to a regular website.');
+        return;
+      }
+
+      let response;
+      try {
+        // First, try to send message to existing content script
+        response = await browser.tabs.sendMessage(tab.id, {
+          type: 'GET_PAGE_CONTENT',
+          payload: { mode: clipMode },
+        });
+      } catch {
+        // Content script not loaded, inject it programmatically
+        console.log('Content script not found, injecting...');
+        try {
+          await browser.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js'],
+          });
+          // Wait a moment for the script to initialize
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          // Retry sending message
+          response = await browser.tabs.sendMessage(tab.id, {
+            type: 'GET_PAGE_CONTENT',
+            payload: { mode: clipMode },
+          });
+        } catch (injectErr) {
+          console.error('Failed to inject content script:', injectErr);
+          setError('Cannot access this page. Please try refreshing the page.');
+          return;
+        }
+      }
 
       if (response && response.type === 'PAGE_CONTENT_RESULT') {
         const content = response.payload as ClippedContent;
@@ -100,10 +137,12 @@ const App: React.FC = () => {
         setTitle(content.title);
         setDescription(content.excerpt || '');
         setViewState('preview');
+      } else {
+        setError('No content received. Please refresh the page and try again.');
       }
     } catch (err) {
       console.error('Clip failed:', err);
-      setError('Failed to clip page. Make sure the page is fully loaded.');
+      setError('Failed to clip page. Please refresh the page and try again.');
     }
   };
 
@@ -115,10 +154,13 @@ const App: React.FC = () => {
 
     try {
       // Always fetch fresh token from storage to ensure we have the latest
+      console.log('Fetching token from storage...');
       const result = await browser.storage.local.get(['authToken']);
       const token = result.authToken;
+      console.log('Token from storage:', token ? `${token.substring(0, 10)}...` : 'null');
 
       if (!token) {
+        console.log('No token found, redirecting to login');
         setError('Not authenticated. Please log in again.');
         setViewState('login');
         return;
@@ -163,7 +205,7 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error('Submit failed:', err);
-      setError('Failed to save to AllThrive. Please try again.');
+      setError('Failed to save to All Thrive. Please try again.');
       setViewState('error');
     } finally {
       setIsSubmitting(false);
@@ -194,7 +236,7 @@ const App: React.FC = () => {
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center">
           <span className="text-white font-bold text-sm">AT</span>
         </div>
-        <span className="font-semibold text-white">AllThrive Clipper</span>
+        <span className="font-semibold text-white">All Thrive Clipper</span>
       </div>
       {authState.isAuthenticated && (
         <button
@@ -218,7 +260,7 @@ const App: React.FC = () => {
       <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center">
         <span className="text-white font-bold text-2xl">AT</span>
       </div>
-      <h2 className="text-xl font-semibold text-white mb-2">Welcome to AllThrive</h2>
+      <h2 className="text-xl font-semibold text-white mb-2">Welcome to All Thrive</h2>
       <p className="text-slate-400 mb-6">
         Sign in to start clipping AI projects to your profile.
       </p>
@@ -226,7 +268,7 @@ const App: React.FC = () => {
         onClick={handleLogin}
         className="w-full py-3 px-4 bg-gradient-to-r from-primary-500 to-cyan-500 text-white font-medium rounded-lg hover:opacity-90 transition-opacity"
       >
-        Sign in to AllThrive
+        Sign in to All Thrive
       </button>
     </div>
   );
@@ -406,7 +448,7 @@ const App: React.FC = () => {
           disabled={isSubmitting || !title}
           className="flex-1 py-2 px-4 bg-gradient-to-r from-primary-500 to-cyan-500 text-white font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? 'Saving...' : 'Save to AllThrive'}
+          {isSubmitting ? 'Saving...' : 'Save to All Thrive'}
         </button>
       </div>
     </div>
@@ -420,7 +462,7 @@ const App: React.FC = () => {
         </svg>
       </div>
       <h2 className="text-xl font-semibold text-white mb-2">Clipped Successfully!</h2>
-      <p className="text-slate-400 mb-2">"{successTitle || title}" has been added to AllThrive.</p>
+      <p className="text-slate-400 mb-2">"{successTitle || title}" has been added to All Thrive.</p>
       <p className="text-slate-500 text-sm mb-6">You can find it in your playground.</p>
       {successUrl && (
         <button

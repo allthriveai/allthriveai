@@ -6,9 +6,9 @@ from django.db.models import Count
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
+from core.permissions import IsAdminRole
 from core.users.invitation_models import InvitationRequest
 from core.users.invitation_views import send_approval_email
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def list_invitations(request):
     """List invitation requests with optional filtering.
 
@@ -94,7 +94,7 @@ def list_invitations(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def invitation_stats(request):
     """Get invitation request statistics.
 
@@ -119,7 +119,7 @@ def invitation_stats(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def approve_invitation(request, invitation_id):
     """Approve an invitation request and send approval email.
 
@@ -184,7 +184,7 @@ def approve_invitation(request, invitation_id):
 
 
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def reject_invitation(request, invitation_id):
     """Reject an invitation request.
 
@@ -240,7 +240,7 @@ def reject_invitation(request, invitation_id):
 
 
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def bulk_approve_invitations(request):
     """Bulk approve multiple invitation requests.
 
@@ -301,7 +301,7 @@ def bulk_approve_invitations(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def bulk_reject_invitations(request):
     """Bulk reject multiple invitation requests.
 

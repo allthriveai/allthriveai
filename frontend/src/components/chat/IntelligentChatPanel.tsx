@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFigma, faGithub, faGitlab } from '@fortawesome/free-brands-svg-icons';
-import { faStar, faCodeBranch, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faStar, faCodeBranch, faSpinner, faFolderPlus, faLightbulb, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './ChatInterface';
 import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
@@ -845,31 +845,47 @@ export function IntelligentChatPanel({
       );
     }
 
-    // Default empty state
+    // Default empty state - conversational greeting with quick actions
+    const quickActions = [
+      { label: 'Add a project', icon: faFolderPlus, prompt: 'I want to add a new project to my profile' },
+      { label: 'Make an infographic', icon: 'banana', prompt: 'Help me create an infographic' },
+      { label: 'Brainstorm ideas', icon: faLightbulb, prompt: 'Help me brainstorm some ideas' },
+      { label: 'Find something', icon: faMagnifyingGlass, prompt: 'Help me find something on All Thrive' },
+    ];
+
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center px-8">
+      <div className="flex flex-col items-center justify-center h-full text-center px-6">
         <div className="mb-4">
-          <svg
-            className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-            />
-          </svg>
+          <img
+            src="/all-thrvie-logo.png"
+            alt="All Thrive"
+            className="w-12 h-12 rounded-full object-cover"
+          />
         </div>
         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-          Start a Conversation
+          Hey! How can I help you today?
         </h3>
-        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm">
-          Ask me anything about your projects, get help with tasks, or brainstorm ideas.
-          I'm powered by LangGraph AI agents to assist you.
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-sm">
+          I'm here to assist with your projects and ideas.
         </p>
+
+        {/* Quick action buttons */}
+        <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
+          {quickActions.map((action) => (
+            <button
+              key={action.label}
+              onClick={() => handleSendMessage(action.prompt)}
+              className="flex items-center gap-2 px-3 py-2.5 text-left text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
+            >
+              {action.icon === 'banana' ? (
+                <span className="text-base">🍌</span>
+              ) : (
+                <FontAwesomeIcon icon={action.icon} className="w-4 h-4 text-primary-500" />
+              )}
+              <span className="text-slate-700 dark:text-slate-300">{action.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
     );
   };

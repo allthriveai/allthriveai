@@ -1,134 +1,182 @@
-import { Link } from 'react-router-dom';
-import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { SettingsLayout } from '@/components/layouts/SettingsLayout';
-import { useOnboardingProgress, type ChecklistItem } from '@/hooks/useOnboardingProgress';
-import {
-  CheckCircleIcon,
-  SparklesIcon,
-  UserIcon,
-  AcademicCapIcon,
-  FolderPlusIcon,
-  LinkIcon,
-  PuzzlePieceIcon,
-  BoltIcon,
-  WrenchScrewdriverIcon,
-  ArrowRightIcon,
-  MagnifyingGlassIcon,
-} from '@heroicons/react/24/outline';
-import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid';
+/**
+ * Ember's Quest Board
+ *
+ * A gamified quest board where Ember the dragon guides users through
+ * discovering all the features of AllThrive. Quests are grouped by
+ * category and displayed in a grid layout.
+ */
 
-// Map item IDs to icons
-const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
-  complete_profile: UserIcon,
-  take_quiz: AcademicCapIcon,
-  add_project: FolderPlusIcon,
-  connect_integration: LinkIcon,
-  complete_side_quest: PuzzlePieceIcon,
-  join_battle: BoltIcon,
-  explore_tools: WrenchScrewdriverIcon,
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { useOnboardingProgress, type QuestItem } from '@/hooks/useOnboardingProgress';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faDragon,
+  faUser,
+  faWandSparkles,
+  faGraduationCap,
+  faFolderPlus,
+  faHeart,
+  faComment,
+  faUserPlus,
+  faBolt,
+  faPuzzlePiece,
+  faLink,
+  faGift,
+  faWrench,
+  faCompass,
+  faRocket,
+  faUsers,
+  faFire,
+  faTrophy,
+  faChevronRight,
+} from '@fortawesome/free-solid-svg-icons';
+import { CheckCircleIcon, SparklesIcon } from '@heroicons/react/24/solid';
+
+// Map quest icon strings to FontAwesome icons
+const iconMap: Record<string, typeof faUser> = {
+  'user': faUser,
+  'sparkles': faWandSparkles,
+  'academic-cap': faGraduationCap,
+  'folder-plus': faFolderPlus,
+  'heart': faHeart,
+  'chat-bubble': faComment,
+  'user-plus': faUserPlus,
+  'bolt': faBolt,
+  'puzzle-piece': faPuzzlePiece,
+  'link': faLink,
+  'gift': faGift,
+  'wrench': faWrench,
+  'compass': faCompass,
+  'rocket': faRocket,
+  'users': faUsers,
 };
 
-// Map item IDs to colors (with light/dark mode support)
-const colorMap: Record<string, { bg: string; border: string; text: string; icon: string }> = {
-  complete_profile: {
+// Category colors
+const categoryColors: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
+  getting_started: {
     bg: 'bg-cyan-500/10',
     border: 'border-cyan-500/30',
-    text: 'text-cyan-600 dark:text-cyan-400',
-    icon: 'text-cyan-600 dark:text-cyan-400',
+    text: 'text-cyan-400',
+    iconBg: 'bg-cyan-500/20',
   },
-  take_quiz: {
-    bg: 'bg-purple-500/10',
-    border: 'border-purple-500/30',
-    text: 'text-purple-600 dark:text-purple-400',
-    icon: 'text-purple-600 dark:text-purple-400',
+  create: {
+    bg: 'bg-emerald-500/10',
+    border: 'border-emerald-500/30',
+    text: 'text-emerald-400',
+    iconBg: 'bg-emerald-500/20',
   },
-  add_project: {
-    bg: 'bg-green-500/10',
-    border: 'border-green-500/30',
-    text: 'text-green-600 dark:text-green-400',
-    icon: 'text-green-600 dark:text-green-400',
-  },
-  connect_integration: {
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/30',
-    text: 'text-blue-600 dark:text-blue-400',
-    icon: 'text-blue-600 dark:text-blue-400',
-  },
-  complete_side_quest: {
+  engage: {
     bg: 'bg-pink-500/10',
     border: 'border-pink-500/30',
-    text: 'text-pink-600 dark:text-pink-400',
-    icon: 'text-pink-600 dark:text-pink-400',
+    text: 'text-pink-400',
+    iconBg: 'bg-pink-500/20',
   },
-  join_battle: {
+  play: {
+    bg: 'bg-violet-500/10',
+    border: 'border-violet-500/30',
+    text: 'text-violet-400',
+    iconBg: 'bg-violet-500/20',
+  },
+  connect: {
     bg: 'bg-amber-500/10',
     border: 'border-amber-500/30',
-    text: 'text-amber-600 dark:text-amber-400',
-    icon: 'text-amber-600 dark:text-amber-400',
+    text: 'text-amber-400',
+    iconBg: 'bg-amber-500/20',
   },
-  explore_tools: {
-    bg: 'bg-indigo-500/10',
-    border: 'border-indigo-500/30',
-    text: 'text-indigo-600 dark:text-indigo-400',
-    icon: 'text-indigo-600 dark:text-indigo-400',
+  explore: {
+    bg: 'bg-blue-500/10',
+    border: 'border-blue-500/30',
+    text: 'text-blue-400',
+    iconBg: 'bg-blue-500/20',
   },
 };
 
-function ChecklistItemCard({ item }: { item: ChecklistItem }) {
-  const Icon = iconMap[item.id] || SparklesIcon;
-  const colors = colorMap[item.id] || colorMap.complete_profile;
+// Ember's messages based on progress
+function getEmberMessage(progressPercent: number, completedCount: number): string {
+  if (completedCount === 0) {
+    return "Welcome, adventurer! I'm Ember, your guide to AllThrive. Let's start your journey!";
+  }
+  if (progressPercent < 25) {
+    return "Great start! Every quest you complete makes you stronger. Keep going!";
+  }
+  if (progressPercent < 50) {
+    return "You're on fire! 🔥 Half way there - I knew you had it in you!";
+  }
+  if (progressPercent < 75) {
+    return "Impressive progress! You're becoming a true AllThrive champion!";
+  }
+  if (progressPercent < 100) {
+    return "Almost there! Just a few more quests to complete your adventure!";
+  }
+  return "🎉 Legendary! You've completed all quests! You're a true AllThrive master!";
+}
+
+function QuestCard({ quest }: { quest: QuestItem }) {
+  const colors = categoryColors[quest.category] || categoryColors.getting_started;
+  const Icon = iconMap[quest.icon] || faWandSparkles;
 
   return (
-    <Link
-      to={item.link}
-      className={`block p-4 rounded-xl border transition-all duration-200 group ${
-        item.completed
-          ? 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 opacity-75'
-          : `${colors.bg} ${colors.border} hover:scale-[1.02]`
-      }`}
-    >
-      <div className="flex items-start gap-4">
-        {/* Icon */}
-        <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            item.completed ? 'bg-green-500/20' : colors.bg
-          }`}
-        >
-          {item.completed ? (
-            <CheckCircleSolidIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
-          ) : (
-            <Icon className={`w-5 h-5 ${colors.icon}`} />
+    <Link to={quest.link}>
+      <motion.div
+        whileHover={{ scale: 1.02, y: -2 }}
+        whileTap={{ scale: 0.98 }}
+        className={`
+          relative p-4 rounded-xl border transition-all duration-200 group
+          ${quest.completed
+            ? 'bg-slate-800/30 border-slate-700/50 opacity-75'
+            : `${colors.bg} ${colors.border} hover:shadow-lg`
+          }
+        `}
+      >
+        <div className="flex items-start gap-3">
+          {/* Icon */}
+          <div
+            className={`
+              w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
+              ${quest.completed ? 'bg-emerald-500/20' : colors.iconBg}
+            `}
+          >
+            {quest.completed ? (
+              <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
+            ) : (
+              <FontAwesomeIcon icon={Icon} className={`text-sm ${colors.text}`} />
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h3
+                className={`font-medium text-sm ${
+                  quest.completed ? 'text-slate-500 line-through' : 'text-white'
+                }`}
+              >
+                {quest.title}
+              </h3>
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
+                  quest.completed
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : `${colors.bg} ${colors.text}`
+                }`}
+              >
+                +{quest.points}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1 line-clamp-1">{quest.description}</p>
+          </div>
+
+          {/* Arrow */}
+          {!quest.completed && (
+            <FontAwesomeIcon
+              icon={faChevronRight}
+              className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0 text-xs mt-3"
+            />
           )}
         </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h3
-              className={`font-medium ${
-                item.completed ? 'text-slate-500 dark:text-slate-400 line-through' : 'text-slate-900 dark:text-white'
-              }`}
-            >
-              {item.title}
-            </h3>
-            <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                item.completed
-                  ? 'bg-green-500/20 text-green-600 dark:text-green-400'
-                  : `${colors.bg} ${colors.text}`
-              }`}
-            >
-              +{item.points} pts
-            </span>
-          </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{item.description}</p>
-        </div>
-
-        {/* Arrow */}
-        {!item.completed && (
-          <ArrowRightIcon className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" />
-        )}
-      </div>
+      </motion.div>
     </Link>
   );
 }
@@ -139,14 +187,12 @@ export default function GettingStartedPage() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <SettingsLayout>
-          <div className="min-h-[60vh] flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-slate-600 dark:text-slate-400">Loading your progress...</p>
-            </div>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-slate-400">Loading your quests...</p>
           </div>
-        </SettingsLayout>
+        </div>
       </DashboardLayout>
     );
   }
@@ -154,138 +200,161 @@ export default function GettingStartedPage() {
   if (error || !progress) {
     return (
       <DashboardLayout>
-        <SettingsLayout>
-          <div className="min-h-[60vh] flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-rose-600 dark:text-rose-400 mb-4">{error || 'Something went wrong'}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="text-cyan-600 dark:text-cyan-400 hover:underline"
-              >
-                Try again
-              </button>
-            </div>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="text-center">
+            <FontAwesomeIcon icon={faDragon} className="text-4xl text-orange-500 mb-4" />
+            <p className="text-rose-400 mb-4">{error || 'Something went wrong'}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-orange-400 hover:underline"
+            >
+              Try again
+            </button>
           </div>
-        </SettingsLayout>
+        </div>
       </DashboardLayout>
     );
   }
 
   const isComplete = progress.progress_percentage === 100;
+  const emberMessage = getEmberMessage(progress.progress_percentage, progress.completed_count);
 
   return (
     <DashboardLayout>
-      <SettingsLayout>
-        <div className="max-w-3xl mx-auto px-4 py-8">
-          {/* Header */}
-          <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-medium mb-4 tracking-wider uppercase">
-            <SparklesIcon className="w-3.5 h-3.5" />
-            Getting Started
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">
-            {isComplete ? "You're all set!" : 'Welcome to All Thrive'}
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
-            {isComplete
-              ? "You've completed all the getting started tasks. Keep exploring and creating!"
-              : 'Complete these tasks to get the most out of the platform and earn bonus points.'}
-          </p>
-        </div>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header with Ember */}
+        <div className="mb-8">
+          <div className="flex items-start gap-4 mb-6">
+            {/* Ember */}
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', delay: 0.1 }}
+              className="flex-shrink-0"
+            >
+              <FontAwesomeIcon
+                icon={faDragon}
+                className="text-5xl text-orange-500 drop-shadow-[0_0_12px_rgba(0,0,0,0.8)]"
+              />
+            </motion.div>
 
-        {/* Tool Finder Card - Prominent placement */}
-        <Link
-          to="/quizzes/find-your-perfect-ai-tool"
-          className="w-full glass-panel p-6 mb-6 text-left hover:border-cyan-500/30 transition-all group block"
-        >
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0">
-              <MagnifyingGlassIcon className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
-            </div>
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-slate-900 dark:text-white">Find Your Perfect AI Tool</h3>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30">
-                  New
-                </span>
-              </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Not sure which AI tools to use? Take our quick quiz and get personalized recommendations.
-              </p>
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <h1 className="text-2xl font-bold text-white mb-1">
+                  Ember's Quest Board
+                </h1>
+                <p className="text-slate-300 text-sm">
+                  {emberMessage}
+                </p>
+              </motion.div>
             </div>
-            <ArrowRightIcon className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
-          </div>
-        </Link>
 
-        {/* Progress Card */}
-        <div className="glass-panel p-6 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Your Progress</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                {progress.completed_count} of {progress.total_count} completed
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-slate-600 dark:text-slate-400">Points Earned</p>
-              <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 dark:from-cyan-400 to-green-600 dark:to-green-400">
-                {progress.earned_points} / {progress.total_points}
-              </p>
-            </div>
+            {/* Points Badge */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/30"
+            >
+              <FontAwesomeIcon icon={faFire} className="text-orange-400" />
+              <div className="text-right">
+                <p className="text-xs text-slate-400">Points Earned</p>
+                <p className="text-lg font-bold text-orange-400">
+                  {progress.earned_points}
+                  <span className="text-slate-500 text-sm font-normal"> / {progress.total_points}</span>
+                </p>
+              </div>
+            </motion.div>
           </div>
 
           {/* Progress Bar */}
-          <div className="h-3 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-cyan-500 to-green-500 transition-all duration-500 rounded-full"
-              style={{ width: `${progress.progress_percentage}%` }}
-            />
-          </div>
-          <p className="text-sm text-slate-500 mt-2 text-center">
-            {progress.progress_percentage}% complete
-          </p>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="glass-panel p-4"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-slate-400">
+                {progress.completed_count} of {progress.total_count} quests completed
+              </span>
+              <span className="text-sm font-medium text-orange-400">
+                {progress.progress_percentage}%
+              </span>
+            </div>
+            <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progress.progress_percentage}%` }}
+                transition={{ duration: 0.8, delay: 0.5 }}
+                className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full"
+              />
+            </div>
+          </motion.div>
         </div>
 
-        {/* Checklist */}
-        <div className="space-y-3">
-          {/* Incomplete items first */}
-          {progress.checklist
-            .filter(item => !item.completed)
-            .map(item => (
-              <ChecklistItemCard key={item.id} item={item} />
-            ))}
+        {/* Quest Grid by Category */}
+        <div className="space-y-8">
+          {Object.entries(progress.categories).map(([categoryKey, category], catIndex) => {
+            if (category.items.length === 0) return null;
 
-          {/* Completed items */}
-          {progress.checklist.filter(item => item.completed).length > 0 && (
-            <>
-              <div className="flex items-center gap-3 pt-4">
-                <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
-                <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">Completed</span>
-                <div className="flex-1 h-px bg-slate-200 dark:bg-white/10" />
-              </div>
-              {progress.checklist
-                .filter(item => item.completed)
-                .map(item => (
-                  <ChecklistItemCard key={item.id} item={item} />
-                ))}
-            </>
-          )}
+            const colors = categoryColors[categoryKey] || categoryColors.getting_started;
+            const categoryIcon = iconMap[category.icon] || faRocket;
+            const completedInCategory = category.items.filter(i => i.completed).length;
+
+            return (
+              <motion.div
+                key={categoryKey}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + catIndex * 0.1 }}
+              >
+                {/* Category Header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`w-8 h-8 rounded-lg ${colors.iconBg} flex items-center justify-center`}>
+                    <FontAwesomeIcon icon={categoryIcon} className={`text-sm ${colors.text}`} />
+                  </div>
+                  <h2 className="text-lg font-semibold text-white">{category.title}</h2>
+                  <span className="text-xs text-slate-500">
+                    {completedInCategory}/{category.items.length}
+                  </span>
+                  <div className="flex-1 h-px bg-slate-700/50" />
+                </div>
+
+                {/* Quest Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {category.items.map((quest) => (
+                    <QuestCard key={quest.id} quest={quest} />
+                  ))}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
 
-        {/* CTA for when complete */}
+        {/* Completion Celebration */}
         {isComplete && (
-          <div className="mt-8 text-center">
-            <Link
-              to="/explore"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-green-500 text-white font-semibold hover:shadow-lg dark:hover:shadow-neon transition-all"
-            >
-              Start Exploring
-              <ArrowRightIcon className="w-5 h-5" />
-            </Link>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-12 text-center"
+          >
+            <div className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-yellow-500/20 border border-orange-500/30">
+              <FontAwesomeIcon icon={faTrophy} className="text-3xl text-amber-400" />
+              <div className="text-left">
+                <p className="text-white font-semibold">Quest Master Achievement Unlocked!</p>
+                <p className="text-sm text-slate-300">You've completed all of Ember's quests</p>
+              </div>
+              <SparklesIcon className="w-6 h-6 text-amber-400" />
+            </div>
+          </motion.div>
         )}
-        </div>
-      </SettingsLayout>
+      </div>
     </DashboardLayout>
   );
 }

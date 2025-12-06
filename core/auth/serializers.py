@@ -74,9 +74,9 @@ class UserSerializer(serializers.ModelSerializer):
         fields = super().get_fields()
         request = self.context.get('request')
 
-        # Hide sensitive fields unless viewing own profile or staff
+        # Hide sensitive fields unless viewing own profile or admin
         if request and hasattr(request, 'user'):
-            if not (request.user.is_authenticated and (self.instance == request.user or request.user.is_staff)):
+            if not (request.user.is_authenticated and (self.instance == request.user or request.user.is_admin_role)):
                 # Remove email from public profiles
                 fields.pop('email', None)
                 fields.pop('last_login', None)
@@ -99,11 +99,11 @@ class UserSerializer(serializers.ModelSerializer):
         """Return connected social accounts (only for own profile)."""
         request = self.context.get('request')
 
-        # Only include social connections for own profile or staff
+        # Only include social connections for own profile or admin
         if not request or not hasattr(request, 'user'):
             return None
 
-        if not (request.user.is_authenticated and (obj == request.user or request.user.is_staff)):
+        if not (request.user.is_authenticated and (obj == request.user or request.user.is_admin_role)):
             return None
 
         # Return list of connected providers (without sensitive token data)

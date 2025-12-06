@@ -27,7 +27,15 @@ def sync_all_rss_agents_task(self):
     try:
         logger.info('Starting periodic RSS agents sync')
 
-        # Get all active agents
+        # Auto-recover agents in error status by resetting them to active
+        # This allows transient errors (like network issues) to auto-heal on the next sync
+        error_agents = RSSFeedAgent.objects.filter(status=RSSFeedAgent.Status.ERROR)
+        if error_agents.exists():
+            count = error_agents.count()
+            error_agents.update(status=RSSFeedAgent.Status.ACTIVE, last_sync_error='')
+            logger.info(f'Auto-recovered {count} RSS agents from error status')
+
+        # Get all active agents (including just-recovered ones)
         active_agents = RSSFeedAgent.objects.filter(status=RSSFeedAgent.Status.ACTIVE).select_related('agent_user')
 
         if not active_agents.exists():

@@ -8,12 +8,13 @@ from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
 from core.events.models import Event, EventRSVP
 from core.events.serializers import EventRSVPSerializer, EventSerializer
+from core.permissions import IsAdminRole
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class EventViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """Only admins can create, update, or delete events."""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAdminUser()]
+            return [IsAdminRole()]
         return [IsAuthenticated()]
 
     def get_throttles(self):
@@ -54,7 +55,7 @@ class EventViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
 
         # Admin users can see all events
-        if self.request.user.is_staff:
+        if self.request.user.is_admin_role:
             return queryset
 
         # Regular users only see published events

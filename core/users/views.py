@@ -131,22 +131,26 @@ def explore_users(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def onboarding_progress(request):
-    """Get user's onboarding checklist progress.
+    """Get user's quest progress for Ember's Quest Board.
 
-    Returns a list of checklist items with their completion status,
-    based on actual user activity in the system.
+    Returns a list of quest items with their completion status,
+    based on actual user activity in the system. These are grouped
+    into categories for the quest board UI.
     """
     user = request.user
 
     # Import models for checking completion
     from allauth.socialaccount.models import SocialAccount
 
-    from core.projects.models import Project
+    from core.projects.models import Project, ProjectComment, ProjectLike
     from core.quizzes.models import QuizAttempt
+    from core.referrals.models import Referral
     from core.thrive_circle.models import UserSideQuest
 
     # Check each item's completion status
     checklist = []
+
+    # ===== GETTING STARTED QUESTS =====
 
     # 1. Complete your profile (has bio, tagline, or avatar)
     profile_complete = bool(user.bio) or bool(user.tagline) or bool(user.avatar_url)
@@ -154,89 +158,202 @@ def onboarding_progress(request):
         {
             'id': 'complete_profile',
             'title': 'Complete your profile',
-            'description': 'Add a bio, tagline, or profile photo to help others get to know you.',
+            'description': 'Add a bio, tagline, or profile photo.',
             'completed': profile_complete,
             'link': f'/{user.username}?tab=showcase',
             'points': 25,
+            'category': 'getting_started',
+            'icon': 'user',
         }
     )
 
-    # 2. Take personalization quiz
+    # 2. Set up personalization
+    has_personalization = PersonalizationSettings.objects.filter(user=user).exists()
+    personalization_settings = PersonalizationSettings.objects.filter(user=user).first()
+    personalization_complete = (
+        has_personalization
+        and personalization_settings
+        and (personalization_settings.interests or personalization_settings.skill_level)
+    )
+    checklist.append(
+        {
+            'id': 'setup_personalization',
+            'title': 'Set up personalization',
+            'description': 'Tell us your interests for a tailored experience.',
+            'completed': personalization_complete,
+            'link': '/account/settings/personalization',
+            'points': 25,
+            'category': 'getting_started',
+            'icon': 'sparkles',
+        }
+    )
+
+    # 3. Take a quiz
     has_taken_quiz = QuizAttempt.objects.filter(user=user).exists()
     checklist.append(
         {
             'id': 'take_quiz',
-            'title': 'Take a personalization quiz',
-            'description': 'Help us personalize your experience by taking a quick quiz.',
+            'title': 'Take a quiz',
+            'description': 'Discover your AI style with a quick quiz.',
             'completed': has_taken_quiz,
             'link': '/quizzes',
             'points': 50,
+            'category': 'getting_started',
+            'icon': 'academic-cap',
         }
     )
 
-    # 3. Add your first project
+    # ===== CREATE & SHARE QUESTS =====
+
+    # 4. Add your first project
     has_project = Project.objects.filter(user=user, is_archived=False).exists()
     checklist.append(
         {
             'id': 'add_project',
             'title': 'Add your first project',
-            'description': "Share something you've created with AI - it can be anything!",
+            'description': 'Share something you created with AI.',
             'completed': has_project,
-            'link': '/projects/new',
+            'link': f'/{user.username}',
             'points': 50,
+            'category': 'create',
+            'icon': 'folder-plus',
         }
     )
 
-    # 4. Connect an integration
-    has_integration = SocialAccount.objects.filter(user=user).exists()
+    # 5. Like a project
+    has_liked = ProjectLike.objects.filter(user=user).exists()
     checklist.append(
         {
-            'id': 'connect_integration',
-            'title': 'Connect an integration',
-            'description': 'Link your GitHub, Google, or other accounts for a seamless experience.',
-            'completed': has_integration,
-            'link': '/account/settings/integrations',
-            'points': 25,
+            'id': 'like_project',
+            'title': 'Like a project',
+            'description': 'Show some love to a project you enjoy.',
+            'completed': has_liked,
+            'link': '/explore',
+            'points': 10,
+            'category': 'engage',
+            'icon': 'heart',
         }
     )
 
-    # 5. Complete a side quest
+    # 6. Comment on a project
+    has_commented = ProjectComment.objects.filter(user=user).exists()
+    checklist.append(
+        {
+            'id': 'comment_project',
+            'title': 'Comment on a project',
+            'description': "Share your thoughts on someone's work.",
+            'completed': has_commented,
+            'link': '/explore',
+            'points': 15,
+            'category': 'engage',
+            'icon': 'chat-bubble',
+        }
+    )
+
+    # 7. Follow a creator
+    has_followed = UserFollow.objects.filter(follower=user).exists()
+    checklist.append(
+        {
+            'id': 'follow_creator',
+            'title': 'Follow a creator',
+            'description': 'Stay updated on your favorite creators.',
+            'completed': has_followed,
+            'link': '/explore',
+            'points': 10,
+            'category': 'engage',
+            'icon': 'user-plus',
+        }
+    )
+
+    # ===== PLAY & COMPETE QUESTS =====
+
+    # 8. Join a prompt battle
+    has_battle = user.battle_types_tried > 0
+    checklist.append(
+        {
+            'id': 'join_battle',
+            'title': 'Battle Pip',
+            'description': 'Challenge our AI bot in a prompt battle.',
+            'completed': has_battle,
+            'link': '/battles',
+            'points': 50,
+            'category': 'play',
+            'icon': 'bolt',
+        }
+    )
+
+    # 9. Complete a side quest
     has_side_quest = UserSideQuest.objects.filter(user=user, is_completed=True).exists()
     checklist.append(
         {
             'id': 'complete_side_quest',
             'title': 'Complete a side quest',
-            'description': 'Try a fun creative challenge and earn points.',
+            'description': 'Try a fun creative challenge.',
             'completed': has_side_quest,
             'link': '/play/side-quests',
             'points': 50,
+            'category': 'play',
+            'icon': 'puzzle-piece',
         }
     )
 
-    # 6. Join a prompt battle
-    has_battle = user.battle_types_tried > 0
+    # ===== CONNECT & GROW QUESTS =====
+
+    # 10. Connect an integration
+    has_integration = SocialAccount.objects.filter(user=user).exists()
     checklist.append(
         {
-            'id': 'join_battle',
-            'title': 'Join a prompt battle',
-            'description': 'Challenge your creativity in a head-to-head prompt competition.',
-            'completed': has_battle,
-            'link': '/battles',
-            'points': 50,
+            'id': 'connect_integration',
+            'title': 'Connect an integration',
+            'description': 'Link GitHub, Google, or other accounts.',
+            'completed': has_integration,
+            'link': '/account/settings/integrations',
+            'points': 25,
+            'category': 'connect',
+            'icon': 'link',
         }
     )
 
-    # 7. Explore the tool directory
-    # We'll track this via a flag - for now, consider it done if they've viewed tools
-    # This is a simple "discovery" action - could track via page views in future
+    # 11. Refer a friend
+    has_referral = Referral.objects.filter(referrer=user).exists()
+    checklist.append(
+        {
+            'id': 'refer_friend',
+            'title': 'Refer a friend',
+            'description': 'Invite someone to join AllThrive.',
+            'completed': has_referral,
+            'link': '/account/settings/referrals',
+            'points': 100,
+            'category': 'connect',
+            'icon': 'gift',
+        }
+    )
+
+    # 12. Explore the tool directory (tracked client-side)
     checklist.append(
         {
             'id': 'explore_tools',
-            'title': 'Explore the tool directory',
-            'description': 'Discover AI tools to supercharge your creative projects.',
+            'title': 'Explore tools',
+            'description': 'Discover AI tools for your projects.',
             'completed': False,  # Will be tracked client-side via localStorage
             'link': '/tools',
             'points': 25,
+            'category': 'explore',
+            'icon': 'wrench',
+        }
+    )
+
+    # 13. Install Chrome extension (tracked client-side)
+    checklist.append(
+        {
+            'id': 'install_extension',
+            'title': 'Get the Chrome extension',
+            'description': 'Save AI content from anywhere on the web.',
+            'completed': False,  # Will be tracked client-side via localStorage
+            'link': '/extension',
+            'points': 50,
+            'category': 'connect',
+            'icon': 'puzzle-piece',
         }
     )
 
@@ -246,9 +363,25 @@ def onboarding_progress(request):
     total_points = sum(item['points'] for item in checklist)
     earned_points = sum(item['points'] for item in checklist if item['completed'])
 
+    # Group by category for the UI
+    categories = {
+        'getting_started': {'title': 'Getting Started', 'icon': 'rocket', 'items': []},
+        'create': {'title': 'Create & Share', 'icon': 'sparkles', 'items': []},
+        'engage': {'title': 'Engage', 'icon': 'heart', 'items': []},
+        'play': {'title': 'Play & Compete', 'icon': 'bolt', 'items': []},
+        'connect': {'title': 'Connect & Grow', 'icon': 'users', 'items': []},
+        'explore': {'title': 'Explore', 'icon': 'compass', 'items': []},
+    }
+
+    for item in checklist:
+        cat = item.get('category', 'getting_started')
+        if cat in categories:
+            categories[cat]['items'].append(item)
+
     return Response(
         {
             'checklist': checklist,
+            'categories': categories,
             'completed_count': completed_count,
             'total_count': total_count,
             'progress_percentage': round((completed_count / total_count) * 100) if total_count > 0 else 0,

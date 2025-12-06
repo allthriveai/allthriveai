@@ -7,12 +7,14 @@ import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
 import { CommentTray } from '@/components/projects/CommentTray';
 import { QuestTray } from '@/components/side-quests/QuestTray';
 import { Footer } from '@/components/landing/Footer';
+import { SageAdventureBanner, useSageOnboardingContextSafe } from '@/components/onboarding';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveQuest } from '@/hooks/useActiveQuest';
 import type { Project, UserSideQuest } from '@/types/models';
 
 // Constants
 const GITHUB_OAUTH_TIMESTAMP_KEY = 'github_oauth_timestamp';
+const SAGE_OPEN_CHAT_KEY = 'sage_open_chat';
 const OVERLAY_CLASSNAME = 'fixed inset-0 bg-black/20 z-30 md:hidden';
 
 interface DashboardLayoutProps {
@@ -28,6 +30,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
+  const onboardingContext = useSageOnboardingContextSafe();
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
@@ -103,6 +106,22 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     console.log('✅ Opening Add Project panel after OAuth return');
     handleOpenAddProject();
   }, []);
+
+  // Check for Sage onboarding "Add Project" adventure - open chat in welcome mode
+  useEffect(() => {
+    const sageOpenChat = localStorage.getItem(SAGE_OPEN_CHAT_KEY);
+
+    if (sageOpenChat === 'true') {
+      // Clear immediately to prevent re-triggering
+      localStorage.removeItem(SAGE_OPEN_CHAT_KEY);
+
+      // Short delay to let the page render first
+      setTimeout(() => {
+        console.log('✅ Opening chat panel for Sage onboarding adventure');
+        handleOpenAddProject(true); // Open in welcome mode
+      }, 300);
+    }
+  }, [location.pathname]);
 
   const handleMenuClick = useCallback((menuItem: string) => {
     if (menuItem === 'About Us') {
@@ -193,6 +212,17 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto scroll-pt-16">
           <div className="pt-16">
+            {/* Ember Onboarding Banner - positioned below nav, not sticky */}
+            {onboardingContext?.shouldShowBanner && (
+              <SageAdventureBanner
+                completedAdventures={onboardingContext.completedAdventures}
+                onAdventureClick={onboardingContext.completeAdventure}
+                onDismiss={onboardingContext.dismissOnboarding}
+                onShowMoreRecommendations={() => {
+                  window.location.href = '/onboarding';
+                }}
+              />
+            )}
             {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray }) : children}
           </div>
           <Footer onOpenChat={handleMenuClick} />
