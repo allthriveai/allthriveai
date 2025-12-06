@@ -247,6 +247,14 @@ function PricingPageContent() {
       question: 'Do you offer refunds?',
       answer: 'We offer a 14-day money-back guarantee on all paid plans. No questions asked.',
     },
+    {
+      question: 'Can I buy more AI tokens if I run out?',
+      answer: 'Yes! You can purchase token packs anytime from your account settings. Token packs are available in various sizes to fit your needs, never expire, and are used only after your monthly quota is depleted. This gives you flexibility to handle busy months without upgrading your plan.',
+    },
+    {
+      question: 'Can I use my own API keys (BYOK)?',
+      answer: 'Coming soon! We\'re building support for Bring Your Own Keys (BYOK), which will let you connect your own OpenAI, Anthropic, or other LLM API keys. This will give you unlimited AI usage with your own billing, perfect for power users and teams with existing API subscriptions.',
+    },
   ];
 
   // Fallback tiers when API is unavailable
@@ -560,7 +568,7 @@ function PricingPageContent() {
           </div>
 
           {/* Pricing Cards */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 lg:gap-4 mt-12">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 lg:gap-4 mt-16">
             {sortedTiers?.map((tier) => {
               const style = getTierStyle(tier.tierType);
               const TierIcon = style.icon;

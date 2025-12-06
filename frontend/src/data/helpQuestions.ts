@@ -16,7 +16,7 @@ export interface HelpQuestion {
 }
 
 export type HelpCategory =
-  | 'getting-started'
+  | 'onboarding'
   | 'projects'
   | 'integrations'
   | 'content-creation'
@@ -32,8 +32,8 @@ export interface HelpCategoryInfo {
 
 export const HELP_CATEGORIES: HelpCategoryInfo[] = [
   {
-    id: 'getting-started',
-    title: 'Getting Started',
+    id: 'onboarding',
+    title: 'Onboarding',
     icon: '🚀',
     description: 'New to All Thrive? Start here',
   },
@@ -74,28 +74,28 @@ export const HELP_QUESTIONS: HelpQuestion[] = [
   {
     id: 'add-first-project',
     question: 'How do I add my first project?',
-    category: 'getting-started',
+    category: 'onboarding',
     chatMessage: 'I want to add my first project to my portfolio. Can you guide me through the process?',
     keywords: ['first', 'start', 'begin', 'new', 'initial', 'project', 'add'],
   },
   {
     id: 'what-are-ai-agents',
     question: 'What are AI agents and how do they help me?',
-    category: 'getting-started',
+    category: 'onboarding',
     chatMessage: 'What are AI agents in All Thrive and how can they help me build my portfolio?',
     keywords: ['ai', 'agents', 'assistant', 'help', 'what', 'explain'],
   },
   {
     id: 'connect-github',
     question: 'How do I connect my GitHub account?',
-    category: 'getting-started',
+    category: 'onboarding',
     chatMessage: 'How do I connect my GitHub account to import my repositories?',
     keywords: ['github', 'connect', 'oauth', 'link', 'account'],
   },
   {
     id: 'connect-youtube',
     question: 'How do I connect my YouTube channel?',
-    category: 'getting-started',
+    category: 'onboarding',
     chatMessage: 'How do I connect my YouTube channel to sync my videos?',
     keywords: ['youtube', 'video', 'connect', 'channel', 'google'],
   },

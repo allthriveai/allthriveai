@@ -189,11 +189,38 @@ export function useBattleNotifications({
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch connection token: ${response.status}`);
+        // Try to get error details from response
+        let errorDetails = '';
+        try {
+          const errorData = await response.json();
+          errorDetails = errorData.code
+            ? ` (${errorData.code}: ${errorData.details || errorData.error})`
+            : ` (${errorData.error || 'Unknown error'})`;
+        } catch {
+          // Response wasn't JSON
+        }
+
+        // Log different messages based on status code
+        if (response.status === 401 || response.status === 403) {
+          console.warn('[BattleNotifications] Not authenticated, skipping WebSocket connection');
+          setIsConnecting(false);
+          isConnectingRef.current = false;
+          return; // Don't reconnect for auth errors
+        } else if (response.status === 503) {
+          console.warn(`[BattleNotifications] Service unavailable${errorDetails}, will retry`);
+        } else {
+          console.error(`[BattleNotifications] Failed to fetch connection token: ${response.status}${errorDetails}`);
+        }
+
+        throw new Error(`Failed to fetch connection token: ${response.status}${errorDetails}`);
       }
 
       const data = await response.json();
       connectionToken = data.connection_token;
+
+      if (!connectionToken) {
+        throw new Error('No connection_token in response');
+      }
     } catch (error) {
       console.error('[BattleNotifications] Failed to fetch connection token:', error);
       setIsConnecting(false);

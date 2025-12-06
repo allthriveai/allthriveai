@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status reset-onboarding
 
 help:
 	@echo "Available commands:"
@@ -53,6 +53,7 @@ help:
 	@echo "  make test-websocket-e2e - Run WebSocket end-to-end test"
 	@echo "  make test-proxy      - Test Docker proxy connectivity (run this first!)"
 	@echo "  make test-coverage   - Run backend tests with coverage report"
+	@echo "  make reset-onboarding - Print JS to reset Ember onboarding (run in browser console)"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  make lint            - Run linting for all code"
@@ -340,3 +341,13 @@ clean-all: down clean
 	docker-compose down -v --remove-orphans
 	docker system prune -f
 	@echo "✓ Complete cleanup done!"
+
+# Testing Utilities
+reset-onboarding:
+	@echo ""
+	@echo "🐉 To reset Ember onboarding, run this in your browser console:"
+	@echo ""
+	@echo "localStorage.removeItem('allthrive_onboarding_dismissed'); localStorage.removeItem('allthrive_onboarding_completed_adventures'); localStorage.removeItem('allthrive_completed_quests'); location.reload();"
+	@echo ""
+	@echo "This will clear all onboarding state and show the Ember modal again."
+	@echo ""

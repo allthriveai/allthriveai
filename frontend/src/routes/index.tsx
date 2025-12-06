@@ -35,7 +35,7 @@ import CheckoutPage from '@/pages/CheckoutPage';
 import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
 import PerksPage from '@/pages/PerksPage';
 import MarketplacePage from '@/pages/MarketplacePage';
-import GettingStartedPage from '@/pages/GettingStartedPage';
+import OnboardingPage from '@/pages/OnboardingPage';
 import VendorDashboardPage from '@/pages/VendorDashboardPage';
 import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
 import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
@@ -224,7 +224,7 @@ export function AppRoutes() {
         path="/onboarding"
         element={
           <ProtectedRoute>
-            <GettingStartedPage />
+            <OnboardingPage />
           </ProtectedRoute>
         }
       />

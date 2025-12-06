@@ -70,11 +70,11 @@ export function UserMenu({ user }: UserMenuProps) {
       },
     },
     {
-      label: 'Getting Started',
+      label: 'Onboarding',
       icon: RocketLaunchIcon,
       highlight: true,
       onClick: () => {
-        navigate('/getting-started');
+        navigate('/onboarding');
         setIsOpen(false);
       },
     },

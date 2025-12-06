@@ -22,13 +22,13 @@ interface VendorTool {
   id: number;
   name: string;
   slug: string;
-  logo_url: string;
+  logoUrl: string;
   access: {
-    can_view_basic: boolean;
-    can_view_competitive: boolean;
-    can_view_segments: boolean;
-    can_view_queries: boolean;
-    can_export: boolean;
+    canViewBasic: boolean;
+    canViewCompetitive: boolean;
+    canViewSegments: boolean;
+    canViewQueries: boolean;
+    canExport: boolean;
   };
 }
 
@@ -37,43 +37,43 @@ interface ToolAnalytics {
     id: number;
     name: string;
     slug: string;
-    logo_url: string;
+    logoUrl: string;
     category: string;
     tagline: string;
-    is_featured: boolean;
-    is_verified: boolean;
+    isFeatured: boolean;
+    isVerified: boolean;
   };
   period?: {
     days: number;
-    start_date: string;
-    end_date: string;
+    startDate: string;
+    endDate: string;
   };
   metrics?: {
-    total_views: number;
-    popularity_score: number;
-    total_bookmarks: number;
-    recent_bookmarks: number;
-    total_reviews: number;
-    recent_reviews: number;
-    avg_rating: number | null;
-    projects_using_tool: number;
-    category_rank: number | null;
-    category_total: number;
+    totalViews: number;
+    popularityScore: number;
+    totalBookmarks: number;
+    recentBookmarks: number;
+    totalReviews: number;
+    recentReviews: number;
+    avgRating: number | null;
+    projectsUsingTool: number;
+    categoryRank: number | null;
+    categoryTotal: number;
   };
-  similar_tools?: Array<{
+  similarTools?: Array<{
     id: number;
     name: string;
     slug: string;
-    logo_url: string;
-    view_count: number;
-    popularity_score: number;
+    logoUrl: string;
+    viewCount: number;
+    popularityScore: number;
   }>;
-  recent_reviews?: Array<{
+  recentReviews?: Array<{
     rating: number;
     title: string;
     content: string;
-    user__username: string;
-    created_at: string;
+    userUsername: string;
+    createdAt: string;
   }>;
 }
 
@@ -233,8 +233,8 @@ export default function VendorDashboardPage() {
                       : 'bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 hover:border-slate-300 dark:hover:border-white/20'
                   }`}
                 >
-                  {tool.logo_url && (
-                    <img src={tool.logo_url} alt={tool.name} className="w-5 h-5 rounded" />
+                  {tool.logoUrl && (
+                    <img src={tool.logoUrl} alt={tool.name} className="w-5 h-5 rounded" />
                   )}
                   {tool.name}
                 </button>
@@ -257,8 +257,8 @@ export default function VendorDashboardPage() {
               <div className="glass-card">
                 <div className="flex items-start gap-6">
                   <div className="w-16 h-16 rounded-xl bg-slate-100 dark:bg-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {analytics.tool.logo_url ? (
-                      <img src={analytics.tool.logo_url} alt={analytics.tool.name} className="w-12 h-12 object-contain" />
+                    {analytics.tool.logoUrl ? (
+                      <img src={analytics.tool.logoUrl} alt={analytics.tool.name} className="w-12 h-12 object-contain" />
                     ) : (
                       <SparklesIcon className="w-8 h-8 text-primary-600 dark:text-cyan-bright" />
                     )}
@@ -266,13 +266,13 @@ export default function VendorDashboardPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{analytics.tool.name}</h2>
-                      {analytics.tool.is_verified && (
+                      {analytics.tool.isVerified && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
                           <CheckBadgeIcon className="w-3.5 h-3.5" />
                           Verified
                         </span>
                       )}
-                      {analytics.tool.is_featured && (
+                      {analytics.tool.isFeatured && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-medium">
                           <StarIconSolid className="w-3.5 h-3.5" />
                           Featured
@@ -282,10 +282,10 @@ export default function VendorDashboardPage() {
                     <p className="text-slate-600 dark:text-slate-400 mb-3">{analytics.tool.tagline}</p>
                     <div className="flex items-center gap-4 text-sm">
                       <span className="text-slate-500">Category: <span className="text-slate-700 dark:text-slate-300 capitalize">{analytics.tool.category}</span></span>
-                      {metrics?.category_rank && (
+                      {metrics?.categoryRank && (
                         <span className="text-slate-500">
-                          Rank: <span className="text-primary-600 dark:text-cyan-bright font-medium">#{metrics.category_rank}</span>
-                          <span className="text-slate-500"> of {metrics.category_total}</span>
+                          Rank: <span className="text-primary-600 dark:text-cyan-bright font-medium">#{metrics.categoryRank}</span>
+                          <span className="text-slate-500"> of {metrics.categoryTotal}</span>
                         </span>
                       )}
                     </div>
@@ -298,28 +298,28 @@ export default function VendorDashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <MetricCard
                 title="Total Views"
-                value={metrics?.total_views}
+                value={metrics?.totalViews}
                 icon={<EyeIcon className="w-5 h-5" />}
                 description="All-time page views"
                 color="cyan"
               />
               <MetricCard
                 title="Bookmarks"
-                value={metrics?.total_bookmarks}
+                value={metrics?.totalBookmarks}
                 icon={<BookmarkIcon className="w-5 h-5" />}
-                description={metrics?.recent_bookmarks ? `+${metrics.recent_bookmarks} in period` : 'Users who saved this tool'}
+                description={metrics?.recentBookmarks ? `+${metrics.recentBookmarks} in period` : 'Users who saved this tool'}
                 color="purple"
               />
               <MetricCard
                 title="Reviews"
-                value={metrics?.total_reviews}
+                value={metrics?.totalReviews}
                 icon={<StarIcon className="w-5 h-5" />}
-                description={metrics?.avg_rating ? `${metrics.avg_rating} avg rating` : 'User reviews'}
+                description={metrics?.avgRating ? `${metrics.avgRating} avg rating` : 'User reviews'}
                 color="amber"
               />
               <MetricCard
                 title="Projects"
-                value={metrics?.projects_using_tool}
+                value={metrics?.projectsUsingTool}
                 icon={<FolderIcon className="w-5 h-5" />}
                 description="Projects using this tool"
                 color="emerald"
@@ -327,7 +327,7 @@ export default function VendorDashboardPage() {
             </div>
 
             {/* Category Performance */}
-            {metrics?.category_rank && (
+            {metrics?.categoryRank && (
               <div className="glass-card">
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -341,23 +341,23 @@ export default function VendorDashboardPage() {
 
                 <div className="flex items-center gap-8">
                   <div className="text-center">
-                    <div className="text-4xl font-bold text-primary-600 dark:text-cyan-bright mb-1">#{metrics.category_rank}</div>
+                    <div className="text-4xl font-bold text-primary-600 dark:text-cyan-bright mb-1">#{metrics.categoryRank}</div>
                     <div className="text-sm text-slate-600 dark:text-slate-400">Category Rank</div>
                   </div>
                   <div className="flex-1">
                     <div className="h-3 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-primary-500 dark:from-cyan-500 to-emerald-500 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.max(5, 100 - ((metrics.category_rank - 1) / metrics.category_total) * 100)}%` }}
+                        style={{ width: `${Math.max(5, 100 - ((metrics.categoryRank - 1) / metrics.categoryTotal) * 100)}%` }}
                       />
                     </div>
                     <div className="flex justify-between text-xs text-slate-500 mt-2">
                       <span>#1</span>
-                      <span>#{metrics.category_total}</span>
+                      <span>#{metrics.categoryTotal}</span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-semibold text-slate-900 dark:text-white mb-1">{metrics.popularity_score}</div>
+                    <div className="text-2xl font-semibold text-slate-900 dark:text-white mb-1">{metrics.popularityScore}</div>
                     <div className="text-sm text-slate-600 dark:text-slate-400">Popularity Score</div>
                   </div>
                 </div>
@@ -365,7 +365,7 @@ export default function VendorDashboardPage() {
             )}
 
             {/* Recent Reviews */}
-            {analytics.recent_reviews && analytics.recent_reviews.length > 0 && (
+            {analytics.recentReviews && analytics.recentReviews.length > 0 && (
               <div className="glass-card">
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -377,7 +377,7 @@ export default function VendorDashboardPage() {
                   <StarIcon className="w-5 h-5 text-amber-500 dark:text-amber-400" />
                 </div>
                 <div className="space-y-4">
-                  {analytics.recent_reviews.map((review, idx) => (
+                  {analytics.recentReviews.map((review, idx) => (
                     <div
                       key={idx}
                       className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5"
@@ -385,7 +385,7 @@ export default function VendorDashboardPage() {
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <UserCircleIcon className="w-6 h-6 text-slate-400" />
-                          <span className="text-slate-700 dark:text-slate-300 font-medium">{review.user__username}</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">{review.userUsername}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           {[...Array(5)].map((_, i) => (
@@ -409,7 +409,7 @@ export default function VendorDashboardPage() {
             )}
 
             {/* Similar Tools (Competitors) */}
-            {analytics.similar_tools && analytics.similar_tools.length > 0 && (
+            {analytics.similarTools && analytics.similarTools.length > 0 && (
               <div className="glass-card">
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -430,13 +430,13 @@ export default function VendorDashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                      {analytics.similar_tools.map((tool) => (
+                      {analytics.similarTools.map((tool) => (
                         <tr key={tool.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
                           <td className="py-3">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/10 flex items-center justify-center overflow-hidden">
-                                {tool.logo_url ? (
-                                  <img src={tool.logo_url} alt={tool.name} className="w-6 h-6 object-contain" />
+                                {tool.logoUrl ? (
+                                  <img src={tool.logoUrl} alt={tool.name} className="w-6 h-6 object-contain" />
                                 ) : (
                                   <SparklesIcon className="w-4 h-4 text-slate-400" />
                                 )}
@@ -444,8 +444,8 @@ export default function VendorDashboardPage() {
                               <span className="text-slate-700 dark:text-slate-200">{tool.name}</span>
                             </div>
                           </td>
-                          <td className="py-3 text-right text-slate-600 dark:text-slate-300">{tool.view_count.toLocaleString()}</td>
-                          <td className="py-3 text-right text-slate-600 dark:text-slate-300">{tool.popularity_score.toFixed(1)}</td>
+                          <td className="py-3 text-right text-slate-600 dark:text-slate-300">{tool.viewCount.toLocaleString()}</td>
+                          <td className="py-3 text-right text-slate-600 dark:text-slate-300">{tool.popularityScore.toFixed(1)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -455,7 +455,7 @@ export default function VendorDashboardPage() {
             )}
 
             {/* Empty States */}
-            {(!metrics?.total_views && !metrics?.total_bookmarks && !metrics?.total_reviews) && (
+            {(!metrics?.totalViews && !metrics?.totalBookmarks && !metrics?.totalReviews) && (
               <div className="glass-card text-center py-12">
                 <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center mx-auto mb-4">
                   <ChartBarIcon className="w-8 h-8 text-slate-400 dark:text-slate-500" />

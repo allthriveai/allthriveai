@@ -70,8 +70,8 @@ const settingsNavItems: SettingsSidebarItem[] = [
     icon: ShieldCheckIcon,
   },
   {
-    label: 'Getting Started',
-    path: '/getting-started',
+    label: 'Onboarding',
+    path: '/onboarding',
     icon: RocketLaunchIcon,
   },
 ];

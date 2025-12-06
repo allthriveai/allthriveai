@@ -181,7 +181,7 @@ function QuestCard({ quest }: { quest: QuestItem }) {
   );
 }
 
-export default function GettingStartedPage() {
+export default function OnboardingPage() {
   const { progress, isLoading, error } = useOnboardingProgress();
 
   if (isLoading) {
