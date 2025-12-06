@@ -199,7 +199,7 @@ companies:
       Replicate lets you run machine learning models with a cloud API,
       without having to understand the intricacies of machine learning.
     website_url: https://replicate.com
-    logo_url: https://replicate.com/favicon.ico
+    logo_url: /logos/replicate-logo.png
     founded_year: 2019
     headquarters: San Francisco, CA
     twitter_handle: replaborateicate
@@ -2105,7 +2105,7 @@ tools:
     category: research
     tool_type: ai_tool
     website_url: https://replicate.com
-    logo_url: https://replicate.com/favicon.ico
+    logo_url: /logos/replicate-logo.png
     pricing_model: pay_per_use
     has_free_tier: true
     tags:
