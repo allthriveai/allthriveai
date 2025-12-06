@@ -107,7 +107,7 @@ companies:
       Stability AI develops open-source AI models for image, language, audio, and video generation.
       Known for Stable Diffusion.
     website_url: https://stability.ai
-    logo_url: https://images.squarespace-cdn.com/content/v1/6213c340453c3f502425776e/6c9c4c25-5410-4547-b75b-b16e1ce87500/stability-ai-logo.png
+    logo_url: /logos/stability-ai-logo.png
     founded_year: 2020
     headquarters: London, UK
     twitter_handle: StabilityAI
@@ -902,7 +902,7 @@ tools:
     category: image
     tool_type: ai_tool
     website_url: https://stability.ai
-    logo_url: https://images.squarespace-cdn.com/content/v1/6213c340453c3f502425776e/6c9c4c25-5410-4547-b75b-b16e1ce87500/stability-ai-logo.png
+    logo_url: /logos/stability-ai-logo.png
     pricing_model: open_source
     has_free_tier: true
     tags:
