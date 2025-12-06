@@ -2205,6 +2205,63 @@ tools:
         title: Agent Builder Beta
         description: No-code agent creation in LangSmith with visual workflow editor.
 
+  - name: LangGraph
+    company: LangChain
+    tagline: Build stateful, multi-actor AI agents with full control
+    description: >
+      Low-level framework from LangChain for building stateful, agentic applications.
+      Define agents as graphs with nodes (functions) and edges (transitions), enabling
+      complex multi-step workflows with branching logic, cycles, and human-in-the-loop.
+      Built on top of LangChain with full control over agent behavior. Supports persistence,
+      streaming, time travel debugging, and deployment via LangGraph Cloud. Open source;
+      cloud hosting available through LangSmith.
+    category: code
+    tool_type: framework
+    website_url: https://www.langchain.com/langgraph
+    logo_url: https://simpleicons.org/icons/langchain.svg
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - AI Agents
+      - Framework
+      - State Management
+      - Open Source
+      - Python
+      - JavaScript
+    key_features:
+      - title: Graph-Based Architecture
+        description: Define agents as state machines with nodes and edges for precise control flow
+      - title: Persistent State
+        description: Built-in checkpointing for long-running agents with state recovery
+      - title: Human-in-the-Loop
+        description: Pause execution for human approval, input, or review before continuing
+      - title: Time Travel Debugging
+        description: Replay and inspect agent execution at any point in the graph
+      - title: Streaming Support
+        description: Stream intermediate results and state updates in real-time
+    usage_tips:
+      - Use for complex agents that need precise control over execution flow
+      - Define clear state schemas for your application
+      - Leverage checkpointing for resumable long-running tasks
+      - Use conditional edges for branching logic based on agent decisions
+      - Enable streaming for better user experience in multi-step workflows
+    best_practices:
+      - Start simple and add complexity incrementally
+      - Use state machines for workflows with multiple decision points
+      - Implement proper error handling at each node
+      - Leverage LangSmith for monitoring and debugging in production
+      - Test state transitions thoroughly before deployment
+    whats_new:
+      - date: '2025-11-20'
+        title: LangGraph 0.2 Release
+        description: Enhanced state management, checkpointing improvements, and better human-in-the-loop support.
+      - date: '2025-11-10'
+        title: LangGraph Cloud GA
+        description: Production-ready hosting for LangGraph agents with auto-scaling and monitoring.
+      - date: '2025-10-28'
+        title: JavaScript Support
+        description: LangGraph now available for TypeScript/JavaScript alongside Python.
+
   - name: CrewAI
     company: CrewAI
     tagline: Build and orchestrate multi-agent AI workflows
