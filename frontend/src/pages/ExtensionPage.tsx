@@ -7,7 +7,7 @@
 import { motion } from 'framer-motion';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChrome, faPuzzlePiece, faBookmark, faShare } from '@fortawesome/free-solid-svg-icons';
+import { faPuzzlePiece, faBookmark, faShare, faGlobe } from '@fortawesome/free-solid-svg-icons';
 
 export default function ExtensionPage() {
   return (
@@ -25,7 +25,7 @@ export default function ExtensionPage() {
             transition={{ type: 'spring', delay: 0.1 }}
             className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center"
           >
-            <FontAwesomeIcon icon={faChrome} className="text-4xl text-cyan-400" />
+            <FontAwesomeIcon icon={faGlobe} className="text-4xl text-cyan-400" />
           </motion.div>
 
           {/* Title */}

@@ -494,6 +494,17 @@ companies:
     twitter_handle: llama_index
     github_url: https://github.com/run-llama/llama_index
 
+  - name: Senso
+    tagline: Align your ground truth with AI platforms
+    description: >
+      Senso is a Y Combinator-backed platform that bridges brands and AI models.
+      Helps organizations optimize visibility and accuracy across ChatGPT, Perplexity,
+      Gemini, and other generative AI platforms. Provides content optimization for citations.
+    website_url: https://www.senso.ai
+    logo_url: /logos/senso.png
+    founded_year: 2024
+    headquarters: San Francisco, CA
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
@@ -2439,6 +2450,63 @@ tools:
       - date: '2025-11-10'
         title: LlamaParse Tables
         description: Advanced table extraction and understanding for financial and technical documents.
+
+  - name: Senso
+    company: Senso
+    tagline: Enterprise visibility platform for AI answer engines
+    description: >
+      Y Combinator-backed platform at senso.ai that aligns enterprise knowledge with generative
+      AI platforms like ChatGPT, Perplexity, and Gemini. Track brand visibility, evaluate content
+      gaps, remediate with optimized messaging, and publish to drive more citations and brand
+      mentions. Transforms verified enterprise content into structured outputs that LLMs trust.
+      Delivers 2-4 week time to value for citation lift. Includes playground to see industry
+      rankings and real prompt analysis. Used for brand visibility and customer journey optimization.
+    category: research
+    tool_type: platform
+    website_url: https://www.senso.ai
+    logo_url: /logos/senso.png
+    pricing_model: subscription
+    has_free_tier: false
+    tags:
+      - Brand Visibility
+      - AI Citation
+      - Content Optimization
+      - Enterprise
+      - Generative AI
+      - Marketing
+    key_features:
+      - title: Conversation Tracking
+        description: Monitor visibility and content gaps across AI-powered platforms
+      - title: Content Remediation
+        description: Auto-generate content to increase citations with personalized messaging
+      - title: Ground Truth Verification
+        description: Align answer engines with your internal knowledge base
+      - title: Publisher Network
+        description: Distribute to 50K+ publishers and direct to model providers
+      - title: Citation Analytics
+        description: Track mentions, signups, and transactions across generative platforms
+    usage_tips:
+      - Use the playground to see how your industry ranks in AI citations
+      - Evaluate content gaps with real prompt analysis
+      - Implement content remediation for increased brand mentions
+      - Track visibility across ChatGPT, Perplexity, and Gemini
+      - Publish verified content to the publisher network
+    best_practices:
+      - Ingest verified business data from trusted internal sources
+      - Structure content for LLMs and agentic systems
+      - Monitor citation lift metrics regularly
+      - Optimize messaging based on content gap analysis
+      - Align with internal knowledge base for accuracy
+    whats_new:
+      - date: '2025-12-01'
+        title: Y Combinator Funding
+        description: Backed by Y Combinator to accelerate brand visibility in generative AI platforms.
+      - date: '2025-11-20'
+        title: Playground Launch
+        description: Interactive tool to explore industry rankings and brand visibility in AI citations.
+      - date: '2025-11-10'
+        title: Publisher Network Expansion
+        description: Now distributing to 50K+ publishers and direct model provider integrations.
 
   # === AGENT FRAMEWORKS ===
   - name: LangChain
