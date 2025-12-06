@@ -430,6 +430,19 @@ companies:
     twitter_handle: LangChainAI
     github_url: https://github.com/langchain-ai/langchain
 
+  - name: Weaviate
+    tagline: The AI database developers love
+    description: >
+      Weaviate is an open-source vector database designed for AI applications.
+      Features native vector search, hybrid search combining vectors and keywords,
+      and built-in integrations with major AI providers. Scales to billions of objects.
+    website_url: https://weaviate.io
+    logo_url: /logos/weviate-logo.png
+    founded_year: 2019
+    headquarters: Amsterdam, Netherlands
+    twitter_handle: weaviate_io
+    github_url: https://github.com/weaviate/weaviate
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
@@ -2147,6 +2160,63 @@ tools:
       - date: '2025-11-02'
         title: Edge Deployments
         description: Deploy models to edge locations for sub-100ms latency in key regions.
+
+  - name: Weaviate
+    company: Weaviate
+    tagline: AI-native vector database for RAG and hybrid search
+    description: >
+      Open-source vector database built for AI applications at weaviate.io. Native vector
+      search with sub-50ms query latency. Hybrid search combines vector similarity with
+      keyword matching. Built-in integrations with OpenAI, Cohere, Anthropic, and 50+
+      AI providers. Supports multi-tenancy, generative search, and automatic vectorization.
+      Scales to billions of objects with HNSW indexing. Free for self-hosted; Weaviate Cloud
+      starts at $25/mo.
+    category: research
+    tool_type: platform
+    website_url: https://weaviate.io
+    logo_url: /logos/weviate-logo.png
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Vector Database
+      - RAG
+      - Hybrid Search
+      - Open Source
+      - AI Infrastructure
+      - Embeddings
+    key_features:
+      - title: Vector Search
+        description: Sub-50ms query latency with HNSW indexing for billions of objects
+      - title: Hybrid Search
+        description: Combine vector similarity with keyword search using BM25
+      - title: Native Integrations
+        description: Built-in modules for OpenAI, Cohere, Anthropic, and 50+ providers
+      - title: Generative Search
+        description: RAG pipelines with automatic context retrieval and LLM generation
+      - title: Multi-Tenancy
+        description: Isolate data per tenant with automatic resource allocation
+    usage_tips:
+      - Use hybrid search for best retrieval quality combining vectors and keywords
+      - Enable generative search for RAG applications with automatic prompting
+      - Leverage built-in vectorization modules to skip embedding management
+      - Use multi-tenancy for SaaS applications with isolated customer data
+      - Monitor query performance with built-in observability tools
+    best_practices:
+      - Choose appropriate distance metric (cosine, dot, L2) for your embeddings
+      - Use batch imports for initial data loading to maximize throughput
+      - Implement proper schema design with cross-references for complex data
+      - Enable replication for production deployments requiring high availability
+      - Use filtered vector search to combine semantic and metadata filtering
+    whats_new:
+      - date: '2025-11-28'
+        title: Weaviate 1.27 Release
+        description: New dynamic indexing for 40% faster ingestion and improved multi-tenancy performance.
+      - date: '2025-11-15'
+        title: Named Vectors Support
+        description: Store multiple vector representations per object for multi-modal search.
+      - date: '2025-11-01'
+        title: Weaviate Agents Launch
+        description: New Query Agent, Transformation Agent, and Personalization Agent for AI workflows.
 
   # === AGENT FRAMEWORKS ===
   - name: LangChain
