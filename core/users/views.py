@@ -168,13 +168,9 @@ def onboarding_progress(request):
     )
 
     # 2. Set up personalization
+    # Check if user has customized any personalization settings (not just defaults)
     has_personalization = PersonalizationSettings.objects.filter(user=user).exists()
-    personalization_settings = PersonalizationSettings.objects.filter(user=user).first()
-    personalization_complete = (
-        has_personalization
-        and personalization_settings
-        and (personalization_settings.interests or personalization_settings.skill_level)
-    )
+    personalization_complete = has_personalization
     checklist.append(
         {
             'id': 'setup_personalization',

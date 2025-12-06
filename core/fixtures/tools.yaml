@@ -96,7 +96,7 @@ companies:
       Midjourney is an independent research lab that produces an AI image generation
       program under the same name.
     website_url: https://midjourney.com
-    logo_url: https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Midjourney_Emblem.svg/240px-Midjourney_Emblem.svg.png
+    logo_url: /logos/Midjourney-logo.png
     founded_year: 2022
     headquarters: San Francisco, CA
     twitter_handle: midaborney
@@ -779,7 +779,7 @@ tools:
     category: image
     tool_type: ai_tool
     website_url: https://midjourney.com
-    logo_url: https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Midjourney_Emblem.svg/240px-Midjourney_Emblem.svg.png
+    logo_url: /logos/Midjourney-logo.png
     pricing_model: subscription
     has_free_tier: false
     tags:
