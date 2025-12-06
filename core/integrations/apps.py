@@ -12,6 +12,7 @@ class IntegrationsConfig(AppConfig):
 
     def ready(self):
         """Register integrations when app is ready."""
+        from core.integrations.figma.integration import FigmaIntegration
         from core.integrations.github.integration import GitHubIntegration
         from core.integrations.gitlab.integration import GitLabIntegration
         from core.integrations.registry import IntegrationRegistry
@@ -19,3 +20,4 @@ class IntegrationsConfig(AppConfig):
         # Register all integrations
         IntegrationRegistry.register(GitHubIntegration)
         IntegrationRegistry.register(GitLabIntegration)
+        IntegrationRegistry.register(FigmaIntegration)

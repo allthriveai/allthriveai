@@ -114,6 +114,37 @@ export async function createProject(payload: ProjectPayload): Promise<Project> {
 }
 
 /**
+ * Extracted project data from URL scraping
+ */
+export interface ScrapedProjectData {
+  title: string;
+  description: string;
+  tagline?: string | null;
+  imageUrl?: string | null;
+  creator?: string | null;
+  organization?: string | null;
+  topics?: string[] | null;
+  features?: string[] | null;
+  links?: Record<string, string> | null;
+  license?: string | null;
+  sourceUrl?: string | null;
+}
+
+/**
+ * Scrape a URL and extract project data using AI
+ *
+ * This endpoint fetches any webpage and uses AI to extract
+ * structured project information for creating a new project.
+ */
+export async function scrapeUrlForProject(url: string): Promise<ScrapedProjectData> {
+  const response = await api.post<{ success: boolean; data: ScrapedProjectData }>(
+    '/integrations/scrape-url/',
+    { url }
+  );
+  return response.data.data;
+}
+
+/**
  * Update an existing project
  */
 export async function updateProject(id: number, payload: Partial<ProjectPayload>): Promise<Project> {

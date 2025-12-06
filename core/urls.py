@@ -36,13 +36,15 @@ from .battles.views import (
     get_user_battles,
 )
 from .events.views import EventViewSet
+from .integrations.figma.views import get_file_preview as get_figma_file_preview
+from .integrations.figma.views import list_user_files as list_figma_files
 from .integrations.github.views import (
     get_task_status,
     import_github_repo_async,
     list_user_repos,
 )
 from .integrations.gitlab.views import list_user_projects as list_gitlab_projects
-from .integrations.views import import_from_url, list_integrations
+from .integrations.views import import_from_url, list_integrations, scrape_url_for_project
 from .projects.comment_views import ProjectCommentViewSet
 from .projects.topic_suggestions import get_topic_suggestions
 from .projects.tracking_views import track_batch_clicks, track_project_click, track_project_view
@@ -279,6 +281,7 @@ urlpatterns = [
     path('social/status/<str:provider>/', connection_status, name='social_status'),
     # Generic integration endpoints
     path('integrations/import-from-url/', import_from_url, name='import_from_url'),
+    path('integrations/scrape-url/', scrape_url_for_project, name='scrape_url_for_project'),
     path('integrations/available/', list_integrations, name='list_integrations'),
     path('integrations/tasks/<str:task_id>/', get_task_status, name='task_status'),
     # Billing endpoints
@@ -292,6 +295,9 @@ urlpatterns = [
     path('github/import/', import_github_repo_async, name='github_import'),
     # GitLab integration endpoints
     path('gitlab/projects/', list_gitlab_projects, name='gitlab_projects'),
+    # Figma integration endpoints
+    path('figma/files/', list_figma_files, name='figma_files'),
+    path('figma/files/<str:file_key>/preview/', get_figma_file_preview, name='figma_file_preview'),
     # Battle endpoints
     path('battles/stats/', battle_stats, name='battle_stats'),
     path('battles/leaderboard/', battle_leaderboard, name='battle_leaderboard'),

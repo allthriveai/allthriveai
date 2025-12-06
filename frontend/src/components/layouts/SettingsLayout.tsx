@@ -44,7 +44,7 @@ const settingsNavItems: SettingsSidebarItem[] = [
     icon: GiftIcon,
   },
   {
-    label: 'Email Notifications',
+    label: 'Notifications',
     path: '/account/settings/notifications',
     icon: BellIcon,
   },

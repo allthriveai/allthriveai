@@ -1,14 +1,16 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
+import { LinkIcon } from '@heroicons/react/24/outline';
 
 interface AddProjectOptionsProps {
   onImport: () => void;
   onDescribe: () => void;
   onBuild: () => void;
   onManual: () => void;
+  onImportFromUrl?: () => void;
 }
 
-export function AddProjectOptions({ onImport, onDescribe, onBuild, onManual }: AddProjectOptionsProps) {
+export function AddProjectOptions({ onImport, onDescribe, onBuild, onManual, onImportFromUrl }: AddProjectOptionsProps) {
   return (
     <div className="p-6 space-y-4">
       <div className="mb-6">
@@ -21,6 +23,28 @@ export function AddProjectOptions({ onImport, onDescribe, onBuild, onManual }: A
       </div>
 
       <div className="space-y-3">
+        {/* Import from URL - NEW */}
+        {onImportFromUrl && (
+          <button
+            onClick={onImportFromUrl}
+            className="w-full text-left p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary-100 dark:group-hover:bg-primary-900/20 transition-colors">
+                <LinkIcon className="w-6 h-6 text-slate-700 dark:text-slate-300 group-hover:text-primary-600 dark:group-hover:text-primary-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                  Import from URL
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Paste any webpage URL and AI will extract project details
+                </p>
+              </div>
+            </div>
+          </button>
+        )}
+
         {/* Import Existing Project */}
         <button
           onClick={onImport}

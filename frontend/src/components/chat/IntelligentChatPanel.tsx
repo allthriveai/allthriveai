@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGithub, faGitlab } from '@fortawesome/free-brands-svg-icons';
+import { faFigma, faGithub, faGitlab } from '@fortawesome/free-brands-svg-icons';
 import { faStar, faCodeBranch, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './ChatInterface';
@@ -23,6 +23,9 @@ import {
   checkGitLabConnection,
   type GitLabProject,
 } from '@/services/gitlab';
+import {
+  checkFigmaConnection,
+} from '@/services/figma';
 import { uploadFile, uploadImage } from '@/services/upload';
 // Constants
 const ONBOARDING_BUTTON_BASE = 'w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50';
@@ -106,6 +109,10 @@ export function IntelligentChatPanel({
   const [gitlabProjects, setGitlabProjects] = useState<GitLabProject[]>([]);
   const [gitlabSearchQuery, setGitlabSearchQuery] = useState('');
   const [gitlabMessage, setGitlabMessage] = useState<string>('');
+
+  // Figma integration state
+  const [figmaStep, setFigmaStep] = useState<'idle' | 'loading' | 'connect' | 'ready'>('idle');
+  const [figmaMessage, setFigmaMessage] = useState<string>('');
 
   // Help mode state - start in help mode if supportMode prop is true
   const [helpMode, setHelpMode] = useState(supportMode);
@@ -352,6 +359,46 @@ export function IntelligentChatPanel({
     setGitlabSearchQuery('');
   };
 
+  // Figma integration handlers
+  const handleFigmaImport = useCallback(async () => {
+    setFigmaStep('loading');
+    setFigmaMessage('Checking your Figma connection...');
+    setHasInteracted(true);
+
+    try {
+      const isConnected = await checkFigmaConnection();
+
+      if (!isConnected) {
+        setFigmaStep('connect');
+        setFigmaMessage('You need to connect your Figma account first.');
+        return;
+      }
+
+      // Figma is connected - prompt user to paste a Figma URL
+      setFigmaStep('ready');
+      setFigmaMessage('Paste a Figma file URL below to import your design.');
+    } catch (error) {
+      console.error('Figma import error:', error);
+      setFigmaMessage('Something went wrong. Please try again.');
+      setFigmaStep('idle');
+    }
+  }, []);
+
+  const handleConnectFigma = () => {
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const frontendUrl = window.location.origin;
+    const returnPath = window.location.pathname + window.location.search;
+
+    // Redirect to Figma OAuth via social connect endpoint
+    const redirectUrl = `${backendUrl}/api/social/connect/figma/?next=${encodeURIComponent(frontendUrl + returnPath)}`;
+    window.location.href = redirectUrl;
+  };
+
+  const handleCancelFigma = () => {
+    setFigmaStep('idle');
+    setFigmaMessage('');
+  };
+
   // Help mode handlers
   const handleHelpQuestionSelect = useCallback((question: HelpQuestion) => {
     // Close help mode and send the question's message to the AI
@@ -365,6 +412,11 @@ export function IntelligentChatPanel({
 
   const handleIntegrationSelect = useCallback(async (type: IntegrationType) => {
     switch (type) {
+      case 'import-url':
+        // Send a message to trigger URL import flow in chat
+        setHasInteracted(true);
+        sendMessage('I want to import a project from a URL');
+        break;
       case 'github':
         // Use direct GitHub integration flow instead of AI
         handleGitHubImport();
@@ -372,6 +424,10 @@ export function IntelligentChatPanel({
       case 'gitlab':
         // Use direct GitLab integration flow
         handleGitLabImport();
+        break;
+      case 'figma':
+        // Use direct Figma integration flow
+        handleFigmaImport();
         break;
       case 'youtube':
         sendMessage('I want to add a YouTube video to my project');
@@ -396,7 +452,7 @@ export function IntelligentChatPanel({
         sendMessage('I want to create a digital product to sell on the marketplace');
         break;
     }
-  }, [handleGitHubImport, handleGitLabImport, sendMessage]);
+  }, [handleGitHubImport, handleGitLabImport, handleFigmaImport, sendMessage]);
 
   // Render GitHub integration UI
   const renderGitHubUI = () => {
@@ -601,6 +657,70 @@ export function IntelligentChatPanel({
               {/* Cancel button */}
               <button
                 onClick={handleCancelGitLab}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Render Figma integration UI
+  const renderFigmaUI = () => {
+    if (figmaStep === 'idle') return null;
+
+    return (
+      <div className="flex flex-col items-start justify-start px-4 pt-4">
+        <div className="w-full max-w-md">
+          {/* Status message */}
+          {figmaMessage && (
+            <div className="mb-4 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+              <p className="text-sm">{figmaMessage}</p>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {figmaStep === 'loading' && (
+            <div className="flex justify-center py-8">
+              <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-primary-500 animate-spin" />
+            </div>
+          )}
+
+          {/* Connect Figma button */}
+          {figmaStep === 'connect' && (
+            <div className="space-y-3">
+              <button
+                onClick={handleConnectFigma}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                <FontAwesomeIcon icon={faFigma} />
+                Connect Figma
+              </button>
+              <button
+                onClick={handleCancelFigma}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {/* Ready state - prompt to paste URL */}
+          {figmaStep === 'ready' && (
+            <div className="space-y-3">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="mb-2">Figma connected! To import a design:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Open your Figma file</li>
+                  <li>Copy the URL from your browser</li>
+                  <li>Paste it in the chat below</li>
+                </ol>
+              </div>
+              <button
+                onClick={handleCancelFigma}
                 className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 Cancel
@@ -1070,6 +1190,11 @@ export function IntelligentChatPanel({
           <>
             {renderQuotaExceeded()}
             {renderGitLabUI()}
+          </>
+        ) : figmaStep !== 'idle' ? (
+          <>
+            {renderQuotaExceeded()}
+            {renderFigmaUI()}
           </>
         ) : undefined
       }

@@ -111,8 +111,9 @@ export default {
       animation: {
         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'float': 'float 6s ease-in-out infinite',
-        'shimmer': 'shimmer 2s ease-in-out infinite',
+        'shimmer': 'shimmer 12s linear infinite',
         'fade-in-up': 'fadeInUp 0.3s ease-out forwards',
+        'orb-float': 'orbFloat 20s ease-in-out infinite',
       },
       keyframes: {
         float: {
@@ -126,6 +127,12 @@ export default {
         fadeInUp: {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        orbFloat: {
+          '0%, 100%': { transform: 'translate(-50%, -50%) translate(0, 0) scale(1)' },
+          '25%': { transform: 'translate(-50%, -50%) translate(30px, -25px) scale(1.1)' },
+          '50%': { transform: 'translate(-50%, -50%) translate(-20px, 15px) scale(0.95)' },
+          '75%': { transform: 'translate(-50%, -50%) translate(10px, -10px) scale(1.05)' },
         },
       },
     },

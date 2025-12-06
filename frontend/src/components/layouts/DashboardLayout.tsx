@@ -1,4 +1,4 @@
-import { useState, ReactNode, useEffect, useMemo } from 'react';
+import { useState, ReactNode, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightAboutPanel } from '@/components/about';
@@ -104,18 +104,19 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     handleOpenAddProject();
   }, []);
 
-  const handleMenuClick = (menuItem: string) => {
+  const handleMenuClick = useCallback((menuItem: string) => {
     if (menuItem === 'About Us') {
-      const wasOpen = aboutOpen;
-      setAboutOpen(true);
+      setAboutOpen((wasOpen) => {
+        // Scroll to About Us section after state update
+        setTimeout(() => {
+          const element = document.getElementById('about-us');
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, wasOpen ? 50 : 150); // Shorter delay if already open
+        return true;
+      });
       setEventsOpen(false);
-      // Scroll to About Us section
-      setTimeout(() => {
-        const element = document.getElementById('about-us');
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, wasOpen ? 50 : 150); // Shorter delay if already open
     } else if (menuItem === 'Our Values') {
       setAboutOpen(true);
       setEventsOpen(false);
@@ -137,7 +138,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       setAboutOpen(false);
       setEventsOpen(false);
     }
-  };
+  }, []);
 
   const handleCloseAbout = () => {
     setAboutOpen(false);
@@ -162,14 +163,14 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setChatSupportMode(false);
   };
 
-  const handleOpenCommentPanel = (project: Project) => {
+  const handleOpenCommentPanel = useCallback((project: Project) => {
     setCommentPanelProject(project);
     setCommentPanelOpen(true);
     // Close other panels
     setAboutOpen(false);
     setEventsOpen(false);
     setAddProjectOpen(false);
-  };
+  }, []);
 
   const handleCloseCommentPanel = () => {
     setCommentPanelOpen(false);

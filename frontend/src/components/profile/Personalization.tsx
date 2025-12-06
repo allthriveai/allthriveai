@@ -502,7 +502,7 @@ export function Personalization() {
                     className={`relative w-12 h-6 rounded-full transition-colors ${
                       settings.use_topic_selections
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-600'
+                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
                     }`}
                   >
                     <span
@@ -528,7 +528,7 @@ export function Personalization() {
                     className={`relative w-12 h-6 rounded-full transition-colors ${
                       settings.learn_from_views
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-600'
+                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
                     }`}
                   >
                     <span
@@ -554,7 +554,7 @@ export function Personalization() {
                     className={`relative w-12 h-6 rounded-full transition-colors ${
                       settings.learn_from_likes
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-600'
+                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
                     }`}
                   >
                     <span
@@ -580,7 +580,7 @@ export function Personalization() {
                     className={`relative w-12 h-6 rounded-full transition-colors ${
                       settings.consider_skill_level
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-600'
+                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
                     }`}
                   >
                     <span
@@ -606,7 +606,7 @@ export function Personalization() {
                     className={`relative w-12 h-6 rounded-full transition-colors ${
                       settings.use_social_signals
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-600'
+                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
                     }`}
                   >
                     <span
@@ -675,7 +675,7 @@ export function Personalization() {
                     className={`relative w-12 h-6 rounded-full transition-colors ${
                       settings.allow_time_tracking
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-600'
+                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
                     }`}
                   >
                     <span
@@ -701,7 +701,7 @@ export function Personalization() {
                     className={`relative w-12 h-6 rounded-full transition-colors ${
                       settings.allow_scroll_tracking
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-600'
+                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
                     }`}
                   >
                     <span

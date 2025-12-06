@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import type { Project } from '@/types/models';
 import {
   QUOTE_CARD_SIZE,
@@ -66,7 +66,7 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const typeLabels = PROJECT_TYPE_LABELS;
 
-export function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick }: ProjectCardProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
@@ -359,7 +359,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       <>
       <CardWrapper
         {...(cardProps as React.ComponentProps<typeof Link>)}
-        className={`block relative overflow-hidden shadow-lg hover:shadow-neon hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 group ${
+        className={`block relative overflow-hidden shadow-lg hover:shadow-neon group ${
           isSelected ? 'ring-4 ring-primary-500' : ''
         } ${dynamicHeightClass} ${dynamicWidthClass} ${!imageLoaded && (heroElement.type === 'image' || heroElement.type === 'slideshow') ? 'min-h-[400px]' : ''}`}
         style={{ borderRadius: 'var(--radius)' }}
@@ -628,7 +628,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
 
             {isQuote && (
               <div
-                className="absolute inset-0 group-hover:scale-105 transition-transform duration-700"
+                className="absolute inset-0"
                 style={{
                   background: `linear-gradient(to bottom right, ${gradientFrom}, ${gradientTo})`
                 }}
@@ -912,7 +912,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
   return (
     <CardWrapper
       {...(cardProps as React.ComponentProps<typeof Link>)}
-      className={`block glass-subtle hover:glass-strong transition-all duration-300 overflow-hidden group relative ${
+      className={`block glass-subtle hover:glass-strong overflow-hidden group relative ${
         isSelected ? 'ring-4 ring-primary-500' : ''
       }`}
       style={{ borderRadius: 'var(--radius)' }}
@@ -935,7 +935,7 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
         <img
           src={project.bannerUrl || '/allthrive-placeholder.svg'}
           alt={project.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          className="w-full h-full object-cover"
         />
 
           {/* Type badge and Menu button */}
@@ -1054,4 +1054,4 @@ export function ProjectCard({ project, selectionMode = false, isSelected = false
       </div>
     </CardWrapper>
   );
-}
+});
