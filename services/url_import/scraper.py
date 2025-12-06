@@ -2,6 +2,9 @@
 
 This service fetches any webpage, converts HTML to clean text, and uses AI
 to extract structured project information for creating AllThrive projects.
+
+Supports both static HTML (via requests + BeautifulSoup) and JavaScript-rendered
+pages (via Playwright for headless browser rendering).
 """
 
 import html
@@ -20,8 +23,19 @@ logger = logging.getLogger(__name__)
 
 # Request configuration
 REQUEST_TIMEOUT = 15
+PLAYWRIGHT_TIMEOUT = 30000  # 30 seconds for JS rendering
 MAX_CONTENT_LENGTH = 500_000  # 500KB max HTML
 USER_AGENT = 'AllThriveBot/1.0 (+https://allthrive.ai)'
+
+# Indicators that a page needs JavaScript rendering
+JS_REQUIRED_INDICATORS = [
+    'noscript',  # Has noscript fallback
+    'loading="lazy"',  # Lazy loading
+    '__NEXT_DATA__',  # Next.js (usually SSR but check content)
+    'window.__NUXT__',  # Nuxt.js
+    'ng-app',  # Angular
+    'data-reactroot',  # React (client-side)
+]
 
 
 @dataclass
@@ -65,11 +79,113 @@ class AIExtractionError(URLScraperError):
     pass
 
 
-def fetch_webpage(url: str) -> str:
-    """Fetch webpage content with proper error handling.
+def _is_playwright_available() -> bool:
+    """Check if Playwright is installed and available."""
+    try:
+        from playwright.sync_api import sync_playwright  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def _needs_javascript_rendering(html_content: str) -> bool:
+    """Detect if page content suggests JavaScript rendering is needed.
+
+    Args:
+        html_content: Raw HTML from initial request
+
+    Returns:
+        True if page likely needs JS rendering for full content
+    """
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Check for minimal body content (common in SPAs)
+    body = soup.find('body')
+    if body:
+        body_text = body.get_text(strip=True)
+        # If body has very little text but has scripts, likely needs JS
+        scripts = body.find_all('script')
+        if len(body_text) < 200 and len(scripts) > 3:
+            logger.info('Detected SPA pattern: minimal body text with many scripts')
+            return True
+
+    # Check for specific framework indicators
+    html_str = html_content.lower()
+    for indicator in JS_REQUIRED_INDICATORS:
+        if indicator.lower() in html_str:
+            # Don't trigger on Next.js SSR (already rendered)
+            if indicator == '__NEXT_DATA__':
+                # Next.js SSR pages have full content, check if we have it
+                main_content = soup.find('main') or soup.find(id='main-content')
+                if main_content and len(main_content.get_text(strip=True)) > 500:
+                    continue  # SSR content present, no JS needed
+            logger.info(f'Detected JS indicator: {indicator}')
+            return True
+
+    return False
+
+
+def fetch_with_playwright(url: str) -> str:
+    """Fetch webpage using Playwright headless browser.
 
     Args:
         url: URL to fetch
+
+    Returns:
+        Fully rendered HTML content
+
+    Raises:
+        URLFetchError: If fetching fails
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as e:
+        raise URLFetchError(
+            'Playwright not installed. Install with: pip install playwright && playwright install chromium'
+        ) from e
+
+    logger.info(f'Using Playwright to render JavaScript for: {url}')
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent=USER_AGENT,
+                viewport={'width': 1280, 'height': 720},
+            )
+            page = context.new_page()
+
+            # Navigate and wait for content
+            page.goto(url, timeout=PLAYWRIGHT_TIMEOUT, wait_until='networkidle')
+
+            # Wait a bit more for any delayed rendering
+            page.wait_for_timeout(1000)
+
+            # Get the rendered HTML
+            html_content = page.content()
+
+            browser.close()
+
+            if len(html_content) > MAX_CONTENT_LENGTH:
+                logger.warning(f'Playwright content truncated: {len(html_content)} bytes')
+                html_content = html_content[:MAX_CONTENT_LENGTH]
+
+            return html_content
+
+    except Exception as e:
+        logger.error(f'Playwright fetch failed: {e}')
+        raise URLFetchError(f'Failed to render page with JavaScript: {str(e)}') from e
+
+
+def fetch_webpage(url: str, force_playwright: bool = False) -> str:
+    """Fetch webpage content with proper error handling.
+
+    Uses requests for static pages, falls back to Playwright for JS-heavy sites.
+
+    Args:
+        url: URL to fetch
+        force_playwright: If True, skip requests and use Playwright directly
 
     Returns:
         HTML content as string
@@ -77,6 +193,10 @@ def fetch_webpage(url: str) -> str:
     Raises:
         URLFetchError: If the request fails
     """
+    # Try Playwright first if forced or available for JS sites
+    if force_playwright and _is_playwright_available():
+        return fetch_with_playwright(url)
+
     try:
         headers = {
             'User-Agent': USER_AGENT,
@@ -101,7 +221,18 @@ def fetch_webpage(url: str) -> str:
         if len(response.content) > MAX_CONTENT_LENGTH:
             logger.warning(f'Content truncated for {url}: {len(response.content)} bytes')
 
-        return response.text[:MAX_CONTENT_LENGTH]
+        html_content = response.text[:MAX_CONTENT_LENGTH]
+
+        # Check if we need JavaScript rendering
+        if _is_playwright_available() and _needs_javascript_rendering(html_content):
+            logger.info('Page appears to need JavaScript rendering, trying Playwright')
+            try:
+                return fetch_with_playwright(url)
+            except URLFetchError:
+                logger.warning('Playwright failed, falling back to static content')
+                # Fall back to static content if Playwright fails
+
+        return html_content
 
     except requests.exceptions.Timeout as e:
         raise URLFetchError(f'Request timed out after {REQUEST_TIMEOUT}s') from e
@@ -304,11 +435,12 @@ Extract structured project data as JSON:"""
         raise AIExtractionError(f'Failed to extract project data: {str(e)}') from e
 
 
-def scrape_url_for_project(url: str) -> ExtractedProjectData:
+def scrape_url_for_project(url: str, force_javascript: bool = False) -> ExtractedProjectData:
     """Main entry point: scrape a URL and extract project data.
 
     Args:
         url: URL to scrape
+        force_javascript: If True, use Playwright for JS rendering even for static-looking pages
 
     Returns:
         ExtractedProjectData with all extracted information
@@ -326,8 +458,8 @@ def scrape_url_for_project(url: str) -> ExtractedProjectData:
     if parsed.scheme not in ('http', 'https'):
         raise URLFetchError('Only HTTP and HTTPS URLs are supported')
 
-    # Fetch the page
-    html_content = fetch_webpage(url)
+    # Fetch the page (auto-detects if JS rendering is needed)
+    html_content = fetch_webpage(url, force_playwright=force_javascript)
 
     # Parse HTML
     soup = BeautifulSoup(html_content, 'html.parser')

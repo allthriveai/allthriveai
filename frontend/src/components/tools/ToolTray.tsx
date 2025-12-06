@@ -49,13 +49,13 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     }
   };
 
-  // Load tool data whenever toolSlug changes (regardless of isOpen state)
-  // This allows data to load while the tray is animating open
+  // Load tool data when tray is open and toolSlug changes
+  // This avoids unnecessary background requests while scrolling feeds
   useEffect(() => {
-    if (toolSlug) {
+    if (isOpen && toolSlug) {
       loadTool(toolSlug);
     }
-  }, [toolSlug]);
+  }, [isOpen, toolSlug]);
 
   async function loadTool(slug: string) {
     try {
@@ -71,12 +71,12 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     }
   }
 
-  // Fetch projects using this tool when tool is loaded
+  // Fetch projects using this tool when tray is open and tool is loaded
   useEffect(() => {
-    if (tool?.id) {
+    if (isOpen && tool?.id) {
       loadProjectsUsingTool(tool.id);
     }
-  }, [tool?.id]);
+  }, [isOpen, tool?.id]);
 
   async function loadProjectsUsingTool(toolId: number) {
     try {

@@ -148,14 +148,14 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setEventsOpen(false);
   };
 
-  const handleOpenAddProject = (welcomeMode: boolean = false) => {
+  const handleOpenAddProject = useCallback((welcomeMode: boolean = false) => {
     // Open Add Project panel with 4 options (or welcome mode for new users)
     setAddProjectOpen(true);
     setAddProjectWelcomeMode(welcomeMode);
     setChatSupportMode(false); // Reset support mode when opening normally
     setAboutOpen(false);
     setEventsOpen(false);
-  };
+  }, []);
 
   const handleCloseAddProject = () => {
     setAddProjectOpen(false);

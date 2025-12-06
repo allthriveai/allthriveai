@@ -64,6 +64,14 @@ class CreateProductInput(BaseModel):
     source_url: str = Field(default='', description='Source URL if imported from YouTube/external')
 
 
+class ScrapeWebpageInput(BaseModel):
+    """Input for scrape_webpage_for_project tool."""
+
+    url: str = Field(description='The URL of the webpage to scrape (e.g., https://example.com/project)')
+    is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
+
+
 # Tools
 @tool(args_schema=CreateProjectInput)
 def create_project(
@@ -545,7 +553,121 @@ def create_product(
         return {'success': False, 'error': f'Failed to create product: {str(e)}'}
 
 
+@tool(args_schema=ScrapeWebpageInput)
+def scrape_webpage_for_project(
+    url: str,
+    is_showcase: bool = True,
+    is_private: bool = False,
+    state: dict | None = None,
+) -> dict:
+    """
+    Scrape any webpage and create a project from the extracted content.
+
+    Use this tool when the user provides a NON-GITHUB URL and wants to
+    import it as a project. This uses AI to extract:
+    - Title and description
+    - Image/logo
+    - Topics and tags
+    - Creator/organization info
+    - Key features
+
+    For GitHub URLs, use import_github_project instead (richer analysis).
+
+    Returns:
+        Dictionary with success status, project details, or error message
+    """
+    from dataclasses import asdict
+
+    from django.contrib.auth import get_user_model
+
+    from core.projects.models import Project
+    from services.url_import import URLScraperError, scrape_url_for_project
+
+    User = get_user_model()
+
+    # Validate state / user context
+    if not state or 'user_id' not in state:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    user_id = state['user_id']
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'success': False, 'error': 'User not found'}
+
+    # Check if this is a GitHub URL - should use import_github_project instead
+    if 'github.com' in url.lower():
+        return {
+            'success': False,
+            'error': 'This is a GitHub URL. Please use import_github_project instead for richer analysis.',
+            'is_github': True,
+        }
+
+    logger.info(f'Scraping webpage for project: {url} (user: {user.username})')
+
+    try:
+        # Scrape the webpage using AI extraction
+        extracted = scrape_url_for_project(url)
+
+        # Build content with extracted metadata
+        content = {
+            'source_url': url,
+            'scraped_data': asdict(extracted),
+        }
+
+        # Add features if extracted
+        if extracted.features:
+            content['features'] = extracted.features
+
+        # Add links if extracted
+        if extracted.links:
+            content['links'] = extracted.links
+
+        # Create the project
+        project = Project.objects.create(
+            user=user,
+            title=extracted.title or 'Imported Project',
+            description=extracted.description or '',
+            type=Project.ProjectType.OTHER,
+            external_url=url,
+            featured_image_url=extracted.image_url or '',
+            content=content,
+            is_showcased=is_showcase,
+            is_private=is_private,
+        )
+
+        # Add topics if extracted
+        if extracted.topics:
+            project.topics = extracted.topics[:10]
+            project.save(update_fields=['topics'])
+
+        logger.info(f'Successfully created project from URL: {project.id} - {project.title}')
+
+        return {
+            'success': True,
+            'project_id': project.id,
+            'slug': project.slug,
+            'title': project.title,
+            'url': f'/{user.username}/{project.slug}',
+            'message': f"Project '{project.title}' imported successfully from {url}!",
+            'extracted': {
+                'title': extracted.title,
+                'description': extracted.description[:200] if extracted.description else None,
+                'image_url': extracted.image_url,
+                'topics': extracted.topics,
+            },
+        }
+
+    except URLScraperError as e:
+        logger.error(f'Failed to scrape URL {url}: {e}')
+        return {'success': False, 'error': f'Could not import from URL: {str(e)}'}
+    except Exception as e:
+        logger.exception(f'Unexpected error importing from URL {url}: {e}')
+        return {'success': False, 'error': f'Failed to create project: {str(e)}'}
+
+
 # Tool list for agent
 # Note: fetch_github_metadata is kept for potential future use but not exposed to agent
 # GitHub imports require OAuth via import_github_project for ownership verification
-PROJECT_TOOLS = [create_project, extract_url_info, import_github_project, create_product]
+PROJECT_TOOLS = [create_project, extract_url_info, import_github_project, scrape_webpage_for_project, create_product]

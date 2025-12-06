@@ -897,8 +897,8 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
         />
       )}
 
-      {/* Tool Tray */}
-      {project.toolsDetails && project.toolsDetails.length > 0 && (
+      {/* Tool Tray - render only when explicitly opened to avoid offscreen shadows */}
+      {project.toolsDetails && project.toolsDetails.length > 0 && showToolTray && (
         <ToolTray
           isOpen={showToolTray}
           onClose={() => setShowToolTray(false)}

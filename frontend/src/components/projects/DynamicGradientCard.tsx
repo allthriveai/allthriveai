@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { motion } from 'framer-motion';
 
 interface DynamicGradientCardProps {
   title: string;
@@ -76,18 +77,30 @@ export const DynamicGradientCard = memo(function DynamicGradientCard({
         ))}
       </div>
 
-      {/* Static wave pattern overlay */}
+      {/* Wave pattern overlay with animated squiggles */}
       <svg
         className="absolute inset-0 w-full h-full opacity-[0.08] pointer-events-none"
         preserveAspectRatio="none"
       >
         <defs>
           <pattern id={`wave-${projectId}`} width="100" height="20" patternUnits="userSpaceOnUse">
-            <path
-              d="M0 10 Q 25 5, 50 10 T 100 10"
+            <motion.path
+              initial={{ d: 'M0 10 Q 25 0, 50 10 T 100 10' }}
               fill="none"
               stroke="white"
               strokeWidth="1"
+              animate={{
+                d: [
+                  'M0 10 Q 25 0, 50 10 T 100 10',
+                  'M0 10 Q 25 20, 50 10 T 100 10',
+                  'M0 10 Q 25 0, 50 10 T 100 10',
+                ],
+              }}
+              transition={{
+                duration: 4,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
             />
           </pattern>
         </defs>
