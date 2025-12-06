@@ -469,6 +469,18 @@ companies:
     twitter_handle: qdrant_engine
     github_url: https://github.com/qdrant/qdrant
 
+  - name: Alibaba Cloud
+    tagline: Empowering digital transformation
+    description: >
+      Alibaba Cloud is a global cloud computing platform providing comprehensive cloud
+      services including compute, storage, databases, AI, and machine learning. Known
+      for Model Studio, Qwen AI models, and enterprise-grade infrastructure.
+    website_url: https://www.alibabacloud.com
+    logo_url: /logos/alibabacloud-logo.svg
+    founded_year: 2009
+    headquarters: Hangzhou, China
+    twitter_handle: alibabacloud
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
