@@ -24,6 +24,12 @@ class CustomAccountAdapter(DefaultAccountAdapter):
             return f'{settings.FRONTEND_URL}/{request.user.username}'
         return settings.FRONTEND_URL
 
+    def get_signup_redirect_url(self, request):
+        """Redirect to frontend after signup (including OAuth)."""
+        if request.user.is_authenticated:
+            return f'{settings.FRONTEND_URL}/{request.user.username}'
+        return settings.FRONTEND_URL
+
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     """Custom social account adapter for OAuth authentication.
