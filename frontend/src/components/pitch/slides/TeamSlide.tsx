@@ -3,16 +3,29 @@ import { PitchSlide, GlassCard, GradientText } from '../PitchSlide';
 
 const team = [
   {
-    name: 'Allie Aronson',
-    role: 'Founder & CEO',
+    name: 'Allie Jones',
+    role: 'Technical Founder & CEO',
     bio: 'Designer & builder passionate about AI creativity tools',
-    image: null, // Placeholder - can add image path
+    image: null,
+  },
+  {
+    name: 'Gina Levy',
+    role: 'Chief Community Officer',
+    bio: '',
+    image: null,
+  },
+  {
+    name: 'Imnet Worku Edossa',
+    role: 'Chief AI Systems Officer',
+    bio: '',
+    image: null,
   },
 ];
 
 const advisors = [
-  { name: 'AI Industry Advisor', role: 'Strategic Guidance' },
-  { name: 'Growth Expert', role: 'GTM Strategy' },
+  { name: 'Debbie Hudzik', role: 'Financial Advisor' },
+  { name: 'TBD', role: 'Advisor' },
+  { name: 'TBD', role: 'Advisor' },
 ];
 
 export function TeamSlide() {
@@ -34,19 +47,18 @@ export function TeamSlide() {
           </p>
         </motion.div>
 
-        {/* Founder */}
-        <div className="flex justify-center mb-12">
+        {/* Team */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {team.map((member, index) => (
             <motion.div
-              key={member.name}
+              key={`${member.name}-${index}`}
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 + index * 0.15 }}
-              className="max-w-md"
             >
-              <GlassCard className="text-center p-8" hover>
+              <GlassCard className="text-center p-6 h-full" hover>
                 {/* Avatar placeholder */}
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-cyan-500/30 to-green-500/30 mx-auto mb-6 flex items-center justify-center border-2 border-white/10">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500/30 to-green-500/30 mx-auto mb-4 flex items-center justify-center border-2 border-white/10">
                   {member.image ? (
                     <img
                       src={member.image}
@@ -54,14 +66,14 @@ export function TeamSlide() {
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    <span className="text-4xl font-bold text-white/50">
-                      {member.name.split(' ').map(n => n[0]).join('')}
+                    <span className="text-2xl font-bold text-white/50">
+                      {member.name === 'TBD' ? '?' : member.name.split(' ').map(n => n[0]).join('')}
                     </span>
                   )}
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">{member.name}</h3>
-                <p className="text-cyan-400 font-medium mb-4">{member.role}</p>
-                <p className="text-gray-400">{member.bio}</p>
+                <h3 className="text-xl font-bold text-white mb-1">{member.name}</h3>
+                <p className="text-cyan-400 font-medium text-sm mb-2">{member.role}</p>
+                <p className="text-gray-400 text-sm">{member.bio}</p>
               </GlassCard>
             </motion.div>
           ))}
@@ -71,37 +83,26 @@ export function TeamSlide() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
         >
-          <h3 className="text-center text-lg font-semibold text-gray-400 mb-6">Advisors</h3>
-          <div className="flex justify-center gap-6 flex-wrap">
+          <h3 className="text-center text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wider">Advisors</h3>
+          <div className="flex justify-center gap-4 flex-wrap">
             {advisors.map((advisor, index) => (
               <motion.div
-                key={advisor.name}
+                key={`${advisor.name}-${index}`}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, delay: 0.6 + index * 0.1 }}
+                transition={{ duration: 0.4, delay: 0.7 + index * 0.1 }}
               >
-                <GlassCard className="text-center py-4 px-6">
-                  <div className="text-white font-medium">{advisor.name}</div>
-                  <div className="text-sm text-gray-500">{advisor.role}</div>
+                <GlassCard className="text-center py-3 px-5">
+                  <div className="text-white font-medium text-sm">{advisor.name}</div>
+                  <div className="text-xs text-gray-500">{advisor.role}</div>
                 </GlassCard>
               </motion.div>
             ))}
           </div>
         </motion.div>
 
-        {/* Hiring note */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.9 }}
-          className="text-center mt-10"
-        >
-          <p className="text-gray-500">
-            Actively hiring: <span className="text-cyan-400">Engineering</span> & <span className="text-green-400">Growth</span>
-          </p>
-        </motion.div>
       </div>
     </PitchSlide>
   );

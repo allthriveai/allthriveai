@@ -35,16 +35,17 @@ Unlike time-bound implementation docs (which go in `/docs/archived/`), these doc
 |----------|--------|-------------|
 | [07-WEBSOCKET-IMPLEMENTATION.md](./07-WEBSOCKET-IMPLEMENTATION.md) | ✅ Complete | WebSocket architecture, auth flow, debugging guide |
 | [08-ONBOARDING-ARCHITECTURE.md](./08-ONBOARDING-ARCHITECTURE.md) | ✅ Complete | Auth chat, welcome flow, unified chat onboarding |
-| 09-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
-| 10-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
-| 11-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
+| [09-PROMPT-BATTLES.md](./09-PROMPT-BATTLES.md) | ✅ Complete | Prompt Battles system, challenge templates, AI judging |
+| 10-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
+| 11-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
+| 12-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
 
 ### Design & UX
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| 12-DESIGN-SYSTEM.md | 📝 Planned | Color palette, typography, components, patterns |
-| 13-UX-PRINCIPLES.md | 📝 Planned | Interaction patterns, accessibility, mobile-first |
+| 13-DESIGN-SYSTEM.md | 📝 Planned | Color palette, typography, components, patterns |
+| 14-UX-PRINCIPLES.md | 📝 Planned | Interaction patterns, accessibility, mobile-first |
 
 ---
 

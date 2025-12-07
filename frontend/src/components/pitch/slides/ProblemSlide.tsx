@@ -6,17 +6,17 @@ const problems = [
   {
     icon: FolderOpenIcon,
     title: 'Scattered Creations',
-    description: 'AI builders create across 50+ tools - Midjourney, Claude, Replit, ChatGPT - but have no unified way to showcase their work.',
+    description: 'AI builders create across 50+ tools - Midjourney, Claude, Replit, ChatGPT - but building a portfolio of it all takes forever.',
   },
   {
     icon: AcademicCapIcon,
-    title: 'Fragmented Learning',
-    description: 'Learning AI is overwhelming. Tutorials are scattered, progress is hard to track, and there\'s no clear path from beginner to expert.',
+    title: 'Learning is Boring',
+    description: 'You can learn anything from ChatGPT, but it\'s passive and forgettable. No progress tracking, no community, no fun.',
   },
   {
     icon: UserGroupIcon,
-    title: 'No Community',
-    description: 'AI creators work in isolation. No place to compete, collaborate, or get feedback from peers who understand the craft.',
+    title: 'Walled Garden Communities',
+    description: 'Every AI tool builds its own locked-in community. Creators are siloed by platform instead of united by craft.',
   },
 ];
 
@@ -65,16 +65,15 @@ export function ProblemSlide() {
           ))}
         </div>
 
-        {/* Bottom stat */}
+        {/* Tagline */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.8 }}
           className="text-center mt-12"
         >
-          <p className="text-gray-500">
-            <span className="text-2xl font-bold text-cyan-400">500M+</span>
-            <span className="ml-2">people use AI tools monthly, but have no portfolio to show for it</span>
+          <p className="text-2xl text-white font-light">
+            <GradientText>Create with AI anywhere.</GradientText> Consolidate here. Thrive together.
           </p>
         </motion.div>
       </div>

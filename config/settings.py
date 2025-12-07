@@ -67,6 +67,9 @@ INSTALLED_APPS = [
     'core.marketplace',  # Creator marketplace for digital products
     'core.vendors',  # Vendor analytics for tool companies
     'core.tools',  # AI tools and technology directory
+    'core.battles',  # Prompt battles feature
+    'core.events',  # Events and calendar
+    'core.social',  # Social connections
     'allauth',
     'allauth.account',
     'allauth.socialaccount',

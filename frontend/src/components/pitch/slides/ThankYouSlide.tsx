@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import { PitchSlide, GradientText } from '../PitchSlide';
+import { EnvelopeIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 
-export function TitleSlide() {
+export function ThankYouSlide() {
   return (
     <PitchSlide>
       <div className="flex flex-col items-center text-center max-w-4xl">
@@ -55,14 +56,14 @@ export function TitleSlide() {
           />
         </motion.div>
 
-        {/* Company name */}
+        {/* Thank you */}
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
           className="text-5xl sm:text-7xl font-bold mb-6"
         >
-          <GradientText>All Thrive</GradientText>
+          <GradientText>Thank You</GradientText>
         </motion.h1>
 
         {/* Tagline */}
@@ -70,20 +71,35 @@ export function TitleSlide() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-2xl sm:text-3xl text-white font-light mb-4"
+          className="text-xl sm:text-2xl text-gray-400 mb-10 italic"
         >
           Create with AI anywhere. Consolidate here. Thrive together.
         </motion.p>
 
-        {/* Sub-tagline */}
-        <motion.p
+        {/* Contact */}
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="text-lg sm:text-xl text-gray-400 max-w-4xl whitespace-nowrap"
+          className="flex flex-col sm:flex-row items-center justify-center gap-6"
         >
-          Showcase, Learn, & Play with AI
-        </motion.p>
+          <a
+            href="mailto:allie@allthrive.ai"
+            className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors"
+          >
+            <EnvelopeIcon className="w-5 h-5" />
+            allie@allthrive.ai
+          </a>
+          <a
+            href="https://allthrive.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors"
+          >
+            <GlobeAltIcon className="w-5 h-5" />
+            allthrive.ai
+          </a>
+        </motion.div>
       </div>
     </PitchSlide>
   );

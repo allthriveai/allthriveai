@@ -1,24 +1,24 @@
 import { motion } from 'framer-motion';
 import { PitchSlide, GlassCard, GradientText } from '../PitchSlide';
-import { SparklesIcon, TrophyIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, UsersIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
 
 const solutions = [
   {
     icon: SparklesIcon,
-    title: 'Automated Portfolio',
-    description: 'One-click capture from any AI tool. Paste a URL, use our Chrome extension, or connect integrations to auto-sync your work.',
+    title: 'AI-Automated Portfolio',
+    description: 'Your portfolio builds itself from your real work. Paste a URL, clip from the web, or auto-sync - All Thrive handles the rest. Minutes, not hours.',
     color: 'cyan',
   },
   {
     icon: RocketLaunchIcon,
-    title: 'Gamified Learning',
-    description: 'Interactive courses, quizzes, and challenges. Earn XP, unlock achievements, and level up through Thrive Circles.',
+    title: 'Learn by Playing',
+    description: 'Prompt Battles (head-to-head prompting competitions), weekly challenges, and personalized learning paths. Gamified, social, and tailored to how you actually learn.',
     color: 'green',
   },
   {
-    icon: TrophyIcon,
-    title: 'Prompt Battles',
-    description: 'Real-time competitive challenges against other creators. Face off in timed prompt battles across categories.',
+    icon: UsersIcon,
+    title: 'Vendor-Neutral Community',
+    description: 'One home for all AI creators - not locked to any single tool. Use ChatGPT, Claude, Midjourney, or any AI. Grow your community as you try any AI tool.',
     color: 'purple',
   },
 ];
@@ -44,7 +44,7 @@ export function SolutionSlide() {
             The <GradientText>Solution</GradientText>
           </h2>
           <p className="text-xl text-gray-400">
-            One platform to showcase, learn, and compete
+            One platform to showcase, learn, and play
           </p>
         </motion.div>
 

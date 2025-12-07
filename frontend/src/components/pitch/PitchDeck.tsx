@@ -3,26 +3,32 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { TitleSlide } from './slides/TitleSlide';
 import { ProblemSlide } from './slides/ProblemSlide';
+import { WhyNowSlide } from './slides/WhyNowSlide';
 import { SolutionSlide } from './slides/SolutionSlide';
 import { ProductSlide } from './slides/ProductSlide';
 import { MarketSlide } from './slides/MarketSlide';
 import { BusinessModelSlide } from './slides/BusinessModelSlide';
+import { RevenueProjectionsSlide } from './slides/RevenueProjectionsSlide';
 import { TractionSlide } from './slides/TractionSlide';
 import { TeamSlide } from './slides/TeamSlide';
 import { CompetitionSlide } from './slides/CompetitionSlide';
 import { AskSlide } from './slides/AskSlide';
+import { ThankYouSlide } from './slides/ThankYouSlide';
 
 const slides = [
   TitleSlide,
+  WhyNowSlide,
   ProblemSlide,
   SolutionSlide,
   ProductSlide,
   MarketSlide,
   BusinessModelSlide,
+  RevenueProjectionsSlide,
   TractionSlide,
   TeamSlide,
   CompetitionSlide,
   AskSlide,
+  ThankYouSlide,
 ];
 
 export function PitchDeck() {

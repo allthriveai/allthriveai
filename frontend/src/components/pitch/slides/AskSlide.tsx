@@ -1,11 +1,9 @@
 import { motion } from 'framer-motion';
 import { PitchSlide, GlassCard, GradientText } from '../PitchSlide';
-import { EnvelopeIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 
 const useOfFunds = [
-  { category: 'Engineering', percentage: 50, description: 'Product development & AI infrastructure' },
-  { category: 'Growth', percentage: 30, description: 'Marketing, partnerships & community' },
-  { category: 'Operations', percentage: 20, description: 'Team, legal & overhead' },
+  { category: 'Community Outreach & Growth', percentage: 80, description: 'Building the AI creator community' },
+  { category: 'Operations', percentage: 20, description: 'Overhead & legal' },
 ];
 
 export function AskSlide() {
@@ -37,7 +35,7 @@ export function AskSlide() {
           <GlassCard className="inline-block px-12 py-8 border-cyan-500/30">
             <div className="text-sm text-gray-400 mb-2">Raising</div>
             <div className="text-5xl sm:text-6xl font-bold mb-2">
-              <GradientText>$1.5M</GradientText>
+              <GradientText>$750K</GradientText>
             </div>
             <div className="text-gray-400">Seed Round</div>
           </GlassCard>
@@ -81,52 +79,6 @@ export function AskSlide() {
           </GlassCard>
         </motion.div>
 
-        {/* Contact */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          className="text-center"
-        >
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
-            <a
-              href="mailto:allie@allthrive.ai"
-              className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors"
-            >
-              <EnvelopeIcon className="w-5 h-5" />
-              allie@allthrive.ai
-            </a>
-            <a
-              href="https://allthrive.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors"
-            >
-              <GlobeAltIcon className="w-5 h-5" />
-              allthrive.ai
-            </a>
-          </div>
-
-          {/* Thank you */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 1 }}
-            className="flex flex-col items-center"
-          >
-            <img
-              src="/all-thrvie-logo.png"
-              alt="All Thrive"
-              className="h-12 w-auto mb-4 opacity-70"
-            />
-            <p className="text-2xl font-light text-white">
-              Thank you
-            </p>
-            <p className="text-gray-500 mt-2 italic">
-              Create with AI anywhere. Consolidate here. Thrive together.
-            </p>
-          </motion.div>
-        </motion.div>
       </div>
     </PitchSlide>
   );

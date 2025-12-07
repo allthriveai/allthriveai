@@ -5,10 +5,11 @@ import { CheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
 const competitors = [
   {
     name: 'Behance/Dribbble',
-    portfolio: true,
+    portfolio: false,
     learning: false,
     battles: false,
     aiNative: false,
+    vendorNeutral: true,
   },
   {
     name: 'Coursera/Udemy',
@@ -16,6 +17,7 @@ const competitors = [
     learning: true,
     battles: false,
     aiNative: false,
+    vendorNeutral: true,
   },
   {
     name: 'Product Hunt',
@@ -23,6 +25,15 @@ const competitors = [
     learning: false,
     battles: false,
     aiNative: false,
+    vendorNeutral: true,
+  },
+  {
+    name: 'Midjourney',
+    portfolio: true,
+    learning: true,
+    battles: false,
+    aiNative: true,
+    vendorNeutral: false,
   },
   {
     name: 'All Thrive',
@@ -30,18 +41,13 @@ const competitors = [
     learning: true,
     battles: true,
     aiNative: true,
+    vendorNeutral: true,
     highlight: true,
   },
 ];
 
-const features = ['Portfolio', 'Learning', 'Battles', 'AI-Native'];
+const features = ['AI Automated\nPortfolio', 'Learning', 'Prompt\nBattles', 'AI-Native', 'Vendor\nNeutral'];
 
-const differentiators = [
-  'Built specifically for AI creators, not retrofitted',
-  'Automated capture from 50+ AI tools',
-  'Gamified learning with real community engagement',
-  'Unique Prompt Battles for competitive creators',
-];
 
 export function CompetitionSlide() {
   return (
@@ -58,7 +64,7 @@ export function CompetitionSlide() {
             <GradientText>Competitive</GradientText> Landscape
           </h2>
           <p className="text-xl text-gray-400">
-            The only platform built for AI creators
+            The only vendor neutral showcase and gamified learning platform
           </p>
         </motion.div>
 
@@ -75,7 +81,7 @@ export function CompetitionSlide() {
                 <tr className="border-b border-white/10">
                   <th className="text-left p-4 text-gray-400 font-medium"></th>
                   {features.map((feature) => (
-                    <th key={feature} className="p-4 text-gray-400 font-medium text-center text-sm">
+                    <th key={feature} className="p-4 text-gray-400 font-medium text-center text-sm whitespace-pre-line">
                       {feature}
                     </th>
                   ))}
@@ -123,6 +129,13 @@ export function CompetitionSlide() {
                         <XMarkIcon className="w-5 h-5 text-red-400/50 mx-auto" />
                       )}
                     </td>
+                    <td className="p-4 text-center">
+                      {competitor.vendorNeutral ? (
+                        <CheckIcon className="w-5 h-5 text-green-400 mx-auto" />
+                      ) : (
+                        <XMarkIcon className="w-5 h-5 text-red-400/50 mx-auto" />
+                      )}
+                    </td>
                   </motion.tr>
                 ))}
               </tbody>
@@ -130,30 +143,6 @@ export function CompetitionSlide() {
           </GlassCard>
         </motion.div>
 
-        {/* Why we win */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-        >
-          <GlassCard>
-            <h3 className="text-lg font-semibold text-white mb-4 text-center">Why We Win</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {differentiators.map((diff, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3, delay: 0.8 + index * 0.1 }}
-                  className="flex items-center gap-3"
-                >
-                  <CheckIcon className="w-5 h-5 text-cyan-400 flex-shrink-0" />
-                  <span className="text-gray-300 text-sm">{diff}</span>
-                </motion.div>
-              ))}
-            </div>
-          </GlassCard>
-        </motion.div>
       </div>
     </PitchSlide>
   );

@@ -148,6 +148,7 @@ class ChallengeType(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'core_challengetype'
         ordering = ['order', 'name']
         indexes = [
             models.Index(fields=['is_active', 'order']),
@@ -264,6 +265,7 @@ class PromptBattle(models.Model):
     )
 
     class Meta:
+        db_table = 'core_promptbattle'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['challenger', '-created_at']),
@@ -278,7 +280,8 @@ class PromptBattle(models.Model):
         ]
 
     def __str__(self):
-        return f'Battle: {self.challenger.username} vs {self.opponent.username} ({self.status})'
+        opponent_name = self.opponent.username if self.opponent else 'TBD'
+        return f'Battle: {self.challenger.username} vs {opponent_name} ({self.status})'
 
     def clean(self):
         """Validate battle data."""
@@ -390,6 +393,7 @@ class BattleSubmission(models.Model):
     evaluated_at = models.DateTimeField(null=True, blank=True, help_text='When the submission was evaluated')
 
     class Meta:
+        db_table = 'core_battlesubmission'
         unique_together = [['battle', 'user']]
         ordering = ['-submitted_at']
         indexes = [
@@ -505,6 +509,7 @@ class BattleInvitation(models.Model):
     sms_log_id = models.IntegerField(null=True, blank=True, help_text='ID of SMSLog record')
 
     class Meta:
+        db_table = 'core_battleinvitation'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['recipient', 'status', '-created_at']),
@@ -677,6 +682,7 @@ class BattleVote(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'core_battlevote'
         unique_together = [['submission', 'voter', 'vote_source']]
         indexes = [
             models.Index(fields=['battle', 'vote_source']),
@@ -721,6 +727,7 @@ class BattleMatchmakingQueue(models.Model):
     expires_at = models.DateTimeField(help_text='When queue entry expires')
 
     class Meta:
+        db_table = 'core_battlematchmakingqueue'
         verbose_name_plural = 'Battle matchmaking queue entries'
         indexes = [
             models.Index(fields=['match_type', 'queued_at']),

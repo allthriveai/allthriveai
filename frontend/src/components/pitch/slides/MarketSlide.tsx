@@ -3,26 +3,26 @@ import { PitchSlide, GlassCard, GradientText } from '../PitchSlide';
 
 const marketData = [
   {
-    label: 'TAM',
-    value: '$50B',
-    description: 'Total Addressable Market',
-    detail: 'Global creator economy + AI tools market',
+    label: '500M+',
+    value: 'Users',
+    description: 'Looking to showcase & play',
+    detail: 'Millions of users on scattered platforms',
     size: 'w-64 h-64 sm:w-80 sm:h-80',
     opacity: 'opacity-20',
   },
   {
-    label: 'SAM',
-    value: '$8B',
-    description: 'Serviceable Addressable Market',
-    detail: 'AI creators needing portfolio & learning tools',
+    label: '50M+',
+    value: 'Creators',
+    description: 'Looking to sell',
+    detail: 'Prompts, courses, templates',
     size: 'w-48 h-48 sm:w-56 sm:h-56',
     opacity: 'opacity-40',
   },
   {
-    label: 'SOM',
-    value: '$500M',
-    description: 'Serviceable Obtainable Market',
-    detail: 'Active AI builders seeking community',
+    label: '200+',
+    value: 'AI Companies',
+    description: 'Hungry for user insights',
+    detail: 'ChatGPT, Midjourney, Claude, Canva & more',
     size: 'w-32 h-32 sm:w-40 sm:h-40',
     opacity: 'opacity-70',
   },
@@ -40,10 +40,10 @@ export function MarketSlide() {
           className="text-center mb-12"
         >
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-            <GradientText>Market</GradientText> Opportunity
+            The <GradientText>Opportunity</GradientText>
           </h2>
           <p className="text-xl text-gray-400">
-            The AI creator economy is exploding
+            500M+ people using AI, looking to consolidate and learn
           </p>
         </motion.div>
 
@@ -62,12 +62,8 @@ export function MarketSlide() {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.4 + index * 0.2 }}
-                className={`absolute rounded-full bg-gradient-to-br from-cyan-500 to-green-500 ${market.opacity} flex items-center justify-center ${market.size}`}
-              >
-                {index === marketData.length - 1 && (
-                  <span className="text-white font-bold text-lg">{market.label}</span>
-                )}
-              </motion.div>
+                className={`absolute rounded-full bg-gradient-to-br from-cyan-500 to-green-500 ${market.opacity} ${market.size}`}
+              />
             ))}
           </motion.div>
 
@@ -81,7 +77,7 @@ export function MarketSlide() {
                 transition={{ duration: 0.5, delay: 0.5 + index * 0.15 }}
               >
                 <GlassCard className="flex items-center gap-4">
-                  <div className="text-center min-w-[80px]">
+                  <div className="text-center flex-shrink-0" style={{ width: '10rem' }}>
                     <div className="text-xs text-gray-500 mb-1">{market.label}</div>
                     <div className="text-2xl sm:text-3xl font-bold">
                       <GradientText>{market.value}</GradientText>
@@ -97,7 +93,7 @@ export function MarketSlide() {
           </div>
         </div>
 
-        {/* Growth indicator */}
+        {/* Comparable */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -105,7 +101,9 @@ export function MarketSlide() {
           className="text-center mt-10"
         >
           <p className="text-gray-500">
-            AI tools market growing at <span className="text-green-400 font-bold">35% CAGR</span>
+            Behance proved designers need portfolios <span className="text-cyan-400 font-medium">(acquired for $150M)</span>
+            <br />
+            <span className="text-white">We're building the same for AI creators</span>
           </p>
         </motion.div>
       </div>
