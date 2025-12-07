@@ -195,6 +195,22 @@ deploy_ecs() {
         "$script_dir/10-ecs.yaml" \
         "ParameterKey=EnvironmentName,ParameterValue=$ENVIRONMENT ParameterKey=BackendImageTag,ParameterValue=latest"
 
+    # Force new deployment for all ECS services to pick up new task definitions
+    log_info "Forcing new deployment for all ECS services..."
+
+    local services=("web" "celery" "celery-beat")
+    for service in "${services[@]}"; do
+        local service_name="${ENVIRONMENT}-allthrive-${service}"
+        log_info "Forcing new deployment: $service_name"
+        aws ecs update-service \
+            --cluster "${ENVIRONMENT}-allthrive-cluster" \
+            --service "$service_name" \
+            --force-new-deployment \
+            --region "$REGION" > /dev/null 2>&1 || {
+                log_warning "Could not force deployment for $service_name (service may not exist yet)"
+            }
+    done
+
     log_success "ECS deployment complete"
 }
 

@@ -30,26 +30,45 @@ def get_postgres_connection_string() -> str:
 
     Returns:
         PostgreSQL connection string (psycopg2 format)
+
+    Raises:
+        ValueError: If no valid PostgreSQL configuration is found
     """
     db_config = settings.DATABASES['default']
+    engine = db_config.get('ENGINE', '')
 
-    # Handle dj-database-url format
-    if 'NAME' in db_config:
-        user = db_config.get('USER', '')
-        password = db_config.get('PASSWORD', '')
-        host = db_config.get('HOST', 'localhost')
-        port = db_config.get('PORT', '5432')
-        database = db_config.get('NAME', '')
+    # Only proceed if PostgreSQL is configured
+    if 'postgresql' not in engine and 'postgres' not in engine:
+        raise ValueError(
+            f'PostgreSQL checkpointer requires PostgreSQL database, got: {engine}. '
+            'Ensure DB_HOST or DATABASE_URL environment variables are set.'
+        )
 
-        if user and password:
-            return f'postgresql://{user}:{password}@{host}:{port}/{database}'
-        else:
-            return f'postgresql://{host}:{port}/{database}'
+    user = db_config.get('USER', '')
+    password = db_config.get('PASSWORD', '')
+    host = db_config.get('HOST', '')
+    port = db_config.get('PORT', '5432')
+    database = db_config.get('NAME', '')
 
-    # Fallback to environment variable if available
-    import os
+    # Validate required fields
+    if not host:
+        raise ValueError(
+            'PostgreSQL HOST is not configured. '
+            'Ensure DB_HOST or DATABASE_URL environment variables are set.'
+        )
 
-    return os.getenv('DATABASE_URL', 'postgresql://localhost:5432/allthrive')
+    if not database:
+        raise ValueError(
+            'PostgreSQL database NAME is not configured. '
+            'Ensure DB_NAME or DATABASE_URL environment variables are set.'
+        )
+
+    if user and password:
+        return f'postgresql://{user}:{password}@{host}:{port}/{database}'
+    elif user:
+        return f'postgresql://{user}@{host}:{port}/{database}'
+    else:
+        return f'postgresql://{host}:{port}/{database}'
 
 
 def get_checkpointer(use_postgres: bool = True):
@@ -74,7 +93,15 @@ def get_checkpointer(use_postgres: bool = True):
             from psycopg_pool import ConnectionPool
 
             conn_string = get_postgres_connection_string()
-            logger.info('Initializing PostgreSQL checkpointer for LangGraph state persistence')
+            # Log connection string with password masked
+            masked_conn = conn_string
+            if '@' in conn_string and ':' in conn_string.split('@')[0]:
+                # Mask password in postgresql://user:password@host format
+                parts = conn_string.split('@')
+                user_pass = parts[0].split(':')
+                if len(user_pass) >= 3:  # postgresql://user:pass
+                    masked_conn = f'{user_pass[0]}:{user_pass[1]}:****@{parts[1]}'
+            logger.info(f'Initializing PostgreSQL checkpointer: {masked_conn}')
 
             # Create connection pool for production use
             pool = ConnectionPool(conninfo=conn_string, min_size=1, max_size=10, timeout=30)
@@ -86,12 +113,19 @@ def get_checkpointer(use_postgres: bool = True):
             with pool.connection():
                 _checkpointer.setup()
 
-            logger.info('✅ PostgreSQL checkpointer initialized successfully')
-            logger.info('📊 Tables: checkpoints, checkpoint_writes, checkpoint_blobs')
+            logger.info('PostgreSQL checkpointer initialized successfully')
+            logger.info('Tables: checkpoints, checkpoint_writes, checkpoint_blobs')
 
         except ImportError as e:
             logger.error(f'psycopg or psycopg_pool not installed: {e}')
             logger.warning('Falling back to MemorySaver - Install: pip install psycopg psycopg-pool')
+            from langgraph.checkpoint.memory import MemorySaver
+
+            _checkpointer = MemorySaver()
+        except ValueError as e:
+            # Configuration error - this is critical in production
+            logger.error(f'Database configuration error: {e}')
+            logger.warning('Falling back to MemorySaver - conversation state will not persist!')
             from langgraph.checkpoint.memory import MemorySaver
 
             _checkpointer = MemorySaver()
@@ -141,6 +175,13 @@ async def get_async_checkpointer():
         logger.debug('AsyncPostgresSaver ready for this request')
         return checkpointer
 
+    except ValueError as e:
+        # Configuration error - this is critical in production
+        logger.error(f'Database configuration error for async checkpointer: {e}')
+        logger.warning('Falling back to MemorySaver - conversation state will not persist!')
+        from langgraph.checkpoint.memory import MemorySaver
+
+        return MemorySaver()
     except Exception as e:
         logger.error(f'Failed to initialize AsyncPostgresSaver: {e}', exc_info=True)
         logger.warning('Falling back to MemorySaver')
