@@ -356,6 +356,7 @@ reset-onboarding:
 	@echo ""
 	@echo "// Clear all onboarding state for all users"
 	@echo "Object.keys(localStorage).filter(k => k.startsWith('ember_onboarding_')).forEach(k => localStorage.removeItem(k));"
+	@echo "localStorage.removeItem('ember_open_chat');"
 	@echo "localStorage.removeItem('allthrive_completed_quests');"
 	@echo "location.reload();"
 	@echo ""

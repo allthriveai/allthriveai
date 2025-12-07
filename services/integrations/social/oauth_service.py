@@ -57,7 +57,15 @@ class OAuthProviderConfig:
             'authorize_url': 'https://www.figma.com/oauth',
             'token_url': 'https://www.figma.com/api/oauth/token',
             'user_info_url': 'https://api.figma.com/v1/me',
-            'scopes': ['file_read'],
+            'scopes': [
+                'current_user:read',
+                'file_content:read',
+                'file_metadata:read',
+                'library_content:read',
+                'team_library_content:read',
+                'file_dev_resources:read',
+                'projects:read',
+            ],
             'client_id_setting': 'FIGMA_OAUTH_CLIENT_ID',
             'client_secret_setting': 'FIGMA_OAUTH_CLIENT_SECRET',
         },
@@ -122,9 +130,12 @@ class SocialOAuthService:
             'client_id': self.client_id,
             'redirect_uri': redirect_uri,
             'response_type': 'code',
-            'scope': ' '.join(self.config['scopes']),
             'state': state,
         }
+
+        # Only add scope if scopes are configured
+        if self.config['scopes']:
+            params['scope'] = ' '.join(self.config['scopes'])
 
         auth_url = f'{self.config["authorize_url"]}?{urlencode(params)}'
         logger.info(f'Generated OAuth authorization URL for {self.provider} with redirect_uri: {redirect_uri}')

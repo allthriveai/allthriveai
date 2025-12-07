@@ -5,7 +5,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { QuestCompletionProvider } from '@/contexts/QuestCompletionContext';
 import { SubscribeModalProvider } from '@/components/billing';
 import { BattleNotificationProvider } from '@/components/battles/BattleNotificationProvider';
-import { SageOnboardingProvider } from '@/components/onboarding';
+import { EmberOnboardingProvider } from '@/components/onboarding';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { AppRoutes } from '@/routes';
 import { Sentry } from '@/utils/sentry';
@@ -63,13 +63,13 @@ function App() {
                 <BrowserRouter>
                   <AuthProvider>
                     <BattleNotificationProvider>
-                      <SageOnboardingProvider>
+                      <EmberOnboardingProvider>
                         <QuestCompletionProvider>
                           <MainLayout>
                             <AppRoutes />
                           </MainLayout>
                         </QuestCompletionProvider>
-                      </SageOnboardingProvider>
+                      </EmberOnboardingProvider>
                     </BattleNotificationProvider>
                   </AuthProvider>
                 </BrowserRouter>

@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 type AdventureId = 'battle_pip' | 'add_project' | 'explore';
 
-interface SageOnboardingState {
+interface EmberOnboardingState {
   hasSeenModal: boolean;
   completedAdventures: AdventureId[];
   isDismissed: boolean;
@@ -20,7 +20,7 @@ interface SageOnboardingState {
 
 const STORAGE_KEY = 'ember_onboarding';
 
-const defaultState: SageOnboardingState = {
+const defaultState: EmberOnboardingState = {
   hasSeenModal: false,
   completedAdventures: [],
   isDismissed: false,
@@ -31,7 +31,7 @@ function getStorageKey(userId: number | string): string {
   return `${STORAGE_KEY}_${userId}`;
 }
 
-function loadState(userId: number | string): SageOnboardingState {
+function loadState(userId: number | string): EmberOnboardingState {
   try {
     const stored = localStorage.getItem(getStorageKey(userId));
     if (stored) {
@@ -43,7 +43,7 @@ function loadState(userId: number | string): SageOnboardingState {
   return defaultState;
 }
 
-function saveState(userId: number | string, state: SageOnboardingState): void {
+function saveState(userId: number | string, state: EmberOnboardingState): void {
   try {
     localStorage.setItem(getStorageKey(userId), JSON.stringify(state));
   } catch (e) {
@@ -51,9 +51,9 @@ function saveState(userId: number | string, state: SageOnboardingState): void {
   }
 }
 
-export function useSageOnboarding() {
+export function useEmberOnboarding() {
   const { user, isAuthenticated } = useAuth();
-  const [state, setState] = useState<SageOnboardingState>(defaultState);
+  const [state, setState] = useState<EmberOnboardingState>(defaultState);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load state when user changes
@@ -160,4 +160,4 @@ export function useSageOnboarding() {
   };
 }
 
-export type { AdventureId, SageOnboardingState };
+export type { AdventureId, EmberOnboardingState };

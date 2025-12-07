@@ -7,11 +7,11 @@
  */
 
 import { createContext, useContext, useCallback, type ReactNode } from 'react';
-import { useSageOnboarding, type AdventureId } from '@/hooks/useSageOnboarding';
-import { SageOnboardingModal } from './SageOnboardingModal';
+import { useEmberOnboarding, type AdventureId } from '@/hooks/useEmberOnboarding';
+import { EmberOnboardingModal } from './EmberOnboardingModal';
 import { useAuth } from '@/hooks/useAuth';
 
-interface SageOnboardingContextValue {
+interface EmberOnboardingContextValue {
   // State
   isLoaded: boolean;
   hasSeenModal: boolean;
@@ -27,26 +27,26 @@ interface SageOnboardingContextValue {
   isAdventureComplete: (adventureId: AdventureId) => boolean;
 }
 
-const SageOnboardingContext = createContext<SageOnboardingContextValue | null>(null);
+const EmberOnboardingContext = createContext<EmberOnboardingContextValue | null>(null);
 
-export function useSageOnboardingContext() {
-  const context = useContext(SageOnboardingContext);
+export function useEmberOnboardingContext() {
+  const context = useContext(EmberOnboardingContext);
   if (!context) {
-    throw new Error('useSageOnboardingContext must be used within SageOnboardingProvider');
+    throw new Error('useEmberOnboardingContext must be used within EmberOnboardingProvider');
   }
   return context;
 }
 
 // Safe version that returns null if not in provider (for optional use)
-export function useSageOnboardingContextSafe() {
-  return useContext(SageOnboardingContext);
+export function useEmberOnboardingContextSafe() {
+  return useContext(EmberOnboardingContext);
 }
 
-interface SageOnboardingProviderProps {
+interface EmberOnboardingProviderProps {
   children: ReactNode;
 }
 
-export function SageOnboardingProvider({ children }: SageOnboardingProviderProps) {
+export function EmberOnboardingProvider({ children }: EmberOnboardingProviderProps) {
   const { user } = useAuth();
   const {
     isLoaded,
@@ -62,7 +62,7 @@ export function SageOnboardingProvider({ children }: SageOnboardingProviderProps
     awardWelcomePoints,
     resetOnboarding,
     isAdventureComplete,
-  } = useSageOnboarding();
+  } = useEmberOnboarding();
 
   // Handle adventure selection from modal
   const handleSelectAdventure = useCallback(
@@ -81,7 +81,7 @@ export function SageOnboardingProvider({ children }: SageOnboardingProviderProps
   // Determine if banner should show (either in progress or celebration)
   const showBanner = shouldShowBanner || (allAdventuresComplete && !isDismissed);
 
-  const contextValue: SageOnboardingContextValue = {
+  const contextValue: EmberOnboardingContextValue = {
     isLoaded,
     hasSeenModal,
     completedAdventures,
@@ -95,18 +95,18 @@ export function SageOnboardingProvider({ children }: SageOnboardingProviderProps
   };
 
   return (
-    <SageOnboardingContext.Provider value={contextValue}>
+    <EmberOnboardingContext.Provider value={contextValue}>
       {children}
 
       {/* Modal for first-time users */}
-      <SageOnboardingModal
+      <EmberOnboardingModal
         isOpen={shouldShowModal}
         onClose={handleModalClose}
         onSelectAdventure={handleSelectAdventure}
         username={user?.username || user?.firstName || 'Adventurer'}
       />
-    </SageOnboardingContext.Provider>
+    </EmberOnboardingContext.Provider>
   );
 }
 
-export default SageOnboardingProvider;
+export default EmberOnboardingProvider;

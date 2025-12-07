@@ -25,7 +25,7 @@ interface Adventure {
   action?: () => void;
 }
 
-interface SageOnboardingModalProps {
+interface EmberOnboardingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectAdventure: (adventureId: Adventure['id']) => void;
@@ -97,12 +97,12 @@ function useTypewriter(text: string, speed: number = 30, startDelay: number = 0)
   return { displayedText, isComplete, skip };
 }
 
-export function SageOnboardingModal({
+export function EmberOnboardingModal({
   isOpen,
   onClose,
   onSelectAdventure,
   username = 'Adventurer',
-}: SageOnboardingModalProps) {
+}: EmberOnboardingModalProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState<'welcome' | 'adventure'>('welcome');
@@ -120,7 +120,7 @@ export function SageOnboardingModal({
       onClose();
 
       if (adventure.id === 'add_project') {
-        localStorage.setItem('sage_open_chat', 'true');
+        localStorage.setItem('ember_open_chat', 'true');
         const profilePath = user?.username ? `/${user.username}` : '/dashboard';
         navigate(profilePath);
       } else {
@@ -499,4 +499,4 @@ function AdventureStep({
   );
 }
 
-export default SageOnboardingModal;
+export default EmberOnboardingModal;

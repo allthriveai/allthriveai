@@ -62,10 +62,10 @@ const categoryColors: Record<string, { bg: string; border: string; text: string;
     iconBg: 'bg-cyan-500/20',
   },
   create: {
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/30',
-    text: 'text-emerald-400',
-    iconBg: 'bg-emerald-500/20',
+    bg: 'bg-orange-500/10',
+    border: 'border-orange-500/30',
+    text: 'text-orange-400',
+    iconBg: 'bg-orange-500/20',
   },
   engage: {
     bg: 'bg-pink-500/10',
