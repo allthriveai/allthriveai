@@ -426,7 +426,8 @@ class AutoTrackingIntegrationTest(TestCase):
         self.assertEqual(user_quest.current_progress, 3)
         self.assertTrue(user_quest.is_completed)
         self.assertEqual(user_quest.points_awarded, 50)
-        self.assertEqual(self.user.total_points, 50)
+        # Total points = 50 (quest reward) + 15 (3 comments × 5 points each from signal)
+        self.assertEqual(self.user.total_points, 65)
 
     def test_commenting_own_project_does_not_increment_progress(self):
         """

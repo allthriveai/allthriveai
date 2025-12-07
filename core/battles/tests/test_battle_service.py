@@ -10,7 +10,7 @@ Tests cover:
 
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 
 from core.battles.models import (
     BattlePhase,
@@ -355,8 +355,12 @@ class BattleServiceParseJudgingResponseTestCase(TestCase):
         self.assertIsNone(result)
 
 
-class BattleServiceJudgeBattleTiebreakerTestCase(TestCase):
-    """Test cases for BattleService.judge_battle tiebreaker logic."""
+class BattleServiceJudgeBattleTiebreakerTestCase(TransactionTestCase):
+    """Test cases for BattleService.judge_battle tiebreaker logic.
+
+    Uses TransactionTestCase instead of TestCase because judge_battle uses
+    ThreadPoolExecutor which requires actual database commits, not transaction rollback.
+    """
 
     def setUp(self):
         """Set up test fixtures."""

@@ -167,7 +167,8 @@ class APIPrivacyTests(TestCase):
         self.assertIn('total_points', public_user_data)
         self.assertIn('level', public_user_data)
         self.assertIn('tier', public_user_data)
-        self.assertEqual(public_user_data['total_points'], 1000)
+        # Total = 1000 (set in setUp) + 15 (project creation signal)
+        self.assertEqual(public_user_data['total_points'], 1015)
 
         # Private user should NOT have gamification data
         self.assertIsNotNone(private_user_data)
