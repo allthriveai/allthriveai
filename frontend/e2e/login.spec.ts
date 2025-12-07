@@ -41,7 +41,7 @@ test.describe('Authentication', () => {
     await userMenuButton.click();
 
     // Verify dropdown is visible with user info
-    await expect(page.getByText(TEST_USER.username, { exact: false })).toBeVisible();
+    await expect(page.getByText(TEST_USER.username, { exact: true }).first()).toBeVisible();
     await expect(page.getByText('Sign Out')).toBeVisible();
   });
 
