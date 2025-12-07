@@ -307,6 +307,11 @@ jobs:
               print(f'Test project already exists: {project_slug}')
           SHELL
 
+      - name: Seed quests for E2E tests
+        run: |
+          python manage.py seed_quests
+          echo "✅ Quests seeded for E2E tests"
+
       - name: Start Django backend
         run: |
           python manage.py runserver 127.0.0.1:8000 > /tmp/django.log 2>&1 &
