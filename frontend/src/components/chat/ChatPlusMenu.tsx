@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGithub, faYoutube } from '@fortawesome/free-brands-svg-icons';
-import { faBagShopping, faCircleQuestion, faCommentDots } from '@fortawesome/free-solid-svg-icons';
+import { faFigma, faGithub, faGitlab, faYoutube } from '@fortawesome/free-brands-svg-icons';
+import { faBagShopping, faCircleQuestion, faCommentDots, faEllipsis, faLink } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '@/hooks/useAuth';
 
-export type IntegrationType = 'github' | 'youtube' | 'create-visual' | 'ask-help' | 'describe' | 'create-product';
+export type IntegrationType = 'github' | 'gitlab' | 'figma' | 'youtube' | 'create-visual' | 'ask-help' | 'describe' | 'create-product' | 'import-url';
 
 interface ChatPlusMenuProps {
   onIntegrationSelect: (type: IntegrationType) => void;
@@ -22,22 +22,18 @@ interface IntegrationOption {
   icon: typeof faGithub | string; // string for emoji
   description: string;
   available: boolean;
+  isPrimary?: boolean; // Show in main menu vs "More" submenu
 }
 
 const integrationOptions: IntegrationOption[] = [
+  // Primary options - always visible
   {
-    type: 'github',
-    label: 'Add from GitHub',
-    icon: faGithub,
-    description: 'Import a repository',
+    type: 'import-url',
+    label: 'Import from URL',
+    icon: faLink,
+    description: 'Paste any webpage to create a project',
     available: true,
-  },
-  {
-    type: 'youtube',
-    label: 'Add from YouTube',
-    icon: faYoutube,
-    description: 'Import a video',
-    available: true,
+    isPrimary: true,
   },
   {
     type: 'create-visual',
@@ -45,13 +41,7 @@ const integrationOptions: IntegrationOption[] = [
     icon: '🍌',
     description: 'Generate visuals with AI',
     available: true,
-  },
-  {
-    type: 'describe',
-    label: 'Describe Anything',
-    icon: faCommentDots,
-    description: 'Tell me about your project',
-    available: true,
+    isPrimary: true,
   },
   {
     type: 'ask-help',
@@ -59,6 +49,48 @@ const integrationOptions: IntegrationOption[] = [
     icon: faCircleQuestion,
     description: 'Browse common questions & get help',
     available: true,
+    isPrimary: true,
+  },
+  // Secondary options - in "More Integrations" submenu
+  {
+    type: 'github',
+    label: 'Add from GitHub',
+    icon: faGithub,
+    description: 'Import a repository',
+    available: true,
+    isPrimary: false,
+  },
+  {
+    type: 'gitlab',
+    label: 'Add from GitLab',
+    icon: faGitlab,
+    description: 'Import a project',
+    available: true,
+    isPrimary: false,
+  },
+  {
+    type: 'figma',
+    label: 'Add from Figma',
+    icon: faFigma,
+    description: 'Import a design',
+    available: true,
+    isPrimary: false,
+  },
+  {
+    type: 'youtube',
+    label: 'Add from YouTube',
+    icon: faYoutube,
+    description: 'Import a video',
+    available: true,
+    isPrimary: false,
+  },
+  {
+    type: 'describe',
+    label: 'Describe Anything',
+    icon: faCommentDots,
+    description: 'Tell me about your project',
+    available: true,
+    isPrimary: false,
   },
   {
     type: 'create-product',
@@ -66,12 +98,14 @@ const integrationOptions: IntegrationOption[] = [
     icon: faBagShopping,
     description: 'Create a course, template, or digital product',
     available: true,
+    isPrimary: false,
   },
 ];
 
 export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, onOpenChange }: ChatPlusMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const { user } = useAuth();
 
   // Filter integration options based on user role
@@ -84,12 +118,15 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
     return true;
   });
 
+  const primaryOptions = filteredOptions.filter(opt => opt.isPrimary);
+  const secondaryOptions = filteredOptions.filter(opt => !opt.isPrimary);
 
   // Click-outside handler to close menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         onOpenChange(false);
+        setShowMoreMenu(false);
         setFocusedIndex(0);
       }
     };
@@ -100,31 +137,63 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onOpenChange]);
 
+  // Reset submenu when main menu closes
+  useEffect(() => {
+    if (!isOpen) {
+      setShowMoreMenu(false);
+    }
+  }, [isOpen]);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isOpen) return;
 
+      const currentOptions = showMoreMenu ? secondaryOptions : primaryOptions;
+      const totalItems = showMoreMenu ? currentOptions.length : currentOptions.length + 1; // +1 for "More" button
+
       switch (event.key) {
         case 'Escape':
-          onOpenChange(false);
-          setFocusedIndex(0);
+          if (showMoreMenu) {
+            setShowMoreMenu(false);
+            setFocusedIndex(primaryOptions.length); // Focus on "More" button
+          } else {
+            onOpenChange(false);
+            setFocusedIndex(0);
+          }
           break;
         case 'ArrowDown':
           event.preventDefault();
-          setFocusedIndex((prev) =>
-            prev < filteredOptions.length - 1 ? prev + 1 : 0
-          );
+          setFocusedIndex((prev) => (prev < totalItems - 1 ? prev + 1 : 0));
           break;
         case 'ArrowUp':
           event.preventDefault();
-          setFocusedIndex((prev) =>
-            prev > 0 ? prev - 1 : filteredOptions.length - 1
-          );
+          setFocusedIndex((prev) => (prev > 0 ? prev - 1 : totalItems - 1));
+          break;
+        case 'ArrowRight':
+          if (!showMoreMenu && focusedIndex === primaryOptions.length) {
+            setShowMoreMenu(true);
+            setFocusedIndex(0);
+          }
+          break;
+        case 'ArrowLeft':
+          if (showMoreMenu) {
+            setShowMoreMenu(false);
+            setFocusedIndex(primaryOptions.length);
+          }
           break;
         case 'Enter':
-          if (focusedIndex >= 0 && focusedIndex < filteredOptions.length) {
-            handleSelect(filteredOptions[focusedIndex].type);
+          if (showMoreMenu) {
+            if (focusedIndex >= 0 && focusedIndex < secondaryOptions.length) {
+              handleSelect(secondaryOptions[focusedIndex].type);
+            }
+          } else {
+            if (focusedIndex < primaryOptions.length) {
+              handleSelect(primaryOptions[focusedIndex].type);
+            } else if (focusedIndex === primaryOptions.length) {
+              setShowMoreMenu(true);
+              setFocusedIndex(0);
+            }
           }
           break;
       }
@@ -132,10 +201,11 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, focusedIndex, onOpenChange, filteredOptions]);
+  }, [isOpen, focusedIndex, onOpenChange, showMoreMenu, primaryOptions, secondaryOptions]);
 
   const handleSelect = (type: IntegrationType) => {
     onOpenChange(false);
+    setShowMoreMenu(false);
     setFocusedIndex(0);
     onIntegrationSelect(type);
   };
@@ -147,6 +217,33 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
     onOpenChange(!isOpen);
     setFocusedIndex(0);
   };
+
+  const renderOption = (option: IntegrationOption, index: number, isFocused: boolean) => (
+    <button
+      key={option.type}
+      role="menuitem"
+      onClick={() => handleSelect(option.type)}
+      onMouseEnter={() => setFocusedIndex(index)}
+      className={`
+        w-full flex items-start gap-3 px-3 py-2 rounded-md text-left transition-colors
+        ${isFocused ? 'bg-slate-100 dark:bg-slate-700' : ''}
+      `}
+    >
+      {typeof option.icon === 'string' ? (
+        <span className="text-xl leading-none mt-0.5 flex-shrink-0">{option.icon}</span>
+      ) : (
+        <FontAwesomeIcon icon={option.icon} className="w-5 h-5 text-slate-700 dark:text-slate-300 mt-0.5 flex-shrink-0" />
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+          {option.label}
+        </div>
+        <div className="text-xs text-slate-600 dark:text-slate-400">
+          {option.description}
+        </div>
+      </div>
+    </button>
+  );
 
   return (
     <div className="relative" ref={menuRef}>
@@ -172,33 +269,53 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
           className="absolute left-0 bottom-full mb-2 w-64 origin-bottom-left bg-white dark:bg-slate-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
         >
           <div className="p-2">
-            {/* Available integrations */}
-            {filteredOptions.map((option, index) => (
+            {/* Primary options */}
+            {primaryOptions.map((option, index) =>
+              renderOption(option, index, focusedIndex === index && !showMoreMenu)
+            )}
+
+            {/* Divider */}
+            <div className="my-2 border-t border-slate-200 dark:border-slate-700" />
+
+            {/* More Integrations button */}
+            <div className="relative">
               <button
-                key={option.type}
                 role="menuitem"
-                onClick={() => handleSelect(option.type)}
-                onMouseEnter={() => setFocusedIndex(index)}
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                onMouseEnter={() => setFocusedIndex(primaryOptions.length)}
                 className={`
-                  w-full flex items-start gap-3 px-3 py-2 rounded-md text-left transition-colors
-                  ${focusedIndex === index ? 'bg-slate-100 dark:bg-slate-700' : ''}
+                  w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors
+                  ${focusedIndex === primaryOptions.length ? 'bg-slate-100 dark:bg-slate-700' : ''}
+                  ${showMoreMenu ? 'bg-slate-100 dark:bg-slate-700' : ''}
                 `}
               >
-                {typeof option.icon === 'string' ? (
-                  <span className="text-xl leading-none mt-0.5 flex-shrink-0">{option.icon}</span>
-                ) : (
-                  <FontAwesomeIcon icon={option.icon} className="w-5 h-5 text-slate-700 dark:text-slate-300 mt-0.5 flex-shrink-0" />
-                )}
+                <FontAwesomeIcon icon={faEllipsis} className="w-5 h-5 text-slate-700 dark:text-slate-300 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                    {option.label}
-                  </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400">
-                    {option.description}
+                    More Integrations
                   </div>
                 </div>
+                <ChevronRightIcon className="w-4 h-4 text-slate-400" />
               </button>
-            ))}
+
+              {/* Submenu - positioned above the main menu */}
+              {showMoreMenu && (
+                <div
+                  role="menu"
+                  className="absolute left-0 bottom-full mb-1 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                  onMouseLeave={() => {
+                    // Only close if mouse leaves to the left (back to main menu)
+                    // Keep open if moving within submenu
+                  }}
+                >
+                  <div className="p-2">
+                    {secondaryOptions.map((option, index) =>
+                      renderOption(option, index, focusedIndex === index && showMoreMenu)
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

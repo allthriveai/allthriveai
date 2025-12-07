@@ -268,6 +268,8 @@ def check_integration_connection(user, platform: str) -> bool:
 def get_integration_token(user, platform: str) -> str | None:
     """Get OAuth token for integration.
 
+    Tries django-allauth first, then falls back to SocialConnection.
+
     Args:
         user: User instance
         platform: Platform name
@@ -276,19 +278,40 @@ def get_integration_token(user, platform: str) -> str | None:
         Access token or None
     """
     try:
+        # Try django-allauth first
         social_account = user.socialaccount_set.filter(provider=platform).first()
-        if not social_account:
-            logger.debug(f'No {platform} account found for user {user.id}')
-            return None
+        if social_account:
+            social_token = social_account.socialtoken_set.first()
+            if social_token:
+                logger.debug(f'Using {platform} token from django-allauth for user {user.id}')
+                return social_token.token
+            else:
+                logger.warning(f'User {user.id} has {platform} account but no token - OAuth may be incomplete')
 
-        social_token = social_account.socialtoken_set.first()
-        if not social_token:
-            logger.error(f'User {user.id} has {platform} account but no token - OAuth may be incomplete')
-            return None
+        # Fall back to SocialConnection for integrations connected via settings
+        from core.social.models import SocialConnection, SocialProvider
 
-        # TODO: Check token expiry and refresh if needed
-        # For now, return the token as-is
-        return social_token.token
+        # Map platform name to SocialProvider enum
+        provider_map = {
+            'github': SocialProvider.GITHUB,
+            'gitlab': SocialProvider.GITLAB,
+            'google': SocialProvider.GOOGLE,
+            'linkedin': SocialProvider.LINKEDIN,
+            'figma': SocialProvider.FIGMA,
+            'huggingface': SocialProvider.HUGGINGFACE,
+        }
+
+        social_provider = provider_map.get(platform)
+        if social_provider:
+            try:
+                connection = SocialConnection.objects.get(user=user, provider=social_provider, is_active=True)
+                logger.debug(f'Using {platform} token from SocialConnection for user {user.id}')
+                return connection.access_token  # This uses the property that decrypts the token
+            except SocialConnection.DoesNotExist:
+                pass
+
+        logger.debug(f'No {platform} connection found for user {user.id}')
+        return None
 
     except AttributeError as e:
         logger.error(f'Attribute error getting {platform} token for user {user.id}: {e}', exc_info=True)

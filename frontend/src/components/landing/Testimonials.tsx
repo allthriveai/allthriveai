@@ -68,14 +68,6 @@ export function Testimonials() {
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
-  console.log('[Testimonials] Query state:', { stats, error, isLoading });
-  if (stats) {
-    console.log('[Testimonials] Stats keys:', Object.keys(stats));
-    console.log('[Testimonials] activeCreators:', stats.activeCreators);
-    console.log('[Testimonials] projectsShared:', stats.projectsShared);
-    console.log('[Testimonials] collectivePoints:', stats.collectivePoints);
-  }
-
   return (
     <section className="relative py-24 overflow-hidden">
       {/* Background Effects */}

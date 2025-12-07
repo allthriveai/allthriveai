@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class CommentCreateThrottle(UserRateThrottle):
     """Rate limit for comment creation to prevent spam."""
 
-    rate = '10/hour'
+    rate = '100/hour'  # Increased for development
 
 
 class ProjectCommentViewSet(viewsets.ModelViewSet):
@@ -107,8 +107,8 @@ class ProjectCommentViewSet(viewsets.ModelViewSet):
         project_id = self.kwargs.get('project_pk')
         queryset = ProjectComment.objects.filter(project_id=project_id)
 
-        # Non-staff users only see approved comments
-        if not self.request.user.is_authenticated or not self.request.user.is_staff:
+        # Non-admin users only see approved comments
+        if not self.request.user.is_authenticated or not self.request.user.is_admin_role:
             queryset = queryset.filter(moderation_status=ProjectComment.ModerationStatus.APPROVED)
 
         # Annotate with vote counts to avoid N+1 queries

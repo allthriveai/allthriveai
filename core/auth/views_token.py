@@ -75,32 +75,54 @@ def generate_ws_connection_token(request):
         // 2. Connect to WebSocket
         const ws = new WebSocket(`ws://backend/ws/chat/id/?connection_token=${connection_token}`);
     """
-    try:
-        # Get connection_id from request (optional, for client-side tracking)
-        connection_id = request.data.get('connection_id') or str(uuid.uuid4())
+    # Get connection_id from request (optional, for client-side tracking)
+    connection_id = request.data.get('connection_id') or str(uuid.uuid4())
 
-        # Generate secure connection token
+    # Check Redis connectivity first
+    from django.core.cache import cache
+
+    try:
+        cache.set('_ws_token_health_check', '1', timeout=5)
+        if not cache.get('_ws_token_health_check'):
+            logger.error('[WS_TOKEN_API] Redis health check failed - cache not responding')
+            return Response(
+                {'error': 'Cache service unavailable', 'code': 'CACHE_UNAVAILABLE'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+    except Exception as cache_error:
+        logger.error(f'[WS_TOKEN_API] Redis connection error: {cache_error}', exc_info=True)
+        return Response(
+            {'error': 'Cache service error', 'code': 'CACHE_ERROR', 'details': str(cache_error)},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    # Generate secure connection token
+    try:
         token_service = get_ws_token_service()
         connection_token = token_service.generate_token(
             user_id=request.user.id, username=request.user.username, connection_id=connection_id
         )
-
-        logger.info(
-            f'[WS_TOKEN_API] Generated connection token for user={request.user.username} '
-            f'(id={request.user.id}), connection_id={connection_id}'
-        )
-
-        return Response(
-            {
-                'connection_token': connection_token,
-                'expires_in': 60,  # TTL in seconds
-                'connection_id': connection_id,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    except Exception as e:
+    except Exception as token_error:
         logger.error(
-            f'[WS_TOKEN_API] Failed to generate connection token for user={request.user.id}: {e}', exc_info=True
+            f'[WS_TOKEN_API] Token generation failed for user={request.user.username} '
+            f'(id={request.user.id}): {token_error}',
+            exc_info=True,
         )
-        return Response({'error': 'Failed to generate connection token'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {'error': 'Token generation failed', 'code': 'TOKEN_GENERATION_ERROR', 'details': str(token_error)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    logger.info(
+        f'[WS_TOKEN_API] Generated connection token for user={request.user.username} '
+        f'(id={request.user.id}), connection_id={connection_id}'
+    )
+
+    return Response(
+        {
+            'connection_token': connection_token,
+            'expires_in': 60,  # TTL in seconds
+            'connection_id': connection_id,
+        },
+        status=status.HTTP_200_OK,
+    )

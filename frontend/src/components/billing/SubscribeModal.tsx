@@ -16,7 +16,7 @@
 import { useState, useEffect } from 'react';
 import { CheckIcon, XMarkIcon, SparklesIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSubscriptionTiers, createSubscription } from '@/services/billing';
+import { getSubscriptionTiers, createSubscription, getSubscriptionStatus } from '@/services/billing';
 import { StripePaymentForm } from './StripePaymentForm';
 import type { SubscriptionTier } from '@/services/billing';
 
@@ -49,13 +49,7 @@ export function SubscribeModal({
   // Fetch available tiers
   const { data: tiers, isLoading: tiersLoading } = useQuery({
     queryKey: ['subscription-tiers'],
-    queryFn: async () => {
-      const data = await getSubscriptionTiers();
-      console.log('[SubscribeModal] Tiers data:', data);
-      console.log('[SubscribeModal] First tier keys:', data[0] ? Object.keys(data[0]) : 'No tiers');
-      console.log('[SubscribeModal] First tier:', data[0]);
-      return data;
-    },
+    queryFn: getSubscriptionTiers,
     enabled: isOpen, // Only fetch when modal is open
   });
 
@@ -112,7 +106,6 @@ export function SubscribeModal({
   useEffect(() => {
     if (isOpen && selectedTierSlug && !clientSecret && step === 'payment') {
       // Automatically create subscription for pre-selected tier
-      console.log('[SubscribeModal] Auto-creating subscription for tier:', selectedTierSlug);
       createSubscriptionMutation.mutate(selectedTierSlug);
     }
   }, [isOpen, selectedTierSlug, clientSecret, step]);
@@ -129,8 +122,6 @@ export function SubscribeModal({
     const maxAttempts = 10;
     const pollInterval = 1000; // 1 second
 
-    console.log('[SubscribeModal] Payment confirmed, polling for subscription activation...');
-
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         // Wait before checking status
@@ -139,15 +130,8 @@ export function SubscribeModal({
         // Fetch latest subscription status
         const status = await getSubscriptionStatus();
 
-        console.log(`[SubscribeModal] Poll attempt ${attempt}/${maxAttempts}:`, {
-          hasActiveSubscription: status.hasActiveSubscription,
-          subscriptionStatus: status.subscriptionStatus,
-          tierSlug: status.tierSlug,
-        });
-
         // Check if subscription is now active
         if (status.hasActiveSubscription && status.subscriptionStatus === 'active') {
-          console.log('[SubscribeModal] Subscription activated!');
           // Invalidate queries to refresh UI
           queryClient.invalidateQueries({ queryKey: ['subscription-status'] });
           queryClient.invalidateQueries({ queryKey: ['user-subscription'] });

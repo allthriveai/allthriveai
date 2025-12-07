@@ -23,3 +23,6 @@ DEFAULT_BANNER_IMAGES = [
 
 # Default banner image to use (first one in the list)
 DEFAULT_BANNER_IMAGE = DEFAULT_BANNER_IMAGES[0]
+
+# Promotion settings
+PROMOTION_DURATION_DAYS = 7  # Promotions expire after 7 days

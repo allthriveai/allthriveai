@@ -48,6 +48,13 @@ def track_comment_created(sender, instance, created, **kwargs):
     if instance.project.user == user:
         return
 
+    # Award points for commenting on others' projects
+    user.add_points(
+        amount=5,
+        activity_type='comment',
+        description=f'Commented on: {instance.project.title[:50]}',
+    )
+
     completed = track_quest_action(
         user,
         'comment_created',
@@ -66,6 +73,13 @@ def track_project_created(sender, instance, created, **kwargs):
     user = _validate_signal_preconditions(instance, created)
     if not user:
         return
+
+    # Award points for creating a project
+    user.add_points(
+        amount=15,
+        activity_type='project_create',
+        description=f'Created project: {instance.title[:50]}',
+    )
 
     completed = track_quest_action(
         user,
@@ -89,6 +103,13 @@ def track_project_liked(sender, instance, created, **kwargs):
     # Don't track liking own projects
     if instance.project.user == user:
         return
+
+    # Award points for liking others' projects
+    user.add_points(
+        amount=2,
+        activity_type='reaction',
+        description=f'Liked: {instance.project.title[:50]}',
+    )
 
     completed = track_quest_action(
         user,
@@ -176,7 +197,7 @@ def track_image_generated(sender, instance, created, **kwargs):
 
 def track_user_login(user):
     """
-    Track daily login for quest progress.
+    Track daily login for quest progress and award daily login bonus.
 
     Call this from your login view or authentication backend.
 
@@ -184,9 +205,27 @@ def track_user_login(user):
         from core.thrive_circle.signals import track_user_login
         track_user_login(request.user)
     """
+    from django.core.cache import cache
+    from django.utils import timezone
+
     from .quest_tracker import QuestTracker
 
-    # Track the login action
+    # Only award daily login points once per day
+    today = timezone.now().date()
+    cache_key = f'daily_login_points_{user.id}_{today}'
+
+    if not cache.get(cache_key):
+        # Award daily login bonus
+        user.add_points(
+            amount=5,
+            activity_type='daily_login',
+            description='Daily login bonus',
+        )
+        # Set cache for 24 hours to prevent duplicate awards
+        cache.set(cache_key, True, timeout=86400)
+        logger.info(f'Daily login bonus awarded to user {user.id}')
+
+    # Track the login action for quests
     completed = track_quest_action(user, 'daily_login', {})
 
     # Auto-start daily quests for the user

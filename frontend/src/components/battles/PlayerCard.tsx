@@ -71,9 +71,9 @@ export function PlayerCard({
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
       className={`
-        relative flex flex-col items-center p-6 rounded-2xl
+        relative flex flex-col items-center p-3 md:p-6 rounded-xl md:rounded-2xl
         ${isWinner ? 'glass-card neon-border' : 'glass-card'}
-        ${side === 'left' ? 'items-start' : 'items-end'}
+        ${side === 'left' ? 'items-start md:items-center' : 'items-end md:items-center'}
       `}
     >
       {/* Winner crown */}
@@ -82,17 +82,17 @@ export function PlayerCard({
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-          className="absolute -top-4 left-1/2 -translate-x-1/2"
+          className="absolute -top-3 md:-top-4 left-1/2 -translate-x-1/2"
         >
-          <span className="text-3xl">👑</span>
+          <span className="text-xl md:text-3xl">👑</span>
         </motion.div>
       )}
 
       {/* Avatar */}
-      <div className="relative mb-4">
+      <div className="relative mb-2 md:mb-4">
         <div
           className={`
-            w-20 h-20 rounded-2xl overflow-hidden
+            w-12 h-12 md:w-20 md:h-20 rounded-xl md:rounded-2xl overflow-hidden
             ${isWinner ? 'ring-2 ring-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.4)]' : ''}
             ${isCurrentUser ? 'ring-2 ring-cyan-400/50' : ''}
             bg-gradient-to-br from-slate-700/50 to-slate-800/50
@@ -104,7 +104,7 @@ export function PlayerCard({
             <img src={PIP_AVATAR_URL} alt="Pip" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <UserCircleIcon className="w-16 h-16 text-slate-500" />
+              <UserCircleIcon className="w-10 h-10 md:w-16 md:h-16 text-slate-500" />
             </div>
           )}
         </div>
@@ -112,9 +112,9 @@ export function PlayerCard({
         {/* AI badge */}
         {isAi && (
           <div
-            className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full
+            className="absolute -bottom-1 -right-1 px-1.5 md:px-2 py-0.5 rounded-full
                        bg-gradient-to-r from-violet-500 to-purple-500
-                       text-[10px] font-bold text-white shadow-lg"
+                       text-[8px] md:text-[10px] font-bold text-white shadow-lg"
           >
             AI
           </div>
@@ -123,9 +123,9 @@ export function PlayerCard({
         {/* You badge */}
         {isCurrentUser && (
           <div
-            className="absolute -bottom-1 -left-1 px-2 py-0.5 rounded-full
+            className="absolute -bottom-1 -left-1 px-1.5 md:px-2 py-0.5 rounded-full
                        bg-gradient-to-r from-cyan-500 to-teal-500
-                       text-[10px] font-bold text-slate-900 shadow-lg"
+                       text-[8px] md:text-[10px] font-bold text-slate-900 shadow-lg"
           >
             YOU
           </div>
@@ -135,7 +135,7 @@ export function PlayerCard({
       {/* Username */}
       <h3
         className={`
-          text-lg font-bold mb-2
+          text-sm md:text-lg font-bold mb-1 md:mb-2 truncate max-w-full
           ${isWinner ? 'text-amber-300' : 'text-white'}
           ${isCurrentUser ? 'text-cyan-300' : ''}
         `}
@@ -144,9 +144,9 @@ export function PlayerCard({
       </h3>
 
       {/* Status indicator */}
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
         {getStatusIcon()}
-        <span className="text-slate-400">{getStatusText()}</span>
+        <span className="text-slate-400 hidden md:inline">{getStatusText()}</span>
       </div>
 
       {/* Score (shown after judging) */}
@@ -155,11 +155,11 @@ export function PlayerCard({
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.5, type: 'spring' }}
-          className="mt-4 flex items-center gap-2"
+          className="mt-2 md:mt-4 flex items-center gap-1 md:gap-2"
         >
-          <SparklesIcon className="w-5 h-5 text-amber-400" />
-          <span className="text-2xl font-bold text-white">{score.toFixed(1)}</span>
-          <span className="text-slate-400 text-sm">pts</span>
+          <SparklesIcon className="w-4 h-4 md:w-5 md:h-5 text-amber-400" />
+          <span className="text-lg md:text-2xl font-bold text-white">{score.toFixed(1)}</span>
+          <span className="text-slate-400 text-xs md:text-sm">pts</span>
         </motion.div>
       )}
     </motion.div>

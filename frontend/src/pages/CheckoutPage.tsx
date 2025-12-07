@@ -39,11 +39,9 @@ export default function CheckoutPage() {
   const createSubscriptionMutation = useMutation({
     mutationFn: () => {
       if (!tierSlug) throw new Error('No tier selected');
-      console.log('[Checkout] Creating subscription:', { tierSlug, billingInterval });
       return createSubscription(tierSlug, billingInterval);
     },
     onSuccess: (data) => {
-      console.log('[Checkout] Subscription created successfully:', data);
       if (data.clientSecret) {
         setClientSecret(data.clientSecret);
         setError(null);
@@ -98,27 +96,21 @@ export default function CheckoutPage() {
     const maxAttempts = 10;
     const pollInterval = 1000;
 
-    console.log('[Checkout] Payment confirmed, polling for activation...');
-
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         await new Promise(resolve => setTimeout(resolve, pollInterval));
         const status = await getSubscriptionStatus();
 
-        console.log(`[Checkout] Poll attempt ${attempt}/${maxAttempts}:`, status);
-
         if (status.hasActiveSubscription && status.subscriptionStatus === 'active') {
-          console.log('[Checkout] Subscription activated!');
           navigate('/account/billing?success=true');
           return;
         }
       } catch (err) {
-        console.error(`[Checkout] Poll attempt ${attempt} failed:`, err);
+        // Continue polling on error
       }
     }
 
     // Timeout - show message but still redirect
-    console.warn('[Checkout] Activation polling timeout');
     navigate('/account/billing?success=pending');
   };
 

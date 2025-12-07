@@ -346,6 +346,9 @@ class AutoTrackingIntegrationTest(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(username='trackuser', email='track@test.com', password='testpass123')
+        # Reset points to 0 for clean test state
+        self.user.total_points = 0
+        self.user.save(update_fields=['total_points'])
         # Create a second user who owns projects (we can't track actions on own projects)
         self.project_owner = User.objects.create_user(
             username='projectowner', email='owner@test.com', password='testpass123'
@@ -423,7 +426,8 @@ class AutoTrackingIntegrationTest(TestCase):
         self.assertEqual(user_quest.current_progress, 3)
         self.assertTrue(user_quest.is_completed)
         self.assertEqual(user_quest.points_awarded, 50)
-        self.assertEqual(self.user.total_points, 50)
+        # Total points = 50 (quest reward) + 15 (3 comments × 5 points each from signal)
+        self.assertEqual(self.user.total_points, 65)
 
     def test_commenting_own_project_does_not_increment_progress(self):
         """

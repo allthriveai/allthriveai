@@ -21,6 +21,7 @@ import json
 import logging
 import re
 import time
+from decimal import Decimal
 from typing import Any
 
 from django.db import transaction
@@ -656,3 +657,534 @@ def get_creator_dashboard_stats(user) -> dict[str, Any]:
         'pending_balance': pending_balance,
         'is_onboarded': is_onboarded,
     }
+
+
+# =============================================================================
+# Stripe Connect & Marketplace Checkout Services
+# =============================================================================
+
+
+class StripeConnectError(Exception):
+    """Raised when Stripe Connect operations fail."""
+
+    pass
+
+
+class MarketplaceCheckoutError(Exception):
+    """Raised when marketplace checkout operations fail."""
+
+    pass
+
+
+class StripeConnectService:
+    """
+    Service for Stripe Connect operations.
+
+    Handles creator onboarding, account management, and payouts.
+    Uses Stripe Express accounts for simplified onboarding.
+    """
+
+    PLATFORM_FEE_RATE = Decimal('0.08')  # 8% platform fee
+
+    @staticmethod
+    def create_connect_account(user) -> dict:
+        """
+        Create a Stripe Express Connect account for a creator.
+
+        Args:
+            user: Django User instance
+
+        Returns:
+            Dict with account_id and onboarding_url
+
+        Raises:
+            StripeConnectError: If account creation fails
+        """
+        import stripe
+        from django.conf import settings
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        try:
+            # Get or create CreatorAccount
+            creator_account, _ = CreatorAccount.objects.get_or_create(user=user)
+
+            # If already has a Connect account, return existing
+            if creator_account.stripe_connect_account_id:
+                logger.info(f'Creator {user.id} already has Connect account')
+                return {
+                    'account_id': creator_account.stripe_connect_account_id,
+                    'is_onboarded': creator_account.is_onboarded,
+                }
+
+            # Create Express Connect account
+            account = stripe.Account.create(
+                type='express',
+                country='US',  # Default to US, can be expanded later
+                email=user.email,
+                capabilities={
+                    'card_payments': {'requested': True},
+                    'transfers': {'requested': True},
+                },
+                business_type='individual',
+                metadata={
+                    'user_id': str(user.id),
+                    'username': user.username,
+                    'platform': 'allthrive',
+                },
+            )
+
+            # Save account ID
+            creator_account.stripe_connect_account_id = account.id
+            creator_account.onboarding_status = CreatorAccount.OnboardingStatus.PENDING
+            creator_account.save()
+
+            logger.info(f'Created Stripe Connect account {account.id} for user {user.id}')
+
+            return {
+                'account_id': account.id,
+                'is_onboarded': False,
+            }
+
+        except stripe.error.StripeError as e:
+            logger.error(f'Failed to create Connect account for user {user.id}: {e}')
+            raise StripeConnectError(f'Failed to create creator account: {str(e)}') from e
+
+    @staticmethod
+    def create_onboarding_link(user, return_url: str, refresh_url: str) -> str:
+        """
+        Create a Stripe Connect onboarding link.
+
+        Args:
+            user: Django User instance
+            return_url: URL to redirect after onboarding completion
+            refresh_url: URL to redirect if link expires
+
+        Returns:
+            Onboarding URL
+
+        Raises:
+            StripeConnectError: If link creation fails
+        """
+        import stripe
+        from django.conf import settings
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        try:
+            creator_account = CreatorAccount.objects.get(user=user)
+
+            if not creator_account.stripe_connect_account_id:
+                # Create account first
+                result = StripeConnectService.create_connect_account(user)
+                account_id = result['account_id']
+            else:
+                account_id = creator_account.stripe_connect_account_id
+
+            # Create account link for onboarding
+            account_link = stripe.AccountLink.create(
+                account=account_id,
+                refresh_url=refresh_url,
+                return_url=return_url,
+                type='account_onboarding',
+            )
+
+            logger.info(f'Created onboarding link for user {user.id}')
+            return account_link.url
+
+        except CreatorAccount.DoesNotExist:
+            # Create account first
+            StripeConnectService.create_connect_account(user)
+            return StripeConnectService.create_onboarding_link(user, return_url, refresh_url)
+        except stripe.error.StripeError as e:
+            logger.error(f'Failed to create onboarding link for user {user.id}: {e}')
+            raise StripeConnectError(f'Failed to create onboarding link: {str(e)}') from e
+
+    @staticmethod
+    def check_account_status(user) -> dict:
+        """
+        Check Stripe Connect account status and update local record.
+
+        Args:
+            user: Django User instance
+
+        Returns:
+            Dict with account status details
+
+        Raises:
+            StripeConnectError: If status check fails
+        """
+        import stripe
+        from django.conf import settings
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        try:
+            creator_account = CreatorAccount.objects.get(user=user)
+
+            if not creator_account.stripe_connect_account_id:
+                return {
+                    'exists': False,
+                    'is_onboarded': False,
+                    'charges_enabled': False,
+                    'payouts_enabled': False,
+                }
+
+            # Retrieve account from Stripe
+            account = stripe.Account.retrieve(creator_account.stripe_connect_account_id)
+
+            # Update local record
+            creator_account.charges_enabled = account.charges_enabled
+            creator_account.payouts_enabled = account.payouts_enabled
+
+            if account.charges_enabled and account.payouts_enabled:
+                creator_account.onboarding_status = CreatorAccount.OnboardingStatus.COMPLETE
+            elif account.details_submitted:
+                creator_account.onboarding_status = CreatorAccount.OnboardingStatus.PENDING
+
+            creator_account.save()
+
+            return {
+                'exists': True,
+                'account_id': account.id,
+                'is_onboarded': creator_account.is_onboarded,
+                'charges_enabled': account.charges_enabled,
+                'payouts_enabled': account.payouts_enabled,
+                'details_submitted': account.details_submitted,
+                'requirements': account.requirements if hasattr(account, 'requirements') else None,
+            }
+
+        except CreatorAccount.DoesNotExist:
+            return {
+                'exists': False,
+                'is_onboarded': False,
+                'charges_enabled': False,
+                'payouts_enabled': False,
+            }
+        except stripe.error.StripeError as e:
+            logger.error(f'Failed to check account status for user {user.id}: {e}')
+            raise StripeConnectError(f'Failed to check account status: {str(e)}') from e
+
+    @staticmethod
+    def create_dashboard_link(user) -> str:
+        """
+        Create a link to the Stripe Express dashboard.
+
+        Args:
+            user: Django User instance
+
+        Returns:
+            Dashboard URL
+
+        Raises:
+            StripeConnectError: If link creation fails
+        """
+        import stripe
+        from django.conf import settings
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        try:
+            creator_account = CreatorAccount.objects.get(user=user)
+
+            if not creator_account.stripe_connect_account_id:
+                raise StripeConnectError('No Connect account found')
+
+            login_link = stripe.Account.create_login_link(creator_account.stripe_connect_account_id)
+
+            return login_link.url
+
+        except CreatorAccount.DoesNotExist as e:
+            raise StripeConnectError('No creator account found') from e
+        except stripe.error.StripeError as e:
+            logger.error(f'Failed to create dashboard link for user {user.id}: {e}')
+            raise StripeConnectError(f'Failed to create dashboard link: {str(e)}') from e
+
+
+class MarketplaceCheckoutService:
+    """
+    Service for marketplace product checkout.
+
+    Handles payment processing with Stripe Connect,
+    including platform fee collection and creator payouts.
+    """
+
+    PLATFORM_FEE_RATE = Decimal('0.08')  # 8% platform fee
+
+    @staticmethod
+    @transaction.atomic
+    def create_checkout(user, product: Product) -> dict:
+        """
+        Create a checkout session for purchasing a product.
+
+        Uses Stripe PaymentIntent with transfer_data for automatic
+        platform fee collection and creator payout.
+
+        Args:
+            user: Django User (buyer)
+            product: Product instance to purchase
+
+        Returns:
+            Dict with client_secret for Stripe Elements
+
+        Raises:
+            MarketplaceCheckoutError: If checkout creation fails
+        """
+        import stripe
+        from django.conf import settings
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        try:
+            # Validate product is purchasable
+            if product.status != Product.Status.PUBLISHED:
+                raise MarketplaceCheckoutError('Product is not available for purchase')
+
+            if product.price <= 0:
+                raise MarketplaceCheckoutError('Product is free - no checkout required')
+
+            # Can't buy your own product
+            if product.creator == user:
+                raise MarketplaceCheckoutError('You cannot purchase your own product')
+
+            # Check if user already has access
+            from .models import ProductAccess
+
+            if ProductAccess.objects.filter(user=user, product=product, is_active=True).exists():
+                raise MarketplaceCheckoutError('You already have access to this product')
+
+            # Get creator's Connect account
+            try:
+                creator_account = CreatorAccount.objects.get(user=product.creator)
+                if not creator_account.is_onboarded:
+                    raise MarketplaceCheckoutError('Creator has not completed payment setup')
+                connect_account_id = creator_account.stripe_connect_account_id
+            except CreatorAccount.DoesNotExist as e:
+                raise MarketplaceCheckoutError('Creator has not set up payment account') from e
+
+            # Calculate fees
+            amount_cents = int(product.price * 100)
+            platform_fee_cents = int(amount_cents * MarketplaceCheckoutService.PLATFORM_FEE_RATE)
+
+            # Create PaymentIntent with automatic transfer to creator
+            # Platform keeps the application_fee_amount
+            payment_intent = stripe.PaymentIntent.create(
+                amount=amount_cents,
+                currency=product.currency,
+                automatic_payment_methods={'enabled': True},
+                application_fee_amount=platform_fee_cents,
+                transfer_data={
+                    'destination': connect_account_id,
+                },
+                metadata={
+                    'product_id': str(product.id),
+                    'buyer_id': str(user.id),
+                    'creator_id': str(product.creator.id),
+                    'platform': 'allthrive_marketplace',
+                },
+                description=f'Purchase: {product.project.title}',
+            )
+
+            # Create pending Order record
+            from .models import Order
+
+            order = Order.objects.create(
+                buyer=user,
+                product=product,
+                creator=product.creator,
+                amount_paid=product.price,
+                platform_fee=product.price * MarketplaceCheckoutService.PLATFORM_FEE_RATE,
+                stripe_fee=Decimal('0.00'),  # Will be updated by webhook
+                creator_payout=product.price * (1 - MarketplaceCheckoutService.PLATFORM_FEE_RATE),
+                currency=product.currency,
+                stripe_payment_intent_id=payment_intent.id,
+                status=Order.OrderStatus.PENDING,
+            )
+
+            logger.info(
+                f'Created checkout for product {product.id}, buyer {user.id}, amount ${product.price}, order {order.id}'
+            )
+
+            return {
+                'client_secret': payment_intent.client_secret,
+                'order_id': order.id,
+                'amount': float(product.price),
+                'currency': product.currency,
+                'platform_fee': float(product.price * MarketplaceCheckoutService.PLATFORM_FEE_RATE),
+                'product': {
+                    'id': product.id,
+                    'title': product.project.title,
+                    'creator': product.creator.username,
+                },
+            }
+
+        except stripe.error.StripeError as e:
+            logger.error(f'Failed to create checkout for product {product.id}: {e}')
+            raise MarketplaceCheckoutError(f'Payment initialization failed: {str(e)}') from e
+
+    @staticmethod
+    @transaction.atomic
+    def handle_payment_success(payment_intent_id: str) -> dict:
+        """
+        Handle successful payment - grant access and update records.
+
+        Called by webhook when payment_intent.succeeded event received.
+
+        Args:
+            payment_intent_id: Stripe PaymentIntent ID
+
+        Returns:
+            Dict with order details
+
+        Raises:
+            MarketplaceCheckoutError: If processing fails
+        """
+        import stripe
+        from django.conf import settings
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        try:
+            from .models import Order, ProductAccess
+
+            # Get order
+            try:
+                order = Order.objects.select_for_update().get(stripe_payment_intent_id=payment_intent_id)
+            except Order.DoesNotExist:
+                logger.warning(f'No order found for payment intent {payment_intent_id}')
+                return {'status': 'not_found'}
+
+            # Already processed
+            if order.status == Order.OrderStatus.PAID:
+                return {'status': 'already_processed', 'order_id': order.id}
+
+            # Retrieve PaymentIntent for actual charge details
+            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+
+            # Get the charge to find actual Stripe fee
+            if payment_intent.latest_charge:
+                charge = stripe.Charge.retrieve(payment_intent.latest_charge)
+                # Get balance transaction for fee breakdown
+                if charge.balance_transaction:
+                    balance_txn = stripe.BalanceTransaction.retrieve(charge.balance_transaction)
+                    # Stripe fee is in cents
+                    stripe_fee = Decimal(str(balance_txn.fee / 100))
+                    order.stripe_fee = stripe_fee
+
+            # Get transfer ID if available
+            if payment_intent.transfer_data:
+                transfers = stripe.Transfer.list(
+                    transfer_group=payment_intent.transfer_group,
+                    limit=1,
+                )
+                if transfers.data:
+                    order.stripe_transfer_id = transfers.data[0].id
+
+            # Mark order as paid
+            order.status = Order.OrderStatus.PAID
+            order.save()
+
+            # Grant product access
+            ProductAccess.objects.get_or_create(
+                user=order.buyer,
+                product=order.product,
+                defaults={
+                    'order': order,
+                    'is_active': True,
+                },
+            )
+
+            # Update product sales metrics
+            product = order.product
+            product.total_sales += 1
+            product.total_revenue += order.amount_paid
+            product.save(update_fields=['total_sales', 'total_revenue'])
+
+            # Update creator earnings
+            try:
+                creator_account = CreatorAccount.objects.get(user=order.creator)
+                creator_account.total_earnings += order.creator_payout
+                creator_account.save(update_fields=['total_earnings'])
+            except CreatorAccount.DoesNotExist:
+                pass
+
+            logger.info(
+                f'Payment succeeded for order {order.id}, '
+                f'buyer {order.buyer.id} now has access to product {order.product.id}'
+            )
+
+            return {
+                'status': 'success',
+                'order_id': order.id,
+                'product_id': order.product.id,
+                'buyer_id': order.buyer.id,
+            }
+
+        except stripe.error.StripeError as e:
+            logger.error(f'Error processing payment success for {payment_intent_id}: {e}')
+            raise MarketplaceCheckoutError(f'Payment processing failed: {str(e)}') from e
+
+    @staticmethod
+    @transaction.atomic
+    def handle_payment_failure(payment_intent_id: str) -> dict:
+        """
+        Handle failed payment - update order status.
+
+        Args:
+            payment_intent_id: Stripe PaymentIntent ID
+
+        Returns:
+            Dict with order status
+        """
+        from .models import Order
+
+        try:
+            order = Order.objects.get(stripe_payment_intent_id=payment_intent_id)
+            order.status = Order.OrderStatus.FAILED
+            order.save(update_fields=['status', 'updated_at'])
+
+            logger.info(f'Payment failed for order {order.id}')
+            return {'status': 'failed', 'order_id': order.id}
+
+        except Order.DoesNotExist:
+            return {'status': 'not_found'}
+
+    @staticmethod
+    def get_order_status(order_id: int, user) -> dict:
+        """
+        Get order status for a user.
+
+        Args:
+            order_id: Order ID
+            user: Django User (must be buyer or creator)
+
+        Returns:
+            Dict with order details
+        """
+        from .models import Order
+
+        try:
+            order = Order.objects.select_related('product', 'product__project', 'buyer', 'creator').get(id=order_id)
+
+            # Security: only buyer or creator can view order
+            if order.buyer != user and order.creator != user:
+                raise MarketplaceCheckoutError('Access denied')
+
+            return {
+                'id': order.id,
+                'status': order.status,
+                'amount_paid': float(order.amount_paid),
+                'platform_fee': float(order.platform_fee),
+                'creator_payout': float(order.creator_payout),
+                'currency': order.currency,
+                'created_at': order.created_at.isoformat(),
+                'product': {
+                    'id': order.product.id,
+                    'title': order.product.project.title,
+                },
+                'buyer': order.buyer.username if order.creator == user else None,
+                'has_access': order.status == Order.OrderStatus.PAID,
+            }
+
+        except Order.DoesNotExist as e:
+            raise MarketplaceCheckoutError('Order not found') from e

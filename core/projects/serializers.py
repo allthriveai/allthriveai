@@ -26,8 +26,9 @@ class ProjectSerializer(serializers.ModelSerializer):
     slug = serializers.SlugField(required=False, allow_blank=True)
     heart_count = serializers.ReadOnlyField()
     is_liked_by_user = serializers.SerializerMethodField()
+    is_promoted = serializers.SerializerMethodField()  # Computed based on expiration
     tools_details = ToolListSerializer(source='tools', many=True, read_only=True)
-    categories_details = TaxonomySerializer(source='categories', many=True, read_only=True)
+    categories_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -43,6 +44,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             'is_highlighted',
             'is_private',
             'is_archived',
+            'is_promoted',
+            'promoted_at',
             'banner_url',
             'featured_image_url',
             'external_url',
@@ -67,6 +70,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             'is_liked_by_user',
             'tools_details',
             'categories_details',
+            'is_promoted',
+            'promoted_at',
             'created_at',
             'updated_at',
         ]
@@ -226,6 +231,31 @@ class ProjectSerializer(serializers.ModelSerializer):
             return obj.likes.filter(user=request.user).exists()
         return False
 
+    def get_categories_details(self, obj):
+        """Get categories ordered by name."""
+
+        # Order by name for consistent display
+        categories = obj.categories.order_by('name')
+        return TaxonomySerializer(categories, many=True).data
+
+    def get_is_promoted(self, obj):
+        """Check if the project is currently promoted (not expired).
+
+        Promotions expire after PROMOTION_DURATION_DAYS days.
+        """
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .constants import PROMOTION_DURATION_DAYS
+
+        if not obj.is_promoted or not obj.promoted_at:
+            return False
+
+        # Check if promotion has expired
+        promotion_cutoff = timezone.now() - timedelta(days=PROMOTION_DURATION_DAYS)
+        return obj.promoted_at >= promotion_cutoff
+
     def to_representation(self, instance):
         """Convert snake_case field names to camelCase for frontend compatibility."""
         data = super().to_representation(instance)
@@ -275,6 +305,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             'is_highlighted': 'isHighlighted',
             'is_private': 'isPrivate',
             'is_archived': 'isArchived',
+            'is_promoted': 'isPromoted',
+            'promoted_at': 'promotedAt',
             'banner_url': 'bannerUrl',
             'featured_image_url': 'featuredImageUrl',
             'external_url': 'externalUrl',

@@ -13,9 +13,8 @@ const defaultBreakpoints = {
   1536: 4,  // 2xl
   1280: 3,  // xl
   1024: 3,  // lg
-  768: 2,   // md
-  640: 2,   // sm
-  0: 1,     // xs
+  768: 2,   // md - 2 columns starts at tablet
+  767: 1,   // mobile - always 1 column below tablet
 };
 
 export function MasonryGrid({

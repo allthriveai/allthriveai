@@ -216,6 +216,8 @@ def my_email_preferences(request):
                 'phone_number': user.phone_number or '',
                 'phone_verified': user.phone_verified,
                 'allow_sms_invitations': user.allow_sms_invitations,
+                # Battle availability
+                'is_available_for_battles': user.is_available_for_battles,
             }
         )
 
@@ -246,6 +248,11 @@ def my_email_preferences(request):
     if 'allow_sms_invitations' in request.data:
         user.allow_sms_invitations = bool(request.data['allow_sms_invitations'])
         user_updated.append('allow_sms_invitations')
+
+    # Handle battle availability toggle
+    if 'is_available_for_battles' in request.data:
+        user.is_available_for_battles = bool(request.data['is_available_for_battles'])
+        user_updated.append('is_available_for_battles')
 
     # Handle phone number update
     if 'phone_number' in request.data:
@@ -289,5 +296,7 @@ def my_email_preferences(request):
             'phone_number': user.phone_number or '',
             'phone_verified': user.phone_verified,
             'allow_sms_invitations': user.allow_sms_invitations,
+            # Battle availability
+            'is_available_for_battles': user.is_available_for_battles,
         }
     )

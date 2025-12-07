@@ -28,7 +28,7 @@ companies:
       Anthropic is an AI safety company working to build reliable, interpretable,
       and steerable AI systems. Founded by former OpenAI researchers.
     website_url: https://anthropic.com
-    logo_url: https://mintlify.s3-us-west-1.amazonaws.com/anthropic/logo/light.svg
+    logo_url: /logos/claude-logo.svg
     founded_year: 2021
     headquarters: San Francisco, CA
     twitter_handle: AnthropicAI
@@ -96,7 +96,7 @@ companies:
       Midjourney is an independent research lab that produces an AI image generation
       program under the same name.
     website_url: https://midjourney.com
-    logo_url: https://cdn.worldvectorlogo.com/logos/midjourney.svg
+    logo_url: /logos/Midjourney-logo.png
     founded_year: 2022
     headquarters: San Francisco, CA
     twitter_handle: midaborney
@@ -107,7 +107,7 @@ companies:
       Stability AI develops open-source AI models for image, language, audio, and video generation.
       Known for Stable Diffusion.
     website_url: https://stability.ai
-    logo_url: https://images.squarespace-cdn.com/content/v1/6213c340453c3f502425776e/6c9c4c25-5410-4547-b75b-b16e1ce87500/stability-ai-logo.png
+    logo_url: /logos/stability-ai-logo.png
     founded_year: 2020
     headquarters: London, UK
     twitter_handle: StabilityAI
@@ -119,7 +119,7 @@ companies:
       Runway is an applied AI research company building the next generation of
       creative tools powered by AI.
     website_url: https://runwayml.com
-    logo_url: https://assets-global.website-files.com/6502af467b2a8c4792ea2975/6502af467b2a8c4792ea2a05_icon.svg
+    logo_url: /logos/runway-logo.png
     founded_year: 2018
     headquarters: New York, NY
     twitter_handle: runwayml
@@ -164,7 +164,7 @@ companies:
       Cursor is an AI-powered code editor built on VS Code, designed to help
       developers write code faster with AI assistance.
     website_url: https://cursor.sh
-    logo_url: https://cursor.sh/brand/icon.svg
+    logo_url: /cursor-logo.svg
     founded_year: 2023
     headquarters: San Francisco, CA
     twitter_handle: cursor_ai
@@ -199,7 +199,7 @@ companies:
       Replicate lets you run machine learning models with a cloud API,
       without having to understand the intricacies of machine learning.
     website_url: https://replicate.com
-    logo_url: https://replicate.com/favicon.ico
+    logo_url: /logos/replicate-logo.png
     founded_year: 2019
     headquarters: San Francisco, CA
     twitter_handle: replaborateicate
@@ -211,7 +211,7 @@ companies:
       Jasper is an AI content platform that helps marketing teams create
       on-brand content at scale.
     website_url: https://jasper.ai
-    logo_url: https://www.jasper.ai/hubfs/jasper-logo-purple.svg
+    logo_url: /logos/jasper-logo.svg
     founded_year: 2021
     headquarters: Austin, TX
     twitter_handle: heyjasperai
@@ -255,7 +255,7 @@ companies:
       Luma AI creates AI-powered 3D capture and video generation technology,
       including Dream Machine for video generation.
     website_url: https://lumalabs.ai
-    logo_url: https://lumalabs.ai/favicon.ico
+    logo_url: /logos/luma-dream-machine-logo.svg
     founded_year: 2021
     headquarters: Palo Alto, CA
     twitter_handle: LumaLabsAI
@@ -288,7 +288,7 @@ companies:
       Grammarly is an AI-powered writing assistant that helps users improve
       their grammar, spelling, style, and tone.
     website_url: https://grammarly.com
-    logo_url: https://static.grammarly.com/assets/files/cb6ce17d281d15f2c819035bcd430b0e/grammarly_logo.svg
+    logo_url: /logos/grammarly-logo.png
     founded_year: 2009
     headquarters: San Francisco, CA
     twitter_handle: Grammarly
@@ -299,7 +299,7 @@ companies:
       Replit is a collaborative browser-based IDE that allows users to write,
       run, and share code. Features built-in AI assistance for coding.
     website_url: https://replit.com
-    logo_url: https://replit.com/public/icons/favicon-196.png
+    logo_url: /logos/replit-color.svg
     founded_year: 2016
     headquarters: San Francisco, CA
     twitter_handle: Replit
@@ -312,10 +312,245 @@ companies:
       human scientific discovery and understand the true nature of the universe.
       Known for Grok, an AI assistant with real-time knowledge.
     website_url: https://x.ai
-    logo_url: https://upload.wikimedia.org/wikipedia/commons/a/a0/Grok-icon.svg
+    logo_url: /logos/grok-logo.jpeg
     founded_year: 2023
     headquarters: San Francisco, CA
     twitter_handle: xai
+
+  - name: Lovable
+    tagline: Build full-stack apps through conversation
+    description: >
+      Lovable is an AI-powered platform for building web applications through
+      natural language conversation. Uses Claude AI to generate React, TypeScript,
+      and Tailwind CSS code from descriptions.
+    website_url: https://lovable.dev
+    logo_url: https://lovable.dev/favicon.ico
+    founded_year: 2024
+    headquarters: San Francisco, CA
+    twitter_handle: lovable_dev
+
+  - name: Base44
+    tagline: Build apps with AI in minutes
+    description: >
+      Base44 is an AI-powered no-code platform that transforms ideas into fully-functional
+      apps in minutes. Includes automatic backend generation with authentication, data
+      persistence, and role-based permissions. Built-in hosting for instant deployment.
+      No coding necessary.
+    website_url: https://base44.com
+    logo_url: /logos/base44.png
+    founded_year: 2024
+    headquarters: United States
+
+  - name: GitLab
+    tagline: The complete DevSecOps platform
+    description: >
+      GitLab is a comprehensive DevSecOps platform that unifies source code management,
+      CI/CD, security testing, and deployment into a single application. Features
+      GitLab Duo AI assistants for code suggestions and chat.
+    website_url: https://about.gitlab.com
+    logo_url: https://about.gitlab.com/images/press/press-kit-icon.svg
+    founded_year: 2014
+    headquarters: San Francisco, CA
+    twitter_handle: gitlab
+    github_url: https://github.com/gitlabhq
+
+  - name: CrewAI
+    tagline: The leading multi-agent platform
+    description: >
+      CrewAI is the leading platform for building, deploying, and managing AI agent
+      workflows. Features role-based agent design, hierarchical processes, and seamless
+      integration with any LLM provider.
+    website_url: https://www.crewai.com
+    logo_url: /logos/CrewAI-logo.svg
+    founded_year: 2023
+    headquarters: San Francisco, CA
+    twitter_handle: crewaiinc
+    github_url: https://github.com/crewaiinc/crewai
+
+  - name: Vapi
+    tagline: Voice AI agents for developers
+    description: >
+      Vapi is a platform for building, testing, and deploying advanced voice AI agents.
+      Provides infrastructure for creating custom voice assistants that handle customer
+      support, appointment booking, sales calls, and conversational applications.
+    website_url: https://vapi.ai
+    logo_url: /logos/vapi-logo.svg
+    founded_year: 2023
+    headquarters: San Francisco, CA
+    twitter_handle: Vapi_AI
+    github_url: https://github.com/VapiAI
+
+  - name: Figma
+    tagline: The collaborative interface design tool
+    description: >
+      Figma is a browser-based collaborative design platform for creating user interfaces,
+      prototypes, and design systems. Features real-time collaboration, auto-layout,
+      components, and Dev Mode for design-to-code handoff.
+    website_url: https://www.figma.com
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/3/33/Figma-logo.svg
+    founded_year: 2012
+    headquarters: San Francisco, CA
+    twitter_handle: figma
+
+  - name: CapCut
+    tagline: AI-powered video editor for everyone
+    description: >
+      CapCut is an all-in-one creative platform powered by AI for video editing and
+      image design. Owned by ByteDance, it offers professional editing tools with
+      AI-powered features across web, desktop, and mobile.
+    website_url: https://www.capcut.com
+    logo_url: /logos/capcput-logo.jpeg
+    founded_year: 2020
+    headquarters: Los Angeles, CA
+    twitter_handle: capcutapp
+
+  - name: Mistral AI
+    tagline: Frontier AI in your hands
+    description: >
+      Mistral AI is a French AI company building frontier language models with a focus
+      on open-source and enterprise deployments. Known for efficient, high-performance
+      models like Mistral Large, Mixtral, and Codestral.
+    website_url: https://mistral.ai
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/e/e6/Mistral_AI_logo_%282025%E2%80%93%29.svg
+    founded_year: 2023
+    headquarters: Paris, France
+    twitter_handle: MistralAI
+    github_url: https://github.com/mistralai
+
+  - name: Canva
+    tagline: Design anything, publish anywhere
+    description: >
+      Canva is an online design platform that makes it easy to create professional
+      graphics, presentations, videos, and print materials. Features AI-powered
+      design tools, millions of templates, and team collaboration.
+    website_url: https://www.canva.com
+    logo_url: /logos/canva-logo.svg
+    founded_year: 2012
+    headquarters: Sydney, Australia
+    twitter_handle: canva
+
+  - name: LangChain
+    tagline: Engineer reliable agents
+    description: >
+      LangChain is the #1 agent framework for building LLM-powered applications.
+      Includes LangGraph for custom agents and LangSmith for observability,
+      evaluation, and deployment. 100K+ GitHub stars, 90M monthly downloads.
+    website_url: https://www.langchain.com
+    logo_url: https://simpleicons.org/icons/langchain.svg
+    founded_year: 2022
+    headquarters: San Francisco, CA
+    twitter_handle: LangChainAI
+    github_url: https://github.com/langchain-ai/langchain
+
+  - name: Weaviate
+    tagline: The AI database developers love
+    description: >
+      Weaviate is an open-source vector database designed for AI applications.
+      Features native vector search, hybrid search combining vectors and keywords,
+      and built-in integrations with major AI providers. Scales to billions of objects.
+    website_url: https://weaviate.io
+    logo_url: /logos/weviate-logo.png
+    founded_year: 2019
+    headquarters: Amsterdam, Netherlands
+    twitter_handle: weaviate_io
+    github_url: https://github.com/weaviate/weaviate
+
+  - name: Redis
+    tagline: The real-time data platform
+    description: >
+      Redis is an open-source, in-memory data structure store used as a database, cache,
+      and message broker. Known for speed and flexibility with support for vector search,
+      JSON documents, and real-time analytics. Powers AI applications with RedisVL.
+    website_url: https://redis.io
+    logo_url: https://redis.io/wp-content/uploads/2024/04/Logotype.svg
+    founded_year: 2009
+    headquarters: Mountain View, CA
+    twitter_handle: redisinc
+    github_url: https://github.com/redis/redis
+
+  - name: Qdrant
+    tagline: High-performance vector search at scale
+    description: >
+      Qdrant is an open-source vector database and similarity search engine designed
+      for high-dimensional vectors. Powers AI applications with advanced filtering,
+      multitenancy, and cloud-native scalability. 27K+ GitHub stars.
+    website_url: https://qdrant.tech
+    logo_url: /logos/qdrant-logo.svg
+    founded_year: 2021
+    headquarters: Berlin, Germany
+    twitter_handle: qdrant_engine
+    github_url: https://github.com/qdrant/qdrant
+
+  - name: Alibaba Cloud
+    tagline: Empowering digital transformation
+    description: >
+      Alibaba Cloud is a global cloud computing platform providing comprehensive cloud
+      services including compute, storage, databases, AI, and machine learning. Known
+      for Model Studio, Qwen AI models, and enterprise-grade infrastructure.
+    website_url: https://www.alibabacloud.com
+    logo_url: /logos/alibabacloud-logo.svg
+    founded_year: 2009
+    headquarters: Hangzhou, China
+    twitter_handle: alibabacloud
+
+  - name: LlamaIndex
+    tagline: Redefine document workflows with AI agents
+    description: >
+      LlamaIndex provides industry-leading document processing and core building blocks
+      for AI agents. Known for LlamaCloud for document parsing and LlamaIndex framework
+      for building data-augmented LLM applications. Powers AI solutions across industries.
+    website_url: https://www.llamaindex.ai
+    logo_url: /logos/llamaindex-logo.png
+    founded_year: 2022
+    headquarters: San Francisco, CA
+    twitter_handle: llama_index
+    github_url: https://github.com/run-llama/llama_index
+
+  - name: Senso
+    tagline: Align your ground truth with AI platforms
+    description: >
+      Senso is a Y Combinator-backed platform that bridges brands and AI models.
+      Helps organizations optimize visibility and accuracy across ChatGPT, Perplexity,
+      Gemini, and other generative AI platforms. Provides content optimization for citations.
+    website_url: https://www.senso.ai
+    logo_url: /logos/senso.png
+    founded_year: 2024
+    headquarters: San Francisco, CA
+
+  - name: HackerSquad
+    tagline: Code. Collaborate. Conquer.
+    description: >
+      HackerSquad is a thriving developer community platform hosting hackathons, workshops,
+      and tech talks. Offers DevRel solutions including strategic consulting, community management,
+      and content creation. Connects developers with resources, mentorship, and networking opportunities.
+    website_url: https://hackersquad.io
+    logo_url: /logos/hackersquad-logo.png
+    founded_year: 2024
+    headquarters: San Francisco, CA
+
+  - name: Neo4j
+    tagline: The leading graph database platform
+    description: >
+      Neo4j is the world's leading graph database and analytics platform. Provides native graph
+      storage, processing, and ACID transactions. Known for Cypher query language, AuraDB managed
+      cloud, and graph data science for AI and ML. Powers knowledge graphs and connected data.
+    website_url: https://neo4j.com
+    logo_url: /logos/neoj4-logo.jpeg
+    founded_year: 2007
+    headquarters: San Mateo, CA
+    twitter_handle: neo4j
+    github_url: https://github.com/neo4j/neo4j
+
+  - name: AI Planet
+    tagline: Making AGI accessible to everyone
+    description: >
+      AI Planet is a platform democratizing AI and AGI development. Creator of OpenAGI framework
+      for building autonomous human-like agents. Provides tools and infrastructure for developers
+      to create specialized agents that automate and solve complex problems.
+    website_url: https://openagi.aiplanet.com
+    logo_url: /logos/openagi.png
+    founded_year: 2024
+    headquarters: San Francisco, CA
 
 
 # -----------------------------------------------------------------------------
@@ -366,6 +601,16 @@ tools:
       - Use specific prompts with examples for consistent output
       - Break complex tasks into steps
       - Check the model picker to ensure you're using the right mode
+    whats_new:
+      - date: '2025-12-05'
+        title: GPT-5.2 Coming December 9
+        description: OpenAI accelerates release in response to Gemini 3 competition, prioritizing speed and reliability improvements.
+      - date: '2025-12-03'
+        title: Acquiring Neptune & Enterprise Expansion
+        description: OpenAI announces Neptune acquisition and ownership stake in Thrive Holdings for enterprise AI adoption.
+      - date: '2025-11-20'
+        title: GPT-5.1 with Adaptive Reasoning
+        description: GPT-5.1 now decides when to think before responding, delivering more thorough answers on complex questions.
 
   - name: Claude
     company: Anthropic
@@ -379,7 +624,7 @@ tools:
     category: chat
     tool_type: ai_tool
     website_url: https://claude.ai
-    logo_url: https://mintlify.s3-us-west-1.amazonaws.com/anthropic/logo/light.svg
+    logo_url: /logos/claude-logo.svg
     pricing_model: freemium
     has_free_tier: true
     tags:
@@ -412,6 +657,16 @@ tools:
       - Review Claude Code changes before committing
       - Specify output format when you need structured responses
       - Use the API for programmatic access with caching
+    whats_new:
+      - date: '2025-12-03'
+        title: $200M Snowflake Enterprise Deal
+        description: Anthropic signs largest enterprise deal with Snowflake, signaling major push into corporate AI deployments.
+      - date: '2025-11-25'
+        title: Bun Acquisition for Performance
+        description: Anthropic acquires Bun runtime creators to accelerate Claude Code performance and developer tooling.
+      - date: '2025-11-18'
+        title: Claude for Nonprofits Program
+        description: New program provides discounted Claude access to qualifying nonprofit organizations.
 
   - name: Gemini
     company: Google
@@ -457,6 +712,16 @@ tools:
       - Connect Workspace for productivity workflows
       - Specify when you want interactive outputs vs plain text
       - Use code execution for reproducible analysis
+    whats_new:
+      - date: '2025-12-04'
+        title: Gemini 3 Launch with 650M Users
+        description: Google's most capable model debuts with 50% benchmark improvement and Deep Think reasoning mode.
+      - date: '2025-12-01'
+        title: 2.0 Flash Thinking Mode
+        description: Enhanced reasoning capabilities with transparent thought process for complex problem-solving.
+      - date: '2025-11-20'
+        title: Deep Research Improvements
+        description: Research mode now searches more sources and provides better synthesis of findings.
 
   - name: Grok
     company: xAI
@@ -470,7 +735,7 @@ tools:
     category: chat
     tool_type: ai_tool
     website_url: https://x.ai/grok
-    logo_url: https://upload.wikimedia.org/wikipedia/commons/a/a0/Grok-icon.svg
+    logo_url: /logos/grok-logo.jpeg
     pricing_model: subscription
     has_free_tier: false
     tags:
@@ -502,6 +767,71 @@ tools:
       - Leverage the large context for document analysis
       - Check API pricing—agent tools reduced by 50%
       - Cross-reference with other sources for factual claims
+    whats_new:
+      - date: '2025-12-02'
+        title: Grok 4.1 Fast with 2M Context
+        description: New low-latency model maintains full context window for faster responses on complex queries.
+      - date: '2025-11-28'
+        title: Agent Tools API Launch
+        description: API now supports tool use, file uploads, and knowledge base search for building agents.
+      - date: '2025-11-15'
+        title: Grok 4.20 Christmas Teaser
+        description: xAI hints at major update coming December 25th with enhanced reasoning capabilities.
+
+  - name: Mistral
+    company: Mistral AI
+    tagline: Multilingual AI assistant with web search and canvas
+    description: >
+      Mistral AI's chat interface at chat.mistral.ai (Le Chat). Powered by Mistral Large
+      and other models. Features web search, canvas for document editing, code execution,
+      and image generation. Supports multiple languages with strong European language
+      performance. Agents marketplace for specialized assistants. Free tier; Pro at
+      €14.99/mo with priority access and higher limits.
+    category: chat
+    tool_type: ai_tool
+    website_url: https://chat.mistral.ai
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/e/e6/Mistral_AI_logo_%282025%E2%80%93%29.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - NLP
+      - Mistral
+      - Conversation
+      - Multilingual
+      - European AI
+    key_features:
+      - title: Mistral Large Model
+        description: Frontier-class reasoning with strong multilingual capabilities
+      - title: Web Search
+        description: Real-time information retrieval with cited sources
+      - title: Canvas Editor
+        description: Side-by-side document editing and collaboration with AI
+      - title: Code Execution
+        description: Run Python code directly in conversation for analysis
+      - title: Agents Marketplace
+        description: Pre-built and custom agents for specialized tasks
+    usage_tips:
+      - Use canvas mode for document editing and iteration
+      - Leverage web search for current information
+      - Try agents for specialized workflows
+      - Use French and European languages for optimal performance
+      - Enable code execution for data analysis
+    best_practices:
+      - Choose the right model tier for your task complexity
+      - Use specific prompts for better multilingual outputs
+      - Leverage canvas for longer document work
+      - Cross-reference web search results
+      - Use agents for repetitive specialized tasks
+    whats_new:
+      - date: '2025-12-01'
+        title: Mistral Large 3 Release
+        description: Latest flagship model with improved reasoning and 128K context window.
+      - date: '2025-11-20'
+        title: Canvas Feature Launch
+        description: Side-by-side document editing with AI assistance for writing and coding.
+      - date: '2025-11-08'
+        title: Agents Marketplace
+        description: Browse and deploy pre-built agents or create custom ones for your workflows.
 
   - name: Perplexity
     company: Perplexity AI
@@ -547,6 +877,16 @@ tools:
       - Combine with follow-up questions for deeper exploration
       - Export or save to Spaces for later reference
       - Use the API for programmatic access with academic filtering
+    whats_new:
+      - date: '2025-12-03'
+        title: Comet Browser Launch
+        description: Chromium-based browser with integrated AI search, Background Assistants, and native content capture.
+      - date: '2025-11-25'
+        title: Sora 2 Pro Integration
+        description: Video generation now available within Perplexity interface for Pro subscribers.
+      - date: '2025-11-15'
+        title: Samsung TV Partnership
+        description: Perplexity AI now available on Samsung smart TVs for voice-activated search.
 
   # === IMAGE GENERATION ===
   - name: Midjourney
@@ -561,7 +901,7 @@ tools:
     category: image
     tool_type: ai_tool
     website_url: https://midjourney.com
-    logo_url: https://cdn.worldvectorlogo.com/logos/midjourney.svg
+    logo_url: /logos/Midjourney-logo.png
     pricing_model: subscription
     has_free_tier: false
     tags:
@@ -593,6 +933,16 @@ tools:
       - Check the community gallery for prompt inspiration
       - Start with Draft Mode, upscale winners
       - Use --no to exclude unwanted elements
+    whats_new:
+      - date: '2025-11-28'
+        title: V7 Model Release
+        description: Major upgrade with improved hands, text rendering, and prompt accuracy over V6.
+      - date: '2025-11-20'
+        title: Draft Mode with Voice Input
+        description: Generate images 10x faster at half cost, now with voice prompt support.
+      - date: '2025-11-10'
+        title: Web Editor Overhaul
+        description: New browser-based editing tools for inpainting, outpainting, and variations.
 
   - name: DALL-E
     company: OpenAI
@@ -638,6 +988,16 @@ tools:
       - Review ChatGPT's refined prompt before generating
       - Understand content policy limits (no public figures, violence)
       - Use API for programmatic workflows
+    whats_new:
+      - date: '2025-11-22'
+        title: GPT-4o Native Image Generation
+        description: GPT-4o now generates images directly without DALL-E, offering tighter text integration.
+      - date: '2025-11-15'
+        title: Improved Text Rendering
+        description: DALL-E 3 now handles multi-line text and complex typography more accurately.
+      - date: '2025-10-30'
+        title: API Price Reduction
+        description: Image generation API costs reduced by 30% across all resolution tiers.
 
   - name: Stable Diffusion
     company: Stability AI
@@ -651,7 +1011,7 @@ tools:
     category: image
     tool_type: ai_tool
     website_url: https://stability.ai
-    logo_url: https://images.squarespace-cdn.com/content/v1/6213c340453c3f502425776e/6c9c4c25-5410-4547-b75b-b16e1ce87500/stability-ai-logo.png
+    logo_url: /logos/stability-ai-logo.png
     pricing_model: open_source
     has_free_tier: true
     tags:
@@ -683,6 +1043,16 @@ tools:
       - Check model licenses before commercial use
       - Leverage community resources for prompt techniques
       - Consider local deployment for privacy-sensitive work
+    whats_new:
+      - date: '2025-11-30'
+        title: SD 3.5 Large Turbo Release
+        description: Fastest SD 3.5 variant yet, generating images in under 2 seconds on consumer GPUs.
+      - date: '2025-11-18'
+        title: ComfyUI Native Integration
+        description: Official ComfyUI nodes released for streamlined SD 3.5 workflows.
+      - date: '2025-11-05'
+        title: Stability AI Restructuring
+        description: Company focuses on enterprise licensing while maintaining open-source commitment.
 
   - name: Ideogram
     company: Ideogram
@@ -727,6 +1097,16 @@ tools:
       - Combine with design tools for final polish
       - Check text accuracy before using
       - Iterate with remix rather than starting over
+    whats_new:
+      - date: '2025-12-01'
+        title: Ideogram 3.0 Launch
+        description: New model with 40% better text accuracy and support for longer text blocks.
+      - date: '2025-11-20'
+        title: Canvas Editor Beta
+        description: New editing interface for post-generation refinements and composition adjustments.
+      - date: '2025-11-10'
+        title: API General Availability
+        description: Public API now available for developers to integrate Ideogram into applications.
 
   - name: Leonardo AI
     company: Leonardo AI
@@ -772,6 +1152,16 @@ tools:
       - Export at resolution appropriate for use case
       - Combine with 3D tools for game development
       - Check output for seamless tiling on textures
+    whats_new:
+      - date: '2025-11-28'
+        title: Phoenix 2.0 Model
+        description: New foundation model with 2x quality improvement for photorealistic assets.
+      - date: '2025-11-15'
+        title: 3D Texture Pipeline
+        description: Generate PBR-ready texture sets with normal, roughness, and displacement maps.
+      - date: '2025-11-01'
+        title: Real-Time Canvas Updates
+        description: AI Canvas now streams generation progress for faster iteration workflows.
 
   # === VIDEO GENERATION ===
   - name: Veo 3
@@ -818,6 +1208,16 @@ tools:
       - Specify temporal aspects of scenes
       - Use for prototyping video concepts
       - Combine with video editing tools
+    whats_new:
+      - date: '2025-12-04'
+        title: Veo 3 with Native Audio
+        description: First model to generate synchronized dialogue, sound effects, and ambient audio with video.
+      - date: '2025-11-28'
+        title: 8K Resolution Support
+        description: Generate ultra-high-resolution clips up to 8 seconds for professional productions.
+      - date: '2025-11-15'
+        title: AI Studio Integration
+        description: Veo 3 now accessible directly in Google AI Studio for developers.
 
   - name: Runway
     company: Runway
@@ -831,7 +1231,7 @@ tools:
     category: video
     tool_type: ai_tool
     website_url: https://runwayml.com
-    logo_url: https://assets-global.website-files.com/6502af467b2a8c4792ea2975/6502af467b2a8c4792ea2a05_icon.svg
+    logo_url: /logos/runway-logo.png
     pricing_model: freemium
     has_free_tier: true
     tags:
@@ -863,6 +1263,16 @@ tools:
       - Iterate on generations
       - Combine multiple AI tools
       - Export at appropriate quality
+    whats_new:
+      - date: '2025-12-01'
+        title: Gen-4.5 Tops Video Arena
+        description: Latest model ranked #1 on AI Video Arena, beating Veo 3 and Sora 2 in blind tests.
+      - date: '2025-11-25'
+        title: Native Audio Generation
+        description: Gen-4.5 now generates synchronized sound effects and ambient audio.
+      - date: '2025-11-10'
+        title: Aleph Private Preview
+        description: Next-gen model in testing with 2-minute continuous video generation.
 
   - name: Pika
     company: Pika Labs
@@ -908,6 +1318,16 @@ tools:
       - Use for concept visualization
       - Iterate on prompts
       - Combine with editing tools
+    whats_new:
+      - date: '2025-11-30'
+        title: Pika 2.0 Scene Ingredients
+        description: Blend multiple concepts and references into cohesive video scenes.
+      - date: '2025-11-18'
+        title: Pikaffects Special Effects
+        description: Add explosions, melting, crushing, and other VFX to existing footage.
+      - date: '2025-11-05'
+        title: Pikalabs Shorts Format
+        description: Quick vertical video generation optimized for TikTok and Instagram.
 
   - name: Luma Dream Machine
     company: Luma AI
@@ -921,7 +1341,7 @@ tools:
     category: video
     tool_type: ai_tool
     website_url: https://lumalabs.ai/dream-machine
-    logo_url: https://lumalabs.ai/favicon.ico
+    logo_url: /logos/luma-dream-machine-logo.svg
     pricing_model: freemium
     has_free_tier: true
     tags:
@@ -953,6 +1373,71 @@ tools:
       - Describe motion explicitly
       - Iterate for best results
       - Export at appropriate resolution
+    whats_new:
+      - date: '2025-12-02'
+        title: Ray 2 Model Launch
+        description: New model with improved physics simulation and 2x faster generation times.
+      - date: '2025-11-22'
+        title: Keyframe Control
+        description: Specify start and end frames for precise control over generated motion.
+      - date: '2025-11-10'
+        title: API Rate Limits Increased
+        description: Pro users now get 5x higher API limits for production workloads.
+
+  - name: CapCut
+    company: CapCut
+    tagline: AI-powered video editing for creators
+    description: >
+      All-in-one creative platform powered by AI for video editing and image design.
+      Available on web, Windows, Mac, Android, and iOS. Features auto captions with
+      speech-to-text, text-to-speech voiceovers, background removal, video upscaling,
+      and AI image generation. Extensive template library for social media content.
+      Team collaboration with cloud storage. Free tier; Pro at $9.99/mo with 1TB storage.
+    category: video
+    tool_type: ai_tool
+    website_url: https://www.capcut.com
+    logo_url: /logos/capcput-logo.jpeg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Video Editing
+      - AI Video
+      - Social Media
+      - Content Creation
+      - Mobile
+    key_features:
+      - title: Auto Captions
+        description: AI-powered speech-to-text generates accurate subtitles automatically
+      - title: Text-to-Speech
+        description: Create voiceovers from text with multiple AI voice options
+      - title: Background Removal
+        description: Remove or replace backgrounds in videos and images with one click
+      - title: Video Upscaling
+        description: Enhance video resolution and quality with AI upscaling
+      - title: Template Library
+        description: Thousands of templates optimized for TikTok, Instagram, and YouTube
+    usage_tips:
+      - Use auto captions to increase video accessibility and engagement
+      - Leverage templates for quick social media content creation
+      - Use background removal for professional-looking product videos
+      - Export directly to TikTok, YouTube, and Instagram
+      - Use cloud storage for team collaboration on projects
+    best_practices:
+      - Match template aspect ratios to your target platform
+      - Review auto-generated captions for accuracy
+      - Use AI enhancement sparingly to maintain natural look
+      - Organize projects in cloud folders for easy access
+      - Export at platform-recommended quality settings
+    whats_new:
+      - date: '2025-12-01'
+        title: AI Video Generator
+        description: Generate video clips from text prompts with customizable styles and durations.
+      - date: '2025-11-18'
+        title: Pro Plan Storage Upgrade
+        description: Pro subscribers now get 1TB cloud storage, up from 100GB.
+      - date: '2025-11-05'
+        title: Collaborative Editing
+        description: Real-time team editing with shared project workspaces and version history.
 
   # === AUDIO & MUSIC ===
   - name: ElevenLabs
@@ -999,6 +1484,72 @@ tools:
       - Review and edit generated audio
       - Use SSML for fine control
       - Respect voice cloning ethics
+    whats_new:
+      - date: '2025-12-03'
+        title: Conversational AI 2.0
+        description: Real-time voice agents with sub-second latency for natural conversations.
+      - date: '2025-11-25'
+        title: ElevenReader Voice Chat
+        description: Mobile app now features interactive voice chat for reading any content aloud.
+      - date: '2025-11-15'
+        title: $6.6B Valuation
+        description: Series C funding values ElevenLabs at $6.6B, highlighting AI voice market growth.
+
+  - name: Vapi
+    company: Vapi
+    tagline: Build and deploy voice AI agents in minutes
+    description: >
+      Developer platform for building, testing, and deploying voice AI agents. Supports
+      100+ languages with sub-500ms latency. Bring your own LLM, transcription, and
+      text-to-speech models. Features automated testing for hallucination detection,
+      A/B testing for prompt optimization, and tool calling for API integrations.
+      Enterprise-grade with 99.99% uptime, SOC2, HIPAA, and PCI compliance. Powers
+      150M+ calls across 350K+ developers. Usage-based pricing.
+    category: audio
+    tool_type: ai_tool
+    website_url: https://vapi.ai
+    logo_url: /logos/vapi-logo.svg
+    pricing_model: pay_per_use
+    has_free_tier: true
+    tags:
+      - Voice AI
+      - Conversational AI
+      - Voice Agents
+      - API
+      - Developer Tools
+    key_features:
+      - title: Voice Agent Builder
+        description: Create custom voice assistants for support, booking, sales, and more
+      - title: Multilingual Support
+        description: 100+ languages with natural-sounding voices
+      - title: Sub-500ms Latency
+        description: Real-time conversations with minimal delay
+      - title: Bring Your Own Models
+        description: Use any LLM, transcription, or TTS provider
+      - title: Automated Testing
+        description: Identify hallucination risks and optimize prompts with A/B testing
+    usage_tips:
+      - Start with pre-built templates for common use cases
+      - Use tool calling to connect agents to your APIs and databases
+      - Test extensively with automated hallucination detection
+      - A/B test different prompts and voices for optimization
+      - Monitor call analytics to improve agent performance
+    best_practices:
+      - Design clear conversation flows before building
+      - Handle edge cases and fallbacks gracefully
+      - Use appropriate voice personas for your brand
+      - Implement proper error handling for API integrations
+      - Monitor latency and quality metrics in production
+    whats_new:
+      - date: '2025-12-01'
+        title: 150M Calls Milestone
+        description: Platform reaches 150 million processed calls with 350K+ active developers.
+      - date: '2025-11-20'
+        title: Automated Testing Suite
+        description: New testing tools detect hallucinations and conversation failures before deployment.
+      - date: '2025-11-05'
+        title: Enterprise Compliance
+        description: SOC2 Type II, HIPAA, and PCI DSS compliance certifications completed.
 
   - name: Suno
     company: Suno
@@ -1044,6 +1595,16 @@ tools:
       - Iterate on generations
       - Use for demos and prototypes
       - Understand licensing terms
+    whats_new:
+      - date: '2025-12-01'
+        title: Warner Music Group Partnership
+        description: Landmark deal allows Suno to train on WMG catalog with revenue sharing for artists.
+      - date: '2025-11-20'
+        title: $500M Lawsuit Settlement
+        description: Settled copyright disputes with major labels, establishing AI music licensing framework.
+      - date: '2025-11-10'
+        title: $2.45B Valuation
+        description: Series C funding doubles valuation as AI music generation gains mainstream adoption.
 
   - name: Udio
     company: Udio
@@ -1089,6 +1650,16 @@ tools:
       - Review multiple generations
       - Understand usage rights
       - Use for inspiration and prototyping
+    whats_new:
+      - date: '2025-11-28'
+        title: 15-Minute Song Generation
+        description: Extended generation now produces full-length tracks up to 15 minutes.
+      - date: '2025-11-18'
+        title: Audio Conditioning Feature
+        description: Upload reference tracks to guide style and production quality of outputs.
+      - date: '2025-11-08'
+        title: Inpainting for Music
+        description: Edit specific sections of generated songs without regenerating the whole track.
 
   # === CODE & DEVELOPMENT ===
   - name: GitHub Copilot
@@ -1103,7 +1674,7 @@ tools:
     category: code
     tool_type: ai_tool
     website_url: https://github.com/features/copilot
-    logo_url: https://github.githubassets.com/assets/copilot-logo.svg
+    logo_url: /logos/github-copilot-logo.png
     pricing_model: subscription
     has_free_tier: false
     tags:
@@ -1135,6 +1706,16 @@ tools:
       - Use as a learning tool
       - Combine with code review
       - Keep suggestions contextual
+    whats_new:
+      - date: '2025-12-02'
+        title: GPT-5.1-Codex-Max Support
+        description: Latest OpenAI coding model available for all Copilot users with 2x context window.
+      - date: '2025-11-25'
+        title: Claude Opus 4.5 Integration
+        description: Anthropic's most capable model now available as an option in Copilot settings.
+      - date: '2025-11-15'
+        title: Custom Agents Launch
+        description: Build and share specialized coding agents for team-specific workflows.
 
   - name: Cursor
     company: Cursor
@@ -1148,7 +1729,7 @@ tools:
     category: code
     tool_type: ai_tool
     website_url: https://cursor.sh
-    logo_url: https://cursor.sh/brand/icon.svg
+    logo_url: /cursor-logo.svg
     pricing_model: freemium
     has_free_tier: true
     tags:
@@ -1180,6 +1761,16 @@ tools:
       - Use for understanding unfamiliar code
       - Combine with manual coding
       - Maintain code quality standards
+    whats_new:
+      - date: '2025-12-01'
+        title: GPT-5.1-Codex-Max Support
+        description: OpenAI's latest coding model now available with enhanced multi-file reasoning.
+      - date: '2025-11-22'
+        title: Version 2.1 with AI Code Review
+        description: Automatic code review suggestions on save with security vulnerability detection.
+      - date: '2025-11-10'
+        title: $9.9B Valuation
+        description: Series C funding values Cursor as the leading AI-native code editor.
 
   - name: Claude Code
     company: Anthropic
@@ -1193,7 +1784,7 @@ tools:
     category: code
     tool_type: ai_tool
     website_url: https://docs.anthropic.com/en/docs/claude-code
-    logo_url: https://mintlify.s3-us-west-1.amazonaws.com/anthropic/logo/light.svg
+    logo_url: /logos/claude-logo.svg
     pricing_model: pay_per_use
     has_free_tier: false
     tags:
@@ -1226,6 +1817,16 @@ tools:
       - Use git for safety
       - Provide context about project
       - Iterate on complex tasks
+    whats_new:
+      - date: '2025-12-03'
+        title: Claude Opus 4.5 Default
+        description: Claude Code now uses Opus 4.5 by default for improved reasoning and code quality.
+      - date: '2025-11-20'
+        title: GitHub Actions Integration
+        description: Run Claude Code in CI/CD pipelines for automated code review and fixes.
+      - date: '2025-11-10'
+        title: VS Code and JetBrains Support
+        description: Seamless integration with popular IDEs for hybrid terminal+editor workflows.
 
   - name: Replit
     company: Replit
@@ -1239,7 +1840,7 @@ tools:
     category: code
     tool_type: ai_tool
     website_url: https://replit.com
-    logo_url: https://replit.com/public/icons/favicon-196.png
+    logo_url: /logos/replit-color.svg
     pricing_model: freemium
     has_free_tier: true
     tags:
@@ -1271,6 +1872,171 @@ tools:
       - Collaborate for pair programming
       - Deploy for quick demos
       - Use for coding education
+    whats_new:
+      - date: '2025-12-01'
+        title: Replit Agent 3 Launch
+        description: Build complete full-stack apps from descriptions with automatic deployment.
+      - date: '2025-11-22'
+        title: Google Partnership with Gemini
+        description: Gemini models now power Replit AI features through strategic partnership.
+      - date: '2025-11-08'
+        title: Mobile App Coding
+        description: Full coding capabilities now available on iOS and Android apps.
+
+  - name: Lovable
+    company: Lovable
+    tagline: Build full-stack apps through conversation with AI
+    description: >
+      AI-powered app builder at lovable.dev that creates web applications through natural
+      language conversation. Powered by Claude AI, generates React, TypeScript, and Tailwind
+      CSS code from descriptions. Includes visual editor, 40+ UI components, template
+      marketplace, and one-click deployment. Real-time collaboration and GitHub sync.
+      Free tier with 5 daily credits; Pro at $25/mo.
+    category: code
+    tool_type: ai_tool
+    website_url: https://lovable.dev
+    logo_url: https://lovable.dev/favicon.ico
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Code
+      - No-Code
+      - AI Builder
+      - React
+      - Full-Stack
+    key_features:
+      - title: Conversational Building
+        description: Describe what you want and Claude AI generates working code
+      - title: Visual Editor
+        description: Real-time design customization without coding knowledge
+      - title: Component Library
+        description: 40+ pre-built UI components including forms, dialogs, and cards
+      - title: Template Marketplace
+        description: Pre-designed solutions for ecommerce, portfolios, and blogs
+      - title: One-Click Deploy
+        description: Instant deployment with custom domain support
+    usage_tips:
+      - Describe your app in plain English for best results
+      - Use templates as starting points for faster builds
+      - Leverage the visual editor for design refinements
+      - Connect GitHub to sync and export your code
+      - Use dark mode toggle for theme-aware apps
+    best_practices:
+      - Start with a clear description of your app's purpose
+      - Build incrementally rather than all at once
+      - Review generated code before deploying to production
+      - Use the component library for consistent UI
+      - Test on mobile to verify responsive design
+    whats_new:
+      - date: '2025-12-03'
+        title: Claude Opus 4.5 Integration
+        description: Lovable now uses Anthropic's most capable model for improved code generation.
+      - date: '2025-11-20'
+        title: Lovable 2.0 Launch
+        description: Major update with multiplayer collaboration, enhanced security, and smarter AI.
+      - date: '2025-11-10'
+        title: Template Marketplace Expansion
+        description: 50+ new templates added including SaaS dashboards and admin panels.
+
+  - name: Base44
+    company: Base44
+    tagline: Create apps at the speed of thought
+    description: >
+      AI-powered no-code platform at base44.com that transforms ideas into fully-functional
+      apps in minutes. Tell Base44 your idea and watch it create complete applications with
+      all necessary components, pages, flows, and features. Automatic backend generation
+      includes user authentication, data persistence, and role-based permissions. Built-in
+      hosting for instant publishing. No coding required—just describe what you want to build.
+    category: code
+    tool_type: ai_tool
+    website_url: https://base44.com
+    logo_url: /logos/base44.png
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - No-Code
+      - AI Builder
+      - App Development
+      - Productivity
+      - Full-Stack
+    key_features:
+      - title: Natural Language App Creation
+        description: Describe your idea in plain language and watch it become a working app
+      - title: Automatic Backend Generation
+        description: Authentication, data storage, and permissions built automatically
+      - title: Built-in Hosting
+        description: Apps are hosted and ready to publish instantly
+      - title: Complete Feature Set
+        description: All necessary components, pages, flows, and features generated automatically
+      - title: No Coding Required
+        description: Build production-ready apps without writing a single line of code
+    usage_tips:
+      - Clearly describe your app's purpose and key features
+      - Start with a simple concept and iterate
+      - Use Base44 for rapid prototyping and MVPs
+      - Great for non-technical founders and entrepreneurs
+      - Perfect for productivity tools and internal apps
+    best_practices:
+      - Begin with a clear vision of your app's functionality
+      - Focus on user flows when describing your idea
+      - Test your app thoroughly before sharing publicly
+      - Leverage the automatic backend for common features
+      - Use for quick validation of product ideas
+
+  - name: GitLab
+    company: GitLab
+    tagline: Complete DevSecOps platform with AI-powered Duo assistants
+    description: >
+      Comprehensive DevSecOps platform at gitlab.com that unifies source code management,
+      CI/CD pipelines, security testing, and deployment. GitLab Duo provides AI code
+      suggestions, chat, and code review. Supports self-hosted and cloud deployments.
+      Named Leader in Gartner Magic Quadrant for AI Code Assistants.
+      Free tier available; Premium at $29/user/mo, Ultimate at $99/user/mo.
+    category: code
+    tool_type: ai_tool
+    website_url: https://about.gitlab.com
+    logo_url: https://about.gitlab.com/images/press/press-kit-icon.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Code
+      - DevOps
+      - CI/CD
+      - Security
+      - Git
+    key_features:
+      - title: GitLab Duo Code Suggestions
+        description: AI-powered code completions and generation in your IDE
+      - title: GitLab Duo Chat
+        description: Natural language chat for code explanations, test generation, and refactoring
+      - title: GitLab Duo Code Review
+        description: Context-aware AI review that understands merge request intent
+      - title: CI/CD Pipelines
+        description: Automated build, test, and deployment workflows
+      - title: Security Scanning
+        description: SAST, DAST, dependency scanning, and container scanning built-in
+    usage_tips:
+      - Use Duo Chat for code explanations and test generation
+      - Enable Duo Code Suggestions in VS Code or JetBrains IDEs
+      - Leverage CI/CD templates for quick pipeline setup
+      - Use merge request reviews with Duo for faster code review
+      - Enable security scanning in your pipelines
+    best_practices:
+      - Configure branch protection rules for main branches
+      - Use GitLab CI/CD for automated testing before merge
+      - Enable security scanning early in the development cycle
+      - Use merge request approvals for code quality
+      - Leverage GitLab's built-in container registry
+    whats_new:
+      - date: '2025-12-02'
+        title: Duo Agent Platform Public Beta
+        description: AI agents for DevSecOps orchestration with asynchronous developer collaboration.
+      - date: '2025-11-15'
+        title: GitLab 18.0 with Duo Included
+        description: Duo Code Suggestions and Chat now included in Premium and Ultimate tiers at no extra cost.
+      - date: '2025-11-01'
+        title: Gartner Magic Quadrant Leader
+        description: Named Leader in AI Code Assistants for second consecutive year.
 
   # === PRODUCTIVITY & WRITING ===
   - name: Notion AI
@@ -1317,6 +2083,16 @@ tools:
       - Combine AI with structured data
       - Review AI-generated content
       - Use for brainstorming sessions
+    whats_new:
+      - date: '2025-11-28'
+        title: Notion AI 3.0 Agents
+        description: Autonomous agents that update task statuses, send reminders, and manage workflows.
+      - date: '2025-11-15'
+        title: Q&A Across All Docs
+        description: Ask questions that search and synthesize information from your entire workspace.
+      - date: '2025-11-05'
+        title: Connected Apps Integration
+        description: AI now pulls context from Slack, Google Drive, and other connected services.
 
   - name: Grammarly
     company: Grammarly
@@ -1330,7 +2106,7 @@ tools:
     category: writing
     tool_type: ai_tool
     website_url: https://grammarly.com
-    logo_url: https://static.grammarly.com/assets/files/cb6ce17d281d15f2c819035bcd430b0e/grammarly_logo.svg
+    logo_url: /logos/grammarly-logo.png
     pricing_model: freemium
     has_free_tier: true
     tags:
@@ -1362,6 +2138,16 @@ tools:
       - Use for professional communication
       - Combine with human editing
       - Customize for your domain
+    whats_new:
+      - date: '2025-11-25'
+        title: GrammarlyGO 2.0
+        description: Enhanced generative AI with longer-form content creation and style transfer.
+      - date: '2025-11-12'
+        title: Voice Detection
+        description: Analyzes and suggests improvements to maintain consistent brand voice.
+      - date: '2025-10-30'
+        title: Slack Integration
+        description: Real-time writing assistance now works directly in Slack messages.
 
   - name: Jasper
     company: Jasper
@@ -1375,7 +2161,7 @@ tools:
     category: writing
     tool_type: ai_tool
     website_url: https://jasper.ai
-    logo_url: https://www.jasper.ai/hubfs/jasper-logo-purple.svg
+    logo_url: /logos/jasper-logo.svg
     pricing_model: subscription
     has_free_tier: false
     tags:
@@ -1407,6 +2193,16 @@ tools:
       - Combine with human editing
       - Maintain consistency across content
       - Track performance of AI content
+    whats_new:
+      - date: '2025-11-30'
+        title: Jasper 4.0 Platform
+        description: Unified marketing platform with campaign planning, asset creation, and analytics.
+      - date: '2025-11-18'
+        title: Video Script Generation
+        description: New templates for creating scripts optimized for YouTube, TikTok, and ads.
+      - date: '2025-11-05'
+        title: Performance Insights
+        description: AI-powered analytics show which content styles drive the best engagement.
 
   # === RESEARCH & DATA ===
   - name: Hugging Face
@@ -1453,6 +2249,16 @@ tools:
       - Use appropriate model sizes
       - Contribute improvements back
       - Follow community guidelines
+    whats_new:
+      - date: '2025-12-02'
+        title: 1M+ Models Milestone
+        description: Platform now hosts over one million open-source models across all modalities.
+      - date: '2025-11-20'
+        title: Transformers 5.0
+        description: Major library update with unified API for all model types and 2x inference speed.
+      - date: '2025-11-08'
+        title: Spaces Pro Launch
+        description: Enterprise-grade Spaces with GPU access, custom domains, and SLA guarantees.
 
   - name: Replicate
     company: Replicate
@@ -1466,7 +2272,7 @@ tools:
     category: research
     tool_type: ai_tool
     website_url: https://replicate.com
-    logo_url: https://replicate.com/favicon.ico
+    logo_url: /logos/replicate-logo.png
     pricing_model: pay_per_use
     has_free_tier: true
     tags:
@@ -1498,3 +2304,918 @@ tools:
       - Use webhooks for async tasks
       - Monitor API usage
       - Version your model deployments
+    whats_new:
+      - date: '2025-11-28'
+        title: Flux 1.2 Default Model
+        description: Latest Flux model now default for image generation with improved photorealism.
+      - date: '2025-11-15'
+        title: Fine-Tuning API
+        description: Train custom models directly through Replicate without managing infrastructure.
+      - date: '2025-11-02'
+        title: Edge Deployments
+        description: Deploy models to edge locations for sub-100ms latency in key regions.
+
+  - name: Weaviate
+    company: Weaviate
+    tagline: AI-native vector database for RAG and hybrid search
+    description: >
+      Open-source vector database built for AI applications at weaviate.io. Native vector
+      search with sub-50ms query latency. Hybrid search combines vector similarity with
+      keyword matching. Built-in integrations with OpenAI, Cohere, Anthropic, and 50+
+      AI providers. Supports multi-tenancy, generative search, and automatic vectorization.
+      Scales to billions of objects with HNSW indexing. Free for self-hosted; Weaviate Cloud
+      starts at $25/mo.
+    category: research
+    tool_type: platform
+    website_url: https://weaviate.io
+    logo_url: /logos/weviate-logo.png
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Vector Database
+      - RAG
+      - Hybrid Search
+      - Open Source
+      - AI Infrastructure
+      - Embeddings
+    key_features:
+      - title: Vector Search
+        description: Sub-50ms query latency with HNSW indexing for billions of objects
+      - title: Hybrid Search
+        description: Combine vector similarity with keyword search using BM25
+      - title: Native Integrations
+        description: Built-in modules for OpenAI, Cohere, Anthropic, and 50+ providers
+      - title: Generative Search
+        description: RAG pipelines with automatic context retrieval and LLM generation
+      - title: Multi-Tenancy
+        description: Isolate data per tenant with automatic resource allocation
+    usage_tips:
+      - Use hybrid search for best retrieval quality combining vectors and keywords
+      - Enable generative search for RAG applications with automatic prompting
+      - Leverage built-in vectorization modules to skip embedding management
+      - Use multi-tenancy for SaaS applications with isolated customer data
+      - Monitor query performance with built-in observability tools
+    best_practices:
+      - Choose appropriate distance metric (cosine, dot, L2) for your embeddings
+      - Use batch imports for initial data loading to maximize throughput
+      - Implement proper schema design with cross-references for complex data
+      - Enable replication for production deployments requiring high availability
+      - Use filtered vector search to combine semantic and metadata filtering
+    whats_new:
+      - date: '2025-11-28'
+        title: Weaviate 1.27 Release
+        description: New dynamic indexing for 40% faster ingestion and improved multi-tenancy performance.
+      - date: '2025-11-15'
+        title: Named Vectors Support
+        description: Store multiple vector representations per object for multi-modal search.
+      - date: '2025-11-01'
+        title: Weaviate Agents Launch
+        description: New Query Agent, Transformation Agent, and Personalization Agent for AI workflows.
+
+  - name: RedisVL
+    company: Redis
+    tagline: AI-native Python client for Redis vector search
+    description: >
+      Redis Vector Library (RedisVL) is a powerful Python client for leveraging Redis
+      for AI applications. Design search schemas from YAML or Python, perform advanced
+      vector search with complex filtering, and use built-in vectorizers for OpenAI and
+      other providers. Includes CLI for ease of use, semantic caching to reduce LLM costs,
+      and LLM message history storage. Framework-agnostic and works with LangChain, LlamaIndex,
+      or standalone. Open source with Redis Cloud or self-hosted Redis Stack.
+    category: research
+    tool_type: platform
+    website_url: https://docs.redisvl.com/en/latest/
+    logo_url: https://redis.io/wp-content/uploads/2024/04/Logotype.svg
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - Vector Search
+      - Redis
+      - Python
+      - Open Source
+      - RAG
+      - LLM Caching
+    key_features:
+      - title: Index Management
+        description: Design search schemas and indices from YAML, Python, or CLI
+      - title: Advanced Vector Search
+        description: Complex filtering with hybrid search combining vectors and metadata
+      - title: Embedding Creation
+        description: Built-in vectorizers for OpenAI and other supported providers
+      - title: Semantic Caching
+        description: Cache LLM results to increase QPS and decrease costs
+      - title: CLI Interface
+        description: Command-line tool for quick interactions and management
+    usage_tips:
+      - Use YAML schema definitions for declarative index management
+      - Enable semantic caching to reduce LLM API costs significantly
+      - Leverage hybrid search for better retrieval with metadata filtering
+      - Use the CLI for rapid prototyping and debugging
+      - Store LLM message history for conversational applications
+    best_practices:
+      - Design schemas with appropriate field types and indexing strategies
+      - Use Redis Cloud for managed hosting or Redis Stack for local development
+      - Implement semantic caching for frequently asked questions
+      - Monitor cache hit rates to optimize caching strategy
+      - Use vectorizers to simplify embedding pipeline management
+    whats_new:
+      - date: '2025-11-28'
+        title: RedisVL 0.3 Release
+        description: New semantic router for dynamic prompt routing and improved reranker support.
+      - date: '2025-11-15'
+        title: Embedding Cache Launch
+        description: Dedicated caching layer for embeddings to reduce vectorization costs.
+      - date: '2025-11-01'
+        title: SVS-VAMANA Algorithm
+        description: New vector search algorithm for improved recall and performance at scale.
+
+  - name: Qdrant
+    company: Qdrant
+    tagline: Open-source vector database for AI applications
+    description: >
+      High-performance vector search engine at qdrant.tech designed for massive-scale AI
+      applications. Features advanced filtering, payload support with full-text search,
+      and tiered multitenancy. Cloud-native with vertical and horizontal scaling, zero-downtime
+      upgrades, and enterprise-grade managed cloud. ACORN algorithm for efficient indexing,
+      sparse vectors, and quantization for memory optimization. Used for RAG, recommendation
+      systems, and semantic search. Open source with Qdrant Cloud starting at $25/mo.
+    category: research
+    tool_type: platform
+    website_url: https://qdrant.tech
+    logo_url: /logos/qdrant-logo.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Vector Database
+      - Vector Search
+      - Open Source
+      - RAG
+      - Semantic Search
+      - AI Infrastructure
+    key_features:
+      - title: Advanced Filtering
+        description: Rich payload support with full-text search and complex query conditions
+      - title: Cloud-Native Scalability
+        description: Vertical and horizontal scaling with zero-downtime upgrades
+      - title: Tiered Multitenancy
+        description: Isolate data per tenant with cost-efficient resource allocation
+      - title: ACORN Algorithm
+        description: Efficient approximate nearest neighbor search with high recall
+      - title: Quantization Support
+        description: Reduce memory footprint with scalar, product, and binary quantization
+    usage_tips:
+      - Use payload filtering to combine vector search with metadata conditions
+      - Enable quantization to reduce memory usage for large-scale deployments
+      - Leverage sparse vectors for keyword-augmented semantic search
+      - Use tiered multitenancy for cost-efficient SaaS applications
+      - Monitor cluster health with built-in observability tools
+    best_practices:
+      - Choose appropriate HNSW parameters (ef_construct, m) for your use case
+      - Use collection aliases for zero-downtime index updates
+      - Implement proper error handling for distributed operations
+      - Use snapshots for backup and disaster recovery
+      - Optimize payload schema to minimize storage and improve query performance
+    whats_new:
+      - date: '2025-12-01'
+        title: Qdrant 1.16 Release
+        description: Tiered multitenancy, ACORN algorithm, and full-text search upgrades for better performance.
+      - date: '2025-11-20'
+        title: Qdrant Edge Private Beta
+        description: Run Qdrant on edge devices for local-first AI applications with privacy.
+      - date: '2025-11-10'
+        title: Qdrant Cloud Inference
+        description: Managed embeddings service integrated with Qdrant Cloud for simplified workflows.
+
+  - name: LlamaIndex
+    company: LlamaIndex
+    tagline: Data framework for LLM applications and AI agents
+    description: >
+      Open-source framework at llamaindex.ai for building context-augmented LLM applications.
+      Features data connectors for 160+ sources (APIs, PDFs, databases), advanced RAG with
+      query engines and chat engines, and workflow orchestration for multi-step AI tasks.
+      LlamaCloud offers managed document parsing and indexing with enterprise-grade processing.
+      Used for chatbots, agents, and semantic search. Framework-agnostic with Python and TypeScript
+      support. Open source with LlamaCloud offering 10k free credits.
+    category: code
+    tool_type: framework
+    website_url: https://www.llamaindex.ai
+    logo_url: /logos/llamaindex-logo.png
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - RAG
+      - Data Framework
+      - AI Agents
+      - LLM
+      - Open Source
+      - Document Processing
+    key_features:
+      - title: Data Connectors
+        description: 160+ integrations for loading data from APIs, databases, and documents
+      - title: Advanced RAG
+        description: Query engines with citation, context window optimization, and multi-document retrieval
+      - title: LlamaCloud
+        description: Managed parsing and indexing for complex documents with table extraction
+      - title: Workflow Orchestration
+        description: Build multi-step agentic workflows with state management
+      - title: Chat Engines
+        description: Conversational interfaces with memory and context management
+    usage_tips:
+      - Use data connectors to easily ingest from multiple sources
+      - Leverage query engines for advanced RAG with citations
+      - Use LlamaCloud for production document processing
+      - Implement workflows for complex multi-step agent tasks
+      - Enable observability with LlamaTrace for debugging
+    best_practices:
+      - Design index structure based on your query patterns
+      - Use appropriate chunking strategies for your documents
+      - Implement hybrid search combining vector and keyword retrieval
+      - Monitor and optimize prompt templates for your use case
+      - Use LlamaParse for complex documents with tables and figures
+    whats_new:
+      - date: '2025-12-01'
+        title: LlamaCloud GA Launch
+        description: Production-ready managed parsing and indexing with 10k free credits for new users.
+      - date: '2025-11-20'
+        title: Workflows 2.0 Release
+        description: Enhanced orchestration with visual debugging and improved state management.
+      - date: '2025-11-10'
+        title: LlamaParse Tables
+        description: Advanced table extraction and understanding for financial and technical documents.
+
+  - name: Senso
+    company: Senso
+    tagline: Enterprise visibility platform for AI answer engines
+    description: >
+      Y Combinator-backed platform at senso.ai that aligns enterprise knowledge with generative
+      AI platforms like ChatGPT, Perplexity, and Gemini. Track brand visibility, evaluate content
+      gaps, remediate with optimized messaging, and publish to drive more citations and brand
+      mentions. Transforms verified enterprise content into structured outputs that LLMs trust.
+      Delivers 2-4 week time to value for citation lift. Includes playground to see industry
+      rankings and real prompt analysis. Used for brand visibility and customer journey optimization.
+    category: research
+    tool_type: platform
+    website_url: https://www.senso.ai
+    logo_url: /logos/senso.png
+    pricing_model: subscription
+    has_free_tier: false
+    tags:
+      - Brand Visibility
+      - AI Citation
+      - Content Optimization
+      - Enterprise
+      - Generative AI
+      - Marketing
+    key_features:
+      - title: Conversation Tracking
+        description: Monitor visibility and content gaps across AI-powered platforms
+      - title: Content Remediation
+        description: Auto-generate content to increase citations with personalized messaging
+      - title: Ground Truth Verification
+        description: Align answer engines with your internal knowledge base
+      - title: Publisher Network
+        description: Distribute to 50K+ publishers and direct to model providers
+      - title: Citation Analytics
+        description: Track mentions, signups, and transactions across generative platforms
+    usage_tips:
+      - Use the playground to see how your industry ranks in AI citations
+      - Evaluate content gaps with real prompt analysis
+      - Implement content remediation for increased brand mentions
+      - Track visibility across ChatGPT, Perplexity, and Gemini
+      - Publish verified content to the publisher network
+    best_practices:
+      - Ingest verified business data from trusted internal sources
+      - Structure content for LLMs and agentic systems
+      - Monitor citation lift metrics regularly
+      - Optimize messaging based on content gap analysis
+      - Align with internal knowledge base for accuracy
+    whats_new:
+      - date: '2025-12-01'
+        title: Y Combinator Funding
+        description: Backed by Y Combinator to accelerate brand visibility in generative AI platforms.
+      - date: '2025-11-20'
+        title: Playground Launch
+        description: Interactive tool to explore industry rankings and brand visibility in AI citations.
+      - date: '2025-11-10'
+        title: Publisher Network Expansion
+        description: Now distributing to 50K+ publishers and direct model provider integrations.
+
+  - name: HackerSquad
+    company: HackerSquad
+    tagline: Developer community platform with events and DevRel solutions
+    description: >
+      Platform at hackersquad.io connecting developers through hackathons, workshops, and tech
+      talks. Provides community hub for networking, mentorship, and collaboration. Offers developer
+      toolkit with resources, tutorials, and boilerplate code. DevRel solutions include strategic
+      consulting, community management, and content creation. Event marketplace for brand activation,
+      product feedback, and developer engagement managed end-to-end. Sponsorship and co-marketing
+      opportunities available. Used by companies for developer outreach and talent engagement.
+    category: code
+    tool_type: platform
+    website_url: https://hackersquad.io
+    logo_url: /logos/hackersquad-logo.png
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Developer Community
+      - Hackathons
+      - DevRel
+      - Networking
+      - Events
+      - Learning
+    key_features:
+      - title: Community Hub
+        description: Connect with peers, join forums, study groups, and contribute to open-source
+      - title: Developer Toolkit
+        description: Access resources, tutorials, and boilerplate code to kickstart projects
+      - title: Exclusive Events
+        description: Hackathons, workshops, and tech talks designed to challenge and inspire
+      - title: DevRel Solutions
+        description: Strategic consulting, community management, and content creation services
+      - title: Event Marketplace
+        description: Tailored events for product feedback, brand awareness, and engagement
+    usage_tips:
+      - Join study groups to connect with peers and share knowledge
+      - Participate in hackathons to showcase skills and win prizes
+      - Use boilerplate code to accelerate project development
+      - Leverage DevRel solutions for developer outreach strategies
+      - Sponsor events to engage top developer talent
+    best_practices:
+      - Actively participate in forums to build your network
+      - Attend workshops to stay updated with tech trends
+      - Contribute to open-source projects in the community
+      - Use the event marketplace for targeted developer engagement
+      - Establish long-term partnerships for ecosystem growth
+    whats_new:
+      - date: '2025-12-01'
+        title: Event Marketplace Launch
+        description: New platform for brands to engage developers through managed end-to-end events.
+      - date: '2025-11-20'
+        title: DevRel Solutions Expansion
+        description: Added strategic consulting and content creation services for developer outreach.
+      - date: '2025-11-10'
+        title: Community Hub 2.0
+        description: Enhanced forums, study groups, and mentorship matching for better collaboration.
+
+  - name: Neo4j
+    company: Neo4j
+    tagline: Native graph database for knowledge graphs and AI systems
+    description: >
+      Industry-leading graph database at neo4j.com for connected data and relationships. Neo4j AuraDB
+      offers fully managed cloud database, while self-managed deployment available anywhere. Cypher
+      declarative query language optimized for graph traversal. Graph Data Science library with 65+
+      algorithms for analytics and ML. Neo4j Bloom for visual exploration. GraphQL integration for
+      low-code APIs. Used for knowledge graphs backing LLMs, fraud detection, recommendation engines,
+      and network analysis. Free tier on AuraDB; enterprise pricing available.
+    category: research
+    tool_type: platform
+    website_url: https://neo4j.com
+    logo_url: /logos/neoj4-logo.jpeg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Graph Database
+      - Knowledge Graph
+      - AI Systems
+      - Graph Analytics
+      - Cypher
+      - Open Source
+    key_features:
+      - title: Native Graph Storage
+        description: Purpose-built graph database with ACID transactions and index-free adjacency
+      - title: Cypher Query Language
+        description: Declarative language for pattern matching and graph traversal queries
+      - title: Neo4j AuraDB
+        description: Fully managed cloud database with auto-scaling and enterprise features
+      - title: Graph Data Science
+        description: 65+ algorithms for centrality, community detection, and ML pipelines
+      - title: Knowledge Graph for AI
+        description: Back LLMs with structured knowledge for better context and accuracy
+    usage_tips:
+      - Use Cypher's pattern matching for intuitive graph queries
+      - Leverage AuraDB for managed deployment without infrastructure overhead
+      - Apply Graph Data Science algorithms for insights and ML features
+      - Use Neo4j Bloom for visual graph exploration and analysis
+      - Integrate with LLMs via knowledge graphs for RAG applications
+    best_practices:
+      - Model relationships explicitly for optimal graph structure
+      - Use appropriate indexes for query performance
+      - Implement graph projections for large-scale analytics
+      - Monitor query performance with execution plans
+      - Use GraphQL for rapid API development with graph backends
+    whats_new:
+      - date: '2025-12-01'
+        title: Neo4j 5.25 Release
+        description: Enhanced vector search integration for hybrid knowledge graph and vector similarity queries.
+      - date: '2025-11-20'
+        title: GenAI Knowledge Graph
+        description: New templates and tools for integrating Neo4j with LangChain, LlamaIndex, and OpenAI.
+      - date: '2025-11-10'
+        title: AuraDB Vector Index
+        description: Native vector indexing in managed cloud for AI-powered semantic search.
+
+  - name: OpenAGI
+    company: AI Planet
+    tagline: Open-source framework for building autonomous human-like agents
+    description: >
+      Framework at openagi.aiplanet.com for creating autonomous agents that plan, reason, and
+      execute actions like humans. Provides components including Admin for orchestration, Workers
+      for task execution, Planner for task decomposition, and Memory for context retention. Supports
+      multiple LLMs and vector stores. Built-in use cases for movie recommendations, job search,
+      blog writing, news aggregation, and itinerary planning. Agents learn, improve, and become
+      autonomous over time. Open source with Python SDK.
+    category: code
+    tool_type: framework
+    website_url: https://openagi.aiplanet.com
+    logo_url: /logos/openagi.png
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - AI Agents
+      - AGI
+      - Autonomous Agents
+      - Open Source
+      - Python
+      - Framework
+    key_features:
+      - title: Admin Component
+        description: Orchestrate multi-agent workflows and coordinate autonomous execution
+      - title: Worker System
+        description: Execute specialized tasks with dedicated worker agents
+      - title: Intelligent Planner
+        description: Decompose complex tasks into actionable steps with reasoning
+      - title: Memory Management
+        description: Retain context and learn from past interactions for improvement
+      - title: Built-in Use Cases
+        description: Pre-built agents for recommendations, search, writing, and planning
+    usage_tips:
+      - Start with built-in use cases like blog writing or job search agents
+      - Use the planner component for complex multi-step workflows
+      - Leverage memory for agents that need to learn over time
+      - Integrate with your preferred LLM provider
+      - Customize workers for domain-specific tasks
+    best_practices:
+      - Design clear goals and constraints for your agents
+      - Implement proper error handling for autonomous execution
+      - Use memory strategically to improve agent performance
+      - Test agents in controlled environments before production
+      - Monitor agent decisions and actions for quality assurance
+    whats_new:
+      - date: '2025-12-01'
+        title: OpenAGI Framework Launch
+        description: Open-source release enabling developers to build autonomous human-like agents.
+      - date: '2025-11-20'
+        title: Multi-Agent Workflows
+        description: New admin component for orchestrating complex multi-agent collaborations.
+      - date: '2025-11-10'
+        title: Pre-built Agent Templates
+        description: Five ready-to-use agents for common use cases like writing and research.
+
+  # === AGENT FRAMEWORKS ===
+  - name: LangChain
+    company: LangChain
+    tagline: "The #1 framework for building AI agents"
+    description: >
+      Open-source framework for building LLM-powered applications. LangChain provides
+      composable building blocks for chains and agents. LangGraph enables custom agent
+      architectures with low-level control. LangSmith offers observability, evaluation,
+      and deployment. 100K+ GitHub stars, 90M monthly downloads, 1000+ integrations.
+      Open source core; LangSmith has free tier and enterprise plans.
+    category: code
+    tool_type: framework
+    website_url: https://www.langchain.com
+    logo_url: https://simpleicons.org/icons/langchain.svg
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - AI Agents
+      - Framework
+      - LLM
+      - Open Source
+      - Python
+      - JavaScript
+    key_features:
+      - title: LangChain Framework
+        description: Pre-built components for chains, agents, and retrieval systems
+      - title: LangGraph
+        description: Build custom agents with state machines and low-level control
+      - title: LangSmith
+        description: Trace, debug, evaluate, and deploy agents to production
+      - title: Model Agnostic
+        description: Works with OpenAI, Anthropic, Google, and 100+ LLM providers
+      - title: Rich Ecosystem
+        description: 1000+ integrations with vector stores, tools, and data sources
+    usage_tips:
+      - Start with LangChain for quick prototyping
+      - Use LangGraph for complex agent architectures
+      - Enable LangSmith tracing for debugging
+      - Use retrieval chains for RAG applications
+      - Leverage community templates and examples
+    best_practices:
+      - Structure agents with clear tool definitions
+      - Use streaming for better UX in long operations
+      - Implement proper error handling in chains
+      - Monitor with LangSmith in production
+      - Version your prompts and evaluate systematically
+    whats_new:
+      - date: '2025-12-01'
+        title: Deep Agents Launch
+        description: New framework for planning, memory, and sub-agent orchestration for complex tasks.
+      - date: '2025-11-20'
+        title: LangGraph 0.2
+        description: Enhanced state management, checkpointing, and human-in-the-loop support.
+      - date: '2025-11-08'
+        title: Agent Builder Beta
+        description: No-code agent creation in LangSmith with visual workflow editor.
+
+  - name: LangGraph
+    company: LangChain
+    tagline: Build stateful, multi-actor AI agents with full control
+    description: >
+      Low-level framework from LangChain for building stateful, agentic applications.
+      Define agents as graphs with nodes (functions) and edges (transitions), enabling
+      complex multi-step workflows with branching logic, cycles, and human-in-the-loop.
+      Built on top of LangChain with full control over agent behavior. Supports persistence,
+      streaming, time travel debugging, and deployment via LangGraph Cloud. Open source;
+      cloud hosting available through LangSmith.
+    category: code
+    tool_type: framework
+    website_url: https://www.langchain.com/langgraph
+    logo_url: https://simpleicons.org/icons/langchain.svg
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - AI Agents
+      - Framework
+      - State Management
+      - Open Source
+      - Python
+      - JavaScript
+    key_features:
+      - title: Graph-Based Architecture
+        description: Define agents as state machines with nodes and edges for precise control flow
+      - title: Persistent State
+        description: Built-in checkpointing for long-running agents with state recovery
+      - title: Human-in-the-Loop
+        description: Pause execution for human approval, input, or review before continuing
+      - title: Time Travel Debugging
+        description: Replay and inspect agent execution at any point in the graph
+      - title: Streaming Support
+        description: Stream intermediate results and state updates in real-time
+    usage_tips:
+      - Use for complex agents that need precise control over execution flow
+      - Define clear state schemas for your application
+      - Leverage checkpointing for resumable long-running tasks
+      - Use conditional edges for branching logic based on agent decisions
+      - Enable streaming for better user experience in multi-step workflows
+    best_practices:
+      - Start simple and add complexity incrementally
+      - Use state machines for workflows with multiple decision points
+      - Implement proper error handling at each node
+      - Leverage LangSmith for monitoring and debugging in production
+      - Test state transitions thoroughly before deployment
+    whats_new:
+      - date: '2025-11-20'
+        title: LangGraph 0.2 Release
+        description: Enhanced state management, checkpointing improvements, and better human-in-the-loop support.
+      - date: '2025-11-10'
+        title: LangGraph Cloud GA
+        description: Production-ready hosting for LangGraph agents with auto-scaling and monitoring.
+      - date: '2025-10-28'
+        title: JavaScript Support
+        description: LangGraph now available for TypeScript/JavaScript alongside Python.
+
+  - name: LangSmith
+    company: LangChain
+    tagline: Observability, evaluation, and deployment for AI agents
+    description: >
+      LangSmith provides complete visibility into agent behavior with tracing, real-time
+      monitoring, evaluation, and deployment tools. Framework-agnostic platform works with
+      LangChain, LangGraph, or any AI framework. Trace agent execution step-by-step, monitor
+      business-critical metrics with live dashboards, get alerts on issues, and discover usage
+      patterns automatically. Includes prompt testing, dataset management, and production
+      deployment. Free tier available; paid plans from $39/mo.
+    category: code
+    tool_type: platform
+    website_url: https://www.langchain.com/langsmith/observability
+    logo_url: https://simpleicons.org/icons/langchain.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Observability
+      - Monitoring
+      - AI Agents
+      - Tracing
+      - Evaluation
+      - Production
+    key_features:
+      - title: Agent Tracing
+        description: Debug non-deterministic LLM behavior with step-by-step execution traces
+      - title: Live Dashboards
+        description: Track costs, latency, and response quality with real-time monitoring
+      - title: Automatic Insights
+        description: Discover usage patterns and issues with clustered conversation analysis
+      - title: Prompt Evaluation
+        description: Test and iterate on prompts with datasets and automated evaluations
+      - title: Production Deployment
+        description: Ship and scale agents with monitoring and alerting built-in
+    usage_tips:
+      - Set one environment variable to start tracing with LangChain or LangGraph
+      - Create custom dashboards to track business-critical metrics
+      - Use conversation clustering to understand user needs and find issues
+      - Enable OTel support to unify observability across services
+      - Leverage evaluation datasets for systematic prompt improvement
+    best_practices:
+      - Monitor key metrics like token usage, latency, and error rates in production
+      - Use tracing to debug issues before deploying to production
+      - Create evaluation datasets for regression testing prompt changes
+      - Set up alerts for critical failures or performance degradation
+      - Use insights to identify and address systemic issues proactively
+    whats_new:
+      - date: '2025-11-25'
+        title: OTel Support Launch
+        description: Unify observability stack with OpenTelemetry integration for cross-service tracing.
+      - date: '2025-11-15'
+        title: Agent Builder Beta
+        description: No-code agent creation with visual workflow editor integrated into LangSmith.
+      - date: '2025-11-01'
+        title: Self-Hosted Enterprise
+        description: Run LangSmith on your Kubernetes cluster with data staying in your environment.
+
+  - name: CrewAI
+    company: CrewAI
+    tagline: Build and orchestrate multi-agent AI workflows
+    description: >
+      Open-source Python framework for orchestrating role-playing AI agents. Define agents
+      with specific roles, goals, and backstories that collaborate on complex tasks. Supports
+      hierarchical and sequential processes, tool integration, and any LLM provider including
+      OpenAI, Anthropic, and local models. CrewAI Enterprise adds UI Studio for visual
+      workflow building and one-click deployment. 40K+ GitHub stars. Open source core;
+      Enterprise pricing available.
+    category: code
+    tool_type: framework
+    website_url: https://www.crewai.com
+    logo_url: /logos/CrewAI-logo.svg
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - AI Agents
+      - Framework
+      - Multi-Agent
+      - Open Source
+      - Python
+      - Orchestration
+    key_features:
+      - title: Role-Based Agents
+        description: Define agents with specific roles, goals, and backstories for focused task execution
+      - title: Flexible Processes
+        description: Sequential or hierarchical workflows with automatic task delegation
+      - title: Tool Integration
+        description: Connect agents to custom tools, APIs, and external services
+      - title: LLM Agnostic
+        description: Works with OpenAI, Anthropic, local models, and any LLM provider
+      - title: CrewAI Enterprise
+        description: Visual UI Studio, one-click deployment, and managed infrastructure
+    usage_tips:
+      - Define clear roles and goals for each agent in your crew
+      - Use hierarchical process for complex tasks requiring coordination
+      - Leverage tools to give agents access to external data and APIs
+      - Start with simple crews and add complexity incrementally
+      - Use memory features for agents that need context across tasks
+    best_practices:
+      - Keep agent responsibilities focused and well-defined
+      - Test individual agents before combining into crews
+      - Use appropriate LLMs for different agent roles (cheaper for simple, powerful for complex)
+      - Implement proper error handling for production deployments
+      - Monitor token usage when running multiple agents
+    whats_new:
+      - date: '2025-12-01'
+        title: CrewAI Enterprise Launch
+        description: Visual UI Studio for building workflows, one-click deployment, and enterprise support.
+      - date: '2025-11-20'
+        title: Flows Feature
+        description: New Flows API for building event-driven, stateful AI workflows with checkpoints.
+      - date: '2025-11-05'
+        title: 40K GitHub Stars
+        description: CrewAI reaches 40,000 stars, becoming the most popular multi-agent framework.
+
+  - name: Open Standard Agents
+    tagline: Open specification for building AI agents
+    description: >
+      Open Standard Agents (OSSA) is an open specification for building interoperable
+      AI agents. Provides a standardized framework for agent communication, capabilities,
+      and tool integration. Enables agents from different vendors to work together
+      seamlessly. Includes specifications for agent identity, message formats, and
+      capability discovery. Community-driven project promoting AI agent interoperability.
+    category: code
+    tool_type: framework
+    website_url: https://openstandardagents.org
+    logo_url: https://openstandardagents.org/assets/brand/ossa-logo.svg
+    pricing_model: open_source
+    has_free_tier: true
+    tags:
+      - AI Agents
+      - Framework
+      - Open Source
+      - Interoperability
+      - Specification
+      - Standards
+    key_features:
+      - title: Agent Interoperability
+        description: Standard protocols for agents to communicate across platforms
+      - title: Capability Discovery
+        description: Agents can discover and advertise their capabilities
+      - title: Tool Integration
+        description: Standardized way to define and share agent tools
+      - title: Message Formats
+        description: Common message structures for agent communication
+      - title: Open Specification
+        description: Community-driven, vendor-neutral standard
+    usage_tips:
+      - Use for building agents that need to work with other systems
+      - Implement the spec for cross-platform agent compatibility
+      - Reference the specification when designing agent APIs
+      - Contribute to the standard as an early adopter
+      - Use as a foundation for multi-agent systems
+    best_practices:
+      - Follow the specification closely for compatibility
+      - Test interoperability with reference implementations
+      - Participate in the community for updates
+      - Document your agent's capabilities clearly
+      - Consider backwards compatibility in implementations
+    whats_new:
+      - date: '2025-11-30'
+        title: OSSA v0.2.9 Foundation Release
+        description: Enterprise security models, A2A Protocol for multi-agent orchestration, and OpenTelemetry observability.
+      - date: '2025-11-15'
+        title: Conformance Testing Suite
+        description: New testing tools to validate agent implementations against the specification.
+      - date: '2025-10-20'
+        title: Framework Adapters
+        description: Official adapters for LangChain, CrewAI, and AutoGen now available via npm.
+
+  # === UI COMPONENTS & DESIGN RESOURCES ===
+  - name: Figma
+    company: Figma
+    tagline: Design, prototype, and collaborate in the browser
+    description: >
+      Browser-based collaborative design platform for creating user interfaces, prototypes,
+      and design systems. Real-time multiplayer editing lets teams design together. Features
+      auto-layout, components with variants, Dev Mode for design-to-code handoff, and
+      FigJam for whiteboarding. Figma AI assists with design suggestions and asset generation.
+      Extensive plugin ecosystem. Free tier; Professional at $15/editor/mo.
+    category: design
+    tool_type: ai_tool
+    website_url: https://www.figma.com
+    logo_url: https://upload.wikimedia.org/wikipedia/commons/3/33/Figma-logo.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Design
+      - UI/UX
+      - Prototyping
+      - Collaboration
+      - Design Systems
+    key_features:
+      - title: Real-Time Collaboration
+        description: Multiple designers work simultaneously with live cursors and comments
+      - title: Components & Variants
+        description: Reusable design elements with multiple states and properties
+      - title: Auto Layout
+        description: Responsive designs that adapt to content changes automatically
+      - title: Dev Mode
+        description: Inspect designs, export assets, and generate code snippets
+      - title: Figma AI
+        description: AI-powered design suggestions, asset generation, and content filling
+    usage_tips:
+      - Use components for consistent design systems
+      - Enable auto-layout for responsive designs
+      - Use Dev Mode to streamline developer handoff
+      - Leverage plugins for extended functionality
+      - Use FigJam for brainstorming and planning
+    best_practices:
+      - Establish a component library early in projects
+      - Use naming conventions for organized layer management
+      - Create design tokens for consistent styling
+      - Document components with descriptions
+      - Use branches for exploring design variations
+    whats_new:
+      - date: '2025-12-01'
+        title: Figma AI General Availability
+        description: AI features now available to all users including visual search, layer renaming, and content generation.
+      - date: '2025-11-18'
+        title: Dev Mode 2.0
+        description: Enhanced code generation with framework-specific output for React, SwiftUI, and Flutter.
+      - date: '2025-11-05'
+        title: Variables 2.0
+        description: Advanced design tokens with modes, scoping, and improved organization for design systems.
+
+  - name: Canva
+    company: Canva
+    tagline: Design anything, publish anywhere
+    description: >
+      Online design platform for creating graphics, presentations, videos, and print
+      materials. Features Magic Studio AI tools for text-to-image generation, background
+      removal, Magic Write for copy, and Magic Design for instant layouts. 250M+ monthly
+      users with millions of templates and stock assets. Team collaboration with Brand
+      Kit for consistency. Free tier; Pro at $15/mo with premium assets and AI features.
+    category: design
+    tool_type: ai_tool
+    website_url: https://www.canva.com
+    logo_url: /logos/canva-logo.svg
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - Design
+      - Graphics
+      - Templates
+      - AI Design
+      - Social Media
+    key_features:
+      - title: Magic Studio AI
+        description: AI-powered tools for image generation, editing, and design automation
+      - title: Templates Library
+        description: Millions of customizable templates for any format or occasion
+      - title: Brand Kit
+        description: Store brand colors, fonts, and logos for consistent designs
+      - title: Video Editor
+        description: Create and edit videos with animations, music, and AI voiceover
+      - title: Team Collaboration
+        description: Real-time collaboration with comments, approvals, and sharing
+    usage_tips:
+      - Start with templates and customize to save time
+      - Use Magic Resize to adapt designs for multiple platforms
+      - Set up Brand Kit for consistent brand identity
+      - Use Magic Write for headline and copy suggestions
+      - Export directly to social platforms or print services
+    best_practices:
+      - Organize designs in folders and teams
+      - Use Brand Kit to maintain visual consistency
+      - Leverage templates for quick turnaround
+      - Review AI-generated content before publishing
+      - Use version history to track changes
+    whats_new:
+      - date: '2025-12-02'
+        title: Magic Studio 2.0
+        description: Enhanced AI suite with improved image generation, video editing, and design automation.
+      - date: '2025-11-20'
+        title: Dream Lab Integration
+        description: Text-to-image generation powered by proprietary AI model trained on licensed content.
+      - date: '2025-11-08'
+        title: Canva Sheets Launch
+        description: New spreadsheet product with AI-powered data visualization and chart generation.
+
+  - name: 21st.dev
+    tagline: Discover community-made UI components
+    description: >
+      21st.dev is a community-driven platform for discovering and sharing high-quality
+      React UI components built with Tailwind CSS. Browse thousands of ready-to-use
+      components including buttons, cards, modals, forms, marketing blocks, hero sections,
+      and advanced shader effects. Copy and remix components shared by the community
+      to accelerate your frontend development.
+    category: design
+    tool_type: component_library
+    website_url: https://21st.dev
+    logo_url: https://21st.dev/favicon.ico
+    pricing_model: free
+    has_free_tier: true
+    tags:
+      - React
+      - Tailwind CSS
+      - UI Components
+      - Design System
+      - Frontend
+      - Community
+    key_features:
+      - title: Extensive Component Library
+        description: Thousands of UI components organized by category - buttons, cards, inputs, modals, and more
+      - title: Marketing Blocks
+        description: Ready-made hero sections, CTAs, pricing tables, and testimonial blocks
+      - title: Copy & Remix
+        description: One-click copy of component code with easy customization
+      - title: Community Contributions
+        description: Components shared by designers and developers worldwide
+      - title: Tailwind CSS Native
+        description: All components built with Tailwind for easy integration
+    usage_tips:
+      - Browse components by category to find what you need
+      - Copy component code directly into your React project
+      - Customize Tailwind classes to match your design system
+      - Explore shader effects for advanced visual elements
+      - Use marketing blocks to quickly build landing pages
+    best_practices:
+      - Review component code before using in production
+      - Adapt components to your existing design system
+      - Consider accessibility when customizing components
+      - Test components across different screen sizes
+      - Credit original creators when appropriate
+    whats_new:
+      - date: '2025-11-28'
+        title: AI Component Generator
+        description: Describe a component in natural language and get working React/Tailwind code.
+      - date: '2025-11-12'
+        title: Figma Plugin Launch
+        description: Export components directly from Figma designs to 21st.dev format.
+      - date: '2025-10-30'
+        title: 10,000 Components Milestone
+        description: Community library reaches 10,000 curated, production-ready components.

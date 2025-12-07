@@ -17,7 +17,7 @@ const MAX_RECONNECT_DELAY = 10000;
 const HEARTBEAT_INTERVAL = 30000;
 const CONNECTION_TIMEOUT = 10000;
 
-export type MatchType = 'random' | 'ai';
+export type MatchType = 'random' | 'ai' | 'active_user';
 
 export interface MatchedOpponent {
   id: number;
@@ -246,7 +246,6 @@ export function useMatchmaking({
         }, CONNECTION_TIMEOUT);
 
         ws.onopen = () => {
-          console.log('[Matchmaking] Connected');
           if (connectionTimeoutRef.current) {
             clearTimeout(connectionTimeoutRef.current);
             connectionTimeoutRef.current = null;
@@ -265,7 +264,6 @@ export function useMatchmaking({
         ws.onmessage = (event) => {
           try {
             const data: WebSocketMessage = JSON.parse(event.data);
-            console.log('[Matchmaking] Message:', data.event, data);
 
             if (data.event === 'pong') return;
 
@@ -328,6 +326,12 @@ export function useMatchmaking({
                 onErrorRef.current?.('Queue timed out. Please try again.');
                 break;
 
+              case 'no_active_users':
+                setIsSearching(false);
+                setQueueStatus({ inQueue: false, position: 0, expiresAt: null });
+                onErrorRef.current?.('No active users available right now. Try again or battle Pip!');
+                break;
+
               case 'error':
                 setIsSearching(false);
                 onErrorRef.current?.(data.error ?? 'An error occurred');
@@ -348,7 +352,6 @@ export function useMatchmaking({
         };
 
         ws.onclose = (event) => {
-          console.log('[Matchmaking] Closed:', event.code);
           setIsConnected(false);
           setIsConnecting(false);
           isConnectingRef.current = false;
@@ -449,10 +452,18 @@ export function useMatchmaking({
     [joinQueue]
   );
 
-  // Find random opponent
+  // Find random opponent (queue-based)
   const findRandomMatch = useCallback(
     (challengeTypeKey?: string) => {
       return joinQueue('random', challengeTypeKey);
+    },
+    [joinQueue]
+  );
+
+  // Find an active user to battle (sends them a notification)
+  const findActiveUser = useCallback(
+    (challengeTypeKey?: string) => {
+      return joinQueue('active_user', challengeTypeKey);
     },
     [joinQueue]
   );
@@ -483,5 +494,6 @@ export function useMatchmaking({
     requestQueueStatus,
     matchWithPip,
     findRandomMatch,
+    findActiveUser,
   };
 }

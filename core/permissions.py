@@ -3,6 +3,19 @@
 from rest_framework import permissions
 
 
+class IsAdminRole(permissions.BasePermission):
+    """Permission that requires admin role.
+
+    Uses the User model's is_admin_role property which checks
+    role == 'admin' OR is_superuser.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return request.user.is_admin_role
+
+
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """
     Object-level permission to allow read access to all,
@@ -22,12 +35,12 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 class IsProfileOwner(permissions.BasePermission):
     """
     Object-level permission to only allow users to view/edit their own profile.
-    Staff users can view all profiles.
+    Admin users can view all profiles.
     """
 
     def has_object_permission(self, request, view, obj):
-        # Staff can access any profile
-        if request.user.is_staff:
+        # Admin users can access any profile
+        if request.user.is_authenticated and request.user.is_admin_role:
             return True
 
         # Users can only access their own profile
@@ -45,8 +58,8 @@ class IsProfileOwnerOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return request.user.is_authenticated
 
-        # Write permissions only for the profile owner or staff
-        return obj == request.user or request.user.is_staff
+        # Write permissions only for the profile owner or admin
+        return obj == request.user or request.user.is_admin_role
 
 
 class CanModifyRole(permissions.BasePermission):

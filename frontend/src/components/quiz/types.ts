@@ -68,11 +68,14 @@ export interface QuizAnswer {
 
 export interface QuizAttempt {
   id: string;
-  quizId: string;
-  userId: string;
+  quiz: Quiz;
+  quizId?: string;
+  userId?: string;
   answers: Record<string, QuizAnswer>;
   score: number;
   totalQuestions: number;
+  percentageScore: number;
+  isCompleted: boolean;
   startedAt: string;
   completedAt?: string;
 }
@@ -122,7 +125,10 @@ export interface QuizListResponse {
 
 // Filter types for QuizListPage
 export interface QuizFilters {
-  topic?: string[];
+  topic?: string[];  // legacy topic field
+  topics?: string[]; // topics array field
+  tools?: number[];  // tool IDs
+  categories?: number[];  // category IDs
   difficulty?: QuizDifficulty[];
   completed?: boolean;
   search?: string;

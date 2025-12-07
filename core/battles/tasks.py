@@ -576,10 +576,10 @@ def cleanup_stale_battles() -> dict[str, Any]:
         battle.save(update_fields=['status', 'phase'])
         results['expired_active'] += 1
 
-    # Handle battles stuck in GENERATING phase (no update for 10 minutes)
+    # Handle battles stuck in GENERATING phase (started more than 10 minutes ago)
     stuck_generating = PromptBattle.objects.filter(
         phase=BattlePhase.GENERATING,
-        updated_at__lt=now - timedelta(minutes=10),
+        started_at__lt=now - timedelta(minutes=10),
     )
 
     for battle in stuck_generating:
@@ -594,10 +594,10 @@ def cleanup_stale_battles() -> dict[str, Any]:
             battle.save(update_fields=['status', 'phase'])
         results['stuck_generating'] += 1
 
-    # Handle battles stuck in JUDGING phase (no update for 5 minutes)
+    # Handle battles stuck in JUDGING phase (started more than 5 minutes ago)
     stuck_judging = PromptBattle.objects.filter(
         phase=BattlePhase.JUDGING,
-        updated_at__lt=now - timedelta(minutes=5),
+        started_at__lt=now - timedelta(minutes=5),
     )
 
     for battle in stuck_judging:

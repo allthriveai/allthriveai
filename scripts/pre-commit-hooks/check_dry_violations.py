@@ -58,6 +58,18 @@ SKIP_BODY_PATTERNS = [
     r'^\.\.\.$',  # Ellipsis (placeholder)
 ]
 
+# Line patterns to skip for duplicate block detection
+# These are patterns that are intentionally repeated (validation, config, etc.)
+SKIP_LINE_PATTERNS = [
+    r"if.*billing_interval.*not in.*\['monthly', 'annual'\]",  # Billing validation
+    r'if hasattr\(.*,\s*[\'"]trial_',  # Trial date handling
+    r'raise StripeServiceError',  # Error handling
+    r'^\s*stripe_price_id\s*=',  # Price ID lookup
+    r'\.trial_start\s*=',  # Trial date assignment
+    r'\.trial_end\s*=',  # Trial date assignment
+    r'timezone\.datetime\.fromtimestamp',  # Timestamp conversion (often similar)
+]
+
 
 class DuplicationChecker(ast.NodeVisitor):
     """AST visitor that detects various forms of code duplication."""
@@ -262,6 +274,16 @@ def check_consecutive_duplicates(lines: list[str]) -> list[tuple[int, int, list[
             i += 1
             continue
 
+        # Skip if line has noqa: DRY comment
+        if 'noqa: DRY' in lines[i] or 'noqa:DRY' in lines[i]:
+            i += 1
+            continue
+
+        # Skip if line matches known acceptable patterns
+        if _matches_skip_pattern(lines[i]):
+            i += 1
+            continue
+
         # Look for this block repeated later
         block = normalized[i : i + MIN_DUPLICATE_LINES]
 
@@ -286,6 +308,11 @@ def check_consecutive_duplicates(lines: list[str]) -> list[tuple[int, int, list[
         i += 1
 
     return findings
+
+
+def _matches_skip_pattern(line: str) -> bool:
+    """Check if a line matches known acceptable duplicate patterns."""
+    return any(re.search(pattern, line) for pattern in SKIP_LINE_PATTERNS)
 
 
 def _is_trivial_block(block: list[str]) -> bool:

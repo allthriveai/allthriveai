@@ -1,8 +1,10 @@
-# AllThrive AI
+# All Thrive
 
-**Explore AI Together**
+**Showcase, Learn & Play with AI**
 
-Find trending AI projects, automate your portfolio, and grow your skills.
+The community platform for AI creators. Automate your AI portfolio, learn something new with gamified challenges, and compete in Prompt Battles.
+
+*Create with AI anywhere. Consolidate here. Thrive together.*
 
 ## Key Features
 
@@ -37,6 +39,12 @@ Find trending AI projects, automate your portfolio, and grow your skills.
 - **Discover Resources**: Find and purchase community-created prompts, templates, and courses
 - **Monetize Your Knowledge**: Turn your AI experiments and expertise into income
 - **Curated Quality**: Browse vetted resources from experienced builders
+
+### ⚔️ Prompt Battles
+- **Competitive AI Challenges**: Face off against other creators in timed prompt challenges
+- **Multiple Categories**: Image generation, text, code, and more
+- **Leaderboards**: Climb the rankings and earn recognition
+- **Earn Points**: Win battles to earn XP and level up your profile
 
 ### 👥 Community & Collaboration
 - **Thrive Circles**: Community groups based on your activity: Seedling, Sprout, Blossom, Bloom, or Evergreen

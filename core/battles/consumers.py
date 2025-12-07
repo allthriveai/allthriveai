@@ -1050,20 +1050,20 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
         # Generate challenge
         challenge_text = challenge_type.generate_challenge()
 
-        # Create the battle with an invitation
+        # Create the battle (opponent not set yet - will be set when they accept)
         battle = PromptBattle.objects.create(
             challenger=self.user,
-            opponent=matched_user,
+            opponent=None,  # Set when invitation is accepted
             challenge_text=challenge_text,
             challenge_type=challenge_type,
-            match_source=MatchSource.RANDOM,  # Could add new source: ACTIVE_USER
+            match_source=MatchSource.RANDOM,
             duration_minutes=challenge_type.default_duration_minutes,
             status=BattleStatus.PENDING,
             phase=BattlePhase.WAITING,
         )
 
-        # Create a RANDOM-type invitation so we can track this match
-        BattleInvitation.objects.create(
+        # Create invitation for the matched user to accept/decline
+        invitation = BattleInvitation.objects.create(
             battle=battle,
             sender=self.user,
             recipient=matched_user,
@@ -1072,18 +1072,21 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
         )
 
         logger.info(
-            f'Active user match created: battle={battle.id}, challenger={self.user.id}, opponent={matched_user.id}',
+            f'Active user match created: battle={battle.id}, challenger={self.user.id}, invited={matched_user.id}',
             extra={
                 'battle_id': battle.id,
                 'challenger_id': self.user.id,
-                'opponent_id': matched_user.id,
+                'invited_user_id': matched_user.id,
+                'invitation_id': invitation.id,
                 'match_type': 'active_user',
             },
         )
 
         return {
             'battle_id': battle.id,
+            'invitation_id': invitation.id,
             'matched_user_id': matched_user.id,
+            'challenge_preview': challenge_text[:100] if challenge_text else '',
             'opponent': {
                 'id': matched_user.id,
                 'username': matched_user.username,
@@ -1096,23 +1099,269 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
         result = await self._find_active_user_in_db(challenge_type_key)
 
         if result:
-            # Notify the matched user via WebSocket (if they're connected)
-            other_user_group = f'matchmaking_user_{result["matched_user_id"]}'
+            # Notify the matched user via battle notification WebSocket
+            # This sends to their BattleNotificationConsumer
+            notification_group = f'battle_notifications_{result["matched_user_id"]}'
             await self.channel_layer.group_send(
-                other_user_group,
+                notification_group,
                 {
-                    'type': 'matchmaking_event',
+                    'type': 'battle_notification',
                     'event': 'battle_invitation',
+                    'invitation_id': result.get('invitation_id'),
                     'battle_id': result['battle_id'],
                     'challenger': {
                         'id': self.user.id,
                         'username': self.user.username,
+                        'avatar_url': getattr(self.user, 'avatar_url', None),
                     },
+                    'challenge_preview': result.get('challenge_preview', ''),
                     'message': f'{self.user.username} wants to battle you!',
                 },
             )
 
         return result
+
+    async def _send_error(self, message: str):
+        """Send error message to client."""
+        await self.send(
+            text_data=json.dumps(
+                {
+                    'event': 'error',
+                    'error': message,
+                    'timestamp': self._get_timestamp(),
+                }
+            )
+        )
+
+    def _get_timestamp(self) -> str:
+        """Get current timestamp in ISO format."""
+        return timezone.now().isoformat()
+
+
+class BattleNotificationConsumer(AsyncWebsocketConsumer):
+    """
+    WebSocket consumer for real-time battle notifications.
+
+    Users connect to this when logged in to receive battle invitations
+    from other users looking for opponents. This enables the "find opponent"
+    feature to notify active, available users.
+
+    URL: ws/battle-notifications/
+
+    Events sent to client:
+    - connected: Connection confirmed
+    - battle_invitation: Someone wants to battle you
+    - invitation_cancelled: Invitation was cancelled/expired
+    - pong: Response to ping
+    """
+
+    async def connect(self):
+        """Handle WebSocket connection for notifications."""
+        self.user = self.scope.get('user')
+        self.user_group = None
+
+        # Reject unauthenticated users
+        if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
+            logger.warning('Unauthenticated battle notification WebSocket attempt')
+            await self.close(code=4001)
+            return
+
+        # Check if user is available for battles
+        is_available = await self._is_user_available()
+        if not is_available:
+            logger.info(f'User {self.user.id} connected but not available for battles')
+
+        # Create user-specific group for receiving notifications
+        self.user_group = f'battle_notifications_{self.user.id}'
+        await self.channel_layer.group_add(self.user_group, self.channel_name)
+
+        # Also add to general "available users" group if they opted in
+        if is_available:
+            await self.channel_layer.group_add('battle_available_users', self.channel_name)
+
+        await self.accept()
+
+        logger.info(f'Battle notification WebSocket connected: user={self.user.id}, available={is_available}')
+
+        # Send connection confirmation
+        await self.send(
+            text_data=json.dumps(
+                {
+                    'event': 'connected',
+                    'is_available': is_available,
+                    'timestamp': self._get_timestamp(),
+                }
+            )
+        )
+
+    async def disconnect(self, close_code):
+        """Handle WebSocket disconnection."""
+        if self.user_group:
+            await self.channel_layer.group_discard(self.user_group, self.channel_name)
+
+        # Remove from available users group
+        await self.channel_layer.group_discard('battle_available_users', self.channel_name)
+
+        logger.info(
+            f'Battle notification WebSocket disconnected: user={getattr(self.user, "id", "unknown")}, code={close_code}'
+        )
+
+    async def receive(self, text_data: str):
+        """Handle incoming WebSocket messages."""
+        try:
+            data = json.loads(text_data)
+            message_type = data.get('type')
+
+            if message_type == 'ping':
+                await self.send(text_data=json.dumps({'event': 'pong', 'timestamp': self._get_timestamp()}))
+
+            elif message_type == 'update_availability':
+                # User toggled their availability
+                is_available = data.get('is_available', False)
+                await self._handle_availability_update(is_available)
+
+            elif message_type == 'respond_to_invitation':
+                # User responding to a battle invitation
+                invitation_id = data.get('invitation_id')
+                response = data.get('response')  # 'accept' or 'decline'
+                await self._handle_invitation_response(invitation_id, response)
+
+        except json.JSONDecodeError:
+            await self._send_error('Invalid JSON format')
+        except Exception as e:
+            logger.error(f'Error processing battle notification message: {e}', exc_info=True)
+            await self._send_error('Failed to process message')
+
+    async def battle_notification(self, event: dict[str, Any]):
+        """Receive battle notification event from channel layer."""
+        # Forward to client (remove internal 'type' field)
+        client_event = {k: v for k, v in event.items() if k != 'type'}
+        await self.send(text_data=json.dumps(client_event))
+
+    @database_sync_to_async
+    def _is_user_available(self) -> bool:
+        """Check if user is available for battles."""
+        return User.objects.filter(
+            id=self.user.id,
+            is_available_for_battles=True,
+        ).exists()
+
+    async def _handle_availability_update(self, is_available: bool):
+        """Handle user toggling their availability."""
+        # Update in database
+        await self._update_availability_in_db(is_available)
+
+        # Update group membership
+        if is_available:
+            await self.channel_layer.group_add('battle_available_users', self.channel_name)
+        else:
+            await self.channel_layer.group_discard('battle_available_users', self.channel_name)
+
+        # Confirm to client
+        await self.send(
+            text_data=json.dumps(
+                {
+                    'event': 'availability_updated',
+                    'is_available': is_available,
+                    'timestamp': self._get_timestamp(),
+                }
+            )
+        )
+
+    @database_sync_to_async
+    def _update_availability_in_db(self, is_available: bool):
+        """Update user's availability in database."""
+        User.objects.filter(id=self.user.id).update(is_available_for_battles=is_available)
+
+    async def _handle_invitation_response(self, invitation_id: int, response: str):
+        """Handle user accepting or declining a battle invitation."""
+        if response not in ['accept', 'decline']:
+            await self._send_error('Invalid response. Must be "accept" or "decline".')
+            return
+
+        result = await self._process_invitation_response(invitation_id, response)
+
+        if result.get('error'):
+            await self._send_error(result['error'])
+        else:
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        'event': 'invitation_response_processed',
+                        'invitation_id': invitation_id,
+                        'response': response,
+                        'battle_id': result.get('battle_id'),
+                        'timestamp': self._get_timestamp(),
+                    }
+                )
+            )
+
+            # If accepted, notify the challenger
+            if response == 'accept' and result.get('challenger_id'):
+                challenger_group = f'battle_notifications_{result["challenger_id"]}'
+                await self.channel_layer.group_send(
+                    challenger_group,
+                    {
+                        'type': 'battle_notification',
+                        'event': 'invitation_accepted',
+                        'battle_id': result['battle_id'],
+                        'opponent': {
+                            'id': self.user.id,
+                            'username': self.user.username,
+                        },
+                        'timestamp': self._get_timestamp(),
+                    },
+                )
+
+    @database_sync_to_async
+    def _process_invitation_response(self, invitation_id: int, response: str) -> dict:
+        """Process invitation accept/decline in database."""
+        from core.battles.models import BattleInvitation, InvitationStatus
+
+        try:
+            invitation = BattleInvitation.objects.select_related('battle', 'sender').get(
+                id=invitation_id,
+                recipient=self.user,
+                status=InvitationStatus.PENDING,
+            )
+        except BattleInvitation.DoesNotExist:
+            return {'error': 'Invitation not found or already responded to.'}
+
+        if invitation.is_expired:
+            return {'error': 'Invitation has expired.'}
+
+        battle = invitation.battle
+
+        if response == 'accept':
+            invitation.status = InvitationStatus.ACCEPTED
+            invitation.responded_at = timezone.now()
+            invitation.save(update_fields=['status', 'responded_at'])
+
+            # Start the battle
+            battle.opponent = self.user
+            battle.status = BattleStatus.ACTIVE
+            battle.phase = BattlePhase.COUNTDOWN
+            battle.started_at = timezone.now()
+            battle.save(update_fields=['opponent', 'status', 'phase', 'started_at'])
+
+            return {
+                'battle_id': battle.id,
+                'challenger_id': invitation.sender.id,
+            }
+        else:
+            invitation.status = InvitationStatus.DECLINED
+            invitation.responded_at = timezone.now()
+            invitation.save(update_fields=['status', 'responded_at'])
+
+            # Cancel the battle
+            battle.status = BattleStatus.CANCELLED
+            battle.save(update_fields=['status'])
+
+            # Notify challenger of decline
+            return {
+                'declined': True,
+                'challenger_id': invitation.sender.id,
+            }
 
     async def _send_error(self, message: str):
         """Send error message to client."""

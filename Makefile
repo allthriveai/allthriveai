@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status reset-onboarding
 
 help:
 	@echo "Available commands:"
@@ -53,6 +53,7 @@ help:
 	@echo "  make test-websocket-e2e - Run WebSocket end-to-end test"
 	@echo "  make test-proxy      - Test Docker proxy connectivity (run this first!)"
 	@echo "  make test-coverage   - Run backend tests with coverage report"
+	@echo "  make reset-onboarding - Print JS to reset Ember onboarding (run in browser console)"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  make lint            - Run linting for all code"
@@ -201,7 +202,7 @@ test: test-backend test-frontend
 
 test-backend:
 	@echo "Running backend tests..."
-	docker-compose exec web python manage.py test --verbosity=2
+	docker-compose exec web python manage.py test --verbosity=2 --noinput --keepdb
 
 test-frontend:
 	@echo "Running frontend tests..."
@@ -209,11 +210,11 @@ test-frontend:
 
 test-username:
 	@echo "Running username and user isolation tests..."
-	docker-compose exec web python manage.py test core.tests.test_user_username --verbosity=2
+	docker-compose exec web python manage.py test core.tests.test_user_username --verbosity=2 --noinput --keepdb
 
 test-websocket:
 	@echo "Running WebSocket unit tests..."
-	docker-compose exec web python manage.py test core.agents.tests.test_websocket --verbosity=2
+	docker-compose exec web python manage.py test core.agents.tests.test_websocket --verbosity=2 --noinput --keepdb
 
 test-websocket-e2e:
 	@echo "Running WebSocket end-to-end connectivity test..."
@@ -239,7 +240,7 @@ test-proxy:
 
 test-coverage:
 	@echo "Running backend tests with coverage..."
-	docker-compose exec web coverage run --source='.' manage.py test
+	docker-compose exec web coverage run --source='.' manage.py test --noinput --keepdb
 	docker-compose exec web coverage report
 	docker-compose exec web coverage html
 	@echo "Coverage report generated in htmlcov/index.html"
@@ -340,3 +341,16 @@ clean-all: down clean
 	docker-compose down -v --remove-orphans
 	docker system prune -f
 	@echo "✓ Complete cleanup done!"
+
+# Testing Utilities
+reset-onboarding:
+	@echo ""
+	@echo "🐉 To reset Ember onboarding, run this in your browser console:"
+	@echo ""
+	@echo "// Clear all onboarding state for all users"
+	@echo "Object.keys(localStorage).filter(k => k.startsWith('ember_onboarding_')).forEach(k => localStorage.removeItem(k));"
+	@echo "localStorage.removeItem('allthrive_completed_quests');"
+	@echo "location.reload();"
+	@echo ""
+	@echo "This will clear all onboarding state and show the Ember modal again."
+	@echo ""

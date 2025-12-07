@@ -32,21 +32,29 @@ class AllThriveAdminSite(AdminSite):
         ]
 
         # Model to group mapping
-        # NOTE: Most models are registered under 'core' app label
+        # NOTE: Some models are registered under 'core' app label, others under their own app labels
         model_groups = {
             # Users & Authentication
             'core.user': 'users_auth',
+            'users.user': 'users_auth',
             'core.userauditlog': 'users_auth',
             'account.emailaddress': 'users_auth',
             'socialaccount.socialaccount': 'users_auth',
             'socialaccount.socialapp': 'users_auth',
             'socialaccount.socialtoken': 'users_auth',
             'core.socialconnection': 'users_auth',
+            'social.socialconnection': 'users_auth',
+            'users.invitationrequest': 'users_auth',
             # Gamification
             'thrive_circle.pointactivity': 'gamification',
             'thrive_circle.weeklygoal': 'gamification',
             'thrive_circle.sidequest': 'gamification',
             'thrive_circle.usersidequest': 'gamification',
+            'thrive_circle.circle': 'gamification',
+            'thrive_circle.circlemembership': 'gamification',
+            'thrive_circle.circlechallenge': 'gamification',
+            'thrive_circle.kudos': 'gamification',
+            'thrive_circle.questcategory': 'gamification',
             'achievements.achievement': 'gamification',
             'achievements.userachievement': 'gamification',
             'achievements.achievementprogress': 'gamification',
@@ -55,11 +63,17 @@ class AllThriveAdminSite(AdminSite):
             # AI Conversations
             'core.conversation': 'conversations',
             'core.message': 'conversations',
+            'core.hallucinationmetrics': 'conversations',
             # Projects & Content
             'core.project': 'content',
             'core.projectcomment': 'content',
             'core.commentvote': 'content',
             'core.projectlike': 'content',
+            'marketplace.product': 'content',
+            'marketplace.productasset': 'content',
+            'marketplace.productaccess': 'content',
+            'marketplace.order': 'content',
+            'marketplace.creatoraccount': 'content',
             # Quizzes
             'core.quiz': 'quizzes',
             'core.quizquestion': 'quizzes',
@@ -69,28 +83,43 @@ class AllThriveAdminSite(AdminSite):
             'core.toolreview': 'tools',
             'core.toolcomparison': 'tools',
             'core.toolbookmark': 'tools',
+            'tools.tool': 'tools',
+            'tools.toolreview': 'tools',
+            'tools.toolcomparison': 'tools',
+            'tools.toolbookmark': 'tools',
             # Taxonomy & Tags
             'core.taxonomy': 'taxonomy_system',
             'core.usertag': 'taxonomy_system',
             'core.userinteraction': 'taxonomy_system',
             # Events & Community
             'core.event': 'community',
-            # Battles & Challenges
+            'events.event': 'community',
+            'events.eventrsvp': 'community',
+            # Battles & Challenges (now under 'battles' app label)
             'core.promptbattle': 'battles_app',
             'core.battleinvitation': 'battles_app',
             'core.battlesubmission': 'battles_app',
+            'battles.promptbattle': 'battles_app',
+            'battles.battleinvitation': 'battles_app',
+            'battles.battlesubmission': 'battles_app',
+            'battles.battlevote': 'battles_app',
+            'battles.challengetype': 'battles_app',
+            'battles.battlematchmakingqueue': 'battles_app',
+            'challenges.weeklychallenge': 'battles_app',
+            'challenges.challengeparticipant': 'battles_app',
+            'challenges.challengesubmission': 'battles_app',
+            'challenges.challengevote': 'battles_app',
+            'challenges.challengesponsor': 'battles_app',
             # System models - intentionally not mapped to hide from main interface
             # These are available via direct URL if needed:
             # /admin/admin/logentry/, /admin/contenttypes/contenttype/, etc.
         }
 
         # Distribute models into groups
-        print('\n=== DEBUG: Admin Model Discovery ===')
         for app_label, app_data in app_dict.items():
             for model in app_data['models']:
                 model_key = f'{app_label}.{model["object_name"].lower()}'
                 group_label = model_groups.get(model_key)
-                print(f'Model: {model_key} -> Group: {group_label}')
 
                 if group_label:
                     # Find the group and add the model
@@ -99,7 +128,6 @@ class AllThriveAdminSite(AdminSite):
                             group['models'].append(model)
                             break
                 # System models and unmapped models are intentionally hidden
-        print('=== END DEBUG ===')
 
         # Filter out empty groups and format for Django admin
         app_list = []

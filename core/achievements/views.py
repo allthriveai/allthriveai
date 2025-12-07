@@ -1,12 +1,16 @@
 """API views for achievements."""
 
+from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Achievement, AchievementProgress, UserAchievement
 from .serializers import AchievementSerializer, UserAchievementSerializer
+
+User = get_user_model()
 
 
 class AchievementViewSet(viewsets.ReadOnlyModelViewSet):
@@ -103,3 +107,56 @@ class AchievementViewSet(viewsets.ReadOnlyModelViewSet):
             grouped[category].append(item)
 
         return Response(grouped)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_user_achievements(request, username):
+    """
+    Get earned achievements for a specific user by username.
+
+    Returns only earned achievements (not progress on unearned ones)
+    grouped by category for public profile display.
+
+    Args:
+        username: The username of the user to get achievements for
+
+    Returns:
+        {
+            "projects": [...],
+            "battles": [...],
+            "community": [...],
+            "streaks": [...],
+            "engagement": [...]
+        }
+    """
+    user = get_object_or_404(User, username=username)
+
+    # Get all earned achievements for this user
+    earned_achievements = UserAchievement.objects.filter(user=user).select_related('achievement')
+
+    # Build response with only earned achievements
+    data = []
+    for user_achievement in earned_achievements:
+        achievement = user_achievement.achievement
+        if not achievement.is_active:
+            continue
+
+        achievement_data = {
+            **AchievementSerializer(achievement).data,
+            'is_earned': True,
+            'earned_at': user_achievement.earned_at,
+            'current_value': achievement.criteria_value,
+            'progress_percentage': 100,
+        }
+        data.append(achievement_data)
+
+    # Group by category
+    grouped = {}
+    for item in data:
+        category = item['category']
+        if category not in grouped:
+            grouped[category] = []
+        grouped[category].append(item)
+
+    return Response(grouped)

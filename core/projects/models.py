@@ -14,7 +14,7 @@ class ProjectQuerySet(models.QuerySet):
 
     def for_user(self, user):
         """Return projects accessible to the given user."""
-        if user.is_staff:
+        if user.is_admin_role:
             return self.all()
         # User's own projects + all public projects from others
         return self.filter(models.Q(user=user) | models.Q(is_archived=False, is_private=False))
@@ -46,6 +46,7 @@ class Project(models.Model):
 
     class ProjectType(models.TextChoices):
         GITHUB_REPO = 'github_repo', 'GitHub Repository'
+        GITLAB_PROJECT = 'gitlab_project', 'GitLab Project'
         FIGMA_DESIGN = 'figma_design', 'Figma Design'
         IMAGE_COLLECTION = 'image_collection', 'Image Collection'
         PROMPT = 'prompt', 'Prompt / Conversation'
@@ -97,6 +98,25 @@ class Project(models.Model):
         default=False,
         db_index=True,
         help_text='Whether this project is a sellable digital product',
+    )
+    # Admin promotion fields - for featuring projects at top of feeds
+    is_promoted = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Admin promoted - appears at top of explore feeds',
+    )
+    promoted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When this project was promoted (for ordering)',
+    )
+    promoted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='promoted_projects',
+        help_text='Admin who promoted this project',
     )
     # CharField supports both full URLs and relative paths (e.g., /path/to/image)
     banner_url = models.CharField(max_length=500, blank=True, default='', help_text='Banner image URL')

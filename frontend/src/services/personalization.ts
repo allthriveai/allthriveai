@@ -132,3 +132,113 @@ export async function trackInteraction(data: {
     extracted_keywords: data.extractedKeywords || [],
   });
 }
+
+/**
+ * Personalization settings type
+ */
+export interface PersonalizationSettings {
+  use_topic_selections: boolean;
+  learn_from_views: boolean;
+  learn_from_likes: boolean;
+  consider_skill_level: boolean;
+  factor_content_difficulty: boolean;
+  use_social_signals: boolean;
+  discovery_balance: number;
+  allow_time_tracking: boolean;
+  allow_scroll_tracking: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Get user's personalization settings
+ */
+export async function getPersonalizationSettings(): Promise<PersonalizationSettings> {
+  const response = await api.get('/me/personalization/settings/');
+  return response.data;
+}
+
+/**
+ * Update user's personalization settings
+ */
+export async function updatePersonalizationSettings(
+  settings: Partial<PersonalizationSettings>
+): Promise<PersonalizationSettings> {
+  const response = await api.patch('/me/personalization/settings/', settings);
+  return response.data;
+}
+
+/**
+ * Reset personalization settings to defaults
+ */
+export async function resetPersonalizationSettings(): Promise<{
+  message: string;
+  settings: PersonalizationSettings;
+}> {
+  const response = await api.post('/me/personalization/settings/reset/');
+  return response.data;
+}
+
+/**
+ * Export personalization data response type
+ */
+export interface PersonalizationExport {
+  exported_at: string;
+  user: {
+    id: number;
+    username: string;
+  };
+  personalization_settings: PersonalizationSettings | null;
+  manual_tags: Array<{
+    id: number;
+    name: string;
+    taxonomy: {
+      id: number;
+      name: string;
+      category: string;
+    } | null;
+    created_at: string;
+  }>;
+  auto_generated_tags: Array<{
+    id: number;
+    name: string;
+    confidence_score: number;
+    interaction_count: number;
+    taxonomy: {
+      id: number;
+      name: string;
+      category: string;
+    } | null;
+    created_at: string;
+    updated_at: string;
+  }>;
+  interaction_summary_last_90_days: Record<string, number>;
+}
+
+/**
+ * Export all personalization data (GDPR data portability)
+ */
+export async function exportPersonalizationData(): Promise<PersonalizationExport> {
+  const response = await api.get('/me/personalization/export/');
+  return response.data;
+}
+
+/**
+ * Delete personalization data response type
+ */
+export interface PersonalizationDeleteResult {
+  message: string;
+  deleted: {
+    tags: number;
+    interactions: number;
+    settings: number;
+  };
+}
+
+/**
+ * Delete all personalization data (GDPR right to erasure)
+ */
+export async function deletePersonalizationData(): Promise<PersonalizationDeleteResult> {
+  const response = await api.delete('/me/personalization/delete/');
+  return response.data;
+}

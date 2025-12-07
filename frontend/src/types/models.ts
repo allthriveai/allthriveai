@@ -38,6 +38,10 @@ export interface User {
   tier?: TierName;
   tierDisplay?: string;
   totalPoints?: number;
+  // Follow fields
+  followersCount?: number;
+  followingCount?: number;
+  isFollowing?: boolean | null; // null when viewing own profile
 }
 
 // Authentication state
@@ -113,6 +117,8 @@ export interface Project {
   isHighlighted: boolean; // Featured at top of profile (only one per user)
   isPrivate: boolean; // Hidden from explore feed and public views
   isArchived: boolean; // Soft delete - hidden from all views
+  isPromoted?: boolean; // Admin promoted - appears at top of explore feeds
+  promotedAt?: string; // When this project was promoted
   bannerUrl?: string; // Banner/cover image
   featuredImageUrl?: string;
   externalUrl?: string;
@@ -333,6 +339,12 @@ export interface ToolUseCase {
   example?: string;
 }
 
+export interface ToolWhatsNew {
+  date: string;
+  title: string;
+  description: string;
+}
+
 export interface Tool {
   id: number;
   name: string;
@@ -378,6 +390,7 @@ export interface Tool {
   bestPractices: string[];
   limitations: string[];
   alternatives: string[];
+  whatsNew: ToolWhatsNew[];
 
   // Technical
   modelInfo: Record<string, any>;

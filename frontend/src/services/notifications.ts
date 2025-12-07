@@ -13,6 +13,8 @@ export interface NotificationPreferences {
   phoneNumber: string;
   phoneVerified: boolean;
   allowSmsInvitations: boolean;
+  // Battle availability
+  isAvailableForBattles: boolean;
 }
 
 // Backwards compatibility alias
@@ -28,6 +30,8 @@ export interface UpdateNotificationPreferencesRequest {
   // SMS preferences
   phoneNumber?: string;
   allowSmsInvitations?: boolean;
+  // Battle availability
+  isAvailableForBattles?: boolean;
 }
 
 // Backwards compatibility alias

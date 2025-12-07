@@ -26,6 +26,8 @@ class PointActivity(models.Model):
         ('side_quest', 'Side Quest Completed'),
         ('special_event', 'Special Event'),
         ('referral', 'Referral Bonus'),
+        ('prompt_battle', 'Battle Participation'),
+        ('prompt_battle_win', 'Battle Won'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

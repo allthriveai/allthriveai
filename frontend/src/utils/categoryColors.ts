@@ -249,11 +249,11 @@ export function getCategoryColors(categoryColor?: string, projectId?: number): {
  * Use this when assigning colors to categories in the database
  */
 export const CATEGORY_JEWEL_COLORS = {
-  'AI Agents & Multi-Tool Systems': 'amethyst',
+  'AI Agents & Multi-Tool Systems': 'emerald',
   'AI Models & Research': 'tanzanite',
-  'Audio & Multimodal': 'sapphire',
-  'Chatbots & Conversation': 'rose-quartz',
-  'Data & Analytics': 'emerald',
+  'Audio & Multimodal': 'rose-quartz',
+  'Chatbots & Conversation': 'sapphire',
+  'Data & Analytics': 'amethyst',
   'Design (Mockups & UI)': 'morganite',
   'Developer & Coding': 'jade',
   'Games & Interactive': 'ruby',

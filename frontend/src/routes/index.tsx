@@ -6,6 +6,7 @@ import AuthPage from '@/pages/AuthPage';
 import ProfilePage from '@/pages/ProfilePage';
 import ProjectDetailPage from '@/pages/ProjectDetailPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
+import ActivitySettingsPage from '@/pages/ActivitySettingsPage';
 import IntegrationsSettingsPage from '@/pages/settings/IntegrationsSettingsPage';
 import PersonalizationSettingsPage from '@/pages/settings/PersonalizationSettingsPage';
 import NotificationsSettingsPage from '@/pages/settings/NotificationsSettingsPage';
@@ -28,12 +29,19 @@ import { BattlesLobbyPage, BattlePage, BattleInvitePage } from '@/pages/battles'
 import { ChallengePage } from '@/pages/challenges';
 import ThriveCirclePage from '@/pages/ThriveCirclePage';
 import SideQuestsPage from '@/pages/SideQuestsPage';
+import EthicsDefenderGame from '@/pages/games/EthicsDefenderGame';
 import PricingPage from '@/pages/PricingPage';
 import CheckoutPage from '@/pages/CheckoutPage';
 import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
 import PerksPage from '@/pages/PerksPage';
 import MarketplacePage from '@/pages/MarketplacePage';
-import GettingStartedPage from '@/pages/GettingStartedPage';
+import OnboardingPage from '@/pages/OnboardingPage';
+import VendorDashboardPage from '@/pages/VendorDashboardPage';
+import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
+import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
+import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
+import ExtensionPage from '@/pages/ExtensionPage';
+import PitchDeckPage from '@/pages/PitchDeckPage';
 
 export function AppRoutes() {
   return (
@@ -118,6 +126,9 @@ export function AppRoutes() {
 
       {/* Pricing - public route */}
       <Route path="/pricing" element={<PricingPage />} />
+
+      {/* Pitch deck - public route with password gate */}
+      <Route path="/pitch" element={<PitchDeckPage />} />
 
       {/* Perks - public route (coming soon) */}
       <Route path="/perks" element={<PerksPage />} />
@@ -212,12 +223,49 @@ export function AppRoutes() {
         }
       />
 
-      {/* Getting Started - protected */}
+      {/* Ember's Onboarding - protected */}
       <Route
-        path="/getting-started"
+        path="/onboarding"
         element={
           <ProtectedRoute>
-            <GettingStartedPage />
+            <OnboardingPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Legacy routes - redirect to onboarding */}
+      <Route
+        path="/getting-started"
+        element={<Navigate to="/onboarding" replace />}
+      />
+      <Route
+        path="/quests"
+        element={<Navigate to="/onboarding" replace />}
+      />
+
+      {/* Vendor Dashboard - protected, vendors only */}
+      <Route
+        path="/vendor/dashboard"
+        element={
+          <ProtectedRoute>
+            <VendorDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Admin Dashboard - protected, admins only */}
+      <Route
+        path="/admin/analytics"
+        element={
+          <ProtectedRoute>
+            <AdminAnalyticsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/invitations"
+        element={
+          <ProtectedRoute>
+            <AdminInvitationsPage />
           </ProtectedRoute>
         }
       />
@@ -228,6 +276,16 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <SideQuestsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Ethics Defender Game - protected */}
+      <Route
+        path="/play/ethics-defender"
+        element={
+          <ProtectedRoute>
+            <EthicsDefenderGame />
           </ProtectedRoute>
         }
       />
@@ -247,12 +305,31 @@ export function AppRoutes() {
       <Route path="/login" element={<Navigate to="/auth" replace />} />
       <Route path="/signup" element={<Navigate to="/auth" replace />} />
 
+      {/* Extension - landing page and auth */}
+      <Route
+        path="/extension"
+        element={
+          <ProtectedRoute>
+            <ExtensionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/extension/auth" element={<ExtensionAuthPage />} />
+
       {/* Protected routes - Settings */}
       <Route
         path="/account/settings"
         element={
           <ProtectedRoute>
             <AccountSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/settings/activity"
+        element={
+          <ProtectedRoute>
+            <ActivitySettingsPage />
           </ProtectedRoute>
         }
       />

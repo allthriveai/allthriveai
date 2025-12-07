@@ -96,22 +96,28 @@ export function AchievementBadge({
   // Size configurations
   const sizeClasses = {
     small: {
-      container: 'w-24 h-32',
-      icon: 'w-8 h-8',
-      name: 'text-xs',
-      points: 'text-[10px]',
+      container: 'w-20 h-28',
+      iconWrapper: 'w-7 h-7',
+      icon: 'w-5 h-5',
+      name: 'text-[10px] leading-tight',
+      points: 'text-[8px]',
+      padding: 'p-1.5',
     },
     medium: {
       container: 'w-32 h-44',
-      icon: 'w-12 h-12',
+      iconWrapper: 'w-12 h-12',
+      icon: 'w-8 h-8',
       name: 'text-sm',
       points: 'text-xs',
+      padding: 'p-3',
     },
     large: {
       container: 'w-40 h-52',
-      icon: 'w-16 h-16',
+      iconWrapper: 'w-16 h-16',
+      icon: 'w-12 h-12',
       name: 'text-base',
       points: 'text-sm',
+      padding: 'p-3',
     },
   }[size];
 
@@ -124,11 +130,11 @@ export function AchievementBadge({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={`
-        relative ${sizeClasses.container} rounded
+        relative ${sizeClasses.container} rounded overflow-hidden
         transition-all duration-300 ease-out
-        ${isUnlocked ? 'cursor-pointer hover:scale-110 active:scale-105' : 'cursor-default'}
+        ${isUnlocked ? 'cursor-pointer hover:scale-105 active:scale-100' : 'cursor-default'}
         ${isUnlocked ? rarityStyle.glow : ''}
-        group
+        group flex-shrink-0
       `}
       style={{
         background: isUnlocked
@@ -158,12 +164,12 @@ export function AchievementBadge({
       )}
 
       {/* Content */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-between p-3">
+      <div className={`relative z-10 h-full flex flex-col items-center justify-between ${sizeClasses.padding} overflow-hidden`}>
         {/* Icon container with jewel color */}
         <div
           className={`
-            relative flex items-center justify-center rounded-full
-            ${sizeClasses.icon} p-2 mt-1
+            relative flex items-center justify-center rounded-full flex-shrink-0
+            ${sizeClasses.iconWrapper}
             ${isUnlocked ? '' : 'opacity-30 grayscale'}
             transition-all duration-300
           `}
@@ -184,16 +190,16 @@ export function AchievementBadge({
           {/* Locked overlay */}
           {!isUnlocked && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <Icons.LockClosedIcon className="w-4 h-4 text-[var(--text-muted)]" />
+              <Icons.LockClosedIcon className="w-3 h-3 text-[var(--text-muted)]" />
             </div>
           )}
         </div>
 
         {/* Achievement name */}
-        <div className="text-center space-y-0.5 flex-1 flex flex-col justify-center px-1">
+        <div className="text-center flex-1 flex flex-col justify-center min-h-0 overflow-hidden w-full">
           <h3
             className={`
-              ${sizeClasses.name} font-semibold line-clamp-3
+              ${sizeClasses.name} font-semibold line-clamp-2
               ${isUnlocked ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}
             `}
           >
@@ -202,7 +208,7 @@ export function AchievementBadge({
 
           {/* Rarity indicator */}
           {isUnlocked && (
-            <span className={`${sizeClasses.points} ${rarityStyle.text} uppercase tracking-wide`}>
+            <span className={`${sizeClasses.points} ${rarityStyle.text} uppercase tracking-wide mt-0.5`}>
               {achievement.rarity}
             </span>
           )}
@@ -210,8 +216,8 @@ export function AchievementBadge({
 
         {/* Progress bar for incomplete achievements */}
         {!isUnlocked && progressPercent > 0 && (
-          <div className="w-full space-y-1 mb-1">
-            <div className="h-1.5 bg-[var(--glass-fill-subtle)] rounded-full overflow-hidden">
+          <div className="w-full space-y-0.5 flex-shrink-0">
+            <div className="h-1 bg-[var(--glass-fill-subtle)] rounded-full overflow-hidden">
               <div
                 className="h-full transition-all duration-500 rounded-full"
                 style={{
@@ -220,7 +226,7 @@ export function AchievementBadge({
                 }}
               />
             </div>
-            <p className="text-[10px] text-[var(--text-muted)] text-center">
+            <p className="text-[8px] text-[var(--text-muted)] text-center">
               {progress}/{total}
             </p>
           </div>
@@ -230,11 +236,11 @@ export function AchievementBadge({
         {isUnlocked && (
           <div
             className={`
-              ${sizeClasses.points} px-2 py-0.5 rounded-full font-medium
-              bg-[var(--glass-fill-strong)] text-[var(--text-secondary)] mb-1
+              ${sizeClasses.points} px-1.5 py-0.5 rounded-full font-medium flex-shrink-0
+              bg-[var(--glass-fill-strong)] text-[var(--text-secondary)]
             `}
           >
-            +{achievement.points} XP
+            +{achievement.points}
           </div>
         )}
       </div>

@@ -31,6 +31,7 @@ from core.battles.models import (
 from core.battles.utils import wrap_user_prompt_for_ai
 from core.billing.utils import check_and_reserve_ai_request, process_ai_request
 from core.users.models import User
+from services.gamification.achievements import AchievementTracker
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +102,61 @@ class BattleService:
         )
 
         return battle
+
+    def refresh_challenge(self, battle: PromptBattle, user: User) -> str | None:
+        """
+        Refresh the challenge prompt for a battle (Pip battles only).
+
+        Args:
+            battle: The battle to refresh
+            user: The user requesting the refresh
+
+        Returns:
+            New challenge text or None if not allowed
+        """
+        from core.users.models import UserRole
+
+        # Only allow refresh for Pip battles
+        pip_user = User.objects.filter(username='pip', role=UserRole.AGENT).first()
+        if not pip_user:
+            return None
+
+        is_pip_battle = battle.opponent == pip_user or battle.challenger == pip_user
+        if not is_pip_battle:
+            logger.warning(f'Refresh attempted on non-Pip battle {battle.id}')
+            return None
+
+        # User must be a participant (the human player)
+        if user not in [battle.challenger, battle.opponent]:
+            logger.warning(f'Non-participant {user.id} tried to refresh battle {battle.id}')
+            return None
+
+        # Can't refresh if user has already submitted
+        if BattleSubmission.objects.filter(battle=battle, user=user).exists():
+            logger.warning(f'User {user.id} tried to refresh after submitting')
+            return None
+
+        # Can't refresh if battle is not in waiting/countdown phase
+        if battle.phase not in [BattlePhase.WAITING, BattlePhase.COUNTDOWN]:
+            logger.warning(f'Refresh attempted on battle {battle.id} in phase {battle.phase}')
+            return None
+
+        # Generate new challenge from the same challenge type
+        if battle.challenge_type:
+            new_challenge = battle.challenge_type.generate_challenge()
+        else:
+            return None
+
+        # Update battle with new challenge
+        battle.challenge_text = new_challenge
+        battle.save(update_fields=['challenge_text'])
+
+        logger.info(
+            f'Challenge refreshed for battle {battle.id}',
+            extra={'battle_id': battle.id, 'user_id': user.id},
+        )
+
+        return new_challenge
 
     def get_battle(self, battle_id: int) -> PromptBattle | None:
         """Get a battle by ID with related data prefetched."""
@@ -314,16 +370,22 @@ Focus on visual impact and artistic interpretation of the user's direction.
             logger.warning(f'Cannot judge battle {battle.id}: not enough submissions')
             return {'error': 'Not enough submissions to judge'}
 
+        # Default judging criteria
+        default_criteria = [
+            {'name': 'Creativity', 'weight': 30, 'description': 'How creative and original is the result?'},
+            {'name': 'Visual Impact', 'weight': 25, 'description': 'How striking and memorable is the image?'},
+            {'name': 'Relevance', 'weight': 25, 'description': 'How well does it match the challenge?'},
+            {'name': 'Cohesion', 'weight': 20, 'description': 'How well do elements work together?'},
+        ]
+
+        # Use challenge type criteria if available and non-empty, otherwise use defaults
         criteria = (
             battle.challenge_type.judging_criteria
-            if battle.challenge_type
-            else [
-                {'name': 'Creativity', 'weight': 30, 'description': 'How creative and original is the result?'},
-                {'name': 'Visual Impact', 'weight': 25, 'description': 'How striking and memorable is the image?'},
-                {'name': 'Relevance', 'weight': 25, 'description': 'How well does it match the challenge?'},
-                {'name': 'Cohesion', 'weight': 20, 'description': 'How well do elements work together?'},
-            ]
+            if battle.challenge_type and battle.challenge_type.judging_criteria
+            else default_criteria
         )
+
+        logger.debug(f'Using judging criteria for battle {battle.id}: {criteria}')
 
         # Use Gemini image model - must support vision/multimodal
         judging_model = getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-2.0-flash-exp')
@@ -384,6 +446,13 @@ Return ONLY the JSON, no other text.
                     model=judging_model,
                 )
 
+                # Log the raw response for debugging
+                logger.info(
+                    f'AI judging response for submission {submission.id}: {response[:500]}...'
+                    if len(response) > 500
+                    else f'AI judging response for submission {submission.id}: {response}'
+                )
+
                 # Track token usage from the AI call
                 tokens_used = 0
                 if ai.last_usage:
@@ -391,6 +460,12 @@ Return ONLY the JSON, no other text.
 
                 # Parse response
                 eval_result = self._parse_judging_response(response)
+
+                # Log parsing result
+                if eval_result:
+                    logger.info(f'Parsed scores for submission {submission.id}: {eval_result.get("scores", {})}')
+                else:
+                    logger.warning(f'Failed to parse judging response for submission {submission.id}')
 
                 if eval_result:
                     # Calculate weighted score
@@ -450,7 +525,44 @@ Return ONLY the JSON, no other text.
 
         # Determine winner
         if results:
-            winner_result = max(results, key=lambda r: r['score'])
+            # Sort by score descending
+            sorted_results = sorted(results, key=lambda r: r['score'], reverse=True)
+
+            # Handle ties - if scores are equal (within 0.5 points), use tiebreakers
+            if len(sorted_results) >= 2:
+                score_diff = abs(sorted_results[0]['score'] - sorted_results[1]['score'])
+                if score_diff < 0.5:
+                    logger.info(f'Battle {battle.id}: Tie detected (diff={score_diff:.2f}), applying tiebreakers')
+
+                    # Tiebreaker 1: Compare Creativity scores (most important criterion)
+                    creativity_scores = [(r, r['criteria_scores'].get('Creativity', 0)) for r in sorted_results]
+                    creativity_scores.sort(key=lambda x: x[1], reverse=True)
+
+                    if creativity_scores[0][1] != creativity_scores[1][1]:
+                        sorted_results = [cs[0] for cs in creativity_scores]
+                        logger.info(
+                            f'Battle {battle.id}: Tiebreaker - Creativity winner: {sorted_results[0]["user_id"]}'
+                        )
+                    else:
+                        # Tiebreaker 2: Compare Visual Impact scores
+                        impact_scores = [(r, r['criteria_scores'].get('Visual Impact', 0)) for r in sorted_results]
+                        impact_scores.sort(key=lambda x: x[1], reverse=True)
+
+                        if impact_scores[0][1] != impact_scores[1][1]:
+                            sorted_results = [vs[0] for vs in impact_scores]
+                            logger.info(
+                                f'Battle {battle.id}: Tiebreaker - Visual Impact winner: {sorted_results[0]["user_id"]}'
+                            )
+                        else:
+                            # Tiebreaker 3: Random selection (to avoid always favoring same player)
+                            import random
+
+                            random.shuffle(sorted_results)
+                            logger.info(
+                                f'Battle {battle.id}: Tiebreaker - Random winner: {sorted_results[0]["user_id"]}'
+                            )
+
+            winner_result = sorted_results[0]
             battle.winner_id = winner_result['user_id']
             battle.phase = BattlePhase.REVEAL
             battle.save(update_fields=['winner_id', 'phase'])
@@ -499,19 +611,34 @@ Return ONLY the JSON, no other text.
             participation_points = battle.challenge_type.participation_points
 
         for submission in battle.submissions.all():
-            points = winner_points if submission.user_id == battle.winner_id else participation_points
+            is_winner = submission.user_id == battle.winner_id
+            points = winner_points if is_winner else participation_points
 
-            # Award XP to user
-            submission.user.weekly_points_gained += points
-            submission.user.total_points += points
-            submission.user.save(update_fields=['weekly_points_gained', 'total_points'])
+            # Award XP to user using add_points() to create PointActivity record
+            activity_type = 'prompt_battle_win' if is_winner else 'prompt_battle'
+            challenge_preview = (battle.challenge_text or 'Battle')[:50]
+            description = f'{"Won" if is_winner else "Participated in"} battle: {challenge_preview}'
+
+            submission.user.add_points(points, activity_type, description)
+
+            # Track achievement progress for battle wins
+            if is_winner:
+                try:
+                    AchievementTracker.track_event(
+                        user=submission.user,
+                        tracking_field='lifetime_battles_won',
+                        value=1,
+                    )
+                except Exception as e:
+                    logger.error(f'Error tracking battle win achievement: {e}')
 
             logger.info(
                 f'Awarded {points} points to user {submission.user_id}',
                 extra={
                     'user_id': submission.user_id,
                     'points': points,
-                    'is_winner': submission.user_id == battle.winner_id,
+                    'is_winner': is_winner,
+                    'activity_type': activity_type,
                 },
             )
 
@@ -662,23 +789,68 @@ Return ONLY the JSON, no other text.
 
     def _parse_judging_response(self, response: str) -> dict | None:
         """Parse the AI's judging response JSON."""
+
         try:
             # Try to extract JSON from response
+            original_response = response
             response = response.strip()
 
             # Handle markdown code blocks
             if '```json' in response:
-                response = response.split('```json')[1].split('```')[0]
+                response = response.split('```json')[1].split('```')[0].strip()
             elif '```' in response:
-                response = response.split('```')[1].split('```')[0]
+                response = response.split('```')[1].split('```')[0].strip()
 
-            return json.loads(response)
+            # Try to find JSON object by finding matching braces
+            if not response.startswith('{'):
+                # Find the first '{' that starts a JSON object
+                start_idx = response.find('{')
+                if start_idx == -1:
+                    logger.error(f'Could not find JSON in response: {original_response[:200]}...')
+                    return None
+
+                # Find matching closing brace by counting brace depth
+                depth = 0
+                end_idx = -1
+                for i in range(start_idx, len(response)):
+                    if response[i] == '{':
+                        depth += 1
+                    elif response[i] == '}':
+                        depth -= 1
+                        if depth == 0:
+                            end_idx = i
+                            break
+
+                if end_idx == -1:
+                    logger.error(f'Unbalanced braces in response: {original_response[:200]}...')
+                    return None
+
+                response = response[start_idx : end_idx + 1]
+
+            result = json.loads(response)
+
+            # Validate the result has scores
+            if 'scores' not in result:
+                logger.error(f'Parsed JSON missing "scores" key: {result}')
+                return None
+
+            # Validate scores has expected criteria
+            expected_criteria = ['Creativity', 'Visual Impact', 'Relevance', 'Cohesion']
+            missing_criteria = [c for c in expected_criteria if c not in result.get('scores', {})]
+            if missing_criteria:
+                logger.warning(f'Missing criteria in scores: {missing_criteria}. Got: {result.get("scores", {})}')
+
+            return result
         except (json.JSONDecodeError, IndexError) as e:
-            logger.error(f'Failed to parse judging response: {e}')
+            logger.error(f'Failed to parse judging response: {e}. Response: {response[:200] if response else "empty"}')
             return None
 
     def _calculate_weighted_score(self, scores: dict, criteria: list) -> float:
         """Calculate weighted average score based on criteria weights."""
+        if not criteria:
+            logger.warning('No criteria provided for scoring, using default 50.0')
+            return 50.0
+
         total_weight = sum(c.get('weight', 25) for c in criteria)
         weighted_sum = 0
 
@@ -687,8 +859,11 @@ Return ONLY the JSON, no other text.
             weight = c.get('weight', 25)
             score = scores.get(criterion_name, 50)  # Default to 50 if missing
             weighted_sum += score * weight
+            logger.debug(f'Score calculation: {criterion_name}={score} * weight={weight}')
 
-        return round(weighted_sum / total_weight, 2) if total_weight > 0 else 50.0
+        final_score = round(weighted_sum / total_weight, 2) if total_weight > 0 else 50.0
+        logger.debug(f'Final weighted score: {weighted_sum}/{total_weight} = {final_score}')
+        return final_score
 
 
 class PipBattleAI:
@@ -743,7 +918,7 @@ Write your creative direction now:
 
         try:
             response = ai.complete(
-                messages=[{'role': 'user', 'content': prompt}],
+                prompt=prompt,
                 temperature=0.9,
                 max_tokens=500,
             )

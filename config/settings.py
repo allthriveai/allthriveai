@@ -65,6 +65,11 @@ INSTALLED_APPS = [
     'core.sms',  # SMS notifications (Twilio)
     'core.challenges',  # Weekly challenges with leaderboards
     'core.marketplace',  # Creator marketplace for digital products
+    'core.vendors',  # Vendor analytics for tool companies
+    'core.tools',  # AI tools and technology directory
+    'core.battles',  # Prompt battles feature
+    'core.events',  # Events and calendar
+    'core.social',  # Social connections
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -267,6 +272,10 @@ WEAVIATE_API_KEY = config('WEAVIATE_API_KEY', default='')  # Optional for local 
 WEAVIATE_EMBEDDING_MODEL = config('WEAVIATE_EMBEDDING_MODEL', default='text-embedding-3-small')
 WEAVIATE_BATCH_SIZE = config('WEAVIATE_BATCH_SIZE', default=100, cast=int)
 WEAVIATE_TIMEOUT = config('WEAVIATE_TIMEOUT', default=30, cast=int)  # seconds
+
+# Redis Agent Memory Server Configuration
+# Used for AI chat persistence, semantic search, and agent memory
+AGENT_MEMORY_SERVER_URL = config('AGENT_MEMORY_SERVER_URL', default='http://agent-memory:8000')
 
 # GitHub API Token (for project agent)
 GITHUB_API_TOKEN = config('GITHUB_API_TOKEN', default='')  # Optional, increases rate limit

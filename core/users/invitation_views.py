@@ -54,6 +54,12 @@ def verify_recaptcha(token: str, remote_ip: str | None = None) -> tuple[bool, st
     Returns:
         Tuple of (success: bool, error_message: str)
     """
+    # Skip reCAPTCHA in DEBUG mode (local development)
+    # Rate limiting still provides basic protection
+    if settings.DEBUG:
+        logger.debug('reCAPTCHA skipped in DEBUG mode')
+        return True, ''
+
     secret_key = getattr(settings, 'RECAPTCHA_SECRET_KEY', '')
 
     # If no secret key configured, skip verification (development mode)

@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
-from .models import AIProviderPricing, AIUsageLog, UserAICostSummary
+from .models import AIProviderPricing, AIUsageLog, PlatformDailyStats, UserAICostSummary
 
 
 @admin.register(AIProviderPricing)
@@ -343,3 +343,166 @@ class UserAICostSummaryAdmin(admin.ModelAdmin):
 
         response.context_data['metrics'] = metrics
         return response
+
+
+@admin.register(PlatformDailyStats)
+class PlatformDailyStatsAdmin(admin.ModelAdmin):
+    list_display = [
+        'date',
+        'total_users_display',
+        'new_users_today',
+        'dau',
+        'total_ai_requests_display',
+        'total_ai_cost_display',
+        'cau_display',
+        'new_projects_today',
+        'updated_at',
+    ]
+    list_filter = [('date', admin.DateFieldListFilter)]
+    search_fields = ['date']
+    readonly_fields = [
+        'date',
+        'total_users',
+        'new_users_today',
+        'active_users_today',
+        'dau',
+        'wau',
+        'mau',
+        'total_ai_requests',
+        'total_ai_tokens',
+        'total_ai_cost',
+        'ai_users_today',
+        'cau',
+        'ai_by_feature',
+        'ai_by_provider',
+        'total_projects',
+        'new_projects_today',
+        'total_project_views',
+        'total_project_clicks',
+        'total_comments',
+        'total_quests_completed',
+        'total_quiz_attempts',
+        'total_events_created',
+        'total_tool_reviews',
+        'revenue_today',
+        'new_subscribers_today',
+        'total_subscribers',
+        'avg_hallucination_score',
+        'hallucination_flags_count',
+        'created_at',
+        'updated_at',
+    ]
+    date_hierarchy = 'date'
+    ordering = ['-date']
+
+    fieldsets = (
+        (
+            'Date',
+            {
+                'fields': ('date',),
+            },
+        ),
+        (
+            'User Growth',
+            {
+                'fields': (
+                    'total_users',
+                    'new_users_today',
+                    'active_users_today',
+                    'dau',
+                    'wau',
+                    'mau',
+                ),
+            },
+        ),
+        (
+            'AI Usage',
+            {
+                'fields': (
+                    'total_ai_requests',
+                    'total_ai_tokens',
+                    'total_ai_cost',
+                    'ai_users_today',
+                    'cau',
+                    'ai_by_feature',
+                    'ai_by_provider',
+                ),
+            },
+        ),
+        (
+            'Content & Engagement',
+            {
+                'fields': (
+                    'total_projects',
+                    'new_projects_today',
+                    'total_project_views',
+                    'total_project_clicks',
+                    'total_comments',
+                    'total_quests_completed',
+                    'total_quiz_attempts',
+                    'total_events_created',
+                    'total_tool_reviews',
+                ),
+            },
+        ),
+        (
+            'Revenue',
+            {
+                'fields': (
+                    'revenue_today',
+                    'new_subscribers_today',
+                    'total_subscribers',
+                ),
+            },
+        ),
+        (
+            'Quality Metrics',
+            {
+                'fields': (
+                    'avg_hallucination_score',
+                    'hallucination_flags_count',
+                ),
+            },
+        ),
+        (
+            'Timestamps',
+            {
+                'fields': ('created_at', 'updated_at'),
+                'classes': ('collapse',),
+            },
+        ),
+    )
+
+    @admin.display(description='Total Users')
+    def total_users_display(self, obj):
+        return format_html(
+            '<span style="font-weight: bold;">{:,}</span> <span style="color: #28a745;">(+{})</span>',
+            obj.total_users,
+            obj.new_users_today,
+        )
+
+    @admin.display(description='AI Requests')
+    def total_ai_requests_display(self, obj):
+        return f'{obj.total_ai_requests:,}'
+
+    @admin.display(description='AI Cost')
+    def total_ai_cost_display(self, obj):
+        if obj.total_ai_cost > 100:
+            color = '#dc3545'
+        elif obj.total_ai_cost > 10:
+            color = '#ffc107'
+        else:
+            color = '#28a745'
+        return format_html('<span style="color: {}; font-weight: bold;">${:.2f}</span>', color, obj.total_ai_cost)
+
+    @admin.display(description='CAU')
+    def cau_display(self, obj):
+        return f'${obj.cau:.2f}'
+
+    def has_add_permission(self, request):
+        """Prevent manual creation - these are created by Celery tasks."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion - maintain historical data."""
+        return False

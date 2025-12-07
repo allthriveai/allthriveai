@@ -22,6 +22,38 @@ from .schema import WeaviateSchema
 logger = logging.getLogger(__name__)
 
 
+def _calculate_promotion_score(project) -> tuple[float, bool]:
+    """
+    Calculate promotion score for quality training in Weaviate.
+
+    Returns:
+        tuple of (promotion_score, was_promoted)
+        - promotion_score: 0.0-1.0 scale, decays over PROMOTION_DURATION_DAYS
+        - was_promoted: True if project was ever promoted (for historical training)
+    """
+    from core.projects.constants import PROMOTION_DURATION_DAYS
+
+    if project.is_promoted and project.promoted_at:
+        # Active promotion with decay
+        hours_since_promotion = (timezone.now() - project.promoted_at).total_seconds() / 3600
+        max_hours = PROMOTION_DURATION_DAYS * 24
+
+        # Score starts at 1.0 and decays to 0.3 over the promotion period
+        # After expiration, maintains a baseline 0.3 for quality training
+        if hours_since_promotion <= max_hours:
+            score = 1.0 - (0.7 * hours_since_promotion / max_hours)
+        else:
+            score = 0.3  # Baseline for historically promoted content
+
+        return (round(score, 4), True)
+
+    elif project.promoted_at:
+        # Was promoted in the past but no longer active
+        return (0.3, True)
+
+    return (0.0, False)
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def sync_project_to_weaviate(self, project_id: int):
     """
@@ -63,6 +95,9 @@ def sync_project_to_weaviate(self, project_id: int):
             logger.warning(f'Failed to generate embedding for project {project_id}')
             return {'status': 'failed', 'reason': 'embedding_failed'}
 
+        # Calculate promotion score for quality training
+        promotion_score, was_promoted = _calculate_promotion_score(project)
+
         # Prepare properties
         properties = {
             'project_id': project.id,
@@ -78,6 +113,9 @@ def sync_project_to_weaviate(self, project_id: int):
             # Visibility flags - critical for search isolation
             'is_private': project.is_private,
             'is_archived': project.is_archived,
+            # Promotion quality signals (already rounded in helper)
+            'promotion_score': promotion_score,
+            'was_promoted': was_promoted,
             'created_at': project.created_at.isoformat(),
             'updated_at': project.updated_at.isoformat(),
         }
@@ -701,9 +739,9 @@ def sync_quiz_to_weaviate(self, quiz_id: str):
         topics = quiz.topics or []
 
         embedding_text = (
-            f"{quiz.title}. {quiz.description or ''}. Topic: {quiz.topic or ''}. "
-            f"Topics: {', '.join(topics)}. Tools: {', '.join(tool_names)}. "
-            f"Categories: {', '.join(category_names)}."
+            f'{quiz.title}. {quiz.description or ""}. Topic: {quiz.topic or ""}. '
+            f'Topics: {", ".join(topics)}. Tools: {", ".join(tool_names)}. '
+            f'Categories: {", ".join(category_names)}.'
         )
 
         embedding_vector = embedding_service.generate_embedding(embedding_text)

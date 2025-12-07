@@ -177,7 +177,8 @@
       radial-gradient(ellipse 70% 50% at 90% 80%, rgba(14, 165, 233, 0.07) 0%, transparent 45%),
       /* Subtle center vertical gradient for depth */
       linear-gradient(180deg, #020617 0%, #0a1628 50%, #020617 100%);
-    background-attachment: fixed;
+    /* Using scroll attachment avoids white bars / repaint issues in nested scroll containers */
+    background-attachment: scroll;
   }
 
   /* Light mode - Clean white/gray with soft colored accents */
@@ -192,7 +193,8 @@
       radial-gradient(ellipse 50% 60% at 5% 85%, rgba(56, 189, 248, 0.05) 0%, transparent 40%),
       /* Subtle vertical gradient for depth */
       linear-gradient(180deg, #f8fafc 0%, #f1f5f9 50%, #f8fafc 100%);
-    background-attachment: fixed;
+    /* Avoid fixed attachment to prevent scroll artifacts / white bars */
+    background-attachment: scroll;
   }
 
   /* Typography */
@@ -1101,6 +1103,35 @@
   .animate-gradient-shift {
     animation: gradient-shift 8s ease infinite;
     background-size: 200% 200%;
+  }
+
+  @keyframes gradient-rotate {
+    0% { background-position: 0% 50%; }
+    25% { background-position: 50% 100%; }
+    50% { background-position: 100% 50%; }
+    75% { background-position: 50% 0%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .animate-gradient-rotate {
+    animation: gradient-rotate 6s ease infinite;
+  }
+
+  /* Gentle horizontal motion for SVG wave overlays on text-only project cards */
+  @keyframes wave-slide {
+    0% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(-40px);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-wave-slide {
+    animation: wave-slide 16s linear infinite;
   }
 
   @keyframes fadeIn {

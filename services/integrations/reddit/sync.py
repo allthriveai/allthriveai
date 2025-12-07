@@ -324,9 +324,18 @@ class RedditSyncService:
 
             # Try to get full-size image
             image_url = ''
+            post_hint = post_data.get('post_hint', '')
 
-            # Check for preview images (most common)
-            if 'preview' in post_data and 'images' in post_data['preview']:
+            # Priority 1: For image posts, check for direct i.redd.it URL (original, full-size)
+            # These are uncompressed originals, better than preview URLs
+            if post_hint == 'image':
+                url = post_data.get('url', '')
+                if 'i.redd.it' in url or 'i.imgur.com' in url:
+                    image_url = url
+                    logger.debug(f'Using direct image URL: {url} for {permalink}')
+
+            # Priority 2: Check for preview images (WebP compressed, but high-res)
+            if not image_url and 'preview' in post_data and 'images' in post_data['preview']:
                 images = post_data['preview']['images']
                 if images and len(images) > 0:
                     # Get the highest resolution image from source (full size)
@@ -471,8 +480,17 @@ class RedditSyncService:
             posts_to_process = []
             cutoff_time = agent.last_synced_at
 
+            # Get min_publish_year from settings (default 2025 - only import recent content)
+            min_year = agent.settings.get('min_publish_year', 2025)
+
             for post_data in posts:
                 post_published = post_data.get('published_utc')
+
+                # Skip posts older than min_publish_year
+                if post_published and post_published.year < min_year:
+                    logger.debug(f'Skipping post {post_data.get("reddit_post_id")} - published before {min_year}')
+                    continue
+
                 # Include post if:
                 # 1. No last sync (first time), OR
                 # 2. Post was published after last sync time, OR

@@ -26,12 +26,12 @@ class ChallengeTypeAdmin(admin.ModelAdmin):
         'name',
         'key',
         'is_active',
-        'difficulty_level',
+        'difficulty',
         'default_duration_minutes',
         'winner_points',
         'created_at',
     ]
-    list_filter = ['is_active', 'difficulty_level']
+    list_filter = ['is_active', 'difficulty']
     search_fields = ['name', 'key', 'description']
     ordering = ['-created_at']
     readonly_fields = ['created_at', 'updated_at']
@@ -42,7 +42,7 @@ class ChallengeTypeAdmin(admin.ModelAdmin):
             'Configuration',
             {
                 'fields': (
-                    'difficulty_level',
+                    'difficulty',
                     'default_duration_minutes',
                     'min_submission_length',
                     'max_submission_length',
@@ -136,7 +136,6 @@ class PromptBattleAdmin(admin.ModelAdmin):
     ordering = ['-created_at']
     readonly_fields = [
         'created_at',
-        'updated_at',
         'started_at',
         'completed_at',
         'expires_at',
@@ -171,7 +170,7 @@ class PromptBattleAdmin(admin.ModelAdmin):
         (
             'Timestamps',
             {
-                'fields': ('created_at', 'updated_at'),
+                'fields': ('created_at',),
                 'classes': ('collapse',),
             },
         ),
@@ -291,18 +290,18 @@ class BattleInvitationAdmin(admin.ModelAdmin):
 
     list_display = [
         'id',
-        'challenger',
-        'opponent',
+        'sender',
+        'recipient',
         'status',
-        'challenge_type',
+        'invitation_type',
         'created_at',
         'expires_at',
     ]
-    list_filter = ['status', 'challenge_type']
-    search_fields = ['challenger__username', 'opponent__username']
+    list_filter = ['status', 'invitation_type']
+    search_fields = ['sender__username', 'recipient__username', 'recipient_phone']
     ordering = ['-created_at']
-    readonly_fields = ['created_at', 'responded_at']
-    raw_id_fields = ['challenger', 'opponent', 'battle', 'challenge_type']
+    readonly_fields = ['created_at', 'responded_at', 'sms_sent_at']
+    raw_id_fields = ['sender', 'recipient', 'battle']
 
 
 @admin.register(BattleMatchmakingQueue)

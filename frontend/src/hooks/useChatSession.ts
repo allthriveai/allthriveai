@@ -82,8 +82,6 @@ export function useChatSession({
 
   const sendMessage = useCallback(
     async (userInput: string) => {
-      console.log('useChatSession.sendMessage called with:', userInput);
-
       if (agent.validateInput && !agent.validateInput(userInput)) {
         const error = new Error('Invalid input for this agent');
         onError?.(error);

@@ -263,3 +263,127 @@ def list_integrations(request):
             )
 
     return Response({'integrations': integrations})
+
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication, CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def scrape_url_for_project(request):
+    """
+    Scrape any webpage and extract project data using AI.
+
+    This endpoint allows users to paste any URL and get structured project
+    data extracted from the webpage content. No OAuth required.
+
+    Request body:
+        {
+            "url": "https://example.com/some-project"
+        }
+
+    Returns:
+        {
+            "success": true,
+            "data": {
+                "title": "Project Name",
+                "description": "Project description...",
+                "tagline": "Short tagline",
+                "image_url": "https://...",
+                "creator": "Author Name",
+                "organization": "Company Name",
+                "topics": ["tag1", "tag2"],
+                "features": ["feature1", "feature2"],
+                "links": {"github": "...", "docs": "..."},
+                "license": "MIT",
+                "source_url": "https://..."
+            }
+        }
+    """
+    from dataclasses import asdict
+
+    from services.url_import import (
+        AIExtractionError,
+        ContentExtractionError,
+        URLFetchError,
+    )
+    from services.url_import import (
+        scrape_url_for_project as scrape_url,
+    )
+
+    url = request.data.get('url')
+    if not url:
+        return error_response(
+            error='Please provide a URL to scrape',
+            error_code=IntegrationErrorCode.INVALID_URL,
+            suggestion='Enter any webpage URL to extract project information',
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Basic URL validation
+    try:
+        parsed = urlparse(url)
+        if not parsed.scheme or parsed.scheme not in ('http', 'https'):
+            return error_response(
+                error='Invalid URL: must start with http:// or https://',
+                error_code=IntegrationErrorCode.INVALID_URL,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        if not parsed.netloc:
+            return error_response(
+                error='Invalid URL: missing domain',
+                error_code=IntegrationErrorCode.INVALID_URL,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+    except Exception:
+        return error_response(
+            error='Malformed URL',
+            error_code=IntegrationErrorCode.INVALID_URL,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        logger.info(f'User {request.user.username} scraping URL: {url}')
+        project_data = scrape_url(url)
+
+        return Response(
+            {
+                'success': True,
+                'data': asdict(project_data),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    except URLFetchError as e:
+        logger.warning(f'URL fetch failed for {url}: {e}')
+        return error_response(
+            error=str(e),
+            error_code=IntegrationErrorCode.INVALID_URL,
+            suggestion='Make sure the URL is accessible and returns HTML content',
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    except ContentExtractionError as e:
+        logger.warning(f'Content extraction failed for {url}: {e}')
+        return error_response(
+            error=str(e),
+            error_code=IntegrationErrorCode.IMPORT_FAILED,
+            suggestion='The page may be empty or use JavaScript rendering',
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
+    except AIExtractionError as e:
+        logger.error(f'AI extraction failed for {url}: {e}')
+        return error_response(
+            error='Failed to extract project information',
+            error_code=IntegrationErrorCode.IMPORT_FAILED,
+            suggestion='Please try again or use manual project creation',
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    except Exception as e:
+        logger.error(f'Unexpected error scraping {url}: {e}', exc_info=True)
+        return error_response(
+            error='An unexpected error occurred',
+            error_code=IntegrationErrorCode.IMPORT_FAILED,
+            suggestion='Please try again later',
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

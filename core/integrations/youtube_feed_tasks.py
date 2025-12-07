@@ -28,7 +28,15 @@ def sync_all_youtube_feed_agents_task(self):
     try:
         logger.info('Starting periodic YouTube feed agents sync')
 
-        # Get all active agents
+        # Auto-recover agents in error status by resetting them to active
+        # This allows transient errors (like quota limits) to auto-heal on the next sync
+        error_agents = YouTubeFeedAgent.objects.filter(status=YouTubeFeedAgent.Status.ERROR)
+        if error_agents.exists():
+            count = error_agents.count()
+            error_agents.update(status=YouTubeFeedAgent.Status.ACTIVE, last_sync_error='')
+            logger.info(f'Auto-recovered {count} agents from error status')
+
+        # Get all active agents (including just-recovered ones)
         active_agents = YouTubeFeedAgent.objects.filter(status=YouTubeFeedAgent.Status.ACTIVE).select_related(
             'agent_user'
         )

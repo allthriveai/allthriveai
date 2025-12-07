@@ -55,6 +55,8 @@ interface JudgingRevealProps {
   onPlayAgain?: () => void;
   onGoHome?: () => void;
   isJudging?: boolean;
+  /** The original battle challenge prompt */
+  challengeText?: string;
 }
 
 // Judging messages that rotate during analysis
@@ -80,11 +82,19 @@ export function JudgingReveal({
   onPlayAgain,
   onGoHome,
   isJudging = false,
+  challengeText,
 }: JudgingRevealProps) {
   const [phase, setPhase] = useState<RevealPhase>('analyzing');
   const [messageIndex, setMessageIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const prefersReducedMotion = useReducedMotion();
+
+  // Scroll to top when entering reveal phase
+  useEffect(() => {
+    if (phase === 'reveal-left' || phase === 'scoring') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [phase]);
 
   const isWinner = winnerId === myPlayer.id;
   const isTie = winnerId === null && mySubmission?.score === opponentSubmission?.score;
@@ -182,7 +192,7 @@ export function JudgingReveal({
           className="relative z-10 text-center max-w-2xl"
         >
           {/* Central orb */}
-          <div className="relative w-40 h-40 mx-auto mb-8">
+          <div className="relative w-28 h-28 md:w-40 md:h-40 mx-auto mb-6 md:mb-8">
             {/* Outer rings */}
             {[1, 2, 3].map((i) => (
               <motion.div
@@ -204,13 +214,13 @@ export function JudgingReveal({
 
             {/* Core */}
             <motion.div
-              className="absolute inset-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-pink-500/20
+              className="absolute inset-3 md:inset-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-pink-500/20
                          border-2 border-cyan-400/50 flex items-center justify-center
                          shadow-[0_0_60px_rgba(34,211,238,0.4)]"
               animate={{ rotate: [0, 360] }}
               transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
             >
-              <ScaleIcon className="w-12 h-12 text-cyan-400" />
+              <ScaleIcon className="w-8 h-8 md:w-12 md:h-12 text-cyan-400" />
             </motion.div>
 
             {/* Orbiting elements */}
@@ -238,7 +248,7 @@ export function JudgingReveal({
             ))}
           </div>
 
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-4">
             AI Judges Deliberating
           </h1>
 
@@ -275,14 +285,14 @@ export function JudgingReveal({
           </div>
 
           {/* Preview cards (blurred) */}
-          <div className="flex gap-6 mt-12 justify-center">
+          <div className="flex gap-3 md:gap-6 mt-8 md:mt-12 justify-center">
             {[mySubmission, opponentSubmission].map((submission, idx) => (
               <motion.div
                 key={idx}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 + idx * 0.2 }}
-                className="w-48 aspect-square rounded-xl bg-slate-800/50 border border-slate-700/50
+                className="w-32 md:w-48 aspect-square rounded-xl bg-slate-800/50 border border-slate-700/50
                            overflow-hidden filter blur-sm relative"
               >
                 {submission?.imageUrl && (
@@ -323,21 +333,21 @@ export function JudgingReveal({
             </div>
           </motion.div>
 
-          <h2 className="text-3xl font-bold text-white mb-2">Scores Calculated!</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Scores Calculated!</h2>
           <p className="text-slate-400">Preparing to reveal the results...</p>
 
           {/* Score preview */}
-          <div className="flex justify-center gap-12 mt-8">
+          <div className="flex justify-center gap-8 md:gap-12 mt-6 md:mt-8">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.5, type: 'spring' }}
               className="text-center"
             >
-              <div className="text-5xl font-black text-cyan-400">
+              <div className="text-4xl md:text-5xl font-black text-cyan-400">
                 {mySubmission?.score?.toFixed(1) || '?'}
               </div>
-              <div className="text-sm text-slate-400 mt-1">Your Score</div>
+              <div className="text-xs md:text-sm text-slate-400 mt-1">Your Score</div>
             </motion.div>
 
             <motion.div
@@ -346,10 +356,10 @@ export function JudgingReveal({
               transition={{ delay: 0.7, type: 'spring' }}
               className="text-center"
             >
-              <div className="text-5xl font-black text-pink-400">
+              <div className="text-4xl md:text-5xl font-black text-pink-400">
                 {opponentSubmission?.score?.toFixed(1) || '?'}
               </div>
-              <div className="text-sm text-slate-400 mt-1">{opponent.username}</div>
+              <div className="text-xs md:text-sm text-slate-400 mt-1">{opponent.username}</div>
             </motion.div>
           </div>
         </motion.div>
@@ -402,6 +412,21 @@ export function JudgingReveal({
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
             {showWinner ? 'Battle Complete!' : 'Revealing Results...'}
           </h1>
+
+          {/* Original Challenge Prompt */}
+          {challengeText && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-4 max-w-2xl mx-auto"
+            >
+              <div className="px-6 py-4 rounded-xl bg-slate-800/50 border border-cyan-500/30">
+                <p className="text-xs text-cyan-400 uppercase tracking-wider mb-1">Challenge</p>
+                <p className="text-lg text-slate-200 font-medium">"{challengeText}"</p>
+              </div>
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Submissions grid */}
@@ -677,17 +702,17 @@ export function JudgingReveal({
               aria-live="assertive"
             >
               {isTie ? (
-                <div className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-slate-800/50 border border-slate-600">
-                  <StarIcon className="w-8 h-8 text-slate-400" aria-hidden="true" />
-                  <span className="text-2xl font-bold text-slate-300">It's a Tie!</span>
-                  <StarIcon className="w-8 h-8 text-slate-400" aria-hidden="true" />
+                <div className="inline-flex items-center gap-2 md:gap-3 px-6 py-3 md:px-8 md:py-4 rounded-2xl bg-slate-800/50 border border-slate-600">
+                  <StarIcon className="w-6 h-6 md:w-8 md:h-8 text-slate-400" aria-hidden="true" />
+                  <span className="text-xl md:text-2xl font-bold text-slate-300">It's a Tie!</span>
+                  <StarIcon className="w-6 h-6 md:w-8 md:h-8 text-slate-400" aria-hidden="true" />
                 </div>
               ) : isWinner ? (
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
-                  className="inline-flex flex-col items-center gap-4 px-12 py-8 rounded-3xl
+                  className="inline-flex flex-col items-center gap-3 md:gap-4 px-8 py-6 md:px-12 md:py-8 rounded-3xl
                            bg-gradient-to-br from-amber-500/20 to-orange-500/20
                            border border-amber-500/50
                            shadow-[0_0_60px_rgba(251,191,36,0.3)]"
@@ -699,17 +724,17 @@ export function JudgingReveal({
                     }}
                     transition={{ duration: 0.5, delay: 0.5 }}
                   >
-                    <TrophyIcon className="w-20 h-20 text-amber-400" aria-hidden="true" />
+                    <TrophyIcon className="w-14 h-14 md:w-20 md:h-20 text-amber-400" aria-hidden="true" />
                   </motion.div>
-                  <span className="text-4xl font-bold text-amber-300">Victory!</span>
-                  <span className="text-slate-400">+50 XP earned</span>
+                  <span className="text-3xl md:text-4xl font-bold text-amber-300">Victory!</span>
+                  <span className="text-sm md:text-base text-slate-400">+50 XP earned</span>
                 </motion.div>
               ) : (
-                <div className="inline-flex flex-col items-center gap-3 px-8 py-6 rounded-2xl bg-slate-800/50 border border-slate-600">
-                  <span className="text-2xl font-bold text-slate-300">
+                <div className="inline-flex flex-col items-center gap-2 md:gap-3 px-6 py-4 md:px-8 md:py-6 rounded-2xl bg-slate-800/50 border border-slate-600">
+                  <span className="text-xl md:text-2xl font-bold text-slate-300">
                     {opponent.username} Wins!
                   </span>
-                  <span className="text-slate-400">Better luck next time! +10 XP for participating</span>
+                  <span className="text-sm md:text-base text-slate-400">Better luck next time! +10 XP for participating</span>
                 </div>
               )}
             </motion.div>

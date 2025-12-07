@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { getToolBySlug } from '@/services/tools';
 import { exploreProjects } from '@/services/explore';
@@ -33,19 +34,13 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
   const [showLinksDropdown, setShowLinksDropdown] = useState(false);
 
   // Track if tray should be rendered (for slide-out animation)
-  const [shouldRender, setShouldRender] = useState(false);
+  // Start with true so the tray renders immediately (closed position), allowing slide-in animation
+  const [shouldRender, setShouldRender] = useState(true);
 
   // Projects using this tool
   const [projectsUsingTool, setProjectsUsingTool] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [totalProjectCount, setTotalProjectCount] = useState(0);
-
-  // Handle mount/unmount for animations
-  useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true);
-    }
-  }, [isOpen]);
 
   // Handle transition end to unmount after closing
   const handleTransitionEnd = () => {
@@ -54,6 +49,8 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     }
   };
 
+  // Load tool data when tray is open and toolSlug changes
+  // This avoids unnecessary background requests while scrolling feeds
   useEffect(() => {
     if (isOpen && toolSlug) {
       loadTool(toolSlug);
@@ -74,12 +71,12 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     }
   }
 
-  // Fetch projects using this tool when tool is loaded
+  // Fetch projects using this tool when tray is open and tool is loaded
   useEffect(() => {
-    if (tool?.id) {
+    if (isOpen && tool?.id) {
       loadProjectsUsingTool(tool.id);
     }
-  }, [tool?.id]);
+  }, [isOpen, tool?.id]);
 
   async function loadProjectsUsingTool(toolId: number) {
     try {
@@ -173,8 +170,8 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
 
     return (
       <>
-        {/* Header - Fixed */}
-        <div className="flex-shrink-0 px-5 py-3 border-b border-gray-200 dark:border-gray-800">
+        {/* Header - Fixed with opaque background for readability */}
+        <div className="flex-shrink-0 px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {/* Logo */}
@@ -324,23 +321,26 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
             )}
 
             {/* Latest updates and why they matter */}
-            {tool.bestPractices.length > 0 && (
+            {tool.whatsNew && tool.whatsNew.length > 0 && (
               <section className="bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
-                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-1 flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-2 flex items-center gap-2">
                   <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5" />
                   What's new & why it matters
                 </h2>
-                {(tool.lastVerifiedAt || tool.updatedAt) && (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
-                    Last updated:{' '}
-                    {new Date(tool.lastVerifiedAt || tool.updatedAt).toLocaleDateString()}
-                  </p>
-                )}
-                <ul className="space-y-1 text-sm">
-                  {tool.bestPractices.slice(0, 3).map((practice, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="mt-1 inline-block w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
-                      <span className="text-gray-700 dark:text-gray-300">{practice}</span>
+                <ul className="space-y-3 text-sm">
+                  {tool.whatsNew.slice(0, 3).map((update, idx) => (
+                    <li key={idx} className="border-l-2 border-primary-500 pl-3">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-medium text-gray-900 dark:text-white">{update.title}</span>
+                        {update.date && (
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                            {new Date(update.date).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      {update.description && (
+                        <p className="text-gray-600 dark:text-gray-400 text-xs">{update.description}</p>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -410,8 +410,18 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     );
   };
 
-  return (
+  // Use portal to render tray at document body level to escape parent overflow/z-index constraints
+  return createPortal(
     <>
+      {/* Backdrop overlay */}
+      <div
+        className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ease-in-out ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
       {/* Right Sidebar Drawer - Smooth slide animation */}
       <aside
         className={`fixed right-0 top-0 h-full w-full md:w-96 lg:w-[32rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ease-in-out ${
@@ -426,6 +436,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
       >
         {renderContent()}
       </aside>
-    </>
+    </>,
+    document.body
   );
 }

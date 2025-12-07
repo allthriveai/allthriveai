@@ -166,15 +166,27 @@ export function MatchmakingScreen({
             transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
             className="inline-block mb-4"
           >
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-500 p-0.5">
+            <div
+              className="w-20 h-20 rounded-2xl p-0.5"
+              style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}
+            >
               <div className="w-full h-full rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center">
-                <BoltIcon className="w-10 h-10 text-cyan-400" />
+                <BoltIcon
+                  className="w-10 h-10"
+                  style={{ color: '#a855f7' }}
+                />
               </div>
             </div>
           </motion.div>
 
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            Prompt <span className="text-gradient-cyan">Battles</span>
+            Prompt{' '}
+            <span
+              className="bg-clip-text text-transparent"
+              style={{ backgroundImage: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}
+            >
+              Battles
+            </span>
           </h1>
           <p className="text-gray-600 dark:text-slate-400 text-lg">
             Challenge others to an AI image generation duel!

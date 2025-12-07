@@ -564,8 +564,8 @@ export default function NeonGlassStyleguide() {
 
                 {/* User Message */}
                 <div className="flex gap-3 justify-end">
-                  <div className="bg-gradient-to-r from-cyan-500 to-cyan-bright p-4 rounded-2xl rounded-tr-sm max-w-md">
-                    <p className="text-background text-sm font-medium">
+                  <div className="bg-gradient-to-r from-cyan-500 to-cyan-600 p-4 rounded-2xl rounded-tr-sm max-w-md">
+                    <p className="text-white text-sm font-medium">
                       I want to create an AI-powered design tool
                     </p>
                   </div>

@@ -28,7 +28,7 @@ const galleryItems: GalleryItem[] = [
     id: 3,
     title: 'Multi-Modal Chatbot',
     description: 'Understands text, images, and voice',
-    imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&h=800&fit=crop',
+    imageUrl: 'https://images.unsplash.com/photo-1676299081847-824916de030a?w=600&h=800&fit=crop',
     username: 'aiexplorer',
     heartCount: 189,
     tags: ['Chatbot', 'Multi-modal'],

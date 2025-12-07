@@ -18,12 +18,10 @@ import {
 // Load Stripe publishable key from environment
 const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
-// Debug logging
+// Validate Stripe key is configured
 if (!STRIPE_KEY) {
   console.error('❌ VITE_STRIPE_PUBLISHABLE_KEY is not set in environment variables');
   console.error('Please add VITE_STRIPE_PUBLISHABLE_KEY to your .env file and restart the dev server');
-} else {
-  console.log('✅ Stripe key loaded:', STRIPE_KEY.substring(0, 20) + '...');
 }
 
 const stripePromise = loadStripe(STRIPE_KEY || '');
@@ -97,18 +95,15 @@ function PaymentForm({ clientSecret, onSuccess, onError }: PaymentFormProps) {
             errorMessage = error.message || 'Payment failed. Please try again.';
         }
 
-        console.error('[Payment Error]', error.type, error.message);
         onError(errorMessage);
       } else if (paymentIntent?.status === 'succeeded') {
         // Payment succeeded
-        console.log('[Payment Success]', paymentIntent.id);
         onSuccess();
       } else if (paymentIntent?.status === 'requires_action') {
         // 3D Secure or other action required - Stripe Elements handles this automatically
         onError('Additional verification required. Please follow the prompts.');
       } else if (paymentIntent?.status === 'processing') {
         // Payment is processing - wait for webhook
-        console.log('[Payment Processing]', paymentIntent.id);
         onSuccess(); // Let the success handler poll for completion
       } else {
         // Unknown payment intent status

@@ -166,10 +166,7 @@ export async function importGitHubRepoAsync(
 
     const taskId = response.data.taskId;  // Fields are at root level
 
-    // Log platform detection for debugging
-    if (response.data.platform) {
-      console.log(`Auto-detected platform: ${response.data.platformDisplay || response.data.platform}`);
-    }
+    // Platform detection happens silently
 
     onProgress?.('🚀 Import queued successfully!');
 

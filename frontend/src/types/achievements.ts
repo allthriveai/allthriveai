@@ -4,35 +4,35 @@ export interface Achievement {
   name: string;
   description: string;
   icon: string;
-  color_from: string;
-  color_to: string;
+  colorFrom: string;
+  colorTo: string;
   category: string;
-  category_display: string;
+  categoryDisplay: string;
   points: number;
-  criteria_type: string;
-  criteria_type_display: string;
-  criteria_value: number;
-  tracking_field: string;
+  criteriaType: string;
+  criteriaTypeDisplay: string;
+  criteriaValue: number;
+  trackingField: string;
   rarity: string;
-  rarity_display: string;
-  is_secret: boolean;
+  rarityDisplay: string;
+  isSecret: boolean;
   order: number;
 }
 
 export interface UserAchievement {
   id: number;
   achievement: Achievement;
-  earned_at: string;
-  progress_at_unlock: number | null;
+  earnedAt: string;
+  progressAtUnlock: number | null;
 }
 
 export interface AchievementProgress {
   id: number;
   achievement: Achievement;
-  current_value: number;
+  currentValue: number;
   percentage: number;
-  is_complete: boolean;
-  last_updated: string;
+  isComplete: boolean;
+  lastUpdated: string;
 }
 
 export interface AchievementProgressData {
@@ -40,8 +40,8 @@ export interface AchievementProgressData {
 }
 
 export interface AchievementProgressItem extends Achievement {
-  is_earned: boolean;
-  earned_at: string | null;
-  current_value: number;
-  progress_percentage: number;
+  isEarned: boolean;
+  earnedAt: string | null;
+  currentValue: number;
+  progressPercentage: number;
 }

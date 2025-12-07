@@ -230,11 +230,11 @@ class AchievementTracker:
         project_count = Project.objects.filter(user=user).count()
         published_count = Project.objects.filter(user=user, is_private=False).count()
 
-        # Track project-related achievements
+        # Track project-related achievements (using correct tracking_field names)
         if project_count > 0:
-            unlocked.extend(AchievementTracker.track_event(user, 'project_count', project_count))
+            unlocked.extend(AchievementTracker.track_event(user, 'lifetime_projects_created', project_count))
         if published_count > 0:
-            unlocked.extend(AchievementTracker.track_event(user, 'published_project_count', published_count))
+            unlocked.extend(AchievementTracker.track_event(user, 'lifetime_projects_published', published_count))
 
         # TODO: Add more retroactive tracking for battles, quizzes, etc.
 

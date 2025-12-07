@@ -3,7 +3,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { getMyNotificationPreferences, updateMyNotificationPreferences, type NotificationPreferences } from '@/services/notifications';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEnvelope, faTrophy, faUsers, faBell, faRocket, faStar, faSpinner, faMobileAlt, faCheckCircle, faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
+import { faEnvelope, faTrophy, faUsers, faBell, faRocket, faStar, faSpinner, faMobileAlt, faCheckCircle, faExclamationCircle, faBolt } from '@fortawesome/free-solid-svg-icons';
 
 interface NotificationToggleProps {
   id: string;
@@ -34,7 +34,7 @@ function NotificationToggle({ id, label, description, icon, enabled, disabled, o
             disabled={disabled}
             onClick={() => onChange(!enabled)}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${
-              enabled ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'
+              enabled ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-500 ring-1 ring-inset ring-slate-400 dark:ring-slate-400'
             } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <span className="sr-only">Toggle {label}</span>
@@ -284,6 +284,29 @@ export default function NotificationsSettingsPage() {
                       icon={faStar}
                       enabled={preferences.emailMarketing}
                       onChange={(value) => handleToggle('emailMarketing', value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Battle Availability */}
+                <div className="glass-strong rounded-xl p-6 border border-white/20">
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                      Battle Availability
+                    </h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Control whether other users can invite you to prompt battles while you're online
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <NotificationToggle
+                      id="available-for-battles"
+                      label="Available for Battles"
+                      description="When enabled, other AllThrive members can send you real-time battle invitations while you're browsing the site"
+                      icon={faBolt}
+                      enabled={preferences.isAvailableForBattles}
+                      onChange={(value) => handleToggle('isAvailableForBattles', value)}
                     />
                   </div>
                 </div>

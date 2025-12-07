@@ -65,9 +65,6 @@ function isDirectVideo(url: string): boolean {
 export function HeroVideo({ videoUrl, redditPermalink }: HeroVideoProps) {
   if (!videoUrl) return null;
 
-  // Debug logging
-  console.log('HeroVideo:', { videoUrl, redditPermalink, isReddit: isRedditVideo(videoUrl) });
-
   // Handle Reddit videos with iframe embed for proper audio support
   if (isRedditVideo(videoUrl) && redditPermalink) {
     // Convert Reddit permalink to embed URL

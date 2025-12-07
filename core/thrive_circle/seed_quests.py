@@ -274,7 +274,7 @@ def seed_creative_quests(category):
                 'Head to the Banana tool and bring your imagination to life!'
             ),
             'narrative_complete': (
-                'Look at you, digital artist! Your first AI-generated image is born. ' 'The possibilities are endless!'
+                'Look at you, digital artist! Your first AI-generated image is born. The possibilities are endless!'
             ),
         },
         {
@@ -290,7 +290,7 @@ def seed_creative_quests(category):
                 'a beautiful project page with AI-powered descriptions.'
             ),
             'narrative_complete': (
-                'Your GitHub project now has a home on AllThrive! ' 'The AI has helped create a polished showcase page.'
+                'Your GitHub project now has a home on AllThrive! The AI has helped create a polished showcase page.'
             ),
         },
         # === GUIDED MULTI-STEP QUEST ===
@@ -358,11 +358,9 @@ def seed_creative_quests(category):
             'points_reward': 75,
             'order': 5,
             'narrative_intro': (
-                'Time to show your range! A diverse portfolio with multiple projects ' 'shows the depth of your skills.'
+                'Time to show your range! A diverse portfolio with multiple projects shows the depth of your skills.'
             ),
-            'narrative_complete': (
-                'Impressive! You now have 5 projects in your portfolio. ' "That's a solid foundation!"
-            ),
+            'narrative_complete': ("Impressive! You now have 5 projects in your portfolio. That's a solid foundation!"),
         },
         {
             'title': 'Digital Artist',
@@ -394,7 +392,7 @@ def seed_creative_quests(category):
             'order': 8,
             'narrative_intro': ('Great projects deserve great descriptions! Tell the story behind your work.'),
             'narrative_complete': (
-                'Your projects now have compelling stories. ' 'This helps others understand your creative process!'
+                'Your projects now have compelling stories. This helps others understand your creative process!'
             ),
         },
         # === ADVANCED QUESTS ===
@@ -407,7 +405,7 @@ def seed_creative_quests(category):
             'points_reward': 150,
             'order': 9,
             'narrative_complete': (
-                "15 projects! You're a true creative force on AllThrive. " 'Your portfolio is impressive!'
+                "15 projects! You're a true creative force on AllThrive. Your portfolio is impressive!"
             ),
         },
         {
@@ -419,7 +417,7 @@ def seed_creative_quests(category):
             'points_reward': 120,
             'order': 10,
             'narrative_complete': (
-                "50 AI images! You've truly mastered the art of AI generation. " 'Consider showcasing your best work!'
+                "50 AI images! You've truly mastered the art of AI generation. Consider showcasing your best work!"
             ),
         },
         # === EPIC QUEST ===
@@ -432,7 +430,7 @@ def seed_creative_quests(category):
             'points_reward': 300,
             'order': 11,
             'narrative_intro': (
-                'This is the ultimate creative challenge. ' 'Only the most dedicated creators earn this badge.'
+                'This is the ultimate creative challenge. Only the most dedicated creators earn this badge.'
             ),
             'narrative_complete': (
                 'YOU ARE A CREATIVE LEGEND! 30 projects is an incredible achievement. '
@@ -471,7 +469,7 @@ def seed_exploration_quests(category):
                 'Try searching for topics that interest you - you might discover something amazing!'
             ),
             'narrative_complete': (
-                "Great job! You've discovered the power of semantic search. " 'Use it to find exactly what you need!'
+                "Great job! You've discovered the power of semantic search. Use it to find exactly what you need!"
             ),
         },
         {
@@ -483,11 +481,10 @@ def seed_exploration_quests(category):
             'points_reward': 20,
             'order': 2,
             'narrative_intro': (
-                'Each creator on AllThrive has a unique story. '
-                "Let's explore some profiles and see what inspires you!"
+                "Each creator on AllThrive has a unique story. Let's explore some profiles and see what inspires you!"
             ),
             'narrative_complete': (
-                "You've started building connections! " 'Keep exploring to find creators who inspire you.'
+                "You've started building connections! Keep exploring to find creators who inspire you."
             ),
         },
         # === GUIDED SITE TOUR ===
@@ -570,9 +567,7 @@ def seed_exploration_quests(category):
             'requirements': {'action': 'search_used', 'target': 10},
             'points_reward': 40,
             'order': 4,
-            'narrative_complete': (
-                "You've become a search expert! " "Now you can find exactly what you're looking for."
-            ),
+            'narrative_complete': ("You've become a search expert! Now you can find exactly what you're looking for."),
         },
         {
             'title': 'Community Explorer',
@@ -604,7 +599,7 @@ def seed_exploration_quests(category):
             'points_reward': 80,
             'order': 7,
             'narrative_complete': (
-                "30 profiles explored! You're building quite the network. " 'Consider following some of these creators!'
+                "30 profiles explored! You're building quite the network. Consider following some of these creators!"
             ),
         },
         {
@@ -625,10 +620,10 @@ def seed_exploration_quests(category):
             'points_reward': 60,
             'order': 9,
             'narrative_intro': (
-                'AllThrive has projects across many topics. ' "Let's see what different categories have to offer!"
+                "AllThrive has projects across many topics. Let's see what different categories have to offer!"
             ),
             'narrative_complete': (
-                "You've explored 5 different topic areas. " 'Diversity of interests makes for a richer experience!'
+                "You've explored 5 different topic areas. Diversity of interests makes for a richer experience!"
             ),
         },
         # === EASTER EGG / FUN QUESTS ===
@@ -652,10 +647,10 @@ def seed_exploration_quests(category):
             'points_reward': 50,
             'order': 11,
             'narrative_intro': (
-                "Rumor has it there's a hidden style guide page " 'showcasing the Neon Glass aesthetic...'
+                "Rumor has it there's a hidden style guide page showcasing the Neon Glass aesthetic..."
             ),
             'narrative_complete': (
-                'You found the style guide! ' 'Now you know the secrets behind the AllThrive design system.'
+                'You found the style guide! Now you know the secrets behind the AllThrive design system.'
             ),
         },
         # === EPIC EXPLORATION ===

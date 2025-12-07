@@ -36,9 +36,63 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'slug'
 
     def get_queryset(self):
-        queryset = Quiz.objects.filter(is_published=True).select_related('created_by')
+        queryset = (
+            Quiz.objects.filter(is_published=True).select_related('created_by').prefetch_related('tools', 'categories')
+        )
 
-        # Filter by topic
+        # Filter by tools (OR logic - match quizzes with ANY of the selected tools)
+        tools_list = self.request.query_params.getlist('tools')
+        if tools_list:
+            try:
+                # Handle both array params (tools=1&tools=2) and comma-separated (tools=1,2)
+                if len(tools_list) > 1:
+                    tool_ids = [int(tid) for tid in tools_list if tid]
+                elif tools_list[0]:
+                    tool_ids = [int(tid) for tid in tools_list[0].split(',') if tid.strip()]
+                else:
+                    tool_ids = []
+
+                if tool_ids:
+                    queryset = queryset.filter(tools__id__in=tool_ids).distinct()
+            except (ValueError, IndexError):
+                pass  # Invalid tool IDs, ignore
+
+        # Filter by categories (OR logic - match quizzes with ANY of the selected categories)
+        categories_list = self.request.query_params.getlist('categories')
+        if categories_list:
+            try:
+                # Handle both array params and comma-separated
+                if len(categories_list) > 1:
+                    category_ids = [int(cid) for cid in categories_list if cid]
+                elif categories_list[0]:
+                    category_ids = [int(cid) for cid in categories_list[0].split(',') if cid.strip()]
+                else:
+                    category_ids = []
+
+                if category_ids:
+                    queryset = queryset.filter(categories__id__in=category_ids).distinct()
+            except (ValueError, IndexError):
+                pass  # Invalid category IDs, ignore
+
+        # Filter by topics array (OR logic - match quizzes with ANY of the selected topics)
+        topics_list = self.request.query_params.getlist('topics')
+        if topics_list:
+            try:
+                # Handle both array params and comma-separated
+                if len(topics_list) > 1:
+                    topic_names = [t for t in topics_list if t]
+                elif topics_list[0]:
+                    topic_names = [t.strip() for t in topics_list[0].split(',') if t.strip()]
+                else:
+                    topic_names = []
+
+                if topic_names:
+                    # Use __overlap to find quizzes with any matching topic
+                    queryset = queryset.filter(topics__overlap=topic_names).distinct()
+            except (ValueError, IndexError):
+                pass  # Invalid topics, ignore
+
+        # Filter by legacy topic field (kept for backward compatibility)
         topic = self.request.query_params.get('topic')
         if topic:
             queryset = queryset.filter(topic__iexact=topic)

@@ -16,6 +16,8 @@ interface ProjectApiResponse {
   isHighlighted?: boolean;
   isPrivate?: boolean;
   isArchived: boolean;
+  isPromoted?: boolean;
+  promotedAt?: string;
   bannerUrl?: string;
   featuredImageUrl?: string;
   externalUrl?: string;
@@ -49,6 +51,8 @@ function transformProject(data: ProjectApiResponse): Project {
     isHighlighted: data.isHighlighted ?? false,
     isPrivate: data.isPrivate ?? false,
     isArchived: data.isArchived,
+    isPromoted: data.isPromoted ?? false,
+    promotedAt: data.promotedAt,
     bannerUrl: data.bannerUrl,
     featuredImageUrl: data.featuredImageUrl || '',
     externalUrl: data.externalUrl || '',
@@ -107,6 +111,37 @@ export async function createProject(payload: ProjectPayload): Promise<Project> {
   const backendPayload = transformPayload(payload);
   const response = await api.post<ProjectApiResponse>('/me/projects/', backendPayload);
   return transformProject(response.data);
+}
+
+/**
+ * Extracted project data from URL scraping
+ */
+export interface ScrapedProjectData {
+  title: string;
+  description: string;
+  tagline?: string | null;
+  imageUrl?: string | null;
+  creator?: string | null;
+  organization?: string | null;
+  topics?: string[] | null;
+  features?: string[] | null;
+  links?: Record<string, string> | null;
+  license?: string | null;
+  sourceUrl?: string | null;
+}
+
+/**
+ * Scrape a URL and extract project data using AI
+ *
+ * This endpoint fetches any webpage and uses AI to extract
+ * structured project information for creating a new project.
+ */
+export async function scrapeUrlForProject(url: string): Promise<ScrapedProjectData> {
+  const response = await api.post<{ success: boolean; data: ScrapedProjectData }>(
+    '/integrations/scrape-url/',
+    { url }
+  );
+  return response.data.data;
 }
 
 /**
@@ -271,4 +306,26 @@ export async function createProjectFromImageSession(
     title: customTitle,
   });
   return response.data;
+}
+
+/**
+ * Toggle project promotion status (admin only)
+ * Promoted projects appear at the top of explore feeds
+ */
+export async function toggleProjectPromotion(projectId: number): Promise<{
+  isPromoted: boolean;
+  promotedAt: string | null;
+}> {
+  const response = await api.post<{
+    success: boolean;
+    data: {
+      id: number;
+      isPromoted: boolean;  // camelCase after API interceptor transform
+      promotedAt: string | null;
+    };
+  }>(`/projects/${projectId}/toggle-promotion/`);
+  return {
+    isPromoted: response.data.data.isPromoted,
+    promotedAt: response.data.data.promotedAt,
+  };
 }

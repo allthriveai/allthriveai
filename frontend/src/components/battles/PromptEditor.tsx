@@ -167,11 +167,11 @@ export function PromptEditor({
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder}
-          rows={6}
+          rows={4}
           aria-describedby="prompt-char-count prompt-hint"
           aria-invalid={isTooLong}
           className={`
-            w-full p-4 pb-16
+            w-full p-3 md:p-4 pb-14 md:pb-16 text-sm md:text-base
             bg-slate-900/50 backdrop-blur-xl
             border border-white/10
             text-white placeholder:text-slate-500
@@ -220,8 +220,8 @@ export function PromptEditor({
             onClick={handleSubmit}
             disabled={!isValid || disabled}
             className={`
-              flex items-center gap-2 px-5 py-2.5 rounded-xl
-              font-semibold text-sm transition-all
+              flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-lg md:rounded-xl
+              font-semibold text-xs md:text-sm transition-all
               ${isValid && !disabled
                 ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-slate-900 shadow-neon cursor-pointer'
                 : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
@@ -229,13 +229,13 @@ export function PromptEditor({
             `}
           >
             <span>Submit</span>
-            <PaperAirplaneIcon className="w-4 h-4" />
+            <PaperAirplaneIcon className="w-3.5 h-3.5 md:w-4 md:h-4" />
           </motion.button>
         </div>
       </div>
 
       {/* Tips */}
-      <p id="prompt-hint" className="mt-2 text-xs text-slate-500">
+      <p id="prompt-hint" className="mt-2 text-xs text-slate-500 hidden md:block">
         Pro tip: Be specific about colors, mood, composition, and style.{' '}
         <kbd className="text-slate-600 font-mono">⌘+Enter</kbd> to submit
       </p>

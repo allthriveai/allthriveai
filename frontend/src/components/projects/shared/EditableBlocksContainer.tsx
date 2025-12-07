@@ -273,36 +273,43 @@ function SortableBlock({
 
 interface AddBlockButtonProps {
   onAdd: (type: string, style?: string, columnCount?: number) => void;
-  position: 'top' | 'between' | 'bottom';
+  position: 'top' | 'between' | 'bottom' | 'empty';
   isAdding?: boolean;
 }
 
 function AddBlockButton({ onAdd, position, isAdding }: AddBlockButtonProps) {
   const [showPicker, setShowPicker] = useState(false);
+  const isEmptyState = position === 'empty';
 
   return (
     <div
       className={`group relative flex items-center justify-center ${
-        position === 'top' ? 'mb-4' : position === 'bottom' ? 'mt-4' : 'my-4'
+        position === 'top' ? 'mb-4' : position === 'bottom' ? 'mt-4' : position === 'empty' ? '' : 'my-4'
       }`}
     >
-      {/* Divider Line */}
-      <div className="absolute inset-0 flex items-center">
-        <div className="w-full border-t border-transparent group-hover:border-primary-300 dark:group-hover:border-primary-700 transition-colors" />
-      </div>
+      {/* Divider Line - not shown in empty state */}
+      {!isEmptyState && (
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-transparent group-hover:border-primary-300 dark:group-hover:border-primary-700 transition-colors" />
+        </div>
+      )}
 
       {/* Add Button */}
       <button
         onClick={() => setShowPicker(!showPicker)}
         disabled={isAdding}
-        className="relative z-10 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 bg-white dark:bg-gray-900 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary-50 dark:hover:bg-primary-900/20 border border-transparent hover:border-primary-300 dark:hover:border-primary-700 disabled:opacity-50"
+        className={`relative z-10 flex items-center gap-2 font-medium transition-all disabled:opacity-50 ${
+          isEmptyState
+            ? 'px-4 py-2 text-sm bg-primary-500 hover:bg-primary-600 text-white rounded-lg'
+            : 'px-3 py-1.5 text-xs text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 bg-white dark:bg-gray-900 rounded-full opacity-0 group-hover:opacity-100 hover:bg-primary-50 dark:hover:bg-primary-900/20 border border-transparent hover:border-primary-300 dark:hover:border-primary-700'
+        }`}
       >
         {isAdding ? (
           <span className="animate-spin">⏳</span>
         ) : (
-          <PlusIcon className="w-3 h-3" />
+          <PlusIcon className={isEmptyState ? 'w-4 h-4' : 'w-3 h-3'} />
         )}
-        {isAdding ? 'Adding...' : 'Add block'}
+        {isAdding ? 'Adding...' : 'Add Block'}
       </button>
 
       {/* Block Type Picker */}
@@ -638,18 +645,11 @@ export function EditableBlocksContainer(props: EditableBlocksContainerProps) {
           <p className="text-gray-500 dark:text-gray-400 mb-4">
             No content blocks yet. Add your first block to get started.
           </p>
-          <button
-            onClick={() => handleAddBlock(-1, 'text', 'body')}
-            disabled={isAdding}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors disabled:opacity-50"
-          >
-            {isAdding ? (
-              <span className="animate-spin">⏳</span>
-            ) : (
-              <PlusIcon className="w-4 h-4" />
-            )}
-            {isAdding ? 'Adding...' : 'Add Text Block'}
-          </button>
+          <AddBlockButton
+            onAdd={(type, style, columnCount) => handleAddBlock(-1, type, style, columnCount)}
+            position="empty"
+            isAdding={isAdding}
+          />
         </div>
       )}
     </div>

@@ -95,8 +95,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.HTTP_INFO('Testing Embedding Generation:'))
 
         test_text = (
-            'AI-powered project showcase for creative developers '
-            'building with machine learning and automation tools.'
+            'AI-powered project showcase for creative developers building with machine learning and automation tools.'
         )
 
         self.stdout.write(f'  Test text: "{test_text[:50]}..."')

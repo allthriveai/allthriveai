@@ -73,7 +73,6 @@ export default function QuizPage() {
 
     try {
       const response = await startQuiz(slug);
-      console.log('Quiz started successfully, attemptId:', response.attemptId);
 
       setAttemptId(response.attemptId);
       setQuestions(response.questions);
@@ -91,14 +90,11 @@ export default function QuizPage() {
 
   const handleAnswer = async (answer: string) => {
     if (!attemptId || !questions[currentQuestionIndex] || submittingAnswer) {
-      console.log('handleAnswer blocked:', { attemptId, hasQuestion: !!questions[currentQuestionIndex], submittingAnswer });
       return;
     }
 
     const timeSpent = Math.floor((Date.now() - questionStartTime.current) / 1000);
     const question = questions[currentQuestionIndex];
-
-    console.log('Submitting answer:', answer, 'for question:', question.id);
 
     try {
       setSubmittingAnswer(true);

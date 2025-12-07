@@ -196,17 +196,6 @@ export function HelpQuestionsPanel({ onQuestionSelect, onClose }: HelpQuestionsP
         )}
       </div>
 
-      {/* Footer with tip */}
-      <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-slate-900/50">
-        <div className="flex items-start gap-3">
-          <div className="text-xl">💡</div>
-          <div className="flex-1">
-            <p className="text-xs text-slate-600 dark:text-slate-400">
-              <strong className="text-slate-700 dark:text-slate-300">Tip:</strong> Click any question to get a detailed answer from our AI agents, or type your own question in the chat below.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

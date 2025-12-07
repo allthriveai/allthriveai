@@ -3,8 +3,6 @@ import { Dialog, Transition } from '@headlessui/react';
 import { api } from '@/services/api';
 import { getYouTubeErrorMessage, type UserFriendlyError } from '@/utils/errorMessages';
 
-console.log('[VideoPickerModal] MODULE LOADED - File imported successfully');
-
 interface VideoPickerModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -33,8 +31,6 @@ export function VideoPickerModal({
   selectedVideoIds,
   onSelectionChange,
 }: VideoPickerModalProps) {
-  console.log('[VideoPickerModal] Rendering, isOpen:', isOpen, 'selectedCount:', selectedVideoIds.size);
-
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<UserFriendlyError | null>(null);
@@ -44,49 +40,34 @@ export function VideoPickerModal({
 
   // Fetch videos when modal opens
   useEffect(() => {
-    console.log('[VideoPickerModal] useEffect triggered, isOpen:', isOpen);
     let isMounted = true;
     const controller = new AbortController();
 
     const fetchVideos = async () => {
       if (!isOpen) {
-        console.log('[VideoPickerModal] Modal not open, skipping fetch');
         return; // Don't fetch if modal isn't open
       }
 
-      console.log('[VideoPickerModal] Starting video fetch...');
       setLoading(true);
       setError(null);
 
       try {
-        console.log('[VideoPickerModal] Calling API /integrations/youtube/my-videos/');
         const response = await api.get('/integrations/youtube/my-videos/', {
           params: { max_results: 50 },
           signal: controller.signal,
         });
-        console.log('[VideoPickerModal] API response:', response.data);
 
         if (isMounted && response.data?.success) {
-          console.log('[VideoPickerModal] Setting videos, count:', response.data.videos?.length || 0);
           setVideos(response.data.videos || []);
         }
       } catch (error: any) {
         if (error.name !== 'AbortError' && isMounted) {
-          console.error('[VideoPickerModal] Failed to fetch videos:', error);
-          console.error('[VideoPickerModal] Error details:', {
-            message: error.message,
-            response: error.response?.data,
-            status: error.response?.status
-          });
           // Translate error to user-friendly message
           const friendlyError = getYouTubeErrorMessage(error);
           setError(friendlyError);
-        } else if (error.name === 'AbortError') {
-          console.log('[VideoPickerModal] Fetch aborted');
         }
       } finally {
         if (isMounted) {
-          console.log('[VideoPickerModal] Fetch complete, setting loading to false');
           setLoading(false);
         }
       }
@@ -95,7 +76,6 @@ export function VideoPickerModal({
     fetchVideos();
 
     return () => {
-      console.log('[VideoPickerModal] useEffect cleanup, aborting fetch');
       isMounted = false;
       controller.abort();
     };
@@ -108,49 +88,37 @@ export function VideoPickerModal({
   const currentVideos = videos.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
-    console.log('[VideoPickerModal] Page change to:', page);
     setCurrentPage(page);
     // Scroll to top of video grid
     gridRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleToggleVideo = (videoId: string, alreadyImported: boolean) => {
-    console.log('[VideoPickerModal] Toggle video:', videoId, 'alreadyImported:', alreadyImported);
     if (alreadyImported) {
-      console.log('[VideoPickerModal] Cannot select already imported video');
       return; // Can't select already imported videos
     }
 
     const newSelection = new Set(selectedVideoIds);
     if (newSelection.has(videoId)) {
-      console.log('[VideoPickerModal] Removing video from selection');
       newSelection.delete(videoId);
     } else {
-      console.log('[VideoPickerModal] Adding video to selection');
       newSelection.add(videoId);
     }
-    console.log('[VideoPickerModal] New selection count:', newSelection.size);
     onSelectionChange(newSelection);
   };
 
   const handleImport = async () => {
-    console.log('[VideoPickerModal] Import clicked, selected count:', selectedVideoIds.size);
     if (selectedVideoIds.size === 0) {
-      console.log('[VideoPickerModal] No videos selected, skipping import');
       return;
     }
 
-    console.log('[VideoPickerModal] Starting import process...');
     setImporting(true);
     try {
       await onImport(Array.from(selectedVideoIds));
-      console.log('[VideoPickerModal] Import successful, closing modal');
       onClose(); // Close modal on success
     } catch (error) {
       // Error is handled by parent, modal stays open
-      console.error('[VideoPickerModal] Import error:', error);
     } finally {
-      console.log('[VideoPickerModal] Import process complete, setting importing to false');
       setImporting(false);
     }
   };

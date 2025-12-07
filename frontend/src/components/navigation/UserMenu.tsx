@@ -2,7 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
-import { ArrowRightOnRectangleIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowRightOnRectangleIcon,
+  ChartBarIcon,
+  RocketLaunchIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+} from '@heroicons/react/24/outline';
 import type { User } from '@/types/models';
 
 interface UserMenuProps {
@@ -11,6 +17,7 @@ interface UserMenuProps {
 
 export function UserMenu({ user }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dashboardExpanded, setDashboardExpanded] = useState(false);
   const { logout } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -42,18 +49,9 @@ export function UserMenu({ user }: UserMenuProps) {
 
   const menuItems = [
     {
-      label: 'Getting Started',
-      icon: RocketLaunchIcon,
-      highlight: true,
-      onClick: () => {
-        navigate('/getting-started');
-        setIsOpen(false);
-      },
-    },
-    {
       label: 'My Profile',
       onClick: () => {
-        navigate(`/${user.username}?tab=showcase`);
+        navigate(`/${user.username}?tab=playground`);
         setIsOpen(false);
       },
     },
@@ -71,7 +69,44 @@ export function UserMenu({ user }: UserMenuProps) {
         setIsOpen(false);
       },
     },
+    {
+      label: 'Onboarding',
+      icon: RocketLaunchIcon,
+      highlight: true,
+      onClick: () => {
+        navigate('/onboarding');
+        setIsOpen(false);
+      },
+    },
   ];
+
+  // Dashboard submenu items - only visible to admins and vendors
+  const dashboardItems = [
+    ...(user.role === 'admin'
+      ? [
+          {
+            label: 'Admin',
+            onClick: () => {
+              navigate('/admin/analytics');
+              setIsOpen(false);
+            },
+          },
+        ]
+      : []),
+    ...(user.role === 'vendor' || user.role === 'admin'
+      ? [
+          {
+            label: 'Vendor Dashboard',
+            onClick: () => {
+              navigate('/vendor/dashboard');
+              setIsOpen(false);
+            },
+          },
+        ]
+      : []),
+  ];
+
+  const showDashboard = user.role === 'admin' || user.role === 'vendor';
 
   const handleAvatarClick = () => {
     // Toggle dropdown only - don't navigate
@@ -159,6 +194,39 @@ export function UserMenu({ user }: UserMenuProps) {
                 </button>
               );
             })}
+
+            {/* Dashboard Submenu - Only for admins and vendors */}
+            {showDashboard && (
+              <>
+                <button
+                  onClick={() => setDashboardExpanded(!dashboardExpanded)}
+                  className="w-full text-left px-4 py-2.5 text-sm rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl flex items-center gap-2 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 dark:hover:bg-cyan-500/20"
+                >
+                  <ChartBarIcon className="w-4 h-4" />
+                  <span className="flex-1">Dashboard</span>
+                  {dashboardExpanded ? (
+                    <ChevronDownIcon className="w-4 h-4" />
+                  ) : (
+                    <ChevronRightIcon className="w-4 h-4" />
+                  )}
+                </button>
+
+                {/* Submenu Items */}
+                {dashboardExpanded && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {dashboardItems.map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={item.onClick}
+                        className="w-full text-left px-4 py-2 text-sm rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl flex items-center gap-2 text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Logout */}

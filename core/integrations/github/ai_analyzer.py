@@ -53,7 +53,7 @@ Generate structured sections for a visually appealing project portfolio. Return 
   }},
   "features": [
     {{"icon": "FaRocket", "title": "Feature Name", "description": "1-2 sentence description"}},
-    ... (3-6 features based on README/repo)
+    ... (ALWAYS generate exactly 6 features based on README/repo)
   ],
   "tech_stack": {{
     "categories": [

@@ -87,6 +87,6 @@ def sync_social_account_to_connection(sender, request, sociallogin, **kwargs):
             'user_id': user.id,
             'provider': provider,
             'provider_user_id': provider_user_id,
-            'created': created,
+            'was_created': created,
         },
     )

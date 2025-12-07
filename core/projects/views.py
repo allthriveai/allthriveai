@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.cache import cache
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import Throttled
+from rest_framework.exceptions import PermissionDenied, Throttled
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -16,7 +16,7 @@ from core.thrive_circle.signals import track_search_used
 from core.throttles import AuthenticatedProjectsThrottle, ProjectLikeThrottle, PublicProjectsThrottle
 from core.users.models import User
 
-from .constants import MIN_RESPONSE_TIME_SECONDS
+from .constants import MIN_RESPONSE_TIME_SECONDS, PROMOTION_DURATION_DAYS
 from .models import Project, ProjectLike
 from .serializers import ProjectSerializer
 
@@ -50,7 +50,13 @@ def build_pagination_urls(tab: str, page_num: int, page_size: int, total_count: 
 
 
 def build_paginated_response(
-    projects, metadata: dict, page_num: int, page_size: int, tab: str, metadata_key: str = 'personalization'
+    projects,
+    metadata: dict,
+    page_num: int,
+    page_size: int,
+    tab: str,
+    metadata_key: str = 'personalization',
+    promoted_projects: list | None = None,
 ) -> dict:
     """Build a standard paginated response for explore endpoint.
 
@@ -61,17 +67,28 @@ def build_paginated_response(
         page_size: Items per page
         tab: Tab name for URL building (e.g., 'for-you', 'trending')
         metadata_key: Key name for metadata in response (default: 'personalization')
+        promoted_projects: Optional list of promoted projects to prepend on page 1
     """
     serializer = ProjectSerializer(projects, many=True)
+    results = serializer.data
+
+    # Prepend promoted projects on page 1
+    if page_num == 1 and promoted_projects:
+        promoted_serializer = ProjectSerializer(promoted_projects, many=True)
+        results = promoted_serializer.data + results
+
     # Handle different metadata count keys
     total_count = metadata.get('total_candidates', metadata.get('total_trending', len(projects)))
+    # Add promoted count to total
+    if promoted_projects:
+        total_count += len(promoted_projects)
     next_url, previous_url = build_pagination_urls(tab, page_num, page_size, total_count)
 
     return {
         'count': total_count,
         'next': next_url,
         'previous': previous_url,
-        'results': serializer.data,
+        'results': results,
         metadata_key: metadata,
     }
 
@@ -443,7 +460,8 @@ def public_user_projects(request, username):
     is_own_profile = request.user.is_authenticated and request.user.username.lower() == username.lower()
     # Include version in cache key to prevent stale data after schema changes
     # v2: playground now includes all projects, not just non-showcase ones
-    cache_key = f'projects:v2:{username.lower()}:{"own" if is_own_profile else "public"}'
+    # v3: playground is now public by default for non-authenticated users
+    cache_key = f'projects:v3:{username.lower()}:{"own" if is_own_profile else "public"}'
 
     cached_data = cache.get(cache_key)
     if cached_data:
@@ -519,11 +537,41 @@ def public_user_projects(request, username):
             # Shorter cache for own projects (they change more frequently)
             cache.set(cache_key, response_data, settings.CACHE_TTL.get('USER_PROJECTS', 60))
         else:
-            # For non-authenticated users or other users, only return showcase
-            response_data = {
-                'showcase': ProjectSerializer(showcase_projects, many=True).data,
-                'playground': [],
-            }
+            # For non-authenticated users or other users viewing the profile
+            # Check if the user has made their playground public (default is True)
+            playground_is_public = getattr(user, 'playground_is_public', True)
+
+            if playground_is_public:
+                # Return playground projects for public profiles
+                if is_curation:
+                    from django.db.models.functions import Coalesce
+
+                    playground_projects = (
+                        Project.objects.select_related('user')
+                        .filter(user=user, is_archived=False)
+                        .annotate(
+                            sort_date=Coalesce(
+                                'youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at'
+                            )
+                        )
+                        .order_by('-sort_date')
+                    )
+                else:
+                    playground_projects = (
+                        Project.objects.select_related('user')
+                        .filter(user=user, is_archived=False)
+                        .order_by('-created_at')
+                    )
+                response_data = {
+                    'showcase': ProjectSerializer(showcase_projects, many=True).data,
+                    'playground': ProjectSerializer(playground_projects, many=True).data,
+                }
+            else:
+                # Playground is private - only return showcase
+                response_data = {
+                    'showcase': ProjectSerializer(showcase_projects, many=True).data,
+                    'playground': [],
+                }
             # Longer cache for public projects
             cache.set(cache_key, response_data, settings.CACHE_TTL.get('PUBLIC_PROJECTS', 180))
 
@@ -625,6 +673,36 @@ def explore_projects(request):
         .prefetch_related('tools', 'likes')
     )
 
+    # Get promoted projects for page 1 (shown at top of feed regardless of tab)
+    # Only include promotions that haven't expired (within PROMOTION_DURATION_DAYS)
+    # Skip promoted projects when user is filtering (search, tools, categories, topics)
+    page_num_check = int(request.GET.get('page', 1))
+    promoted_projects = []
+    promoted_ids = []
+
+    # Check if user is filtering
+    search_query = request.GET.get('search', '')
+    tools_list = request.GET.getlist('tools')
+    categories_list = request.GET.getlist('categories')
+    topics_list = request.GET.getlist('topics')
+    is_filtering = bool(search_query or any(tools_list) or any(categories_list) or any(topics_list))
+
+    if page_num_check == 1 and not is_filtering:
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        promotion_cutoff = timezone.now() - timedelta(days=PROMOTION_DURATION_DAYS)
+        promoted_qs = queryset.filter(
+            is_promoted=True,
+            promoted_at__gte=promotion_cutoff,  # Only promotions within the time limit
+        ).order_by('-promoted_at')
+        promoted_projects = list(promoted_qs)
+        promoted_ids = [p.id for p in promoted_projects]
+        # Exclude promoted from main queryset to avoid duplicates
+        if promoted_ids:
+            queryset = queryset.exclude(id__in=promoted_ids)
+
     # Apply search filter with fuzzy matching (trigram similarity)
     # This handles slight misspellings like "javascrpt" -> "javascript"
     search_similarity_applied = False
@@ -647,23 +725,27 @@ def explore_projects(request):
             )
             search_similarity_applied = True
 
+    # Extract filter values for use with personalization engines
+    # These are stored separately so we can pass them to engines that handle their own queries
+    filter_tool_ids: list[int] | None = None
+    filter_category_ids: list[int] | None = None
+    filter_topic_names: list[str] | None = None
+
     # Apply tools filter - handle both array params (tools=1&tools=2) and comma-separated (tools=1,2)
     tools_list = request.GET.getlist('tools')
     if tools_list:
         try:
             # If multiple values received as array parameters
             if len(tools_list) > 1:
-                tool_ids = [int(tid) for tid in tools_list if tid]
+                filter_tool_ids = [int(tid) for tid in tools_list if tid]
             # If single value, check if it's comma-separated
             elif tools_list[0]:
-                tool_ids = [int(tid) for tid in tools_list[0].split(',') if tid.strip()]
-            else:
-                tool_ids = []
+                filter_tool_ids = [int(tid) for tid in tools_list[0].split(',') if tid.strip()]
 
-            if tool_ids:
-                queryset = queryset.filter(tools__id__in=tool_ids).distinct()
+            if filter_tool_ids:
+                queryset = queryset.filter(tools__id__in=filter_tool_ids).distinct()
         except (ValueError, IndexError):
-            pass  # Invalid tool IDs, ignore
+            filter_tool_ids = None  # Invalid tool IDs, ignore
 
     # Apply categories filter (predefined taxonomy) - handle both array params and comma-separated
     categories_list = request.GET.getlist('categories')
@@ -671,18 +753,16 @@ def explore_projects(request):
         try:
             # If multiple values received as array parameters
             if len(categories_list) > 1:
-                category_ids = [int(cid) for cid in categories_list if cid]
+                filter_category_ids = [int(cid) for cid in categories_list if cid]
             # If single value, check if it's comma-separated
             elif categories_list[0]:
-                category_ids = [int(cid) for cid in categories_list[0].split(',') if cid.strip()]
-            else:
-                category_ids = []
+                filter_category_ids = [int(cid) for cid in categories_list[0].split(',') if cid.strip()]
 
-            if category_ids:
+            if filter_category_ids:
                 # OR logic: match projects that have ANY of the selected categories
-                queryset = queryset.filter(categories__id__in=category_ids).distinct()
+                queryset = queryset.filter(categories__id__in=filter_category_ids).distinct()
         except (ValueError, IndexError):
-            pass  # Invalid category IDs, ignore
+            filter_category_ids = None  # Invalid category IDs, ignore
 
     # Apply topics filter (user-generated tags) - handle both array params and comma-separated
     topics_list = request.GET.getlist('topics')
@@ -691,19 +771,17 @@ def explore_projects(request):
         try:
             # If multiple values received as array parameters
             if len(topics_list) > 1:
-                topic_names = [t for t in topics_list if t]
+                filter_topic_names = [t for t in topics_list if t]
             # If single value, check if it's comma-separated
             elif topics_list[0]:
-                topic_names = [t.strip() for t in topics_list[0].split(',') if t.strip()]
-            else:
-                topic_names = []
+                filter_topic_names = [t.strip() for t in topics_list[0].split(',') if t.strip()]
 
-            if topic_names:
+            if filter_topic_names:
                 # OR logic: match projects that have ANY of the selected topics
                 # Topics are stored as ArrayField, use __overlap to find any match
-                queryset = queryset.filter(topics__overlap=topic_names).distinct()
+                queryset = queryset.filter(topics__overlap=filter_topic_names).distinct()
         except (ValueError, IndexError):
-            pass  # Invalid topics, ignore
+            filter_topic_names = None  # Invalid topics, ignore
 
     # Apply tab-specific filters
     if tab == 'news':
@@ -716,6 +794,17 @@ def explore_projects(request):
             .annotate(effective_date=Coalesce('published_date', 'created_at'))
             .order_by('-effective_date')
         )
+
+        # Paginate and return news feed
+        page_size = min(int(request.GET.get('page_size', 30)), 100)
+        page_num = int(request.GET.get('page', 1))
+
+        paginator = ProjectPagination()
+        paginator.page_size = page_size
+        page = paginator.paginate_queryset(queryset, request)
+
+        serializer = ProjectSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     # Apply sorting or personalization based on tab
     elif tab == 'for-you':
@@ -736,9 +825,19 @@ def explore_projects(request):
                         user=request.user,
                         page=page_num,
                         page_size=page_size,
+                        tool_ids=filter_tool_ids,
+                        category_ids=filter_category_ids,
+                        topic_names=filter_topic_names,
                     )
                     return Response(
-                        build_paginated_response(result['projects'], result['metadata'], page_num, page_size, 'for-you')
+                        build_paginated_response(
+                            result['projects'],
+                            result['metadata'],
+                            page_num,
+                            page_size,
+                            'for-you',
+                            promoted_projects=promoted_projects,
+                        )
                     )
                 except Exception as e:
                     logger.error(f'Personalization engine error: {e}', exc_info=True)
@@ -749,9 +848,19 @@ def explore_projects(request):
                 user=request.user,
                 page=page_num,
                 page_size=page_size,
+                tool_ids=filter_tool_ids,
+                category_ids=filter_category_ids,
+                topic_names=filter_topic_names,
             )
             return Response(
-                build_paginated_response(result['projects'], result['metadata'], page_num, page_size, 'for-you')
+                build_paginated_response(
+                    result['projects'],
+                    result['metadata'],
+                    page_num,
+                    page_size,
+                    'for-you',
+                    promoted_projects=promoted_projects,
+                )
             )
         else:
             # Anonymous user - show popular
@@ -760,9 +869,19 @@ def explore_projects(request):
                 user=None,
                 page=page_num,
                 page_size=page_size,
+                tool_ids=filter_tool_ids,
+                category_ids=filter_category_ids,
+                topic_names=filter_topic_names,
             )
             return Response(
-                build_paginated_response(result['projects'], result['metadata'], page_num, page_size, 'for-you')
+                build_paginated_response(
+                    result['projects'],
+                    result['metadata'],
+                    page_num,
+                    page_size,
+                    'for-you',
+                    promoted_projects=promoted_projects,
+                )
             )
 
     elif tab == 'trending':
@@ -778,10 +897,19 @@ def explore_projects(request):
                 user=request.user if request.user.is_authenticated else None,
                 page=page_num,
                 page_size=page_size,
+                tool_ids=filter_tool_ids,
+                category_ids=filter_category_ids,
+                topic_names=filter_topic_names,
             )
             return Response(
                 build_paginated_response(
-                    result['projects'], result['metadata'], page_num, page_size, 'trending', 'trending'
+                    result['projects'],
+                    result['metadata'],
+                    page_num,
+                    page_size,
+                    'trending',
+                    'trending',
+                    promoted_projects=promoted_projects,
                 )
             )
         except Exception as e:
@@ -789,21 +917,52 @@ def explore_projects(request):
             # Fall through to default sorting
 
     elif tab == 'new':
-        # Pure newest-first ordering without user bucket mixing
+        # Newest-first ordering with user diversity
         # Sort by published_date if available, otherwise by created_at
-        # This shows the most recently published content first (important for news articles)
         from django.db.models.functions import Coalesce
+
+        from services.personalization import apply_user_diversity
 
         queryset = queryset.annotate(effective_date=Coalesce('published_date', 'created_at')).order_by(
             '-effective_date'
         )
 
-        # Apply pagination
-        paginator = ProjectPagination()
-        paginator.page_size = min(int(request.GET.get('page_size', 30)), 100)
-        page = paginator.paginate_queryset(queryset, request)
-        serializer = ProjectSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        page_size = min(int(request.GET.get('page_size', 30)), 100)
+        page_num = int(request.GET.get('page', 1))
+
+        # Fetch extra to account for diversity filtering
+        start_idx = (page_num - 1) * page_size
+        fetch_size = page_size * 3
+        raw_projects = list(queryset[start_idx : start_idx + fetch_size])
+
+        # Apply user diversity - max 3 posts per user per page
+        diverse_projects = apply_user_diversity(
+            raw_projects,
+            max_per_user=3,
+            page_size=page_size,
+        )
+
+        serializer = ProjectSerializer(diverse_projects, many=True)
+        results = serializer.data
+
+        # Prepend promoted projects on page 1
+        if page_num == 1 and promoted_projects:
+            promoted_serializer = ProjectSerializer(promoted_projects, many=True)
+            results = promoted_serializer.data + results
+
+        # Build paginated response
+        total_count = queryset.count() + len(promoted_projects)
+        has_next = start_idx + page_size < total_count
+        next_url = f'?tab=new&page={page_num + 1}&page_size={page_size}' if has_next else None
+        prev_url = f'?tab=new&page={page_num - 1}&page_size={page_size}' if page_num > 1 else None
+        return Response(
+            {
+                'count': total_count,
+                'next': next_url,
+                'previous': prev_url,
+                'results': results,
+            }
+        )
 
     # Default sorting for 'all' tab or fallback
     # If fuzzy search was applied, prioritize by similarity score
@@ -819,23 +978,68 @@ def explore_projects(request):
     elif sort == 'random':
         queryset = queryset.order_by('?')
     else:  # newest (default)
-        # Mix users by using a hash-based ordering to avoid grouping all posts from same user
-        # This uses modulo on user_id to create groups, then sorts by creation time within groups
-        from django.db.models import F
-        from django.db.models.functions import Mod
+        # Sort by newest, then apply user diversity to prevent feed domination
+        queryset = queryset.order_by('-created_at')
 
-        # Use modulo on user_id to create 10 buckets, then sort by time within each bucket
-        # This naturally distributes users throughout the feed
-        queryset = queryset.annotate(user_bucket=Mod(F('user_id'), 10)).order_by('user_bucket', '-created_at')
+    # Apply pagination with user diversity for newest sort
+    page_size = min(int(request.GET.get('page_size', 30)), 100)
+    page_num = int(request.GET.get('page', 1))
 
-    # Apply pagination
+    if sort == 'newest' or sort is None:
+        # Apply user diversity - max 3 posts per user per page
+        from services.personalization import apply_user_diversity
+
+        # Fetch extra to account for diversity filtering
+        start_idx = (page_num - 1) * page_size
+        fetch_size = page_size * 3
+        raw_projects = list(queryset[start_idx : start_idx + fetch_size])
+
+        diverse_projects = apply_user_diversity(
+            raw_projects,
+            max_per_user=3,
+            page_size=page_size,
+        )
+
+        serializer = ProjectSerializer(diverse_projects, many=True)
+        results = serializer.data
+
+        # Prepend promoted projects on page 1
+        if page_num == 1 and promoted_projects:
+            promoted_serializer = ProjectSerializer(promoted_projects, many=True)
+            results = promoted_serializer.data + results
+
+        # Build paginated response manually
+        total_count = queryset.count() + len(promoted_projects)
+        has_next = start_idx + page_size < total_count
+        next_url = f'?page={page_num + 1}&page_size={page_size}' if has_next else None
+        prev_url = f'?page={page_num - 1}&page_size={page_size}' if page_num > 1 else None
+        return Response(
+            {
+                'count': total_count,
+                'next': next_url,
+                'previous': prev_url,
+                'results': results,
+            }
+        )
+
+    # For other sorts (trending, popular, random), use standard pagination
     paginator = ProjectPagination()
-    paginator.page_size = min(int(request.GET.get('page_size', 30)), 100)
+    paginator.page_size = page_size
     page = paginator.paginate_queryset(queryset, request)
 
     serializer = ProjectSerializer(page, many=True)
+    results = serializer.data
 
-    return paginator.get_paginated_response(serializer.data)
+    # Prepend promoted projects on page 1
+    if page_num == 1 and promoted_projects:
+        promoted_serializer = ProjectSerializer(promoted_projects, many=True)
+        results = promoted_serializer.data + results
+
+    response = paginator.get_paginated_response(results)
+    # Adjust count to include promoted projects
+    if promoted_projects:
+        response.data['count'] = response.data.get('count', 0) + len(promoted_projects)
+    return response
 
 
 @api_view(['POST'])
@@ -927,12 +1131,18 @@ def semantic_search(request):
                     project_map = {p.id: p for p in projects}
                     ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
                 else:
-                    # Text fallback
+                    # Text fallback - search title, description, tools, and categories
                     ordered_projects = list(
                         Project.objects.filter(is_private=False, is_archived=False)
-                        .filter(Q(title__icontains=query) | Q(description__icontains=query))
+                        .filter(
+                            Q(title__icontains=query)
+                            | Q(description__icontains=query)
+                            | Q(tools__name__icontains=query)
+                            | Q(categories__name__icontains=query)
+                        )
                         .select_related('user')
                         .prefetch_related('tools', 'categories', 'likes')
+                        .distinct()  # Required due to M2M joins
                         .order_by('-created_at')[:limit]
                     )
 
@@ -1135,3 +1345,52 @@ def delete_project_by_id(request, project_id):
     cache.delete(f'projects:v2:{username_lower}:public')
 
     return Response({'message': 'Project deleted successfully'}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def toggle_project_promotion(request, project_id):
+    """Toggle project promotion status. Admin only.
+
+    Promotes a project to appear at the top of explore feeds.
+    Only admins can promote/unpromote projects.
+
+    Returns:
+        - is_promoted: new promotion status
+        - promoted_at: timestamp when promoted (or null if unpromoted)
+    """
+    from django.utils import timezone
+
+    # Only admins can promote projects
+    if request.user.role != 'admin':
+        raise PermissionDenied('Only admins can promote projects.')
+
+    try:
+        project = Project.objects.get(id=project_id)
+    except Project.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Toggle promotion status
+    if project.is_promoted:
+        # Unpromote
+        project.is_promoted = False
+        project.promoted_at = None
+        project.promoted_by = None
+    else:
+        # Promote
+        project.is_promoted = True
+        project.promoted_at = timezone.now()
+        project.promoted_by = request.user
+
+    project.save()
+
+    return Response(
+        {
+            'success': True,
+            'data': {
+                'id': project.id,
+                'is_promoted': project.is_promoted,
+                'promoted_at': project.promoted_at,
+            },
+        }
+    )

@@ -206,7 +206,7 @@ export function QuestCompletionCelebration({ completedQuests, onClose }: QuestCo
             {/* Total Points summary for multiple quests */}
             {completedQuests.length > 1 && currentQuestIndex === completedQuests.length - 1 && (
               <p className="mt-3 text-sm text-slate-400">
-                Total earned: <span className="text-green-400 font-semibold">+{totalPoints} Points</span>
+                Total earned: <span className="text-green-400 font-semibold">+{totalXP} Points</span>
               </p>
             )}
           </div>

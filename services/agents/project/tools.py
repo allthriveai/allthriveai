@@ -64,6 +64,14 @@ class CreateProductInput(BaseModel):
     source_url: str = Field(default='', description='Source URL if imported from YouTube/external')
 
 
+class ScrapeWebpageInput(BaseModel):
+    """Input for scrape_webpage_for_project tool."""
+
+    url: str = Field(description='The URL of the webpage to scrape (e.g., https://example.com/project)')
+    is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
+
+
 # Tools
 @tool(args_schema=CreateProjectInput)
 def create_project(
@@ -545,7 +553,164 @@ def create_product(
         return {'success': False, 'error': f'Failed to create product: {str(e)}'}
 
 
+@tool(args_schema=ScrapeWebpageInput)
+def scrape_webpage_for_project(
+    url: str,
+    is_showcase: bool = True,
+    is_private: bool = False,
+    state: dict | None = None,
+) -> dict:
+    """
+    Scrape any webpage and create a project with full AI analysis.
+
+    Use this tool when the user provides a NON-GITHUB URL and wants to
+    import it as a project. This uses AI to:
+    - Extract title, description, and metadata
+    - Generate structured sections (overview, features, tech stack, etc.)
+    - Assign categories, topics, and tools
+    - Create a beautiful portfolio page like GitHub imports
+
+    For GitHub URLs, use import_github_project instead.
+
+    Returns:
+        Dictionary with success status, project details, or error message
+    """
+    from dataclasses import asdict
+
+    from django.contrib.auth import get_user_model
+
+    from core.integrations.github.helpers import apply_ai_metadata
+    from core.projects.models import Project
+    from services.url_import import (
+        URLScraperError,
+        analyze_webpage_for_template,
+        scrape_url_for_project,
+    )
+    from services.url_import.scraper import fetch_webpage, html_to_text
+
+    User = get_user_model()
+
+    # Validate state / user context
+    if not state or 'user_id' not in state:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    user_id = state['user_id']
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'success': False, 'error': 'User not found'}
+
+    # Check if this is a GitHub URL - should use import_github_project instead
+    if 'github.com' in url.lower():
+        return {
+            'success': False,
+            'error': 'This is a GitHub URL. Please use import_github_project instead for richer analysis.',
+            'is_github': True,
+        }
+
+    logger.info(f'Scraping webpage for project: {url} (user: {user.username})')
+
+    try:
+        # Scrape the webpage using AI extraction
+        extracted = scrape_url_for_project(url)
+
+        # Get raw text content for deeper analysis
+        try:
+            html_content = fetch_webpage(url)
+            text_content = html_to_text(html_content)
+        except Exception as e:
+            logger.warning(f'Failed to get text content for template analysis: {e}')
+            text_content = ''
+
+        # Build extracted data dict for template analysis
+        extracted_dict = {
+            'title': extracted.title,
+            'description': extracted.description,
+            'topics': extracted.topics or [],
+            'features': extracted.features or [],
+            'organization': extracted.organization,
+            'source_url': url,
+            'image_url': extracted.image_url,
+            'links': extracted.links or {},
+        }
+
+        # Run template analysis for structured sections
+        logger.info(f'Running template analysis for {url}')
+        analysis = analyze_webpage_for_template(
+            extracted_data=extracted_dict,
+            text_content=text_content,
+            user=user,
+        )
+
+        # Get hero image from analysis
+        hero_image = analysis.get('hero_image') or extracted.image_url or ''
+
+        # Build content with template v2 sections
+        content = {
+            # Template version for frontend to detect new format
+            'templateVersion': analysis.get('templateVersion', 2),
+            # Structured sections for beautiful, consistent display
+            'sections': analysis.get('sections', []),
+            # Raw scraped data for reference
+            'scraped_data': asdict(extracted),
+            # Source URL
+            'source_url': url,
+        }
+
+        # Add features if extracted
+        if extracted.features:
+            content['features'] = extracted.features
+
+        # Add links if extracted
+        if extracted.links:
+            content['links'] = extracted.links
+
+        # Create the project with full metadata
+        project = Project.objects.create(
+            user=user,
+            title=extracted.title or 'Imported Project',
+            description=analysis.get('description') or extracted.description or '',
+            type=Project.ProjectType.OTHER,
+            external_url=url,
+            featured_image_url=hero_image,
+            content=content,
+            is_showcased=is_showcase,
+            is_private=is_private,
+        )
+
+        # Apply AI-suggested categories, topics, and tools
+        apply_ai_metadata(project, analysis, content=content)
+
+        logger.info(
+            f'Successfully imported {url} as project {project.id} with {len(content.get("sections", []))} sections'
+        )
+
+        return {
+            'success': True,
+            'project_id': project.id,
+            'slug': project.slug,
+            'title': project.title,
+            'url': f'/{user.username}/{project.slug}',
+            'message': f"Project '{project.title}' imported successfully from {url}!",
+            'extracted': {
+                'title': extracted.title,
+                'description': extracted.description[:200] if extracted.description else None,
+                'image_url': hero_image,
+                'topics': analysis.get('topics', extracted.topics),
+                'sections_count': len(content.get('sections', [])),
+            },
+        }
+
+    except URLScraperError as e:
+        logger.error(f'Failed to scrape URL {url}: {e}')
+        return {'success': False, 'error': f'Could not import from URL: {str(e)}'}
+    except Exception as e:
+        logger.exception(f'Unexpected error importing from URL {url}: {e}')
+        return {'success': False, 'error': f'Failed to create project: {str(e)}'}
+
+
 # Tool list for agent
 # Note: fetch_github_metadata is kept for potential future use but not exposed to agent
 # GitHub imports require OAuth via import_github_project for ownership verification
-PROJECT_TOOLS = [create_project, extract_url_info, import_github_project, create_product]
+PROJECT_TOOLS = [create_project, extract_url_info, import_github_project, scrape_webpage_for_project, create_product]

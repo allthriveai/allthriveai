@@ -28,7 +28,7 @@ class Command(BaseCommand):
                 'name': 'AI Agents & Multi-Tool Systems',
                 'slug': 'ai-agents-multitool',
                 'description': 'AI agents that reason, call tools, and coordinate multi-step work.',
-                'color': 'amethyst',
+                'color': 'emerald',
             },
             {
                 'name': 'AI Models & Research',
@@ -40,7 +40,7 @@ class Command(BaseCommand):
                 'name': 'Audio & Multimodal',
                 'slug': 'audio-multimodal',
                 'description': 'Audio, music, speech synthesis, and complex multimodal experiences.',
-                'color': 'sapphire',
+                'color': 'rose-quartz',
             },
             {
                 'name': 'Chatbots & Conversation',
@@ -48,13 +48,13 @@ class Command(BaseCommand):
                 'description': (
                     'Chat and text-based experiences: Q&A bots, conversational guides, coaching/mentor bots.'
                 ),
-                'color': 'rose-quartz',
+                'color': 'sapphire',
             },
             {
                 'name': 'Data & Analytics',
                 'slug': 'data-analytics',
                 'description': 'Data visualization, analytics dashboards, and insights projects.',
-                'color': 'emerald',
+                'color': 'amethyst',
             },
             {
                 'name': 'Design (Mockups & UI)',

@@ -60,7 +60,7 @@
       "description": "AI-powered image generation tool that creates stunning, artistic visuals from text descriptions through Discord.",
       "is_active": true,
       "website_url": "https://www.midjourney.com",
-      "logo_url": "https://cdn.sanity.io/images/4zrzovbb/website/0b2d2e3c7d5c8f9f5c5b7e5b7c5b7e5b7c5b7e5b-512x512.png",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Midjourney_Emblem.svg",
       "usage_tips": [
         "Start with simple prompts and iterate with parameters",
         "Use aspect ratio flags (--ar) to control image dimensions",
@@ -242,7 +242,7 @@
       "description": "AI-first code editor built on VS Code, designed for AI-assisted development with deep codebase understanding.",
       "is_active": true,
       "website_url": "https://cursor.sh",
-      "logo_url": "https://cursor.sh/brand/icon.svg",
+      "logo_url": "/cursor-logo.svg",
       "usage_tips": [
         "Use Cmd+K to edit code with natural language",
         "Chat with your entire codebase for context",

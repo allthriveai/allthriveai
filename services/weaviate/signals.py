@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 # Track visibility changes for projects
 _project_visibility_cache: dict[int, dict] = {}
 
+# Track promotion changes for projects
+_project_promotion_cache: dict[int, dict] = {}
+
 
 def _should_sync_to_weaviate() -> bool:
     """Check if Weaviate sync should be performed."""
@@ -37,20 +40,29 @@ def _should_sync_to_weaviate() -> bool:
 @receiver(pre_save, sender='core.Project')
 def track_project_visibility_change(sender, instance, **kwargs):
     """
-    Track project visibility before save to detect changes.
+    Track project visibility and promotion status before save to detect changes.
 
-    This is needed to detect when a project goes from public to private,
-    which requires immediate removal from Weaviate search index.
+    This is needed to detect when:
+    - A project goes from public to private (requires immediate removal from Weaviate search index)
+    - A project's promotion status changes (requires Weaviate sync for quality training)
     """
     if instance.pk:
         try:
             from core.projects.models import Project
 
-            old_instance = Project.objects.filter(pk=instance.pk).values('is_private', 'is_archived').first()
+            old_instance = (
+                Project.objects.filter(pk=instance.pk)
+                .values('is_private', 'is_archived', 'is_promoted', 'promoted_at')
+                .first()
+            )
             if old_instance:
                 _project_visibility_cache[instance.pk] = old_instance
+                _project_promotion_cache[instance.pk] = {
+                    'is_promoted': old_instance.get('is_promoted'),
+                    'promoted_at': old_instance.get('promoted_at'),
+                }
         except Exception as e:
-            logger.debug(f'Error tracking project visibility: {e}')
+            logger.debug(f'Error tracking project visibility/promotion: {e}')
 
 
 @receiver(post_save, sender='core.Project')
@@ -61,18 +73,29 @@ def sync_project_on_save(sender, instance, created, **kwargs):
     Handles visibility changes:
     - Public → Private: Remove from Weaviate immediately
     - Private → Public: Add to Weaviate
+    - Promotion status change: Update in Weaviate for quality training
     - Any other change: Update in Weaviate
 
     Queues a Celery task to avoid blocking the save operation.
     """
+    # Always clean up caches to prevent memory leaks
+    old_visibility = _project_visibility_cache.pop(instance.pk, None)
+    old_promotion = _project_promotion_cache.pop(instance.pk, None)
+
     if not _should_sync_to_weaviate():
         return
 
     try:
         from .tasks import remove_project_from_weaviate, sync_project_to_weaviate
 
-        # Check for visibility change
-        old_visibility = _project_visibility_cache.pop(instance.pk, None)
+        # Log promotion change (for quality training observability)
+        if old_promotion:
+            was_promoted = old_promotion.get('is_promoted', False)
+            if was_promoted != instance.is_promoted:
+                logger.info(
+                    f'Project {instance.id} promotion changed: {was_promoted} → {instance.is_promoted} '
+                    f'(quality signal for Weaviate)'
+                )
 
         # Determine if project should be in Weaviate (public + not archived)
         should_be_searchable = not instance.is_private and not instance.is_archived

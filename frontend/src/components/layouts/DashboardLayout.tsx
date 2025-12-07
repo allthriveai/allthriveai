@@ -1,4 +1,4 @@
-import { useState, ReactNode, useEffect, useMemo } from 'react';
+import { useState, ReactNode, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightAboutPanel } from '@/components/about';
@@ -7,12 +7,14 @@ import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
 import { CommentTray } from '@/components/projects/CommentTray';
 import { QuestTray } from '@/components/side-quests/QuestTray';
 import { Footer } from '@/components/landing/Footer';
+import { SageAdventureBanner, useSageOnboardingContextSafe } from '@/components/onboarding';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveQuest } from '@/hooks/useActiveQuest';
 import type { Project, UserSideQuest } from '@/types/models';
 
 // Constants
 const GITHUB_OAUTH_TIMESTAMP_KEY = 'github_oauth_timestamp';
+const SAGE_OPEN_CHAT_KEY = 'sage_open_chat';
 const OVERLAY_CLASSNAME = 'fixed inset-0 bg-black/20 z-30 md:hidden';
 
 interface DashboardLayoutProps {
@@ -28,6 +30,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
+  const onboardingContext = useSageOnboardingContextSafe();
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
@@ -54,7 +57,8 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
 
   // Stable conversationId that doesn't change on every render
   // This prevents the IntelligentChatPanel from reinitializing on parent re-renders
-  const conversationId = useMemo(() => `project-${Date.now()}`, []);
+  // Use 'chat-' prefix for general conversations (not 'project-' which forces project-creation mode)
+  const conversationId = useMemo(() => `chat-${Date.now()}`, []);
 
   // Auto-open about panel when prop is true
   useEffect(() => {
@@ -99,22 +103,37 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     localStorage.removeItem('github_oauth_return');
     localStorage.removeItem(GITHUB_OAUTH_TIMESTAMP_KEY);
 
-    console.log('✅ Opening Add Project panel after OAuth return');
     handleOpenAddProject();
   }, []);
 
-  const handleMenuClick = (menuItem: string) => {
-    if (menuItem === 'About Us') {
-      const wasOpen = aboutOpen;
-      setAboutOpen(true);
-      setEventsOpen(false);
-      // Scroll to About Us section
+  // Check for Sage onboarding "Add Project" adventure - open chat in welcome mode
+  useEffect(() => {
+    const sageOpenChat = localStorage.getItem(SAGE_OPEN_CHAT_KEY);
+
+    if (sageOpenChat === 'true') {
+      // Clear immediately to prevent re-triggering
+      localStorage.removeItem(SAGE_OPEN_CHAT_KEY);
+
+      // Short delay to let the page render first
       setTimeout(() => {
-        const element = document.getElementById('about-us');
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, wasOpen ? 50 : 150); // Shorter delay if already open
+        handleOpenAddProject(true); // Open in welcome mode
+      }, 300);
+    }
+  }, [location.pathname]);
+
+  const handleMenuClick = useCallback((menuItem: string) => {
+    if (menuItem === 'About Us') {
+      setAboutOpen((wasOpen) => {
+        // Scroll to About Us section after state update
+        setTimeout(() => {
+          const element = document.getElementById('about-us');
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, wasOpen ? 50 : 150); // Shorter delay if already open
+        return true;
+      });
+      setEventsOpen(false);
     } else if (menuItem === 'Our Values') {
       setAboutOpen(true);
       setEventsOpen(false);
@@ -136,7 +155,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       setAboutOpen(false);
       setEventsOpen(false);
     }
-  };
+  }, []);
 
   const handleCloseAbout = () => {
     setAboutOpen(false);
@@ -146,14 +165,14 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setEventsOpen(false);
   };
 
-  const handleOpenAddProject = (welcomeMode: boolean = false) => {
+  const handleOpenAddProject = useCallback((welcomeMode: boolean = false) => {
     // Open Add Project panel with 4 options (or welcome mode for new users)
     setAddProjectOpen(true);
     setAddProjectWelcomeMode(welcomeMode);
     setChatSupportMode(false); // Reset support mode when opening normally
     setAboutOpen(false);
     setEventsOpen(false);
-  };
+  }, []);
 
   const handleCloseAddProject = () => {
     setAddProjectOpen(false);
@@ -161,14 +180,14 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setChatSupportMode(false);
   };
 
-  const handleOpenCommentPanel = (project: Project) => {
+  const handleOpenCommentPanel = useCallback((project: Project) => {
     setCommentPanelProject(project);
     setCommentPanelOpen(true);
     // Close other panels
     setAboutOpen(false);
     setEventsOpen(false);
     setAddProjectOpen(false);
-  };
+  }, []);
 
   const handleCloseCommentPanel = () => {
     setCommentPanelOpen(false);
@@ -191,6 +210,17 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto scroll-pt-16">
           <div className="pt-16">
+            {/* Ember Onboarding Banner - positioned below nav, not sticky */}
+            {onboardingContext?.shouldShowBanner && (
+              <SageAdventureBanner
+                completedAdventures={onboardingContext.completedAdventures}
+                onAdventureClick={onboardingContext.completeAdventure}
+                onDismiss={onboardingContext.dismissOnboarding}
+                onShowMoreRecommendations={() => {
+                  window.location.href = '/onboarding';
+                }}
+              />
+            )}
             {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray }) : children}
           </div>
           <Footer onOpenChat={handleMenuClick} />

@@ -10,6 +10,7 @@ import {
   PuzzlePieceIcon,
   ShoppingBagIcon,
   RocketLaunchIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 interface SettingsSidebarItem {
@@ -29,6 +30,11 @@ const settingsNavItems: SettingsSidebarItem[] = [
     icon: UserCircleIcon,
   },
   {
+    label: 'Activity',
+    path: '/account/settings/activity',
+    icon: ChartBarIcon,
+  },
+  {
     label: 'Integrations',
     path: '/account/settings/integrations',
     icon: PuzzlePieceIcon,
@@ -44,7 +50,7 @@ const settingsNavItems: SettingsSidebarItem[] = [
     icon: GiftIcon,
   },
   {
-    label: 'Email Notifications',
+    label: 'Notifications',
     path: '/account/settings/notifications',
     icon: BellIcon,
   },
@@ -64,8 +70,8 @@ const settingsNavItems: SettingsSidebarItem[] = [
     icon: ShieldCheckIcon,
   },
   {
-    label: 'Getting Started',
-    path: '/getting-started',
+    label: 'Onboarding',
+    path: '/onboarding',
     icon: RocketLaunchIcon,
   },
 ];
@@ -173,9 +179,6 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
                   key={item.path}
                   to={item.path}
                   end={item.path === '/account/settings'}
-                  onClick={(e) => {
-                    console.log('[SettingsLayout] NavLink clicked:', item.path, item.label);
-                  }}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                       isActive

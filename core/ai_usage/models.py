@@ -312,3 +312,102 @@ class UserAICostSummary(models.Model):
         cache.set(cache_key, result, 300)
 
         return result
+
+
+class PlatformDailyStats(models.Model):
+    """
+    Pre-aggregated daily platform-wide statistics for the admin analytics dashboard.
+    Updated by Celery task once per day for fast dashboard loading.
+    """
+
+    date = models.DateField(unique=True, db_index=True, help_text='Date of this summary')
+
+    # User Growth Metrics
+    total_users = models.IntegerField(default=0, help_text='Cumulative total users')
+    new_users_today = models.IntegerField(default=0, help_text='New signups on this day')
+    active_users_today = models.IntegerField(default=0, help_text='Users who logged in or took action today')
+    dau = models.IntegerField(default=0, help_text='Daily Active Users')
+    wau = models.IntegerField(default=0, help_text='Weekly Active Users (trailing 7 days)')
+    mau = models.IntegerField(default=0, help_text='Monthly Active Users (trailing 30 days)')
+
+    # AI Usage Metrics
+    total_ai_requests = models.IntegerField(default=0, help_text='Total AI requests made today')
+    total_ai_tokens = models.BigIntegerField(default=0, help_text='Total tokens used today')
+    total_ai_cost = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal('0'), help_text='Total AI cost today (USD)'
+    )
+    ai_users_today = models.IntegerField(default=0, help_text='Unique users who made AI requests today')
+    cau = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0'),
+        help_text='Cost per Active User (total_ai_cost / ai_users_today)',
+    )
+
+    # AI Breakdown (JSON for flexibility)
+    ai_by_feature = models.JSONField(
+        default=dict, blank=True, help_text="AI usage by feature: {'project_agent': {'requests': 100, 'cost': 1.5}}"
+    )
+    ai_by_provider = models.JSONField(
+        default=dict, blank=True, help_text="AI usage by provider: {'openai': {'requests': 50, 'cost': 0.8}}"
+    )
+
+    # Content Metrics
+    total_projects = models.IntegerField(default=0, help_text='Cumulative total projects')
+    new_projects_today = models.IntegerField(default=0, help_text='New projects created today')
+    total_project_views = models.IntegerField(default=0, help_text='Project page views today')
+    total_project_clicks = models.IntegerField(default=0, help_text='Project card clicks today')
+    total_comments = models.IntegerField(default=0, help_text='Comments posted today')
+
+    # Engagement Metrics
+    total_quests_completed = models.IntegerField(default=0, help_text='Side quests completed today')
+    total_quiz_attempts = models.IntegerField(default=0, help_text='Quiz attempts today')
+    total_events_created = models.IntegerField(default=0, help_text='Events created today')
+    total_tool_reviews = models.IntegerField(default=0, help_text='Tool reviews posted today')
+
+    # Revenue Metrics (placeholder for future)
+    revenue_today = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal('0'), help_text='Revenue generated today (USD)'
+    )
+    new_subscribers_today = models.IntegerField(default=0, help_text='New paid subscribers today')
+    total_subscribers = models.IntegerField(default=0, help_text='Total active subscribers')
+
+    # Quality Metrics
+    avg_hallucination_score = models.FloatField(
+        null=True, blank=True, help_text='Average confidence score from hallucination tracking'
+    )
+    hallucination_flags_count = models.IntegerField(default=0, help_text='Number of hallucination flags today')
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Platform Daily Stats'
+        verbose_name_plural = 'Platform Daily Stats'
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['-date']),
+            models.Index(fields=['date', '-total_users']),
+            models.Index(fields=['date', '-total_ai_cost']),
+        ]
+        permissions = [
+            ('view_platform_stats', 'Can view platform-wide statistics'),
+        ]
+
+    def __str__(self):
+        return f'{self.date} - {self.total_users} users, {self.total_ai_requests} AI reqs, ${self.total_ai_cost}'
+
+    @property
+    def user_growth_rate(self):
+        """Calculate user growth rate as percentage."""
+        if self.total_users > 0 and self.new_users_today > 0:
+            return (self.new_users_today / self.total_users) * 100
+        return 0.0
+
+    @property
+    def ai_adoption_rate(self):
+        """Percentage of active users who used AI today."""
+        if self.active_users_today > 0:
+            return (self.ai_users_today / self.active_users_today) * 100
+        return 0.0

@@ -119,9 +119,6 @@ export class CreateProjectAgent extends BaseAgent {
   async handleMessage(userMessage: string): Promise<string> {
     const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-    console.log('CreateProjectAgent.handleMessage:', userMessage);
-    console.log('Session ID:', this.sessionId);
-
     try {
       const response = await fetch(`${apiUrl}/project/chat/stream/`, {
         method: 'POST',
@@ -134,8 +131,6 @@ export class CreateProjectAgent extends BaseAgent {
           message: userMessage,
         }),
       });
-
-      console.log('Response status:', response.status);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -163,9 +158,8 @@ export class CreateProjectAgent extends BaseAgent {
                 } else if (data.type === 'complete') {
                   this.sessionId = data.session_id;
 
-                  // If project was created, could trigger a refresh here
+                  // If project was created, dispatch event for profile refresh
                   if (data.project_id) {
-                    console.log('Project created:', data.project_id, data.project_slug);
                     // Optionally dispatch event for profile refresh
                     window.dispatchEvent(new CustomEvent('project-created', {
                       detail: { projectId: data.project_id, slug: data.project_slug }
@@ -220,7 +214,6 @@ export function createAgent(agentId: string): BaseAgent {
   }
 
   if (!factory) {
-    console.log('Unknown agent ID:', agentId, 'Available agents:', Object.keys(agentFactoryMap));
     // Fall back to placeholder for unknown agents
     return new PlaceholderAgent({
       agentId,

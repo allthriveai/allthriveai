@@ -70,21 +70,14 @@ interface LoadingSkeletonProps {
 }
 
 export function LoadingSkeleton({ count = 6, type }: LoadingSkeletonProps) {
+  // Return array directly (not Fragment) so MasonryGrid can distribute items across columns
   if (type === 'profile') {
-    return (
-      <>
-        {Array.from({ length: count }).map((_, i) => (
-          <ProfileCardSkeleton key={i} />
-        ))}
-      </>
-    );
+    return Array.from({ length: count }).map((_, i) => (
+      <ProfileCardSkeleton key={`profile-skeleton-${i}`} />
+    ));
   }
 
-  return (
-    <>
-      {Array.from({ length: count }).map((_, i) => (
-        <ProjectCardSkeleton key={i} />
-      ))}
-    </>
-  );
+  return Array.from({ length: count }).map((_, i) => (
+    <ProjectCardSkeleton key={`project-skeleton-${i}`} />
+  ));
 }

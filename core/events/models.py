@@ -63,6 +63,7 @@ class Event(models.Model):
     is_published = models.BooleanField(default=True, help_text='Whether event is visible to users')
 
     class Meta:
+        db_table = 'core_event'
         ordering = ['start_date']
         verbose_name = 'Event'
         verbose_name_plural = 'Events'
@@ -142,6 +143,7 @@ class EventRSVP(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'core_eventrsvp'
         unique_together = ['event', 'user']
         ordering = ['-created_at']
         verbose_name = 'Event RSVP'

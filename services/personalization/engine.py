@@ -4,7 +4,10 @@ Personalization engine with hybrid scoring algorithm.
 Combines multiple signals for "For You" feed:
 - Vector similarity (30%): Content-based from Weaviate
 - Explicit preferences (25%): UserTag matches
-- Behavioral signals (25%): Interaction history
+- Behavioral signals (25%): Interaction history + follow boost
+  - Penalize viewed/liked projects
+  - Boost projects from liked owners
+  - Boost projects from followed users (+0.4)
 - Collaborative filtering (15%): Similar users' likes
 - Popularity (5%): Baseline popularity score
 """
@@ -35,6 +38,7 @@ class ScoredProject:
     behavioral_score: float = 0.0
     collaborative_score: float = 0.0
     popularity_score: float = 0.0
+    promotion_score: float = 0.0  # Quality signal from admin promotions
     diversity_boost: float = 0.0
 
     def to_dict(self) -> dict:
@@ -47,6 +51,7 @@ class ScoredProject:
                 'behavioral': round(self.behavioral_score, 4),
                 'collaborative': round(self.collaborative_score, 4),
                 'popularity': round(self.popularity_score, 4),
+                'promotion': round(self.promotion_score, 4),
                 'diversity_boost': round(self.diversity_boost, 4),
             },
         }
@@ -69,12 +74,14 @@ class PersonalizationEngine:
     """
 
     # Configurable weights for hybrid scoring
+    # Total = 1.0 (vector + explicit + behavioral + collaborative + popularity + promotion)
     WEIGHTS = {
-        'vector_similarity': 0.30,
-        'explicit_preferences': 0.25,
-        'behavioral_signals': 0.25,
-        'collaborative': 0.15,
+        'vector_similarity': 0.27,
+        'explicit_preferences': 0.23,
+        'behavioral_signals': 0.23,
+        'collaborative': 0.14,
         'popularity': 0.05,
+        'promotion': 0.08,  # Quality signal from admin-promoted content
     }
 
     # Number of candidate projects to fetch from Weaviate
@@ -149,6 +156,9 @@ class PersonalizationEngine:
         page: int = 1,
         page_size: int = 20,
         exclude_project_ids: list[int] | None = None,
+        tool_ids: list[int] | None = None,
+        category_ids: list[int] | None = None,
+        topic_names: list[str] | None = None,
     ) -> dict:
         """
         Get personalized "For You" feed for a user.
@@ -158,6 +168,9 @@ class PersonalizationEngine:
             page: Page number (1-indexed)
             page_size: Number of projects per page
             exclude_project_ids: Project IDs to exclude (e.g., already shown)
+            tool_ids: Filter to projects with ANY of these tools (OR logic)
+            category_ids: Filter to projects with ANY of these categories (OR logic)
+            topic_names: Filter to projects with ANY of these topics (OR logic)
 
         Returns:
             Dict with 'projects' list and 'metadata'
@@ -172,14 +185,18 @@ class PersonalizationEngine:
 
             if not user_vector:
                 logger.info(f'No user vector for {user.id}, falling back to popular')
-                return self._get_popular_fallback(page, page_size, exclude_project_ids)
+                return self._get_popular_fallback(
+                    page, page_size, exclude_project_ids, tool_ids, category_ids, topic_names
+                )
 
             # Step 2: Get candidate projects from Weaviate
             candidates = self._get_vector_candidates(user_vector, exclude_project_ids)
 
             if not candidates:
                 logger.info(f'No Weaviate candidates for {user.id}, falling back to popular')
-                return self._get_popular_fallback(page, page_size, exclude_project_ids)
+                return self._get_popular_fallback(
+                    page, page_size, exclude_project_ids, tool_ids, category_ids, topic_names
+                )
 
             # Step 3: Score all candidates
             # Pass user_vector to avoid redundant computation in collaborative filtering
@@ -188,14 +205,19 @@ class PersonalizationEngine:
             # Step 4: Apply diversity boost
             scored_projects = self._apply_diversity_boost(scored_projects)
 
-            # Step 5: Sort by total score and paginate
+            # Step 5: Sort by total score
             scored_projects.sort(key=lambda x: x.total_score, reverse=True)
 
+            # Step 6: Apply filters if provided (before pagination)
+            if tool_ids or category_ids or topic_names:
+                scored_projects = self._apply_filters(scored_projects, tool_ids, category_ids, topic_names)
+
+            # Step 7: Paginate
             start_idx = (page - 1) * page_size
             end_idx = start_idx + page_size
             page_results = scored_projects[start_idx:end_idx]
 
-            # Step 6: Get Django Project objects
+            # Step 8: Get Django Project objects
             project_ids = [sp.project_id for sp in page_results]
             projects = (
                 Project.objects.filter(id__in=project_ids)
@@ -208,11 +230,18 @@ class PersonalizationEngine:
             ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
 
             # Get true total count from database for pagination
-            # (Weaviate candidates are limited, but we want endless scroll)
-            total_available = Project.objects.filter(
+            # Account for filters in the count
+            total_query = Project.objects.filter(
                 is_private=False,
                 is_archived=False,
-            ).count()
+            )
+            if tool_ids:
+                total_query = total_query.filter(tools__id__in=tool_ids)
+            if category_ids:
+                total_query = total_query.filter(categories__id__in=category_ids)
+            if topic_names:
+                total_query = total_query.filter(topics__overlap=topic_names)
+            total_available = total_query.distinct().count()
 
             return {
                 'projects': ordered_projects,
@@ -223,12 +252,17 @@ class PersonalizationEngine:
                     'weaviate_candidates': len(scored_projects),
                     'algorithm': 'hybrid_personalization',
                     'scores': [sp.to_dict() for sp in page_results],
+                    'filters_applied': {
+                        'tool_ids': tool_ids,
+                        'category_ids': category_ids,
+                        'topic_names': topic_names,
+                    },
                 },
             }
 
         except Exception as e:
             logger.error(f'Personalization error for user {user.id}: {e}', exc_info=True)
-            return self._get_popular_fallback(page, page_size, exclude_project_ids)
+            return self._get_popular_fallback(page, page_size, exclude_project_ids, tool_ids, category_ids, topic_names)
 
     def _get_user_vector(self, user: 'User') -> list[float] | None:
         """Get user's preference vector from Weaviate or generate it."""
@@ -380,9 +414,13 @@ class PersonalizationEngine:
         """
         from core.projects.models import ProjectLike
         from core.taxonomy.models import UserInteraction, UserTag
+        from core.users.models import UserFollow
 
         # Get user's data for scoring
         user_tags = set(UserTag.objects.filter(user=user).values_list('name', flat=True))
+
+        # Get IDs of users the current user follows (for follow boost)
+        followed_user_ids = set(UserFollow.objects.filter(follower=user).values_list('following_id', flat=True))
         user_tool_tags = set(
             UserTag.objects.filter(user=user, taxonomy__taxonomy_type='tool').values_list('taxonomy__name', flat=True)
         )
@@ -460,6 +498,10 @@ class PersonalizationEngine:
                 if owner_liked_count > 0:
                     behavioral_score += min(owner_liked_count * 0.1, 0.3)
 
+                # Boost projects from followed users (significant boost)
+                if owner_id in followed_user_ids:
+                    behavioral_score += 0.4  # Strong boost for followed users' content
+
             behavioral_score = max(-1, min(1, behavioral_score))  # Clamp to [-1, 1]
 
             # 4. Collaborative score
@@ -471,6 +513,10 @@ class PersonalizationEngine:
 
             popularity_score = (like_count / max_like_count) * 0.5 + (velocity / max_velocity) * 0.5
 
+            # 6. Promotion score (quality signal from admin-promoted content)
+            # This helps train the algorithm on what good content looks like
+            promotion_score = candidate.get('promotion_score', 0.0)
+
             # Combine with weights
             total_score = (
                 (vector_score * self.WEIGHTS['vector_similarity'])
@@ -478,6 +524,7 @@ class PersonalizationEngine:
                 + (behavioral_score * self.WEIGHTS['behavioral_signals'])
                 + (collaborative_score * self.WEIGHTS['collaborative'])
                 + (popularity_score * self.WEIGHTS['popularity'])
+                + (promotion_score * self.WEIGHTS['promotion'])
             )
 
             scored_projects.append(
@@ -489,6 +536,7 @@ class PersonalizationEngine:
                     behavioral_score=behavioral_score,
                     collaborative_score=collaborative_score,
                     popularity_score=popularity_score,
+                    promotion_score=promotion_score,
                 )
             )
 
@@ -612,22 +660,76 @@ class PersonalizationEngine:
 
         return scored_projects
 
+    def _apply_filters(
+        self,
+        scored_projects: list[ScoredProject],
+        tool_ids: list[int] | None,
+        category_ids: list[int] | None,
+        topic_names: list[str] | None,
+    ) -> list[ScoredProject]:
+        """
+        Filter scored projects by tools, categories, and topics (OR logic).
+
+        Projects must match ANY of the selected filters.
+        """
+        from core.projects.models import Project
+
+        if not scored_projects:
+            return scored_projects
+
+        project_ids = [sp.project_id for sp in scored_projects]
+
+        # Build query to get projects that match filters
+        query = Project.objects.filter(id__in=project_ids)
+
+        # Apply OR logic filters - projects matching ANY filter are included
+        if tool_ids:
+            query = query.filter(tools__id__in=tool_ids)
+        if category_ids:
+            query = query.filter(categories__id__in=category_ids)
+        if topic_names:
+            query = query.filter(topics__overlap=topic_names)
+
+        matching_ids = set(query.distinct().values_list('id', flat=True))
+
+        # Filter scored_projects to only those matching filters
+        filtered = [sp for sp in scored_projects if sp.project_id in matching_ids]
+
+        logger.debug(
+            f'Applied filters: {len(scored_projects)} -> {len(filtered)} projects '
+            f'(tools={tool_ids}, categories={category_ids}, topics={topic_names})'
+        )
+
+        return filtered
+
     def _get_popular_fallback(
         self,
         page: int,
         page_size: int,
         exclude_ids: list[int],
+        tool_ids: list[int] | None = None,
+        category_ids: list[int] | None = None,
+        topic_names: list[str] | None = None,
     ) -> dict:
         """Fallback to popular projects when personalization fails."""
         from core.projects.models import Project
 
         # Note: Don't filter by is_published to include playground projects in explore
         # Sort by newest first to show fresh content
+        projects = Project.objects.filter(is_private=False, is_archived=False).exclude(id__in=exclude_ids)
+
+        # Apply filters if provided (OR logic)
+        if tool_ids:
+            projects = projects.filter(tools__id__in=tool_ids)
+        if category_ids:
+            projects = projects.filter(categories__id__in=category_ids)
+        if topic_names:
+            projects = projects.filter(topics__overlap=topic_names)
+
         projects = (
-            Project.objects.filter(is_private=False, is_archived=False)
-            .exclude(id__in=exclude_ids)
-            .annotate(like_count=Count('likes'))
+            projects.annotate(like_count=Count('likes'))
             .order_by('-created_at', '-like_count')
+            .distinct()
             .select_related('user')
             .prefetch_related('tools', 'categories', 'likes')
         )
@@ -645,5 +747,10 @@ class PersonalizationEngine:
                 'page_size': page_size,
                 'total_candidates': total_count,
                 'algorithm': 'popular_fallback',
+                'filters_applied': {
+                    'tool_ids': tool_ids,
+                    'category_ids': category_ids,
+                    'topic_names': topic_names,
+                },
             },
         }

@@ -113,9 +113,11 @@ class UserInteraction(models.Model):
         CONVERSATION = 'conversation', 'Had Conversation'
         SEARCH = 'search', 'Searched'
         CONTENT_VIEW = 'content_view', 'Viewed Content'
+        GAME_404_START = 'game_404_start', '404 Game Started'
+        GAME_404_COMPLETE = 'game_404_complete', '404 Game Completed'
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='interactions')
-    interaction_type = models.CharField(max_length=20, choices=InteractionType.choices)
+    interaction_type = models.CharField(max_length=30, choices=InteractionType.choices)
     metadata = models.JSONField(
         default=dict,
         blank=True,

@@ -113,10 +113,12 @@ class APIPrivacyTests(TestCase):
             email='public@test.com',
             password='testpass123',
             gamification_is_public=True,
-            total_points=1000,
             level=5,
             tier='sprout',
         )
+        # Set points separately to avoid signal interference
+        self.public_gamer.total_points = 1000
+        self.public_gamer.save(update_fields=['total_points'])
 
         self.private_gamer = User.objects.create_user(
             username='private_gamer',
@@ -165,7 +167,8 @@ class APIPrivacyTests(TestCase):
         self.assertIn('total_points', public_user_data)
         self.assertIn('level', public_user_data)
         self.assertIn('tier', public_user_data)
-        self.assertEqual(public_user_data['total_points'], 1000)
+        # Total = 1000 (set in setUp) + 15 (project creation signal)
+        self.assertEqual(public_user_data['total_points'], 1015)
 
         # Private user should NOT have gamification data
         self.assertIsNotNone(private_user_data)

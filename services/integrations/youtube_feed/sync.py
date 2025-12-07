@@ -4,6 +4,8 @@ import logging
 import re
 from datetime import datetime
 
+import defusedxml.ElementTree as ElementTree
+import httpx
 from django.db import transaction
 from django.utils import timezone
 
@@ -14,6 +16,51 @@ from core.integrations.youtube_feed_models import YouTubeFeedAgent, YouTubeFeedV
 from core.projects.models import Project
 
 logger = logging.getLogger(__name__)
+
+
+def check_channel_rss_for_new_videos(channel_id: str, known_video_ids: set[str]) -> list[str] | None:
+    """
+    Check YouTube channel RSS feed for new videos (FREE - no API quota).
+
+    YouTube provides free RSS feeds at:
+    https://www.youtube.com/feeds/videos.xml?channel_id=CHANNEL_ID
+
+    This returns the 15 most recent videos. We compare against known video IDs
+    to find any new ones without using API quota.
+
+    Args:
+        channel_id: YouTube channel ID
+        known_video_ids: Set of video IDs we already have
+
+    Returns:
+        List of new video IDs not in known_video_ids, or None if RSS check failed
+        (caller should fall back to API in that case)
+    """
+    try:
+        rss_url = f'https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}'
+        response = httpx.get(rss_url, timeout=10.0)
+        response.raise_for_status()
+
+        # Parse RSS/Atom feed
+        root = ElementTree.fromstring(response.content)
+
+        # YouTube uses Atom format with namespace
+        ns = {'atom': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/schemas/2015'}
+
+        new_video_ids = []
+        for entry in root.findall('atom:entry', ns):
+            video_id_elem = entry.find('yt:videoId', ns)
+            if video_id_elem is not None:
+                video_id = video_id_elem.text
+                if video_id and video_id not in known_video_ids:
+                    new_video_ids.append(video_id)
+
+        return new_video_ids
+
+    except Exception as e:
+        logger.warning(f'Failed to check RSS feed for channel {channel_id}: {e}')
+        # Return None to signal RSS failure - caller should fall back to API
+        return None
 
 
 def parse_iso_duration_to_seconds(duration_iso: str) -> int:
@@ -44,10 +91,10 @@ class YouTubeFeedSyncService:
     def sync_agent(cls, agent: YouTubeFeedAgent) -> dict:
         """Sync a single YouTube feed agent.
 
-        Uses incremental sync to only fetch new videos:
-        1. Uses published_after based on most recent video we have (not last sync time)
-        2. Uses ETag for conditional requests (304 Not Modified = no changes)
-        3. Only fetches video details for videos we don't already have
+        Uses RSS-first approach to minimize API quota usage:
+        1. Check FREE RSS feed for new videos (no quota cost)
+        2. Only call YouTube API if RSS shows new videos
+        3. Fetch video details only for videos we don't already have
 
         Args:
             agent: YouTubeFeedAgent instance to sync
@@ -64,45 +111,45 @@ class YouTubeFeedSyncService:
         }
 
         try:
-            # Initialize YouTube service with API key (agents use shared quota)
+            # Get all video IDs we already have for this agent
+            known_video_ids = set(YouTubeFeedVideo.objects.filter(agent=agent).values_list('video_id', flat=True))
+
+            # STEP 1: Check FREE RSS feed first (no API quota cost!)
+            logger.info(f'Checking RSS feed for new videos from {agent.channel_name} ({agent.channel_id})')
+            new_video_ids = check_channel_rss_for_new_videos(agent.channel_id, known_video_ids)
+
+            # Initialize YouTube service (only used if we need API calls)
             service = YouTubeService(api_key=True)
 
-            # Get the most recent video we have for this agent to use as cutoff
-            # This is more accurate than last_synced_at because we want videos
-            # published AFTER our newest video, not after our last check
-            latest_video = YouTubeFeedVideo.objects.filter(agent=agent).order_by('-published_at').first()
+            if new_video_ids is None:
+                # RSS check failed - fall back to API (uses quota but ensures we don't miss videos)
+                logger.info(f'RSS check failed for {agent.channel_name}, falling back to YouTube API')
+                latest_video = YouTubeFeedVideo.objects.filter(agent=agent).order_by('-published_at').first()
+                published_after = None
+                if latest_video:
+                    published_after = (latest_video.published_at + timezone.timedelta(seconds=1)).isoformat()
 
-            published_after = None
-            if latest_video:
-                # Add 1 second to avoid re-fetching the same video
-                published_after = (latest_video.published_at + timezone.timedelta(seconds=1)).isoformat()
-                logger.info(f'Incremental sync: fetching videos after {published_after}')
+                max_videos = agent.settings.get('max_videos', 20)
+                channel_data = service.get_channel_videos(
+                    channel_id=agent.channel_id,
+                    max_results=max_videos,
+                    published_after=published_after,
+                )
+                video_ids = channel_data.get('videos', [])
+                logger.info(f'API returned {len(video_ids)} video(s) for {agent.channel_name}')
 
-            # Get max videos from settings
-            max_videos = agent.settings.get('max_videos', 20)
-
-            # Fetch channel videos with conditional request (ETag)
-            logger.info(f'Checking for new videos from {agent.channel_name} ({agent.channel_id})')
-
-            channel_data = service.get_channel_videos(
-                channel_id=agent.channel_id,
-                max_results=max_videos,
-                published_after=published_after,
-                etag=agent.etag or None,
-            )
-
-            video_ids = channel_data.get('videos', [])
-            new_etag = channel_data.get('etag', '')
-
-            # If no videos returned and we had an etag, channel hasn't changed
-            if not video_ids and agent.etag:
-                logger.info(f'No new videos for {agent.channel_name} (ETag match or no new content)')
+            elif not new_video_ids:
+                # RSS succeeded, no new videos - skip API call entirely (saves quota!)
+                logger.info(f'No new videos in RSS feed for {agent.channel_name} - skipping API call')
                 agent.last_synced_at = timezone.now()
-                agent.last_sync_status = 'No new videos'
+                agent.last_sync_status = 'No new videos (RSS check)'
                 agent.save()
                 return results
 
-            logger.info(f'Found {len(video_ids)} video(s) to process for {agent.channel_name}')
+            else:
+                # RSS found new videos - use those IDs (no search API needed!)
+                video_ids = new_video_ids
+                logger.info(f'RSS feed shows {len(video_ids)} new video(s) for {agent.channel_name}')
 
             # Process each video - only fetch details for new videos
             for video_id in video_ids:
@@ -164,8 +211,6 @@ class YouTubeFeedSyncService:
             else:
                 agent.last_sync_status = 'No new videos'
             agent.last_sync_error = ''
-            if new_etag:
-                agent.etag = new_etag
             agent.save()
 
         except Exception as e:

@@ -18,6 +18,46 @@ from services.ai.topic_extraction import TopicExtractionService
 
 logger = logging.getLogger(__name__)
 
+# Category mapping from common variations to canonical taxonomy names
+CATEGORY_MAPPING = {
+    'web development': 'Web Development',
+    'web dev': 'Web Development',
+    'frontend': 'Web Development',
+    'backend': 'Web Development',
+    'mobile development': 'Mobile Development',
+    'mobile dev': 'Mobile Development',
+    'ios': 'Mobile Development',
+    'android': 'Mobile Development',
+    'data science': 'Data Science',
+    'data analytics': 'Data Science',
+    'ai/ml': 'AI & Machine Learning',
+    'artificial intelligence': 'AI & Machine Learning',
+    'machine learning': 'AI & Machine Learning',
+    'llm': 'AI & Machine Learning',
+    'generative ai': 'AI & Machine Learning',
+    'deep learning': 'AI & Machine Learning',
+    'design': 'Design',
+    'ui/ux': 'Design',
+    'ux design': 'Design',
+    'ui design': 'Design',
+    'devops': 'DevOps',
+    'cloud computing': 'Cloud',
+    'cloud': 'Cloud',
+    'aws': 'Cloud',
+    'azure': 'Cloud',
+    'gcp': 'Cloud',
+    'game development': 'Game Development',
+    'gamedev': 'Game Development',
+    'content creation': 'Content Creation',
+    'tutorial': 'Tutorial',
+    'project showcase': 'Project Showcase',
+    'security': 'Security',
+    'cybersecurity': 'Security',
+    'blockchain': 'Blockchain',
+    'crypto': 'Blockchain',
+    'web3': 'Blockchain',
+}
+
 
 def clean_html(text: str) -> str:
     """Remove HTML tags and decode HTML entities from text."""
@@ -417,9 +457,8 @@ class RSSFeedSyncService:
             project.ensure_unique_slug()
             project.save()
 
-            # Add categories from RSS feed categories (if they exist in taxonomy)
-            if item_data.get('categories'):
-                cls._add_categories_to_project(project, item_data['categories'])
+            # Add categories from RSS feed categories (with AI fallback)
+            cls._add_categories_to_project(project, item_data.get('categories', []), item_data)
 
             # Prepare metadata with serializable datetime
             metadata = dict(item_data)
@@ -473,9 +512,9 @@ class RSSFeedSyncService:
             project.topics = topics
             updated = True
 
-            # Add categories if not already set
-            if item_data.get('categories') and not project.categories.exists():
-                cls._add_categories_to_project(project, item_data['categories'])
+            # Add categories if not already set (with AI fallback)
+            if not project.categories.exists():
+                cls._add_categories_to_project(project, item_data.get('categories', []), item_data)
 
         # Update difficulty if empty
         if not project.difficulty_level:
@@ -610,26 +649,126 @@ class RSSFeedSyncService:
             return [cat.lower().strip() for cat in item_data.get('categories', [])][:10]
 
     @classmethod
-    def _add_categories_to_project(cls, project: Project, rss_categories: list[str]):
-        """Match RSS categories to existing Taxonomy categories and add them to project."""
-        if not rss_categories:
-            return
+    def _extract_category_with_ai(cls, title: str, description: str) -> str | None:
+        """Use AI to extract the best category from article title and description.
 
-        # Try to match RSS categories to existing taxonomy categories
+        Returns the canonical category name if found, None otherwise.
+        """
+        try:
+            ai = AIProvider(provider='openai')
+
+            # Get available categories from taxonomy
+            available_categories = list(
+                Taxonomy.objects.filter(taxonomy_type='category', is_active=True).values_list('name', flat=True)
+            )
+
+            if not available_categories:
+                logger.warning('No active categories found in taxonomy')
+                return None
+
+            system_message = f"""You are an AI content categorizer for a tech/AI learning platform.
+Analyze the article title and description, and classify it into ONE of these categories:
+
+{', '.join(available_categories)}
+
+Rules:
+1. Choose the SINGLE most relevant category
+2. If the content is about AI tools, models, or LLMs, use "AI & Machine Learning"
+3. If it's a tutorial or how-to guide, consider "Tutorial"
+4. If it's a project showcase or case study, use "Project Showcase"
+5. For news about tech industry, use "News"
+6. If nothing fits well, use "General"
+
+Respond with ONLY the category name, exactly as written above."""
+
+            combined_text = f"""Title: {title}
+
+Description: {description[:800] if description else 'No description available'}"""
+
+            response = ai.complete(
+                prompt=combined_text,
+                system_message=system_message,
+                temperature=0.3,
+                max_tokens=50,
+            )
+
+            category_name = response.strip()
+
+            # Validate the response is one of the available categories
+            if category_name in available_categories:
+                logger.info(f'AI extracted category "{category_name}" for: {title[:50]}...')
+                return category_name
+
+            # Try case-insensitive match
+            for cat in available_categories:
+                if cat.lower() == category_name.lower():
+                    logger.info(f'AI extracted category "{cat}" for: {title[:50]}...')
+                    return cat
+
+            logger.warning(f'AI returned invalid category "{category_name}", will try fallback')
+            return None
+
+        except Exception as e:
+            logger.error(f'Error extracting category with AI: {e}', exc_info=True)
+            return None
+
+    @classmethod
+    def _add_categories_to_project(cls, project: Project, rss_categories: list[str], item_data: dict | None = None):
+        """Match RSS categories to existing Taxonomy categories and add them to project.
+
+        Uses a multi-step approach:
+        1. Try to match RSS categories using CATEGORY_MAPPING
+        2. Try direct case-insensitive match
+        3. If no match found, use AI to extract category from title/description
+        """
         matched_categories = []
-        for rss_cat in rss_categories:
-            # Case-insensitive match
-            taxonomy_cat = Taxonomy.objects.filter(
-                taxonomy_type='category', is_active=True, name__iexact=rss_cat
-            ).first()
 
-            if taxonomy_cat:
-                matched_categories.append(taxonomy_cat)
-                logger.debug(f'Matched RSS category "{rss_cat}" to taxonomy "{taxonomy_cat.name}"')
+        # Step 1 & 2: Try to match RSS categories
+        if rss_categories:
+            for rss_cat in rss_categories:
+                normalized = rss_cat.lower().strip()
 
+                # Check mapping first
+                canonical_name = CATEGORY_MAPPING.get(normalized)
+                if canonical_name:
+                    taxonomy_cat = Taxonomy.objects.filter(
+                        taxonomy_type='category', is_active=True, name__iexact=canonical_name
+                    ).first()
+                    if taxonomy_cat and taxonomy_cat not in matched_categories:
+                        matched_categories.append(taxonomy_cat)
+                        logger.debug(f'Mapped RSS category "{rss_cat}" -> "{canonical_name}"')
+                        continue
+
+                # Try direct case-insensitive match
+                taxonomy_cat = Taxonomy.objects.filter(
+                    taxonomy_type='category', is_active=True, name__iexact=rss_cat
+                ).first()
+
+                if taxonomy_cat and taxonomy_cat not in matched_categories:
+                    matched_categories.append(taxonomy_cat)
+                    logger.debug(f'Matched RSS category "{rss_cat}" to taxonomy "{taxonomy_cat.name}"')
+
+        # Step 3: If no categories matched, use AI extraction
+        if not matched_categories and item_data:
+            ai_category = cls._extract_category_with_ai(
+                title=item_data.get('title', ''), description=item_data.get('description', '')
+            )
+
+            if ai_category:
+                taxonomy_cat = Taxonomy.objects.filter(
+                    taxonomy_type='category', is_active=True, name__iexact=ai_category
+                ).first()
+
+                if taxonomy_cat:
+                    matched_categories.append(taxonomy_cat)
+                    logger.info(f'AI-assigned category "{ai_category}" to project "{project.title}"')
+
+        # Add matched categories to project
         if matched_categories:
             project.categories.add(*matched_categories)
             logger.info(f'Added {len(matched_categories)} categories to project "{project.title}"')
+        else:
+            logger.warning(f'No categories matched for project "{project.title}"')
 
     @classmethod
     def _detect_difficulty_level(cls, item_data: dict) -> str:

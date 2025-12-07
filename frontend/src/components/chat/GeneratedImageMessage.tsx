@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowDownTrayIcon, PhotoIcon, FolderPlusIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, FolderPlusIcon } from '@heroicons/react/24/outline';
 
 interface ProjectCreatedResult {
   projectUrl: string;
@@ -11,28 +11,24 @@ interface GeneratedImageMessageProps {
   filename: string;
   sessionId?: number;
   iterationNumber?: number;
-  onUseAsFeaturedImage?: (imageUrl: string) => Promise<void>;
   onCreateProject?: (sessionId: number) => Promise<ProjectCreatedResult>;
 }
 
 /**
- * GeneratedImageMessage - Display a generated image in the chat with download and use options
+ * GeneratedImageMessage - Display a generated image in the chat with download and create project options
  *
  * Features:
  * - Display the generated image
  * - Download button to save the image
- * - "Use as Featured" button to set as project's featured image
+ * - "Create Project" button to create a project from the image
  */
 export function GeneratedImageMessage({
   imageUrl,
   filename,
   sessionId,
   iterationNumber,
-  onUseAsFeaturedImage,
   onCreateProject,
 }: GeneratedImageMessageProps) {
-  const [isSettingFeatured, setIsSettingFeatured] = useState(false);
-  const [featuredSuccess, setFeaturedSuccess] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectCreated, setProjectCreated] = useState<ProjectCreatedResult | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -52,19 +48,6 @@ export function GeneratedImageMessage({
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to download image:', error);
-    }
-  };
-
-  const handleUseAsFeatured = async () => {
-    if (!onUseAsFeaturedImage) return;
-    setIsSettingFeatured(true);
-    try {
-      await onUseAsFeaturedImage(imageUrl);
-      setFeaturedSuccess(true);
-    } catch (error) {
-      console.error('Failed to set as featured image:', error);
-    } finally {
-      setIsSettingFeatured(false);
     }
   };
 
@@ -126,24 +109,6 @@ export function GeneratedImageMessage({
           <ArrowDownTrayIcon className="w-4 h-4" />
           Download
         </button>
-
-        {onUseAsFeaturedImage && !featuredSuccess && (
-          <button
-            onClick={handleUseAsFeatured}
-            disabled={isSettingFeatured}
-            className="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <PhotoIcon className="w-4 h-4" />
-            {isSettingFeatured ? 'Setting...' : 'Use as Featured'}
-          </button>
-        )}
-
-        {featuredSuccess && (
-          <div className="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg text-sm font-medium">
-            <span className="text-green-500">✓</span>
-            Set as Featured
-          </div>
-        )}
 
         {/* Create Project button - only show if session exists and no project created yet */}
         {onCreateProject && sessionId && !projectCreated && (

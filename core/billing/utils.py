@@ -10,6 +10,8 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
+from core.logging_utils import StructuredLogger
+
 from .models import (
     SubscriptionTier,
     TokenTransaction,
@@ -87,7 +89,12 @@ def can_access_feature(user, feature: str) -> bool:
     }
 
     if feature not in feature_map:
-        logger.warning(f'Unknown feature check: {feature}')
+        StructuredLogger.log_validation_error(
+            message='Unknown feature check requested',
+            user=user,
+            errors={'feature': f'Unknown feature: {feature}'},
+            logger_instance=logger,
+        )
         return False
 
     return getattr(subscription.tier, feature_map[feature], False)
@@ -194,7 +201,12 @@ def check_and_reserve_ai_request(user) -> tuple[bool, str]:
             return False, 'AI request limit exceeded and no tokens available'
 
     except Exception as e:
-        logger.error(f'Error in check_and_reserve_ai_request: {e}')
+        StructuredLogger.log_error(
+            message='Error in check_and_reserve_ai_request',
+            error=e,
+            user=user,
+            logger_instance=logger,
+        )
         return False, f'Error checking quota: {str(e)}'
 
 
@@ -236,7 +248,12 @@ def deduct_ai_request_from_subscription(user) -> bool:
             return True
 
     except UserSubscription.DoesNotExist:
-        logger.error(f'No subscription found for user {user.id}')
+        StructuredLogger.log_validation_error(
+            message='No subscription found for AI request deduction',
+            user=user,
+            errors={'subscription': 'User has no subscription'},
+            logger_instance=logger,
+        )
         return False
 
 
@@ -269,8 +286,13 @@ def deduct_tokens(user, amount: int, description: str = '', ai_provider: str = '
 
             # Check if sufficient balance (while holding lock)
             if token_balance.balance < amount:
-                logger.warning(
-                    f'Insufficient token balance for user {user.id}: needed {amount}, has {token_balance.balance}'
+                StructuredLogger.log_service_operation(
+                    service_name='TokenBalance',
+                    operation='deduct_tokens',
+                    user=user,
+                    success=False,
+                    metadata={'needed': amount, 'balance': token_balance.balance},
+                    logger_instance=logger,
                 )
                 return False
 
@@ -302,7 +324,13 @@ def deduct_tokens(user, amount: int, description: str = '', ai_provider: str = '
             return True
 
     except Exception as e:
-        logger.error(f'Failed to deduct tokens for user {user.id}: {e}')
+        StructuredLogger.log_error(
+            message='Failed to deduct tokens',
+            error=e,
+            user=user,
+            extra={'amount': amount},
+            logger_instance=logger,
+        )
         return False
 
 
@@ -336,7 +364,13 @@ def _check_and_notify_low_balance(user_id: int, tokens_used: int, balance_after:
         logger.debug(f'Queued low balance notification for user {user_id} (balance: {balance_after})')
     except Exception as e:
         # Don't fail the main operation if notification fails
-        logger.warning(f'Failed to queue low balance notification: {e}')
+        StructuredLogger.log_error(
+            message='Failed to queue low balance notification',
+            error=e,
+            extra={'user_id': user_id, 'balance_after': balance_after},
+            level='warning',
+            logger_instance=logger,
+        )
 
 
 def process_ai_request(user, tokens_used: int, ai_provider: str = '', ai_model: str = '') -> tuple[bool, str]:

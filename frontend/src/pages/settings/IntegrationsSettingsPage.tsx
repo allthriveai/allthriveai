@@ -11,8 +11,6 @@ import { VideoPickerModal } from '@/components/integrations/VideoPickerModal';
 import { YouTubeImportProgressModal } from '@/components/integrations/YouTubeImportProgressModal';
 import { getUserFriendlyError, type UserFriendlyError } from '@/utils/errorMessages';
 
-console.log('[IntegrationsSettingsPage] MODULE LOADED - File imported successfully');
-
 interface Integration {
   id: string;
   name: string;
@@ -26,8 +24,6 @@ interface Integration {
 }
 
 export default function IntegrationsSettingsPage() {
-  console.log('[IntegrationsSettingsPage] Component rendering...');
-
   const navigate = useNavigate();
   const { user } = useAuth();
   const [integrations, setIntegrations] = useState<Integration[]>([
@@ -42,10 +38,10 @@ export default function IntegrationsSettingsPage() {
     {
       id: 'gitlab',
       name: 'GitLab',
-      description: 'Import your GitLab projects and showcase your work',
+      description: 'Automatically sync your GitLab repositories as projects',
       icon: faGitlab,
       isConnected: false,
-      isAvailable: false,
+      isAvailable: true,
     },
     {
       id: 'figma',
@@ -101,20 +97,15 @@ export default function IntegrationsSettingsPage() {
 
   // Fetch connection status on mount
   useEffect(() => {
-    console.log('[IntegrationsSettingsPage] useEffect mounting...');
     let isMounted = true;
 
     async function fetchConnectionStatus() {
-      console.log('[IntegrationsSettingsPage] fetchConnectionStatus started');
       try {
         // Check GitHub status
-        console.log('[IntegrationsSettingsPage] Fetching GitHub status...');
         const githubResponse = await api.get('/social/status/github/');
         const githubData = githubResponse.data.data || githubResponse.data;
-        console.log('[IntegrationsSettingsPage] GitHub data:', githubData);
 
         if (githubData.connected && isMounted) {
-          console.log('[IntegrationsSettingsPage] GitHub is connected');
           setIntegrations(prev =>
             prev.map(integration =>
               integration.id === 'github'
@@ -129,14 +120,30 @@ export default function IntegrationsSettingsPage() {
           );
         }
 
+        // Check GitLab status
+        const gitlabResponse = await api.get('/social/status/gitlab/');
+        const gitlabData = gitlabResponse.data.data || gitlabResponse.data;
+
+        if (gitlabData.connected && isMounted) {
+          setIntegrations(prev =>
+            prev.map(integration =>
+              integration.id === 'gitlab'
+                ? {
+                    ...integration,
+                    isConnected: true,
+                    username: gitlabData.providerUsername || 'GitLab User',
+                    connectedAt: gitlabData.connectedAt,
+                  }
+                : integration
+            )
+          );
+        }
+
         // Check YouTube status (Google OAuth)
-        console.log('[IntegrationsSettingsPage] Fetching YouTube status...');
         const youtubeResponse = await api.get('/social/status/google/');
         const youtubeData = youtubeResponse.data.data || youtubeResponse.data;
-        console.log('[IntegrationsSettingsPage] YouTube data:', youtubeData);
 
         if (youtubeData.connected && isMounted) {
-          console.log('[IntegrationsSettingsPage] YouTube is connected');
           // First set the integration as connected with email
           setIntegrations(prev =>
             prev.map(integration =>
@@ -156,14 +163,11 @@ export default function IntegrationsSettingsPage() {
 
           // Then try to fetch YouTube channel info to update the username
           try {
-            console.log('[IntegrationsSettingsPage] Fetching YouTube channel info...');
             const channelResponse = await api.get('/integrations/youtube/my-channel/', {
               headers: { 'X-Skip-Auth-Redirect': 'true' }
             });
-            console.log('[IntegrationsSettingsPage] YouTube channel response:', channelResponse.data);
             if (channelResponse.data?.success && channelResponse.data?.channel && isMounted) {
               const channelData = channelResponse.data.channel;
-              console.log('[IntegrationsSettingsPage] YouTube channel data:', channelData);
               setYoutubeChannelId(channelData.id);
               setYoutubeChannelName(channelData.title);
 
@@ -198,7 +202,6 @@ export default function IntegrationsSettingsPage() {
         });
       } finally {
         if (isMounted) {
-          console.log('[IntegrationsSettingsPage] Setting loading to false');
           setLoading(false);
         }
       }
@@ -207,7 +210,6 @@ export default function IntegrationsSettingsPage() {
     fetchConnectionStatus();
 
     return () => {
-      console.log('[IntegrationsSettingsPage] useEffect cleanup - unmounting');
       isMounted = false;
     };
   }, []);
@@ -236,13 +238,10 @@ export default function IntegrationsSettingsPage() {
       }
     } else if (integrationId === 'youtube') {
       try {
-        console.log('[IntegrationsSettingsPage] Initiating Google OAuth flow...');
         const response = await api.get('/social/connect/google/');
-        console.log('[IntegrationsSettingsPage] OAuth response:', response.data);
 
         if (response.data.success && response.data.data?.authUrl) {
           const authUrl = response.data.data.authUrl;
-          console.log('[IntegrationsSettingsPage] Redirecting to:', authUrl);
           window.location.href = authUrl;
         } else {
           console.error('[IntegrationsSettingsPage] No authUrl in response');
@@ -260,6 +259,31 @@ export default function IntegrationsSettingsPage() {
           error: error.error
         });
         const friendlyError = getUserFriendlyError(error, 'youtube');
+        setErrorMessage(friendlyError);
+      }
+    } else if (integrationId === 'gitlab') {
+      try {
+        const response = await api.get('/social/connect/gitlab/');
+
+        if (response.data.success && response.data.data?.authUrl) {
+          const authUrl = response.data.data.authUrl;
+          window.location.href = authUrl;
+        } else {
+          console.error('[IntegrationsSettingsPage] No authUrl in response');
+          setErrorMessage({
+            title: 'Connection Error',
+            message: 'Failed to get GitLab OAuth URL. Please try again later.',
+            variant: 'error',
+          });
+        }
+      } catch (error: any) {
+        console.error('[IntegrationsSettingsPage] Failed to initiate GitLab OAuth:', error);
+        console.error('[IntegrationsSettingsPage] Error details:', {
+          message: error.message,
+          statusCode: error.statusCode,
+          error: error.error
+        });
+        const friendlyError = getUserFriendlyError(error, 'gitlab');
         setErrorMessage(friendlyError);
       }
     } else {
@@ -323,6 +347,29 @@ export default function IntegrationsSettingsPage() {
       } catch (error) {
         console.error('Failed to disconnect YouTube:', error);
         const friendlyError = getUserFriendlyError(error, 'youtube');
+        setErrorMessage(friendlyError);
+      }
+    } else if (integrationId === 'gitlab') {
+      try {
+        await api.post('/social/disconnect/gitlab/');
+
+        setIntegrations(prev =>
+          prev.map(integration =>
+            integration.id === 'gitlab'
+              ? {
+                  ...integration,
+                  isConnected: false,
+                  username: undefined,
+                  connectedAt: undefined,
+                }
+              : integration
+          )
+        );
+
+        setSuccessMessage(`${integrationName} disconnected successfully`);
+      } catch (error) {
+        console.error('Failed to disconnect GitLab:', error);
+        const friendlyError = getUserFriendlyError(error, 'gitlab');
         setErrorMessage(friendlyError);
       }
     } else {
@@ -459,29 +506,24 @@ export default function IntegrationsSettingsPage() {
 
   // Video picker modal handlers
   const handleOpenVideoPicker = () => {
-    console.log('[IntegrationsSettingsPage] Opening video picker modal');
     setVideoPickerState(prev => ({ ...prev, isOpen: true }));
   };
 
   const handleCloseVideoPicker = () => {
-    console.log('[IntegrationsSettingsPage] Closing video picker modal');
     setVideoPickerState(prev => ({ ...prev, isOpen: false }));
   };
 
   const handleSelectionChange = (videoIds: Set<string>) => {
-    console.log('[IntegrationsSettingsPage] Selection changed:', videoIds.size, 'videos selected');
     setVideoPickerState(prev => ({ ...prev, selectedVideoIds: videoIds }));
   };
 
   const handleImportVideos = async (videoIds: string[]) => {
-    console.log('[IntegrationsSettingsPage] Starting import for', videoIds.length, 'videos');
     setErrorMessage(null);
     setSuccessMessage('');
 
     try {
       // Import each video
       const importPromises = videoIds.map(videoId => {
-        console.log('[IntegrationsSettingsPage] Importing video:', videoId);
         return api.post('/integrations/youtube/import/', {
           video_url: `https://youtube.com/watch?v=${videoId}`,
           is_showcase: true,
@@ -490,7 +532,6 @@ export default function IntegrationsSettingsPage() {
       });
 
       await Promise.all(importPromises);
-      console.log('[IntegrationsSettingsPage] All videos imported successfully');
 
       setSuccessMessage(
         `Successfully imported ${videoIds.length} video${videoIds.length !== 1 ? 's' : ''}! ` +
@@ -829,7 +870,7 @@ export default function IntegrationsSettingsPage() {
                 <div className="text-3xl">⚠️</div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                    Disconnect {showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : 'Integration'}?
+                    Disconnect {showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : 'Integration'}?
                   </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     {showDisconnectModal === 'youtube'
@@ -849,12 +890,12 @@ export default function IntegrationsSettingsPage() {
                 </button>
                 <button
                   onClick={() => {
-                    const integrationName = showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : 'Integration';
+                    const integrationName = showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : 'Integration';
                     handleDisconnect(showDisconnectModal, integrationName);
                   }}
                   className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium text-sm"
                 >
-                  Keep Videos & Disconnect
+                  {showDisconnectModal === 'youtube' ? 'Keep Videos & Disconnect' : 'Disconnect'}
                 </button>
               </div>
             </div>

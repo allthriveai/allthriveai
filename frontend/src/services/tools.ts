@@ -1,6 +1,10 @@
 import type { Tool, ToolReview, PaginatedResponse } from '@/types/models';
 import { api } from './api';
 
+// Simple in-memory cache for prefetched tools
+const toolCache = new Map<string, { data: Tool; timestamp: number }>();
+const CACHE_TTL = 60000; // 1 minute
+
 // Bookmark response interfaces
 export interface ToolBookmark {
   id: number;
@@ -40,15 +44,44 @@ export async function getTools(params?: {
 
 /**
  * Get detailed information about a specific tool by slug
+ * Uses cache if available and not expired
  */
 export async function getToolBySlug(slug: string): Promise<Tool> {
+  // Check cache first
+  const cached = toolCache.get(slug);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
   try {
     const response = await api.get(`/tools/${slug}/`);
-    return response.data;
+    const tool = response.data;
+    // Cache the result
+    toolCache.set(slug, { data: tool, timestamp: Date.now() });
+    return tool;
   } catch (error) {
     console.error(`Failed to fetch tool ${slug}:`, error);
     throw error;
   }
+}
+
+/**
+ * Prefetch tool data on hover - fire and forget
+ * This improves perceived performance by loading data before the user clicks
+ */
+export function prefetchTool(slug: string): void {
+  // Skip if already cached and not expired
+  const cached = toolCache.get(slug);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return;
+  }
+
+  // Fire and forget - don't await
+  api.get(`/tools/${slug}/`).then((response) => {
+    toolCache.set(slug, { data: response.data, timestamp: Date.now() });
+  }).catch(() => {
+    // Silently ignore prefetch failures
+  });
 }
 
 /**

@@ -36,7 +36,7 @@ class Command(BaseCommand):
                 'topic': 'AI Frameworks',
                 'difficulty': 'beginner',
                 'estimated_time': 5,
-                'thumbnail_url': 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80',
+                'thumbnail_url': 'https://images.unsplash.com/photo-1639322537228-f710d846310a?w=800&q=80',
                 'is_published': True,
                 'category_names': ['AI Agents & Multi-Tool Systems', 'Developer & Coding', 'Podcasts & Education'],
                 'topic_tags': ['AI Frameworks', 'LangChain', 'LangGraph', 'CrewAI', 'AutoGen', 'Multi-Agent Systems'],
@@ -127,7 +127,7 @@ class Command(BaseCommand):
                 'topic': 'Prompt Engineering',
                 'difficulty': 'beginner',
                 'estimated_time': 4,
-                'thumbnail_url': 'https://images.unsplash.com/photo-1676277791608-ac5a88e3f47e?w=800&q=80',
+                'thumbnail_url': 'https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?w=800&q=80',
                 'is_published': True,
                 'category_names': ['Prompt Collections & Templates', 'Podcasts & Education', 'Developer & Coding'],
                 'topic_tags': [

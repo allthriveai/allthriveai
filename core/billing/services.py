@@ -13,6 +13,8 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from core.logging_utils import StructuredLogger
+
 from .models import (
     SubscriptionChange,
     SubscriptionTier,
@@ -82,11 +84,23 @@ class StripeService:
                 subscription.stripe_customer_id = customer.id
                 subscription.save()
 
-            logger.info(f'Created Stripe customer {customer.id} for user {user.id}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='create_customer',
+                user=user,
+                success=True,
+                metadata={'stripe_customer_id': customer.id},
+                logger_instance=logger,
+            )
             return customer.id
 
         except stripe.error.StripeError as e:
-            logger.error(f'Failed to create Stripe customer for user {user.id}: {e}')
+            StructuredLogger.log_error(
+                message='Failed to create Stripe customer',
+                error=e,
+                user=user,
+                logger_instance=logger,
+            )
             raise StripeServiceError(f'Failed to create customer: {str(e)}') from e
 
     @staticmethod
@@ -103,7 +117,12 @@ class StripeService:
         try:
             return stripe.Customer.retrieve(customer_id)
         except stripe.error.StripeError as e:
-            logger.error(f'Failed to retrieve Stripe customer {customer_id}: {e}')
+            StructuredLogger.log_error(
+                message='Failed to retrieve Stripe customer',
+                error=e,
+                extra={'stripe_customer_id': customer_id},
+                logger_instance=logger,
+            )
             return None
 
     # ===== Subscription Management =====
@@ -234,7 +253,14 @@ class StripeService:
                 if hasattr(invoice, 'payment_intent') and invoice.payment_intent:
                     client_secret = invoice.payment_intent.client_secret
 
-            logger.info(f'Created subscription {stripe_subscription.id} for user {user.id} on tier {tier.slug}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='create_subscription',
+                user=user,
+                success=True,
+                metadata={'stripe_subscription_id': stripe_subscription.id, 'tier_slug': tier.slug},
+                logger_instance=logger,
+            )
 
             return {
                 'subscription_id': stripe_subscription.id,
@@ -244,7 +270,13 @@ class StripeService:
             }
 
         except stripe.error.StripeError as e:
-            logger.error(f'Failed to create subscription for user {user.id}: {e}')
+            StructuredLogger.log_error(
+                message='Failed to create subscription',
+                error=e,
+                user=user,
+                extra={'tier_slug': tier.slug},
+                logger_instance=logger,
+            )
             raise StripeServiceError(f'Failed to create subscription: {str(e)}') from e
 
     @staticmethod
@@ -298,7 +330,17 @@ class StripeService:
                 reason=f'User canceled subscription ({"immediate" if immediate else "at period end"})',
             )
 
-            logger.info(f'Canceled subscription {user_subscription.stripe_subscription_id} for user {user.id}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='cancel_subscription',
+                user=user,
+                success=True,
+                metadata={
+                    'stripe_subscription_id': user_subscription.stripe_subscription_id,
+                    'immediate': immediate,
+                },
+                logger_instance=logger,
+            )
 
             return {
                 'subscription_id': user_subscription.stripe_subscription_id,
@@ -308,7 +350,12 @@ class StripeService:
             }
 
         except stripe.error.StripeError as e:
-            logger.error(f'Failed to cancel subscription for user {user.id}: {e}')
+            StructuredLogger.log_error(
+                message='Failed to cancel subscription',
+                error=e,
+                user=user,
+                logger_instance=logger,
+            )
             raise StripeServiceError(f'Failed to cancel subscription: {str(e)}') from e
 
     @staticmethod
@@ -395,9 +442,18 @@ class StripeService:
                 reason=f'User changed from {old_tier.name} to {new_tier.name}',
             )
 
-            logger.info(
-                f'Updated subscription {user_subscription.stripe_subscription_id} '
-                f'from {old_tier.slug} to {new_tier.slug}'
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='update_subscription',
+                user=user,
+                success=True,
+                metadata={
+                    'stripe_subscription_id': user_subscription.stripe_subscription_id,
+                    'from_tier': old_tier.slug,
+                    'to_tier': new_tier.slug,
+                    'change_type': change_type,
+                },
+                logger_instance=logger,
             )
 
             return {
@@ -408,7 +464,13 @@ class StripeService:
             }
 
         except stripe.error.StripeError as e:
-            logger.error(f'Failed to update subscription for user {user.id}: {e}')
+            StructuredLogger.log_error(
+                message='Failed to update subscription',
+                error=e,
+                user=user,
+                extra={'from_tier': old_tier.slug, 'to_tier': new_tier.slug},
+                logger_instance=logger,
+            )
             raise StripeServiceError(f'Failed to update subscription: {str(e)}') from e
 
     # ===== Stripe Checkout Sessions =====
@@ -505,7 +567,14 @@ class StripeService:
 
             checkout_session = stripe.checkout.Session.create(**session_params)
 
-            logger.info(f'Created checkout session {checkout_session.id} for user {user.id} on tier {tier.slug}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='create_checkout_session',
+                user=user,
+                success=True,
+                metadata={'checkout_session_id': checkout_session.id, 'tier_slug': tier.slug},
+                logger_instance=logger,
+            )
 
             return {
                 'session_id': checkout_session.id,
@@ -513,7 +582,13 @@ class StripeService:
             }
 
         except stripe.error.StripeError as e:
-            logger.error(f'Failed to create checkout session for user {user.id}: {e}')
+            StructuredLogger.log_error(
+                message='Failed to create checkout session',
+                error=e,
+                user=user,
+                extra={'tier_slug': tier.slug},
+                logger_instance=logger,
+            )
             raise StripeServiceError(f'Failed to create checkout session: {str(e)}') from e
 
     # ===== Token Purchase (One-time Payments) =====
@@ -570,7 +645,18 @@ class StripeService:
                 stripe_payment_intent_id=payment_intent.id,
             )
 
-            logger.info(f'Created payment intent {payment_intent.id} for user {user.id} to purchase {package.name}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='create_token_purchase',
+                user=user,
+                success=True,
+                metadata={
+                    'payment_intent_id': payment_intent.id,
+                    'package_slug': package.slug,
+                    'token_amount': package.token_amount,
+                },
+                logger_instance=logger,
+            )
 
             return {
                 'payment_intent_id': payment_intent.id,
@@ -581,7 +667,13 @@ class StripeService:
             }
 
         except stripe.error.StripeError as e:
-            logger.error(f'Failed to create payment intent for user {user.id}: {e}')
+            StructuredLogger.log_error(
+                message='Failed to create payment intent',
+                error=e,
+                user=user,
+                extra={'package_slug': package.slug},
+                logger_instance=logger,
+            )
             raise StripeServiceError(f'Failed to create payment intent: {str(e)}') from e
 
     # ===== Product & Price Syncing =====
@@ -603,7 +695,7 @@ class StripeService:
         try:
             # Skip free tier
             if tier.price_monthly == 0 and tier.price_annual == 0:
-                logger.info(f'Skipping Stripe sync for free tier: {tier.name}')
+                logger.info(f'Skipping Stripe sync for free tier: {tier.name}')  # Info-level ok here
                 return tier
 
             # Create or update product
@@ -646,15 +738,28 @@ class StripeService:
 
             tier.save()
 
-            logger.info(
-                f'Synced tier {tier.name} to Stripe: product={product.id}, '
-                f'monthly_price={tier.stripe_price_id_monthly}, annual_price={tier.stripe_price_id_annual}'
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='sync_subscription_tier',
+                success=True,
+                metadata={
+                    'tier_slug': tier.slug,
+                    'stripe_product_id': product.id,
+                    'stripe_price_monthly': tier.stripe_price_id_monthly,
+                    'stripe_price_annual': tier.stripe_price_id_annual,
+                },
+                logger_instance=logger,
             )
 
             return tier
 
         except stripe.error.StripeError as e:
-            logger.error(f'Failed to sync tier {tier.slug} to Stripe: {e}')
+            StructuredLogger.log_error(
+                message='Failed to sync tier to Stripe',
+                error=e,
+                extra={'tier_slug': tier.slug},
+                logger_instance=logger,
+            )
             raise StripeServiceError(f'Failed to sync tier to Stripe: {str(e)}') from e
 
     @staticmethod
@@ -701,12 +806,27 @@ class StripeService:
 
             package.save()
 
-            logger.info(f'Synced package {package.name} to Stripe: product={product.id}, price={price.id}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='sync_token_package',
+                success=True,
+                metadata={
+                    'package_slug': package.slug,
+                    'stripe_product_id': product.id,
+                    'stripe_price_id': price.id,
+                },
+                logger_instance=logger,
+            )
 
             return package
 
         except stripe.error.StripeError as e:
-            logger.error(f'Failed to sync package {package.slug} to Stripe: {e}')
+            StructuredLogger.log_error(
+                message='Failed to sync package to Stripe',
+                error=e,
+                extra={'package_slug': package.slug},
+                logger_instance=logger,
+            )
             raise StripeServiceError(f'Failed to sync package to Stripe: {str(e)}') from e
 
     # ===== Customer Portal & Invoices =====
@@ -742,11 +862,22 @@ class StripeService:
                 return_url=return_url,
             )
 
-            logger.info(f'Created portal session for user {user.id}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='create_portal_session',
+                user=user,
+                success=True,
+                logger_instance=logger,
+            )
             return {'url': session.url}
 
         except stripe.error.StripeError as e:
-            logger.error(f'Failed to create portal session for user {user.id}: {e}')
+            StructuredLogger.log_error(
+                message='Failed to create portal session',
+                error=e,
+                user=user,
+                logger_instance=logger,
+            )
             raise StripeServiceError(f'Failed to create portal session: {str(e)}') from e
 
     @staticmethod
@@ -774,7 +905,14 @@ class StripeService:
                 limit=min(100, max(1, limit)),
             )
 
-            logger.info(f'Retrieved {len(invoices.data)} invoices for user {user.id}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='list_invoices',
+                user=user,
+                success=True,
+                metadata={'invoice_count': len(invoices.data)},
+                logger_instance=logger,
+            )
 
             return {
                 'invoices': [
@@ -794,7 +932,12 @@ class StripeService:
             }
 
         except stripe.error.StripeError as e:
-            logger.error(f'Failed to list invoices for user {user.id}: {e}')
+            StructuredLogger.log_error(
+                message='Failed to list invoices',
+                error=e,
+                user=user,
+                logger_instance=logger,
+            )
             raise StripeServiceError(f'Failed to list invoices: {str(e)}') from e
 
     # ===== Webhook Handling =====
@@ -818,10 +961,20 @@ class StripeService:
             event = stripe.Webhook.construct_event(payload, sig_header, settings.STRIPE_WEBHOOK_SECRET)
             return event
         except ValueError as e:
-            logger.error(f'Invalid webhook payload: {e}')
+            StructuredLogger.log_error(
+                message='Invalid webhook payload',
+                error=e,
+                level='warning',
+                logger_instance=logger,
+            )
             raise StripeServiceError('Invalid payload') from e
         except stripe.error.SignatureVerificationError as e:
-            logger.error(f'Invalid webhook signature: {e}')
+            StructuredLogger.log_error(
+                message='Invalid webhook signature',
+                error=e,
+                level='warning',
+                logger_instance=logger,
+            )
             raise StripeServiceError('Invalid signature') from e
 
     @staticmethod
@@ -852,10 +1005,23 @@ class StripeService:
 
             user_subscription.save()
 
-            logger.info(f'Updated subscription {subscription_id} from webhook')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='handle_subscription_updated',
+                user=user_subscription.user,
+                success=True,
+                metadata={'stripe_subscription_id': subscription_id},
+                logger_instance=logger,
+            )
 
         except UserSubscription.DoesNotExist:
-            logger.warning(f'Received webhook for unknown subscription: {subscription_id}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='handle_subscription_updated',
+                success=False,
+                metadata={'stripe_subscription_id': subscription_id, 'reason': 'subscription_not_found'},
+                logger_instance=logger,
+            )
 
     @staticmethod
     @transaction.atomic
@@ -875,10 +1041,23 @@ class StripeService:
             purchase.stripe_charge_id = payment_intent.get('latest_charge')
             purchase.mark_completed()
 
-            logger.info(f'Completed token purchase {purchase.id} for user {purchase.user.id}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='handle_payment_intent_succeeded',
+                user=purchase.user,
+                success=True,
+                metadata={'purchase_id': purchase.id, 'token_amount': purchase.token_amount},
+                logger_instance=logger,
+            )
 
         except TokenPurchase.DoesNotExist:
-            logger.warning(f'Received webhook for unknown payment intent: {payment_intent_id}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='handle_payment_intent_succeeded',
+                success=False,
+                metadata={'payment_intent_id': payment_intent_id, 'reason': 'purchase_not_found'},
+                logger_instance=logger,
+            )
 
     @staticmethod
     @transaction.atomic
@@ -912,10 +1091,23 @@ class StripeService:
                 reason='Subscription canceled via Stripe',
             )
 
-            logger.info(f'Downgraded user {user_subscription.user.id} to free tier due to subscription deletion')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='handle_subscription_deleted',
+                user=user_subscription.user,
+                success=True,
+                metadata={'stripe_subscription_id': subscription_id, 'downgraded_to': 'free'},
+                logger_instance=logger,
+            )
 
         except UserSubscription.DoesNotExist:
-            logger.warning(f'Received webhook for unknown subscription: {subscription_id}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='handle_subscription_deleted',
+                success=False,
+                metadata={'stripe_subscription_id': subscription_id, 'reason': 'subscription_not_found'},
+                logger_instance=logger,
+            )
 
     @staticmethod
     @transaction.atomic
@@ -932,7 +1124,13 @@ class StripeService:
             # Get the subscription ID from the session
             subscription_id = session.get('subscription')
             if not subscription_id:
-                logger.warning(f'Checkout session {session_id} has no subscription ID')
+                StructuredLogger.log_service_operation(
+                    service_name='StripeService',
+                    operation='handle_checkout_session_completed',
+                    success=False,
+                    metadata={'checkout_session_id': session_id, 'reason': 'no_subscription_id'},
+                    logger_instance=logger,
+                )
                 return
 
             # Retrieve the full subscription object from Stripe
@@ -943,7 +1141,13 @@ class StripeService:
             tier_slug = session['metadata'].get('tier_slug')
 
             if not user_id or not tier_slug:
-                logger.error(f'Checkout session {session_id} missing user_id or tier_slug in metadata')
+                StructuredLogger.log_service_operation(
+                    service_name='StripeService',
+                    operation='handle_checkout_session_completed',
+                    success=False,
+                    metadata={'checkout_session_id': session_id, 'reason': 'missing_metadata'},
+                    logger_instance=logger,
+                )
                 return
 
             # Get or create user subscription
@@ -998,7 +1202,19 @@ class StripeService:
                 reason=f'User subscribed to {tier.name} via Checkout',
             )
 
-            logger.info(f'Completed checkout session {session_id} for user {user.id} on tier {tier.slug}')
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='handle_checkout_session_completed',
+                user=user,
+                success=True,
+                metadata={'checkout_session_id': session_id, 'tier_slug': tier.slug},
+                logger_instance=logger,
+            )
 
         except Exception as e:
-            logger.error(f'Error handling checkout session completed: {e}', exc_info=True)
+            StructuredLogger.log_error(
+                message='Error handling checkout session completed',
+                error=e,
+                extra={'checkout_session_id': session_id},
+                logger_instance=logger,
+            )

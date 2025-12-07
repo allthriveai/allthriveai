@@ -24,9 +24,27 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ commentId: number; username: string } | null>(null);
+
+  // Track if tray should be rendered (for slide-out animation)
+  const [shouldRender, setShouldRender] = useState(false);
 
   // Check if user is admin
   const isAdmin = user?.role === 'admin';
+
+  // Handle mount/unmount for animations
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+    }
+  }, [isOpen]);
+
+  // Handle transition end to unmount after closing
+  const handleTransitionEnd = () => {
+    if (!isOpen) {
+      setShouldRender(false);
+    }
+  };
 
   // React Rewards for comment submission celebration
   const { reward: rewardComment } = useReward('commentRewardTray', 'confetti', {
@@ -118,36 +136,49 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
     }
   };
 
-  const handleDeleteComment = async (commentId: number, commentUsername: string) => {
-    if (!project) return;
+  const handleDeleteComment = (commentId: number, commentUsername: string) => {
+    // Show confirmation dialog
+    setDeleteConfirmation({ commentId, username: commentUsername });
+  };
 
-    const isOwnComment = user?.username === commentUsername;
-    const confirmMessage = isAdmin && !isOwnComment
-      ? 'Are you sure you want to delete this comment? (Admin action)'
-      : 'Are you sure you want to delete your comment?';
-
-    if (!confirm(confirmMessage)) {
-      return;
-    }
+  const confirmDelete = async () => {
+    if (!deleteConfirmation || !project) return;
 
     try {
-      await deleteComment(project.id, commentId);
+      await deleteComment(project.id, deleteConfirmation.commentId);
 
       // Remove comment from list
-      setComments(comments.filter(comment => comment.id !== commentId));
+      setComments(comments.filter(comment => comment.id !== deleteConfirmation.commentId));
+
+      // Close confirmation dialog
+      setDeleteConfirmation(null);
     } catch (error) {
       const errorInfo = parseApiError(error);
       alert(errorInfo.message);
+      setDeleteConfirmation(null);
     }
   };
 
-  if (!isOpen) return null;
+  const cancelDelete = () => {
+    setDeleteConfirmation(null);
+  };
+
+  if (!shouldRender) return null;
 
   return (
     <>
+      {/* Backdrop overlay */}
+      <div
+        className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ease-in-out ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
       {/* Tray */}
       <div
-        className={`fixed right-0 top-0 bottom-0 w-full max-w-md shadow-2xl z-50 transform transition-transform duration-300 border-l border-white/20 dark:border-white/10 ${
+        className={`fixed right-0 top-0 bottom-0 w-full max-w-md shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l border-white/20 dark:border-white/10 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{
@@ -155,6 +186,7 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         }}
+        onTransitionEnd={handleTransitionEnd}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -282,11 +314,16 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
                                 {comment.username}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {new Date(comment.created_at).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric'
-                                })}
+                                {(() => {
+                                  if (!comment.created_at) return 'Just now';
+                                  const date = new Date(comment.created_at);
+                                  if (isNaN(date.getTime())) return 'Just now';
+                                  return date.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  });
+                                })()}
                               </p>
                             </div>
                           </div>
@@ -369,6 +406,52 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
                 className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
               >
                 <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmation && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={cancelDelete}
+          />
+
+          {/* Dialog */}
+          <div className="relative bg-white/95 dark:bg-gray-800/95 rounded-xl shadow-2xl border border-white/30 dark:border-white/20 p-6 max-w-sm w-full backdrop-blur-xl animate-[scale-in_0.2s_ease-out]">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="flex-shrink-0 w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                <TrashIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                  Delete Comment?
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {user?.username === deleteConfirmation.username
+                    ? 'Are you sure you want to delete your comment? This action cannot be undone.'
+                    : 'Are you sure you want to delete this comment? (Admin action)'}
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={cancelDelete}
+                className="flex-1 px-4 py-2 bg-white/80 dark:bg-gray-700/80 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors font-medium border border-gray-300 dark:border-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
+              >
+                Delete
               </button>
             </div>
           </div>

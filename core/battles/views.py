@@ -151,6 +151,27 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = self.get_serializer(battle)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], url_path='refresh-challenge')
+    def refresh_challenge(self, request, pk=None):
+        """Refresh the challenge prompt (Pip battles only, before submission)."""
+        battle = self.get_object()
+
+        battle_service = BattleService()
+        new_challenge = battle_service.refresh_challenge(battle, request.user)
+
+        if new_challenge is None:
+            return Response(
+                {'error': 'Cannot refresh challenge. Only available for Pip battles before you submit.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                'challenge_text': new_challenge,
+                'message': 'Challenge refreshed!',
+            }
+        )
+
     @action(detail=True, methods=['post'])
     def save_to_profile(self, request, pk=None):
         """Save battle result as a project on user's profile."""
@@ -613,5 +634,120 @@ def expire_battles(request):
         {
             'expired_battles': expired_battles_count,
             'expired_invitations': expired_invitations_count,
+        }
+    )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_user_battles(request, username):
+    """Get public battle history for a specific user by username.
+
+    Returns completed battles where the user participated,
+    with submissions and results visible.
+
+    Args:
+        username: The username of the user to get battles for
+
+    Returns:
+        List of battles with submissions and results
+    """
+    from django.contrib.auth import get_user_model
+    from django.shortcuts import get_object_or_404
+
+    User = get_user_model()
+    user = get_object_or_404(User, username=username)
+
+    # Get completed battles where the user was challenger or opponent
+    battles = (
+        PromptBattle.objects.filter(
+            Q(challenger=user) | Q(opponent=user),
+            status=BattleStatus.COMPLETED,
+        )
+        .select_related('challenger', 'opponent', 'winner', 'challenge_type')
+        .prefetch_related('submissions__user')
+        .order_by('-completed_at')[:50]
+    )
+
+    # Build response with full battle details
+    battle_list = []
+    for battle in battles:
+        # Get submissions for this battle
+        submissions = []
+        for sub in battle.submissions.all():
+            submissions.append(
+                {
+                    'id': sub.id,
+                    'user': {
+                        'id': sub.user.id,
+                        'username': sub.user.username,
+                        'avatar_url': sub.user.avatar_url,
+                    },
+                    'prompt_text': sub.prompt_text,
+                    'generated_output_url': sub.generated_output_url,
+                    'generated_output_text': sub.generated_output_text,
+                    'score': float(sub.score) if sub.score else None,
+                    'criteria_scores': sub.criteria_scores,
+                    'evaluation_feedback': sub.evaluation_feedback,
+                    'submitted_at': sub.submitted_at.isoformat() if sub.submitted_at else None,
+                }
+            )
+
+        battle_data = {
+            'id': battle.id,
+            'challenger': {
+                'id': battle.challenger.id,
+                'username': battle.challenger.username,
+                'avatar_url': battle.challenger.avatar_url,
+            },
+            'opponent': {
+                'id': battle.opponent.id if battle.opponent else None,
+                'username': battle.opponent.username if battle.opponent else None,
+                'avatar_url': battle.opponent.avatar_url if battle.opponent else None,
+            }
+            if battle.opponent
+            else None,
+            'challenge_text': battle.challenge_text,
+            'challenge_type': {
+                'key': battle.challenge_type.key,
+                'name': battle.challenge_type.name,
+            }
+            if battle.challenge_type
+            else None,
+            'status': battle.status,
+            'battle_type': battle.battle_type,
+            'match_source': battle.match_source,
+            'duration_minutes': battle.duration_minutes,
+            'created_at': battle.created_at.isoformat() if battle.created_at else None,
+            'started_at': battle.started_at.isoformat() if battle.started_at else None,
+            'completed_at': battle.completed_at.isoformat() if battle.completed_at else None,
+            'winner': {
+                'id': battle.winner.id,
+                'username': battle.winner.username,
+                'avatar_url': battle.winner.avatar_url,
+            }
+            if battle.winner
+            else None,
+            'is_user_winner': battle.winner_id == user.id if battle.winner_id else False,
+            'submissions': submissions,
+        }
+        battle_list.append(battle_data)
+
+    # Calculate stats
+    total_battles = len(battle_list)
+    wins = sum(1 for b in battle_list if b['is_user_winner'])
+    losses = sum(1 for b in battle_list if b['winner'] and not b['is_user_winner'])
+    ties = total_battles - wins - losses
+
+    return Response(
+        {
+            'battles': battle_list,
+            'stats': {
+                'total_battles': total_battles,
+                'wins': wins,
+                'losses': losses,
+                'ties': ties,
+                'win_rate': round((wins / total_battles * 100) if total_battles > 0 else 0, 1),
+            },
         }
     )

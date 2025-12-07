@@ -10,6 +10,7 @@ import {
   Bars3Icon,
   SunIcon,
   MoonIcon,
+  BoltIcon,
 } from '@heroicons/react/24/outline';
 import { getMenuSections } from './menuData';
 import { NavDropdown } from './NavDropdown';
@@ -138,6 +139,27 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
               >
                 <MagnifyingGlassIcon className="w-5 h-5 text-gray-800 dark:text-gray-200" />
               </button>
+
+              {/* Battle Button (Authenticated Users) */}
+              {isAuthenticated && user?.username && (
+                <button
+                  onClick={() => navigate('/battles')}
+                  className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 text-sm font-medium border border-white/20 text-white"
+                  style={{
+                    background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
+                    boxShadow: '0 2px 8px rgba(236, 72, 153, 0.15)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(236, 72, 153, 0.3), 0 2px 8px rgba(139, 92, 246, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(236, 72, 153, 0.15)';
+                  }}
+                >
+                  <BoltIcon className="w-4 h-4" />
+                  <span className="hidden md:inline">Prompt Battle</span>
+                </button>
+              )}
 
               {/* Add Project Button (Authenticated Users) */}
               {isAuthenticated && user?.username && onAddProject && (

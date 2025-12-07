@@ -1,191 +1,133 @@
-import { API_BASE_URL, apiFetch } from '@/config/api';
+import { api } from './api';
 
+// Note: These are the actual values sent to/received from the backend (not transformed)
 export type RSVPStatus = 'going' | 'maybe' | 'not_going';
+
+export interface EventAttendee {
+  id: number;
+  username: string;
+  avatarUrl: string | null;
+}
 
 export interface EventRSVP {
   id: number;
   event: number;
   user: number;
-  user_username: string;
+  userUsername: string;
   status: RSVPStatus;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Event {
   id: number;
   title: string;
   description: string;
-  start_date: string;
-  end_date: string;
+  startDate: string;
+  endDate: string;
   location: string;
-  event_url: string;
-  is_all_day: boolean;
+  eventUrl: string;
+  isAllDay: boolean;
   color: string;
   thumbnail: string;
-  created_by: number | null;
-  created_by_username: string;
-  created_at: string;
-  updated_at: string;
-  is_published: boolean;
-  is_past: boolean;
-  is_upcoming: boolean;
-  is_ongoing: boolean;
-  rsvp_count: number;
-  going_count: number;
-  maybe_count: number;
-  user_rsvp_status: RSVPStatus | null;
+  createdBy: number | null;
+  createdByUsername: string;
+  createdAt: string;
+  updatedAt: string;
+  isPublished: boolean;
+  isPast: boolean;
+  isUpcoming: boolean;
+  isOngoing: boolean;
+  rsvpCount: number;
+  goingCount: number;
+  maybeCount: number;
+  userRsvpStatus: RSVPStatus | null;
+  attendees: EventAttendee[];
 }
 
 export interface CreateEventData {
   title: string;
   description?: string;
-  start_date: string;
-  end_date: string;
+  startDate: string;
+  endDate: string;
   location?: string;
-  event_url?: string;
-  is_all_day?: boolean;
+  eventUrl?: string;
+  isAllDay?: boolean;
   color?: string;
   thumbnail?: string;
-  is_published?: boolean;
+  isPublished?: boolean;
 }
-
-const EVENTS_API_URL = `${API_BASE_URL}/api/v1/events/`;
 
 export const eventsService = {
   // Get all events
   async getEvents(): Promise<Event[]> {
-    try {
-      const response = await apiFetch(EVENTS_API_URL);
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Please log in to view events');
-        }
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Server error: ${response.status}`);
-      }
-      const data = await response.json();
-      // Handle both array and paginated response formats
-      return Array.isArray(data) ? data : (data.results || []);
-    } catch (error) {
-      // Network error or other fetch failure
-      if (error instanceof Error && error.message.includes('fetch')) {
-        throw new Error('Unable to connect to server. Please check your connection.');
-      }
-      // Re-throw if it's already our custom error
-      throw error;
-    }
+    const response = await api.get<Event[] | { results: Event[] }>('/events/');
+    const data = response.data;
+    return Array.isArray(data) ? data : (data.results || []);
   },
 
   // Get a single event
   async getEvent(id: number): Promise<Event> {
-    const response = await apiFetch(`${EVENTS_API_URL}${id}/`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch event');
-    }
-    return response.json();
+    const response = await api.get<Event>(`/events/${id}/`);
+    return response.data;
   },
 
   // Get upcoming events
   async getUpcomingEvents(): Promise<Event[]> {
-    const response = await apiFetch(`${EVENTS_API_URL}upcoming/`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch upcoming events');
-    }
-    const data = await response.json();
+    const response = await api.get<Event[] | { results: Event[] }>('/events/upcoming/');
+    const data = response.data;
     return Array.isArray(data) ? data : (data.results || []);
   },
 
   // Get past events
   async getPastEvents(): Promise<Event[]> {
-    const response = await apiFetch(`${EVENTS_API_URL}past/`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch past events');
-    }
-    const data = await response.json();
+    const response = await api.get<Event[] | { results: Event[] }>('/events/past/');
+    const data = response.data;
     return Array.isArray(data) ? data : (data.results || []);
   },
 
   // Get ongoing events
   async getOngoingEvents(): Promise<Event[]> {
-    const response = await apiFetch(`${EVENTS_API_URL}ongoing/`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch ongoing events');
-    }
-    const data = await response.json();
+    const response = await api.get<Event[] | { results: Event[] }>('/events/ongoing/');
+    const data = response.data;
     return Array.isArray(data) ? data : (data.results || []);
   },
 
   // Get events in date range
   async getEventsByDateRange(startDate: string, endDate: string): Promise<Event[]> {
-    const response = await apiFetch(
-      `${EVENTS_API_URL}date_range/?start=${startDate}&end=${endDate}`
-    );
-    if (!response.ok) {
-      throw new Error('Failed to fetch events by date range');
-    }
-    const data = await response.json();
+    const response = await api.get<Event[] | { results: Event[] }>('/events/date_range/', {
+      params: { start: startDate, end: endDate },
+    });
+    const data = response.data;
     return Array.isArray(data) ? data : (data.results || []);
   },
 
   // Create event (admin only)
   async createEvent(data: CreateEventData): Promise<Event> {
-    const response = await apiFetch(EVENTS_API_URL, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Failed to create event');
-    }
-    return response.json();
+    const response = await api.post<Event>('/events/', data);
+    return response.data;
   },
 
   // Update event (admin only)
   async updateEvent(id: number, data: Partial<CreateEventData>): Promise<Event> {
-    const response = await apiFetch(`${EVENTS_API_URL}${id}/`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Failed to update event');
-    }
-    return response.json();
+    const response = await api.patch<Event>(`/events/${id}/`, data);
+    return response.data;
   },
 
   // Delete event (admin only)
   async deleteEvent(id: number): Promise<void> {
-    const response = await apiFetch(`${EVENTS_API_URL}${id}/`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      throw new Error('Failed to delete event');
-    }
+    await api.delete(`/events/${id}/`);
   },
 
   // RSVP to an event
   async rsvpToEvent(eventId: number, status: RSVPStatus): Promise<{ message: string; rsvp: EventRSVP }> {
-    const response = await apiFetch(`${EVENTS_API_URL}${eventId}/rsvp/`, {
-      method: 'POST',
-      body: JSON.stringify({ status }),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to RSVP to event');
-    }
-    return response.json();
+    const response = await api.post<{ message: string; rsvp: EventRSVP }>(`/events/${eventId}/rsvp/`, { status });
+    return response.data;
   },
 
   // Remove RSVP from an event
   async removeRSVP(eventId: number): Promise<void> {
-    const response = await apiFetch(`${EVENTS_API_URL}${eventId}/rsvp/`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to remove RSVP');
-    }
+    await api.delete(`/events/${eventId}/rsvp/`);
   },
 };
 
