@@ -406,12 +406,10 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TestCase):
 
         self.service = BattleService()
 
+    @patch('core.battles.models.BattleVote.objects.create')
     @patch('services.ai.provider.AIProvider')
-    def test_judge_battle_no_tie(self, mock_ai_provider):
+    def test_judge_battle_no_tie(self, mock_ai_provider_class, mock_vote_create):
         """Test that judge_battle correctly selects winner when scores are not tied."""
-        # Mock AI responses with clear winner (user1)
-        mock_ai = MagicMock()
-        mock_ai_provider.return_value = mock_ai
 
         # Mock responses for each submission
         def mock_complete_with_image(prompt, image_url, model):
@@ -440,8 +438,13 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TestCase):
                 }
                 """
 
-        mock_ai.complete_with_image.side_effect = mock_complete_with_image
-        mock_ai.last_usage = {'total_tokens': 500}
+        # Create mock instance that will be returned by AIProvider()
+        mock_ai_instance = MagicMock()
+        mock_ai_instance.complete_with_image.side_effect = mock_complete_with_image
+        mock_ai_instance.last_usage = {'total_tokens': 500}
+
+        # Make AIProvider() constructor return our mock instance
+        mock_ai_provider_class.return_value = mock_ai_instance
 
         result = self.service.judge_battle(self.battle)
 
@@ -451,11 +454,10 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TestCase):
         self.assertEqual(self.battle.winner_id, self.user1.id)
         self.assertEqual(self.battle.phase, BattlePhase.REVEAL)
 
+    @patch('core.battles.models.BattleVote.objects.create')
     @patch('services.ai.provider.AIProvider')
-    def test_judge_battle_tie_creativity_tiebreaker(self, mock_ai_provider):
+    def test_judge_battle_tie_creativity_tiebreaker(self, mock_ai_provider_class, mock_vote_create):
         """Test that tiebreaker uses Creativity when total scores are tied."""
-        mock_ai = MagicMock()
-        mock_ai_provider.return_value = mock_ai
 
         # Mock responses with tied total scores but different Creativity
         def mock_complete_with_image(prompt, image_url, model):
@@ -484,19 +486,21 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TestCase):
                 }
                 """
 
-        mock_ai.complete_with_image.side_effect = mock_complete_with_image
-        mock_ai.last_usage = {'total_tokens': 500}
+        # Create mock instance
+        mock_ai_instance = MagicMock()
+        mock_ai_instance.complete_with_image.side_effect = mock_complete_with_image
+        mock_ai_instance.last_usage = {'total_tokens': 500}
+        mock_ai_provider_class.return_value = mock_ai_instance
 
         result = self.service.judge_battle(self.battle)
 
         # User1 should win due to higher Creativity score
         self.assertEqual(result['winner_id'], self.user1.id)
 
+    @patch('core.battles.models.BattleVote.objects.create')
     @patch('services.ai.provider.AIProvider')
-    def test_judge_battle_tie_visual_impact_tiebreaker(self, mock_ai_provider):
+    def test_judge_battle_tie_visual_impact_tiebreaker(self, mock_ai_provider_class, mock_vote_create):
         """Test that tiebreaker uses Visual Impact when Creativity is also tied."""
-        mock_ai = MagicMock()
-        mock_ai_provider.return_value = mock_ai
 
         # Mock responses with tied total and Creativity, but different Visual Impact
         def mock_complete_with_image(prompt, image_url, model):
@@ -525,20 +529,22 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TestCase):
                 }
                 """
 
-        mock_ai.complete_with_image.side_effect = mock_complete_with_image
-        mock_ai.last_usage = {'total_tokens': 500}
+        # Create mock instance
+        mock_ai_instance = MagicMock()
+        mock_ai_instance.complete_with_image.side_effect = mock_complete_with_image
+        mock_ai_instance.last_usage = {'total_tokens': 500}
+        mock_ai_provider_class.return_value = mock_ai_instance
 
         result = self.service.judge_battle(self.battle)
 
         # User1 should win due to higher Visual Impact score
         self.assertEqual(result['winner_id'], self.user1.id)
 
+    @patch('core.battles.models.BattleVote.objects.create')
     @patch('services.ai.provider.AIProvider')
     @patch('random.shuffle')
-    def test_judge_battle_tie_random_tiebreaker(self, mock_shuffle, mock_ai_provider):
+    def test_judge_battle_tie_random_tiebreaker(self, mock_shuffle, mock_ai_provider_class, mock_vote_create):
         """Test that random selection is used when all tiebreakers are equal."""
-        mock_ai = MagicMock()
-        mock_ai_provider.return_value = mock_ai
 
         # Mock responses with all scores exactly equal
         def mock_complete_with_image(prompt, image_url, model):
@@ -554,8 +560,11 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TestCase):
             }
             """
 
-        mock_ai.complete_with_image.side_effect = mock_complete_with_image
-        mock_ai.last_usage = {'total_tokens': 500}
+        # Create mock instance
+        mock_ai_instance = MagicMock()
+        mock_ai_instance.complete_with_image.side_effect = mock_complete_with_image
+        mock_ai_instance.last_usage = {'total_tokens': 500}
+        mock_ai_provider_class.return_value = mock_ai_instance
 
         # Mock shuffle to ensure deterministic test
         def mock_shuffle_func(lst):
@@ -725,20 +734,25 @@ class BattleServiceAwardPointsTestCase(TestCase):
 
     def test_complete_battle_idempotent(self):
         """Test that complete_battle can be called multiple times safely."""
+        # Call complete_battle first time
         self.service.complete_battle(self.battle)
 
-        initial_points_user1 = self.user1.total_points
-        initial_points_user2 = self.user2.total_points
+        # Capture points after first completion
+        self.user1.refresh_from_db()
+        self.user2.refresh_from_db()
+        points_after_first_call_user1 = self.user1.total_points
+        points_after_first_call_user2 = self.user2.total_points
 
         # Call again - should not award points again
         self.service.complete_battle(self.battle)
 
+        # Refresh and verify points haven't changed
         self.user1.refresh_from_db()
         self.user2.refresh_from_db()
 
         # Points should remain the same (no double awarding)
-        self.assertEqual(self.user1.total_points, initial_points_user1)
-        self.assertEqual(self.user2.total_points, initial_points_user2)
+        self.assertEqual(self.user1.total_points, points_after_first_call_user1)
+        self.assertEqual(self.user2.total_points, points_after_first_call_user2)
 
     @patch('core.battles.services.AchievementTracker.track_event')
     @patch('core.battles.services.logger')
