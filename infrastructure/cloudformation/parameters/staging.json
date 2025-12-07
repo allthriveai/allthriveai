@@ -1,0 +1,45 @@
+{
+  "common": {
+    "EnvironmentName": "staging"
+  },
+  "vpc": {
+    "VpcCIDR": "10.1.0.0/16",
+    "PublicSubnet1CIDR": "10.1.1.0/24",
+    "PublicSubnet2CIDR": "10.1.2.0/24",
+    "PrivateSubnet1CIDR": "10.1.10.0/24",
+    "PrivateSubnet2CIDR": "10.1.11.0/24",
+    "PrivateSubnet3CIDR": "10.1.12.0/24"
+  },
+  "rds": {
+    "DBInstanceClass": "db.t4g.small",
+    "DBAllocatedStorage": "20",
+    "DBMaxAllocatedStorage": "50",
+    "DBName": "allthrive_ai",
+    "MultiAZ": "false",
+    "BackupRetentionPeriod": "3"
+  },
+  "elasticache": {
+    "CacheNodeType": "cache.t4g.micro",
+    "NumCacheClusters": "1",
+    "EngineVersion": "7.1"
+  },
+  "ecs": {
+    "BackendImageTag": "latest",
+    "WebDesiredCount": "1",
+    "CeleryDesiredCount": "1",
+    "WebCpu": "256",
+    "WebMemory": "512",
+    "CeleryCpu": "256",
+    "CeleryMemory": "512",
+    "DomainName": "",
+    "FrontendUrl": ""
+  },
+  "cloudfront": {
+    "PriceClass": "PriceClass_100",
+    "DomainName": "",
+    "CertificateArn": ""
+  },
+  "alb": {
+    "CertificateArn": ""
+  }
+}

@@ -1,0 +1,257 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AllThrive AI - S3 Buckets'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+    Description: Environment name for resource tagging
+
+  MediaBucketName:
+    Type: String
+    Default: ''
+    Description: Custom name for media bucket (leave empty for auto-generated)
+
+  FrontendBucketName:
+    Type: String
+    Default: ''
+    Description: Custom name for frontend bucket (leave empty for auto-generated)
+
+Conditions:
+  UseCustomMediaBucketName: !Not [!Equals [!Ref MediaBucketName, '']]
+  UseCustomFrontendBucketName: !Not [!Equals [!Ref FrontendBucketName, '']]
+
+Resources:
+  # Media Bucket (replaces MinIO)
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !If
+        - UseCustomMediaBucketName
+        - !Ref MediaBucketName
+        - !Sub allthrive-media-${EnvironmentName}-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+            AllowedOrigins:
+              - '*'
+            ExposedHeaders:
+              - ETag
+              - x-amz-meta-custom-header
+            MaxAge: 3600
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 90
+            NoncurrentVersionTransitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 30
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 365
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-media
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Frontend Static Assets Bucket
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !If
+        - UseCustomFrontendBucketName
+        - !Ref FrontendBucketName
+        - !Sub allthrive-frontend-${EnvironmentName}-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-frontend
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Backup Bucket
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub allthrive-backups-${EnvironmentName}-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToGlacier
+            Status: Enabled
+            Transitions:
+              - StorageClass: GLACIER
+                TransitionInDays: 30
+          - Id: DeleteOldBackups
+            Status: Enabled
+            ExpirationInDays: 365
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-backups
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # CloudFront Origin Access Control for Frontend
+  FrontendOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub ${EnvironmentName}-allthrive-frontend-oac
+        Description: OAC for AllThrive frontend bucket
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # CloudFront Origin Access Control for Media
+  MediaOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub ${EnvironmentName}-allthrive-media-oac
+        Description: OAC for AllThrive media bucket
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # Bucket Policy for Frontend (CloudFront access)
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipal
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${FrontendBucket.Arn}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/*
+
+Outputs:
+  MediaBucketName:
+    Description: Media S3 Bucket Name
+    Value: !Ref MediaBucket
+    Export:
+      Name: !Sub ${EnvironmentName}-MediaBucketName
+
+  MediaBucketArn:
+    Description: Media S3 Bucket ARN
+    Value: !GetAtt MediaBucket.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-MediaBucketArn
+
+  MediaBucketDomainName:
+    Description: Media S3 Bucket Domain Name
+    Value: !GetAtt MediaBucket.RegionalDomainName
+    Export:
+      Name: !Sub ${EnvironmentName}-MediaBucketDomainName
+
+  FrontendBucketName:
+    Description: Frontend S3 Bucket Name
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub ${EnvironmentName}-FrontendBucketName
+
+  FrontendBucketArn:
+    Description: Frontend S3 Bucket ARN
+    Value: !GetAtt FrontendBucket.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-FrontendBucketArn
+
+  FrontendBucketDomainName:
+    Description: Frontend S3 Bucket Domain Name
+    Value: !GetAtt FrontendBucket.RegionalDomainName
+    Export:
+      Name: !Sub ${EnvironmentName}-FrontendBucketDomainName
+
+  FrontendBucketWebsiteURL:
+    Description: Frontend S3 Bucket Website URL
+    Value: !GetAtt FrontendBucket.WebsiteURL
+    Export:
+      Name: !Sub ${EnvironmentName}-FrontendBucketWebsiteURL
+
+  BackupBucketName:
+    Description: Backup S3 Bucket Name
+    Value: !Ref BackupBucket
+    Export:
+      Name: !Sub ${EnvironmentName}-BackupBucketName
+
+  BackupBucketArn:
+    Description: Backup S3 Bucket ARN
+    Value: !GetAtt BackupBucket.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-BackupBucketArn
+
+  FrontendOriginAccessControlId:
+    Description: CloudFront OAC ID for Frontend
+    Value: !Ref FrontendOriginAccessControl
+    Export:
+      Name: !Sub ${EnvironmentName}-FrontendOACId
+
+  MediaOriginAccessControlId:
+    Description: CloudFront OAC ID for Media
+    Value: !Ref MediaOriginAccessControl
+    Export:
+      Name: !Sub ${EnvironmentName}-MediaOACId

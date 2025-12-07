@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AllThrive AI - ECR Repositories'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+    Description: Environment name for resource tagging
+
+  ImageRetentionCount:
+    Type: Number
+    Default: 30
+    Description: Number of images to retain per repository
+
+Resources:
+  # Backend Repository
+  BackendRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub ${EnvironmentName}/allthrive-backend
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      ImageTagMutability: MUTABLE
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      LifecyclePolicy:
+        LifecyclePolicyText: !Sub |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last ${ImageRetentionCount} images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": ${ImageRetentionCount}
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-backend
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Weaviate Repository (for custom Weaviate builds if needed)
+  WeaviateRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub ${EnvironmentName}/allthrive-weaviate
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      ImageTagMutability: MUTABLE
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      LifecyclePolicy:
+        LifecyclePolicyText: !Sub |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last ${ImageRetentionCount} images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": ${ImageRetentionCount}
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-weaviate
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+Outputs:
+  BackendRepositoryUri:
+    Description: Backend ECR Repository URI
+    Value: !GetAtt BackendRepository.RepositoryUri
+    Export:
+      Name: !Sub ${EnvironmentName}-BackendRepositoryUri
+
+  BackendRepositoryArn:
+    Description: Backend ECR Repository ARN
+    Value: !GetAtt BackendRepository.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-BackendRepositoryArn
+
+  WeaviateRepositoryUri:
+    Description: Weaviate ECR Repository URI
+    Value: !GetAtt WeaviateRepository.RepositoryUri
+    Export:
+      Name: !Sub ${EnvironmentName}-WeaviateRepositoryUri
+
+  WeaviateRepositoryArn:
+    Description: Weaviate ECR Repository ARN
+    Value: !GetAtt WeaviateRepository.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-WeaviateRepositoryArn
