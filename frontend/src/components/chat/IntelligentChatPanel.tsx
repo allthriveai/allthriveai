@@ -336,7 +336,7 @@ export function IntelligentChatPanel({
     const returnPath = window.location.pathname + window.location.search;
 
     // Redirect to GitLab OAuth via social connect endpoint
-    const redirectUrl = `${backendUrl}/api/social/connect/gitlab/?next=${encodeURIComponent(frontendUrl + returnPath)}`;
+    const redirectUrl = `${backendUrl}/api/v1/social/connect/gitlab/?next=${encodeURIComponent(frontendUrl + returnPath)}`;
     window.location.href = redirectUrl;
   };
 
@@ -390,7 +390,7 @@ export function IntelligentChatPanel({
     const returnPath = window.location.pathname + window.location.search;
 
     // Redirect to Figma OAuth via social connect endpoint
-    const redirectUrl = `${backendUrl}/api/social/connect/figma/?next=${encodeURIComponent(frontendUrl + returnPath)}`;
+    const redirectUrl = `${backendUrl}/api/v1/social/connect/figma/?next=${encodeURIComponent(frontendUrl + returnPath)}`;
     window.location.href = redirectUrl;
   };
 

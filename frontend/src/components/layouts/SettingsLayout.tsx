@@ -17,6 +17,7 @@ interface SettingsSidebarItem {
   label: string;
   path: string;
   icon: typeof UserCircleIcon;
+  comingSoon?: boolean;
 }
 
 interface SettingsLayoutProps {
@@ -63,6 +64,7 @@ const settingsNavItems: SettingsSidebarItem[] = [
     label: 'Creator',
     path: '/account/settings/creator',
     icon: ShoppingBagIcon,
+    comingSoon: true,
   },
   {
     label: 'Privacy & Security',
@@ -146,6 +148,23 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
                 {settingsNavItems.map((item) => {
                   const isActive = item.path === activeItem.path;
                   const Icon = item.icon;
+
+                  // Coming soon items are non-clickable
+                  if (item.comingSoon) {
+                    return (
+                      <div
+                        key={item.path}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm border-b last:border-0 border-slate-100 dark:border-white/5 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60"
+                      >
+                        <Icon className="w-5 h-5 text-slate-400 dark:text-slate-500 blur-[1px]" />
+                        <span className="blur-[1px]">{item.label}</span>
+                        <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 whitespace-nowrap">
+                          Coming Soon
+                        </span>
+                      </div>
+                    );
+                  }
+
                   return (
                     <button
                       key={item.path}
@@ -174,6 +193,23 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
           <nav className="hidden md:flex md:flex-col gap-1">
             {settingsNavItems.map((item) => {
               const Icon = item.icon;
+
+              // For coming soon items, render a non-clickable div
+              if (item.comingSoon) {
+                return (
+                  <div
+                    key={item.path}
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-500 cursor-not-allowed opacity-60 relative"
+                  >
+                    <Icon className="w-5 h-5 text-slate-400 dark:text-slate-500 blur-[1px]" />
+                    <span className="blur-[1px]">{item.label}</span>
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 whitespace-nowrap">
+                      Coming Soon
+                    </span>
+                  </div>
+                );
+              }
+
               return (
                 <NavLink
                   key={item.path}

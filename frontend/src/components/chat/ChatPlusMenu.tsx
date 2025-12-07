@@ -96,8 +96,8 @@ const integrationOptions: IntegrationOption[] = [
     type: 'create-product',
     label: 'Create Product',
     icon: faBagShopping,
-    description: 'Create a course, template, or digital product',
-    available: true,
+    description: 'Coming Soon',
+    available: false,
     isPrimary: false,
   },
 ];
@@ -222,11 +222,13 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
     <button
       key={option.type}
       role="menuitem"
-      onClick={() => handleSelect(option.type)}
+      onClick={() => option.available && handleSelect(option.type)}
       onMouseEnter={() => setFocusedIndex(index)}
+      disabled={!option.available}
       className={`
         w-full flex items-start gap-3 px-3 py-2 rounded-md text-left transition-colors
-        ${isFocused ? 'bg-slate-100 dark:bg-slate-700' : ''}
+        ${isFocused && option.available ? 'bg-slate-100 dark:bg-slate-700' : ''}
+        ${!option.available ? 'opacity-50 cursor-not-allowed' : ''}
       `}
     >
       {typeof option.icon === 'string' ? (
@@ -235,11 +237,16 @@ export function ChatPlusMenu({ onIntegrationSelect, disabled = false, isOpen, on
         <FontAwesomeIcon icon={option.icon} className="w-5 h-5 text-slate-700 dark:text-slate-300 mt-0.5 flex-shrink-0" />
       )}
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
           {option.label}
+          {!option.available && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+              Coming Soon
+            </span>
+          )}
         </div>
         <div className="text-xs text-slate-600 dark:text-slate-400">
-          {option.description}
+          {option.available ? option.description : 'This feature is coming soon'}
         </div>
       </div>
     </button>

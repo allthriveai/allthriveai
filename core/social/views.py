@@ -120,15 +120,8 @@ def connect_provider(request, provider):
     # Get authorization URL
     auth_url = oauth_service.get_authorization_url(redirect_uri, state)
 
-    return Response(
-        {
-            'success': True,
-            'data': {
-                'authUrl': auth_url,
-                'provider': provider,
-            },
-        }
-    )
+    # Redirect directly to the OAuth provider
+    return redirect(auth_url)
 
 
 @api_view(['GET'])
