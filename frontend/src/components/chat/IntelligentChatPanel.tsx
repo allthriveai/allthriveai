@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFigma, faGithub, faGitlab } from '@fortawesome/free-brands-svg-icons';
-import { faStar, faCodeBranch, faSpinner, faFolderPlus, faLightbulb, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
+import { faFigma, faGithub, faGitlab, faYoutube } from '@fortawesome/free-brands-svg-icons';
+import { faStar, faCodeBranch, faSpinner, faFolderPlus, faLightbulb, faMagnifyingGlass, faCheck, faPlug, faPencil } from '@fortawesome/free-solid-svg-icons';
 import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './ChatInterface';
 import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
@@ -25,6 +25,9 @@ import {
 } from '@/services/gitlab';
 import {
   checkFigmaConnection,
+  isFigmaUrl,
+  parseFigmaUrl,
+  getFigmaFilePreview,
 } from '@/services/figma';
 import { uploadFile, uploadImage } from '@/services/upload';
 // Constants
@@ -114,6 +117,34 @@ export function IntelligentChatPanel({
   const [figmaStep, setFigmaStep] = useState<'idle' | 'loading' | 'connect' | 'ready'>('idle');
   const [figmaMessage, setFigmaMessage] = useState<string>('');
 
+  // Integration picker state
+  const [showIntegrationPicker, setShowIntegrationPicker] = useState(false);
+  const [integrationStatus, setIntegrationStatus] = useState<{
+    github: boolean;
+    gitlab: boolean;
+    figma: boolean;
+    youtube: boolean;
+  }>({ github: false, gitlab: false, figma: false, youtube: false });
+  const [loadingIntegrationStatus, setLoadingIntegrationStatus] = useState(false);
+
+  // URL search params for OAuth callbacks
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Detect OAuth callback and trigger Figma ready state
+  useEffect(() => {
+    const connected = searchParams.get('connected');
+    if (connected === 'figma') {
+      // Clear the URL param
+      searchParams.delete('connected');
+      setSearchParams(searchParams, { replace: true });
+
+      // Set Figma to ready state
+      setFigmaStep('ready');
+      setFigmaMessage('Paste a Figma file URL below to import your design.');
+      setHasInteracted(true);
+    }
+  }, [searchParams, setSearchParams]);
+
   // Help mode state - start in help mode if supportMode prop is true
   const [helpMode, setHelpMode] = useState(supportMode);
 
@@ -149,6 +180,20 @@ export function IntelligentChatPanel({
     setError(undefined);
     setHasInteracted(true);
     setHelpMode(false); // Close help panel when user sends a message
+
+    // Handle Figma URL when in ready state
+    if (figmaStep === 'ready' && content.trim()) {
+      const trimmedContent = content.trim();
+      if (isFigmaUrl(trimmedContent)) {
+        // Process the Figma URL
+        await handleFigmaUrlImport(trimmedContent);
+        return;
+      } else {
+        // User typed something that's not a Figma URL
+        setFigmaMessage('Please paste a valid Figma URL (e.g., https://www.figma.com/file/...)');
+        return;
+      }
+    }
 
     // Upload attachments if present
     if (attachments && attachments.length > 0) {
@@ -399,6 +444,36 @@ export function IntelligentChatPanel({
     setFigmaMessage('');
   };
 
+  // Handle Figma URL import
+  const handleFigmaUrlImport = useCallback(async (url: string) => {
+    setFigmaStep('loading');
+    setFigmaMessage('Fetching Figma file info...');
+
+    try {
+      // Parse the URL to get the file key
+      const parsed = parseFigmaUrl(url);
+      if (!parsed) {
+        setFigmaMessage('Invalid Figma URL. Please paste a valid file URL.');
+        setFigmaStep('ready');
+        return;
+      }
+
+      // Get file preview to validate and show info
+      const preview = await getFigmaFilePreview(parsed.fileKey);
+
+      // Reset Figma state
+      setFigmaStep('idle');
+      setFigmaMessage('');
+
+      // Send message to AI agent to import the file
+      sendMessage(`Import this Figma design as a project: ${url}\n\nFile: ${preview.name}\nPages: ${preview.pageCount}`);
+    } catch (error: any) {
+      console.error('Figma URL import error:', error);
+      setFigmaMessage(error.message || 'Failed to fetch Figma file. Please check the URL and try again.');
+      setFigmaStep('ready');
+    }
+  }, [sendMessage]);
+
   // Help mode handlers
   const handleHelpQuestionSelect = useCallback((question: HelpQuestion) => {
     // Close help mode and send the question's message to the AI
@@ -409,6 +484,65 @@ export function IntelligentChatPanel({
   const handleCloseHelp = useCallback(() => {
     setHelpMode(false);
   }, []);
+
+  // Fetch all integration connection statuses
+  const fetchIntegrationStatuses = useCallback(async () => {
+    setLoadingIntegrationStatus(true);
+    try {
+      const [githubConnected, gitlabConnected, figmaConnected] = await Promise.all([
+        checkGitHubConnection(),
+        checkGitLabConnection(),
+        checkFigmaConnection(),
+      ]);
+
+      // For YouTube, check Google OAuth status
+      let youtubeConnected = false;
+      try {
+        const { api } = await import('@/services/api');
+        const response = await api.get('/social/status/google/');
+        youtubeConnected = response.data?.data?.connected || response.data?.connected || false;
+      } catch {
+        youtubeConnected = false;
+      }
+
+      setIntegrationStatus({
+        github: githubConnected,
+        gitlab: gitlabConnected,
+        figma: figmaConnected,
+        youtube: youtubeConnected,
+      });
+    } catch (error) {
+      console.error('Failed to fetch integration statuses:', error);
+    } finally {
+      setLoadingIntegrationStatus(false);
+    }
+  }, []);
+
+  // Open integration picker and fetch statuses
+  const handleOpenIntegrationPicker = useCallback(() => {
+    setShowIntegrationPicker(true);
+    setHasInteracted(true);
+    fetchIntegrationStatuses();
+  }, [fetchIntegrationStatuses]);
+
+  // Handle integration selection from picker
+  const handlePickerIntegrationSelect = useCallback((integration: 'github' | 'gitlab' | 'figma' | 'youtube') => {
+    setShowIntegrationPicker(false);
+    switch (integration) {
+      case 'github':
+        handleGitHubImport();
+        break;
+      case 'gitlab':
+        handleGitLabImport();
+        break;
+      case 'figma':
+        handleFigmaImport();
+        break;
+      case 'youtube':
+        sendMessage('I want to import a YouTube video as a project');
+        break;
+    }
+  }, [handleGitHubImport, handleGitLabImport, handleFigmaImport, sendMessage]);
 
   const handleIntegrationSelect = useCallback(async (type: IntegrationType) => {
     switch (type) {
@@ -732,6 +866,121 @@ export function IntelligentChatPanel({
     );
   };
 
+  // Render integration picker overlay
+  const renderIntegrationPicker = () => {
+    if (!showIntegrationPicker) return null;
+
+    const integrations = [
+      {
+        id: 'github' as const,
+        name: 'GitHub',
+        description: 'Import repositories as projects',
+        icon: faGithub,
+        color: 'text-gray-900 dark:text-white',
+        bgColor: 'bg-gray-100 dark:bg-gray-800',
+        type: 'integration' as const,
+      },
+      {
+        id: 'gitlab' as const,
+        name: 'GitLab',
+        description: 'Import GitLab projects',
+        icon: faGitlab,
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-100 dark:bg-orange-900/30',
+        type: 'integration' as const,
+      },
+      {
+        id: 'figma' as const,
+        name: 'Figma',
+        description: 'Import design files',
+        icon: faFigma,
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+        type: 'integration' as const,
+      },
+      {
+        id: 'youtube' as const,
+        name: 'YouTube',
+        description: 'Import videos as projects',
+        icon: faYoutube,
+        color: 'text-red-600',
+        bgColor: 'bg-red-100 dark:bg-red-900/30',
+        type: 'integration' as const,
+      },
+    ];
+
+    return (
+      <div className="flex flex-col items-center justify-center h-full px-6">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mx-auto mb-3">
+              <FontAwesomeIcon icon={faPlug} className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
+              Connect an Integration
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Import your projects from these platforms
+            </p>
+          </div>
+
+          {loadingIntegrationStatus ? (
+            <div className="flex justify-center py-8">
+              <FontAwesomeIcon icon={faSpinner} className="w-6 h-6 text-primary-500 animate-spin" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                {integrations.map((integration) => {
+                  const isConnected = integrationStatus[integration.id];
+                  return (
+                    <button
+                      key={integration.id}
+                      onClick={() => handlePickerIntegrationSelect(integration.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700 group"
+                    >
+                      <div className={`w-10 h-10 rounded-lg ${integration.bgColor} flex items-center justify-center flex-shrink-0`}>
+                        <FontAwesomeIcon icon={integration.icon} className={`w-5 h-5 ${integration.color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-slate-900 dark:text-slate-100">
+                            {integration.name}
+                          </span>
+                          {isConnected && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                              <FontAwesomeIcon icon={faCheck} className="w-2.5 h-2.5" />
+                              Connected
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 truncate">
+                          {integration.description}
+                        </p>
+                      </div>
+                      <div className="text-slate-400 group-hover:text-primary-500 transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <button
+            onClick={() => setShowIntegrationPicker(false)}
+            className="mt-4 w-full text-center text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 py-2"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // Empty state when no messages
   const renderEmptyState = () => {
     if (messages.length > 0 || hasInteracted) return null;
@@ -869,22 +1118,39 @@ export function IntelligentChatPanel({
           I'm here to assist with your projects and ideas.
         </p>
 
-        {/* Quick action buttons */}
-        <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
+        {/* All action buttons in a 3x2 grid */}
+        <div className="grid grid-cols-3 gap-2 w-full max-w-md">
           {quickActions.map((action) => (
             <button
               key={action.label}
               onClick={() => handleSendMessage(action.prompt)}
-              className="flex items-center gap-2 px-3 py-2.5 text-left text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
+              className="flex flex-col items-center justify-center gap-1.5 px-3 py-3 text-center text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors border border-slate-200 dark:border-slate-700 min-h-[72px]"
             >
               {action.icon === 'banana' ? (
-                <span className="text-base">🍌</span>
+                <span className="text-lg">🍌</span>
               ) : (
-                <FontAwesomeIcon icon={action.icon} className="w-4 h-4 text-primary-500" />
+                <FontAwesomeIcon icon={action.icon} className="w-5 h-5 text-primary-500" />
               )}
-              <span className="text-slate-700 dark:text-slate-300">{action.label}</span>
+              <span className="text-slate-700 dark:text-slate-300 text-xs leading-tight">{action.label}</span>
             </button>
           ))}
+          <button
+            onClick={handleOpenIntegrationPicker}
+            className="flex flex-col items-center justify-center gap-1.5 px-3 py-3 text-center text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors border border-slate-200 dark:border-slate-700 min-h-[72px]"
+          >
+            <FontAwesomeIcon icon={faPlug} className="w-5 h-5 text-primary-500" />
+            <span className="text-slate-700 dark:text-slate-300 text-xs leading-tight">Connect an Integration</span>
+          </button>
+          <button
+            onClick={() => {
+              setHasInteracted(true);
+              sendMessage("I want to create a new project manually. Help me get started.");
+            }}
+            className="flex flex-col items-center justify-center gap-1.5 px-3 py-3 text-center text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors border border-slate-200 dark:border-slate-700 min-h-[72px]"
+          >
+            <FontAwesomeIcon icon={faPencil} className="w-5 h-5 text-primary-500" />
+            <span className="text-slate-700 dark:text-slate-300 text-xs leading-tight">Create Manually</span>
+          </button>
         </div>
       </div>
     );
@@ -1189,7 +1455,12 @@ export function IntelligentChatPanel({
       customContent={
         // Only pass customContent when there's actually custom UI to show
         // Otherwise let ChatInterface render the messages normally
-        helpMode ? (
+        showIntegrationPicker ? (
+          <>
+            {renderQuotaExceeded()}
+            {renderIntegrationPicker()}
+          </>
+        ) : helpMode ? (
           <>
             {renderQuotaExceeded()}
             <HelpQuestionsPanel

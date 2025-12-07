@@ -49,7 +49,7 @@ export default function IntegrationsSettingsPage() {
       description: 'Embed your Figma designs and prototypes in your portfolio',
       icon: faFigma,
       isConnected: false,
-      isAvailable: false,
+      isAvailable: true,
     },
     {
       id: 'instagram',
@@ -133,6 +133,25 @@ export default function IntegrationsSettingsPage() {
                     isConnected: true,
                     username: gitlabData.providerUsername || 'GitLab User',
                     connectedAt: gitlabData.connectedAt,
+                  }
+                : integration
+            )
+          );
+        }
+
+        // Check Figma status
+        const figmaResponse = await api.get('/social/status/figma/');
+        const figmaData = figmaResponse.data.data || figmaResponse.data;
+
+        if (figmaData.connected && isMounted) {
+          setIntegrations(prev =>
+            prev.map(integration =>
+              integration.id === 'figma'
+                ? {
+                    ...integration,
+                    isConnected: true,
+                    username: figmaData.providerUsername || 'Figma User',
+                    connectedAt: figmaData.connectedAt,
                   }
                 : integration
             )
@@ -286,6 +305,9 @@ export default function IntegrationsSettingsPage() {
         const friendlyError = getUserFriendlyError(error, 'gitlab');
         setErrorMessage(friendlyError);
       }
+    } else if (integrationId === 'figma') {
+      // Redirect to Figma OAuth - backend handles the redirect
+      window.location.href = `${import.meta.env.VITE_API_URL || ''}/api/v1/social/connect/figma/`;
     } else {
       setErrorMessage({
         title: 'Coming Soon',
@@ -370,6 +392,29 @@ export default function IntegrationsSettingsPage() {
       } catch (error) {
         console.error('Failed to disconnect GitLab:', error);
         const friendlyError = getUserFriendlyError(error, 'gitlab');
+        setErrorMessage(friendlyError);
+      }
+    } else if (integrationId === 'figma') {
+      try {
+        await api.post('/social/disconnect/figma/');
+
+        setIntegrations(prev =>
+          prev.map(integration =>
+            integration.id === 'figma'
+              ? {
+                  ...integration,
+                  isConnected: false,
+                  username: undefined,
+                  connectedAt: undefined,
+                }
+              : integration
+          )
+        );
+
+        setSuccessMessage(`${integrationName} disconnected successfully`);
+      } catch (error) {
+        console.error('Failed to disconnect Figma:', error);
+        const friendlyError = getUserFriendlyError(error, 'figma');
         setErrorMessage(friendlyError);
       }
     } else {
@@ -870,7 +915,7 @@ export default function IntegrationsSettingsPage() {
                 <div className="text-3xl">⚠️</div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                    Disconnect {showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : 'Integration'}?
+                    Disconnect {showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : showDisconnectModal === 'figma' ? 'Figma' : 'Integration'}?
                   </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     {showDisconnectModal === 'youtube'
@@ -890,7 +935,7 @@ export default function IntegrationsSettingsPage() {
                 </button>
                 <button
                   onClick={() => {
-                    const integrationName = showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : 'Integration';
+                    const integrationName = showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : showDisconnectModal === 'figma' ? 'Figma' : 'Integration';
                     handleDisconnect(showDisconnectModal, integrationName);
                   }}
                   className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium text-sm"

@@ -55,7 +55,7 @@ class OAuthProviderConfig:
         },
         SocialProvider.FIGMA: {
             'authorize_url': 'https://www.figma.com/oauth',
-            'token_url': 'https://www.figma.com/api/oauth/token',
+            'token_url': 'https://api.figma.com/v1/oauth/token',
             'user_info_url': 'https://api.figma.com/v1/me',
             'scopes': [
                 'current_user:read',
