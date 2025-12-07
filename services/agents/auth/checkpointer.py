@@ -12,6 +12,7 @@ Auto-cleanup via Celery task removes expired conversations from Redis.
 """
 
 import logging
+from urllib.parse import quote_plus
 
 from django.conf import settings
 from django.core.cache import cache
@@ -64,9 +65,13 @@ def get_postgres_connection_string() -> str:
         )
 
     if user and password:
-        return f'postgresql://{user}:{password}@{host}:{port}/{database}'
+        # URL-encode user and password to handle special characters like %, ', @, etc.
+        encoded_user = quote_plus(user)
+        encoded_password = quote_plus(password)
+        return f'postgresql://{encoded_user}:{encoded_password}@{host}:{port}/{database}'
     elif user:
-        return f'postgresql://{user}@{host}:{port}/{database}'
+        encoded_user = quote_plus(user)
+        return f'postgresql://{encoded_user}@{host}:{port}/{database}'
     else:
         return f'postgresql://{host}:{port}/{database}'
 

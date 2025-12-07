@@ -199,7 +199,7 @@ Outputs:
   RedisURL:
     Description: Redis connection URL (without auth token)
     Value: !Sub
-      - 'rediss://${Endpoint}:${Port}/0'
+      - 'rediss://${Endpoint}:${Port}/0?ssl_cert_reqs=CERT_REQUIRED'
       - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
         Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
     Export:
@@ -208,7 +208,7 @@ Outputs:
   CeleryBrokerURL:
     Description: Celery broker URL (database 0)
     Value: !Sub
-      - 'rediss://${Endpoint}:${Port}/0'
+      - 'rediss://${Endpoint}:${Port}/0?ssl_cert_reqs=CERT_REQUIRED'
       - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
         Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
     Export:
@@ -217,7 +217,7 @@ Outputs:
   CeleryResultBackendURL:
     Description: Celery result backend URL (database 1)
     Value: !Sub
-      - 'rediss://${Endpoint}:${Port}/1'
+      - 'rediss://${Endpoint}:${Port}/1?ssl_cert_reqs=CERT_REQUIRED'
       - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
         Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
     Export:
@@ -226,7 +226,7 @@ Outputs:
   CacheURL:
     Description: Django cache URL (database 2)
     Value: !Sub
-      - 'rediss://${Endpoint}:${Port}/2'
+      - 'rediss://${Endpoint}:${Port}/2?ssl_cert_reqs=CERT_REQUIRED'
       - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
         Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
     Export:

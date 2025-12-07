@@ -394,28 +394,40 @@ def _build_redis_url(db: int = 0) -> str:
         # AWS ElastiCache mode: build URL from components
         scheme = 'rediss' if REDIS_USE_TLS else 'redis'
         auth = f':{REDIS_AUTH_TOKEN}@' if REDIS_AUTH_TOKEN else ''
-        return f'{scheme}://{auth}{REDIS_HOST}:{REDIS_PORT}/{db}'
+        base_url = f'{scheme}://{auth}{REDIS_HOST}:{REDIS_PORT}/{db}'
+        # Celery requires ssl_cert_reqs parameter for rediss:// URLs
+        if REDIS_USE_TLS:
+            base_url += '?ssl_cert_reqs=CERT_REQUIRED'
+        return base_url
     # Local development: use simple localhost URLs
     return f'redis://localhost:6379/{db}'
 
 
+def _ensure_redis_ssl_params(url: str) -> str:
+    """Ensure rediss:// URLs have the required ssl_cert_reqs parameter."""
+    if url and url.startswith('rediss://') and 'ssl_cert_reqs=' not in url:
+        separator = '&' if '?' in url else '?'
+        return f'{url}{separator}ssl_cert_reqs=CERT_REQUIRED'
+    return url
+
+
 # Celery Configuration
-CELERY_BROKER_URL = config('CELERY_BROKER_URL', default=_build_redis_url(0))
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default=_build_redis_url(1))
+CELERY_BROKER_URL = _ensure_redis_ssl_params(config('CELERY_BROKER_URL', default=_build_redis_url(0)))
+CELERY_RESULT_BACKEND = _ensure_redis_ssl_params(config('CELERY_RESULT_BACKEND', default=_build_redis_url(1)))
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
 # Redis Configuration for LangChain State
-REDIS_URL = config('REDIS_URL', default=_build_redis_url(2))
+REDIS_URL = _ensure_redis_ssl_params(config('REDIS_URL', default=_build_redis_url(2)))
 CHAT_SESSION_TTL = config('CHAT_SESSION_TTL', default=1800, cast=int)  # 30 minutes
 
 # Django Channels Configuration
 ASGI_APPLICATION = 'config.asgi.application'
 
 # Channels Redis URL (DB 3)
-_redis_url = os.environ.get('REDIS_URL') or config('REDIS_URL', default=_build_redis_url(3))
+_redis_url = _ensure_redis_ssl_params(os.environ.get('REDIS_URL') or config('REDIS_URL', default=_build_redis_url(3)))
 
 CHANNEL_LAYERS = {
     'default': {
@@ -442,7 +454,7 @@ else:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': config('CACHE_URL', default=_build_redis_url(4)),
+            'LOCATION': _ensure_redis_ssl_params(config('CACHE_URL', default=_build_redis_url(4))),
             'KEY_PREFIX': 'allthrive',
             'TIMEOUT': 300,  # 5 minutes default
         }
