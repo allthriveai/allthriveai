@@ -225,7 +225,7 @@ function EditableInput({
   placeholder,
   className,
 }: {
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   value: string;
   onChange: (value: string) => void;
   onBlur: () => void;

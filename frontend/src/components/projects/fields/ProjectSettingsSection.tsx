@@ -3,7 +3,6 @@
  * Used in project editing components
  */
 
-import { useState } from 'react';
 import { updateProject, listProjects, deleteProjectRedirect } from '@/services/projects';
 import type { Project } from '@/types/models';
 import { generateSlug } from '@/utils/slug';

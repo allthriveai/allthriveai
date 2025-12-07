@@ -1,4 +1,5 @@
-import { useState, ReactNode, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightAboutPanel } from '@/components/about';
@@ -25,6 +26,7 @@ interface DashboardLayoutProps {
     openQuestTray: (quest: UserSideQuest) => void;
   }) => ReactNode);
   openAboutPanel?: boolean;
+  autoCollapseSidebar?: boolean;
 }
 
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
@@ -43,7 +45,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const {
     questTrayOpen,
     selectedQuest,
-    activeQuest,
     openQuestTray,
     openActiveQuestTray,
     closeQuestTray,
@@ -223,7 +224,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
             )}
             {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray }) : children}
           </div>
-          <Footer onOpenChat={handleMenuClick} />
+          <Footer onOpenChat={() => handleMenuClick('Chat')} />
         </main>
 
         {/* Right About Panel */}

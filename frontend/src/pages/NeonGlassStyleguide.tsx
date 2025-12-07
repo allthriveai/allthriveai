@@ -8,18 +8,14 @@ import {
   Cog6ToothIcon,
   ArrowRightIcon,
   CheckIcon,
-  XMarkIcon,
-  StarIcon,
   HeartIcon,
   SparklesIcon,
   BoltIcon,
   RocketLaunchIcon,
   ChartBarIcon,
-  ChatBubbleLeftRightIcon,
   TrophyIcon,
   FireIcon,
   UsersIcon,
-  ChatBubbleBottomCenterIcon,
 } from '@heroicons/react/24/outline';
 import { AchievementBadge } from '@/components/achievements/AchievementBadge';
 import { AchievementGrid } from '@/components/achievements/AchievementGrid';

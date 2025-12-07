@@ -5,7 +5,6 @@
 
 import { useState, useEffect } from 'react';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
-import { renderContent } from '@/utils/markdown';
 
 interface DescriptionSectionProps {
   projectDescription: string;

@@ -481,7 +481,7 @@ function PointsCategorySection({ categories }: { categories: PointsCategory[] })
         <div className="lg:col-span-1 flex items-center justify-center">
           <div className="relative w-48 h-48">
             <svg viewBox="0 0 100 100" className="transform -rotate-90">
-              {segments.map((segment, i) => {
+              {segments.map((segment) => {
                 const radius = 35;
                 const strokeWidth = 15;
                 const circumference = 2 * Math.PI * radius;

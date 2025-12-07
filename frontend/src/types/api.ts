@@ -3,6 +3,7 @@ export interface ApiResponse<T> {
   success: true;
   data: T;
   message?: string;
+  error?: string; // Error message for partial failures
 }
 
 // API error response
@@ -14,13 +15,15 @@ export interface ApiError {
 }
 
 // HTTP methods
-export enum HttpMethod {
-  GET = 'GET',
-  POST = 'POST',
-  PUT = 'PUT',
-  PATCH = 'PATCH',
-  DELETE = 'DELETE',
-}
+export const HttpMethod = {
+  GET: 'GET',
+  POST: 'POST',
+  PUT: 'PUT',
+  PATCH: 'PATCH',
+  DELETE: 'DELETE',
+} as const;
+
+export type HttpMethod = typeof HttpMethod[keyof typeof HttpMethod];
 
 // Type guards
 export function isApiError(value: unknown): value is ApiError {

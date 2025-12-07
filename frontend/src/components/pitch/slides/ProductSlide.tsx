@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { PitchSlide, GlassCard, GradientText } from '../PitchSlide';
+import { PitchSlide, GradientText } from '../PitchSlide';
 import { SparklesIcon } from '@heroicons/react/24/outline';
 
 export function ProductSlide() {
@@ -198,7 +198,7 @@ export function ProductSlide() {
             { label: 'Chrome Extension', desc: 'One-click capture' },
             { label: 'Learning Paths', desc: 'Personalized by activity' },
             { label: '200+ AI Tools', desc: 'All in one directory' },
-          ].map((item, i) => (
+          ].map((item) => (
             <div
               key={item.label}
               className="glass-card py-4 px-4 rounded-xl border border-white/10 text-center"

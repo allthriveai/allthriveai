@@ -10,16 +10,14 @@ import {
   deletePersonalizationData,
   type PersonalizationSettings,
 } from '@/services/personalization';
-import type { Taxonomy, UserTag, TaxonomyCategory } from '@/types/models';
+import type { Taxonomy, UserTag } from '@/types/models';
 import {
   SparklesIcon,
   TagIcon,
   XMarkIcon,
   CheckIcon,
-  MagnifyingGlassIcon,
   SunIcon,
   MoonIcon,
-  ComputerDesktopIcon,
   AdjustmentsHorizontalIcon,
   EyeIcon,
   HeartIcon,
@@ -56,16 +54,10 @@ export function Personalization() {
   const { theme, toggleTheme } = useTheme();
   const [manualTags, setManualTags] = useState<UserTag[]>([]);
   const [autoTags, setAutoTags] = useState<UserTag[]>([]);
-  const [taxonomies, setTaxonomies] = useState<Taxonomy[]>([]);
-  const [selectedTaxonomies, setSelectedTaxonomies] = useState<Set<number>>(new Set());
   const [availableTopics, setAvailableTopics] = useState<Taxonomy[]>([]);
   const [selectedTopicIds, setSelectedTopicIds] = useState<Set<number>>(new Set());
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [isSavingTopics, setIsSavingTopics] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<TaxonomyCategory | 'all'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Personalization settings state
   const [settings, setSettings] = useState<PersonalizationSettings | null>(null);
@@ -184,7 +176,6 @@ export function Personalization() {
       // Clear local state
       setManualTags([]);
       setAutoTags([]);
-      setSelectedTaxonomies(new Set());
       setSelectedTopicIds(new Set());
       setSettings(null);
       setShowDeleteConfirm(false);
@@ -197,53 +188,6 @@ export function Personalization() {
     } finally {
       setIsDeleting(false);
     }
-  }
-
-  async function handleSaveTaxonomies() {
-    try {
-      setIsSaving(true);
-      setError(null);
-
-      // Find which taxonomies to add (newly selected)
-      const existingIds = new Set(
-        manualTags.filter(tag => tag.taxonomy).map(tag => tag.taxonomy!)
-      );
-      const toAdd = Array.from(selectedTaxonomies).filter(id => !existingIds.has(id));
-
-      // Find which tags to remove (unselected taxonomies)
-      const toRemove = manualTags.filter(
-        tag => tag.taxonomy && !selectedTaxonomies.has(tag.taxonomy)
-      );
-
-      // Add new tags
-      if (toAdd.length > 0) {
-        const newTags = await bulkCreateTags(toAdd);
-        setManualTags(prev => [...prev, ...newTags]);
-      }
-
-      // Remove unselected tags
-      for (const tag of toRemove) {
-        await deleteUserTag(tag.id);
-        setManualTags(prev => prev.filter(t => t.id !== tag.id));
-      }
-    } catch (err: any) {
-      console.error('Failed to save taxonomies:', err);
-      setError(err?.error || 'Failed to save changes');
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  function toggleTaxonomy(id: number) {
-    setSelectedTaxonomies(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
   }
 
   async function handleRemoveAutoTag(tagId: number) {
@@ -303,46 +247,14 @@ export function Personalization() {
     });
   }
 
-  const categories = [
-    { id: 'all' as const, label: 'All', icon: TagIcon },
-    { id: 'interest' as const, label: 'Interests', icon: SparklesIcon },
-    { id: 'skill' as const, label: 'Skills', icon: SparklesIcon },
-    { id: 'goal' as const, label: 'Goals', icon: SparklesIcon },
-    { id: 'topic' as const, label: 'Topics', icon: SparklesIcon },
-    { id: 'industry' as const, label: 'Industries', icon: SparklesIcon },
-    { id: 'tool' as const, label: 'Tools', icon: SparklesIcon },
-  ];
-
-  // Filter by category and search query
-  const filteredTaxonomies = taxonomies
-    .filter(t => activeCategory === 'all' || t.taxonomyType === activeCategory)
-    .filter(t => {
-      if (!searchQuery.trim()) return true;
-      const query = searchQuery.toLowerCase();
-      return (
-        t.name.toLowerCase().includes(query) ||
-        t.description.toLowerCase().includes(query) ||
-        t.taxonomyType.toLowerCase().includes(query)
-      );
-    });
 
   async function loadPersonalization() {
     try {
-      setIsLoading(true);
       setError(null);
       const data = await getUserPersonalization();
       setManualTags(data.manual_tags || []);
       setAutoTags(data.auto_generated_tags || []);
-      setTaxonomies(data.available_taxonomies || []);
       setAvailableTopics(data.available_topics || []);
-
-      // Pre-select existing manual tags (non-topics)
-      const existingTaxonomyIds = new Set(
-        (data.manual_tags || [])
-          .filter(tag => tag.taxonomy)
-          .map(tag => tag.taxonomy!.id)
-      );
-      setSelectedTaxonomies(existingTaxonomyIds);
 
       // Pre-select existing topics
       const existingTopicIds = new Set(
@@ -355,10 +267,7 @@ export function Personalization() {
       console.warn('Personalization data unavailable, continuing with topics only');
       setAutoTags([]);
       setManualTags([]);
-      setTaxonomies([]);
       setAvailableTopics([]);
-    } finally {
-      setIsLoading(false);
     }
   }
 
@@ -750,7 +659,7 @@ export function Personalization() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
           {availableTopics.map((topic) => {
             const isSelected = selectedTopicIds.has(topic.id);
-            const colorClass = COLOR_CLASSES[topic.color] || 'bg-gray-500';
+            const colorClass: string = topic.color ? (COLOR_CLASSES as Record<string, string>)[topic.color] || 'bg-gray-500' : 'bg-gray-500';
 
             return (
               <button

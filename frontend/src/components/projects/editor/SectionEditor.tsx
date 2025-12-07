@@ -30,6 +30,7 @@ import {
   LightBulbIcon,
   LinkIcon,
   PlusCircleIcon,
+  ArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import { useSectionEditorContext } from '@/context/SectionEditorContext';
 import type {
@@ -53,6 +54,7 @@ const SECTION_ICONS: Record<SectionType, React.ComponentType<{ className?: strin
   demo: PlayCircleIcon,
   challenges: LightBulbIcon,
   links: LinkIcon,
+  slideup: ArrowUpIcon,
   custom: PlusCircleIcon,
 };
 
@@ -65,6 +67,7 @@ const SECTION_TITLES: Record<SectionType, string> = {
   demo: 'Demo',
   challenges: 'Challenges & Solutions',
   links: 'Resources',
+  slideup: 'Slide Up',
   custom: 'Custom Section',
 };
 

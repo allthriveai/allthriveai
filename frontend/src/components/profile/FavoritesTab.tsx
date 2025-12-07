@@ -4,7 +4,6 @@
  * Displays all projects the user has hearted/liked.
  */
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSpinner, faHeart, faHeartBroken } from '@fortawesome/free-solid-svg-icons';
 import { ProjectCard } from '@/components/projects/ProjectCard';
@@ -17,7 +16,6 @@ interface FavoritesTabProps {
 }
 
 export function FavoritesTab({ username, isOwnProfile }: FavoritesTabProps) {
-  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +91,6 @@ export function FavoritesTab({ username, isOwnProfile }: FavoritesTabProps) {
           <div key={project.id} className="break-inside-avoid mb-6">
             <ProjectCard
               project={project}
-              onEdit={() => navigate(`/@${project.username}/${project.slug}/edit`)}
               onDelete={async () => {}}
               isOwner={false}
               variant="masonry"

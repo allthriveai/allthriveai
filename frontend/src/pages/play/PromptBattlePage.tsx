@@ -41,7 +41,7 @@ interface BattleStats {
 }
 
 export default function PromptBattlePage() {
-  const { user } = useAuth();
+  const { } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 

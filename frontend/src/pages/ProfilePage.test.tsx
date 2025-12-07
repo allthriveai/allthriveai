@@ -79,6 +79,8 @@ const mockUser: User = {
   username: 'testuser',
   email: 'test@example.com',
   fullName: 'Test User',
+  firstName: 'Test',
+  lastName: 'User',
   avatarUrl: 'https://example.com/avatar.jpg',
   bio: 'Test bio',
   tagline: 'Test tagline',
@@ -89,10 +91,10 @@ const mockUser: User = {
   twitterUrl: 'https://twitter.com/testuser',
   playgroundIsPublic: true,
   totalPoints: 100,
-  isStaff: false,
-  dateJoined: '2024-01-01T00:00:00Z',
+  is_staff: false,
   role: 'explorer',
   roleDisplay: 'Explorer',
+  createdAt: '2024-01-01T00:00:00Z',
 };
 
 const mockOtherUser: User = {
@@ -125,8 +127,8 @@ const mockProject: Project = {
   isPrivate: false,
   isArchived: false,
   bannerUrl: 'https://example.com/thumbnail.jpg',
-  featuredImageUrl: null,
-  externalUrl: null,
+  featuredImageUrl: undefined,
+  externalUrl: undefined,
   tools: [],
   toolsDetails: [],
   heartCount: 0,

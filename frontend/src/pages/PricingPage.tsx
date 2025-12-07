@@ -262,14 +262,14 @@ function PricingPageContent() {
   ];
 
   // Fallback tiers when API is unavailable
-  const fallbackTiers = [
+  const fallbackTiers: SubscriptionTier[] = [
     {
       slug: 'free-explorer',
       name: 'Free Explorer',
       description: 'Get started with AI learning basics',
       tierType: 'free',
-      priceMonthly: '0.00',
-      priceAnnual: '0.00',
+      priceMonthly: 0,
+      priceAnnual: 0,
       trialPeriodDays: 0,
       monthlyAiRequests: 50,
       features: {
@@ -288,8 +288,8 @@ function PricingPageContent() {
       name: 'Community Pro',
       description: 'Connect and grow with the community',
       tierType: 'community_pro',
-      priceMonthly: '9.99',
-      priceAnnual: '101.90',
+      priceMonthly: 9.99,
+      priceAnnual: 101.90,
       trialPeriodDays: 14,
       monthlyAiRequests: 500,
       features: {
@@ -308,8 +308,8 @@ function PricingPageContent() {
       name: 'Pro Learn',
       description: 'Learning paths & interactive courses',
       tierType: 'pro_learn',
-      priceMonthly: '29.99',
-      priceAnnual: '305.90',
+      priceMonthly: 29.99,
+      priceAnnual: 305.90,
       trialPeriodDays: 14,
       monthlyAiRequests: 2000,
       features: {
@@ -328,8 +328,8 @@ function PricingPageContent() {
       name: 'Creator',
       description: 'Sell courses, prompts & templates',
       tierType: 'creator_mentor',
-      priceMonthly: '0.00',
-      priceAnnual: '0.00',
+      priceMonthly: 0,
+      priceAnnual: 0,
       trialPeriodDays: 0,
       monthlyAiRequests: 0,
       features: {
@@ -346,7 +346,7 @@ function PricingPageContent() {
   ];
 
   // Fetch available tiers
-  const { data: tiers, isLoading: tiersLoading } = useQuery({
+  const { data: tiers } = useQuery({
     queryKey: ['subscription-tiers'],
     queryFn: getSubscriptionTiers,
   });
@@ -359,9 +359,13 @@ function PricingPageContent() {
 
   const handleSelectPlan = async (tierSlug: string, tierType?: string) => {
     // Find the tier to get details for analytics
-    const tier = tiers.find(t => t.slug === tierSlug);
+    const tier = (tiers || fallbackTiers).find(t => t.slug === tierSlug);
     const tierName = tier?.name || tierSlug;
-    const price = billingCycle === 'annual' ? parseFloat(tier?.priceAnnual || '0') : parseFloat(tier?.priceMonthly || '0');
+    const priceAnnual = tier?.priceAnnual ?? 0;
+    const priceMonthly = tier?.priceMonthly ?? 0;
+    const price = billingCycle === 'annual'
+      ? (typeof priceAnnual === 'number' ? priceAnnual : parseFloat(priceAnnual))
+      : (typeof priceMonthly === 'number' ? priceMonthly : parseFloat(priceMonthly));
 
     // Track plan selection
     analytics.pricingPlanSelected(tierName, billingCycle, price);
@@ -580,13 +584,15 @@ function PricingPageContent() {
               const isCurrentPlan = currentTierSlug === tier.slug;
               const isPopular = tier.tierType === 'community_pro';
 
+              const priceAnnual = typeof tier.priceAnnual === 'number' ? tier.priceAnnual : parseFloat(tier.priceAnnual);
+              const priceMonthly = typeof tier.priceMonthly === 'number' ? tier.priceMonthly : parseFloat(tier.priceMonthly);
               const pricePerMonth = billingCycle === 'annual'
-                ? (parseFloat(tier.priceAnnual) / 12).toFixed(2)
-                : tier.priceMonthly;
+                ? (priceAnnual / 12).toFixed(2)
+                : priceMonthly.toFixed(2);
 
               const totalPrice = billingCycle === 'annual'
-                ? tier.priceAnnual
-                : tier.priceMonthly;
+                ? priceAnnual.toFixed(2)
+                : priceMonthly.toFixed(2);
 
               return (
                 <div

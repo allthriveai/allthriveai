@@ -14,7 +14,7 @@ interface SkillsSectionProps {
   onUpdate?: (content: SkillsSectionContent) => void;
 }
 
-export function SkillsSection({ content, user, isEditing, onUpdate }: SkillsSectionProps) {
+export function SkillsSection({ content, isEditing, onUpdate }: SkillsSectionProps) {
   const [newSkill, setNewSkill] = useState('');
   const skills = content?.skills || [];
   const layout = content?.layout || 'tags';

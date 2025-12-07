@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { buildWebSocketUrl, logWebSocketUrl } from '@/utils/websocket';
 import { saveChatMessages, loadChatMessages, clearChatMessages } from '@/utils/chatStorage';
-import { logError } from '@/utils/errorHandler';
+import type { ChatMessage as SharedChatMessage } from '@/types/chat';
 
 // Simple cookie reader for CSRF token (mirrors frontend/src/services/api.ts)
 function getCookie(name: string): string | null {
@@ -76,18 +76,18 @@ export interface QuotaExceededInfo {
   upgradeUrl: string;
 }
 
-export interface ChatMessage {
-  id: string;
-  content: string;
-  sender: 'user' | 'assistant';
-  timestamp: Date;
-  metadata?: {
-    type?: 'text' | 'generating' | 'generated_image';
-    imageUrl?: string;
-    filename?: string;
-    sessionId?: number;
-    iterationNumber?: number;
-  };
+// Extended metadata for intelligent chat messages
+export interface IntelligentChatMetadata {
+  type?: 'text' | 'generating' | 'generated_image';
+  imageUrl?: string;
+  filename?: string;
+  sessionId?: number;
+  iterationNumber?: number;
+}
+
+// Use the shared ChatMessage type with extended metadata
+export interface ChatMessage extends Omit<SharedChatMessage, 'metadata'> {
+  metadata?: IntelligentChatMetadata;
 }
 
 interface UseIntelligentChatOptions {

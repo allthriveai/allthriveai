@@ -26,7 +26,7 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 export function QuestStepCard({ stepProgress, stepNumber, onNavigate }: QuestStepCardProps) {
-  const { step, isCompleted, isCurrent, completedAt } = stepProgress;
+  const { step, isCompleted, isCurrent } = stepProgress;
   const IconComponent = iconMap[step.icon] || SparklesIcon;
 
   const handleClick = () => {

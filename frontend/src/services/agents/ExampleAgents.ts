@@ -194,7 +194,10 @@ export const agentFactoryMap: Record<string, () => BaseAgent> = {
   settings: () => new SettingsAgent(),
   'create-project': () => new CreateProjectAgent(),
   'Create Project': () => new CreateProjectAgent(),
-  placeholder: () => new PlaceholderAgent(),
+  placeholder: () => new PlaceholderAgent({
+    agentId: 'placeholder',
+    agentName: 'Placeholder Agent',
+  }),
 };
 
 export function createAgent(agentId: string): BaseAgent {

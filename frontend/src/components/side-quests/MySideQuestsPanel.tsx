@@ -132,7 +132,7 @@ function QuestProgressCard({ userQuest, onOpenQuestTray }: QuestProgressCardProp
               <FontAwesomeIcon icon={difficultyIcon} className="text-xs" />
               {sideQuest.difficultyDisplay}
             </span>
-            {status === 'completed' && xpAwarded > 0 && (
+            {status === 'completed' && xpAwarded != null && xpAwarded > 0 && (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
                 <FontAwesomeIcon icon={faTrophy} className="text-xs" />
                 +{xpAwarded} Points Earned

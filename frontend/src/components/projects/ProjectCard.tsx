@@ -26,7 +26,6 @@ import {
   VideoCameraIcon,
   NewspaperIcon,
   MegaphoneIcon,
-  BoltIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, MegaphoneIcon as MegaphoneIconSolid } from '@heroicons/react/24/solid';
 import { toggleProjectLike, deleteProjectById, toggleProjectPromotion } from '@/services/projects';
@@ -36,7 +35,7 @@ import { ToolTray } from '@/components/tools/ToolTray';
 import { SlideUpHero } from './SlideUpHero';
 import { useAuth } from '@/hooks/useAuth';
 import { useReward } from 'react-rewards';
-import { getCategoryGradientStyle, getCategoryColors } from '@/utils/categoryColors';
+import { getCategoryColors } from '@/utils/categoryColors';
 import { DynamicGradientCard } from './DynamicGradientCard';
 
 interface ProjectCardProps {
@@ -265,7 +264,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
       return { type: 'image' as const, url: project.featuredImageUrl };
     }
     const cover = (project.content as Record<string, unknown>)?.coverImage || (project.content as Record<string, unknown>)?.cover;
-    if (cover?.url) {
+    if (cover && typeof cover === 'object' && 'url' in cover && typeof cover.url === 'string') {
       return { type: 'image' as const, url: cover.url };
     }
     if (project.bannerUrl) {
@@ -357,7 +356,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
     return (
       <>
       <CardWrapper
-        {...(cardProps as React.ComponentProps<typeof Link>)}
+        {...(cardProps as any)}
         className={`block relative overflow-hidden shadow-lg hover:shadow-neon group ${
           isSelected ? 'ring-4 ring-primary-500' : ''
         } ${dynamicHeightClass} ${dynamicWidthClass} ${!imageLoaded && (heroElement.type === 'image' || heroElement.type === 'slideshow') ? 'min-h-[400px]' : ''}`}
@@ -382,9 +381,9 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
         <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''}`}>
             {heroElement.type === 'image' && (() => {
               // Check if this is a YouTube Short (vertical video) - show thumbnail with vertical aspect
-              const videoContent = project.content?.video || {};
+              const videoContent = typeof project.content?.video === 'object' ? project.content.video : {};
               const sectionContent = project.content?.sections?.[0]?.content || {};
-              const isYouTubeShort = videoContent.isShort || sectionContent.isShort || false;
+              const isYouTubeShort = videoContent.isShort || (typeof sectionContent === 'object' && 'isShort' in sectionContent ? sectionContent.isShort : false) || false;
 
               if (isYouTubeShort) {
                 return (
@@ -441,9 +440,9 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
 
             {heroElement.type === 'video' && (() => {
               // Check if this is a YouTube Short (vertical video)
-              const videoContent = project.content?.video || {};
+              const videoContent = typeof project.content?.video === 'object' ? project.content.video : {};
               const sectionContent = project.content?.sections?.[0]?.content || {};
-              const isYouTubeShort = videoContent.isShort || sectionContent.isShort || false;
+              const isYouTubeShort = videoContent.isShort || (typeof sectionContent === 'object' && 'isShort' in sectionContent ? sectionContent.isShort : false) || false;
 
               // Parse video URL to get embed URL
               const parseVideoUrl = (url: string) => {
@@ -651,7 +650,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                   isLiked={isLiked}
                   heartCount={heartCount}
                   onLikeToggle={handleLike}
-                  onCommentClick={handleCommentClick}
+                  onCommentClick={() => handleCommentClick({} as React.MouseEvent)}
                   isAuthenticated={isAuthenticated}
                   isExpanded={slideUpExpanded}
                   onToggleExpanded={() => setSlideUpExpanded(!slideUpExpanded)}
@@ -910,7 +909,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
 
   return (
     <CardWrapper
-      {...(cardProps as React.ComponentProps<typeof Link>)}
+      {...(cardProps as any)}
       className={`block glass-subtle hover:glass-strong overflow-hidden group relative ${
         isSelected ? 'ring-4 ring-primary-500' : ''
       }`}

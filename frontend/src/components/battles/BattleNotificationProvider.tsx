@@ -39,7 +39,7 @@ export function BattleNotificationProvider({ children }: BattleNotificationProvi
 
   // Handle when our invitation is accepted by the opponent
   const handleInvitationAccepted = useCallback(
-    (battleId: number, opponent: { id: number; username: string }) => {
+    (battleId: number) => {
       navigate(`/battles/${battleId}`);
     },
     [navigate]

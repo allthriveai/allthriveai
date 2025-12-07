@@ -510,81 +510,83 @@ export function isComponentType<T extends ProjectComponent>(
  */
 export function createComponent<T extends ComponentType>(
   type: T,
-  data: Partial<Extract<ProjectComponent, { type: T }>['data']> = {}
+  params: Partial<Omit<Extract<ProjectComponent, { type: T }>, 'type'>> & { data?: Partial<Extract<ProjectComponent, { type: T }>['data']> } = {}
 ): Extract<ProjectComponent, { type: T }> {
-  const id = `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const id = params.id || `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const order = params.order !== undefined ? params.order : 0;
+  const data = params.data || {};
 
   const defaults: Record<ComponentType, () => ProjectComponent> = {
     'hero': () => ({
-      id, type: 'hero', order: 0,
+      id, type: 'hero', order,
       data: { title: '', variant: 'gradient' as const, ...data }
     }) as HeroComponent,
     'stats': () => ({
-      id, type: 'stats', order: 0,
+      id, type: 'stats', order,
       data: { stats: [], variant: 'cards' as const, ...data }
     }) as StatsComponent,
     'feature-grid': () => ({
-      id, type: 'feature-grid', order: 0,
+      id, type: 'feature-grid', order,
       data: { features: [], columns: 3 as const, variant: 'cards' as const, ...data }
     }) as FeatureGridComponent,
     'tech-stack': () => ({
-      id, type: 'tech-stack', order: 0,
+      id, type: 'tech-stack', order,
       data: { technologies: [], variant: 'grid' as const, ...data }
     }) as TechStackComponent,
     'image-gallery': () => ({
-      id, type: 'image-gallery', order: 0,
+      id, type: 'image-gallery', order,
       data: { images: [], variant: 'grid' as const, ...data }
     }) as ImageGalleryComponent,
     'prompt': () => ({
-      id, type: 'prompt', order: 0,
+      id, type: 'prompt', order,
       data: { prompt: '', variant: 'simple' as const, ...data }
     }) as PromptComponent,
     'diagram': () => ({
-      id, type: 'diagram', order: 0,
+      id, type: 'diagram', order,
       data: { diagramType: 'mermaid' as const, ...data }
     }) as DiagramComponent,
     'links': () => ({
-      id, type: 'links', order: 0,
+      id, type: 'links', order,
       data: { links: [], variant: 'cards' as const, ...data }
     }) as LinksComponent,
     'text': () => ({
-      id, type: 'text', order: 0,
+      id, type: 'text', order,
       data: { content: '', variant: 'prose' as const, ...data }
     }) as TextComponent,
     'video': () => ({
-      id, type: 'video', order: 0,
+      id, type: 'video', order,
       data: { url: '', ...data }
     }) as VideoComponent,
     'cta': () => ({
-      id, type: 'cta', order: 0,
+      id, type: 'cta', order,
       data: { title: '', primaryButton: { label: '', url: '' }, variant: 'card' as const, ...data }
     }) as CTAComponent,
     'github-stats': () => ({
-      id, type: 'github-stats', order: 0,
+      id, type: 'github-stats', order,
       data: { repoUrl: '', repoName: '', owner: '', stars: 0, forks: 0, watchers: 0, issues: 0, variant: 'full' as const, ...data }
     }) as GitHubStatsComponent,
     'github-contributors': () => ({
-      id, type: 'github-contributors', order: 0,
+      id, type: 'github-contributors', order,
       data: { contributors: [], variant: 'grid' as const, ...data }
     }) as GitHubContributorsComponent,
     'github-languages': () => ({
-      id, type: 'github-languages', order: 0,
+      id, type: 'github-languages', order,
       data: { languages: [], variant: 'bar' as const, ...data }
     }) as GitHubLanguagesComponent,
     'github-activity': () => ({
-      id, type: 'github-activity', order: 0,
+      id, type: 'github-activity', order,
       data: { commits: [], ...data }
     }) as GitHubActivityComponent,
     'figma-embed': () => ({
-      id, type: 'figma-embed', order: 0,
+      id, type: 'figma-embed', order,
       data: { fileUrl: '', embedUrl: '', ...data }
     }) as FigmaEmbedComponent,
     'figma-frames': () => ({
-      id, type: 'figma-frames', order: 0,
+      id, type: 'figma-frames', order,
       data: { frames: [], variant: 'grid' as const, ...data }
     }) as FigmaFramesComponent,
     'reddit-thread': () => ({
-      id, type: 'reddit-thread', order: 0,
+      id, type: 'reddit-thread', order,
       data: { title: '', subreddit: '', author: '', postUrl: '', score: 0, numComments: 0, createdAt: '', variant: 'card' as const, ...data }
     }) as RedditThreadComponent,
   };

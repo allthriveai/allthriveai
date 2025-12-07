@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFigma, faGithub, faGitlab, faYoutube } from '@fortawesome/free-brands-svg-icons';
 import { faStar, faCodeBranch, faSpinner, faFolderPlus, faLightbulb, faMagnifyingGlass, faCheck, faPlug, faPencil } from '@fortawesome/free-solid-svg-icons';
@@ -30,43 +30,6 @@ import {
   getFigmaFilePreview,
 } from '@/services/figma';
 import { uploadFile, uploadImage } from '@/services/upload';
-// Constants
-const ONBOARDING_BUTTON_BASE = 'w-full text-left px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all group shadow-sm disabled:opacity-50';
-const BUTTON_FLEX_CONTAINER = 'flex items-center gap-3';
-const BUTTON_TITLE_STYLE = 'font-medium text-slate-900 dark:text-slate-100 text-sm';
-const BUTTON_SUBTITLE_STYLE = 'text-xs text-slate-600 dark:text-slate-400';
-
-// Product creation welcome message
-const PRODUCT_CREATION_WELCOME = `Ready to create your digital product! I can help you build:
-
-- **Courses** - Turn your knowledge into structured lessons
-- **Templates** - Create reusable frameworks and tools
-- **Prompt Packs** - Curated AI prompts for specific tasks
-- **Digital Downloads** - Guides, checklists, resources
-
-**Ways to get started:**
-1. **Import from YouTube** - I'll transform a video into a course
-2. **Describe your idea** - Tell me what you want to create
-3. **Upload content** - Share existing materials to structure
-
-What would you like to create?`;
-
-// Nano Banana welcome message for image generation
-const NANO_BANANA_WELCOME = `Hey there! I'm **Nano Banana**, your creative image assistant.
-
-I can help you create:
-- Infographics explaining your project
-- Technical diagrams and flowcharts
-- Beautiful banners and headers
-- Any visual you can imagine!
-
-**Tips for great results:**
-1. **Be specific** - "A flowchart showing OAuth login flow" beats "auth diagram"
-2. **Describe style** - Tell me if you want minimalist, colorful, corporate, etc.
-3. **Add text** - I'm great at rendering text in images
-4. **Upload references** - Click the photo icon to show me examples
-
-What would you like me to create?`;
 
 interface IntelligentChatPanelProps {
   isOpen: boolean;
@@ -91,7 +54,6 @@ export function IntelligentChatPanel({
   isOpen,
   onClose,
   conversationId = 'default-conversation',
-  welcomeMode = false,
   supportMode = false,
   productCreationMode = false,
 }: IntelligentChatPanelProps) {
@@ -149,7 +111,7 @@ export function IntelligentChatPanel({
   const [helpMode, setHelpMode] = useState(supportMode);
 
   // Handle project creation - redirect to the new project page
-  const handleProjectCreated = useCallback((projectUrl: string, projectTitle: string) => {
+  const handleProjectCreated = useCallback((projectUrl: string) => {
     // Close the chat panel and navigate to the project
     onClose();
     // Small delay to allow the chat to close smoothly
@@ -163,7 +125,7 @@ export function IntelligentChatPanel({
     setQuotaExceeded(info);
   }, []);
 
-  const { messages, isConnected, isLoading, sendMessage, connect, reconnectAttempts } = useIntelligentChat({
+  const { messages, isConnected, isLoading, sendMessage } = useIntelligentChat({
     conversationId,
     onError: (err) => setError(err),
     onProjectCreated: handleProjectCreated,
@@ -251,27 +213,6 @@ export function IntelligentChatPanel({
     } else {
       sendMessage(content);
     }
-  };
-
-  // Onboarding button handlers - send messages to the AI agent
-  const handlePlayGame = () => {
-    setHasInteracted(true);
-    sendMessage('Play a game to help personalize my experience');
-  };
-
-  const handleAddFirstProject = () => {
-    setHasInteracted(true);
-    sendMessage('I want to add my first project to my portfolio');
-  };
-
-  const handleMakeSomethingNew = () => {
-    setHasInteracted(true);
-    sendMessage("I don't know where to start - let's make something new together");
-  };
-
-  const handleRetry = () => {
-    setError(undefined);
-    connect();
   };
 
   // GitHub integration handlers
@@ -481,9 +422,6 @@ export function IntelligentChatPanel({
     sendMessage(question.chatMessage);
   }, [sendMessage]);
 
-  const handleCloseHelp = useCallback(() => {
-    setHelpMode(false);
-  }, []);
 
   // Fetch all integration connection statuses
   const fetchIntegrationStatuses = useCallback(async () => {
@@ -1095,7 +1033,7 @@ export function IntelligentChatPanel({
     }
 
     // Default empty state - conversational greeting with quick actions
-    const quickActions = [
+    const quickActions: Array<{ label: string; icon: string | import('@fortawesome/fontawesome-svg-core').IconDefinition; prompt: string }> = [
       { label: 'Add a project', icon: faFolderPlus, prompt: 'I want to add a new project to my profile' },
       { label: 'Make an infographic', icon: 'banana', prompt: 'Help me create an infographic' },
       { label: 'Brainstorm ideas', icon: faLightbulb, prompt: 'Help me brainstorm some ideas' },
@@ -1129,7 +1067,7 @@ export function IntelligentChatPanel({
               {action.icon === 'banana' ? (
                 <span className="text-lg">🍌</span>
               ) : (
-                <FontAwesomeIcon icon={action.icon} className="w-5 h-5 text-primary-500" />
+                <FontAwesomeIcon icon={action.icon as any} className="w-5 h-5 text-primary-500" />
               )}
               <span className="text-slate-700 dark:text-slate-300 text-xs leading-tight">{action.label}</span>
             </button>
@@ -1150,36 +1088,6 @@ export function IntelligentChatPanel({
           >
             <FontAwesomeIcon icon={faPencil} className="w-5 h-5 text-primary-500" />
             <span className="text-slate-700 dark:text-slate-300 text-xs leading-tight">Create Manually</span>
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  // Enhanced error display with retry button
-  const renderError = () => {
-    if (!error) return null;
-
-    return (
-      <div className="mx-4 mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-red-800 dark:text-red-400 mb-1">
-              Connection Error
-            </p>
-            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
-            {reconnectAttempts > 0 && (
-              <p className="text-xs text-red-600 dark:text-red-500 mt-1">
-                Reconnect attempts: {reconnectAttempts}/5
-              </p>
-            )}
-          </div>
-          <button
-            onClick={handleRetry}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/60 rounded-md transition-colors"
-          >
-            <ArrowPathIcon className="w-3.5 h-3.5" />
-            Retry
           </button>
         </div>
       </div>
@@ -1281,7 +1189,7 @@ export function IntelligentChatPanel({
 
   // Custom message renderer for different message types
   const renderMessage = useCallback((message: ChatMessage) => {
-    const isUser = message.sender === 'user';
+    const isUser = message.sender === 'user' || message.sender === 'assistant';
     const messageType = message.metadata?.type;
 
     // Handle generating state (loading indicator)
@@ -1314,7 +1222,6 @@ export function IntelligentChatPanel({
             filename={message.metadata.filename || 'nano-banana-image.png'}
             sessionId={message.metadata.sessionId}
             iterationNumber={message.metadata.iterationNumber}
-            onUseAsFeaturedImage={currentProjectId ? handleUseAsFeaturedImage : undefined}
             onCreateProject={message.metadata.sessionId ? handleCreateProjectFromImage : undefined}
           />
         </div>
@@ -1389,7 +1296,7 @@ export function IntelligentChatPanel({
       isOpen={isOpen}
       onClose={onClose}
       onSendMessage={handleSendMessage}
-      messages={messages}
+      messages={messages as any}
       isLoading={isLoading || isUploading}
       error={error}
       customMessageRenderer={renderMessage}
@@ -1465,7 +1372,6 @@ export function IntelligentChatPanel({
             {renderQuotaExceeded()}
             <HelpQuestionsPanel
               onQuestionSelect={handleHelpQuestionSelect}
-              onClose={handleCloseHelp}
             />
           </>
         ) : githubStep !== 'idle' ? (

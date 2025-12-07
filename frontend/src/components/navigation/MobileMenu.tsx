@@ -13,7 +13,7 @@ interface MobileMenuProps {
   onAddProject?: () => void;
 }
 
-export function MobileMenu({ isOpen, onClose, menuSections, onMenuClick, onAddProject }: MobileMenuProps) {
+export function MobileMenu({ isOpen, onClose, menuSections, onAddProject }: MobileMenuProps) {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<string[]>([]);

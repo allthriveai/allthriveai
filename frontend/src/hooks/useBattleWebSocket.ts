@@ -81,6 +81,7 @@ interface WebSocketMessage {
   battle_id?: number;
   image_url?: string;
   winner_id?: number | null;
+  results?: any; // Judging results with scores and feedback
 }
 
 interface UseBattleWebSocketOptions {

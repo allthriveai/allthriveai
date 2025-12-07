@@ -21,7 +21,6 @@ export function MasonryGrid({
   children,
   className = '',
   columnClassName = '',
-  gap = 8
 }: MasonryGridProps) {
   return (
     <Masonry

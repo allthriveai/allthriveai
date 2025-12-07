@@ -36,7 +36,7 @@ interface PaymentFormProps {
  * Inner form component that uses Stripe hooks
  * Must be wrapped by <Elements> provider
  */
-function PaymentForm({ clientSecret, onSuccess, onError }: PaymentFormProps) {
+function PaymentForm({ onSuccess, onError }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);

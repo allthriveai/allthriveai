@@ -44,7 +44,7 @@ function renderBlock(block: ProjectBlock, index: number) {
       return (
         <figure key={block.id || index} className="flex flex-col items-center">
           <img
-            src={block.url || block.content}
+            src={block.url || ''}
             alt={block.caption || ''}
             className="max-w-full lg:max-w-3xl h-auto rounded-xl shadow-lg"
           />
@@ -84,15 +84,15 @@ function renderBlock(block: ProjectBlock, index: number) {
             block.filename ? 'rounded-b-lg' : 'rounded-lg'
           }`}>
             <code className={`language-${block.language || 'text'} text-sm`}>
-              {block.code || block.content}
+              {block.code || ''}
             </code>
           </pre>
         </div>
       );
 
     case 'video': {
-      if (!block.url && !block.content) return null;
-      const videoUrl = block.url || block.content;
+      if (!block.url) return null;
+      const videoUrl = block.url;
       // Check if it's an embed URL (YouTube, Vimeo, etc.)
       const isEmbed = videoUrl?.includes('youtube') || videoUrl?.includes('vimeo') || videoUrl?.includes('embed');
 

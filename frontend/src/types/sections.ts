@@ -88,6 +88,7 @@ export type GalleryLayout = 'carousel' | 'grid' | 'masonry';
 export interface GallerySectionContent {
   images: GalleryImage[];
   layout: GalleryLayout;
+  title?: string;
 }
 
 // ============================================================================
@@ -105,7 +106,7 @@ export interface ArchitectureSectionContent {
 // ============================================================================
 
 export interface VideoEmbed {
-  type: 'youtube' | 'vimeo' | 'loom' | 'direct';
+  type: 'youtube' | 'vimeo' | 'loom' | 'direct' | 'embed';
   url: string;
   embedUrl?: string;       // For iframe embeds
   thumbnail?: string;      // Preview image
@@ -122,6 +123,7 @@ export interface DemoSectionContent {
   video?: VideoEmbed;
   liveUrl?: string;        // Direct link to live demo
   ctas: DemoCTA[];
+  title?: string;
 }
 
 // ============================================================================
@@ -152,6 +154,7 @@ export interface ResourceLink {
 
 export interface LinksSectionContent {
   links: ResourceLink[];
+  title?: string;
 }
 
 // ============================================================================

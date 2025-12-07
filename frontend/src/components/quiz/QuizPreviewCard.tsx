@@ -89,7 +89,7 @@ export function QuizPreviewCard({ quiz, variant = 'default', onOpen }: QuizPrevi
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
               />
             ) : (
-              <div className={`w-full h-full bg-gradient-to-br ${categoryColorClasses?.gradientFrom || 'from-cyan-500'} ${categoryColorClasses?.gradientTo || 'to-pink-500'} relative overflow-hidden`}>
+              <div className={`w-full h-full bg-gradient-to-br ${(categoryColorClasses as any)?.gradientFrom || 'from-cyan-500'} ${(categoryColorClasses as any)?.gradientTo || 'to-pink-500'} relative overflow-hidden`}>
                 {/* Animated gradient orbs */}
                 <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-white/20 rounded-full blur-3xl animate-pulse" />
                 <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-white/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />

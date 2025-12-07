@@ -40,12 +40,7 @@ export function convertGitHubProjectToLayout(project: Project): ProjectComponent
         variant: project.bannerUrl ? 'image' : 'gradient',
         gradientFrom: 'violet-600',
         gradientTo: 'indigo-600',
-        alignment: 'center',
-        ctaButtons: [
-          ...(project.externalUrl
-            ? [{ label: 'View on GitHub', url: project.externalUrl, variant: 'primary' as const }]
-            : []),
-        ],
+        ...(project.externalUrl && { primaryCta: { label: 'View on GitHub', url: project.externalUrl } }),
       },
     })
   );
@@ -108,7 +103,6 @@ export function convertGitHubProjectToLayout(project: Project): ProjectComponent
           data: {
             stats,
             variant: 'cards',
-            columns: stats.length,
           },
         })
       );
@@ -178,7 +172,7 @@ export function convertGitHubProjectToLayout(project: Project): ProjectComponent
         id: generateId(),
         order: order++,
         data: {
-          type: 'mermaid',
+          diagramType: 'mermaid',
           code: analysis.architecture_diagram,
           title: 'Architecture',
           caption: 'System architecture diagram',
@@ -188,16 +182,17 @@ export function convertGitHubProjectToLayout(project: Project): ProjectComponent
   }
 
   // 6. Links
-  const links: Array<{ label: string; url: string; type?: string }> = [];
+  type LinkType = 'demo' | 'video' | 'github' | 'article' | 'external' | 'docs';
+  const links: Array<{ label: string; url: string; type?: LinkType; icon?: string }> = [];
 
   if (project.externalUrl) {
-    links.push({ label: 'GitHub Repository', url: project.externalUrl, type: 'github' });
+    links.push({ label: 'GitHub Repository', url: project.externalUrl, type: 'github', icon: 'github' });
   }
 
   // Add demo URLs if available
   if (analysis?.demo_urls) {
     analysis.demo_urls.forEach((url: string, i: number) => {
-      links.push({ label: `Demo ${i + 1}`, url, type: 'demo' });
+      links.push({ label: `Demo ${i + 1}`, url, type: 'demo', icon: 'link' });
     });
   }
 
@@ -244,7 +239,7 @@ export function hasComponentLayout(project: Project): boolean {
 export function getProjectComponentLayout(project: Project): ProjectComponentLayout | null {
   // Check for stored component layout first
   if (project.content?.componentLayout) {
-    return project.content.componentLayout as ProjectComponentLayout;
+    return project.content.componentLayout as unknown as ProjectComponentLayout;
   }
 
   // Generate layout based on project type

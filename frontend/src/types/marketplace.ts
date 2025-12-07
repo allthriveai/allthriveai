@@ -241,6 +241,7 @@ export interface ProductAccess {
   grantedAt: string;
   expiresAt?: string;
   isActive: boolean;
+  product?: any; // Full product details when populated
 }
 
 // =============================================================================

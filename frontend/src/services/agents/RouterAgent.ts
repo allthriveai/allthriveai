@@ -1,5 +1,5 @@
 import { BaseAgent } from './BaseAgent';
-import type { ChatConfig, ChatContext, ChatMessage } from '@/types/chat';
+import type { ChatContext, ChatMessage } from '@/types/chat';
 import type { ChatMode, IntegrationContext } from '@/types/chat';
 
 /**
@@ -146,7 +146,7 @@ export class RouterAgent extends BaseAgent {
   /**
    * Handle message routing (not used directly, but required by BaseAgent)
    */
-  async handleMessage(userMessage: string, context?: ChatContext): Promise<string> {
+  async handleMessage(_userMessage: string, _context?: ChatContext): Promise<string> {
     // RouterAgent doesn't handle messages directly
     // It's used by IntelligentChatPanel to determine mode
     return 'RouterAgent is for mode detection only. Use mode-specific agents for handling messages.';

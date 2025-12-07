@@ -7,6 +7,14 @@ import type {
 } from '@/types/models';
 
 /**
+ * Paginated API response type
+ */
+interface PaginatedResponse<T> {
+  results?: T[];
+  next?: string | null;
+}
+
+/**
  * Get all available taxonomies
  * Fetches all pages if paginated
  */
@@ -16,23 +24,32 @@ export async function getTaxonomies(): Promise<Taxonomy[]> {
 
   // Fetch all pages
   while (nextUrl) {
-    const response = await api.get(nextUrl);
-    const data = response.data;
+    const response: { data: PaginatedResponse<Taxonomy> | Taxonomy[] } = await api.get<PaginatedResponse<Taxonomy> | Taxonomy[]>(nextUrl);
+    const data: PaginatedResponse<Taxonomy> | Taxonomy[] = response.data;
 
     // Handle both paginated and non-paginated responses
-    if (data.results) {
+    if (Array.isArray(data)) {
+      // Non-paginated response
+      allTaxonomies = data;
+      nextUrl = null;
+    } else if (data.results) {
+      // Paginated response
       allTaxonomies = allTaxonomies.concat(data.results);
       // Extract relative path from next URL
-      if (data.next) {
-        const url = new URL(data.next);
-        nextUrl = url.pathname + url.search;
-        // Remove /api/v1 prefix if present since api base already includes it
-        nextUrl = nextUrl.replace('/api/v1', '');
+      const nextUrlValue: string | null | undefined = data.next;
+      if (nextUrlValue) {
+        try {
+          const parsedUrl: URL = new URL(nextUrlValue);
+          nextUrl = (parsedUrl.pathname + parsedUrl.search).replace('/api/v1', '');
+        } catch {
+          // Invalid URL, stop pagination
+          nextUrl = null;
+        }
       } else {
         nextUrl = null;
       }
     } else {
-      allTaxonomies = data;
+      // Unexpected format, stop pagination
       nextUrl = null;
     }
   }

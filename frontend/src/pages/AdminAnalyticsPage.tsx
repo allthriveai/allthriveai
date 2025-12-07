@@ -20,9 +20,6 @@ import {
   Line,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -332,7 +329,7 @@ interface OverviewDashboardProps {
   timeseriesData: TimeseriesDataPoint[];
 }
 
-function OverviewDashboard({ overview, timeseriesData }: OverviewDashboardProps) {
+function OverviewDashboard({ timeseriesData }: OverviewDashboardProps) {
   return (
     <div className="glass-card p-8">
       <h2 className="text-2xl font-bold text-white mb-6">Platform Overview</h2>
@@ -416,8 +413,6 @@ function AIDashboard({ aiBreakdown, timeseriesData }: AIDashboardProps) {
     requests: data.requests,
     cost: data.cost,
   }));
-
-  const COLORS = ['#0EA5E9', '#22D3EE', '#FB37FF', '#A855F7', '#F59E0B'];
 
   return (
     <div className="space-y-8">

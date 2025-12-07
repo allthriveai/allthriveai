@@ -43,7 +43,6 @@ import {
   getRecommendationQuizQuestions,
   submitRecommendationQuiz,
   type QuizData,
-  type QuizQuestion,
   type QuizAnswers,
   type ToolRecommendation,
 } from '@/services/toolRecommendation';

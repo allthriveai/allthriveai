@@ -6,8 +6,10 @@
  * Shows the modal on first login, then the banner for remaining adventures.
  */
 
-import { createContext, useContext, useCallback, type ReactNode } from 'react';
-import { useEmberOnboarding, type AdventureId } from '@/hooks/useEmberOnboarding';
+import { createContext, useContext, useCallback } from 'react';
+import type { ReactNode } from 'react';
+import type { AdventureId } from '@/hooks/useEmberOnboarding';
+import { useEmberOnboarding } from '@/hooks/useEmberOnboarding';
 import { EmberOnboardingModal } from './EmberOnboardingModal';
 import { useAuth } from '@/hooks/useAuth';
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { ToolRecommendationQuiz } from '@/components/tools/ToolRecommendationQuiz';
@@ -7,7 +7,7 @@ import { QuizCard } from '@/components/quiz/QuizCard';
 import { QuizProgress } from '@/components/quiz/QuizProgress';
 import { QuizResults } from '@/components/quiz/QuizResults';
 import { QuestCompletionCelebration } from '@/components/side-quests/QuestCompletionCelebration';
-import type { Quiz, QuizQuestion, QuizAnswerResponse, CompletedQuestInfo } from '@/components/quiz/types';
+import type { Quiz, QuizQuestion, CompletedQuestInfo } from '@/components/quiz/types';
 
 type QuizState = 'intro' | 'taking' | 'feedback' | 'results';
 

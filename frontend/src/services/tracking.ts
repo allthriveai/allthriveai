@@ -112,7 +112,6 @@ export async function trackBatchClicks(
  */
 export function getViewSourceFromReferrer(): ViewSource {
   const referrer = document.referrer;
-  const currentUrl = window.location.href;
 
   if (!referrer) {
     return 'direct';

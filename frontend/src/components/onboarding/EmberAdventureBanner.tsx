@@ -12,8 +12,7 @@ import { XMarkIcon, CheckCircleIcon, SparklesIcon } from '@heroicons/react/24/so
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDragon, faGamepad, faRocket, faCompass, faUserPen } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '@/hooks/useAuth';
-
-type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personalize';
+import type { AdventureId } from '@/hooks/useEmberOnboarding';
 
 interface Adventure {
   id: AdventureId;

@@ -16,7 +16,7 @@ import {
 import { PhotoIcon } from '@heroicons/react/24/outline';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { arrayMove, SortableContext } from '@dnd-kit/sortable';
 import { SlideshowImageItem } from '@/components/projects/BlockEditorComponents';
 import { uploadImage } from '@/services/upload';
 
@@ -261,7 +261,7 @@ export function HeroDisplaySection({
                 src={heroVideoUrl}
                 controls
                 className="w-full max-h-96 rounded-lg"
-                onError={(e) => {
+                onError={() => {
                   console.error('Video load error');
                 }}
               />

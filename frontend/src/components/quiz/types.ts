@@ -36,6 +36,7 @@ export interface Quiz {
   estimatedTime: number; // minutes
   questionCount: number;
   thumbnailUrl?: string;
+  bannerUrl?: string; // Banner/cover image
   createdAt: string;
   updatedAt: string;
   isPublished: boolean;

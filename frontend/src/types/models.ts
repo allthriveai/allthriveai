@@ -1,7 +1,7 @@
 import type { TopicSlug } from '@/config/topics';
 
 // User roles
-export type UserRole = 'explorer' | 'learner' | 'expert' | 'creator' | 'mentor' | 'patron' | 'admin' | 'agent';
+export type UserRole = 'explorer' | 'learner' | 'expert' | 'creator' | 'mentor' | 'patron' | 'admin' | 'agent' | 'vendor';
 
 // Thrive Circle tier names
 export type TierName = 'seedling' | 'sprout' | 'blossom' | 'bloom' | 'evergreen' | 'curation';
@@ -29,19 +29,29 @@ export interface User {
   youtubeUrl?: string;
   instagramUrl?: string;
   playgroundIsPublic?: boolean;
+  isProfilePublic?: boolean;
+  allowLlmTraining?: boolean;
   createdAt: string;
   lastLogin?: string;
-  totalPoints?: number;
   level?: number;
   currentStreak?: number;
+  // Django user fields
+  is_staff?: boolean;
+  is_superuser?: boolean;
   // Thrive Circle fields
   tier?: TierName;
   tierDisplay?: string;
   totalPoints?: number;
+  subscription_tier?: string;
+  total_points?: number;
   // Follow fields
   followersCount?: number;
   followingCount?: number;
   isFollowing?: boolean | null; // null when viewing own profile
+  // Additional user stats
+  currentStatus?: string;
+  totalAchievementsUnlocked?: number;
+  lifetimeProjectsCreated?: number;
 }
 
 // Authentication state
@@ -78,14 +88,16 @@ export interface NavigationState {
   previousPath?: string;
 }
 
-// Authentication status enum
-export enum AuthStatus {
-  Idle = 'idle',
-  Loading = 'loading',
-  Authenticated = 'authenticated',
-  Unauthenticated = 'unauthenticated',
-  Error = 'error',
-}
+// Authentication status
+export const AuthStatus = {
+  Idle: 'idle',
+  Loading: 'loading',
+  Authenticated: 'authenticated',
+  Unauthenticated: 'unauthenticated',
+  Error: 'error',
+} as const;
+
+export type AuthStatus = typeof AuthStatus[keyof typeof AuthStatus];
 
 // Storage keys
 export const StorageKeys = {
@@ -95,7 +107,7 @@ export const StorageKeys = {
 } as const;
 
 // Project types
-export type ProjectType = 'github_repo' | 'figma_design' | 'image_collection' | 'prompt' | 'reddit_thread' | 'other';
+export type ProjectType = 'github_repo' | 'figma_design' | 'image_collection' | 'prompt' | 'reddit_thread' | 'video' | 'battle' | 'rss_article' | 'other';
 
 // Project redirect
 export interface ProjectRedirect {
@@ -128,13 +140,60 @@ export interface Project {
   categoriesDetails?: Taxonomy[]; // Full category taxonomy objects
   hideCategories?: boolean; // If true, categories are hidden from public display
   topics?: string[]; // User-generated topics (free-form, moderated)
+  tags?: string[]; // Tags for the project
   tagsManuallyEdited?: boolean; // If true, tags were manually edited by admin and won't be auto-updated
+  viewCount?: number; // Number of views
+  likesCount?: number; // Number of likes
   heartCount: number;
   isLikedByUser: boolean;
   content: ProjectContent;
   redirects?: ProjectRedirect[]; // Old slugs that redirect to this project
   createdAt: string;
   updatedAt: string;
+}
+
+// Video content structure (for video projects)
+export interface VideoContent {
+  videoId?: string;
+  channelName?: string;
+  channelId?: string;
+  isShort?: boolean;
+  duration?: string;
+}
+
+// Reddit content structure (for reddit thread projects)
+export interface RedditContent {
+  subreddit: string;
+  author: string;
+  permalink: string;
+  score: number;
+  numComments?: number;
+  num_comments?: number;
+  createdUtc?: string;
+  created_utc?: string;
+  thumbnailUrl?: string;
+  thumbnail_url?: string;
+  selftext?: string;
+  selftextHtml?: string;
+  selftext_html?: string;
+  upvoteRatio?: number;
+  upvote_ratio?: number;
+  linkFlairText?: string;
+  link_flair_text?: string;
+  linkFlairBackgroundColor?: string;
+  link_flair_background_color?: string;
+  isVideo?: boolean;
+  is_video?: boolean;
+  videoUrl?: string;
+  video_url?: string;
+  reddit_post_id: string;
+}
+
+// Figma content structure (for Figma design projects)
+export interface FigmaContent {
+  analysis_status?: 'pending' | 'complete' | 'failed';
+  analysis?: any; // Figma analysis data
+  analyzed_at?: string;
 }
 
 // Project content structure (portfolio-style blocks)
@@ -145,6 +204,11 @@ export interface ProjectContent {
   };
   tags?: string[];
   blocks?: ProjectBlock[];
+  sections?: any[]; // Legacy sections field
+  video?: VideoContent | string; // Video content or legacy video field
+  componentLayout?: string; // Legacy component layout field
+  redditPermalink?: string;
+  templateVersion?: number;
   // Hero display fields
   heroDisplayMode?: 'image' | 'video' | 'slideshow' | 'quote' | 'slideup';
   heroQuote?: string;
@@ -165,26 +229,19 @@ export interface ProjectContent {
     caption?: string;
   };
   // Reddit thread data
-  reddit?: {
-    subreddit: string;
-    author: string;
-    permalink: string;
-    score: number;
-    num_comments: number;
-    thumbnail_url: string;
-    created_utc: string;
-    reddit_post_id: string;
-  };
+  reddit?: RedditContent;
   // GitHub project data
   github?: {
+    stars?: number;
+    forks?: number;
+    watchers?: number;
+    issues?: number;
+    analyzed_at?: string;
     analysis_status?: 'pending' | 'complete' | 'failed';
     analysis?: any; // GitHub analysis data
   };
   // Figma project data
-  figma?: {
-    analysis_status?: 'pending' | 'complete' | 'failed';
-    analysis?: any; // Figma analysis data
-  };
+  figma?: FigmaContent;
   // Battle result data (for saved prompt battles)
   battleResult?: {
     battleId: number;
@@ -239,6 +296,7 @@ export type ProjectBlock = BaseBlock & (
   | { type: 'mermaid'; code: string; caption?: string }
   | { type: 'code_snippet'; code: string; language: string; filename?: string; highlightLines?: number[] }
   | { type: 'icon_card'; icon: string; text: string }
+  | { type: 'badgeRow'; badges?: Array<{ url: string; caption?: string }> }
 );
 
 // Project creation/update payload
@@ -287,6 +345,9 @@ export interface Taxonomy {
   bestFor?: string[];
 }
 
+// Topic type alias (for backwards compatibility and convenience)
+export type Topic = Taxonomy;
+
 // User tag types
 export type TagSource = 'manual' | 'auto_project' | 'auto_conversation' | 'auto_activity';
 
@@ -294,6 +355,7 @@ export interface UserTag {
   id: number;
   name: string;
   taxonomy?: Taxonomy | null;
+  taxonomyCategory?: string;
   source: TagSource;
   sourceDisplay: string;
   confidenceScore: number;
@@ -530,6 +592,7 @@ export interface WeeklyGoal {
   isCompleted: boolean;
   completedAt: string | null;
   pointsReward: number;
+  xpReward?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -540,7 +603,7 @@ export interface WeeklyGoal {
 
 export type KudosType = 'great_project' | 'helpful' | 'inspiring' | 'creative' | 'supportive' | 'welcome';
 
-export type CircleChallengeType = 'create_projects' | 'give_feedback' | 'complete_quests' | 'earn_points' | 'maintain_streaks';
+export type CircleChallengeType = 'create_projects' | 'give_feedback' | 'complete_quests' | 'earn_points' | 'maintain_streaks' | 'projects_created' | 'comments_given' | 'streak_days' | 'quizzes_completed';
 
 export interface CircleMember {
   id: string;
@@ -746,6 +809,7 @@ export interface UserSideQuest {
   isCompleted: boolean;
   completedAt: string | null;
   pointsAwarded: number;
+  xpAwarded?: number; // XP awarded for quest completion
   startedAt: string;
   updatedAt: string;
 }
@@ -841,3 +905,6 @@ export interface LearningPathTopic {
   slug: TopicSlug;
   name: string;
 }
+
+// Re-export section types from sections.ts for convenience
+export type { ProjectSection, SectionType } from './sections';

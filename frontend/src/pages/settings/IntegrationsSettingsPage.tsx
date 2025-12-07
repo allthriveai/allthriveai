@@ -84,10 +84,8 @@ export default function IntegrationsSettingsPage() {
     selectedVideoIds: new Set<string>(),
   });
   const [youtubeChannelId, setYoutubeChannelId] = useState<string | null>(null);
-  const [youtubeChannelName, setYoutubeChannelName] = useState<string | null>(null);
   const [youtubeNeedsReconnect, setYoutubeNeedsReconnect] = useState(false);
   const [showDisconnectModal, setShowDisconnectModal] = useState<string | null>(null);
-  const [channelInfo, setChannelInfo] = useState<any>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showImportProgress, setShowImportProgress] = useState(false);
@@ -188,7 +186,6 @@ export default function IntegrationsSettingsPage() {
             if (channelResponse.data?.success && channelResponse.data?.channel && isMounted) {
               const channelData = channelResponse.data.channel;
               setYoutubeChannelId(channelData.id);
-              setYoutubeChannelName(channelData.title);
 
               // Update with channel name
               setIntegrations(prev =>
@@ -302,7 +299,7 @@ export default function IntegrationsSettingsPage() {
           statusCode: error.statusCode,
           error: error.error
         });
-        const friendlyError = getUserFriendlyError(error, 'gitlab');
+        const friendlyError = getUserFriendlyError(error);
         setErrorMessage(friendlyError);
       }
     } else if (integrationId === 'figma') {
@@ -363,7 +360,7 @@ export default function IntegrationsSettingsPage() {
           )
         );
 
-        setChannelInfo(null);
+        setYoutubeChannelId(null);
         setLastSyncedAt(null);
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
@@ -391,7 +388,7 @@ export default function IntegrationsSettingsPage() {
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
         console.error('Failed to disconnect GitLab:', error);
-        const friendlyError = getUserFriendlyError(error, 'gitlab');
+        const friendlyError = getUserFriendlyError(error);
         setErrorMessage(friendlyError);
       }
     } else if (integrationId === 'figma') {
@@ -414,7 +411,7 @@ export default function IntegrationsSettingsPage() {
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
         console.error('Failed to disconnect Figma:', error);
-        const friendlyError = getUserFriendlyError(error, 'figma');
+        const friendlyError = getUserFriendlyError(error);
         setErrorMessage(friendlyError);
       }
     } else {

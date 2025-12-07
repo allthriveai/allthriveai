@@ -7,7 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { uploadImage, uploadFile } from '@/services/upload';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { MermaidBlockEditor, MermaidColumnBlockEditor } from './MermaidBlockEditor';
-import type { ProjectBlock, ColumnBlock } from '@/types/models';
+import type { ProjectBlock } from '@/types/models';
 import {
   Bars3Icon,
   TrashIcon,
@@ -68,9 +68,9 @@ interface AddBlockMenuProps {
 }
 
 
-export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDelete }: BlockEditorProps) {
+export function BlockEditor({ block, onFocus, onBlur, onChange, onDelete }: BlockEditorProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: block.id
+    id: block.id || ''
   });
 
   const style = {
@@ -79,7 +79,6 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   // Default to markdown mode (true = markdown, false = WYSIWYG)
   const [isMarkdownMode, setIsMarkdownMode] = useState(true);
@@ -138,6 +137,7 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
       newBlock.style = 'line';
     }
 
+    if (block.type !== 'columns') return;
     const updatedColumns = [...block.columns];
     updatedColumns[columnIndex] = {
       ...updatedColumns[columnIndex],
@@ -148,6 +148,7 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
   };
 
   const updateColumnBlock = (columnIndex: number, blockId: string, updates: any) => {
+    if (block.type !== 'columns') return;
     const updatedColumns = [...block.columns];
     updatedColumns[columnIndex] = {
       ...updatedColumns[columnIndex],
@@ -159,6 +160,7 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
   };
 
   const deleteColumnBlock = (columnIndex: number, blockId: string) => {
+    if (block.type !== 'columns') return;
     const updatedColumns = [...block.columns];
     updatedColumns[columnIndex] = {
       ...updatedColumns[columnIndex],
@@ -168,6 +170,7 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
   };
 
   const changeColumnCount = (count: 1 | 2 | 3) => {
+    if (block.type !== 'columns') return;
     const currentColumns = block.columns || [];
     const newColumns = [];
 
@@ -191,6 +194,7 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
   };
 
   const toggleContainerWidth = () => {
+    if (block.type !== 'columns') return;
     const newWidth = block.containerWidth === 'full' ? 'boxed' : 'full';
     onChange({ containerWidth: newWidth });
   };
@@ -237,9 +241,9 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
               <button
                 onClick={toggleContainerWidth}
                 className="px-3 py-1 rounded text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center gap-1.5"
-                title={block.containerWidth === 'boxed' ? 'Switch to full width' : 'Switch to boxed container'}
+                title={block.type === 'columns' && block.containerWidth === 'boxed' ? 'Switch to full width' : 'Switch to boxed container'}
               >
-                {block.containerWidth === 'boxed' ? (
+                {block.type === 'columns' && block.containerWidth === 'boxed' ? (
                   <><FaCompress className="w-3.5 h-3.5" /> Boxed</>
                 ) : (
                   <><FaExpand className="w-3.5 h-3.5" /> Full Width</>
@@ -251,7 +255,7 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
                 <button
                   onClick={() => changeColumnCount(1)}
                   className={`px-3 py-1 rounded text-sm ${
-                    block.columnCount === 1
+                    block.type === 'columns' && block.columnCount === 1
                       ? 'bg-primary-500 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
@@ -261,7 +265,7 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
                 <button
                   onClick={() => changeColumnCount(2)}
                   className={`px-3 py-1 rounded text-sm ${
-                    block.columnCount === 2
+                    block.type === 'columns' && block.columnCount === 2
                       ? 'bg-primary-500 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
@@ -271,7 +275,7 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
                 <button
                   onClick={() => changeColumnCount(3)}
                   className={`px-3 py-1 rounded text-sm ${
-                    block.columnCount === 3
+                    block.type === 'columns' && block.columnCount === 3
                       ? 'bg-primary-500 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
@@ -295,6 +299,7 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
 
                 // Handle dropping on column container (empty area)
                 if (String(over.id).startsWith('column-')) {
+                  if (block.type !== 'columns') return;
                   const overColumnIndex = parseInt(String(over.id).replace('column-', ''));
 
                   if (activeColumnIndex !== overColumnIndex) {
@@ -319,6 +324,8 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
 
                 const [overColIdx, overBlockId] = String(over.id).split('-');
                 const overColumnIndex = parseInt(overColIdx);
+
+                if (block.type !== 'columns') return;
 
                 if (activeColumnIndex === overColumnIndex) {
                   // Reorder within same column
@@ -360,13 +367,13 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
                 }
               }}
             >
-              <div className={block.containerWidth === 'boxed' ? 'max-w-6xl mx-auto' : ''}>
+              <div className={block.type === 'columns' && block.containerWidth === 'boxed' ? 'max-w-6xl mx-auto' : ''}>
                 <div className={`grid gap-4 ${
-                  block.columnCount === 1 ? 'grid-cols-1' :
-                  block.columnCount === 2 ? 'grid-cols-1 md:grid-cols-2' :
+                  block.type === 'columns' && block.columnCount === 1 ? 'grid-cols-1' :
+                  block.type === 'columns' && block.columnCount === 2 ? 'grid-cols-1 md:grid-cols-2' :
                   'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
                 }`}>
-                {block.columns?.map((column: any, colIndex: number) => (
+                {block.type === 'columns' && block.columns?.map((column: any, colIndex: number) => (
                   <SortableContext key={`sortable-${colIndex}`} items={column.blocks.map((b: any) => `${colIndex}-${b.id}`)} strategy={verticalListSortingStrategy}>
                     <div key={column.id} id={`column-${colIndex}`} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 min-h-[200px]">
                       {column.blocks?.length === 0 ? (
@@ -459,16 +466,16 @@ export function BlockEditor({ block, isFocused, onFocus, onBlur, onChange, onDel
           />
         ) : (
           <div>
-            {block.url ? (
+            {('url' in block && block.url) ? (
               <div className="flex flex-col items-center">
                 <img
                   src={block.url}
-                  alt={block.caption}
+                  alt={'caption' in block ? block.caption : ''}
                   className="max-w-full h-auto rounded-lg mb-2"
                 />
                 <input
                   type="text"
-                  value={block.caption || ''}
+                  value={'caption' in block ? (block.caption || '') : ''}
                   onChange={(e) => onChange({ caption: e.target.value })}
                   className="w-full text-sm text-center bg-transparent border-none outline-none text-gray-600 dark:text-gray-400"
                   placeholder="Add a caption..."
@@ -534,7 +541,7 @@ export function DraggableColumnBlock({ id, block, onChange, onDelete, onUpload }
 }
 
 // Column Block Editor
-export function ColumnBlockEditor({ block, onChange, onDelete, onUpload, dragHandleProps }: ColumnBlockEditorProps) {
+export function ColumnBlockEditor({ block, onChange, onDelete, dragHandleProps }: ColumnBlockEditorProps) {
   const [isUploading, setIsUploading] = useState(false);
   // Default to markdown mode for column text blocks
   const [isMarkdownMode, setIsMarkdownMode] = useState(true);

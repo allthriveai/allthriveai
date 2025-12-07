@@ -13,18 +13,13 @@ import { logError } from '@/utils/errorHandler';
 import {
   TrophyIcon,
   ClockIcon,
-  UserGroupIcon,
   HeartIcon,
   ArrowRightIcon,
   StarIcon,
   BoltIcon,
   PhotoIcon,
-  CheckIcon,
-  ArrowTopRightOnSquareIcon,
-  SparklesIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
 import {
   getChallengeBySlug,
   getCurrentChallenge,
@@ -65,7 +60,7 @@ const PRIZE_COLORS: Record<string, string> = {
 
 export default function ChallengePage() {
   const { slug } = useParams<{ slug?: string }>();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   // State
   const [challenge, setChallenge] = useState<WeeklyChallenge | null>(null);
@@ -336,8 +331,9 @@ export default function ChallengePage() {
                   { step: '1', label: 'Complete the challenge' },
                   { step: '2', label: 'Submit your work' },
                   { step: '3', label: 'Get votes to win' },
-                ].map((item, i) => (
+                ].map((item) => (
                   <div key={item.step} className="flex items-center gap-2">
+
                     <div className="w-6 h-6 rounded-full bg-yellow-500/20 dark:bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center">
                       <span className="text-yellow-600 dark:text-yellow-400 font-bold text-xs">{item.step}</span>
                     </div>

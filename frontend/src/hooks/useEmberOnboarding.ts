@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
-type AdventureId = 'battle_pip' | 'add_project' | 'explore';
+export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personalize';
 
 interface EmberOnboardingState {
   hasSeenModal: boolean;
@@ -160,4 +160,4 @@ export function useEmberOnboarding() {
   };
 }
 
-export type { AdventureId, EmberOnboardingState };
+export type { EmberOnboardingState };

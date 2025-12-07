@@ -331,7 +331,7 @@ export function BattlePage() {
   const currentUser = {
     id: user?.id || 0,
     username: user?.username || 'You',
-    avatarUrl: user?.avatar_url,
+    avatarUrl: user?.avatarUrl,
   };
 
   // Render based on phase

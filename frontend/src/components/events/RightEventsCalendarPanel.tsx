@@ -88,10 +88,6 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
     }
   };
 
-  const handleDeleteClick = (id: number) => {
-    setDeleteConfirm({ isOpen: true, eventId: id });
-  };
-
   const handleDeleteConfirm = async () => {
     if (!deleteConfirm.eventId) return;
 
@@ -218,7 +214,7 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
                     <div className="space-y-6">
                       <EventsCalendar
                         events={events}
-                        onDateClick={(date, dateEvents) => {
+                        onDateClick={(_date, dateEvents) => {
                           if (dateEvents.length > 0) {
                             setView('list');
                           }

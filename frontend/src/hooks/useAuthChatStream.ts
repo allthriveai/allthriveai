@@ -154,7 +154,7 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
 
               if (data.type === 'token') {
                 currentMessageRef.current += data.content;
-                setState(prev => {
+                setState((prev): AuthChatState => {
                   const lastMessage = prev.messages[prev.messages.length - 1];
 
                   if (lastMessage && lastMessage.role === 'assistant' && lastMessage.id.startsWith('streaming-')) {
@@ -173,7 +173,7 @@ export function useAuthChatStream(): UseAuthChatStreamReturn {
                       ...prev.messages,
                       {
                         id: 'streaming-' + Date.now(),
-                        role: 'assistant',
+                        role: 'assistant' as const,
                         content: currentMessageRef.current,
                         timestamp: new Date(),
                       }

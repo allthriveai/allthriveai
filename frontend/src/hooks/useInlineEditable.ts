@@ -39,7 +39,7 @@ interface UseInlineEditableReturn {
   /** Keyboard handler for input elements */
   handleKeyDown: (e: React.KeyboardEvent) => void;
   /** Ref for the input element (for auto-focus) */
-  inputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement>;
+  inputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
 }
 
 export function useInlineEditable({

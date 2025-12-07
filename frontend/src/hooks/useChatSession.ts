@@ -43,7 +43,7 @@ export function useChatSession({
     if (agent.getInitialMessage) {
       const initialMessage: ChatMessage = {
         id: generateId(),
-        sender: 'agent',
+        sender: 'assistant',
         content: agent.getInitialMessage(),
         timestamp: new Date(),
         messageType: 'text',
@@ -115,7 +115,7 @@ export function useChatSession({
 
         const agentMessage: ChatMessage = {
           id: generateId(),
-          sender: 'agent',
+          sender: 'assistant',
           content: responseContent,
           timestamp: new Date(),
           messageType: 'text',

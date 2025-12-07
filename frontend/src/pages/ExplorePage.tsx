@@ -7,7 +7,6 @@ import { api } from '@/services/api';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SearchBarWithFilters } from '@/components/explore/SearchBarWithFilters';
 import { TabNavigation, type ExploreTab } from '@/components/explore/TabNavigation';
-import { ProjectsGrid } from '@/components/explore/ProjectsGrid';
 import { UserProfileCard } from '@/components/explore/UserProfileCard';
 import { QuizPreviewCard } from '@/components/quiz/QuizPreviewCard';
 import { QuizOverlay } from '@/components/quiz/QuizOverlay';
@@ -19,7 +18,6 @@ import {
   semanticSearch,
   exploreProfiles,
   getFilterOptions,
-  type ExploreParams,
 } from '@/services/explore';
 import { getQuizzes } from '@/services/quiz';
 import { useAuth } from '@/hooks/useAuth';
@@ -95,13 +93,14 @@ export function ExplorePage() {
   }, [filterOptions, selectedToolSlugs]);
 
   // Map tab to API tab parameter (memoized)
-  const apiTab = useMemo(() => {
+  type TabType = 'all' | 'new' | 'for-you' | 'trending' | 'news';
+  const apiTab: TabType = useMemo(() => {
     switch (activeTab) {
-      case 'for-you': return 'for-you';
-      case 'trending': return 'trending';
-      case 'new': return 'new';
-      case 'news': return 'news';
-      default: return 'all';
+      case 'for-you': return 'for-you' as const;
+      case 'trending': return 'trending' as const;
+      case 'new': return 'new' as const;
+      case 'news': return 'news' as const;
+      default: return 'all' as const;
     }
   }, [activeTab]);
 
@@ -125,7 +124,8 @@ export function ExplorePage() {
   } = useInfiniteQuery({
     queryKey: ['exploreProjects', exploreParamsBase],
     queryFn: async ({ pageParam = 1 }) => {
-      return await exploreProjects({ ...exploreParamsBase, page: pageParam });
+      const params = { ...exploreParamsBase, page: pageParam as number };
+      return await exploreProjects(params);
     },
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.next ? allPages.length + 1 : undefined;
@@ -300,11 +300,6 @@ export function ExplorePage() {
 
   const handleToolsChange = (slugs: string[]) => {
     setSelectedToolSlugs(slugs);
-  };
-
-  const handleClearFilters = () => {
-    setSelectedCategorySlugs([]);
-    setSelectedToolSlugs([]);
   };
 
   const handleOpenQuiz = (quizSlug: string) => {

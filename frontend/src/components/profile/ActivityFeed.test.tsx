@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { ActivityFeed } from './ActivityFeed';
 import * as authService from '@/services/auth';
-import type { UserActivity, UserStatistics, PointsHistory } from '@/services/auth';
+import type { UserStatistics } from '@/services/auth';
 import type { PointActivity, PointActivityType } from '@/types/models';
 
 // Mock services
@@ -42,16 +42,6 @@ const renderActivityFeed = () => {
 };
 
 // Mock data
-const mockActivity: UserActivity = {
-  id: 1,
-  action: 'User logged in',
-  actionType: 'login',
-  timestamp: '2025-01-15T10:00:00Z',
-  ipAddress: '192.168.1.1',
-  success: true,
-  details: {},
-};
-
 const mockStatistics: UserStatistics = {
   totalLogins: 42,
   lastLogin: '2025-01-15T10:00:00Z',

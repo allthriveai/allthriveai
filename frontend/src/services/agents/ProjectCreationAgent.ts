@@ -1,6 +1,6 @@
 import { BaseAgent } from './BaseAgent';
 import { api } from '@/services/api';
-import type { ChatConfig, ChatContext } from '@/types/chat';
+import type { ChatContext } from '@/types/chat';
 import type { IntegrationContext } from '@/types/chat';
 import { getUserFriendlyError } from '@/utils/errorMessages';
 

@@ -235,7 +235,7 @@ function createDefaultSectionContent(type: SectionType): SectionContent {
     case 'custom':
       return { blocks: [] };
     default:
-      return {};
+      return { blocks: [] } as import('@/types/sections').SectionContent;
   }
 }
 

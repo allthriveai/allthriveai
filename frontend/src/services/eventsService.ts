@@ -130,6 +130,3 @@ export const eventsService = {
     await api.delete(`/events/${eventId}/rsvp/`);
   },
 };
-
-// Explicit type exports for better compatibility
-export type { Event, CreateEventData };

@@ -11,8 +11,6 @@ import {
   faTrophy,
   faCheckCircle,
   faTimes,
-  faClock,
-  faArrowLeft,
   faFire,
   faStar,
   faBolt,

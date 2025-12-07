@@ -130,7 +130,7 @@ api.interceptors.response.use(
       const apiError: ApiError = {
         success: false,
         error: (responseData?.error as string) || error.message || 'An error occurred',
-        details: (responseData?.details as Record<string, unknown>) || responseData, // Include full response data
+        details: (responseData?.details as Record<string, string[]>) || undefined,
         statusCode: error.response.status,
       };
 

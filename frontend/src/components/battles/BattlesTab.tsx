@@ -14,7 +14,7 @@ import {
   faCrown,
   faHandshake,
 } from '@fortawesome/free-solid-svg-icons';
-import { getUserBattles, type Battle, type BattleStats, type BattleSubmission } from '@/services/battles';
+import { getUserBattles, type Battle, type BattleStats } from '@/services/battles';
 
 interface BattlesTabProps {
   username: string;

@@ -85,7 +85,7 @@ export function TextBlock({ block, onUpdate, onDelete }: BlockProps) {
         <div className="flex items-center justify-between mb-3">
           <select
             value={style}
-            onChange={(e) => setStyle(e.target.value)}
+            onChange={(e) => setStyle(e.target.value as 'body' | 'heading' | 'quote')}
             className="text-sm px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
           >
             <option value="body">Paragraph</option>

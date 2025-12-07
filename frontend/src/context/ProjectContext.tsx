@@ -5,7 +5,8 @@
  * comment, edit) to all child components without prop drilling.
  */
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import type { Project } from '@/types/models';
 import { useProjectLike } from '@/hooks/useProjectLike';
 import { useProjectShare } from '@/hooks/useProjectShare';

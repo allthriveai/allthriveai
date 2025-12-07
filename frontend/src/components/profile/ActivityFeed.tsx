@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUserActivity } from '@/services/auth';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
-import type { UserActivity, UserStatistics, QuizScore, PointsHistory } from '@/services/auth';
+import type { UserActivity, UserStatistics, QuizScore } from '@/services/auth';
 import {
   ClockIcon,
   ChartBarIcon,
@@ -13,8 +13,6 @@ import {
   TrophyIcon,
   AcademicCapIcon,
   SparklesIcon,
-  PlusCircleIcon,
-  FireIcon,
 } from '@heroicons/react/24/outline';
 
 export function ActivityFeed() {
@@ -22,7 +20,6 @@ export function ActivityFeed() {
   const { tierStatus, allActivities: xpActivities, isLoadingActivities } = useThriveCircle();
   const [activities, setActivities] = useState<UserActivity[]>([]);
   const [statistics, setStatistics] = useState<UserStatistics | null>(null);
-  const [pointsFeed, setPointsFeed] = useState<PointsHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +29,6 @@ export function ActivityFeed() {
         const data = await getUserActivity();
         setActivities(data.activities);
         setStatistics(data.statistics);
-        setPointsFeed(data.pointsFeed || []);
       } catch (err: any) {
         console.error('Failed to load activity - Full error:', err);
         console.error('Error message:', err?.message);
@@ -74,7 +70,7 @@ export function ActivityFeed() {
     });
   };
 
-  const getActionIcon = (actionType: string, success: boolean) => {
+  const getActionIcon = (_actionType: string, success: boolean) => {
     if (!success) {
       return <XCircleIcon className="w-5 h-5 text-red-500" />;
     }

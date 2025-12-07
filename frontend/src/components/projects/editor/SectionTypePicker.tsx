@@ -173,7 +173,7 @@ export function SectionTypePicker({
   // Render a section type button
   const renderTypeButton = (
     option: SectionTypeOption,
-    index: number,
+    _index: number,
     isFirst: boolean
   ) => {
     const IconComponent = option.icon;

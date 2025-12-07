@@ -43,8 +43,6 @@ export function GiveKudosModal({ member, onClose, onSubmit, isSubmitting }: Give
     onSubmit(selectedType, message);
   };
 
-  const selectedOption = KUDOS_OPTIONS.find(o => o.type === selectedType);
-
   return (
     <div
       className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"

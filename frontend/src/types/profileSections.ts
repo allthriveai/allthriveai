@@ -136,7 +136,7 @@ export interface LinksSectionContent {
 export interface Skill {
   name: string;
   category?: string;     // e.g., "Frontend", "Backend", "AI/ML"
-  level?: 'learning' | 'proficient' | 'expert';
+  level?: 'learning' | 'proficient' | 'expert' | 'beginner' | 'intermediate' | 'advanced';
   icon?: string;
 }
 
@@ -144,7 +144,7 @@ export interface SkillsSectionContent {
   skills: Skill[];
   showCategories?: boolean;
   showLevels?: boolean;
-  layout?: 'tags' | 'categories' | 'grid';
+  layout?: 'tags' | 'categories' | 'grid' | 'bars';
 }
 
 // ============================================================================

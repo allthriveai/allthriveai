@@ -15,7 +15,8 @@
  * - File type validation
  */
 
-import { useState, useRef, useCallback, DragEvent, ChangeEvent } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import type { DragEvent, ChangeEvent } from 'react';
 import {
   CloudArrowUpIcon,
   XMarkIcon,

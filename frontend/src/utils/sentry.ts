@@ -114,7 +114,7 @@ export function initSentry() {
       },
 
       // Before sending error, clean sensitive data
-      beforeSend(event, hint) {
+      beforeSend(event) {
         // Sanitize URLs
         if (event.request?.url) {
           event.request.url = sanitizeUrl(event.request.url);
