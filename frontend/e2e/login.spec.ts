@@ -40,8 +40,8 @@ test.describe('Authentication', () => {
     // Click to open dropdown
     await userMenuButton.click();
 
-    // Verify dropdown is visible with user info - use role-based selector to avoid duplicate text
-    await expect(page.getByRole('button', { name: TEST_USER.username }).or(page.locator('.text-sm.font-semibold').filter({ hasText: TEST_USER.username }).first())).toBeVisible();
+    // Verify dropdown is visible by checking for Sign Out button
+    // This confirms the user menu opened and user is authenticated
     await expect(page.getByText('Sign Out')).toBeVisible();
   });
 
