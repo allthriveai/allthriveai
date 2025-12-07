@@ -113,10 +113,12 @@ class APIPrivacyTests(TestCase):
             email='public@test.com',
             password='testpass123',
             gamification_is_public=True,
-            total_points=1000,
             level=5,
             tier='sprout',
         )
+        # Set points separately to avoid signal interference
+        self.public_gamer.total_points = 1000
+        self.public_gamer.save(update_fields=['total_points'])
 
         self.private_gamer = User.objects.create_user(
             username='private_gamer',

@@ -135,7 +135,7 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
         self.assertEqual(self.pip_battle.challenge_text, 'Original challenge text')
 
     def test_refresh_challenge_returns_none_for_invalid_phase(self):
-        """Test that refresh_challenge returns None for battles not in waiting/prompting phase."""
+        """Test that refresh_challenge returns None for battles not in waiting/countdown phase."""
         # Move battle to active phase
         self.pip_battle.phase = BattlePhase.ACTIVE
         self.pip_battle.save()
@@ -148,9 +148,9 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
         self.pip_battle.refresh_from_db()
         self.assertEqual(self.pip_battle.challenge_text, 'Original challenge text')
 
-    def test_refresh_challenge_works_in_prompting_phase(self):
-        """Test that refresh_challenge works in PROMPTING phase."""
-        self.pip_battle.phase = BattlePhase.PROMPTING
+    def test_refresh_challenge_works_in_countdown_phase(self):
+        """Test that refresh_challenge works in COUNTDOWN phase."""
+        self.pip_battle.phase = BattlePhase.COUNTDOWN
         self.pip_battle.save()
 
         new_challenge = self.service.refresh_challenge(self.pip_battle, self.user1)
@@ -406,7 +406,7 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TestCase):
 
         self.service = BattleService()
 
-    @patch('core.battles.services.AIProvider')
+    @patch('services.ai.provider.AIProvider')
     def test_judge_battle_no_tie(self, mock_ai_provider):
         """Test that judge_battle correctly selects winner when scores are not tied."""
         # Mock AI responses with clear winner (user1)
@@ -451,7 +451,7 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TestCase):
         self.assertEqual(self.battle.winner_id, self.user1.id)
         self.assertEqual(self.battle.phase, BattlePhase.REVEAL)
 
-    @patch('core.battles.services.AIProvider')
+    @patch('services.ai.provider.AIProvider')
     def test_judge_battle_tie_creativity_tiebreaker(self, mock_ai_provider):
         """Test that tiebreaker uses Creativity when total scores are tied."""
         mock_ai = MagicMock()
@@ -492,7 +492,7 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TestCase):
         # User1 should win due to higher Creativity score
         self.assertEqual(result['winner_id'], self.user1.id)
 
-    @patch('core.battles.services.AIProvider')
+    @patch('services.ai.provider.AIProvider')
     def test_judge_battle_tie_visual_impact_tiebreaker(self, mock_ai_provider):
         """Test that tiebreaker uses Visual Impact when Creativity is also tied."""
         mock_ai = MagicMock()
@@ -533,8 +533,8 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TestCase):
         # User1 should win due to higher Visual Impact score
         self.assertEqual(result['winner_id'], self.user1.id)
 
-    @patch('core.battles.services.AIProvider')
-    @patch('core.battles.services.random.shuffle')
+    @patch('services.ai.provider.AIProvider')
+    @patch('random.shuffle')
     def test_judge_battle_tie_random_tiebreaker(self, mock_shuffle, mock_ai_provider):
         """Test that random selection is used when all tiebreakers are equal."""
         mock_ai = MagicMock()
@@ -621,6 +621,12 @@ class BattleServiceAwardPointsTestCase(TestCase):
             prompt_text='User 2 prompt',
             submission_type='image',
         )
+
+        # Reset user points to 0 for consistent test expectations
+        self.user1.total_points = 0
+        self.user1.save(update_fields=['total_points'])
+        self.user2.total_points = 0
+        self.user2.save(update_fields=['total_points'])
 
         self.service = BattleService()
 

@@ -346,6 +346,9 @@ class AutoTrackingIntegrationTest(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(username='trackuser', email='track@test.com', password='testpass123')
+        # Reset points to 0 for clean test state
+        self.user.total_points = 0
+        self.user.save(update_fields=['total_points'])
         # Create a second user who owns projects (we can't track actions on own projects)
         self.project_owner = User.objects.create_user(
             username='projectowner', email='owner@test.com', password='testpass123'

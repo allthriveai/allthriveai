@@ -38,7 +38,7 @@ class WebSocketConnectionTokenTestCase(TestCase):
         self.client.force_login(self.user)
 
         # Mock cache.set to succeed but cache.get to return None (health check fails)
-        with patch('core.auth.views_token.cache') as mock_cache:
+        with patch('django.core.cache.cache') as mock_cache:
             mock_cache.set.return_value = True
             mock_cache.get.return_value = None  # Health check fails
 
@@ -61,7 +61,7 @@ class WebSocketConnectionTokenTestCase(TestCase):
         self.client.force_login(self.user)
 
         # Mock cache.set to raise an exception
-        with patch('core.auth.views_token.cache') as mock_cache:
+        with patch('django.core.cache.cache') as mock_cache:
             mock_cache.set.side_effect = Exception('Redis connection refused')
 
             response = self.client.post(
@@ -84,7 +84,7 @@ class WebSocketConnectionTokenTestCase(TestCase):
         self.client.force_login(self.user)
 
         # Mock successful cache health check
-        with patch('core.auth.views_token.cache') as mock_cache:
+        with patch('django.core.cache.cache') as mock_cache:
             mock_cache.set.return_value = True
             mock_cache.get.return_value = '1'  # Health check passes
 
@@ -114,7 +114,7 @@ class WebSocketConnectionTokenTestCase(TestCase):
         self.client.force_login(self.user)
 
         # Mock successful cache health check
-        with patch('core.auth.views_token.cache') as mock_cache:
+        with patch('django.core.cache.cache') as mock_cache:
             mock_cache.set.return_value = True
             mock_cache.get.return_value = '1'  # Health check passes
 
@@ -153,7 +153,7 @@ class WebSocketConnectionTokenTestCase(TestCase):
         self.client.force_login(self.user)
 
         # Mock successful cache health check
-        with patch('core.auth.views_token.cache') as mock_cache:
+        with patch('django.core.cache.cache') as mock_cache:
             mock_cache.set.return_value = True
             mock_cache.get.return_value = '1'  # Health check passes
 

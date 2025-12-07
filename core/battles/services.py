@@ -136,8 +136,8 @@ class BattleService:
             logger.warning(f'User {user.id} tried to refresh after submitting')
             return None
 
-        # Can't refresh if battle is not in waiting/prompting phase
-        if battle.phase not in [BattlePhase.WAITING, BattlePhase.PROMPTING]:
+        # Can't refresh if battle is not in waiting/countdown phase
+        if battle.phase not in [BattlePhase.WAITING, BattlePhase.COUNTDOWN]:
             logger.warning(f'Refresh attempted on battle {battle.id} in phase {battle.phase}')
             return None
 
