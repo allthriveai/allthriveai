@@ -139,7 +139,19 @@ if DATABASE_URL:
             db_config['HOST'] = 'localhost'
 
     DATABASES = {'default': db_config}
-    # Add connection pooling and timeouts for PostgreSQL
+
+    # Use django-db-connection-pool for production connection pooling
+    # This provides SQLAlchemy-style connection pooling for better performance
+    if not DEBUG:
+        DATABASES['default']['ENGINE'] = 'dj_db_conn_pool.backends.postgresql'
+        DATABASES['default']['POOL_OPTIONS'] = {
+            'POOL_SIZE': 10,  # Base pool size (adjust based on worker count)
+            'MAX_OVERFLOW': 10,  # Extra connections allowed beyond POOL_SIZE
+            'RECYCLE': 600,  # Recycle connections after 10 minutes
+            'PRE_PING': True,  # Verify connections before use
+        }
+
+    # Add connection timeouts for PostgreSQL
     DATABASES['default']['OPTIONS'] = {
         'connect_timeout': 10,
         'options': '-c statement_timeout=30000',  # 30 second query timeout

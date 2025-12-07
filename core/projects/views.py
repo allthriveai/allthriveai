@@ -1058,7 +1058,7 @@ def semantic_search(request):
     """
     import logging
 
-    from django.db.models import Q
+    from django.db.models import Count, Q
 
     from core.quizzes.models import Quiz
     from core.tools.models import Tool
@@ -1212,14 +1212,18 @@ def semantic_search(request):
                         limit=limit,
                     )
                     quiz_ids = [r.get('quiz_id') for r in weaviate_results if r.get('quiz_id')]
-                    quizzes = Quiz.objects.filter(id__in=quiz_ids, is_published=True).prefetch_related('questions')
+                    # Use annotate for question count to avoid N+1
+                    quizzes = Quiz.objects.filter(id__in=quiz_ids, is_published=True).annotate(
+                        _question_count=Count('questions')
+                    )
                     quiz_map = {str(q.id): q for q in quizzes}
                     ordered_quizzes = [quiz_map[qid] for qid in quiz_ids if qid in quiz_map]
                 else:
+                    # Use annotate for question count to avoid N+1
                     ordered_quizzes = list(
                         Quiz.objects.filter(is_published=True)
                         .filter(Q(title__icontains=query) | Q(description__icontains=query) | Q(topic__icontains=query))
-                        .prefetch_related('questions')
+                        .annotate(_question_count=Count('questions'))
                         .order_by('-created_at')[:limit]
                     )
 
@@ -1231,7 +1235,7 @@ def semantic_search(request):
                         'description': (q.description or '')[:150],
                         'difficulty': q.difficulty,
                         'topic': q.topic,
-                        'question_count': q.questions.count(),
+                        'question_count': q._question_count,
                         'thumbnail_url': q.thumbnail_url,
                         'url': f'/quizzes/{q.slug}',
                     }
@@ -1244,6 +1248,7 @@ def semantic_search(request):
         if 'users' in types_to_search:
             try:
                 # Users always use text search (no Weaviate collection for user search)
+                # Use annotate to get project count in single query (avoid N+1)
                 users = list(
                     User.objects.filter(is_active=True, is_profile_public=True)
                     .filter(
@@ -1251,6 +1256,12 @@ def semantic_search(request):
                         | Q(first_name__icontains=query)
                         | Q(last_name__icontains=query)
                         | Q(bio__icontains=query)
+                    )
+                    .annotate(
+                        _public_project_count=Count(
+                            'projects',
+                            filter=Q(projects__is_private=False, projects__is_archived=False),
+                        )
                     )
                     .order_by('-date_joined')[:limit]
                 )
@@ -1262,7 +1273,7 @@ def semantic_search(request):
                         'full_name': u.get_full_name() or u.username,
                         'avatar_url': u.avatar_url,
                         'bio': (u.bio or '')[:100],
-                        'project_count': u.projects.filter(is_private=False, is_archived=False).count(),
+                        'project_count': u._public_project_count,
                         'url': f'/{u.username}',
                     }
                     for u in users

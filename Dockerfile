@@ -41,5 +41,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD python manage.py check --deploy
 
-# Default command
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "config.wsgi:application"]
+# Default command - Use daphne for ASGI/WebSocket support
+# Note: For development with hot-reload, docker-compose uses startup.sh with uvicorn
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]

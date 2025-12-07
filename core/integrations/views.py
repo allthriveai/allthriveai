@@ -8,13 +8,13 @@ import logging
 from urllib.parse import urlparse
 
 from rest_framework import status
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from core.integrations.authentication import CsrfEnforcedSessionAuthentication
 from core.integrations.registry import IntegrationRegistry
 from core.integrations.tasks import import_project_generic_task
 from core.integrations.utils import (
@@ -46,17 +46,6 @@ class ImportThrottle(UserRateThrottle):
     def wait(self):
         """Custom wait message with helpful information."""
         return super().wait()
-
-
-class CsrfEnforcedSessionAuthentication(SessionAuthentication):
-    """Session authentication that enforces CSRF for state-changing operations.
-
-    For API endpoints using JWT + session auth, we must enforce CSRF protection
-    to prevent cross-site request forgery when cookies are used for authentication.
-    DRF's SessionAuthentication already enforces CSRF by default.
-    """
-
-    pass  # Use default CSRF enforcement from SessionAuthentication
 
 
 @api_view(['POST'])

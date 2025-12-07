@@ -9,11 +9,11 @@ import logging
 
 from django.core.cache import cache
 from rest_framework import status
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.integrations.authentication import CsrfEnforcedSessionAuthentication
 from core.integrations.github.constants import IMPORT_LOCK_TIMEOUT, IMPORT_RATE_LIMIT
 from core.integrations.github.helpers import (
     get_import_lock_key,
@@ -21,18 +21,6 @@ from core.integrations.github.helpers import (
     parse_github_url,
 )
 from core.projects.models import Project
-
-
-class CsrfEnforcedSessionAuthentication(SessionAuthentication):
-    """Session authentication that enforces CSRF for state-changing operations.
-
-    For API endpoints using session auth, we must enforce CSRF protection
-    to prevent cross-site request forgery when cookies are used for authentication.
-    DRF's SessionAuthentication already enforces CSRF by default.
-    """
-
-    pass  # Use default CSRF enforcement from SessionAuthentication
-
 
 logger = logging.getLogger(__name__)
 

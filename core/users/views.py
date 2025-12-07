@@ -454,9 +454,17 @@ def toggle_follow(request, username):
 @permission_classes([AllowAny])
 def list_followers(request, username):
     """Get list of users who follow the specified user."""
+    from django.db.models import Exists, OuterRef
+
     target_user = get_object_or_404(User, username=username.lower())
 
     queryset = UserFollow.objects.filter(following=target_user).select_related('follower').order_by('-created_at')
+
+    # Annotate with is_following to avoid N+1 in serializer
+    if request.user.is_authenticated:
+        queryset = queryset.annotate(
+            _is_following_back=Exists(UserFollow.objects.filter(follower=request.user, following=OuterRef('follower')))
+        )
 
     paginator = FollowPagination()
     page = paginator.paginate_queryset(queryset, request)

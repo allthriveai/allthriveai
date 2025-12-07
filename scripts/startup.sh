@@ -14,13 +14,26 @@ python manage.py shell -c "
 import os
 from django.contrib.sites.models import Site
 from allauth.socialaccount.models import SocialApp
+from urllib.parse import urlparse
+
+# Configure site domain from BACKEND_URL or SITE_URL
+backend_url = os.environ.get('BACKEND_URL', 'http://localhost:8000')
+site_url = os.environ.get('SITE_URL', backend_url)
+
+# Parse URL to get domain (strip protocol and path)
+parsed = urlparse(backend_url)
+domain = parsed.netloc or 'localhost:8000'
+
+# Set site name based on environment
+is_production = os.environ.get('DEBUG', 'True').lower() in ('false', '0', 'no')
+site_name = 'AllThrive AI Production' if is_production else 'AllThrive AI Local'
 
 # Configure site
 site, created = Site.objects.get_or_create(id=1)
-site.domain = 'localhost:8000'
-site.name = 'AllThrive AI Local'
+site.domain = domain
+site.name = site_name
 site.save()
-print(f'✅ Site configured: {site.domain}')
+print(f'✅ Site configured: {site.domain} ({site.name})')
 
 # Setup Google OAuth
 google_client_id = os.environ.get('GOOGLE_CLIENT_ID')
@@ -62,4 +75,10 @@ python manage.py create_pip || echo "⚠️  create_pip command not found or fai
 python manage.py seed_categories || echo "⚠️  seed_categories command not found or failed"
 
 echo "🌐 Starting Django server..."
-exec python manage.py runserver 0.0.0.0:8000
+if [ "$DEBUG" = "True" ] || [ "$DEBUG" = "true" ]; then
+    echo "🔧 Development mode: Starting with uvicorn (hot-reload + WebSocket support)..."
+    exec uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload --reload-dir /app
+else
+    echo "🚀 Production mode: Starting with daphne (ASGI)..."
+    exec daphne -b 0.0.0.0 -p 8000 config.asgi:application
+fi
