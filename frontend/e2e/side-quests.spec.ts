@@ -18,8 +18,8 @@ test.describe('Side Quests', () => {
     // Verify the Side Quests title is displayed (it's the main heading)
     await expect(page.getByRole('heading', { name: 'Side Quests' })).toBeVisible({ timeout: 10000 });
 
-    // Verify Quest Paths section exists
-    await expect(page.getByRole('heading', { name: 'Quest Paths' })).toBeVisible();
+    // Verify Quest Paths section exists - use heading role to be specific
+    await expect(page.getByRole('heading', { name: 'Quest Paths', level: 2 })).toBeVisible();
   });
 
   test('should display quest categories', async ({ page }) => {
@@ -29,8 +29,8 @@ test.describe('Side Quests', () => {
     // Wait for content to load
     await page.waitForTimeout(3000);
 
-    // Wait for Quest Paths section to appear
-    await expect(page.getByRole('heading', { name: 'Quest Paths' })).toBeVisible({ timeout: 15000 });
+    // Wait for Quest Paths section to appear - use heading with level to be specific
+    await expect(page.getByRole('heading', { name: 'Quest Paths', level: 2 })).toBeVisible({ timeout: 15000 });
 
     // Look for category names (Community Builder, Learning Explorer, etc.)
     const communityBuilder = page.getByText('Community Builder');
