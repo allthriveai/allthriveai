@@ -87,9 +87,9 @@ Resources:
   DBParameterGroup:
     Type: AWS::RDS::DBParameterGroup
     Properties:
-      DBParameterGroupName: !Sub ${EnvironmentName}-allthrive-pg16-params
-      Description: Custom parameter group for PostgreSQL 16
-      Family: postgres16
+      DBParameterGroupName: !Sub ${EnvironmentName}-allthrive-pg18-params
+      Description: Custom parameter group for PostgreSQL 18
+      Family: postgres18
       Parameters:
         log_statement: all
         log_min_duration_statement: '1000'
@@ -97,7 +97,7 @@ Resources:
         pg_stat_statements.track: all
       Tags:
         - Key: Name
-          Value: !Sub ${EnvironmentName}-allthrive-pg16-params
+          Value: !Sub ${EnvironmentName}-allthrive-pg18-params
         - Key: Environment
           Value: !Ref EnvironmentName
 
@@ -130,7 +130,7 @@ Resources:
       DBInstanceIdentifier: !Sub ${EnvironmentName}-allthrive-postgres
       DBInstanceClass: !Ref DBInstanceClass
       Engine: postgres
-      EngineVersion: '16.4'
+      EngineVersion: '18.1'
       DBName: !Ref DBName
       MasterUsername: !Sub '{{resolve:secretsmanager:${DBMasterSecret}:SecretString:username}}'
       MasterUserPassword: !Sub '{{resolve:secretsmanager:${DBMasterSecret}:SecretString:password}}'
