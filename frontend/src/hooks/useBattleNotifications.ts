@@ -136,7 +136,6 @@ export function useBattleNotifications({
   const scheduleReconnect = useCallback(() => {
     if (intentionalCloseRef.current) return;
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.log('[BattleNotifications] Max reconnect attempts reached');
       return;
     }
 

@@ -179,9 +179,6 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
                   key={item.path}
                   to={item.path}
                   end={item.path === '/account/settings'}
-                  onClick={(e) => {
-                    console.log('[SettingsLayout] NavLink clicked:', item.path, item.label);
-                  }}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                       isActive

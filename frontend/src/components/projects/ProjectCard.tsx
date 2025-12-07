@@ -235,7 +235,6 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
       const isVideo = redditData?.is_video || redditData?.isVideo;
 
       if (isVideo && videoUrl) {
-        console.log('ProjectCard - Reddit video detected via fallback:', videoUrl);
         return { type: 'video' as const, url: videoUrl };
       }
     }
@@ -245,7 +244,6 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
       return { type: 'image' as const, url: project.featuredImageUrl };
     }
     if (heroMode === 'video' && project.content?.heroVideoUrl) {
-      console.log('ProjectCard - Returning video hero:', project.content.heroVideoUrl);
       return { type: 'video' as const, url: project.content.heroVideoUrl };
     }
     if (heroMode === 'slideshow' && project.content?.heroSlideshowImages && project.content.heroSlideshowImages.length > 0) {

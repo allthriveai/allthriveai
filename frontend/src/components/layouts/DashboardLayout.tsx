@@ -103,7 +103,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     localStorage.removeItem('github_oauth_return');
     localStorage.removeItem(GITHUB_OAUTH_TIMESTAMP_KEY);
 
-    console.log('✅ Opening Add Project panel after OAuth return');
     handleOpenAddProject();
   }, []);
 
@@ -117,7 +116,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
 
       // Short delay to let the page render first
       setTimeout(() => {
-        console.log('✅ Opening chat panel for Sage onboarding adventure');
         handleOpenAddProject(true); // Open in welcome mode
       }, 300);
     }

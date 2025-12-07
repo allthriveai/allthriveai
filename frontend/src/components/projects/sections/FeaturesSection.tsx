@@ -162,7 +162,6 @@ export function FeaturesSection({ content, isEditing, onUpdate }: FeaturesSectio
   );
 
   const handleAddFeature = useCallback(() => {
-    console.log('Add Feature clicked, onUpdate:', !!onUpdate, 'isEditing:', isEditing);
     if (onUpdate) {
       const newFeature: Feature = {
         icon: 'FaRocket',
@@ -170,10 +169,9 @@ export function FeaturesSection({ content, isEditing, onUpdate }: FeaturesSectio
         description: 'Describe this feature...',
       };
       const updatedFeatures = [...(features || []), newFeature];
-      console.log('Adding new feature, total features:', updatedFeatures.length);
       onUpdate({ features: updatedFeatures });
     }
-  }, [features, onUpdate, isEditing]);
+  }, [features, onUpdate]);
 
   // Allow empty features in edit mode so users can add them
   if ((!features || features.length === 0) && !isEditing) {

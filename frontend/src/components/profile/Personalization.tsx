@@ -331,7 +331,6 @@ export function Personalization() {
       setIsLoading(true);
       setError(null);
       const data = await getUserPersonalization();
-      console.log('Personalization data:', data);
       setManualTags(data.manual_tags || []);
       setAutoTags(data.auto_generated_tags || []);
       setTaxonomies(data.available_taxonomies || []);

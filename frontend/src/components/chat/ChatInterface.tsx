@@ -372,7 +372,7 @@ export function ChatInterface({
                         <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
                       <span className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">
-                        Pip is thinking...
+                        Thinking...
                       </span>
                     </div>
                   </div>
