@@ -4,8 +4,10 @@ Run with: python manage.py setup_linkedin_oauth
 """
 
 import os
+from urllib.parse import urlparse
 
 from allauth.socialaccount.models import SocialApp
+from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 
@@ -14,8 +16,11 @@ class Command(BaseCommand):
     help = 'Setup LinkedIn OAuth social application'
 
     def handle(self, *args, **options):
-        # Get the current site
+        # Get the current site and determine protocol
         site = Site.objects.get(id=1)
+        backend_url = settings.BACKEND_URL
+        protocol = urlparse(backend_url).scheme or 'http'
+
         self.stdout.write(f'Using site: {site.domain}')
 
         # Get credentials from environment
@@ -55,6 +60,6 @@ class Command(BaseCommand):
             self.stdout.write(f'✅ Site {site.domain} already linked to LinkedIn OAuth app')
 
         self.stdout.write(self.style.SUCCESS('\n🎉 LinkedIn OAuth setup complete!'))
-        self.stdout.write(f'\nCallback URL: http://{site.domain}/accounts/linkedin_oauth2/login/callback/')
+        self.stdout.write(f'\nCallback URL: {protocol}://{site.domain}/accounts/linkedin_oauth2/login/callback/')
         self.stdout.write('\nMake sure this URL is added in your LinkedIn Developer App settings:')
         self.stdout.write('https://www.linkedin.com/developers/apps\n')
