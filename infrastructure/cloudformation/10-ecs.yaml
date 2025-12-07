@@ -161,7 +161,7 @@ Resources:
             - Name: DEBUG
               Value: 'False'
             - Name: DJANGO_SETTINGS_MODULE
-              Value: config.settings.production
+              Value: config.settings
             - Name: ALLOWED_HOSTS
               Value: !Sub
                 - '${ALBDns},${Domain}'
@@ -181,6 +181,15 @@ Resources:
               Value: !Ref AWS::Region
             - Name: USE_S3_STORAGE
               Value: 'True'
+            - Name: ECS_ALLOW_ALL_HOSTS
+              Value: 'True'
+            - Name: REDIS_HOST
+              Value: !ImportValue
+                Fn::Sub: ${EnvironmentName}-CachePrimaryEndpoint
+            - Name: REDIS_PORT
+              Value: '6379'
+            - Name: REDIS_USE_TLS
+              Value: 'True'
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
@@ -189,7 +198,32 @@ Resources:
                     Fn::Sub: ${EnvironmentName}-DjangoSecretKeyArn
             - Name: DATABASE_URL
               ValueFrom: !Sub
-                - '${SecretArn}'
+                - '${SecretArn}:DATABASE_URL::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_HOST
+              ValueFrom: !Sub
+                - '${SecretArn}:host::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_PORT
+              ValueFrom: !Sub
+                - '${SecretArn}:port::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_NAME
+              ValueFrom: !Sub
+                - '${SecretArn}:dbname::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_USER
+              ValueFrom: !Sub
+                - '${SecretArn}:username::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_PASSWORD
+              ValueFrom: !Sub
+                - '${SecretArn}:password::'
                 - SecretArn: !ImportValue
                     Fn::Sub: ${EnvironmentName}-DBSecretArn
             - Name: OPENAI_API_KEY
@@ -235,6 +269,26 @@ Resources:
             - Name: REDIS_AUTH_TOKEN
               ValueFrom: !Sub
                 - '${SecretArn}:auth_token::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: CELERY_BROKER_URL
+              ValueFrom: !Sub
+                - '${SecretArn}:CELERY_BROKER_URL::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: CELERY_RESULT_BACKEND
+              ValueFrom: !Sub
+                - '${SecretArn}:CELERY_RESULT_BACKEND::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: REDIS_URL
+              ValueFrom: !Sub
+                - '${SecretArn}:REDIS_URL::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: CACHE_URL
+              ValueFrom: !Sub
+                - '${SecretArn}:CACHE_URL::'
                 - SecretArn: !ImportValue
                     Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
           LogConfiguration:
@@ -292,13 +346,20 @@ Resources:
             - Name: DEBUG
               Value: 'False'
             - Name: DJANGO_SETTINGS_MODULE
-              Value: config.settings.production
+              Value: config.settings
             - Name: AWS_STORAGE_BUCKET_NAME
               Value: !ImportValue
                 Fn::Sub: ${EnvironmentName}-MediaBucketName
             - Name: AWS_S3_REGION_NAME
               Value: !Ref AWS::Region
             - Name: USE_S3_STORAGE
+              Value: 'True'
+            - Name: REDIS_HOST
+              Value: !ImportValue
+                Fn::Sub: ${EnvironmentName}-CachePrimaryEndpoint
+            - Name: REDIS_PORT
+              Value: '6379'
+            - Name: REDIS_USE_TLS
               Value: 'True'
           Secrets:
             - Name: SECRET_KEY
@@ -308,7 +369,32 @@ Resources:
                     Fn::Sub: ${EnvironmentName}-DjangoSecretKeyArn
             - Name: DATABASE_URL
               ValueFrom: !Sub
-                - '${SecretArn}'
+                - '${SecretArn}:DATABASE_URL::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_HOST
+              ValueFrom: !Sub
+                - '${SecretArn}:host::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_PORT
+              ValueFrom: !Sub
+                - '${SecretArn}:port::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_NAME
+              ValueFrom: !Sub
+                - '${SecretArn}:dbname::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_USER
+              ValueFrom: !Sub
+                - '${SecretArn}:username::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_PASSWORD
+              ValueFrom: !Sub
+                - '${SecretArn}:password::'
                 - SecretArn: !ImportValue
                     Fn::Sub: ${EnvironmentName}-DBSecretArn
             - Name: OPENAI_API_KEY
@@ -334,6 +420,26 @@ Resources:
             - Name: REDIS_AUTH_TOKEN
               ValueFrom: !Sub
                 - '${SecretArn}:auth_token::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: CELERY_BROKER_URL
+              ValueFrom: !Sub
+                - '${SecretArn}:CELERY_BROKER_URL::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: CELERY_RESULT_BACKEND
+              ValueFrom: !Sub
+                - '${SecretArn}:CELERY_RESULT_BACKEND::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: REDIS_URL
+              ValueFrom: !Sub
+                - '${SecretArn}:REDIS_URL::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: CACHE_URL
+              ValueFrom: !Sub
+                - '${SecretArn}:CACHE_URL::'
                 - SecretArn: !ImportValue
                     Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
           LogConfiguration:
@@ -380,7 +486,14 @@ Resources:
             - Name: DEBUG
               Value: 'False'
             - Name: DJANGO_SETTINGS_MODULE
-              Value: config.settings.production
+              Value: config.settings
+            - Name: REDIS_HOST
+              Value: !ImportValue
+                Fn::Sub: ${EnvironmentName}-CachePrimaryEndpoint
+            - Name: REDIS_PORT
+              Value: '6379'
+            - Name: REDIS_USE_TLS
+              Value: 'True'
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
@@ -389,12 +502,57 @@ Resources:
                     Fn::Sub: ${EnvironmentName}-DjangoSecretKeyArn
             - Name: DATABASE_URL
               ValueFrom: !Sub
-                - '${SecretArn}'
+                - '${SecretArn}:DATABASE_URL::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_HOST
+              ValueFrom: !Sub
+                - '${SecretArn}:host::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_PORT
+              ValueFrom: !Sub
+                - '${SecretArn}:port::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_NAME
+              ValueFrom: !Sub
+                - '${SecretArn}:dbname::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_USER
+              ValueFrom: !Sub
+                - '${SecretArn}:username::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: DB_PASSWORD
+              ValueFrom: !Sub
+                - '${SecretArn}:password::'
                 - SecretArn: !ImportValue
                     Fn::Sub: ${EnvironmentName}-DBSecretArn
             - Name: REDIS_AUTH_TOKEN
               ValueFrom: !Sub
                 - '${SecretArn}:auth_token::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: CELERY_BROKER_URL
+              ValueFrom: !Sub
+                - '${SecretArn}:CELERY_BROKER_URL::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: CELERY_RESULT_BACKEND
+              ValueFrom: !Sub
+                - '${SecretArn}:CELERY_RESULT_BACKEND::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: REDIS_URL
+              ValueFrom: !Sub
+                - '${SecretArn}:REDIS_URL::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+            - Name: CACHE_URL
+              ValueFrom: !Sub
+                - '${SecretArn}:CACHE_URL::'
                 - SecretArn: !ImportValue
                     Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
           LogConfiguration:

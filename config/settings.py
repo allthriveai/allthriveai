@@ -23,6 +23,16 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
+# AWS ECS/ALB health checks use container private IPs (10.x.x.x) in the Host header.
+# We handle this with HealthCheckMiddleware which bypasses ALLOWED_HOSTS for health paths.
+# Additionally, allow wildcard for ECS environments where needed.
+if config('ECS_ALLOW_ALL_HOSTS', default=False, cast=bool):
+    # In ECS behind ALB, ALB handles host validation. Container can accept all hosts.
+    ALLOWED_HOSTS = ['*']
+
+# Health check paths that bypass ALLOWED_HOSTS validation
+HEALTH_CHECK_PATHS = ['/api/v1/health/', '/health/', '/healthz/', '/ready/']
+
 # Compute URL defaults without hardcoding full URLs on a single line
 FRONTEND_HOST = config('FRONTEND_HOST', default='localhost')
 BACKEND_HOST = config('BACKEND_HOST', default='localhost')
@@ -80,6 +90,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusBeforeMiddleware',  # Must be first
+    'core.middleware.HealthCheckMiddleware',  # Bypass ALLOWED_HOSTS for health checks (before CommonMiddleware)
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'csp.middleware.CSPMiddleware',
@@ -121,6 +132,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 DATABASE_URL = config('DATABASE_URL', default='')
+DB_HOST = config('DB_HOST', default='')
+
 if DATABASE_URL:
     # Use DATABASE_URL if provided (e.g., postgresql://user:pass@host:5432/dbname)
     import dj_database_url
@@ -155,6 +168,24 @@ if DATABASE_URL:
     DATABASES['default']['OPTIONS'] = {
         'connect_timeout': 10,
         'options': '-c statement_timeout=30000',  # 30 second query timeout
+    }
+elif DB_HOST:
+    # Use individual DB_* environment variables (for ECS/AWS Secrets Manager)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'HOST': DB_HOST,
+            'PORT': config('DB_PORT', default='5432'),
+            'NAME': config('DB_NAME', default='allthrive_ai'),
+            'USER': config('DB_USER', default='allthrive'),
+            'PASSWORD': config('DB_PASSWORD', default=''),
+            'CONN_MAX_AGE': 600,
+            'CONN_HEALTH_CHECKS': True,
+            'OPTIONS': {
+                'connect_timeout': 10,
+                'options': '-c statement_timeout=30000',  # 30 second query timeout
+            },
+        }
     }
 else:
     DATABASES = {
@@ -348,25 +379,43 @@ AI_COST_TRACKING_ENABLED = config('AI_COST_TRACKING_ENABLED', default=True, cast
 AI_MONTHLY_SPEND_LIMIT_USD = config('AI_MONTHLY_SPEND_LIMIT_USD', default=1000.0, cast=float)
 AI_USER_DAILY_SPEND_LIMIT_USD = config('AI_USER_DAILY_SPEND_LIMIT_USD', default=5.0, cast=float)
 
+# Redis Configuration
+# For AWS ElastiCache with TLS + auth, construct URLs from components
+# For local dev, use simple URLs
+REDIS_HOST = config('REDIS_HOST', default='')
+REDIS_PORT = config('REDIS_PORT', default='6379')
+REDIS_AUTH_TOKEN = config('REDIS_AUTH_TOKEN', default='')
+REDIS_USE_TLS = config('REDIS_USE_TLS', default=False, cast=bool)
+
+
+def _build_redis_url(db: int = 0) -> str:
+    """Build Redis URL from components or use environment variable."""
+    if REDIS_HOST:
+        # AWS ElastiCache mode: build URL from components
+        scheme = 'rediss' if REDIS_USE_TLS else 'redis'
+        auth = f':{REDIS_AUTH_TOKEN}@' if REDIS_AUTH_TOKEN else ''
+        return f'{scheme}://{auth}{REDIS_HOST}:{REDIS_PORT}/{db}'
+    # Local development: use simple localhost URLs
+    return f'redis://localhost:6379/{db}'
+
+
 # Celery Configuration
-CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default=_build_redis_url(0))
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default=_build_redis_url(1))
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
 # Redis Configuration for LangChain State
-REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/1')  # Use DB 1 for LangChain
+REDIS_URL = config('REDIS_URL', default=_build_redis_url(2))
 CHAT_SESSION_TTL = config('CHAT_SESSION_TTL', default=1800, cast=int)  # 30 minutes
 
 # Django Channels Configuration
 ASGI_APPLICATION = 'config.asgi.application'
 
-# Get Redis URL from environment, preferring env vars over .env file
-import os as _os
-
-_redis_url = _os.environ.get('REDIS_URL') or config('REDIS_URL', default='redis://localhost:6379/3')
+# Channels Redis URL (DB 3)
+_redis_url = os.environ.get('REDIS_URL') or config('REDIS_URL', default=_build_redis_url(3))
 
 CHANNEL_LAYERS = {
     'default': {
@@ -393,7 +442,7 @@ else:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': config('CACHE_URL', default='redis://localhost:6379/2'),
+            'LOCATION': config('CACHE_URL', default=_build_redis_url(4)),
             'KEY_PREFIX': 'allthrive',
             'TIMEOUT': 300,  # 5 minutes default
         }
@@ -451,7 +500,52 @@ GITHUB_RATE_LIMIT = {
 }
 
 # Logging Configuration
-os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+# In containerized environments (ECS, etc.), log to console only
+# File logging can be enabled for local development via FILE_LOGGING=true
+FILE_LOGGING_ENABLED = config('FILE_LOGGING', default=DEBUG, cast=bool)
+
+if FILE_LOGGING_ENABLED:
+    os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+
+# Build handlers based on environment
+_log_handlers = {
+    'console': {
+        'level': 'INFO',
+        'class': 'logging.StreamHandler',
+        'formatter': 'simple',
+        'filters': ['sanitize_sensitive_data'],
+    },
+    'mail_admins': {
+        'level': 'ERROR',
+        'class': 'django.utils.log.AdminEmailHandler',
+        'filters': ['require_debug_false'],
+    },
+}
+
+# Only add file handlers if file logging is enabled
+if FILE_LOGGING_ENABLED:
+    _log_handlers['file'] = {
+        'level': 'INFO',
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': BASE_DIR / 'logs' / 'django.log',
+        'maxBytes': 1024 * 1024 * 15,  # 15MB
+        'backupCount': 10,
+        'formatter': 'verbose',
+        'filters': ['sanitize_sensitive_data'],
+    }
+    _log_handlers['security'] = {
+        'level': 'WARNING',
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': BASE_DIR / 'logs' / 'security.log',
+        'maxBytes': 1024 * 1024 * 15,
+        'backupCount': 10,
+        'formatter': 'verbose',
+    }
+
+# Configure logger handlers based on file logging availability
+_default_handlers = ['console', 'file'] if FILE_LOGGING_ENABLED else ['console']
+_security_handlers = ['security', 'mail_admins'] if FILE_LOGGING_ENABLED else ['console', 'mail_admins']
+_request_handlers = ['file', 'mail_admins'] if FILE_LOGGING_ENABLED else ['console', 'mail_admins']
 
 LOGGING = {
     'version': 1,
@@ -477,63 +571,34 @@ LOGGING = {
             '()': 'core.billing.logging_utils.SensitiveDataFilter',
         },
     },
-    'handlers': {
-        'console': {
-            'level': 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-            'filters': ['sanitize_sensitive_data'],
-        },
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
-            'maxBytes': 1024 * 1024 * 15,  # 15MB
-            'backupCount': 10,
-            'formatter': 'verbose',
-            'filters': ['sanitize_sensitive_data'],
-        },
-        'security': {
-            'level': 'WARNING',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': BASE_DIR / 'logs' / 'security.log',
-            'maxBytes': 1024 * 1024 * 15,
-            'backupCount': 10,
-            'formatter': 'verbose',
-        },
-        'mail_admins': {
-            'level': 'ERROR',
-            'class': 'django.utils.log.AdminEmailHandler',
-            'filters': ['require_debug_false'],
-        },
-    },
+    'handlers': _log_handlers,
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': _default_handlers,
             'level': 'INFO',
         },
         'django.security': {
-            'handlers': ['security', 'mail_admins'],
+            'handlers': _security_handlers,
             'level': 'WARNING',
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['file', 'mail_admins'],
+            'handlers': _request_handlers,
             'level': 'ERROR',
             'propagate': False,
         },
         'core': {
-            'handlers': ['console', 'file'],
+            'handlers': _default_handlers,
             'level': 'INFO',
             'propagate': False,
         },
         'core.billing': {
-            'handlers': ['console', 'file'],
+            'handlers': _default_handlers,
             'level': 'DEBUG',  # More verbose for billing
             'propagate': False,
         },
         'services': {
-            'handlers': ['console', 'file'],
+            'handlers': _default_handlers,
             'level': 'DEBUG',
         },
     },

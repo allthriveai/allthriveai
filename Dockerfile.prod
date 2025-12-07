@@ -3,7 +3,7 @@
 # Multi-stage build for optimized production image
 
 # Stage 1: Builder
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -23,11 +23,11 @@ COPY requirements.txt .
 RUN pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
 
 # Stage 2: Production
-FROM python:3.11-slim as production
+FROM python:3.11-slim AS production
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DJANGO_SETTINGS_MODULE=config.settings.production \
+    DJANGO_SETTINGS_MODULE=config.settings \
     PORT=8000
 
 WORKDIR /app
@@ -41,11 +41,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     postgresql-client \
     redis \
-    aws-cli \
+    unzip \
     && update-ca-certificates \
-	&& curl -fsSL https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem -o /etc/ssl/certs/rds-us-east-1-bundle.pem \
+    && curl -fsSL https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem -o /etc/ssl/certs/rds-us-east-1-bundle.pem \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir yt-dlp daphne
+    && pip install --no-cache-dir yt-dlp daphne awscli
 
 # Copy wheels from builder and install
 COPY --from=builder /app/wheels /wheels
