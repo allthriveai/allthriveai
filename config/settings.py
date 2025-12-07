@@ -419,6 +419,16 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
+# Celery SSL configuration for Redis with TLS (AWS ElastiCache)
+if REDIS_USE_TLS:
+    import ssl
+    CELERY_BROKER_USE_SSL = {
+        'ssl_cert_reqs': ssl.CERT_REQUIRED,
+    }
+    CELERY_REDIS_BACKEND_USE_SSL = {
+        'ssl_cert_reqs': ssl.CERT_REQUIRED,
+    }
+
 # Redis Configuration for LangChain State
 REDIS_URL = _ensure_redis_ssl_params(config('REDIS_URL', default=_build_redis_url(2)))
 CHAT_SESSION_TTL = config('CHAT_SESSION_TTL', default=1800, cast=int)  # 30 minutes

@@ -68,6 +68,13 @@ Resources:
           Value: !Ref EnvironmentName
 
   # Redis Auth Token (for in-transit encryption)
+  # NOTE: This secret is created with just the auth_token. After the ElastiCache cluster
+  # is created, you must update the secret manually to include the Redis URLs.
+  # Use the update-redis-secret.sh script or manually update with:
+  #   - CELERY_BROKER_URL: rediss://:<auth_token>@<endpoint>:6379/0?ssl_cert_reqs=CERT_REQUIRED
+  #   - CELERY_RESULT_BACKEND: rediss://:<auth_token>@<endpoint>:6379/1?ssl_cert_reqs=CERT_REQUIRED
+  #   - REDIS_URL: rediss://:<auth_token>@<endpoint>:6379/2?ssl_cert_reqs=CERT_REQUIRED
+  #   - CACHE_URL: rediss://:<auth_token>@<endpoint>:6379/3?ssl_cert_reqs=CERT_REQUIRED
   RedisAuthSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
