@@ -1,0 +1,233 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AllThrive AI - ElastiCache Redis Cluster'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+    Description: Environment name for resource tagging
+
+  CacheNodeType:
+    Type: String
+    Default: cache.t4g.small
+    AllowedValues:
+      - cache.t4g.micro
+      - cache.t4g.small
+      - cache.t4g.medium
+      - cache.r6g.large
+      - cache.r6g.xlarge
+    Description: ElastiCache node type
+
+  NumCacheClusters:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 6
+    Description: Number of cache clusters (nodes) in the replication group
+
+  EngineVersion:
+    Type: String
+    Default: '7.1'
+    Description: Redis engine version
+
+Resources:
+  # ElastiCache Subnet Group
+  CacheSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      CacheSubnetGroupName: !Sub ${EnvironmentName}-allthrive-cache-subnet-group
+      Description: Subnet group for AllThrive AI ElastiCache
+      SubnetIds:
+        - !ImportValue
+          Fn::Sub: ${EnvironmentName}-PrivateSubnet1Id
+        - !ImportValue
+          Fn::Sub: ${EnvironmentName}-PrivateSubnet2Id
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-cache-subnet-group
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ElastiCache Parameter Group
+  CacheParameterGroup:
+    Type: AWS::ElastiCache::ParameterGroup
+    Properties:
+      CacheParameterGroupFamily: redis7
+      Description: Custom parameter group for AllThrive AI Redis
+      Properties:
+        maxmemory-policy: volatile-lru
+        notify-keyspace-events: Ex
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-redis-params
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Redis Auth Token (for in-transit encryption)
+  RedisAuthSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub ${EnvironmentName}/allthrive/redis/auth
+      Description: Auth token for AllThrive AI ElastiCache Redis
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: auth_token
+        PasswordLength: 32
+        ExcludeCharacters: '"@/\%'
+        ExcludePunctuation: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-redis-auth
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ElastiCache Replication Group
+  CacheReplicationGroup:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      ReplicationGroupId: !Sub ${EnvironmentName}-allthrive-redis
+      ReplicationGroupDescription: Redis cluster for AllThrive AI
+      Engine: redis
+      EngineVersion: !Ref EngineVersion
+      CacheNodeType: !Ref CacheNodeType
+      NumCacheClusters: !Ref NumCacheClusters
+      AutomaticFailoverEnabled: true
+      MultiAZEnabled: true
+      CacheSubnetGroupName: !Ref CacheSubnetGroup
+      CacheParameterGroupName: !Ref CacheParameterGroup
+      SecurityGroupIds:
+        - !ImportValue
+          Fn::Sub: ${EnvironmentName}-ElastiCacheSecurityGroupId
+      Port: 6379
+      AtRestEncryptionEnabled: true
+      TransitEncryptionEnabled: true
+      AuthToken: !Sub '{{resolve:secretsmanager:${RedisAuthSecret}:SecretString:auth_token}}'
+      SnapshotRetentionLimit: 7
+      SnapshotWindow: '03:00-05:00'
+      PreferredMaintenanceWindow: 'sun:05:00-sun:07:00'
+      AutoMinorVersionUpgrade: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-redis
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # CloudWatch Alarms
+  CacheCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${EnvironmentName}-allthrive-redis-high-cpu
+      AlarmDescription: Redis CPU utilization is high
+      MetricName: CPUUtilization
+      Namespace: AWS/ElastiCache
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 75
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Sub ${EnvironmentName}-allthrive-redis-001
+
+  CacheMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${EnvironmentName}-allthrive-redis-low-memory
+      AlarmDescription: Redis memory utilization is high
+      MetricName: DatabaseMemoryUsagePercentage
+      Namespace: AWS/ElastiCache
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Sub ${EnvironmentName}-allthrive-redis-001
+
+  CacheConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${EnvironmentName}-allthrive-redis-high-connections
+      AlarmDescription: Redis connections are high
+      MetricName: CurrConnections
+      Namespace: AWS/ElastiCache
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Sub ${EnvironmentName}-allthrive-redis-001
+
+Outputs:
+  CacheReplicationGroupId:
+    Description: ElastiCache Replication Group ID
+    Value: !Ref CacheReplicationGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-CacheReplicationGroupId
+
+  CachePrimaryEndpoint:
+    Description: ElastiCache Primary Endpoint
+    Value: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
+    Export:
+      Name: !Sub ${EnvironmentName}-CachePrimaryEndpoint
+
+  CachePrimaryPort:
+    Description: ElastiCache Primary Port
+    Value: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
+    Export:
+      Name: !Sub ${EnvironmentName}-CachePrimaryPort
+
+  CacheReaderEndpoint:
+    Description: ElastiCache Reader Endpoint
+    Value: !GetAtt CacheReplicationGroup.ReaderEndPoint.Address
+    Export:
+      Name: !Sub ${EnvironmentName}-CacheReaderEndpoint
+
+  RedisAuthSecretArn:
+    Description: ARN of the Redis Auth Secret
+    Value: !Ref RedisAuthSecret
+    Export:
+      Name: !Sub ${EnvironmentName}-RedisAuthSecretArn
+
+  RedisURL:
+    Description: Redis connection URL (without auth token)
+    Value: !Sub
+      - 'rediss://${Endpoint}:${Port}/0'
+      - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
+        Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
+    Export:
+      Name: !Sub ${EnvironmentName}-RedisURL
+
+  CeleryBrokerURL:
+    Description: Celery broker URL (database 0)
+    Value: !Sub
+      - 'rediss://${Endpoint}:${Port}/0'
+      - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
+        Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
+    Export:
+      Name: !Sub ${EnvironmentName}-CeleryBrokerURL
+
+  CeleryResultBackendURL:
+    Description: Celery result backend URL (database 1)
+    Value: !Sub
+      - 'rediss://${Endpoint}:${Port}/1'
+      - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
+        Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
+    Export:
+      Name: !Sub ${EnvironmentName}-CeleryResultBackendURL
+
+  CacheURL:
+    Description: Django cache URL (database 2)
+    Value: !Sub
+      - 'rediss://${Endpoint}:${Port}/2'
+      - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
+        Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
+    Export:
+      Name: !Sub ${EnvironmentName}-CacheURL

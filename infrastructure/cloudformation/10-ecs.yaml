@@ -1,0 +1,724 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AllThrive AI - ECS Fargate Cluster and Services'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+    Description: Environment name for resource tagging
+
+  BackendImageTag:
+    Type: String
+    Default: latest
+    Description: Docker image tag for backend
+
+  WebDesiredCount:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 10
+    Description: Desired number of web tasks
+
+  CeleryDesiredCount:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 20
+    Description: Desired number of celery worker tasks
+
+  WebCpu:
+    Type: Number
+    Default: 512
+    AllowedValues: [256, 512, 1024, 2048, 4096]
+    Description: CPU units for web tasks
+
+  WebMemory:
+    Type: Number
+    Default: 1024
+    AllowedValues: [512, 1024, 2048, 4096, 8192]
+    Description: Memory (MB) for web tasks
+
+  CeleryCpu:
+    Type: Number
+    Default: 512
+    AllowedValues: [256, 512, 1024, 2048, 4096]
+    Description: CPU units for celery tasks
+
+  CeleryMemory:
+    Type: Number
+    Default: 1024
+    AllowedValues: [512, 1024, 2048, 4096, 8192]
+    Description: Memory (MB) for celery tasks
+
+  DomainName:
+    Type: String
+    Default: ''
+    Description: Domain name for the application (e.g., allthrive.ai)
+
+  FrontendUrl:
+    Type: String
+    Default: ''
+    Description: Frontend URL (e.g., https://allthrive.ai)
+
+Resources:
+  # ECS Cluster
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${EnvironmentName}-allthrive-cluster
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+          Base: 1
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 2
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-cluster
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # CloudWatch Log Groups
+  WebLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${EnvironmentName}-allthrive-web
+      RetentionInDays: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  CeleryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${EnvironmentName}-allthrive-celery
+      RetentionInDays: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  CeleryBeatLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${EnvironmentName}-allthrive-celery-beat
+      RetentionInDays: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  WeaviateLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${EnvironmentName}-allthrive-weaviate
+      RetentionInDays: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Web Task Definition (Django + Daphne)
+  WebTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${EnvironmentName}-allthrive-web
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref WebCpu
+      Memory: !Ref WebMemory
+      ExecutionRoleArn: !ImportValue
+        Fn::Sub: ${EnvironmentName}-ECSTaskExecutionRoleArn
+      TaskRoleArn: !ImportValue
+        Fn::Sub: ${EnvironmentName}-ECSBackendTaskRoleArn
+      ContainerDefinitions:
+        - Name: web
+          Image: !Sub
+            - '${RepositoryUri}:${Tag}'
+            - RepositoryUri: !ImportValue
+                Fn::Sub: ${EnvironmentName}-BackendRepositoryUri
+              Tag: !Ref BackendImageTag
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8000
+              Protocol: tcp
+          Command:
+            - daphne
+            - '-b'
+            - '0.0.0.0'
+            - '-p'
+            - '8000'
+            - config.asgi:application
+          Environment:
+            - Name: DEBUG
+              Value: 'False'
+            - Name: DJANGO_SETTINGS_MODULE
+              Value: config.settings.production
+            - Name: ALLOWED_HOSTS
+              Value: !Sub
+                - '${ALBDns},${Domain}'
+                - ALBDns: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-ALBDNSName
+                  Domain: !If [HasDomain, !Ref DomainName, 'localhost']
+            - Name: CORS_ALLOWED_ORIGINS
+              Value: !If [HasFrontendUrl, !Ref FrontendUrl, 'http://localhost:3000']
+            - Name: CSRF_TRUSTED_ORIGINS
+              Value: !If [HasFrontendUrl, !Ref FrontendUrl, 'http://localhost:3000']
+            - Name: FRONTEND_URL
+              Value: !If [HasFrontendUrl, !Ref FrontendUrl, 'http://localhost:3000']
+            - Name: AWS_STORAGE_BUCKET_NAME
+              Value: !ImportValue
+                Fn::Sub: ${EnvironmentName}-MediaBucketName
+            - Name: AWS_S3_REGION_NAME
+              Value: !Ref AWS::Region
+            - Name: USE_S3_STORAGE
+              Value: 'True'
+          Secrets:
+            - Name: SECRET_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:secret_key::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DjangoSecretKeyArn
+            - Name: DATABASE_URL
+              ValueFrom: !Sub
+                - '${SecretArn}'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: OPENAI_API_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:OPENAI_API_KEY::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-AIApiKeysArn
+            - Name: ANTHROPIC_API_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:ANTHROPIC_API_KEY::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-AIApiKeysArn
+            - Name: GOOGLE_API_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:GOOGLE_API_KEY::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-AIApiKeysArn
+            - Name: AZURE_OPENAI_API_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:AZURE_OPENAI_API_KEY::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-AIApiKeysArn
+            - Name: STRIPE_SECRET_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:STRIPE_SECRET_KEY::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-StripeCredentialsArn
+            - Name: STRIPE_WEBHOOK_SECRET
+              ValueFrom: !Sub
+                - '${SecretArn}:STRIPE_WEBHOOK_SECRET::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-StripeCredentialsArn
+            - Name: GOOGLE_CLIENT_ID
+              ValueFrom: !Sub
+                - '${SecretArn}:GOOGLE_CLIENT_ID::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-OAuthCredentialsArn
+            - Name: GOOGLE_CLIENT_SECRET
+              ValueFrom: !Sub
+                - '${SecretArn}:GOOGLE_CLIENT_SECRET::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-OAuthCredentialsArn
+            - Name: REDIS_AUTH_TOKEN
+              ValueFrom: !Sub
+                - '${SecretArn}:auth_token::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref WebLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: web
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - 'python -c "import urllib.request; urllib.request.urlopen(\"http://localhost:8000/api/v1/health/\")" || exit 1'
+            Interval: 30
+            Timeout: 10
+            Retries: 3
+            StartPeriod: 60
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-web-task
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Celery Worker Task Definition
+  CeleryTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${EnvironmentName}-allthrive-celery
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref CeleryCpu
+      Memory: !Ref CeleryMemory
+      ExecutionRoleArn: !ImportValue
+        Fn::Sub: ${EnvironmentName}-ECSTaskExecutionRoleArn
+      TaskRoleArn: !ImportValue
+        Fn::Sub: ${EnvironmentName}-ECSBackendTaskRoleArn
+      ContainerDefinitions:
+        - Name: celery
+          Image: !Sub
+            - '${RepositoryUri}:${Tag}'
+            - RepositoryUri: !ImportValue
+                Fn::Sub: ${EnvironmentName}-BackendRepositoryUri
+              Tag: !Ref BackendImageTag
+          Essential: true
+          Command:
+            - celery
+            - '-A'
+            - config
+            - worker
+            - '--loglevel=info'
+            - '-Q'
+            - 'celery,default,youtube_sync,youtube_import,battles'
+            - '--concurrency=4'
+          Environment:
+            - Name: DEBUG
+              Value: 'False'
+            - Name: DJANGO_SETTINGS_MODULE
+              Value: config.settings.production
+            - Name: AWS_STORAGE_BUCKET_NAME
+              Value: !ImportValue
+                Fn::Sub: ${EnvironmentName}-MediaBucketName
+            - Name: AWS_S3_REGION_NAME
+              Value: !Ref AWS::Region
+            - Name: USE_S3_STORAGE
+              Value: 'True'
+          Secrets:
+            - Name: SECRET_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:secret_key::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DjangoSecretKeyArn
+            - Name: DATABASE_URL
+              ValueFrom: !Sub
+                - '${SecretArn}'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: OPENAI_API_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:OPENAI_API_KEY::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-AIApiKeysArn
+            - Name: ANTHROPIC_API_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:ANTHROPIC_API_KEY::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-AIApiKeysArn
+            - Name: GOOGLE_API_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:GOOGLE_API_KEY::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-AIApiKeysArn
+            - Name: STRIPE_SECRET_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:STRIPE_SECRET_KEY::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-StripeCredentialsArn
+            - Name: REDIS_AUTH_TOKEN
+              ValueFrom: !Sub
+                - '${SecretArn}:auth_token::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref CeleryLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: celery
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-celery-task
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Celery Beat Task Definition
+  CeleryBeatTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${EnvironmentName}-allthrive-celery-beat
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: 256
+      Memory: 512
+      ExecutionRoleArn: !ImportValue
+        Fn::Sub: ${EnvironmentName}-ECSTaskExecutionRoleArn
+      TaskRoleArn: !ImportValue
+        Fn::Sub: ${EnvironmentName}-ECSBackendTaskRoleArn
+      ContainerDefinitions:
+        - Name: celery-beat
+          Image: !Sub
+            - '${RepositoryUri}:${Tag}'
+            - RepositoryUri: !ImportValue
+                Fn::Sub: ${EnvironmentName}-BackendRepositoryUri
+              Tag: !Ref BackendImageTag
+          Essential: true
+          Command:
+            - celery
+            - '-A'
+            - config
+            - beat
+            - '--loglevel=info'
+          Environment:
+            - Name: DEBUG
+              Value: 'False'
+            - Name: DJANGO_SETTINGS_MODULE
+              Value: config.settings.production
+          Secrets:
+            - Name: SECRET_KEY
+              ValueFrom: !Sub
+                - '${SecretArn}:secret_key::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DjangoSecretKeyArn
+            - Name: DATABASE_URL
+              ValueFrom: !Sub
+                - '${SecretArn}'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-DBSecretArn
+            - Name: REDIS_AUTH_TOKEN
+              ValueFrom: !Sub
+                - '${SecretArn}:auth_token::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref CeleryBeatLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: celery-beat
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-celery-beat-task
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Weaviate Task Definition
+  WeaviateTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${EnvironmentName}-allthrive-weaviate
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: 1024
+      Memory: 2048
+      ExecutionRoleArn: !ImportValue
+        Fn::Sub: ${EnvironmentName}-ECSTaskExecutionRoleArn
+      TaskRoleArn: !ImportValue
+        Fn::Sub: ${EnvironmentName}-ECSWeaviateTaskRoleArn
+      ContainerDefinitions:
+        - Name: weaviate
+          Image: cr.weaviate.io/semitechnologies/weaviate:1.27.0
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+            - ContainerPort: 50051
+              Protocol: tcp
+          Environment:
+            - Name: QUERY_DEFAULTS_LIMIT
+              Value: '25'
+            - Name: AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+              Value: 'false'
+            - Name: PERSISTENCE_DATA_PATH
+              Value: '/var/lib/weaviate'
+            - Name: DEFAULT_VECTORIZER_MODULE
+              Value: 'text2vec-openai'
+            - Name: ENABLE_MODULES
+              Value: 'text2vec-openai'
+            - Name: CLUSTER_HOSTNAME
+              Value: 'node1'
+          Secrets:
+            - Name: OPENAI_APIKEY
+              ValueFrom: !Sub
+                - '${SecretArn}:OPENAI_API_KEY::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-AIApiKeysArn
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref WeaviateLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: weaviate
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-weaviate-task
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Web Service
+  WebService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub ${EnvironmentName}-allthrive-web
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref WebTaskDefinition
+      DesiredCount: !Ref WebDesiredCount
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !ImportValue
+              Fn::Sub: ${EnvironmentName}-ECSTasksSecurityGroupId
+          Subnets:
+            - !ImportValue
+              Fn::Sub: ${EnvironmentName}-PrivateSubnet1Id
+            - !ImportValue
+              Fn::Sub: ${EnvironmentName}-PrivateSubnet2Id
+      LoadBalancers:
+        - ContainerName: web
+          ContainerPort: 8000
+          TargetGroupArn: !ImportValue
+            Fn::Sub: ${EnvironmentName}-BackendTargetGroupArn
+        - ContainerName: web
+          ContainerPort: 8000
+          TargetGroupArn: !ImportValue
+            Fn::Sub: ${EnvironmentName}-WebSocketTargetGroupArn
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      EnableExecuteCommand: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-web-service
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Celery Worker Service
+  CeleryService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub ${EnvironmentName}-allthrive-celery
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref CeleryTaskDefinition
+      DesiredCount: !Ref CeleryDesiredCount
+      CapacityProviderStrategy:
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 2
+        - CapacityProvider: FARGATE
+          Weight: 1
+          Base: 1
+      PlatformVersion: LATEST
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !ImportValue
+              Fn::Sub: ${EnvironmentName}-ECSTasksSecurityGroupId
+          Subnets:
+            - !ImportValue
+              Fn::Sub: ${EnvironmentName}-PrivateSubnet1Id
+            - !ImportValue
+              Fn::Sub: ${EnvironmentName}-PrivateSubnet2Id
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 200
+        MinimumHealthyPercent: 50
+      EnableExecuteCommand: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-celery-service
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Celery Beat Service (single instance)
+  CeleryBeatService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub ${EnvironmentName}-allthrive-celery-beat
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref CeleryBeatTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !ImportValue
+              Fn::Sub: ${EnvironmentName}-ECSTasksSecurityGroupId
+          Subnets:
+            - !ImportValue
+              Fn::Sub: ${EnvironmentName}-PrivateSubnet1Id
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      EnableExecuteCommand: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-celery-beat-service
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Weaviate Service
+  WeaviateService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub ${EnvironmentName}-allthrive-weaviate
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref WeaviateTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !ImportValue
+              Fn::Sub: ${EnvironmentName}-WeaviateSecurityGroupId
+          Subnets:
+            - !ImportValue
+              Fn::Sub: ${EnvironmentName}-PrivateSubnet1Id
+      ServiceRegistries:
+        - RegistryArn: !GetAtt WeaviateServiceDiscovery.Arn
+      EnableExecuteCommand: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-weaviate-service
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Service Discovery Namespace
+  ServiceDiscoveryNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: !Sub ${EnvironmentName}.allthrive.local
+      Vpc: !ImportValue
+        Fn::Sub: ${EnvironmentName}-VPCId
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-namespace
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Weaviate Service Discovery
+  WeaviateServiceDiscovery:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: weaviate
+      NamespaceId: !Ref ServiceDiscoveryNamespace
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 60
+        RoutingPolicy: MULTIVALUE
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-weaviate-discovery
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Auto Scaling for Web Service
+  WebAutoScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 10
+      MinCapacity: !Ref WebDesiredCount
+      ResourceId: !Sub service/${ECSCluster}/${WebService.Name}
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  WebCPUScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${EnvironmentName}-web-cpu-scaling
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref WebAutoScalingTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 70
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 60
+
+  # Auto Scaling for Celery Service
+  CeleryAutoScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 20
+      MinCapacity: !Ref CeleryDesiredCount
+      ResourceId: !Sub service/${ECSCluster}/${CeleryService.Name}
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  CeleryCPUScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub ${EnvironmentName}-celery-cpu-scaling
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref CeleryAutoScalingTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 70
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 60
+
+Conditions:
+  HasDomain: !Not [!Equals [!Ref DomainName, '']]
+  HasFrontendUrl: !Not [!Equals [!Ref FrontendUrl, '']]
+
+Outputs:
+  ECSClusterName:
+    Description: ECS Cluster Name
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub ${EnvironmentName}-ECSClusterName
+
+  ECSClusterArn:
+    Description: ECS Cluster ARN
+    Value: !GetAtt ECSCluster.Arn
+    Export:
+      Name: !Sub ${EnvironmentName}-ECSClusterArn
+
+  WebServiceName:
+    Description: Web Service Name
+    Value: !GetAtt WebService.Name
+    Export:
+      Name: !Sub ${EnvironmentName}-WebServiceName
+
+  CeleryServiceName:
+    Description: Celery Service Name
+    Value: !GetAtt CeleryService.Name
+    Export:
+      Name: !Sub ${EnvironmentName}-CeleryServiceName
+
+  WeaviateEndpoint:
+    Description: Weaviate Internal Endpoint
+    Value: !Sub weaviate.${EnvironmentName}.allthrive.local:8080
+    Export:
+      Name: !Sub ${EnvironmentName}-WeaviateEndpoint
+
+  ServiceDiscoveryNamespaceId:
+    Description: Service Discovery Namespace ID
+    Value: !Ref ServiceDiscoveryNamespace
+    Export:
+      Name: !Sub ${EnvironmentName}-ServiceDiscoveryNamespaceId

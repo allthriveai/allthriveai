@@ -1,0 +1,45 @@
+{
+  "common": {
+    "EnvironmentName": "production"
+  },
+  "vpc": {
+    "VpcCIDR": "10.0.0.0/16",
+    "PublicSubnet1CIDR": "10.0.1.0/24",
+    "PublicSubnet2CIDR": "10.0.2.0/24",
+    "PrivateSubnet1CIDR": "10.0.10.0/24",
+    "PrivateSubnet2CIDR": "10.0.11.0/24",
+    "PrivateSubnet3CIDR": "10.0.12.0/24"
+  },
+  "rds": {
+    "DBInstanceClass": "db.t4g.medium",
+    "DBAllocatedStorage": "20",
+    "DBMaxAllocatedStorage": "100",
+    "DBName": "allthrive_ai",
+    "MultiAZ": "true",
+    "BackupRetentionPeriod": "7"
+  },
+  "elasticache": {
+    "CacheNodeType": "cache.t4g.small",
+    "NumCacheClusters": "2",
+    "EngineVersion": "7.1"
+  },
+  "ecs": {
+    "BackendImageTag": "latest",
+    "WebDesiredCount": "2",
+    "CeleryDesiredCount": "2",
+    "WebCpu": "512",
+    "WebMemory": "1024",
+    "CeleryCpu": "512",
+    "CeleryMemory": "1024",
+    "DomainName": "",
+    "FrontendUrl": ""
+  },
+  "cloudfront": {
+    "PriceClass": "PriceClass_100",
+    "DomainName": "",
+    "CertificateArn": ""
+  },
+  "alb": {
+    "CertificateArn": ""
+  }
+}

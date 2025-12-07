@@ -1,0 +1,213 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AllThrive AI - Security Groups'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+    Description: Environment name for resource tagging
+
+Resources:
+  # ALB Security Group
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-allthrive-alb-sg
+      GroupDescription: Security group for Application Load Balancer
+      VpcId: !ImportValue
+        Fn::Sub: ${EnvironmentName}-VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP from anywhere
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS from anywhere
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-alb-sg
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ECS Tasks Security Group (Backend)
+  ECSTasksSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-allthrive-ecs-tasks-sg
+      GroupDescription: Security group for ECS Fargate tasks
+      VpcId: !ImportValue
+        Fn::Sub: ${EnvironmentName}-VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: HTTP from ALB
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-ecs-tasks-sg
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # RDS Security Group
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-allthrive-rds-sg
+      GroupDescription: Security group for RDS PostgreSQL
+      VpcId: !ImportValue
+        Fn::Sub: ${EnvironmentName}-VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref ECSTasksSecurityGroup
+          Description: PostgreSQL from ECS tasks
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-rds-sg
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ElastiCache Security Group
+  ElastiCacheSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-allthrive-elasticache-sg
+      GroupDescription: Security group for ElastiCache Redis
+      VpcId: !ImportValue
+        Fn::Sub: ${EnvironmentName}-VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref ECSTasksSecurityGroup
+          Description: Redis from ECS tasks
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-elasticache-sg
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Weaviate Security Group (Vector DB)
+  WeaviateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-allthrive-weaviate-sg
+      GroupDescription: Security group for Weaviate Vector DB
+      VpcId: !ImportValue
+        Fn::Sub: ${EnvironmentName}-VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref ECSTasksSecurityGroup
+          Description: HTTP from ECS tasks
+        - IpProtocol: tcp
+          FromPort: 50051
+          ToPort: 50051
+          SourceSecurityGroupId: !Ref ECSTasksSecurityGroup
+          Description: gRPC from ECS tasks
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-weaviate-sg
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # VPC Endpoints Security Group (for private access to AWS services)
+  VPCEndpointsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-allthrive-vpce-sg
+      GroupDescription: Security group for VPC Endpoints
+      VpcId: !ImportValue
+        Fn::Sub: ${EnvironmentName}-VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref ECSTasksSecurityGroup
+          Description: HTTPS from ECS tasks
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-vpce-sg
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Allow ECS tasks to communicate with each other
+  ECSTasksSelfIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ECSTasksSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref ECSTasksSecurityGroup
+      Description: Allow ECS tasks to communicate with each other
+
+Outputs:
+  ALBSecurityGroupId:
+    Description: ALB Security Group ID
+    Value: !Ref ALBSecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-ALBSecurityGroupId
+
+  ECSTasksSecurityGroupId:
+    Description: ECS Tasks Security Group ID
+    Value: !Ref ECSTasksSecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-ECSTasksSecurityGroupId
+
+  RDSSecurityGroupId:
+    Description: RDS Security Group ID
+    Value: !Ref RDSSecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-RDSSecurityGroupId
+
+  ElastiCacheSecurityGroupId:
+    Description: ElastiCache Security Group ID
+    Value: !Ref ElastiCacheSecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-ElastiCacheSecurityGroupId
+
+  WeaviateSecurityGroupId:
+    Description: Weaviate Security Group ID
+    Value: !Ref WeaviateSecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-WeaviateSecurityGroupId
+
+  VPCEndpointsSecurityGroupId:
+    Description: VPC Endpoints Security Group ID
+    Value: !Ref VPCEndpointsSecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-VPCEndpointsSecurityGroupId

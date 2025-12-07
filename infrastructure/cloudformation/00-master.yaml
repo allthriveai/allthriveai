@@ -1,0 +1,157 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AllThrive AI - Master Stack (Deployment Order Reference)'
+
+# This file serves as documentation for the deployment order.
+# CloudFormation nested stacks have limitations, so we deploy individual stacks.
+# Use the deploy.sh script to deploy in the correct order.
+
+# DEPLOYMENT ORDER:
+# ==================
+#
+# Phase 1: Foundation (no dependencies)
+# -------------------------------------
+# 1. 01-vpc.yaml           - VPC, subnets, NAT gateways
+#
+# Phase 2: Security (depends on VPC)
+# ----------------------------------
+# 2. 02-security-groups.yaml - Security groups for all services
+#
+# Phase 3: Data Layer (depends on VPC, Security Groups)
+# -----------------------------------------------------
+# 3. 03-rds.yaml           - RDS PostgreSQL database
+# 4. 04-elasticache.yaml   - ElastiCache Redis cluster
+# 5. 05-s3.yaml            - S3 buckets for media/frontend
+#
+# Phase 4: Container Registry (no dependencies)
+# ---------------------------------------------
+# 6. 06-ecr.yaml           - ECR repositories
+#
+# Phase 5: IAM (depends on S3, ECR)
+# ---------------------------------
+# 7. 07-iam.yaml           - IAM roles and policies
+#
+# Phase 6: Secrets (no dependencies)
+# ----------------------------------
+# 8. 08-secrets.yaml       - Secrets Manager secrets
+#
+# Phase 7: Load Balancer (depends on VPC, Security Groups)
+# --------------------------------------------------------
+# 9. 09-alb.yaml           - Application Load Balancer
+#
+# Phase 8: Compute (depends on everything above)
+# ----------------------------------------------
+# 10. 10-ecs.yaml          - ECS cluster and services
+#
+# Phase 9: CDN (depends on S3, ALB)
+# ---------------------------------
+# 11. 11-cloudfront.yaml   - CloudFront distribution
+#
+#
+# PARAMETERS REFERENCE:
+# ====================
+#
+# Common Parameters (all stacks):
+#   EnvironmentName: production | staging | development
+#
+# 03-rds.yaml:
+#   DBInstanceClass: db.t4g.medium (default)
+#   DBAllocatedStorage: 20 (GB)
+#   MultiAZ: true | false
+#
+# 04-elasticache.yaml:
+#   CacheNodeType: cache.t4g.small (default)
+#   NumCacheClusters: 2 (default)
+#
+# 09-alb.yaml:
+#   CertificateArn: ACM certificate ARN (optional)
+#
+# 10-ecs.yaml:
+#   BackendImageTag: latest (default)
+#   WebDesiredCount: 2
+#   CeleryDesiredCount: 2
+#   DomainName: your-domain.com
+#   FrontendUrl: https://your-domain.com
+#
+# 11-cloudfront.yaml:
+#   DomainName: your-domain.com
+#   CertificateArn: ACM certificate ARN (must be in us-east-1)
+#   PriceClass: PriceClass_100 | PriceClass_200 | PriceClass_All
+#
+#
+# POST-DEPLOYMENT TASKS:
+# =====================
+#
+# 1. Update Secrets Manager with real values:
+#    - AI API keys (OpenAI, Anthropic, Google, Azure)
+#    - OAuth credentials
+#    - Stripe credentials
+#    - Email configuration
+#
+# 2. Build and push Docker images:
+#    - docker build -t <ecr-uri>:latest .
+#    - docker push <ecr-uri>:latest
+#
+# 3. Run database migrations:
+#    - Use ECS Exec to run: python manage.py migrate
+#
+# 4. Create initial data:
+#    - python manage.py create_pip
+#    - python manage.py seed_categories
+#
+# 5. Deploy frontend:
+#    - npm run build
+#    - aws s3 sync dist/ s3://<frontend-bucket>/
+#    - aws cloudfront create-invalidation --distribution-id <id> --paths "/*"
+#
+# 6. Configure DNS:
+#    - Point your domain to CloudFront distribution
+#    - Or create Route 53 alias record
+#
+# 7. Set up monitoring:
+#    - Configure CloudWatch alarms
+#    - Set up SNS topics for notifications
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Environment Configuration
+        Parameters:
+          - EnvironmentName
+    ParameterLabels:
+      EnvironmentName:
+        default: Environment Name
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+    Description: Environment name for resource tagging
+
+Resources:
+  # This is a placeholder resource for the master template
+  # The actual deployment is done via individual stacks
+  DeploymentMarker:
+    Type: AWS::CloudFormation::WaitConditionHandle
+    Metadata:
+      DeploymentOrder:
+        - 01-vpc.yaml
+        - 02-security-groups.yaml
+        - 03-rds.yaml
+        - 04-elasticache.yaml
+        - 05-s3.yaml
+        - 06-ecr.yaml
+        - 07-iam.yaml
+        - 08-secrets.yaml
+        - 09-alb.yaml
+        - 10-ecs.yaml
+        - 11-cloudfront.yaml
+
+Outputs:
+  DeploymentGuide:
+    Description: Deployment instructions
+    Value: See comments in this template for deployment order and post-deployment tasks
