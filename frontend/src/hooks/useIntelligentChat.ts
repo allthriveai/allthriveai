@@ -370,7 +370,7 @@ export function useIntelligentChat({
               }
               break;
 
-            case 'image_generating':
+            case 'image_generating': {
               // Image generation started - show generating indicator
               // Use a stable ID for generating state to prevent duplicates
               const generatingId = `generating-${conversationId}`;
@@ -389,8 +389,9 @@ export function useIntelligentChat({
                 ];
               });
               break;
+            }
 
-            case 'image_generated':
+            case 'image_generated': {
               // Image generated successfully - replace generating indicator with image
               // Use session_id and iteration for a stable, unique ID
               const imageMessageId = `generated-image-${data.session_id || 'unknown'}-${data.iteration_number || Date.now()}`;
@@ -420,6 +421,7 @@ export function useIntelligentChat({
               seenMessageIdsRef.current.add(imageMessageId);
               setIsLoading(false);
               break;
+            }
 
             case 'completed':
               setIsLoading(false);
@@ -434,7 +436,7 @@ export function useIntelligentChat({
               onError?.(data.error || 'An error occurred');
               break;
 
-            case 'quota_exceeded':
+            case 'quota_exceeded': {
               // User has exceeded their AI usage limit
               setIsLoading(false);
               currentMessageRef.current = '';
@@ -458,6 +460,7 @@ export function useIntelligentChat({
               // Also show error message
               onError?.(data.error || 'You\'ve reached your AI usage limit. Please upgrade your plan or purchase tokens.');
               break;
+            }
 
             default:
               // Unknown event, ignore

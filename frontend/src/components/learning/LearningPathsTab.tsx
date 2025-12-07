@@ -58,14 +58,16 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
     (attempt) => attempt.quiz?.slug === PERSONALIZATION_QUIZ_SLUG && attempt.isCompleted
   );
 
-  // Use different hooks for own profile vs other users
+  // Call both hooks unconditionally, then use the appropriate data
+  const myPathsResult = useMyLearningPaths();
+  const userPathsResult = useUserLearningPaths(username);
+
+  // Use the appropriate result based on profile type
   const {
     data: paths,
     isLoading: isLoadingPaths,
     error: pathsError,
-  } = isOwnProfile
-    ? useMyLearningPaths()
-    : useUserLearningPaths(username);
+  } = isOwnProfile ? myPathsResult : userPathsResult;
 
   const {
     data: recommendations,

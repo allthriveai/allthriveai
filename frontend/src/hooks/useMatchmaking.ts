@@ -272,7 +272,7 @@ export function useMatchmaking({
                 // Connection confirmed
                 break;
 
-              case 'queue_joined':
+              case 'queue_joined': {
                 setIsSearching(true);
                 const joinedStatus: QueueStatus = {
                   inQueue: true,
@@ -282,8 +282,9 @@ export function useMatchmaking({
                 setQueueStatus(joinedStatus);
                 onQueueUpdateRef.current?.(joinedStatus);
                 break;
+              }
 
-              case 'queue_status':
+              case 'queue_status': {
                 const status: QueueStatus = {
                   inQueue: data.in_queue ?? false,
                   position: data.position ?? 0,
@@ -293,8 +294,9 @@ export function useMatchmaking({
                 setIsSearching(status.inQueue);
                 onQueueUpdateRef.current?.(status);
                 break;
+              }
 
-              case 'queue_left':
+              case 'queue_left': {
                 setIsSearching(false);
                 const leftStatus: QueueStatus = {
                   inQueue: false,
@@ -304,6 +306,7 @@ export function useMatchmaking({
                 setQueueStatus(leftStatus);
                 onQueueUpdateRef.current?.(leftStatus);
                 break;
+              }
 
               case 'match_found':
                 setIsSearching(false);

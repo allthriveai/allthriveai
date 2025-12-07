@@ -10,9 +10,9 @@ export function generateSlug(text: string): string {
     // Replace spaces and underscores with hyphens
     .replace(/[\s_]+/g, '-')
     // Remove special characters except hyphens
-    .replace(/[^\w\-]+/g, '')
+    .replace(/[^\w-]+/g, '')
     // Remove multiple consecutive hyphens
-    .replace(/\-\-+/g, '-')
+    .replace(/--+/g, '-')
     // Remove leading and trailing hyphens
     .replace(/^-+|-+$/g, '');
 }

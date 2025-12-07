@@ -116,7 +116,7 @@ export function VideoPickerModal({
     try {
       await onImport(Array.from(selectedVideoIds));
       onClose(); // Close modal on success
-    } catch (error) {
+    } catch (_error) {
       // Error is handled by parent, modal stays open
     } finally {
       setImporting(false);

@@ -23,11 +23,15 @@ from core.integrations.github.helpers import (
 from core.projects.models import Project
 
 
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    """Session authentication without CSRF check for API endpoints."""
+class CsrfEnforcedSessionAuthentication(SessionAuthentication):
+    """Session authentication that enforces CSRF for state-changing operations.
 
-    def enforce_csrf(self, request):
-        return  # Skip CSRF check
+    For API endpoints using session auth, we must enforce CSRF protection
+    to prevent cross-site request forgery when cookies are used for authentication.
+    DRF's SessionAuthentication already enforces CSRF by default.
+    """
+
+    pass  # Use default CSRF enforcement from SessionAuthentication
 
 
 logger = logging.getLogger(__name__)
@@ -156,7 +160,7 @@ def list_user_repos(request):
 # Temporarily disabled rate limiting for testing
 # @ratelimit(key='user', rate=IMPORT_RATE_LIMIT, method='POST')
 @api_view(['POST'])
-@authentication_classes([CsrfExemptSessionAuthentication])
+@authentication_classes([CsrfEnforcedSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def import_github_repo_async(request):
     """

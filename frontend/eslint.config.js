@@ -19,5 +19,22 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Allow 'any' type (warn instead of error for gradual migration)
+      '@typescript-eslint/no-explicit-any': 'warn',
+      // Allow unused vars with underscore prefix
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+      // Allow empty patterns (common in destructuring)
+      'no-empty-pattern': 'warn',
+      // React Refresh - warn instead of error
+      'react-refresh/only-export-components': 'warn',
+    },
   },
 ])

@@ -156,51 +156,7 @@ export default function SideQuestsPage() {
     }
   };
 
-  // Show login prompt for unauthenticated users
-  if (!isAuthenticated) {
-    return (
-      <DashboardLayout>
-        <div className="h-full flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold mb-2">Join Side Quests</h1>
-            <p className="text-muted">Log in to discover and complete optional challenges for bonus Points</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  // Sort categories by their order field for proper progression
-  const mainCategories = categories
-    .filter(c => c.categoryType !== 'daily')
-    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-  const inProgressQuests = myQuests.filter(q => q.status === 'in_progress');
-
-  // Difficulty order for sorting (beginner to advanced progression)
-  const difficultyOrder: Record<string, number> = {
-    easy: 0,     // Beginner
-    medium: 1,   // Intermediate
-    hard: 2,     // Advanced
-    epic: 3,     // Epic
-  };
-
-  // Get quests for a category, sorted by difficulty then by order field
-  const getQuestsForCategory = (categorySlug: string) => {
-    return availableQuests
-      .filter(q => q.categorySlug === categorySlug)
-      .sort((a, b) => {
-        // First sort by difficulty (easy → medium → hard → epic)
-        const diffA = difficultyOrder[a.difficulty] ?? 99;
-        const diffB = difficultyOrder[b.difficulty] ?? 99;
-        if (diffA !== diffB) return diffA - diffB;
-
-        // Then sort by order field if available
-        const orderA = a.order ?? 999;
-        const orderB = b.order ?? 999;
-        return orderA - orderB;
-      });
-  };
-
+  // All hooks must be called before early returns
   // Track which category is expanded (null = none expanded)
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
@@ -290,6 +246,51 @@ export default function SideQuestsPage() {
   useEffect(() => {
     updateScrollButtons();
   }, [inProgressQuests]);
+
+  // Show login prompt for unauthenticated users (AFTER all hooks)
+  if (!isAuthenticated) {
+    return (
+      <DashboardLayout>
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold mb-2">Join Side Quests</h1>
+            <p className="text-muted">Log in to discover and complete optional challenges for bonus Points</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Sort categories by their order field for proper progression
+  const mainCategories = categories
+    .filter(c => c.categoryType !== 'daily')
+    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  const inProgressQuests = myQuests.filter(q => q.status === 'in_progress');
+
+  // Difficulty order for sorting (beginner to advanced progression)
+  const difficultyOrder: Record<string, number> = {
+    easy: 0,     // Beginner
+    medium: 1,   // Intermediate
+    hard: 2,     // Advanced
+    epic: 3,     // Epic
+  };
+
+  // Get quests for a category, sorted by difficulty then by order field
+  const getQuestsForCategory = (categorySlug: string) => {
+    return availableQuests
+      .filter(q => q.categorySlug === categorySlug)
+      .sort((a, b) => {
+        // First sort by difficulty (easy → medium → hard → epic)
+        const diffA = difficultyOrder[a.difficulty] ?? 99;
+        const diffB = difficultyOrder[b.difficulty] ?? 99;
+        if (diffA !== diffB) return diffA - diffB;
+
+        // Then sort by order field if available
+        const orderA = a.order ?? 999;
+        const orderB = b.order ?? 999;
+        return orderA - orderB;
+      });
+  };
 
   // Helper to convert hex to rgba
   const hexToRgba = (hex: string, alpha: number) => {

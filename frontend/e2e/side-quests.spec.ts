@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginViaAPI, TEST_USER } from './helpers';
+import { loginViaAPI, _TEST_USER } from './helpers';
 
 test.describe('Side Quests', () => {
   // Login before each test

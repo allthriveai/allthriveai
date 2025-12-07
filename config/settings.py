@@ -193,11 +193,11 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
 # Production security settings
 #
-# By default we avoid forcing HTTPS redirects in development and test
-# environments to prevent unexpected 301 responses in automated tests.
-# Deployments that need HTTPS enforcement can enable it via environment
-# variables without changing code.
-SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
+# SECURE_SSL_REDIRECT defaults to True in production (non-DEBUG) to enforce HTTPS.
+# In development (DEBUG=True), defaults to False to avoid redirect issues.
+# Can always be overridden via environment variable.
+_ssl_redirect_default = not DEBUG  # True in production, False in development
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=_ssl_redirect_default, cast=bool)
 
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
@@ -688,12 +688,16 @@ CSRF_TRUSTED_ORIGINS = config(
 )
 
 # Content Security Policy (django-csp 4.0 format)
+# SECURITY NOTE: 'unsafe-inline' for styles is required for many CSS-in-JS libraries.
+# To remove it, migrate to nonce-based CSP or external stylesheets.
+# See: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP#inline_styles
 if DEBUG:
     _CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'")
     _CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
 else:
     _CSP_SCRIPT_SRC = ("'self'",)
-    _CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")  # Consider removing inline styles when feasible
+    # TODO: Remove 'unsafe-inline' for styles once CSS-in-JS is refactored to use nonces
+    _CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
 
 CONTENT_SECURITY_POLICY = {
     'DIRECTIVES': {

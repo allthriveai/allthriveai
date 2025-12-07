@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { Modal } from '@/components/ui/Modal';
+import { BuyTokensModal } from '@/components/billing';
 import {
   getSubscriptionStatus,
   getTokenBalance,
@@ -423,6 +424,7 @@ export default function BillingSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [buyTokensModalOpen, setBuyTokensModalOpen] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -509,7 +511,12 @@ export default function BillingSettingsPage() {
   };
 
   const handleBuyTokens = () => {
-    window.location.href = '/pricing#tokens';
+    setBuyTokensModalOpen(true);
+  };
+
+  const handleTokenPurchaseSuccess = async () => {
+    // Refresh token balance after successful purchase
+    await loadData();
   };
 
   return (
@@ -585,6 +592,12 @@ export default function BillingSettingsPage() {
           onConfirm={handleCancelSubscription}
           periodEnd={subscription?.currentPeriodEnd || ''}
           isLoading={cancelLoading}
+        />
+
+        <BuyTokensModal
+          isOpen={buyTokensModalOpen}
+          onClose={() => setBuyTokensModalOpen(false)}
+          onSuccess={handleTokenPurchaseSuccess}
         />
       </SettingsLayout>
     </DashboardLayout>

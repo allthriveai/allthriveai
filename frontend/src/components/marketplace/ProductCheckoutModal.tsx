@@ -144,11 +144,7 @@ export function ProductCheckoutModal({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
-  const isFree = product.price <= 0;
-  const isLoading = createCheckoutMutation.isPending || claimFreeMutation.isPending;
-
+  // All hooks must be called before early return
   const handlePaymentSuccess = useCallback(async () => {
     if (!checkoutData) return;
 
@@ -186,6 +182,12 @@ export function ProductCheckoutModal({
       );
     }
   }, [checkoutData, queryClient, onSuccess]);
+
+  // Early return after all hooks
+  if (!isOpen) return null;
+
+  const isFree = product.price <= 0;
+  const isLoading = createCheckoutMutation.isPending || claimFreeMutation.isPending;
 
   const handlePaymentError = (errorMessage: string) => {
     setError(errorMessage);

@@ -357,6 +357,7 @@ function AddBlockButton({ onAdd, position, isAdding }: AddBlockButtonProps) {
 // ============================================================================
 
 export function EditableBlocksContainer(props: EditableBlocksContainerProps) {
+  // All hooks must be called unconditionally before any early returns
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -379,11 +380,6 @@ export function EditableBlocksContainer(props: EditableBlocksContainerProps) {
 
   // Determine if we can edit
   const canEdit = projectMode ? props.isOwner : props.isEditing;
-
-  // Early return if in project mode and project is undefined
-  if (projectMode && !props.project) {
-    return null;
-  }
 
   // Get block IDs for sortable context
   const sortableIds = useMemo(
@@ -548,6 +544,11 @@ export function EditableBlocksContainer(props: EditableBlocksContainerProps) {
         const { onBlocksChange } = props as BlocksModeProps;
         onBlocksChange(updated.content?.blocks || []);
       };
+
+  // Early return if in project mode and project is undefined
+  if (projectMode && !props.project) {
+    return null;
+  }
 
   // If not editable, just render blocks without editing controls
   if (!canEdit) {

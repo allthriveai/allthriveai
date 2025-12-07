@@ -118,7 +118,7 @@ export default function PromptBattlePage() {
         const data = await response.json();
         setError(data.error || 'Failed to send invitation');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Network error');
     }
   };

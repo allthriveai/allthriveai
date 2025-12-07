@@ -91,7 +91,7 @@ export default function BattleDetailPage() {
         const data = await response.json();
         setError(data.error || 'Failed to submit prompt');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Network error');
     } finally {
       setSubmitting(false);

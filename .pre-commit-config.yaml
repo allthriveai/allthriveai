@@ -47,6 +47,26 @@ repos:
       - id: django-upgrade
         args: ['--target-version', '4.2']
 
+  # Frontend linting with ESLint (using local npm setup)
+  - repo: local
+    hooks:
+      - id: eslint-frontend
+        name: ESLint (Frontend)
+        entry: frontend/lint-staged-wrapper.sh
+        language: script
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: true
+        require_serial: false
+        verbose: true
+
+      - id: typescript-check
+        name: TypeScript Type Check (Frontend)
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
+        require_serial: true
+
   # Custom hooks for AllThrive AI rules
   - repo: local
     hooks:

@@ -105,7 +105,7 @@ export default function CheckoutPage() {
           navigate('/account/billing?success=true');
           return;
         }
-      } catch (err) {
+      } catch (_err) {
         // Continue polling on error
       }
     }

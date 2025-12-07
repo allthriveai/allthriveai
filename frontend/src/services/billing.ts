@@ -235,15 +235,22 @@ export async function getTokenBalance(): Promise<TokenBalance> {
  * Purchase tokens
  */
 export async function purchaseTokens(packageSlug: string): Promise<{
-  purchaseId: string;
+  purchaseId: number;
   clientSecret: string;
   amount: number;
-  tokens: number;
+  tokenAmount: number;
 }> {
   const response = await api.post('/billing/tokens/purchase/', {
-    packageSlug,
+    package_slug: packageSlug, // Backend expects snake_case
   });
-  return response.data;
+  // Transform response from snake_case to camelCase
+  const data = response.data;
+  return {
+    purchaseId: data.purchase_id,
+    clientSecret: data.client_secret,
+    amount: data.amount,
+    tokenAmount: data.token_amount,
+  };
 }
 
 /**

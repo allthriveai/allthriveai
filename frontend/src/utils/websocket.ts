@@ -75,7 +75,7 @@ export function buildWebSocketUrl(
  * @param url - The WebSocket URL to log
  * @param prefix - Optional prefix for the log message
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 export function logWebSocketUrl(_url: string, _prefix = '[WebSocket]'): void {
   // No-op in production - logging suppressed for cleaner console output
 }

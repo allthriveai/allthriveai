@@ -168,7 +168,7 @@ export class CreateProjectAgent extends BaseAgent {
                 } else if (data.type === 'error') {
                   throw new Error(data.message);
                 }
-              } catch (e) {
+              } catch (_e) {
                 // Ignore JSON parse errors for incomplete chunks
               }
             }

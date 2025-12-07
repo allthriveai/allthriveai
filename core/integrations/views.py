@@ -48,15 +48,19 @@ class ImportThrottle(UserRateThrottle):
         return super().wait()
 
 
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    """Session authentication without CSRF check for API endpoints."""
+class CsrfEnforcedSessionAuthentication(SessionAuthentication):
+    """Session authentication that enforces CSRF for state-changing operations.
 
-    def enforce_csrf(self, request):
-        return  # Skip CSRF check
+    For API endpoints using JWT + session auth, we must enforce CSRF protection
+    to prevent cross-site request forgery when cookies are used for authentication.
+    DRF's SessionAuthentication already enforces CSRF by default.
+    """
+
+    pass  # Use default CSRF enforcement from SessionAuthentication
 
 
 @api_view(['POST'])
-@authentication_classes([JWTAuthentication, CsrfExemptSessionAuthentication])
+@authentication_classes([JWTAuthentication, CsrfEnforcedSessionAuthentication])
 @permission_classes([IsAuthenticated])
 # @throttle_classes([ImportThrottle])  # Temporarily disabled for testing
 def import_from_url(request):
@@ -266,7 +270,7 @@ def list_integrations(request):
 
 
 @api_view(['POST'])
-@authentication_classes([JWTAuthentication, CsrfExemptSessionAuthentication])
+@authentication_classes([JWTAuthentication, CsrfEnforcedSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def scrape_url_for_project(request):
     """
