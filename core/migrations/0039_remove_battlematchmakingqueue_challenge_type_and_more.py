@@ -61,13 +61,13 @@ class Migration(migrations.Migration):
             model_name='event',
             name='updated_by',
         ),
-        migrations.RemoveField(
-            model_name='eventrsvp',
-            name='event',
-        ),
         migrations.AlterUniqueTogether(
             name='eventrsvp',
             unique_together=None,
+        ),
+        migrations.RemoveField(
+            model_name='eventrsvp',
+            name='event',
         ),
         migrations.RemoveField(
             model_name='eventrsvp',
