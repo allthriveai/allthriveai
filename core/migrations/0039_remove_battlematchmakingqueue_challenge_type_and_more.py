@@ -29,13 +29,13 @@ class Migration(migrations.Migration):
             model_name='battlesubmission',
             name='user',
         ),
-        migrations.RemoveField(
-            model_name='battlevote',
-            name='submission',
-        ),
         migrations.AlterUniqueTogether(
             name='battlevote',
             unique_together=None,
+        ),
+        migrations.RemoveField(
+            model_name='battlevote',
+            name='submission',
         ),
         migrations.RemoveField(
             model_name='battlevote',
