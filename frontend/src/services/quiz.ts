@@ -20,8 +20,24 @@ import type {
 export async function getQuizzes(filters?: QuizFilters): Promise<QuizListResponse> {
   const params = new URLSearchParams();
 
+  // Legacy topic field (single topic filter)
   if (filters?.topic && filters.topic.length > 0) {
     filters.topic.forEach(t => params.append('topic', t));
+  }
+
+  // Topics array field (free-form tags)
+  if (filters?.topics && filters.topics.length > 0) {
+    filters.topics.forEach(t => params.append('topics', t));
+  }
+
+  // Tool IDs filter
+  if (filters?.tools && filters.tools.length > 0) {
+    filters.tools.forEach(id => params.append('tools', id.toString()));
+  }
+
+  // Category IDs filter
+  if (filters?.categories && filters.categories.length > 0) {
+    filters.categories.forEach(id => params.append('categories', id.toString()));
   }
 
   if (filters?.difficulty && filters.difficulty.length > 0) {

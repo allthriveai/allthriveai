@@ -55,7 +55,8 @@ function BattleCard({ battle, profileUsername }: { battle: Battle; profileUserna
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+      className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+      style={{ borderRadius: 'var(--radius)' }}
     >
       {/* Battle Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-800">
@@ -122,7 +123,7 @@ function BattleCard({ battle, profileUsername }: { battle: Battle; profileUserna
             )}
           </div>
           {profileSubmission?.generatedOutputUrl ? (
-            <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <div className="aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800" style={{ borderRadius: 'var(--radius)' }}>
               <img
                 src={profileSubmission.generatedOutputUrl}
                 alt="Generated output"
@@ -130,7 +131,7 @@ function BattleCard({ battle, profileUsername }: { battle: Battle; profileUserna
               />
             </div>
           ) : (
-            <div className="aspect-square rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <div className="aspect-square bg-gray-100 dark:bg-gray-800 flex items-center justify-center" style={{ borderRadius: 'var(--radius)' }}>
               <FontAwesomeIcon icon={faImage} className="w-8 h-8 text-gray-400" />
             </div>
           )}
@@ -148,7 +149,7 @@ function BattleCard({ battle, profileUsername }: { battle: Battle; profileUserna
             )}
           </div>
           {opponentSubmission?.generatedOutputUrl ? (
-            <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <div className="aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800" style={{ borderRadius: 'var(--radius)' }}>
               <img
                 src={opponentSubmission.generatedOutputUrl}
                 alt="Opponent's output"
@@ -156,7 +157,7 @@ function BattleCard({ battle, profileUsername }: { battle: Battle; profileUserna
               />
             </div>
           ) : (
-            <div className="aspect-square rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <div className="aspect-square bg-gray-100 dark:bg-gray-800 flex items-center justify-center" style={{ borderRadius: 'var(--radius)' }}>
               <FontAwesomeIcon icon={faImage} className="w-8 h-8 text-gray-400" />
             </div>
           )}
@@ -189,7 +190,7 @@ function BattleCard({ battle, profileUsername }: { battle: Battle; profileUserna
                   <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                     {profileUsername}'s Prompt
                   </div>
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm text-gray-700 dark:text-gray-300">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300" style={{ borderRadius: 'var(--radius)' }}>
                     {profileSubmission.promptText}
                   </div>
                   {profileSubmission.evaluationFeedback && (
@@ -206,7 +207,7 @@ function BattleCard({ battle, profileUsername }: { battle: Battle; profileUserna
                   <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                     {opponent?.username}'s Prompt
                   </div>
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm text-gray-700 dark:text-gray-300">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300" style={{ borderRadius: 'var(--radius)' }}>
                     {opponentSubmission.promptText}
                   </div>
                   {opponentSubmission.evaluationFeedback && (
@@ -227,7 +228,7 @@ function BattleCard({ battle, profileUsername }: { battle: Battle; profileUserna
 // Stats Card Component
 function StatsCard({ stats }: { stats: BattleStats }) {
   return (
-    <div className="bg-gradient-to-br from-purple-500/10 to-teal-500/10 rounded-xl p-4 mb-6 border border-purple-200/50 dark:border-purple-800/50">
+    <div className="bg-gradient-to-br from-purple-500/10 to-teal-500/10 p-4 mb-6 border border-purple-200/50 dark:border-purple-800/50" style={{ borderRadius: 'var(--radius)' }}>
       <div className="flex items-center gap-2 mb-3">
         <FontAwesomeIcon icon={faTrophy} className="w-5 h-5 text-amber-500" />
         <h3 className="font-bold text-gray-900 dark:text-white">Battle Stats</h3>

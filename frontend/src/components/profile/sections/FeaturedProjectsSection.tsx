@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PlusIcon, XMarkIcon, CheckIcon, ArrowTopRightOnSquareIcon, EyeIcon, TrophyIcon, StarIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
@@ -257,6 +257,7 @@ function FeaturedBattleCard({
   canMoveDown?: boolean;
   position?: number;
 }) {
+  const navigate = useNavigate();
   const projectUrl = `/${user.username}/${project.slug}`;
   const battleResult = project.content?.battleResult;
 
@@ -443,8 +444,24 @@ function FeaturedBattleCard({
 
           {/* Battle type badge */}
           <div className="mt-3 flex items-center gap-2">
-            <span className="px-2 py-0.5 text-xs bg-gradient-to-r from-cyan-500/20 to-violet-500/20 text-cyan-400 rounded border border-cyan-500/30">
-              Prompt Battle
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate('/battles');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigate('/battles');
+                }
+              }}
+              className="px-2 py-0.5 text-xs bg-gradient-to-r from-cyan-500/20 to-violet-500/20 text-cyan-400 rounded border border-cyan-500/30 hover:from-cyan-500/30 hover:to-violet-500/30 hover:text-cyan-300 transition-colors cursor-pointer"
+            >
+              All Thrive Prompt Battle
             </span>
             {opponent && (
               <span className="text-xs text-gray-500">

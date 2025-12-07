@@ -41,7 +41,7 @@ export function WaitingForOpponent({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="relative z-10 glass-card p-12 text-center max-w-md"
+        className="relative z-10 glass-card p-6 md:p-12 text-center max-w-md mx-4 md:mx-0"
       >
         {/* Animated icon */}
         <motion.div
@@ -53,16 +53,16 @@ export function WaitingForOpponent({
             repeat: Infinity,
             ease: 'easeInOut',
           }}
-          className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center"
+          className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 rounded-xl md:rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center"
         >
-          <UserGroupIcon className="w-12 h-12 text-cyan-400" />
+          <UserGroupIcon className="w-8 h-8 md:w-12 md:h-12 text-cyan-400" />
         </motion.div>
 
-        <h2 className="text-2xl font-bold text-white mb-2">
+        <h2 className="text-xl md:text-2xl font-bold text-white mb-2">
           Waiting for {opponentUsername}
         </h2>
 
-        <p className="text-slate-400 mb-6">
+        <p className="text-sm md:text-base text-slate-400 mb-4 md:mb-6">
           {opponentIsAi
             ? 'Pip is preparing for battle...'
             : 'Your opponent is connecting to the battle...'}

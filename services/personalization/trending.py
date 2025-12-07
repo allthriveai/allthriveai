@@ -92,6 +92,9 @@ class TrendingEngine:
         page: int = 1,
         page_size: int = 20,
         time_window_hours: int = 72,
+        tool_ids: list[int] | None = None,
+        category_ids: list[int] | None = None,
+        topic_names: list[str] | None = None,
     ) -> dict:
         """
         Get trending projects feed.
@@ -101,6 +104,9 @@ class TrendingEngine:
             page: Page number (1-indexed)
             page_size: Number of projects per page
             time_window_hours: Consider projects updated within this window
+            tool_ids: Filter to projects with ANY of these tools (OR logic)
+            category_ids: Filter to projects with ANY of these categories (OR logic)
+            topic_names: Filter to projects with ANY of these topics (OR logic)
 
         Returns:
             Dict with 'projects' list and 'metadata'
@@ -109,20 +115,25 @@ class TrendingEngine:
         try:
             # Try Weaviate first for pre-computed velocities
             if self.weaviate_client.is_available():
-                return self._get_trending_from_weaviate(user, page, page_size)
+                return self._get_trending_from_weaviate(user, page, page_size, tool_ids, category_ids, topic_names)
 
             # Fallback to real-time calculation (includes ALL projects)
-            return self._calculate_trending_realtime(user, page, page_size, time_window_hours)
+            return self._calculate_trending_realtime(
+                user, page, page_size, time_window_hours, tool_ids, category_ids, topic_names
+            )
 
         except Exception as e:
             logger.error(f'Trending engine error: {e}', exc_info=True)
-            return self._get_fallback_trending(page, page_size)
+            return self._get_fallback_trending(page, page_size, tool_ids, category_ids, topic_names)
 
     def _get_trending_from_weaviate(
         self,
         user: 'User | None',
         page: int,
         page_size: int,
+        tool_ids: list[int] | None = None,
+        category_ids: list[int] | None = None,
+        topic_names: list[str] | None = None,
     ) -> dict:
         """Get trending projects from Weaviate pre-computed velocities."""
         from core.projects.models import Project
@@ -134,7 +145,20 @@ class TrendingEngine:
         )
 
         if not trending:
-            return self._get_fallback_trending(page, page_size)
+            return self._get_fallback_trending(page, page_size, tool_ids, category_ids, topic_names)
+
+        # Apply filters if provided
+        if tool_ids or category_ids or topic_names:
+            project_ids = [t.get('project_id') for t in trending]
+            query = Project.objects.filter(id__in=project_ids)
+            if tool_ids:
+                query = query.filter(tools__id__in=tool_ids)
+            if category_ids:
+                query = query.filter(categories__id__in=category_ids)
+            if topic_names:
+                query = query.filter(topics__overlap=topic_names)
+            matching_ids = set(query.distinct().values_list('id', flat=True))
+            trending = [t for t in trending if t.get('project_id') in matching_ids]
 
         # Paginate
         start_idx = (page - 1) * page_size
@@ -153,11 +177,18 @@ class TrendingEngine:
         project_map = {p.id: p for p in projects}
         ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
 
-        # Get true total count from database for pagination
-        total_available = Project.objects.filter(
+        # Get true total count from database for pagination (with filters)
+        total_query = Project.objects.filter(
             is_private=False,
             is_archived=False,
-        ).count()
+        )
+        if tool_ids:
+            total_query = total_query.filter(tools__id__in=tool_ids)
+        if category_ids:
+            total_query = total_query.filter(categories__id__in=category_ids)
+        if topic_names:
+            total_query = total_query.filter(topics__overlap=topic_names)
+        total_available = total_query.distinct().count()
 
         return {
             'projects': ordered_projects,
@@ -175,6 +206,11 @@ class TrendingEngine:
                     }
                     for t in page_results
                 ],
+                'filters_applied': {
+                    'tool_ids': tool_ids,
+                    'category_ids': category_ids,
+                    'topic_names': topic_names,
+                },
             },
         }
 
@@ -184,6 +220,9 @@ class TrendingEngine:
         page: int,
         page_size: int,
         time_window_hours: int,
+        tool_ids: list[int] | None = None,
+        category_ids: list[int] | None = None,
+        topic_names: list[str] | None = None,
     ) -> dict:
         """Calculate trending scores in real-time from database.
 
@@ -199,11 +238,21 @@ class TrendingEngine:
         prev_cutoff = now - timedelta(hours=self.PREVIOUS_WINDOW_HOURS)
 
         # Get ALL public projects with like and view count annotations
+        base_query = Project.objects.filter(
+            is_private=False,
+            is_archived=False,
+        )
+
+        # Apply filters if provided (OR logic)
+        if tool_ids:
+            base_query = base_query.filter(tools__id__in=tool_ids)
+        if category_ids:
+            base_query = base_query.filter(categories__id__in=category_ids)
+        if topic_names:
+            base_query = base_query.filter(topics__overlap=topic_names)
+
         all_projects = (
-            Project.objects.filter(
-                is_private=False,
-                is_archived=False,
-            )
+            base_query.distinct()
             .select_related('user')
             .prefetch_related('tools', 'categories')
             .annotate(
@@ -314,10 +363,22 @@ class TrendingEngine:
                 'total_trending': total_count,
                 'algorithm': 'realtime_velocity',
                 'scores': [tp.to_dict() for tp in page_results],
+                'filters_applied': {
+                    'tool_ids': tool_ids,
+                    'category_ids': category_ids,
+                    'topic_names': topic_names,
+                },
             },
         }
 
-    def _get_fallback_trending(self, page: int, page_size: int) -> dict:
+    def _get_fallback_trending(
+        self,
+        page: int,
+        page_size: int,
+        tool_ids: list[int] | None = None,
+        category_ids: list[int] | None = None,
+        topic_names: list[str] | None = None,
+    ) -> dict:
         """Fallback when realtime trending calculation fails.
 
         Shows liked projects first (by like count), then all remaining projects
@@ -325,13 +386,23 @@ class TrendingEngine:
         """
         from core.projects.models import Project
 
+        projects = Project.objects.filter(
+            is_private=False,
+            is_archived=False,
+        )
+
+        # Apply filters if provided (OR logic)
+        if tool_ids:
+            projects = projects.filter(tools__id__in=tool_ids)
+        if category_ids:
+            projects = projects.filter(categories__id__in=category_ids)
+        if topic_names:
+            projects = projects.filter(topics__overlap=topic_names)
+
         projects = (
-            Project.objects.filter(
-                is_private=False,
-                is_archived=False,
-            )
-            .annotate(like_count=Count('likes'))
+            projects.annotate(like_count=Count('likes'))
             .order_by('-like_count', '-created_at')
+            .distinct()
             .select_related('user')
             .prefetch_related('tools', 'categories', 'likes')
         )
@@ -349,6 +420,11 @@ class TrendingEngine:
                 'page_size': page_size,
                 'total_trending': total_count,
                 'algorithm': 'popular_then_newest',
+                'filters_applied': {
+                    'tool_ids': tool_ids,
+                    'category_ids': category_ids,
+                    'topic_names': topic_names,
+                },
             },
         }
 

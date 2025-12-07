@@ -102,22 +102,24 @@ export function HeroSection({ onRequestInvite }: HeroSectionProps) {
               transition={{ duration: 0.7, delay: 0.1 }}
               className="mb-6"
             >
-              <h1 className="font-bold tracking-tight mb-4 inline-flex flex-col w-fit mx-auto lg:mx-0">
-                <span className="text-white text-4xl sm:text-5xl md:text-6xl lg:text-7xl mb-2 pb-1">Centralize Your</span>
+              <h1 className="font-bold tracking-tight mb-4 text-white max-w-2xl flex flex-col" style={{ textShadow: '0 0 20px rgba(15, 23, 42, 0.9), 0 0 40px rgba(15, 23, 42, 0.7), 0 0 60px rgba(15, 23, 42, 0.5)' }}>
+                <span className="whitespace-nowrap" style={{ fontSize: '2.98rem' }}>Create with AI anywhere</span>
+                <span style={{ fontSize: '4.2rem' }}>Consolidate here</span>
                 <span
-                  className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl bg-gradient-to-r from-cyan-400 via-teal-400 to-green-400 bg-clip-text text-transparent pb-2"
+                  className="pb-2 animate-gradient-rotate"
                   style={{
-                    backgroundSize: '200% 200%',
-                    animation: 'gradient-shift 8s ease infinite',
+                    fontSize: '4.5rem',
+                    backgroundSize: '300% 300%',
+                    background: 'linear-gradient(to right, #22d3ee, #2dd4bf, #4ade80)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    textShadow: 'none',
                   }}
                 >
-                  AI Creativity
+                  Thrive together
                 </span>
               </h1>
-              <p className="text-lg sm:text-xl md:text-2xl text-gray-400 font-medium max-w-xl">
-                Bring your AI projects together, generate an{' '}
-                <span className="whitespace-nowrap">AI-powered</span> portfolio, and grow with a community of creators.
-              </p>
             </motion.div>
 
             {/* CTA Button */}

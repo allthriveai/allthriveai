@@ -460,7 +460,8 @@ def public_user_projects(request, username):
     is_own_profile = request.user.is_authenticated and request.user.username.lower() == username.lower()
     # Include version in cache key to prevent stale data after schema changes
     # v2: playground now includes all projects, not just non-showcase ones
-    cache_key = f'projects:v2:{username.lower()}:{"own" if is_own_profile else "public"}'
+    # v3: playground is now public by default for non-authenticated users
+    cache_key = f'projects:v3:{username.lower()}:{"own" if is_own_profile else "public"}'
 
     cached_data = cache.get(cache_key)
     if cached_data:
@@ -536,11 +537,41 @@ def public_user_projects(request, username):
             # Shorter cache for own projects (they change more frequently)
             cache.set(cache_key, response_data, settings.CACHE_TTL.get('USER_PROJECTS', 60))
         else:
-            # For non-authenticated users or other users, only return showcase
-            response_data = {
-                'showcase': ProjectSerializer(showcase_projects, many=True).data,
-                'playground': [],
-            }
+            # For non-authenticated users or other users viewing the profile
+            # Check if the user has made their playground public (default is True)
+            playground_is_public = getattr(user, 'playground_is_public', True)
+
+            if playground_is_public:
+                # Return playground projects for public profiles
+                if is_curation:
+                    from django.db.models.functions import Coalesce
+
+                    playground_projects = (
+                        Project.objects.select_related('user')
+                        .filter(user=user, is_archived=False)
+                        .annotate(
+                            sort_date=Coalesce(
+                                'youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at'
+                            )
+                        )
+                        .order_by('-sort_date')
+                    )
+                else:
+                    playground_projects = (
+                        Project.objects.select_related('user')
+                        .filter(user=user, is_archived=False)
+                        .order_by('-created_at')
+                    )
+                response_data = {
+                    'showcase': ProjectSerializer(showcase_projects, many=True).data,
+                    'playground': ProjectSerializer(playground_projects, many=True).data,
+                }
+            else:
+                # Playground is private - only return showcase
+                response_data = {
+                    'showcase': ProjectSerializer(showcase_projects, many=True).data,
+                    'playground': [],
+                }
             # Longer cache for public projects
             cache.set(cache_key, response_data, settings.CACHE_TTL.get('PUBLIC_PROJECTS', 180))
 
@@ -694,23 +725,27 @@ def explore_projects(request):
             )
             search_similarity_applied = True
 
+    # Extract filter values for use with personalization engines
+    # These are stored separately so we can pass them to engines that handle their own queries
+    filter_tool_ids: list[int] | None = None
+    filter_category_ids: list[int] | None = None
+    filter_topic_names: list[str] | None = None
+
     # Apply tools filter - handle both array params (tools=1&tools=2) and comma-separated (tools=1,2)
     tools_list = request.GET.getlist('tools')
     if tools_list:
         try:
             # If multiple values received as array parameters
             if len(tools_list) > 1:
-                tool_ids = [int(tid) for tid in tools_list if tid]
+                filter_tool_ids = [int(tid) for tid in tools_list if tid]
             # If single value, check if it's comma-separated
             elif tools_list[0]:
-                tool_ids = [int(tid) for tid in tools_list[0].split(',') if tid.strip()]
-            else:
-                tool_ids = []
+                filter_tool_ids = [int(tid) for tid in tools_list[0].split(',') if tid.strip()]
 
-            if tool_ids:
-                queryset = queryset.filter(tools__id__in=tool_ids).distinct()
+            if filter_tool_ids:
+                queryset = queryset.filter(tools__id__in=filter_tool_ids).distinct()
         except (ValueError, IndexError):
-            pass  # Invalid tool IDs, ignore
+            filter_tool_ids = None  # Invalid tool IDs, ignore
 
     # Apply categories filter (predefined taxonomy) - handle both array params and comma-separated
     categories_list = request.GET.getlist('categories')
@@ -718,18 +753,16 @@ def explore_projects(request):
         try:
             # If multiple values received as array parameters
             if len(categories_list) > 1:
-                category_ids = [int(cid) for cid in categories_list if cid]
+                filter_category_ids = [int(cid) for cid in categories_list if cid]
             # If single value, check if it's comma-separated
             elif categories_list[0]:
-                category_ids = [int(cid) for cid in categories_list[0].split(',') if cid.strip()]
-            else:
-                category_ids = []
+                filter_category_ids = [int(cid) for cid in categories_list[0].split(',') if cid.strip()]
 
-            if category_ids:
+            if filter_category_ids:
                 # OR logic: match projects that have ANY of the selected categories
-                queryset = queryset.filter(categories__id__in=category_ids).distinct()
+                queryset = queryset.filter(categories__id__in=filter_category_ids).distinct()
         except (ValueError, IndexError):
-            pass  # Invalid category IDs, ignore
+            filter_category_ids = None  # Invalid category IDs, ignore
 
     # Apply topics filter (user-generated tags) - handle both array params and comma-separated
     topics_list = request.GET.getlist('topics')
@@ -738,19 +771,17 @@ def explore_projects(request):
         try:
             # If multiple values received as array parameters
             if len(topics_list) > 1:
-                topic_names = [t for t in topics_list if t]
+                filter_topic_names = [t for t in topics_list if t]
             # If single value, check if it's comma-separated
             elif topics_list[0]:
-                topic_names = [t.strip() for t in topics_list[0].split(',') if t.strip()]
-            else:
-                topic_names = []
+                filter_topic_names = [t.strip() for t in topics_list[0].split(',') if t.strip()]
 
-            if topic_names:
+            if filter_topic_names:
                 # OR logic: match projects that have ANY of the selected topics
                 # Topics are stored as ArrayField, use __overlap to find any match
-                queryset = queryset.filter(topics__overlap=topic_names).distinct()
+                queryset = queryset.filter(topics__overlap=filter_topic_names).distinct()
         except (ValueError, IndexError):
-            pass  # Invalid topics, ignore
+            filter_topic_names = None  # Invalid topics, ignore
 
     # Apply tab-specific filters
     if tab == 'news':
@@ -763,6 +794,17 @@ def explore_projects(request):
             .annotate(effective_date=Coalesce('published_date', 'created_at'))
             .order_by('-effective_date')
         )
+
+        # Paginate and return news feed
+        page_size = min(int(request.GET.get('page_size', 30)), 100)
+        page_num = int(request.GET.get('page', 1))
+
+        paginator = ProjectPagination()
+        paginator.page_size = page_size
+        page = paginator.paginate_queryset(queryset, request)
+
+        serializer = ProjectSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     # Apply sorting or personalization based on tab
     elif tab == 'for-you':
@@ -783,6 +825,9 @@ def explore_projects(request):
                         user=request.user,
                         page=page_num,
                         page_size=page_size,
+                        tool_ids=filter_tool_ids,
+                        category_ids=filter_category_ids,
+                        topic_names=filter_topic_names,
                     )
                     return Response(
                         build_paginated_response(
@@ -803,6 +848,9 @@ def explore_projects(request):
                 user=request.user,
                 page=page_num,
                 page_size=page_size,
+                tool_ids=filter_tool_ids,
+                category_ids=filter_category_ids,
+                topic_names=filter_topic_names,
             )
             return Response(
                 build_paginated_response(
@@ -821,6 +869,9 @@ def explore_projects(request):
                 user=None,
                 page=page_num,
                 page_size=page_size,
+                tool_ids=filter_tool_ids,
+                category_ids=filter_category_ids,
+                topic_names=filter_topic_names,
             )
             return Response(
                 build_paginated_response(
@@ -846,6 +897,9 @@ def explore_projects(request):
                 user=request.user if request.user.is_authenticated else None,
                 page=page_num,
                 page_size=page_size,
+                tool_ids=filter_tool_ids,
+                category_ids=filter_category_ids,
+                topic_names=filter_topic_names,
             )
             return Response(
                 build_paginated_response(

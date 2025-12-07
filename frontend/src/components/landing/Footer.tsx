@@ -147,7 +147,7 @@ export function Footer({ onOpenChat }: FooterProps) {
             </Link>
           </p>
           <p className="text-gray-500 dark:text-gray-500 text-sm">
-            Create anywhere. Consolidate here. Thrive together.
+            Create with AI anywhere. Consolidate here. Thrive together.
           </p>
         </div>
       </div>

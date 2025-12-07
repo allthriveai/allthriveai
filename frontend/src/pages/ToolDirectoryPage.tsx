@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Modal } from '@/components/ui/Modal';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { getTools, getToolCategories, getToolCompanies, prefetchTool } from '@/services/tools';
 import { ToolSearchBar, type ToolFilters } from '@/components/tools/ToolSearchBar';
 import type { Tool } from '@/types/models';
@@ -278,6 +279,11 @@ function ToolDirectoryPageContent() {
   const groupedTools = useMemo(() => {
     const groups: Record<string, Tool[]> = {};
     tools.forEach((tool) => {
+      // Safety check: ensure tool has a name with at least one character
+      if (!tool.name || tool.name.length === 0) {
+        console.warn('Tool with no name found:', tool);
+        return;
+      }
       const firstLetter = tool.name[0].toUpperCase();
       if (!groups[firstLetter]) {
         groups[firstLetter] = [];
@@ -386,7 +392,13 @@ function ToolDirectoryPageContent() {
 
                         {/* Tools in this letter */}
                         <div className="grid grid-cols-1 gap-4">
-                          {groupedTools[letter].map((tool) => (
+                          {groupedTools[letter]?.map((tool) => {
+                            // Safety check: skip invalid tools
+                            if (!tool || !tool.slug || !tool.name) {
+                              console.warn('Invalid tool data:', tool);
+                              return null;
+            }
+                            return (
                             <Link
                               key={tool.id}
                               to={`/tools/${tool.slug}`}
@@ -398,7 +410,30 @@ function ToolDirectoryPageContent() {
                               <div className="flex items-start gap-4">
                                 <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center overflow-hidden bg-white border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
                                   {tool.logoUrl ? (
-                                    <img src={tool.logoUrl} alt={`${tool.name} logo`} className="w-10 h-10 object-contain" />
+                                    <img
+                                      src={tool.logoUrl}
+                                      alt={`${tool.name} logo`}
+                                      className="w-10 h-10 object-contain"
+                                      onError={(e) => {
+                                        // Hide broken images and show fallback icon instead
+                                        e.currentTarget.style.display = 'none';
+                                        const parent = e.currentTarget.parentElement;
+                                        if (parent && !parent.querySelector('svg')) {
+                                          const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                                          icon.setAttribute('class', 'w-6 h-6 text-primary-600 dark:text-primary-400');
+                                          icon.setAttribute('fill', 'none');
+                                          icon.setAttribute('viewBox', '0 0 24 24');
+                                          icon.setAttribute('stroke', 'currentColor');
+                                          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                                          path.setAttribute('stroke-linecap', 'round');
+                                          path.setAttribute('stroke-linejoin', 'round');
+                                          path.setAttribute('stroke-width', '2');
+                                          path.setAttribute('d', 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z');
+                                          icon.appendChild(path);
+                                          parent.appendChild(icon);
+                                        }
+                                      }}
+                                    />
                                   ) : (
                                     <SparklesIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
                                   )}
@@ -423,7 +458,8 @@ function ToolDirectoryPageContent() {
                                 </div>
                               </div>
                             </Link>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -510,10 +546,16 @@ function ToolDirectoryPageContent() {
 export default function ToolDirectoryPage() {
   if (RECAPTCHA_SITE_KEY) {
     return (
-      <GoogleReCaptchaProvider reCaptchaKey={RECAPTCHA_SITE_KEY}>
-        <ToolDirectoryPageContent />
-      </GoogleReCaptchaProvider>
+      <ErrorBoundary>
+        <GoogleReCaptchaProvider reCaptchaKey={RECAPTCHA_SITE_KEY}>
+          <ToolDirectoryPageContent />
+        </GoogleReCaptchaProvider>
+      </ErrorBoundary>
     );
   }
-  return <ToolDirectoryPageContent />;
+  return (
+    <ErrorBoundary>
+      <ToolDirectoryPageContent />
+    </ErrorBoundary>
+  );
 }

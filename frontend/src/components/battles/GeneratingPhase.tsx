@@ -96,19 +96,19 @@ export function GeneratingPhase({
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          className="text-center mb-8 md:mb-12"
         >
           <motion.div
             animate={prefersReducedMotion ? {} : { rotate: 360 }}
             transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
             className="inline-block mb-4"
           >
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500/20 to-pink-500/20 border border-cyan-500/30 flex items-center justify-center">
-              <CpuChipIcon className="w-10 h-10 text-cyan-400" aria-hidden="true" />
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-cyan-500/20 to-pink-500/20 border border-cyan-500/30 flex items-center justify-center">
+              <CpuChipIcon className="w-8 h-8 md:w-10 md:h-10 text-cyan-400" aria-hidden="true" />
             </div>
           </motion.div>
 
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
             {isJudging ? 'Judging in Progress' : 'AI is Creating Magic'}
           </h1>
           <p className="text-slate-400">
@@ -119,12 +119,12 @@ export function GeneratingPhase({
         </motion.div>
 
         {/* Progress cards */}
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 gap-4 md:gap-8">
           {/* Your image */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-card p-6"
+            className="glass-card p-4 md:p-6"
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-sm font-medium">
@@ -160,7 +160,7 @@ export function GeneratingPhase({
                       ease: 'easeInOut',
                     }}
                   >
-                    <SparklesIcon className="w-16 h-16 text-cyan-400/50" aria-hidden="true" />
+                    <SparklesIcon className="w-12 h-12 md:w-16 md:h-16 text-cyan-400/50" aria-hidden="true" />
                   </motion.div>
 
                   {/* Progress dots */}
@@ -190,7 +190,7 @@ export function GeneratingPhase({
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-card p-6"
+            className="glass-card p-4 md:p-6"
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="px-3 py-1 rounded-full bg-pink-500/20 text-pink-400 text-sm font-medium">
@@ -214,11 +214,11 @@ export function GeneratingPhase({
                     repeat: Infinity,
                     ease: 'easeInOut',
                   }}
-                  className="text-6xl"
+                  className="text-4xl md:text-6xl"
                   role="img"
                   aria-label="Hidden submission"
                 >
-                  🎭
+                  {opponentUsername.toLowerCase() === 'pip' ? '🍌' : '🎭'}
                 </motion.div>
                 <p className="text-slate-500 text-sm mt-4">Hidden until reveal</p>
               </div>

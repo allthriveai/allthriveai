@@ -41,6 +41,7 @@ import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
 import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
 import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
 import ExtensionPage from '@/pages/ExtensionPage';
+import PitchDeckPage from '@/pages/PitchDeckPage';
 
 export function AppRoutes() {
   return (
@@ -125,6 +126,9 @@ export function AppRoutes() {
 
       {/* Pricing - public route */}
       <Route path="/pricing" element={<PricingPage />} />
+
+      {/* Pitch deck - public route with password gate */}
+      <Route path="/pitch" element={<PitchDeckPage />} />
 
       {/* Perks - public route (coming soon) */}
       <Route path="/perks" element={<PerksPage />} />

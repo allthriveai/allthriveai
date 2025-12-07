@@ -26,6 +26,7 @@ import {
   VideoCameraIcon,
   NewspaperIcon,
   MegaphoneIcon,
+  BoltIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, MegaphoneIcon as MegaphoneIconSolid } from '@heroicons/react/24/solid';
 import { toggleProjectLike, deleteProjectById, toggleProjectPromotion } from '@/services/projects';
@@ -610,14 +611,14 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                     </div>
                   </div>
 
-                  {/* Result banner at top */}
-                  <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
-                    <div className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg ${
+                  {/* Result banner at bottom */}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
+                    <div className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm ${
                       heroElement.isTie
-                        ? 'bg-slate-700 text-slate-300'
+                        ? 'bg-slate-700/80 text-slate-300'
                         : heroElement.won
                         ? 'bg-amber-500/90 text-white'
-                        : 'bg-slate-700 text-slate-300'
+                        : 'bg-slate-700/80 text-slate-300'
                     }`}>
                       {heroElement.isTie ? 'TIE' : heroElement.won ? 'VICTORY' : 'DEFEAT'}
                     </div>

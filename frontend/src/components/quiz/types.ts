@@ -125,7 +125,10 @@ export interface QuizListResponse {
 
 // Filter types for QuizListPage
 export interface QuizFilters {
-  topic?: string[];
+  topic?: string[];  // legacy topic field
+  topics?: string[]; // topics array field
+  tools?: number[];  // tool IDs
+  categories?: number[];  // category IDs
   difficulty?: QuizDifficulty[];
   completed?: boolean;
   search?: string;

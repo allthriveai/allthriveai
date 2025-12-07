@@ -255,6 +255,10 @@ function PricingPageContent() {
       question: 'Can I use my own API keys (BYOK)?',
       answer: 'Coming soon! We\'re building support for Bring Your Own Keys (BYOK), which will let you connect your own OpenAI, Anthropic, or other LLM API keys. This will give you unlimited AI usage with your own billing, perfect for power users and teams with existing API subscriptions.',
     },
+    {
+      question: 'I have an issue, how can I ask for help?',
+      answer: 'If you\'re logged in, use the support chat in the top menu for the fastest response. You can also report bugs or request features on our GitHub issues page at github.com/allthriveai/allthriveai/issues.',
+    },
   ];
 
   // Fallback tiers when API is unavailable

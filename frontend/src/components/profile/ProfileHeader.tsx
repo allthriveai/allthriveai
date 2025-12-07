@@ -103,17 +103,15 @@ export function ProfileHeader({
     : null;
 
   return (
-    <div className="relative">
-      {/* Banner Background */}
-      <div className="h-32 md:h-40 w-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
-        {/* Ambient Glow Background - positioned behind avatar */}
-        <div className="absolute bottom-0 left-4 sm:left-6 lg:left-[calc((100%-80rem)/2+1.5rem)] translate-y-1/2 w-[300px] h-[300px] rounded-full bg-primary-500/25 dark:bg-primary-500/30 blur-[80px] pointer-events-none" />
-        <div className="absolute top-1/4 right-1/4 w-[300px] h-[200px] rounded-full bg-cyan-500/15 dark:bg-cyan-500/15 blur-[80px] pointer-events-none" />
-      </div>
+    <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+      {/* Ambient Glow Background - positioned behind avatar, emanating from the left where the image is */}
+      <div className="absolute top-0 left-0 w-[400px] h-[400px] rounded-full bg-primary-500/30 dark:bg-primary-500/35 blur-[100px] pointer-events-none -translate-x-1/4 -translate-y-1/4" />
+      {/* Secondary cyan glow - also emanating from user image on left */}
+      <div className="absolute top-1/2 left-0 w-[300px] h-[200px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[80px] pointer-events-none" />
 
       {/* Profile Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative -mt-16 sm:-mt-20 pb-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+        <div className="relative pb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-6">
             {/* Avatar */}
             <div className="flex-shrink-0">
@@ -133,11 +131,6 @@ export function ProfileHeader({
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate">
                   {user?.fullName || user?.username || 'User'}
                 </h1>
-                {user?.tier && (
-                  <span className="px-2 py-0.5 text-xs font-medium bg-gradient-to-r from-primary-500 to-cyan-500 text-white rounded-full">
-                    {getTierDisplay(user.tier)}
-                  </span>
-                )}
               </div>
               <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">
                 @{user?.username}
@@ -268,9 +261,12 @@ export function ProfileHeader({
                 <span className="text-gray-500 dark:text-gray-400 ml-1">Following</span>
               </button>
               {user?.totalPoints !== undefined && user.tier !== 'curation' && (
-                <div className="text-sm">
+                <div className="flex items-center gap-2 text-sm">
                   <span className="font-bold text-gray-900 dark:text-white">{user.totalPoints.toLocaleString()}</span>
-                  <span className="text-gray-500 dark:text-gray-400 ml-1">Points</span>
+                  <span className="text-gray-500 dark:text-gray-400">Points</span>
+                  <span className="px-2 py-0.5 text-xs font-medium bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/30">
+                    {getTierDisplay(user?.tier)}
+                  </span>
                 </div>
               )}
             </div>

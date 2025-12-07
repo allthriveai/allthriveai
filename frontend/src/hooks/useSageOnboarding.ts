@@ -78,6 +78,18 @@ export function useSageOnboarding() {
   // Should show the initial modal (first time user)
   const shouldShowModal = isAuthenticated && isLoaded && !state.hasSeenModal && !state.isDismissed;
 
+  // Debug logging
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[EmberOnboarding] State:', {
+      isAuthenticated,
+      isLoaded,
+      hasSeenModal: state.hasSeenModal,
+      isDismissed: state.isDismissed,
+      shouldShowModal,
+      userId: user?.id,
+    });
+  }
+
   // Should show the banner (has seen modal, hasn't dismissed, hasn't completed all)
   const shouldShowBanner =
     isAuthenticated &&

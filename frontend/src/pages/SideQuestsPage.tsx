@@ -610,7 +610,7 @@ export default function SideQuestsPage() {
                         <div className="flex items-stretch">
                           {/* Left: Cover Art Section */}
                           <div
-                            className="w-24 sm:w-32 relative overflow-hidden flex-shrink-0"
+                            className="w-24 sm:w-32 relative overflow-hidden flex-shrink-0 self-stretch"
                             style={{
                               background: isDarkMode
                                 ? `linear-gradient(135deg, ${hexToRgba(cardColorFrom, 0.3)} 0%, ${hexToRgba(cardColorTo, 0.2)} 50%, rgba(2, 6, 23, 0.9) 100%)`

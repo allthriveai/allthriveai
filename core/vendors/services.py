@@ -329,14 +329,17 @@ def get_tool_analytics(tool_id: int, days: int = 30) -> dict:
     recent_reviews = all_reviews.filter(created_at__gte=cutoff).count()
     avg_rating = all_reviews.aggregate(avg=Avg('rating'))['avg'] or 0
 
-    # Projects using this tool
-    projects_using_tool = Project.objects.filter(tools__contains=[tool_id]).count()
+    # Projects using this tool (tools is a ManyToManyField)
+    projects_using_tool = Project.objects.filter(tools__id=tool_id).count()
 
-    # Category ranking - where does this tool rank in its category?
-    category_tools = Tool.objects.filter(
-        category=tool.category,
-        is_active=True,
-    ).order_by('-popularity_score', '-view_count')
+    # Category ranking - rank by number of projects using the tool
+    from django.db.models import Count
+
+    category_tools = (
+        Tool.objects.filter(category=tool.category, is_active=True)
+        .annotate(project_count=Count('projects'))
+        .order_by('-project_count', '-view_count')
+    )
 
     category_rank = None
     category_total = category_tools.count()
@@ -347,9 +350,7 @@ def get_tool_analytics(tool_id: int, days: int = 30) -> dict:
 
     # Similar tools in same category (potential competitors)
     similar_tools = list(
-        category_tools.exclude(id=tool_id).values('id', 'name', 'slug', 'logo_url', 'view_count', 'popularity_score')[
-            :5
-        ]
+        category_tools.exclude(id=tool_id).values('id', 'name', 'slug', 'logo_url', 'view_count', 'project_count')[:5]
     )
 
     # Recent reviews for display

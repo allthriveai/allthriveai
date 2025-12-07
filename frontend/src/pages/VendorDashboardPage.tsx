@@ -6,7 +6,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import {
   ChartBarIcon,
   EyeIcon,
-  BookmarkIcon,
+  HeartIcon,
   StarIcon,
   FolderIcon,
   TrophyIcon,
@@ -66,7 +66,7 @@ interface ToolAnalytics {
     slug: string;
     logoUrl: string;
     viewCount: number;
-    popularityScore: number;
+    projectCount: number;
   }>;
   recentReviews?: Array<{
     rating: number;
@@ -304,9 +304,9 @@ export default function VendorDashboardPage() {
                 color="cyan"
               />
               <MetricCard
-                title="Bookmarks"
+                title="Favorites"
                 value={metrics?.totalBookmarks}
-                icon={<BookmarkIcon className="w-5 h-5" />}
+                icon={<HeartIcon className="w-5 h-5" />}
                 description={metrics?.recentBookmarks ? `+${metrics.recentBookmarks} in period` : 'Users who saved this tool'}
                 color="purple"
               />
@@ -333,7 +333,7 @@ export default function VendorDashboardPage() {
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Category Performance</h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                      How your tool ranks in the {analytics.tool?.category} category
+                      Ranked by projects using this tool in the {analytics.tool?.category} category
                     </p>
                   </div>
                   <TrophyIcon className="w-5 h-5 text-amber-500 dark:text-amber-400" />
@@ -357,8 +357,8 @@ export default function VendorDashboardPage() {
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-semibold text-slate-900 dark:text-white mb-1">{metrics.popularityScore}</div>
-                    <div className="text-sm text-slate-600 dark:text-slate-400">Popularity Score</div>
+                    <div className="text-2xl font-semibold text-slate-900 dark:text-white mb-1">{metrics.projectsUsingTool}</div>
+                    <div className="text-sm text-slate-600 dark:text-slate-400">Projects Using</div>
                   </div>
                 </div>
               </div>
@@ -426,7 +426,7 @@ export default function VendorDashboardPage() {
                       <tr className="text-left text-sm text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/10">
                         <th className="pb-3 font-medium">Tool</th>
                         <th className="pb-3 font-medium text-right">Views</th>
-                        <th className="pb-3 font-medium text-right">Popularity</th>
+                        <th className="pb-3 font-medium text-right">Projects</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -445,7 +445,7 @@ export default function VendorDashboardPage() {
                             </div>
                           </td>
                           <td className="py-3 text-right text-slate-600 dark:text-slate-300">{tool.viewCount.toLocaleString()}</td>
-                          <td className="py-3 text-right text-slate-600 dark:text-slate-300">{tool.popularityScore.toFixed(1)}</td>
+                          <td className="py-3 text-right text-slate-600 dark:text-slate-300">{tool.projectCount}</td>
                         </tr>
                       ))}
                     </tbody>

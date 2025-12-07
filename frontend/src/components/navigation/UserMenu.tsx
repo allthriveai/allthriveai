@@ -51,7 +51,7 @@ export function UserMenu({ user }: UserMenuProps) {
     {
       label: 'My Profile',
       onClick: () => {
-        navigate(`/${user.username}?tab=showcase`);
+        navigate(`/${user.username}?tab=playground`);
         setIsOpen(false);
       },
     },

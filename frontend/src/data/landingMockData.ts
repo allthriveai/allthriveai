@@ -184,7 +184,7 @@ export const profileSteps = [
   {
     id: 1,
     title: 'Chat to\nCreate',
-    description: 'Describe, scrape, or automate with 10+ integrations',
+    description: 'Paste in a URL or automate with integrations',
     icon: 'chat',
   },
   {

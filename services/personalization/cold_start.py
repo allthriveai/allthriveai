@@ -89,6 +89,9 @@ class ColdStartService:
         user: 'User | None',
         page: int = 1,
         page_size: int = 20,
+        tool_ids: list[int] | None = None,
+        category_ids: list[int] | None = None,
+        topic_names: list[str] | None = None,
     ) -> dict:
         """
         Get feed for cold-start user.
@@ -101,20 +104,26 @@ class ColdStartService:
             user: User (can be None for anonymous)
             page: Page number
             page_size: Number of projects per page
+            tool_ids: Filter to projects with ANY of these tools (OR logic)
+            category_ids: Filter to projects with ANY of these categories (OR logic)
+            topic_names: Filter to projects with ANY of these topics (OR logic)
 
         Returns:
             Dict with 'projects' list and 'metadata'
         """
         if user and self.has_onboarding_responses(user):
-            return self._get_onboarding_based_feed(user, page, page_size)
+            return self._get_onboarding_based_feed(user, page, page_size, tool_ids, category_ids, topic_names)
 
-        return self._get_popular_feed(page, page_size)
+        return self._get_popular_feed(page, page_size, tool_ids, category_ids, topic_names)
 
     def _get_onboarding_based_feed(
         self,
         user: 'User',
         page: int,
         page_size: int,
+        tool_ids: list[int] | None = None,
+        category_ids: list[int] | None = None,
+        topic_names: list[str] | None = None,
     ) -> dict:
         """Get feed based on onboarding quiz responses."""
         from core.projects.models import Project
@@ -147,6 +156,14 @@ class ColdStartService:
             if category_preferences:
                 query = query.filter(categories__name__in=category_preferences)
 
+            # Apply explicit filters if provided (override onboarding preferences)
+            if tool_ids:
+                query = query.filter(tools__id__in=tool_ids)
+            if category_ids:
+                query = query.filter(categories__id__in=category_ids)
+            if topic_names:
+                query = query.filter(topics__overlap=topic_names)
+
             # Order by newest first, then popularity
             projects = (
                 query.annotate(like_count=Count('likes'))
@@ -171,13 +188,25 @@ class ColdStartService:
                     'algorithm': 'onboarding_preferences',
                     'tool_preferences': tool_preferences,
                     'category_preferences': category_preferences,
+                    'filters_applied': {
+                        'tool_ids': tool_ids,
+                        'category_ids': category_ids,
+                        'topic_names': topic_names,
+                    },
                 },
             }
 
         except ImportError:
-            return self._get_popular_feed(page, page_size)
+            return self._get_popular_feed(page, page_size, tool_ids, category_ids, topic_names)
 
-    def _get_popular_feed(self, page: int, page_size: int) -> dict:
+    def _get_popular_feed(
+        self,
+        page: int,
+        page_size: int,
+        tool_ids: list[int] | None = None,
+        category_ids: list[int] | None = None,
+        topic_names: list[str] | None = None,
+    ) -> dict:
         """Get feed for cold-start users.
 
         Shows newest projects first to ensure fresh content appears at the top,
@@ -190,13 +219,23 @@ class ColdStartService:
 
         # Sort by newest first, then by like count for projects of similar age
         # This ensures fresh, new projects appear at the top
+        queryset = Project.objects.filter(
+            is_private=False,
+            is_archived=False,
+        )
+
+        # Apply filters if provided (OR logic)
+        if tool_ids:
+            queryset = queryset.filter(tools__id__in=tool_ids)
+        if category_ids:
+            queryset = queryset.filter(categories__id__in=category_ids)
+        if topic_names:
+            queryset = queryset.filter(topics__overlap=topic_names)
+
         queryset = (
-            Project.objects.filter(
-                is_private=False,
-                is_archived=False,
-            )
-            .annotate(like_count=Count('likes'))
+            queryset.annotate(like_count=Count('likes'))
             .order_by('-created_at', '-like_count')
+            .distinct()
             .select_related('user')
             .prefetch_related('tools', 'categories', 'likes')
         )
@@ -224,6 +263,11 @@ class ColdStartService:
                 'page_size': page_size,
                 'total_candidates': total_count,
                 'algorithm': 'newest_first_diverse',
+                'filters_applied': {
+                    'tool_ids': tool_ids,
+                    'category_ids': category_ids,
+                    'topic_names': topic_names,
+                },
             },
         }
 

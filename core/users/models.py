@@ -150,6 +150,8 @@ class User(AbstractUser):
     lifetime_projects_created = models.IntegerField(default=0, help_text='Total projects created')
     lifetime_side_quests_completed = models.IntegerField(default=0, help_text='Total side quests completed')
     lifetime_comments_posted = models.IntegerField(default=0, help_text='Total comments posted')
+    lifetime_battles_participated = models.IntegerField(default=0, help_text='Total battles participated in')
+    lifetime_battles_won = models.IntegerField(default=0, help_text='Total battles won')
 
     # Achievement tracking
     total_achievements_unlocked = models.IntegerField(default=0, help_text='Total achievements unlocked')

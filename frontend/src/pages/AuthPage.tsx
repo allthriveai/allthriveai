@@ -296,11 +296,15 @@ export default function AuthPage() {
               </span>
             </motion.h1>
             <motion.p
-              className="text-slate-300"
+              className="text-lg text-slate-200 mb-2"
               variants={motionVariants}
             >
-              Join the community of AI creators and builders.
-              <br />
+              Create with AI anywhere. Consolidate here. Thrive together.
+            </motion.p>
+            <motion.p
+              className="text-slate-400 text-sm"
+              variants={motionVariants}
+            >
               Sign in to get started.
             </motion.p>
           </motion.div>

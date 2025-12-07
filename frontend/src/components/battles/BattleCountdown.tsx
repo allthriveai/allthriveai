@@ -95,10 +95,10 @@ export function BattleCountdown({ value, onComplete }: BattleCountdownProps) {
           <div
             className={`
               relative z-10 flex items-center justify-center
-              w-40 h-40 rounded-full
+              w-32 h-32 md:w-40 md:h-40 rounded-full
               bg-gradient-to-br from-slate-900/90 to-slate-800/90
               border-2 border-cyan-400/50
-              shadow-[0_0_60px_rgba(34,211,238,0.5),0_0_120px_rgba(34,211,238,0.3)]
+              shadow-[0_0_40px_rgba(34,211,238,0.5)] md:shadow-[0_0_60px_rgba(34,211,238,0.5),0_0_120px_rgba(34,211,238,0.3)]
             `}
           >
             <span
@@ -107,7 +107,7 @@ export function BattleCountdown({ value, onComplete }: BattleCountdownProps) {
                 font-bold text-transparent bg-clip-text
                 bg-gradient-to-r from-cyan-300 via-cyan-400 to-teal-400
                 drop-shadow-[0_0_20px_rgba(34,211,238,0.8)]
-                ${typeof displayValue === 'number' ? 'text-8xl' : 'text-5xl'}
+                ${typeof displayValue === 'number' ? 'text-6xl md:text-8xl' : 'text-4xl md:text-5xl'}
               `}
               role="timer"
               aria-live="assertive"
@@ -153,7 +153,7 @@ export function BattleCountdown({ value, onComplete }: BattleCountdownProps) {
         id="countdown-status"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="absolute bottom-1/4 text-xl text-slate-400 font-medium tracking-wider"
+        className="absolute bottom-1/4 text-base md:text-xl text-slate-400 font-medium tracking-wider"
       >
         {displayValue === 'GO!' ? 'BEGIN BATTLE!' : 'GET READY...'}
       </motion.p>

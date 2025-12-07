@@ -281,6 +281,8 @@ class ActivityInsightsService:
             'side_quest': 'Side Quests',
             'special_event': 'Special Events',
             'referral': 'Referrals',
+            'prompt_battle': 'Prompt Battles',
+            'prompt_battle_win': 'Battle Wins',
         }
 
         # Colors for visualization
@@ -296,6 +298,8 @@ class ActivityInsightsService:
             'side_quest': '#a855f7',  # purple
             'special_event': '#f97316',  # orange
             'referral': '#06b6d4',  # cyan
+            'prompt_battle': '#f43f5e',  # rose
+            'prompt_battle_win': '#fbbf24',  # yellow/gold
         }
 
         result = []

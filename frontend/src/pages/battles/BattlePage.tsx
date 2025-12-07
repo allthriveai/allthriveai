@@ -33,6 +33,8 @@ export function BattlePage() {
   const [restLoading, setRestLoading] = useState(false);
   const [restError, setRestError] = useState<string | null>(null);
   const [_revealComplete, setRevealComplete] = useState(false);
+  const [isRefreshingChallenge, setIsRefreshingChallenge] = useState(false);
+  const [localChallengeText, setLocalChallengeText] = useState<string | null>(null);
 
   const handleError = useCallback((error: string) => {
     logError('Battle error', new Error(error), {
@@ -175,6 +177,9 @@ export function BattlePage() {
       const success = submitPrompt(prompt);
       if (!success) {
         handleError('Failed to submit prompt. Please try again.');
+      } else {
+        // Scroll to top so user can see the battle status
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     },
     [submitPrompt, handleError]
@@ -198,6 +203,25 @@ export function BattlePage() {
     navigate('/');
   }, [navigate]);
 
+  // Handle challenge refresh (Pip battles only)
+  const handleRefreshChallenge = useCallback(async () => {
+    if (!battleId) return;
+
+    setIsRefreshingChallenge(true);
+    try {
+      const response = await api.post(`/me/battles/${battleId}/refresh-challenge/`);
+      const newChallenge = response.data.challenge_text;
+      setLocalChallengeText(newChallenge);
+    } catch (error) {
+      logError('Failed to refresh challenge', error as Error, {
+        component: 'BattlePage',
+        battleId,
+      });
+      handleError('Failed to refresh challenge. Please try again.');
+    } finally {
+      setIsRefreshingChallenge(false);
+    }
+  }, [battleId, handleError]);
 
   // Loading state
   if (!battleId) {
@@ -329,7 +353,7 @@ export function BattlePage() {
           <>
             {countdownValue !== null && <BattleCountdown value={countdownValue} />}
             <BattleArena
-              challengeText={battleState.challengeText}
+              challengeText={localChallengeText || battleState.challengeText}
               challengeType={battleState.challengeType}
               currentUser={currentUser}
               opponent={{
@@ -344,6 +368,9 @@ export function BattlePage() {
               hasSubmitted={!!battleState.mySubmission}
               onSubmit={handleSubmit}
               onTyping={handleTyping}
+              onRefreshChallenge={handleRefreshChallenge}
+              isRefreshingChallenge={isRefreshingChallenge}
+              isAiOpponent={battleState.matchSource === 'ai_opponent'}
             />
           </>
         );
@@ -378,6 +405,7 @@ export function BattlePage() {
             onComplete={() => setRevealComplete(true)}
             onPlayAgain={handlePlayAgain}
             onGoHome={handleGoHome}
+            challengeText={localChallengeText || battleState.challengeText}
           />
         );
 
@@ -400,6 +428,7 @@ export function BattlePage() {
             onComplete={() => setRevealComplete(true)}
             onPlayAgain={handlePlayAgain}
             onGoHome={handleGoHome}
+            challengeText={localChallengeText || battleState.challengeText}
           />
         );
 

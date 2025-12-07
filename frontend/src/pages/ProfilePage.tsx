@@ -749,7 +749,7 @@ export default function ProfilePage() {
             />
 
             {/* Tab Navigation for Showcase */}
-            <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <div className="border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center space-x-1 overflow-x-auto py-2">
                   {tabs.map((tab) => {

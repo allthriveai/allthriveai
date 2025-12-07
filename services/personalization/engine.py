@@ -156,6 +156,9 @@ class PersonalizationEngine:
         page: int = 1,
         page_size: int = 20,
         exclude_project_ids: list[int] | None = None,
+        tool_ids: list[int] | None = None,
+        category_ids: list[int] | None = None,
+        topic_names: list[str] | None = None,
     ) -> dict:
         """
         Get personalized "For You" feed for a user.
@@ -165,6 +168,9 @@ class PersonalizationEngine:
             page: Page number (1-indexed)
             page_size: Number of projects per page
             exclude_project_ids: Project IDs to exclude (e.g., already shown)
+            tool_ids: Filter to projects with ANY of these tools (OR logic)
+            category_ids: Filter to projects with ANY of these categories (OR logic)
+            topic_names: Filter to projects with ANY of these topics (OR logic)
 
         Returns:
             Dict with 'projects' list and 'metadata'
@@ -179,14 +185,18 @@ class PersonalizationEngine:
 
             if not user_vector:
                 logger.info(f'No user vector for {user.id}, falling back to popular')
-                return self._get_popular_fallback(page, page_size, exclude_project_ids)
+                return self._get_popular_fallback(
+                    page, page_size, exclude_project_ids, tool_ids, category_ids, topic_names
+                )
 
             # Step 2: Get candidate projects from Weaviate
             candidates = self._get_vector_candidates(user_vector, exclude_project_ids)
 
             if not candidates:
                 logger.info(f'No Weaviate candidates for {user.id}, falling back to popular')
-                return self._get_popular_fallback(page, page_size, exclude_project_ids)
+                return self._get_popular_fallback(
+                    page, page_size, exclude_project_ids, tool_ids, category_ids, topic_names
+                )
 
             # Step 3: Score all candidates
             # Pass user_vector to avoid redundant computation in collaborative filtering
@@ -195,14 +205,19 @@ class PersonalizationEngine:
             # Step 4: Apply diversity boost
             scored_projects = self._apply_diversity_boost(scored_projects)
 
-            # Step 5: Sort by total score and paginate
+            # Step 5: Sort by total score
             scored_projects.sort(key=lambda x: x.total_score, reverse=True)
 
+            # Step 6: Apply filters if provided (before pagination)
+            if tool_ids or category_ids or topic_names:
+                scored_projects = self._apply_filters(scored_projects, tool_ids, category_ids, topic_names)
+
+            # Step 7: Paginate
             start_idx = (page - 1) * page_size
             end_idx = start_idx + page_size
             page_results = scored_projects[start_idx:end_idx]
 
-            # Step 6: Get Django Project objects
+            # Step 8: Get Django Project objects
             project_ids = [sp.project_id for sp in page_results]
             projects = (
                 Project.objects.filter(id__in=project_ids)
@@ -215,11 +230,18 @@ class PersonalizationEngine:
             ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
 
             # Get true total count from database for pagination
-            # (Weaviate candidates are limited, but we want endless scroll)
-            total_available = Project.objects.filter(
+            # Account for filters in the count
+            total_query = Project.objects.filter(
                 is_private=False,
                 is_archived=False,
-            ).count()
+            )
+            if tool_ids:
+                total_query = total_query.filter(tools__id__in=tool_ids)
+            if category_ids:
+                total_query = total_query.filter(categories__id__in=category_ids)
+            if topic_names:
+                total_query = total_query.filter(topics__overlap=topic_names)
+            total_available = total_query.distinct().count()
 
             return {
                 'projects': ordered_projects,
@@ -230,12 +252,17 @@ class PersonalizationEngine:
                     'weaviate_candidates': len(scored_projects),
                     'algorithm': 'hybrid_personalization',
                     'scores': [sp.to_dict() for sp in page_results],
+                    'filters_applied': {
+                        'tool_ids': tool_ids,
+                        'category_ids': category_ids,
+                        'topic_names': topic_names,
+                    },
                 },
             }
 
         except Exception as e:
             logger.error(f'Personalization error for user {user.id}: {e}', exc_info=True)
-            return self._get_popular_fallback(page, page_size, exclude_project_ids)
+            return self._get_popular_fallback(page, page_size, exclude_project_ids, tool_ids, category_ids, topic_names)
 
     def _get_user_vector(self, user: 'User') -> list[float] | None:
         """Get user's preference vector from Weaviate or generate it."""
@@ -633,22 +660,76 @@ class PersonalizationEngine:
 
         return scored_projects
 
+    def _apply_filters(
+        self,
+        scored_projects: list[ScoredProject],
+        tool_ids: list[int] | None,
+        category_ids: list[int] | None,
+        topic_names: list[str] | None,
+    ) -> list[ScoredProject]:
+        """
+        Filter scored projects by tools, categories, and topics (OR logic).
+
+        Projects must match ANY of the selected filters.
+        """
+        from core.projects.models import Project
+
+        if not scored_projects:
+            return scored_projects
+
+        project_ids = [sp.project_id for sp in scored_projects]
+
+        # Build query to get projects that match filters
+        query = Project.objects.filter(id__in=project_ids)
+
+        # Apply OR logic filters - projects matching ANY filter are included
+        if tool_ids:
+            query = query.filter(tools__id__in=tool_ids)
+        if category_ids:
+            query = query.filter(categories__id__in=category_ids)
+        if topic_names:
+            query = query.filter(topics__overlap=topic_names)
+
+        matching_ids = set(query.distinct().values_list('id', flat=True))
+
+        # Filter scored_projects to only those matching filters
+        filtered = [sp for sp in scored_projects if sp.project_id in matching_ids]
+
+        logger.debug(
+            f'Applied filters: {len(scored_projects)} -> {len(filtered)} projects '
+            f'(tools={tool_ids}, categories={category_ids}, topics={topic_names})'
+        )
+
+        return filtered
+
     def _get_popular_fallback(
         self,
         page: int,
         page_size: int,
         exclude_ids: list[int],
+        tool_ids: list[int] | None = None,
+        category_ids: list[int] | None = None,
+        topic_names: list[str] | None = None,
     ) -> dict:
         """Fallback to popular projects when personalization fails."""
         from core.projects.models import Project
 
         # Note: Don't filter by is_published to include playground projects in explore
         # Sort by newest first to show fresh content
+        projects = Project.objects.filter(is_private=False, is_archived=False).exclude(id__in=exclude_ids)
+
+        # Apply filters if provided (OR logic)
+        if tool_ids:
+            projects = projects.filter(tools__id__in=tool_ids)
+        if category_ids:
+            projects = projects.filter(categories__id__in=category_ids)
+        if topic_names:
+            projects = projects.filter(topics__overlap=topic_names)
+
         projects = (
-            Project.objects.filter(is_private=False, is_archived=False)
-            .exclude(id__in=exclude_ids)
-            .annotate(like_count=Count('likes'))
+            projects.annotate(like_count=Count('likes'))
             .order_by('-created_at', '-like_count')
+            .distinct()
             .select_related('user')
             .prefetch_related('tools', 'categories', 'likes')
         )
@@ -666,5 +747,10 @@ class PersonalizationEngine:
                 'page_size': page_size,
                 'total_candidates': total_count,
                 'algorithm': 'popular_fallback',
+                'filters_applied': {
+                    'tool_ids': tool_ids,
+                    'category_ids': category_ids,
+                    'topic_names': topic_names,
+                },
             },
         }

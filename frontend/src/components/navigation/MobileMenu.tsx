@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { XMarkIcon, ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ChevronDownIcon, PlusIcon, BoltIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { MenuSection, MenuItem } from './menuData';
 
@@ -74,19 +74,34 @@ export function MobileMenu({ isOpen, onClose, menuSections, onMenuClick, onAddPr
           </button>
         </div>
 
-        {/* Add Project Button */}
-        {isAuthenticated && user?.username && onAddProject && (
-          <div className="relative p-4 border-b border-white/20 dark:border-white/10">
+        {/* Action Buttons */}
+        {isAuthenticated && user?.username && (
+          <div className="relative p-4 border-b border-white/20 dark:border-white/10 space-y-3">
+            {/* Prompt Battle Button */}
             <button
               onClick={() => {
-                onAddProject();
+                navigate('/battles');
                 onClose();
               }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-400 hover:to-blue-400 text-white rounded-xl transition-all duration-300 hover:scale-[1.02] font-medium shadow-lg shadow-teal-500/30 border border-white/20"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white rounded-xl transition-all duration-300 hover:scale-[1.02] font-medium shadow-lg shadow-pink-500/30 border border-white/20"
             >
-              <PlusIcon className="w-5 h-5" />
-              Add Project
+              <BoltIcon className="w-5 h-5" />
+              Prompt Battle
             </button>
+
+            {/* Add Project Button */}
+            {onAddProject && (
+              <button
+                onClick={() => {
+                  onAddProject();
+                  onClose();
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-400 hover:to-blue-400 text-white rounded-xl transition-all duration-300 hover:scale-[1.02] font-medium shadow-lg shadow-teal-500/30 border border-white/20"
+              >
+                <PlusIcon className="w-5 h-5" />
+                Add Project
+              </button>
+            )}
           </div>
         )}
 

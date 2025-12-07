@@ -329,6 +329,18 @@ companies:
     headquarters: San Francisco, CA
     twitter_handle: lovable_dev
 
+  - name: Base44
+    tagline: Build apps with AI in minutes
+    description: >
+      Base44 is an AI-powered no-code platform that transforms ideas into fully-functional
+      apps in minutes. Includes automatic backend generation with authentication, data
+      persistence, and role-based permissions. Built-in hosting for instant deployment.
+      No coding necessary.
+    website_url: https://base44.com
+    logo_url: /logos/base44.png
+    founded_year: 2024
+    headquarters: United States
+
   - name: GitLab
     tagline: The complete DevSecOps platform
     description: >
@@ -1925,6 +1937,51 @@ tools:
       - date: '2025-11-10'
         title: Template Marketplace Expansion
         description: 50+ new templates added including SaaS dashboards and admin panels.
+
+  - name: Base44
+    company: Base44
+    tagline: Create apps at the speed of thought
+    description: >
+      AI-powered no-code platform at base44.com that transforms ideas into fully-functional
+      apps in minutes. Tell Base44 your idea and watch it create complete applications with
+      all necessary components, pages, flows, and features. Automatic backend generation
+      includes user authentication, data persistence, and role-based permissions. Built-in
+      hosting for instant publishing. No coding required—just describe what you want to build.
+    category: code
+    tool_type: ai_tool
+    website_url: https://base44.com
+    logo_url: /logos/base44.png
+    pricing_model: freemium
+    has_free_tier: true
+    tags:
+      - No-Code
+      - AI Builder
+      - App Development
+      - Productivity
+      - Full-Stack
+    key_features:
+      - title: Natural Language App Creation
+        description: Describe your idea in plain language and watch it become a working app
+      - title: Automatic Backend Generation
+        description: Authentication, data storage, and permissions built automatically
+      - title: Built-in Hosting
+        description: Apps are hosted and ready to publish instantly
+      - title: Complete Feature Set
+        description: All necessary components, pages, flows, and features generated automatically
+      - title: No Coding Required
+        description: Build production-ready apps without writing a single line of code
+    usage_tips:
+      - Clearly describe your app's purpose and key features
+      - Start with a simple concept and iterate
+      - Use Base44 for rapid prototyping and MVPs
+      - Great for non-technical founders and entrepreneurs
+      - Perfect for productivity tools and internal apps
+    best_practices:
+      - Begin with a clear vision of your app's functionality
+      - Focus on user flows when describing your idea
+      - Test your app thoroughly before sharing publicly
+      - Leverage the automatic backend for common features
+      - Use for quick validation of product ideas
 
   - name: GitLab
     company: GitLab

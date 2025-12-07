@@ -151,6 +151,27 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = self.get_serializer(battle)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], url_path='refresh-challenge')
+    def refresh_challenge(self, request, pk=None):
+        """Refresh the challenge prompt (Pip battles only, before submission)."""
+        battle = self.get_object()
+
+        battle_service = BattleService()
+        new_challenge = battle_service.refresh_challenge(battle, request.user)
+
+        if new_challenge is None:
+            return Response(
+                {'error': 'Cannot refresh challenge. Only available for Pip battles before you submit.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                'challenge_text': new_challenge,
+                'message': 'Challenge refreshed!',
+            }
+        )
+
     @action(detail=True, methods=['post'])
     def save_to_profile(self, request, pk=None):
         """Save battle result as a project on user's profile."""

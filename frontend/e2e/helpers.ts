@@ -35,6 +35,34 @@ export async function waitForAuth(page: Page, timeoutMs = 10000) {
 }
 
 /**
+ * Dismiss the Ember onboarding modal by setting localStorage keys
+ * This prevents the modal from blocking E2E test interactions.
+ * Must be called after login when we know the user ID.
+ */
+export async function dismissOnboardingModal(page: Page, userId?: number | string) {
+  await page.evaluate((uid) => {
+    // If we have a user ID, set the user-specific Ember onboarding key
+    if (uid) {
+      const emberState = {
+        hasSeenModal: true,
+        completedAdventures: ['battle_pip', 'add_project', 'explore'],
+        isDismissed: true,
+        welcomePointsAwarded: true,
+      };
+      localStorage.setItem(`ember_onboarding_${uid}`, JSON.stringify(emberState));
+    }
+
+    // Also set the legacy keys for backwards compatibility
+    localStorage.setItem('allthrive_onboarding_dismissed', 'true');
+    localStorage.setItem('allthrive_onboarding_completed_adventures', JSON.stringify([
+      'welcome',
+      'personalize',
+      'first_project'
+    ]));
+  }, userId);
+}
+
+/**
  * Login via test API endpoint from within page context
  * This ensures cookies are properly set in the browser
  */
@@ -65,7 +93,7 @@ export async function loginViaAPI(page: Page) {
       }
 
       const data = await response.json();
-      return { success: true, username: data.data?.username };
+      return { success: true, username: data.data?.username, userId: data.data?.id };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -75,10 +103,16 @@ export async function loginViaAPI(page: Page) {
     throw new Error(`Login failed: ${loginResult.error}`);
   }
 
-  console.log(`✓ Logged in as: ${loginResult.username}`);
+  console.log(`✓ Logged in as: ${loginResult.username} (ID: ${loginResult.userId})`);
+
+  // Dismiss onboarding modal with user ID to set correct localStorage key
+  await dismissOnboardingModal(page, loginResult.userId);
 
   // Reload to initialize AuthContext with the new cookies
   await page.reload({ waitUntil: 'domcontentloaded' });
+
+  // Re-dismiss onboarding modal after reload (localStorage persists, but ensure it's set)
+  await dismissOnboardingModal(page, loginResult.userId);
   await page.waitForTimeout(1500);
 }
 
