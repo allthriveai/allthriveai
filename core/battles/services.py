@@ -136,8 +136,8 @@ class BattleService:
             logger.warning(f'User {user.id} tried to refresh after submitting')
             return None
 
-        # Can't refresh if battle is not in waiting/countdown phase
-        if battle.phase not in [BattlePhase.WAITING, BattlePhase.COUNTDOWN]:
+        # Can't refresh if battle is not in waiting/countdown/active phase
+        if battle.phase not in [BattlePhase.WAITING, BattlePhase.COUNTDOWN, BattlePhase.ACTIVE]:
             logger.warning(f'Refresh attempted on battle {battle.id} in phase {battle.phase}')
             return None
 
@@ -147,12 +147,14 @@ class BattleService:
         else:
             return None
 
-        # Update battle with new challenge
+        # Update battle with new challenge and reset timer
         battle.challenge_text = new_challenge
-        battle.save(update_fields=['challenge_text'])
+        battle.started_at = timezone.now()
+        battle.expires_at = battle.started_at + timezone.timedelta(minutes=battle.duration_minutes)
+        battle.save(update_fields=['challenge_text', 'started_at', 'expires_at'])
 
         logger.info(
-            f'Challenge refreshed for battle {battle.id}',
+            f'Challenge refreshed for battle {battle.id}, timer reset to {battle.duration_minutes} minutes',
             extra={'battle_id': battle.id, 'user_id': user.id},
         )
 

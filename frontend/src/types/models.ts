@@ -52,6 +52,8 @@ export interface User {
   currentStatus?: string;
   totalAchievementsUnlocked?: number;
   lifetimeProjectsCreated?: number;
+  // Guest user flag
+  isGuest?: boolean;
 }
 
 // Authentication state

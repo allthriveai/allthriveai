@@ -1,0 +1,361 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AllThrive AI - CloudFront Distribution'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+    Description: Environment name for resource tagging
+
+  DomainName:
+    Type: String
+    Default: ''
+    Description: Custom domain name (e.g., allthrive.ai)
+
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: ACM Certificate ARN (must be in us-east-1 for CloudFront)
+
+  PriceClass:
+    Type: String
+    Default: PriceClass_100
+    AllowedValues:
+      - PriceClass_100
+      - PriceClass_200
+      - PriceClass_All
+    Description: CloudFront price class
+
+Conditions:
+  HasCustomDomain: !Not [!Equals [!Ref DomainName, '']]
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, '']]
+  UseCustomDomain: !And [!Condition HasCustomDomain, !Condition HasCertificate]
+
+Resources:
+  # CloudFront Distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub AllThrive AI ${EnvironmentName} Distribution
+        DefaultRootObject: index.html
+        PriceClass: !Ref PriceClass
+        HttpVersion: http2and3
+        IPV6Enabled: true
+
+        # Custom domain configuration
+        Aliases: !If
+          - UseCustomDomain
+          - - !Ref DomainName
+            - !Sub www.${DomainName}
+          - !Ref AWS::NoValue
+
+        ViewerCertificate: !If
+          - UseCustomDomain
+          - AcmCertificateArn: !Ref CertificateArn
+            MinimumProtocolVersion: TLSv1.2_2021
+            SslSupportMethod: sni-only
+          - CloudFrontDefaultCertificate: true
+
+        Origins:
+          # Frontend S3 Origin
+          - Id: S3FrontendOrigin
+            DomainName: !ImportValue
+              Fn::Sub: ${EnvironmentName}-FrontendBucketDomainName
+            OriginAccessControlId: !ImportValue
+              Fn::Sub: ${EnvironmentName}-FrontendOACId
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+
+          # ALB Backend Origin
+          - Id: ALBBackendOrigin
+            DomainName: !ImportValue
+              Fn::Sub: ${EnvironmentName}-ALBDNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+              OriginReadTimeout: 60
+              OriginKeepaliveTimeout: 60
+
+          # Media S3 Origin
+          - Id: S3MediaOrigin
+            DomainName: !ImportValue
+              Fn::Sub: ${EnvironmentName}-MediaBucketDomainName
+            OriginAccessControlId: !ImportValue
+              Fn::Sub: ${EnvironmentName}-MediaOACId
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+
+        # Default behavior (Frontend)
+        DefaultCacheBehavior:
+          TargetOriginId: S3FrontendOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          CachePolicyId: !Ref FrontendCachePolicy
+          OriginRequestPolicyId: !Ref FrontendOriginRequestPolicy
+          ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
+
+        CacheBehaviors:
+          # API Behavior
+          - PathPattern: '/api/*'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            # Use AWS managed CachingDisabled policy (caching disabled for API)
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: !Ref APIOriginRequestPolicy
+
+          # WebSocket Behavior
+          - PathPattern: '/ws/*'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+            # Use AWS managed CachingDisabled policy (no caching for WebSockets)
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: !Ref WebSocketOriginRequestPolicy
+
+          # Media Files Behavior
+          - PathPattern: '/media/*'
+            TargetOriginId: S3MediaOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            CachePolicyId: !Ref MediaCachePolicy
+            OriginRequestPolicyId: !Ref MediaOriginRequestPolicy
+
+          # Admin Behavior (no caching)
+          - PathPattern: '/admin/*'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+            # Use AWS managed CachingDisabled policy (caching disabled for API)
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: !Ref APIOriginRequestPolicy
+
+        # Custom Error Responses (for SPA routing)
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 10
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 10
+
+        # Logging (optional)
+        # Logging:
+        #   Bucket: !Sub ${LoggingBucket}.s3.amazonaws.com
+        #   Prefix: cloudfront/
+
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-distribution
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # Cache Policies
+  FrontendCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub ${EnvironmentName}-allthrive-frontend-cache
+        Comment: Cache policy for frontend static assets
+        DefaultTTL: 86400
+        MaxTTL: 31536000
+        MinTTL: 1
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  # Note: API and WebSocket behaviors use AWS managed CachingDisabled policy
+  # Policy ID: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+
+  MediaCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub ${EnvironmentName}-allthrive-media-cache
+        Comment: Cache policy for media files
+        DefaultTTL: 604800
+        MaxTTL: 31536000
+        MinTTL: 86400
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  # Origin Request Policies
+  FrontendOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub ${EnvironmentName}-allthrive-frontend-origin
+        Comment: Origin request policy for frontend
+        CookiesConfig:
+          CookieBehavior: none
+        HeadersConfig:
+          HeaderBehavior: none
+        QueryStringsConfig:
+          QueryStringBehavior: none
+
+  APIOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub ${EnvironmentName}-allthrive-api-origin
+        Comment: Origin request policy for API
+        CookiesConfig:
+          CookieBehavior: all
+        HeadersConfig:
+          HeaderBehavior: allViewerAndWhitelistCloudFront
+          Headers:
+            - CloudFront-Forwarded-Proto
+            - CloudFront-Is-Desktop-Viewer
+            - CloudFront-Is-Mobile-Viewer
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
+  WebSocketOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub ${EnvironmentName}-allthrive-websocket-origin
+        Comment: Origin request policy for WebSocket
+        CookiesConfig:
+          CookieBehavior: all
+        HeadersConfig:
+          HeaderBehavior: allViewer
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
+  MediaOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub ${EnvironmentName}-allthrive-media-origin
+        Comment: Origin request policy for media
+        CookiesConfig:
+          CookieBehavior: none
+        HeadersConfig:
+          HeaderBehavior: none
+        QueryStringsConfig:
+          QueryStringBehavior: none
+
+  # Security Headers Policy
+  SecurityHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub ${EnvironmentName}-allthrive-security-headers
+        Comment: Security headers for AllThrive AI
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.stripe.com https://*.posthog.com wss://*; frame-src https://js.stripe.com https://www.google.com;"
+            Override: true
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: strict-origin-when-cross-origin
+            Override: true
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Override: true
+            Preload: true
+          XSSProtection:
+            ModeBlock: true
+            Override: true
+            Protection: true
+
+Outputs:
+  CloudFrontDistributionId:
+    Description: CloudFront Distribution ID
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub ${EnvironmentName}-CloudFrontDistributionId
+
+  CloudFrontDomainName:
+    Description: CloudFront Domain Name
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub ${EnvironmentName}-CloudFrontDomainName
+
+  CloudFrontURL:
+    Description: CloudFront URL
+    Value: !Sub https://${CloudFrontDistribution.DomainName}
+    Export:
+      Name: !Sub ${EnvironmentName}-CloudFrontURL
+
+  CustomDomainURL:
+    Description: Custom Domain URL (if configured)
+    Condition: UseCustomDomain
+    Value: !Sub https://${DomainName}
+    Export:
+      Name: !Sub ${EnvironmentName}-CustomDomainURL

@@ -208,6 +208,19 @@ class User(AbstractUser):
         help_text='Allow receiving battle invitations via SMS',
     )
 
+    # Guest user support for battle invitations
+    is_guest = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Temporary guest user created for battle invitation. Can be converted to full account.',
+    )
+    guest_token = models.CharField(
+        max_length=64,
+        blank=True,
+        db_index=True,
+        help_text='Unique token for guest user session authentication',
+    )
+
     class Meta:
         ordering = ['-date_joined']
         indexes = [
@@ -311,6 +324,11 @@ class User(AbstractUser):
     @property
     def is_vendor(self):
         return self.role == UserRole.VENDOR
+
+    @property
+    def is_guest_user(self):
+        """Check if this is a temporary guest user."""
+        return self.is_guest
 
     def has_role_permission(self, required_role: str) -> bool:
         """Check if user has at least the required role level."""

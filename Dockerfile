@@ -16,7 +16,17 @@ RUN apt-get update \
         libpq-dev \
         netcat-traditional \
         ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+        libpq5 \
+        ffmpeg \
+        ca-certificates \
+        curl \
+        openssl \
+        postgresql-client \
+        redis \
+        aws-cli \
+        && update-ca-certificates \
+        && curl -fsSL https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem -o /etc/ssl/certs/rds-us-east-1-bundle.pem \
+        && rm -rf /var/lib/apt/lists/*
 
 # Install yt-dlp for Reddit video downloading
 RUN pip install --no-cache-dir yt-dlp

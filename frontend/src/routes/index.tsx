@@ -40,6 +40,8 @@ import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
 import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
 import ExtensionPage from '@/pages/ExtensionPage';
 import PitchDeckPage from '@/pages/PitchDeckPage';
+import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
+import TermsOfServicePage from '@/pages/TermsOfServicePage';
 
 export function AppRoutes() {
   return (
@@ -124,6 +126,10 @@ export function AppRoutes() {
 
       {/* Pricing - public route */}
       <Route path="/pricing" element={<PricingPage />} />
+
+      {/* Legal pages - public routes */}
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      <Route path="/terms" element={<TermsOfServicePage />} />
 
       {/* Pitch deck - public route with password gate */}
       <Route path="/pitch" element={<PitchDeckPage />} />

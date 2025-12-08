@@ -616,3 +616,34 @@ def cleanup_stale_battles() -> dict[str, Any]:
         logger.info(f'Cleaned up stale battles: {results}')
 
     return {'status': 'success', **results}
+
+
+@shared_task(
+    time_limit=120,
+    soft_time_limit=90,
+)
+def cleanup_expired_guest_accounts(days_old: int = 7) -> dict[str, Any]:
+    """
+    Clean up expired guest accounts that weren't converted to full accounts.
+
+    Guest accounts are created when users accept battle invitations without
+    logging in. If they don't convert their account within the specified
+    number of days, the account is deleted.
+
+    Should be run periodically (e.g., daily) via Celery Beat.
+
+    Args:
+        days_old: Number of days after which to delete guest accounts (default: 7)
+
+    Returns:
+        Dict with cleanup results
+    """
+    from services.auth import GuestUserService
+
+    try:
+        deleted_count = GuestUserService.cleanup_expired_guests(days_old=days_old)
+        logger.info(f'Cleaned up {deleted_count} expired guest accounts (older than {days_old} days)')
+        return {'status': 'success', 'deleted_count': deleted_count}
+    except Exception as e:
+        logger.error(f'Error cleaning up guest accounts: {e}', exc_info=True)
+        return {'status': 'error', 'reason': str(e)}

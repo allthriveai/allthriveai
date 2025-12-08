@@ -224,7 +224,7 @@ function LandingPageContent() {
 
       <main id="main-content" className="min-h-screen bg-[#020617] text-white overflow-x-hidden">
         {/* Section 1: Hero with CTA */}
-        <HeroSection onRequestInvite={handleRequestInvite} />
+        <HeroSection onRequestInvite={handleRequestInvite} isModalOpen={isModalOpen} />
 
         {/* Section 2: Automated Profile Creation */}
         <AutomatedProfile />

@@ -20,6 +20,7 @@ import {
   BattleArena,
   BattleCountdown,
   GeneratingPhase,
+  GuestSignupModal,
   JudgingReveal,
   WaitingForOpponent,
   type PlayerStatus,
@@ -35,6 +36,11 @@ export function BattlePage() {
   const [_revealComplete, setRevealComplete] = useState(false);
   const [isRefreshingChallenge, setIsRefreshingChallenge] = useState(false);
   const [localChallengeText, setLocalChallengeText] = useState<string | null>(null);
+  const [localTimeRemaining, setLocalTimeRemaining] = useState<number | null>(null);
+  const [showGuestSignupModal, setShowGuestSignupModal] = useState(false);
+
+  // Check if user is a guest
+  const isGuestUser = user?.isGuest ?? false;
 
   const handleError = useCallback((error: string) => {
     logError('Battle error', new Error(error), {
@@ -155,6 +161,25 @@ export function BattlePage() {
   // Use WebSocket state if available, otherwise fallback to REST
   const battleState = wsBattleState || restBattleState;
 
+  // Show guest signup modal when battle completes for guest users
+  useEffect(() => {
+    if (isGuestUser && battleState?.phase === 'complete') {
+      // Delay showing modal to let the reveal animation finish
+      const timer = setTimeout(() => {
+        setShowGuestSignupModal(true);
+      }, 5000); // Show after 5 seconds to let user see results
+      return () => clearTimeout(timer);
+    }
+  }, [isGuestUser, battleState?.phase]);
+
+  // Determine battle result for guest signup modal
+  const battleResult = useMemo(() => {
+    if (!battleState || !user) return undefined;
+    if (battleState.winnerId === user.id) return 'win' as const;
+    if (battleState.winnerId === null) return 'tie' as const;
+    return 'loss' as const;
+  }, [battleState, user]);
+
   // Map backend opponent status to component status
   const mappedOpponentStatus: PlayerStatus = useMemo(() => {
     if (opponentStatus === 'typing') return 'typing';
@@ -210,8 +235,11 @@ export function BattlePage() {
     setIsRefreshingChallenge(true);
     try {
       const response = await api.post(`/me/battles/${battleId}/refresh-challenge/`);
-      const newChallenge = response.data.challenge_text;
+      // API interceptor transforms snake_case to camelCase
+      const newChallenge = response.data.challengeText;
+      const newTimeRemaining = response.data.timeRemaining;
       setLocalChallengeText(newChallenge);
+      setLocalTimeRemaining(newTimeRemaining);
     } catch (error) {
       logError('Failed to refresh challenge', error as Error, {
         component: 'BattlePage',
@@ -364,7 +392,7 @@ export function BattlePage() {
               }}
               currentUserStatus={myStatus}
               opponentStatus={mappedOpponentStatus}
-              timeRemaining={battleState.timeRemaining}
+              timeRemaining={localTimeRemaining ?? battleState.timeRemaining}
               hasSubmitted={!!battleState.mySubmission}
               onSubmit={handleSubmit}
               onTyping={handleTyping}
@@ -444,6 +472,17 @@ export function BattlePage() {
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-background">{renderPhaseContent()}</div>
+
+      {/* Guest signup modal - shown after battle completes for guest users */}
+      <GuestSignupModal
+        isOpen={showGuestSignupModal}
+        onClose={() => setShowGuestSignupModal(false)}
+        onSuccess={() => {
+          // User converted to full account
+          setShowGuestSignupModal(false);
+        }}
+        battleResult={battleResult}
+      />
     </DashboardLayout>
   );
 }

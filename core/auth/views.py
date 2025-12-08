@@ -7,6 +7,7 @@ from csp.decorators import csp_exempt
 from django.conf import settings
 from django.core.cache import cache
 from django.shortcuts import redirect
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, status
@@ -623,4 +624,121 @@ def delete_account(request):
         logger.error(f'Unexpected error deleting account for user {request.user.id}: {e}')
         return Response(
             {'success': False, 'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# =============================================================================
+# Guest Account Management
+# =============================================================================
+
+
+@ratelimit(key='ip', rate='10/h', method='POST', block=True)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def convert_guest_account(request):
+    """
+    Convert a guest account to a full account.
+
+    This endpoint allows users who joined via SMS battle invitation
+    to claim their account by providing email and password.
+
+    Required POST data:
+        email: Valid email address
+        password: Password (min 8 characters)
+        username: Optional username (generated from email if not provided)
+
+    Returns:
+        200: Account converted successfully with new auth tokens
+        400: Validation error or user is not a guest
+        409: Email or username already in use
+    """
+    from services.auth import GuestUserService, set_auth_cookies
+
+    user = request.user
+
+    # Verify user is a guest
+    if not user.is_guest:
+        return Response(
+            {'success': False, 'error': 'This account is already a full account.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    email = request.data.get('email', '').strip()
+    password = request.data.get('password', '')
+    username = request.data.get('username', '').strip() or None
+
+    # Validate required fields
+    if not email:
+        return Response(
+            {'success': False, 'error': 'Email is required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not password or len(password) < 8:
+        return Response(
+            {'success': False, 'error': 'Password must be at least 8 characters.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Validate email format
+    from django.core.exceptions import ValidationError as DjangoValidationError
+    from django.core.validators import validate_email
+
+    try:
+        validate_email(email)
+    except DjangoValidationError:
+        return Response(
+            {'success': False, 'error': 'Please enter a valid email address.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        # Convert guest to full account
+        updated_user = GuestUserService.convert_to_full_account(
+            guest_user=user,
+            email=email,
+            password=password,
+            username=username,
+        )
+
+        # Log the conversion for analytics tracking
+        UserAuditLog.log_action(
+            user=updated_user,
+            action=UserAuditLog.Action.GUEST_CONVERTED,
+            request=request,
+            details={
+                'new_email': email,
+                'new_username': updated_user.username,
+                'time_as_guest_hours': (timezone.now() - updated_user.date_joined).total_seconds() / 3600,
+            },
+            success=True,
+        )
+
+        # Return updated user data with new auth tokens
+        serializer = UserSerializer(updated_user, context={'request': request})
+        response = Response(
+            {
+                'success': True,
+                'message': 'Account successfully converted!',
+                'data': serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+        # Set new auth cookies
+        return set_auth_cookies(response, updated_user)
+
+    except ValueError as e:
+        # Handle duplicate email/username errors
+        error_message = str(e)
+        status_code = status.HTTP_409_CONFLICT if 'already' in error_message.lower() else status.HTTP_400_BAD_REQUEST
+        return Response(
+            {'success': False, 'error': error_message},
+            status=status_code,
+        )
+    except Exception as e:
+        logger.error(f'Unexpected error converting guest account for user {user.id}: {e}')
+        return Response(
+            {'success': False, 'error': 'An unexpected error occurred. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

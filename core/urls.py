@@ -11,6 +11,7 @@ from .agents.project_chat_views import project_chat_stream_v2
 from .agents.views import ConversationViewSet, CreateProjectFromImageView, MessageViewSet, detect_intent
 from .auth.views import (
     UserProfileView,
+    convert_guest_account,
     csrf_token,
     current_user,
     deactivate_account,
@@ -32,6 +33,7 @@ from .battles.views import (
     battle_leaderboard,
     battle_stats,
     expire_battles,
+    generate_battle_link,
     get_invitation_by_token,
     get_user_battles,
 )
@@ -255,6 +257,7 @@ urlpatterns = [
     path('me/interactions/', track_interaction, name='track_interaction'),
     path('me/account/deactivate/', deactivate_account, name='deactivate_account'),
     path('me/account/delete/', delete_account, name='delete_account'),
+    path('me/account/convert-guest/', convert_guest_account, name='convert_guest_account'),
     path('me/', include(me_router.urls)),
     # Learning paths endpoints
     path('', include('core.learning_paths.urls')),
@@ -308,6 +311,8 @@ urlpatterns = [
         BattleInvitationViewSet.as_view({'post': 'send_sms'}),
         name='battle_invitation_send_sms',
     ),
+    # Shareable link generation (no SMS)
+    path('battles/invitations/generate-link/', generate_battle_link, name='generate_battle_link'),
     path('battles/invite/<str:token>/', get_invitation_by_token, name='invitation_by_token'),
     path('battles/invite/<str:token>/accept/', accept_invitation_by_token, name='accept_invitation_by_token'),
     # Weekly challenges endpoints

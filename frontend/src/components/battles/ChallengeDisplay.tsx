@@ -63,7 +63,7 @@ export function ChallengeDisplay({
       >
         {/* Background glow effect */}
         <div
-          className="absolute inset-0 opacity-30"
+          className="absolute inset-0 opacity-30 pointer-events-none"
           style={{
             background:
               'radial-gradient(ellipse at center, rgba(34, 211, 238, 0.15) 0%, transparent 70%)',
@@ -71,8 +71,8 @@ export function ChallengeDisplay({
         />
 
         {/* Corner accents - hidden on mobile */}
-        <div className="hidden md:block absolute top-0 left-0 w-16 h-16 border-l-2 border-t-2 border-cyan-400/50 rounded-tl-3xl" />
-        <div className="hidden md:block absolute bottom-0 right-0 w-16 h-16 border-r-2 border-b-2 border-cyan-400/50 rounded-br-3xl" />
+        <div className="hidden md:block absolute top-0 left-0 w-16 h-16 border-l-2 border-t-2 border-cyan-400/50 rounded-tl-3xl pointer-events-none" />
+        <div className="hidden md:block absolute bottom-0 right-0 w-16 h-16 border-r-2 border-b-2 border-cyan-400/50 rounded-br-3xl pointer-events-none" />
 
         {/* Label */}
         <div className="relative flex items-center justify-center gap-1 md:gap-2 mb-2 md:mb-4">
@@ -108,7 +108,7 @@ export function ChallengeDisplay({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="mt-4 flex justify-center"
+            className="relative z-10 mt-4 flex justify-center"
           >
             <button
               onClick={onRefresh}

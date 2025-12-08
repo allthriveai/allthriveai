@@ -3,9 +3,10 @@ import { IconCloud } from './IconCloud';
 
 interface HeroSectionProps {
   onRequestInvite: () => void;
+  isModalOpen?: boolean;
 }
 
-export function HeroSection({ onRequestInvite }: HeroSectionProps) {
+export function HeroSection({ onRequestInvite, isModalOpen = false }: HeroSectionProps) {
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Header */}
@@ -103,12 +104,11 @@ export function HeroSection({ onRequestInvite }: HeroSectionProps) {
               className="mb-6"
             >
               <h1 className="font-bold tracking-tight mb-4 text-white max-w-2xl flex flex-col" style={{ textShadow: '0 0 20px rgba(15, 23, 42, 0.9), 0 0 40px rgba(15, 23, 42, 0.7), 0 0 60px rgba(15, 23, 42, 0.5)' }}>
-                <span className="whitespace-nowrap" style={{ fontSize: '2.98rem' }}>Create with AI anywhere</span>
-                <span style={{ fontSize: '4.2rem' }}>Consolidate here</span>
+                <span className="whitespace-nowrap text-[1.5rem] sm:text-[2rem] md:text-[2.98rem]">Create with AI anywhere</span>
+                <span className="text-[2rem] sm:text-[2.75rem] md:text-[4.2rem]">Consolidate here</span>
                 <span
-                  className="pb-2 animate-gradient-rotate"
+                  className="pb-2 animate-gradient-rotate text-[2.25rem] sm:text-[3rem] md:text-[4.5rem]"
                   style={{
-                    fontSize: '4.5rem',
                     backgroundSize: '300% 300%',
                     background: 'linear-gradient(to right, #22d3ee, #2dd4bf, #4ade80)',
                     WebkitBackgroundClip: 'text',
@@ -159,7 +159,7 @@ export function HeroSection({ onRequestInvite }: HeroSectionProps) {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="flex-[2] w-full max-w-md lg:max-w-none"
+            className={`flex-[2] w-full max-w-md lg:max-w-none ${isModalOpen ? 'pointer-events-none' : ''}`}
           >
             <div className="relative aspect-square max-w-[420px] mx-auto lg:mr-auto lg:ml-0">
               {/* Glow effect behind cloud */}

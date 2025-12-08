@@ -233,7 +233,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
             )}
             {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray }) : children}
           </div>
-          <Footer onOpenChat={() => handleMenuClick('Chat')} />
+          <Footer />
         </main>
 
         {/* Right About Panel */}

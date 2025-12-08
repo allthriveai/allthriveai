@@ -1,13 +1,9 @@
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faXTwitter, faGithub, faDiscord, faLinkedin } from '@fortawesome/free-brands-svg-icons';
+import { faInstagram, faGithub, faSquareWhatsapp, faLinkedin } from '@fortawesome/free-brands-svg-icons';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 
-interface FooterProps {
-  onOpenChat?: () => void;
-}
-
-export function Footer({ onOpenChat }: FooterProps) {
+export function Footer() {
   const currentYear = new Date().getFullYear();
 
   const navigation = {
@@ -27,9 +23,9 @@ export function Footer({ onOpenChat }: FooterProps) {
       { name: 'Pricing', href: '/pricing' },
     ],
     social: [
-      { name: 'Twitter', icon: faXTwitter, href: 'https://twitter.com/allthriveai' },
+      { name: 'Instagram', icon: faInstagram, href: 'http://instagram.com/pippromptbattlebot' },
       { name: 'GitHub', icon: faGithub, href: 'https://github.com/allthriveai' },
-      { name: 'Discord', icon: faDiscord, href: 'https://discord.gg/allthriveai' },
+      { name: 'WhatsApp', icon: faSquareWhatsapp, href: 'https://chat.whatsapp.com/ILi7yNkQB0e7dKbzaHjfZy' },
       { name: 'LinkedIn', icon: faLinkedin, href: 'https://www.linkedin.com/company/allthriveai' },
     ],
   };
@@ -121,13 +117,15 @@ export function Footer({ onOpenChat }: FooterProps) {
                 </li>
               ))}
               <li>
-                <button
-                  onClick={onOpenChat}
+                <a
+                  href="https://chat.whatsapp.com/ILi7yNkQB0e7dKbzaHjfZy"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm inline-flex items-center gap-2 group"
                 >
                   <ChatBubbleLeftRightIcon className="w-4 h-4 group-hover:text-cyan-600 dark:group-hover:text-cyan-400" />
                   Contact Us
-                </button>
+                </a>
               </li>
             </ul>
           </nav>
