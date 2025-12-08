@@ -56,6 +56,7 @@ class UserSerializer(serializers.ModelSerializer):
             'total_points',
             'level',
             'current_streak',
+            'is_guest',
         ]
         read_only_fields = [
             'id',
@@ -67,6 +68,7 @@ class UserSerializer(serializers.ModelSerializer):
             'total_points',
             'level',
             'current_streak',
+            'is_guest',
         ]  # Prevent role escalation and point manipulation
 
     def get_fields(self):

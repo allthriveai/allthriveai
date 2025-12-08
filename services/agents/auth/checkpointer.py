@@ -108,14 +108,16 @@ def get_checkpointer(use_postgres: bool = True):
             logger.info(f'Initializing PostgreSQL checkpointer: {masked_conn}')
 
             # Create connection pool for production use
-            pool = ConnectionPool(conninfo=conn_string, min_size=1, max_size=10, timeout=30)
+            # autocommit=True is required for setup() to work with CREATE INDEX CONCURRENTLY
+            pool = ConnectionPool(
+                conninfo=conn_string, min_size=1, max_size=10, timeout=30, open=True, kwargs={'autocommit': True}
+            )
 
             # Create checkpointer with the pool
             _checkpointer = PostgresSaver(pool)
 
             # Setup tables (creates if not exist)
-            with pool.connection():
-                _checkpointer.setup()
+            _checkpointer.setup()
 
             logger.info('PostgreSQL checkpointer initialized successfully')
             logger.info('Tables: checkpoints, checkpoint_writes, checkpoint_blobs')
@@ -167,7 +169,8 @@ async def get_async_checkpointer():
         conn_string = get_postgres_connection_string()
 
         # Create async connection pool for this event loop
-        pool = AsyncConnectionPool(conninfo=conn_string, min_size=1, max_size=5)
+        # autocommit=True is required for setup() to work with CREATE INDEX CONCURRENTLY
+        pool = AsyncConnectionPool(conninfo=conn_string, min_size=1, max_size=5, kwargs={'autocommit': True})
         await pool.open()
 
         # Create async checkpointer

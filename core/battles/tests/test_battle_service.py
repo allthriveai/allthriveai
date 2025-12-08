@@ -135,9 +135,9 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
         self.assertEqual(self.pip_battle.challenge_text, 'Original challenge text')
 
     def test_refresh_challenge_returns_none_for_invalid_phase(self):
-        """Test that refresh_challenge returns None for battles not in waiting/countdown phase."""
-        # Move battle to active phase
-        self.pip_battle.phase = BattlePhase.ACTIVE
+        """Test that refresh_challenge returns None for battles not in waiting/countdown/active phase."""
+        # Move battle to generating phase (after submissions)
+        self.pip_battle.phase = BattlePhase.GENERATING
         self.pip_battle.save()
 
         new_challenge = self.service.refresh_challenge(self.pip_battle, self.user1)
@@ -147,6 +147,17 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
         # Verify battle was not updated
         self.pip_battle.refresh_from_db()
         self.assertEqual(self.pip_battle.challenge_text, 'Original challenge text')
+
+    def test_refresh_challenge_works_in_active_phase(self):
+        """Test that refresh_challenge works in ACTIVE phase."""
+        self.pip_battle.phase = BattlePhase.ACTIVE
+        self.pip_battle.save()
+
+        new_challenge = self.service.refresh_challenge(self.pip_battle, self.user1)
+
+        self.assertIsNotNone(new_challenge)
+        self.pip_battle.refresh_from_db()
+        self.assertNotEqual(self.pip_battle.challenge_text, 'Original challenge text')
 
     def test_refresh_challenge_works_in_countdown_phase(self):
         """Test that refresh_challenge works in COUNTDOWN phase."""

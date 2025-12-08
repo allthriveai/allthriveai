@@ -1,19 +1,22 @@
 """Views for Prompt Battle feature."""
 
+import bleach
 from django.db.models import Q
+from django_ratelimit.decorators import ratelimit
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.logging_utils import StructuredLogger
-from services.gamification import BattleService
+from services.auth import GuestUserService
 from services.projects import ProjectService
 
 from .models import (
     BattleInvitation,
     BattleStatus,
     BattleSubmission,
+    ChallengeType,
     InvitationStatus,
     InvitationType,
     MatchSource,
@@ -27,6 +30,7 @@ from .serializers import (
     PromptBattleListSerializer,
     PromptBattleSerializer,
 )
+from .services import BattleService
 
 
 class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
@@ -165,9 +169,13 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Refresh battle from DB to get updated timer
+        battle.refresh_from_db()
+
         return Response(
             {
                 'challenge_text': new_challenge,
+                'time_remaining': battle.time_remaining,
                 'message': 'Challenge refreshed!',
             }
         )
@@ -496,6 +504,72 @@ class BattleInvitationViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_battle_link(request):
+    """Generate a shareable battle invitation link.
+
+    Creates a battle and invitation that the user can share manually
+    via WhatsApp, iMessage, social media, etc. No SMS is sent.
+
+    Request body:
+        challenge_type_key (optional): Specific challenge type key
+
+    Returns:
+        invite_url: The shareable link
+        invitation: Invitation details
+    """
+    challenge_type_key = request.data.get('challenge_type_key')
+
+    # Get challenge type
+    if challenge_type_key:
+        try:
+            challenge_type = ChallengeType.objects.get(key=challenge_type_key)
+        except ChallengeType.DoesNotExist:
+            return Response(
+                {'error': f'Challenge type "{challenge_type_key}" not found.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    else:
+        # Get random active challenge type
+        challenge_type = ChallengeType.objects.filter(is_active=True).order_by('?').first()
+        if not challenge_type:
+            return Response({'error': 'No challenge types available.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Generate challenge
+    challenge_text = challenge_type.generate_challenge()
+
+    # Create the battle
+    battle = PromptBattle.objects.create(
+        challenger=request.user,
+        opponent=None,  # Will be set when recipient accepts
+        challenge_text=challenge_text,
+        challenge_type=challenge_type,
+        match_source=MatchSource.INVITATION,
+        duration_minutes=challenge_type.default_duration_minutes,
+        status=BattleStatus.PENDING,
+    )
+
+    # Create link invitation (no SMS sent)
+    invitation = BattleInvitation.objects.create(
+        battle=battle,
+        sender=request.user,
+        recipient=None,  # Will be set when user accepts
+        invitation_type=InvitationType.LINK,
+    )
+
+    serializer = BattleInvitationSerializer(invitation)
+    return Response(
+        {
+            'invitation': serializer.data,
+            'invite_url': invitation.invite_url,
+            'invite_token': invitation.invite_token,
+            'message': 'Shareable link generated. Copy and share with your opponent!',
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_invitation_by_token(request, token):
@@ -517,12 +591,12 @@ def get_invitation_by_token(request, token):
             'sender': {
                 'id': invitation.sender.id,
                 'username': invitation.sender.username,
-                'display_name': invitation.sender.display_name,
-                'avatar_url': invitation.sender.avatar_url,
+                'display_name': invitation.sender.first_name or invitation.sender.username,
+                'avatar_url': getattr(invitation.sender, 'avatar_url', None),
             },
             'battle': {
                 'id': invitation.battle.id,
-                'topic': invitation.battle.topic,
+                'challenge_text': invitation.battle.challenge_text,
                 'challenge_type': invitation.battle.challenge_type.name if invitation.battle.challenge_type else None,
             },
             'expires_at': invitation.expires_at.isoformat(),
@@ -530,10 +604,15 @@ def get_invitation_by_token(request, token):
     )
 
 
+@ratelimit(key='ip', rate='20/h', method='POST', block=True)
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def accept_invitation_by_token(request, token):
-    """Accept an SMS invitation by token."""
+    """Accept an SMS invitation by token.
+
+    Supports both authenticated users and guest users.
+    For guest users, creates a temporary account and returns auth tokens.
+    """
     try:
         invitation = BattleInvitation.objects.select_related('sender', 'battle').get(invite_token=token)
     except BattleInvitation.DoesNotExist:
@@ -545,25 +624,87 @@ def accept_invitation_by_token(request, token):
     if invitation.status != InvitationStatus.PENDING:
         return Response({'error': 'Invitation has already been responded to.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if invitation.sender == request.user:
-        return Response({'error': 'You cannot accept your own invitation.'}, status=status.HTTP_400_BAD_REQUEST)
+    # Determine if user is authenticated or needs guest account
+    is_authenticated = request.user and request.user.is_authenticated
+    is_guest_flow = False
+    accepting_user = None
+    auth_tokens = None
+
+    if is_authenticated:
+        accepting_user = request.user
+        if invitation.sender == accepting_user:
+            return Response({'error': 'You cannot accept your own invitation.'}, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        # Guest flow - create temporary user
+        is_guest_flow = True
+        display_name = request.data.get('display_name', None)
+
+        # Sanitize display_name to prevent XSS
+        if display_name:
+            display_name = bleach.clean(display_name, tags=[], strip=True).strip()
+            # Limit length
+            if len(display_name) > 50:
+                display_name = display_name[:50]
+            # Clear if empty after sanitization
+            if not display_name:
+                display_name = None
 
     try:
-        invitation.accept(accepting_user=request.user)
+        if is_guest_flow:
+            # Create guest user and accept invitation
+            accepting_user, auth_tokens = GuestUserService.accept_battle_invitation_as_guest(
+                invitation=invitation,
+                display_name=display_name,
+            )
+        else:
+            # Regular authenticated flow
+            invitation.accept(accepting_user=accepting_user)
+
         battle = invitation.battle
         battle.refresh_from_db()
 
+        # Build response
         battle_serializer = PromptBattleSerializer(battle, context={'request': request})
-        return Response(battle_serializer.data)
+        response_data = battle_serializer.data
+
+        # Include auth info for guest users
+        if is_guest_flow and auth_tokens:
+            response_data['auth'] = auth_tokens
+            response_data['is_guest'] = True
+
+        response = Response(response_data)
+
+        # Set auth cookies for guest users so they're authenticated for subsequent requests
+        if is_guest_flow and accepting_user:
+            from core.audits.models import UserAuditLog
+            from services.auth import set_auth_cookies
+
+            response = set_auth_cookies(response, accepting_user)
+
+            # Track guest creation for analytics
+            UserAuditLog.log_action(
+                user=accepting_user,
+                action=UserAuditLog.Action.GUEST_CREATED,
+                request=request,
+                details={
+                    'invitation_id': invitation.id,
+                    'battle_id': battle.id,
+                    'sender_username': invitation.sender.username,
+                },
+                success=True,
+            )
+
+        return response
 
     except Exception as e:
         StructuredLogger.log_error(
             message='Failed to accept battle invitation',
             error=e,
-            user=request.user,
+            user=accepting_user if accepting_user else None,
             extra={
                 'invitation_id': invitation.id,
                 'endpoint': '/battles/invitations/accept/',
+                'is_guest_flow': is_guest_flow,
             },
         )
         return Response({'error': 'Failed to accept invitation. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)

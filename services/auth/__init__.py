@@ -5,6 +5,7 @@ Centralized authentication logic for credential-based auth, OAuth, and chat-base
 
 from .credentials import CredentialAuthService, UsernameService, ValidationService
 from .exceptions import AuthenticationFailed, AuthError, AuthValidationError, SessionError, UserCreationError
+from .guest import GuestUserService
 from .tokens import clear_auth_cookies, generate_tokens_for_user, set_auth_cookies
 
 __all__ = [
@@ -14,6 +15,7 @@ __all__ = [
     'clear_auth_cookies',
     # Services
     'CredentialAuthService',
+    'GuestUserService',
     'UsernameService',
     'ValidationService',
     # Exceptions

@@ -17,6 +17,8 @@ class UserAuditLog(models.Model):
         FAILED_LOGIN = 'failed_login', 'Failed Login'
         ACCOUNT_LOCKED = 'account_locked', 'Account Locked'
         OAUTH_LOGIN = 'oauth_login', 'OAuth Login'
+        GUEST_CREATED = 'guest_created', 'Guest Account Created'
+        GUEST_CONVERTED = 'guest_converted', 'Guest Converted to Full Account'
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='audit_logs', db_index=True

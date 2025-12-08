@@ -3,6 +3,7 @@
  *
  * Handles SMS invitation links for prompt battles.
  * Shows invitation details and allows accepting the challenge.
+ * Supports both authenticated users and guest users who can play without signing up.
  */
 
 import { useState, useEffect } from 'react';
@@ -14,6 +15,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
+  UserPlusIcon,
 } from '@heroicons/react/24/solid';
 import { api } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,12 +40,13 @@ interface InvitationData {
 export function BattleInvitePage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
 
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [isAcceptingAsGuest, setIsAcceptingAsGuest] = useState(false);
 
   useEffect(() => {
     const fetchInvitation = async () => {
@@ -75,6 +78,26 @@ export function BattleInvitePage() {
       const error = err as { response?: { data?: { error?: string } } };
       setError(error.response?.data?.error || 'Failed to accept invitation');
       setIsAccepting(false);
+    }
+  };
+
+  const handleAcceptAsGuest = async () => {
+    if (!token) return;
+
+    setIsAcceptingAsGuest(true);
+    try {
+      // Accept as guest - backend creates guest user and sets auth cookies
+      const response = await api.post(`/battles/invite/${token}/accept/`);
+
+      // Refresh auth context to pick up the new guest user from cookies
+      await refreshUser();
+
+      // Navigate to the battle
+      navigate(`/battles/${response.data.id}`);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || 'Failed to accept invitation');
+      setIsAcceptingAsGuest(false);
     }
   };
 
@@ -211,16 +234,50 @@ export function BattleInvitePage() {
             {/* Actions */}
             {!isAuthenticated ? (
               <div className="space-y-4">
-                <p className="text-center text-slate-400 text-sm">
-                  Sign in or create an account to accept this challenge
-                </p>
+                {/* Play as Guest - Primary action */}
+                <button
+                  onClick={handleAcceptAsGuest}
+                  disabled={isAcceptingAsGuest}
+                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isAcceptingAsGuest ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                      />
+                      Joining Battle...
+                    </>
+                  ) : (
+                    <>
+                      <BoltIcon className="w-5 h-5" />
+                      Play Now
+                    </>
+                  )}
+                </button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-700" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="bg-slate-800 px-2 text-slate-500">or</span>
+                  </div>
+                </div>
+
+                {/* Sign in option */}
                 <button
                   onClick={() => navigate(`/auth?redirect=/battle/invite/${token}`)}
-                  className="btn-primary w-full flex items-center justify-center gap-2"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700/50 transition-colors"
                 >
-                  <CheckCircleIcon className="w-5 h-5" />
-                  Sign In to Accept
+                  <UserPlusIcon className="w-5 h-5" />
+                  Sign In with Account
                 </button>
+
+                <p className="text-center text-slate-500 text-xs">
+                  Play now as a guest - you can create an account after the battle
+                </p>
               </div>
             ) : (
               <button

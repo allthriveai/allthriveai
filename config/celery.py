@@ -130,6 +130,13 @@ app.conf.beat_schedule = {
             'expires': 900,  # Expires after 15 minutes
         },
     },
+    'cleanup-expired-guest-accounts': {
+        'task': 'core.battles.tasks.cleanup_expired_guest_accounts',
+        'schedule': crontab(hour=2, minute=0),  # Daily at 2:00 AM
+        'options': {
+            'expires': 7200,  # Expires after 2 hours
+        },
+    },
     # Billing tasks
     'billing-check-low-token-balances': {
         'task': 'core.billing.tasks.check_low_token_balances_task',

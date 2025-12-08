@@ -427,6 +427,7 @@ class InvitationType(models.TextChoices):
     PLATFORM = 'platform', 'Platform User'  # Invitation to existing user
     SMS = 'sms', 'SMS'  # Invitation via SMS to phone number
     RANDOM = 'random', 'Random Match'  # Random active user matching
+    LINK = 'link', 'Shareable Link'  # Shareable link (user shares manually)
 
 
 class BattleInvitation(models.Model):
@@ -530,8 +531,8 @@ class BattleInvitation(models.Model):
         """Set expiration time and generate token on creation."""
         if not self.expires_at:
             self.expires_at = timezone.now() + timezone.timedelta(hours=24)
-        # Generate invite token for SMS invitations
-        if self.invitation_type == InvitationType.SMS and not self.invite_token:
+        # Generate invite token for SMS and LINK invitations
+        if self.invitation_type in (InvitationType.SMS, InvitationType.LINK) and not self.invite_token:
             import secrets
 
             self.invite_token = secrets.token_urlsafe(32)
@@ -541,7 +542,7 @@ class BattleInvitation(models.Model):
         """Accept the invitation and start the battle.
 
         Args:
-            accepting_user: For SMS invitations, the user accepting via the link.
+            accepting_user: For SMS/LINK invitations, the user accepting via the link.
                            For platform invitations, must match self.recipient.
         """
         if self.status != InvitationStatus.PENDING:
@@ -550,10 +551,10 @@ class BattleInvitation(models.Model):
         if self.is_expired:
             raise ValidationError('Invitation has expired.')
 
-        # Handle SMS invitations - set the recipient to the accepting user
-        if self.invitation_type == InvitationType.SMS:
+        # Handle SMS and LINK invitations - set the recipient to the accepting user
+        if self.invitation_type in (InvitationType.SMS, InvitationType.LINK):
             if not accepting_user:
-                raise ValidationError('Accepting user required for SMS invitations.')
+                raise ValidationError('Accepting user required for SMS/link invitations.')
             if accepting_user == self.sender:
                 raise ValidationError('Cannot accept your own invitation.')
             # Set the recipient now that we know who accepted
@@ -563,8 +564,8 @@ class BattleInvitation(models.Model):
         self.responded_at = timezone.now()
         self.save(update_fields=['status', 'responded_at', 'recipient'])
 
-        # Start the battle - for SMS invitations, add the accepting user as opponent
-        if self.invitation_type == InvitationType.SMS and accepting_user:
+        # Start the battle - for SMS/LINK invitations, add the accepting user as opponent
+        if self.invitation_type in (InvitationType.SMS, InvitationType.LINK) and accepting_user:
             self.battle.opponent = accepting_user
             self.battle.save(update_fields=['opponent'])
 
