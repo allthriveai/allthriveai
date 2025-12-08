@@ -57,7 +57,7 @@ class Command(BaseCommand):
                 'tier_type': 'free',
                 'slug': 'free-explorer',
                 'name': 'Free / Explorer',
-                'description': 'Perfect for exploring AllThrive and trying out basic features',
+                'description': 'Perfect for exploring All Thrive and trying out basic features',
                 'price_monthly': Decimal('0.00'),
                 'price_annual': Decimal('0.00'),
                 'trial_period_days': 0,

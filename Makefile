@@ -42,7 +42,7 @@ help:
 	@echo "  make recreate-pip    - Delete and recreate Pip with latest data"
 	@echo "  make seed-quizzes    - Seed initial quiz data"
 	@echo "  make seed-challenge-types - Seed battle challenge types"
-	@echo "  make seed-all        - Seed all initial data (topics, categories, tools, quizzes, challenges, pip)"
+	@echo "  make seed-all        - Seed all initial data (topics, categories, tools, quizzes, challenges, billing, pip)"
 	@echo "  make reset-db        - ⚠️  DANGER: Flush database and reseed"
 	@echo ""
 	@echo "Testing:"
@@ -189,6 +189,7 @@ seed-all:
 	docker-compose exec web python manage.py seed_tools
 	docker-compose exec web python manage.py seed_quizzes
 	docker-compose exec web python manage.py seed_challenge_types
+	docker-compose exec web python manage.py seed_billing
 	docker-compose exec web python manage.py create_pip
 	@echo "✓ All data seeded successfully!"
 

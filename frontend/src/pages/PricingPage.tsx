@@ -273,7 +273,7 @@ function PricingPageContent() {
     {
       slug: 'free-explorer',
       name: 'Free Explorer',
-      description: 'Get started with AI learning basics',
+      description: 'Get started with All Thrive AI learning basics',
       tierType: 'free',
       priceMonthly: 0,
       priceAnnual: 0,
@@ -418,6 +418,12 @@ function PricingPageContent() {
   const getFeatureList = (tier: SubscriptionTier): string[] => {
     const featureList: string[] = [];
 
+    // Free tier gets special simplified feature list
+    if (tier.tierType === 'free') {
+      featureList.push('Limited use of Community Pro Features');
+      return featureList;
+    }
+
     // Creator tier gets special feature list
     if (tier.tierType === 'creator_mentor') {
       featureList.push('Sell prompts, templates & courses');
@@ -431,26 +437,21 @@ function PricingPageContent() {
     // Pro Learn tier gets simplified feature list
     if (tier.tierType === 'pro_learn') {
       featureList.push('Everything in Community Pro +');
-      featureList.push(`${tier.monthlyAiRequests.toLocaleString()} AI chats/month`);
       featureList.push('Structured learning paths');
       return featureList;
     }
 
     if (tier.monthlyAiRequests > 0) {
-      featureList.push(`${tier.monthlyAiRequests.toLocaleString()} AI chats/month`);
+      featureList.push(`${tier.monthlyAiRequests.toLocaleString()} credits/month`);
     }
 
     if (tier.features.aiMentor) {
-      if (tier.tierType === 'free') {
-        featureList.push('Limited Automated AI project creation');
-      } else {
-        featureList.push('Automated AI project creation');
-      }
+      featureList.push('Automated AI project creation');
     }
-    featureList.push('PvP Prompt Battles');
+    featureList.push('Prompt Battles');
     if (tier.features.quests) featureList.push('Gamified learning quests');
     if (tier.features.projects) featureList.push('Shareable project portfolio');
-    if (tier.tierType === 'free' || tier.tierType === 'community_pro') {
+    if (tier.tierType === 'community_pro') {
       featureList.push('Access to Explore Project Feed');
     }
     if (tier.features.circles) featureList.push('Community groups');
