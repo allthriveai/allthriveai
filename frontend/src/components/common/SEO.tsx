@@ -11,6 +11,19 @@ interface SEOProps {
   noindex?: boolean;
 }
 
+// Get base URL from environment or window location
+const getBaseUrl = (): string => {
+  if (import.meta.env.VITE_APP_URL) {
+    return import.meta.env.VITE_APP_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname, port } = window.location;
+    const portSuffix = port && port !== '80' && port !== '443' ? `:${port}` : '';
+    return `${protocol}//${hostname}${portSuffix}`;
+  }
+  return 'https://allthrive.ai';
+};
+
 /**
  * SEO Component - Dynamically updates meta tags for each page
  * Optimized for search engines and social media sharing
@@ -19,15 +32,17 @@ export function SEO({
   title = 'All Thrive - Showcase, Learn & Play with AI',
   description = 'The community platform for AI creators. Automate your AI portfolio, learn something new with gamified challenges, and compete in Prompt Battles. Create with AI anywhere. Consolidate here. Thrive together.',
   keywords = 'AI creations, AI portfolio, AI projects, Midjourney, Replit, Claude, AI showcase, AI community, AI builders, AI tools, cross-platform AI',
-  image = 'https://allthrive.ai/og-image.jpg',
+  image,
   url,
   type = 'website',
   noindex = false,
 }: SEOProps) {
   const location = useLocation();
-  const baseUrl = 'https://allthrive.ai';
+  const baseUrl = getBaseUrl();
+  const defaultImage = `${baseUrl}/og-image.jpg`;
   const currentUrl = url || `${baseUrl}${location.pathname}`;
   const fullTitle = title.includes('All Thrive') ? title : `${title} | All Thrive AI`;
+  const ogImage = image || defaultImage;
 
   useEffect(() => {
     // Update document title
@@ -42,7 +57,7 @@ export function SEO({
       // Open Graph
       { property: 'og:title', content: fullTitle },
       { property: 'og:description', content: description },
-      { property: 'og:image', content: image },
+      { property: 'og:image', content: ogImage },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
       { property: 'og:image:alt', content: fullTitle },
@@ -54,7 +69,7 @@ export function SEO({
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: fullTitle },
       { name: 'twitter:description', content: description },
-      { name: 'twitter:image', content: image },
+      { name: 'twitter:image', content: ogImage },
       { name: 'twitter:url', content: currentUrl },
     ];
 
