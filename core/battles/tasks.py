@@ -572,7 +572,6 @@ def cleanup_stale_battles() -> dict[str, Any]:
     results['expired_active'] = expired_battles_qs.update(
         status=BattleStatus.CANCELLED,
         phase=BattlePhase.COMPLETE,
-    )
 
     # Handle battles stuck in GENERATING phase (started more than 10 minutes ago)
     # Note: This needs individual handling because we check submissions
@@ -605,6 +604,7 @@ def cleanup_stale_battles() -> dict[str, Any]:
         phase=BattlePhase.JUDGING,
         started_at__lt=now - timedelta(minutes=5),
     ).values_list('id', flat=True)  # Only need IDs for task dispatch
+
 
     for battle_id in stuck_judging:
         # Retry judging

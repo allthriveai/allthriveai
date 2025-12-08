@@ -127,7 +127,8 @@ Resources:
               - GET
               - HEAD
             Compress: true
-            CachePolicyId: !Ref APICachePolicy
+            # Use AWS managed CachingDisabled policy (caching disabled for API)
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: !Ref APIOriginRequestPolicy
 
           # WebSocket Behavior
@@ -145,7 +146,8 @@ Resources:
             CachedMethods:
               - GET
               - HEAD
-            CachePolicyId: !Ref WebSocketCachePolicy
+            # Use AWS managed CachingDisabled policy (no caching for WebSockets)
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: !Ref WebSocketOriginRequestPolicy
 
           # Media Files Behavior
@@ -178,7 +180,8 @@ Resources:
             CachedMethods:
               - GET
               - HEAD
-            CachePolicyId: !Ref APICachePolicy
+            # Use AWS managed CachingDisabled policy (caching disabled for API)
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: !Ref APIOriginRequestPolicy
 
         # Custom Error Responses (for SPA routing)
@@ -223,52 +226,8 @@ Resources:
           QueryStringsConfig:
             QueryStringBehavior: none
 
-  APICachePolicy:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        Name: !Sub ${EnvironmentName}-allthrive-api-cache
-        Comment: Cache policy for API requests (no caching)
-        DefaultTTL: 0
-        MaxTTL: 0
-        MinTTL: 0
-        ParametersInCacheKeyAndForwardedToOrigin:
-          CookiesConfig:
-            CookieBehavior: all
-          EnableAcceptEncodingBrotli: true
-          EnableAcceptEncodingGzip: true
-          HeadersConfig:
-            HeaderBehavior: whitelist
-            Headers:
-              - Authorization
-              - Accept
-              - Content-Type
-          QueryStringsConfig:
-            QueryStringBehavior: all
-
-  WebSocketCachePolicy:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        Name: !Sub ${EnvironmentName}-allthrive-websocket-cache
-        Comment: Cache policy for WebSocket connections
-        DefaultTTL: 0
-        MaxTTL: 0
-        MinTTL: 0
-        ParametersInCacheKeyAndForwardedToOrigin:
-          CookiesConfig:
-            CookieBehavior: all
-          EnableAcceptEncodingBrotli: false
-          EnableAcceptEncodingGzip: false
-          HeadersConfig:
-            HeaderBehavior: whitelist
-            Headers:
-              - Sec-WebSocket-Key
-              - Sec-WebSocket-Version
-              - Sec-WebSocket-Protocol
-              - Sec-WebSocket-Accept
-          QueryStringsConfig:
-            QueryStringBehavior: all
+  # Note: API and WebSocket behaviors use AWS managed CachingDisabled policy
+  # Policy ID: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
 
   MediaCachePolicy:
     Type: AWS::CloudFront::CachePolicy
