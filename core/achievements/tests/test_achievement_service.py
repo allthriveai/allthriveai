@@ -3,10 +3,10 @@ Unit tests for achievement service and tracking functionality.
 """
 
 from django.test import TestCase
+from services.achievements.service import AchievementService
 
 from core.achievements.models import Achievement, AchievementProgress, CriteriaType, UserAchievement
 from core.users.models import User
-from services.achievements.service import AchievementService
 from services.achievements.tracker import AchievementTracker
 
 
