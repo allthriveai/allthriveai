@@ -1,13 +1,14 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { render, screen, waitFor } from '@/test/test-utils';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DashboardLayout } from './DashboardLayout';
-import { ThemeProvider } from '@/context/ThemeContext';
+import type { ReactNode } from 'react';
 
 // Mock child components
 vi.mock('@/components/about', () => ({
-  RightAboutPanel: ({ isOpen }: any) =>
-    isOpen ? <div data-testid="right-about-panel">About Panel</div> : null,
+  RightAboutPanel: ({ isOpen }: any) => {
+    console.log('[Mock] RightAboutPanel called with isOpen:', isOpen);
+    return isOpen ? <div data-testid="right-about-panel">About Panel</div> : null;
+  },
 }));
 
 vi.mock('@/components/events/RightEventsCalendarPanel', () => ({
@@ -28,6 +29,37 @@ vi.mock('@/hooks/useAuth', () => ({
   }),
 }));
 
+// Mock useActiveQuest hook
+vi.mock('@/hooks/useActiveQuest', () => ({
+  useActiveQuest: () => ({
+    questTrayOpen: false,
+    selectedQuest: null,
+    openQuestTray: vi.fn(),
+    openActiveQuestTray: vi.fn(),
+    closeQuestTray: vi.fn(),
+    getQuestColors: vi.fn(() => ({ colorFrom: '#3b82f6', colorTo: '#8b5cf6' })),
+    getQuestCategory: vi.fn(() => null),
+  }),
+}));
+
+// Mock onboarding components
+vi.mock('@/components/onboarding', () => ({
+  EmberAdventureBanner: () => null,
+  useEmberOnboardingContextSafe: () => null,
+}));
+
+// Mock react-router-dom to prevent location changes from closing panels
+// Use MemoryRouter instead of BrowserRouter to have a stable location
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    BrowserRouter: ({ children }: { children: ReactNode }) => (
+      <actual.MemoryRouter initialEntries={['/']}>{children}</actual.MemoryRouter>
+    ),
+  };
+});
+
 describe('DashboardLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -42,13 +74,9 @@ describe('DashboardLayout', () => {
 
   const renderDashboardLayout = (props = {}) => {
     return render(
-      <BrowserRouter>
-        <ThemeProvider>
-          <DashboardLayout {...props}>
-            <div data-testid="dashboard-content">Dashboard Content</div>
-          </DashboardLayout>
-        </ThemeProvider>
-      </BrowserRouter>
+      <DashboardLayout {...props}>
+        <div data-testid="dashboard-content">Dashboard Content</div>
+      </DashboardLayout>
     );
   };
 
@@ -98,7 +126,7 @@ describe('DashboardLayout', () => {
 
       // Wait for the Add Project panel to open
       await waitFor(() => {
-        expect(screen.getByTestId('right-add-project-chat')).toBeInTheDocument();
+        expect(screen.getByTestId('intelligent-chat-panel')).toBeInTheDocument();
       });
 
       // Clear localStorage
@@ -106,13 +134,9 @@ describe('DashboardLayout', () => {
 
       // Rerender the component
       rerender(
-        <BrowserRouter>
-          <ThemeProvider>
-            <DashboardLayout>
-              <div data-testid="dashboard-content">Dashboard Content</div>
-            </DashboardLayout>
-          </ThemeProvider>
-        </BrowserRouter>
+        <DashboardLayout>
+          <div data-testid="dashboard-content">Dashboard Content</div>
+        </DashboardLayout>
       );
 
       // Panel should still be open (useEffect only runs on mount)
@@ -152,11 +176,7 @@ describe('DashboardLayout', () => {
       ));
 
       render(
-        <BrowserRouter>
-          <ThemeProvider>
-            <DashboardLayout>{functionChild}</DashboardLayout>
-          </ThemeProvider>
-        </BrowserRouter>
+        <DashboardLayout>{functionChild}</DashboardLayout>
       );
 
       // Verify function was called with correct props

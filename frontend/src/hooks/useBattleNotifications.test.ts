@@ -42,7 +42,7 @@ describe('useBattleNotifications', () => {
 
     // Create mock fetch
     mockFetch = vi.fn();
-    global.fetch = mockFetch;
+    global.fetch = mockFetch as unknown as typeof global.fetch;
 
     // Mock console methods to avoid noise in tests
     vi.spyOn(console, 'warn').mockImplementation(() => {});

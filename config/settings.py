@@ -730,3 +730,32 @@ CONTENT_SECURITY_POLICY = {
         'report-uri': '/api/v1/csp-report/',  # CSP violation reporting
     }
 }
+
+# Production configuration validation
+# These checks prevent common misconfigurations that would break production deployments
+if not DEBUG:
+    import sys
+
+    # Check 1: Cookie domain must be set in production
+    if COOKIE_DOMAIN == 'localhost':
+        print(
+            '\n'
+            '❌ CRITICAL: COOKIE_DOMAIN is set to "localhost" in production mode.\n'
+            '   This will prevent authentication cookies from working on your production domain.\n'
+            '   Set COOKIE_DOMAIN to your production domain (e.g., ".example.com") in your .env file.\n'
+            '   Example: COOKIE_DOMAIN=.allthrive.ai\n',
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Check 2: CSP should not allow unsafe-inline in production
+    if "'unsafe-inline'" in _CSP_STYLE_SRC:
+        print(
+            '\n'
+            '⚠️  WARNING: Content-Security-Policy allows unsafe-inline styles in production.\n'
+            '   This is a security risk. Migrate to nonce-based CSP or external stylesheets.\n'
+            '   See: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP#inline_styles\n',
+            file=sys.stderr,
+        )
+        # Note: This is a warning, not a hard failure, to allow gradual migration
+        # To make this a hard failure, change to sys.exit(1)

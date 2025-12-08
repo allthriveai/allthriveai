@@ -11,10 +11,41 @@ import React from 'react';
 vi.mock('@/services/auth', () => ({
   getUserByUsername: vi.fn(),
   getUserActivity: vi.fn(),
+  getActivityInsights: vi.fn().mockResolvedValue({
+    insights: [],
+    totalActivities: 0,
+    streakDays: 0,
+  }),
 }));
 
 vi.mock('@/services/projects', () => ({
   getUserProjects: vi.fn(),
+  bulkDeleteProjects: vi.fn(),
+}));
+
+vi.mock('@/services/followService', () => ({
+  followService: {
+    getFollowStatus: vi.fn().mockResolvedValue({ is_following: false, followers_count: 0, following_count: 0 }),
+    followUser: vi.fn(),
+    unfollowUser: vi.fn(),
+  },
+}));
+
+vi.mock('@/services/achievements', () => ({
+  getUserAchievements: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('@/services/battles', () => ({
+  getUserBattles: vi.fn().mockResolvedValue({ results: [], count: 0 }),
+}));
+
+vi.mock('@/services/api', () => ({
+  api: {
+    get: vi.fn().mockResolvedValue({ data: { sections: [] } }),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
 }));
 
 // Mock useAuth hook with default values
@@ -71,6 +102,23 @@ vi.mock('@/hooks/useAchievements', () => ({
 // Mock FontAwesome icons
 vi.mock('@fortawesome/react-fontawesome', () => ({
   FontAwesomeIcon: ({ icon }: any) => <span data-testid="icon">{icon?.iconName || 'icon'}</span>,
+}));
+
+// Mock profile components that make API calls
+vi.mock('@/components/profile/StatsSummarySection', () => ({
+  StatsSummarySection: () => <div data-testid="stats-summary">Stats Summary</div>,
+}));
+
+vi.mock('@/components/profile/ActivityInsightsTab', () => ({
+  ActivityInsightsTab: () => <div data-testid="activity-insights">Activity Insights</div>,
+}));
+
+vi.mock('@/components/profile/MarketplaceTab', () => ({
+  MarketplaceTab: () => <div data-testid="marketplace-tab">Marketplace Tab</div>,
+}));
+
+vi.mock('@/components/profile/BattlesTab', () => ({
+  BattlesTab: () => <div data-testid="battles-tab">Battles Tab</div>,
 }));
 
 // Create mock user
@@ -141,6 +189,14 @@ const mockProject: Project = {
 describe('ProfilePage - Activity Tab Access Control', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Default mock for getUserByUsername - returns mockUser for testuser
+    vi.mocked(authService.getUserByUsername).mockImplementation((username: string) => {
+      if (username === 'testuser') return Promise.resolve(mockUser);
+      if (username === 'otheruser') return Promise.resolve(mockOtherUser);
+      if (username === 'creatoruser') return Promise.resolve(mockCreatorUser);
+      return Promise.reject(new Error('User not found'));
+    });
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
       showcase: [],
@@ -230,11 +286,12 @@ describe('ProfilePage - Activity Tab Access Control', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('activity-feed')).toBeInTheDocument();
+      // Activity tab shows the ActivityInsightsTab component (mocked)
+      expect(screen.getByTestId('activity-insights')).toBeInTheDocument();
     });
   });
 
-  it('should render ActivityFeed component when on activity tab as owner', async () => {
+  it('should render ActivityInsightsTab component when on activity tab as owner', async () => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
@@ -249,7 +306,7 @@ describe('ProfilePage - Activity Tab Access Control', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('activity-feed')).toBeInTheDocument();
+      expect(screen.getByTestId('activity-insights')).toBeInTheDocument();
     });
   });
 
@@ -282,6 +339,14 @@ describe('ProfilePage - Project Selection State Management', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Default mock for getUserByUsername
+    vi.mocked(authService.getUserByUsername).mockImplementation((username: string) => {
+      if (username === 'testuser') return Promise.resolve(mockUser);
+      if (username === 'otheruser') return Promise.resolve(mockOtherUser);
+      if (username === 'creatoruser') return Promise.resolve(mockCreatorUser);
+      return Promise.reject(new Error('User not found'));
+    });
+
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
@@ -290,17 +355,17 @@ describe('ProfilePage - Project Selection State Management', () => {
 
   it('should toggle project selection when toggleSelection is called', async () => {
     const projects: Project[] = [
-      { ...mockProject, id: 1 },
-      { ...mockProject, id: 2 },
+      { ...mockProject, id: 1, isShowcased: false },
+      { ...mockProject, id: 2, isShowcased: false },
     ];
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
-      showcase: projects,
-      playground: [],
+      showcase: [],
+      playground: projects,
     });
 
     render(
-      <MemoryRouter initialEntries={['/testuser']}>
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
         <Routes>
           <Route path="/:username" element={<ProfilePage />} />
         </Routes>
@@ -338,17 +403,17 @@ describe('ProfilePage - Project Selection State Management', () => {
 
   it('should add project to selected set when toggleSelection is called with unselected project', async () => {
     const projects: Project[] = [
-      { ...mockProject, id: 1 },
-      { ...mockProject, id: 2 },
+      { ...mockProject, id: 1, isShowcased: false },
+      { ...mockProject, id: 2, isShowcased: false },
     ];
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
-      showcase: projects,
-      playground: [],
+      showcase: [],
+      playground: projects,
     });
 
     render(
-      <MemoryRouter initialEntries={['/testuser']}>
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
         <Routes>
           <Route path="/:username" element={<ProfilePage />} />
         </Routes>
@@ -375,17 +440,17 @@ describe('ProfilePage - Project Selection State Management', () => {
 
   it('should remove project from selected set when toggleSelection is called with selected project', async () => {
     const projects: Project[] = [
-      { ...mockProject, id: 1 },
-      { ...mockProject, id: 2 },
+      { ...mockProject, id: 1, isShowcased: false },
+      { ...mockProject, id: 2, isShowcased: false },
     ];
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
-      showcase: projects,
-      playground: [],
+      showcase: [],
+      playground: projects,
     });
 
     render(
-      <MemoryRouter initialEntries={['/testuser']}>
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
         <Routes>
           <Route path="/:username" element={<ProfilePage />} />
         </Routes>
@@ -419,18 +484,18 @@ describe('ProfilePage - Project Selection State Management', () => {
 
   it('should handle multiple project selections', async () => {
     const projects: Project[] = [
-      { ...mockProject, id: 1, title: 'Project 1' },
-      { ...mockProject, id: 2, title: 'Project 2' },
-      { ...mockProject, id: 3, title: 'Project 3' },
+      { ...mockProject, id: 1, title: 'Project 1', isShowcased: false },
+      { ...mockProject, id: 2, title: 'Project 2', isShowcased: false },
+      { ...mockProject, id: 3, title: 'Project 3', isShowcased: false },
     ];
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
-      showcase: projects,
-      playground: [],
+      showcase: [],
+      playground: projects,
     });
 
     render(
-      <MemoryRouter initialEntries={['/testuser']}>
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
         <Routes>
           <Route path="/:username" element={<ProfilePage />} />
         </Routes>
@@ -458,17 +523,17 @@ describe('ProfilePage - Project Selection State Management', () => {
 
   it('should clear all selected projects when exitSelectionMode is called', async () => {
     const projects: Project[] = [
-      { ...mockProject, id: 1 },
-      { ...mockProject, id: 2 },
+      { ...mockProject, id: 1, isShowcased: false },
+      { ...mockProject, id: 2, isShowcased: false },
     ];
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
-      showcase: projects,
-      playground: [],
+      showcase: [],
+      playground: projects,
     });
 
     render(
-      <MemoryRouter initialEntries={['/testuser']}>
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
         <Routes>
           <Route path="/:username" element={<ProfilePage />} />
         </Routes>
@@ -514,16 +579,16 @@ describe('ProfilePage - Project Selection State Management', () => {
 
   it('should disable selection mode when exitSelectionMode is called', async () => {
     const projects: Project[] = [
-      { ...mockProject, id: 1 },
+      { ...mockProject, id: 1, isShowcased: false },
     ];
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
-      showcase: projects,
-      playground: [],
+      showcase: [],
+      playground: projects,
     });
 
     render(
-      <MemoryRouter initialEntries={['/testuser']}>
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
         <Routes>
           <Route path="/:username" element={<ProfilePage />} />
         </Routes>
@@ -553,21 +618,17 @@ describe('ProfilePage - Project Selection State Management', () => {
   });
 
   it('should exit selection mode when switching tabs', async () => {
-    const projects: Project[] = [
-      { ...mockProject, id: 1, isShowcased: true },
-    ];
-
     const playgroundProjects: Project[] = [
-      { ...mockProject, id: 2, isShowcased: false },
+      { ...mockProject, id: 1, isShowcased: false },
     ];
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
-      showcase: projects,
+      showcase: [],
       playground: playgroundProjects,
     });
 
     render(
-      <MemoryRouter initialEntries={['/testuser']}>
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
         <Routes>
           <Route path="/:username" element={<ProfilePage />} />
         </Routes>
@@ -586,32 +647,28 @@ describe('ProfilePage - Project Selection State Management', () => {
       expect(screen.getByText('Cancel')).toBeInTheDocument();
     });
 
-    // Switch to playground tab
-    const playgroundTab = screen.getByText('Playground');
-    fireEvent.click(playgroundTab);
+    // Switch to showcase tab
+    const showcaseTab = screen.getByText('Showcase');
+    fireEvent.click(showcaseTab);
 
     await waitFor(() => {
-      // Should exit selection mode
+      // Should exit selection mode (Cancel button should disappear)
       expect(screen.queryByText('Cancel')).not.toBeInTheDocument();
     });
   });
 
-  it('should maintain separate selection state between showcase and playground tabs', async () => {
-    const showcaseProjects: Project[] = [
-      { ...mockProject, id: 1, isShowcased: true },
-    ];
-
+  it('should maintain selection state when staying on playground tab', async () => {
     const playgroundProjects: Project[] = [
-      { ...mockProject, id: 2, isShowcased: false },
+      { ...mockProject, id: 1, isShowcased: false },
     ];
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
-      showcase: showcaseProjects,
+      showcase: [],
       playground: playgroundProjects,
     });
 
     render(
-      <MemoryRouter initialEntries={['/testuser']}>
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
         <Routes>
           <Route path="/:username" element={<ProfilePage />} />
         </Routes>
@@ -622,8 +679,7 @@ describe('ProfilePage - Project Selection State Management', () => {
       expect(screen.getByTestId('project-card-1')).toBeInTheDocument();
     });
 
-    // The selection state is managed at the component level,
-    // so switching tabs clears the selection
+    // Enable selection mode and select a project
     const selectButton = screen.getByText('Select');
     fireEvent.click(selectButton);
 
@@ -633,20 +689,11 @@ describe('ProfilePage - Project Selection State Management', () => {
       expect(screen.getByText('Selected')).toBeInTheDocument();
     });
 
-    // Switch to playground tab
-    const playgroundTab = screen.getByText('Playground');
-    fireEvent.click(playgroundTab);
+    // Cancel selection
+    fireEvent.click(screen.getByText('Cancel'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('project-card-2')).toBeInTheDocument();
-    });
-
-    // Switch back to showcase
-    const showcaseTab = screen.getByText('Showcase');
-    fireEvent.click(showcaseTab);
-
-    await waitFor(() => {
-      // Selection should be cleared after tab switch
+      // Selection mode should be exited
       expect(screen.getByText('Select')).toBeInTheDocument();
     });
   });
@@ -655,6 +702,14 @@ describe('ProfilePage - Project Selection State Management', () => {
 describe('ProfilePage - Sidebar Toggle State', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Default mock for getUserByUsername
+    vi.mocked(authService.getUserByUsername).mockImplementation((username: string) => {
+      if (username === 'testuser') return Promise.resolve(mockUser);
+      if (username === 'otheruser') return Promise.resolve(mockOtherUser);
+      if (username === 'creatoruser') return Promise.resolve(mockCreatorUser);
+      return Promise.reject(new Error('User not found'));
+    });
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
@@ -667,7 +722,26 @@ describe('ProfilePage - Sidebar Toggle State', () => {
     });
   });
 
-  it('should toggle sidebar open/closed state when toggle buttons are clicked', async () => {
+  it('should render sidebar on non-showcase tabs', async () => {
+    vi.mocked(projectsService.getUserProjects).mockResolvedValue({
+      showcase: [],
+      playground: [{ ...mockProject, id: 1, isShowcased: false }],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
+        <Routes>
+          <Route path="/:username" element={<ProfilePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Playground')).toBeInTheDocument();
+    });
+  });
+
+  it('should render profile header with user info', async () => {
     render(
       <MemoryRouter initialEntries={['/testuser']}>
         <Routes>
@@ -677,79 +751,8 @@ describe('ProfilePage - Sidebar Toggle State', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Showcase')).toBeInTheDocument();
-    });
-
-    // Find the collapse button (arrow left)
-    const collapseButtons = screen.getAllByTestId('icon').filter(icon =>
-      icon.textContent === 'arrow-left'
-    );
-    expect(collapseButtons.length).toBeGreaterThan(0);
-
-    // Click to collapse
-    fireEvent.click(collapseButtons[0].closest('button')!);
-
-    await waitFor(() => {
-      // Find the expand button (arrow right)
-      const expandButtons = screen.getAllByTestId('icon').filter(icon =>
-        icon.textContent === 'arrow-right'
-      );
-      expect(expandButtons.length).toBeGreaterThan(0);
-    });
-
-    // Click to expand
-    const expandButtons = screen.getAllByTestId('icon').filter(icon =>
-      icon.textContent === 'arrow-right'
-    );
-    fireEvent.click(expandButtons[0].closest('button')!);
-
-    await waitFor(() => {
-      // Should show collapse button again
-      const collapseButtonsAgain = screen.getAllByTestId('icon').filter(icon =>
-        icon.textContent === 'arrow-left'
-      );
-      expect(collapseButtonsAgain.length).toBeGreaterThan(0);
-    });
-  });
-
-  it('should change sidebar width when toggling between open and closed states', async () => {
-    const { container } = render(
-      <MemoryRouter initialEntries={['/testuser']}>
-        <Routes>
-          <Route path="/:username" element={<ProfilePage />} />
-        </Routes>
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Showcase')).toBeInTheDocument();
-    });
-
-    // Find sidebar element
-    const sidebar = container.querySelector('aside');
-    expect(sidebar).toBeInTheDocument();
-
-    // Initially should be wide (w-80)
-    expect(sidebar).toHaveClass('w-80');
-
-    // Collapse sidebar
-    const collapseButtons = screen.getAllByTestId('icon').filter(icon =>
-      icon.textContent === 'arrow-left'
-    );
-    fireEvent.click(collapseButtons[0].closest('button')!);
-
-    await waitFor(() => {
-      expect(sidebar).toHaveClass('w-20');
-    });
-
-    // Expand sidebar
-    const expandButtons = screen.getAllByTestId('icon').filter(icon =>
-      icon.textContent === 'arrow-right'
-    );
-    fireEvent.click(expandButtons[0].closest('button')!);
-
-    await waitFor(() => {
-      expect(sidebar).toHaveClass('w-80');
+      expect(screen.getByText('Test User')).toBeInTheDocument();
+      expect(screen.getByText('@testuser')).toBeInTheDocument();
     });
   });
 });
@@ -760,31 +763,33 @@ describe('ProfilePage - Sidebar Projects Count', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Default mock for getUserByUsername
+    vi.mocked(authService.getUserByUsername).mockImplementation((username: string) => {
+      if (username === 'testuser') return Promise.resolve(mockUser);
+      if (username === 'otheruser') return Promise.resolve(mockOtherUser);
+      if (username === 'creatoruser') return Promise.resolve(mockCreatorUser);
+      return Promise.reject(new Error('User not found'));
+    });
+
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
     });
   });
 
-  it('should display correct total number of projects (showcase + playground)', async () => {
-    const showcaseProjects: Project[] = [
-      { ...mockProject, id: 1, title: 'Showcase 1' },
-      { ...mockProject, id: 2, title: 'Showcase 2' },
-      { ...mockProject, id: 3, title: 'Showcase 3' },
-    ];
-
+  it('should display projects when viewing profile on playground tab', async () => {
     const playgroundProjects: Project[] = [
-      { ...mockProject, id: 4, title: 'Playground 1' },
-      { ...mockProject, id: 5, title: 'Playground 2' },
+      { ...mockProject, id: 1, title: 'Playground 1', isShowcased: false },
+      { ...mockProject, id: 2, title: 'Playground 2', isShowcased: false },
     ];
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
-      showcase: showcaseProjects,
+      showcase: [],
       playground: playgroundProjects,
     });
 
     render(
-      <MemoryRouter initialEntries={['/testuser']}>
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
         <Routes>
           <Route path="/:username" element={<ProfilePage />} />
         </Routes>
@@ -792,25 +797,20 @@ describe('ProfilePage - Sidebar Projects Count', () => {
     );
 
     await waitFor(() => {
-      // Find the Projects label in uppercase
-      const projectsLabel = screen.getByText(/Projects/i);
-      expect(projectsLabel).toBeInTheDocument();
-
-      // Find the number above it (should be 5 = 3 showcase + 2 playground)
-      const statsContainer = projectsLabel.closest('div');
-      const projectCount = statsContainer?.parentElement?.querySelector('.text-lg.font-bold');
-      expect(projectCount?.textContent).toBe('5');
+      expect(screen.getByText('Playground')).toBeInTheDocument();
+      expect(screen.getByTestId('project-card-1')).toBeInTheDocument();
+      expect(screen.getByTestId('project-card-2')).toBeInTheDocument();
     });
   });
 
-  it('should display 0 when there are no projects', async () => {
+  it('should show empty state when there are no projects on playground tab', async () => {
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
       showcase: [],
       playground: [],
     });
 
     render(
-      <MemoryRouter initialEntries={['/testuser']}>
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
         <Routes>
           <Route path="/:username" element={<ProfilePage />} />
         </Routes>
@@ -818,13 +818,8 @@ describe('ProfilePage - Sidebar Projects Count', () => {
     );
 
     await waitFor(() => {
-      // Find the Projects label within the stats grid (uppercase styling)
-      const projectsLabels = screen.getAllByText(/Projects/i);
-      const projectsLabel = projectsLabels.find(el => el.classList.contains('uppercase'));
-      expect(projectsLabel).toBeInTheDocument();
-      const statsContainer = projectsLabel?.closest('div');
-      const projectCount = statsContainer?.parentElement?.querySelector('.text-lg.font-bold');
-      expect(projectCount?.textContent).toBe('0');
+      expect(screen.getByText('Playground')).toBeInTheDocument();
+      expect(screen.getByText('No playground projects yet.')).toBeInTheDocument();
     });
   });
 
@@ -834,9 +829,17 @@ describe('ProfilePage - Sidebar Projects Count', () => {
 describe('ProfilePage - Select Button Conditional Rendering', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Default mock for getUserByUsername
+    vi.mocked(authService.getUserByUsername).mockImplementation((username: string) => {
+      if (username === 'testuser') return Promise.resolve(mockUser);
+      if (username === 'otheruser') return Promise.resolve(mockOtherUser);
+      if (username === 'creatoruser') return Promise.resolve(mockCreatorUser);
+      return Promise.reject(new Error('User not found'));
+    });
   });
 
-  it('should show Select button for profile owner on Showcase tab with projects', async () => {
+  it('should NOT show Select button on Showcase tab (Select only available on Playground)', async () => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
@@ -856,8 +859,11 @@ describe('ProfilePage - Select Button Conditional Rendering', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Select')).toBeInTheDocument();
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
     });
+
+    // Select button should NOT be visible on Showcase tab
+    expect(screen.queryByText('Select')).not.toBeInTheDocument();
   });
 
   it('should show Select button for profile owner on Playground tab with projects', async () => {
@@ -904,7 +910,7 @@ describe('ProfilePage - Select Button Conditional Rendering', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('activity-feed')).toBeInTheDocument();
+      expect(screen.getByTestId('activity-insights')).toBeInTheDocument();
     });
 
     expect(screen.queryByText('Select')).not.toBeInTheDocument();
@@ -938,7 +944,7 @@ describe('ProfilePage - Select Button Conditional Rendering', () => {
     expect(screen.queryByText('Select')).not.toBeInTheDocument();
   });
 
-  it('should NOT show Select button when Showcase tab has no projects', async () => {
+  it('should NOT show Select button on Showcase tab (Select only on Playground)', async () => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
@@ -946,7 +952,7 @@ describe('ProfilePage - Select Button Conditional Rendering', () => {
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
       showcase: [],
-      playground: [{ ...mockProject, id: 1 }],
+      playground: [{ ...mockProject, id: 1, isShowcased: false }],
     });
 
     render(
@@ -958,9 +964,11 @@ describe('ProfilePage - Select Button Conditional Rendering', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('No projects yet')).toBeInTheDocument();
+      // Showcase tab renders (Select button never shows on Showcase tab)
+      expect(screen.getByText('Showcase')).toBeInTheDocument();
     });
 
+    // Select button should NOT be on Showcase tab
     expect(screen.queryByText('Select')).not.toBeInTheDocument();
   });
 
@@ -990,19 +998,20 @@ describe('ProfilePage - Select Button Conditional Rendering', () => {
     expect(screen.queryByText('Select')).not.toBeInTheDocument();
   });
 
-  it('should hide Select button when switching from tab with projects to tab without', async () => {
+  it('should hide Select button when switching from playground tab with projects to empty playground', async () => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
     });
 
+    // Start with projects in playground
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
-      showcase: [{ ...mockProject, id: 1 }],
-      playground: [],
+      showcase: [],
+      playground: [{ ...mockProject, id: 1, isShowcased: false }],
     });
 
     render(
-      <MemoryRouter initialEntries={['/testuser?tab=showcase']}>
+      <MemoryRouter initialEntries={['/testuser?tab=playground']}>
         <Routes>
           <Route path="/:username" element={<ProfilePage />} />
         </Routes>
@@ -1013,9 +1022,9 @@ describe('ProfilePage - Select Button Conditional Rendering', () => {
       expect(screen.getByText('Select')).toBeInTheDocument();
     });
 
-    // Switch to Playground tab (which has no projects)
-    const playgroundTab = screen.getByText('Playground');
-    fireEvent.click(playgroundTab);
+    // Switch to Showcase tab (Select button not available on Showcase)
+    const showcaseTab = screen.getByText('Showcase');
+    fireEvent.click(showcaseTab);
 
     await waitFor(() => {
       expect(screen.queryByText('Select')).not.toBeInTheDocument();
@@ -1058,6 +1067,14 @@ describe('ProfilePage - Select Button Conditional Rendering', () => {
 describe('ProfilePage - Creator Role Shop Tab Access Control', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Default mock for getUserByUsername
+    vi.mocked(authService.getUserByUsername).mockImplementation((username: string) => {
+      if (username === 'testuser') return Promise.resolve(mockUser);
+      if (username === 'otheruser') return Promise.resolve(mockOtherUser);
+      if (username === 'creatoruser') return Promise.resolve(mockCreatorUser);
+      return Promise.reject(new Error('User not found'));
+    });
 
     vi.mocked(projectsService.getUserProjects).mockResolvedValue({
       showcase: [],

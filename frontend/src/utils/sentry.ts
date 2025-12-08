@@ -132,12 +132,14 @@ export function initSentry() {
 
         // Sanitize request headers
         if (event.request?.headers) {
-          event.request.headers = sanitizeHeaders(event.request.headers);
+          const sanitized = sanitizeHeaders(event.request.headers);
+          event.request.headers = sanitized as Record<string, string>;
         }
 
         // Sanitize extra context
         if (event.extra) {
-          event.extra = sanitizeObject(event.extra);
+          const sanitized = sanitizeObject(event.extra);
+          event.extra = sanitized as Record<string, unknown>;
         }
 
         return event;
@@ -216,15 +218,21 @@ function sanitizeObject(obj: unknown): unknown {
   }
 
   const sensitiveKeys = ['password', 'token', 'secret', 'apiKey', 'api_key', 'accessToken', 'access_token'];
-  const sanitized: Record<string, unknown> = Array.isArray(obj) ? [] : {};
 
-  for (const key in obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeObject(item));
+  }
+
+  const sanitized: Record<string, unknown> = {};
+  const objRecord = obj as Record<string, unknown>;
+
+  for (const key in objRecord) {
     if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))) {
       sanitized[key] = 'REDACTED';
-    } else if (typeof (obj as Record<string, unknown>)[key] === 'object') {
-      sanitized[key] = sanitizeObject((obj as Record<string, unknown>)[key]);
+    } else if (typeof objRecord[key] === 'object') {
+      sanitized[key] = sanitizeObject(objRecord[key]);
     } else {
-      sanitized[key] = (obj as Record<string, unknown>)[key];
+      sanitized[key] = objRecord[key];
     }
   }
 
@@ -353,7 +361,7 @@ export function addBreadcrumb(
   Sentry.addBreadcrumb({
     message,
     category,
-    data: data ? sanitizeObject(data) : undefined,
+    data: data ? (sanitizeObject(data) as Record<string, unknown>) : undefined,
     level,
     timestamp: Date.now() / 1000,
   });
