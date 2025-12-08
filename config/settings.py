@@ -164,11 +164,12 @@ if DATABASE_URL:
             'PRE_PING': True,  # Verify connections before use
         }
 
-    # Add connection timeouts for PostgreSQL
-    DATABASES['default']['OPTIONS'] = {
-        'connect_timeout': 10,
-        'options': '-c statement_timeout=30000',  # 30 second query timeout
-    }
+    # Add connection timeouts for PostgreSQL only (not SQLite)
+    if 'postgresql' in DATABASES['default'].get('ENGINE', ''):
+        DATABASES['default']['OPTIONS'] = {
+            'connect_timeout': 10,
+            'options': '-c statement_timeout=30000',  # 30 second query timeout
+        }
 elif DB_HOST:
     # Use individual DB_* environment variables (for ECS/AWS Secrets Manager)
     DATABASES = {
