@@ -61,7 +61,8 @@ RUN useradd --create-home --shell /bin/bash app \
     && chown -R app:app /app
 
 # Collect static files
-RUN python manage.py collectstatic --noinput --clear
+RUN python manage.py collectstatic --noinput --clear \
+    && chown -R app:app /app/logs
 
 USER app
 
