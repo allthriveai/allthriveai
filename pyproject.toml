@@ -14,6 +14,9 @@ ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107", "D200"
 quote-style = "single"
 indent-style = "space"
 
+[tool.ruff.lint.isort]
+known-first-party = ["core", "services", "config"]
+
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S105", "S106", "F841", "B017", "B018", "S101"]
 "**/*test*.py" = ["S101", "E402", "B007"]
