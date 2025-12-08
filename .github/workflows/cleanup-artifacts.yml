@@ -1,0 +1,59 @@
+name: Cleanup Old Artifacts
+
+on:
+  # Run daily at 2 AM UTC
+  schedule:
+    - cron: '0 2 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      days_old:
+        description: 'Delete artifacts older than N days'
+        required: false
+        default: '7'
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write  # Required to delete artifacts
+      contents: read
+    steps:
+      - name: Delete old artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const daysOld = parseInt('${{ github.event.inputs.days_old || 7 }}');
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+            console.log(`Deleting artifacts older than ${daysOld} days (before ${cutoffDate.toISOString()})`);
+
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100
+              }
+            );
+
+            let deletedCount = 0;
+            let deletedBytes = 0;
+
+            for (const artifact of artifacts) {
+              const createdAt = new Date(artifact.created_at);
+              if (createdAt < cutoffDate && !artifact.expired) {
+                console.log(`Deleting: ${artifact.name} (${artifact.size_in_bytes} bytes, created ${artifact.created_at})`);
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id
+                });
+                deletedCount++;
+                deletedBytes += artifact.size_in_bytes;
+              }
+            }
+
+            const deletedMB = (deletedBytes / (1024 * 1024)).toFixed(2);
+            console.log(`✅ Deleted ${deletedCount} artifacts, freed ${deletedMB} MB`);
