@@ -6,8 +6,8 @@ from django.test import TestCase
 
 from core.achievements.models import Achievement, AchievementProgress, CriteriaType, UserAchievement
 from core.users.models import User
-from services.achievements.service import AchievementService
-from services.achievements.tracker import AchievementTracker
+from services.gamification.achievements.service import AchievementService
+from services.gamification.achievements.tracker import AchievementTracker
 
 
 class AchievementServiceTestCase(TestCase):
