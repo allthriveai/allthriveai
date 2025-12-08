@@ -397,7 +397,7 @@ def _build_redis_url(db: int = 0) -> str:
         base_url = f'{scheme}://{auth}{REDIS_HOST}:{REDIS_PORT}/{db}'
         # Celery requires ssl_cert_reqs parameter for rediss:// URLs
         if REDIS_USE_TLS:
-            base_url += '?ssl_cert_reqs=CERT_REQUIRED'
+            base_url += '?ssl_cert_reqs=required'
         return base_url
     # Local development: use simple localhost URLs
     return f'redis://localhost:6379/{db}'
@@ -407,7 +407,7 @@ def _ensure_redis_ssl_params(url: str) -> str:
     """Ensure rediss:// URLs have the required ssl_cert_reqs parameter."""
     if url and url.startswith('rediss://') and 'ssl_cert_reqs=' not in url:
         separator = '&' if '?' in url else '?'
-        return f'{url}{separator}ssl_cert_reqs=CERT_REQUIRED'
+        return f'{url}{separator}ssl_cert_reqs=required'
     return url
 
 
@@ -462,7 +462,7 @@ if 'test' in sys.argv or 'pytest' in sys.modules:
         }
     }
 else:
-    CACHES = {
+    cache_config = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
             'LOCATION': _ensure_redis_ssl_params(config('CACHE_URL', default=_build_redis_url(4))),
@@ -470,6 +470,14 @@ else:
             'TIMEOUT': 300,  # 5 minutes default
         }
     }
+    # Add SSL options for Redis TLS connections
+    if REDIS_USE_TLS:
+        import ssl
+
+        cache_config['default']['OPTIONS'] = {
+            'ssl_cert_reqs': ssl.CERT_NONE,  # Use CERT_NONE for AWS ElastiCache
+        }
+    CACHES = cache_config
 
 # Cache timeouts for different data types
 CACHE_TTL = {
