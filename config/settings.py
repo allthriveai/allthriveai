@@ -388,15 +388,22 @@ REDIS_AUTH_TOKEN = config('REDIS_AUTH_TOKEN', default='')
 REDIS_USE_TLS = config('REDIS_USE_TLS', default=False, cast=bool)
 
 
-def _build_redis_url(db: int = 0) -> str:
-    """Build Redis URL from components or use environment variable."""
+def _build_redis_url(db: int = 0, include_ssl_params: bool = True) -> str:
+    """Build Redis URL from components or use environment variable.
+
+    Args:
+        db: Redis database number
+        include_ssl_params: If True, adds ssl_cert_reqs parameter for Celery.
+                          If False, omits it for Django cache (uses OPTIONS instead).
+    """
     if REDIS_HOST:
         # AWS ElastiCache mode: build URL from components
         scheme = 'rediss' if REDIS_USE_TLS else 'redis'
         auth = f':{REDIS_AUTH_TOKEN}@' if REDIS_AUTH_TOKEN else ''
         base_url = f'{scheme}://{auth}{REDIS_HOST}:{REDIS_PORT}/{db}'
-        # Celery requires ssl_cert_reqs parameter for rediss:// URLs
-        if REDIS_USE_TLS:
+        # Celery requires ssl_cert_reqs parameter in URL
+        # Django cache uses OPTIONS dict instead
+        if REDIS_USE_TLS and include_ssl_params:
             base_url += '?ssl_cert_reqs=required'
         return base_url
     # Local development: use simple localhost URLs
@@ -465,7 +472,8 @@ else:
     cache_config = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': _ensure_redis_ssl_params(config('CACHE_URL', default=_build_redis_url(4))),
+            # Build URL without ssl_cert_reqs parameter (handled via OPTIONS instead)
+            'LOCATION': config('CACHE_URL', default=_build_redis_url(4, include_ssl_params=False)),
             'KEY_PREFIX': 'allthrive',
             'TIMEOUT': 300,  # 5 minutes default
         }
