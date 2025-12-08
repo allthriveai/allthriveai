@@ -60,6 +60,7 @@ export interface TokenBalance {
 export interface SubscriptionStatus {
   isAuthenticated: boolean;
   hasActiveSubscription: boolean;
+  hasStripeCustomer?: boolean;
   isTrial: boolean;
   tierName: string;
   tierSlug: string;

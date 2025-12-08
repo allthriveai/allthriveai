@@ -20,7 +20,7 @@ export default function BattleDetailPage() {
     fetchBattle();
     const interval = setInterval(fetchBattle, 5000); // Refresh every 5 seconds
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [battleId]);
 
   const fetchBattle = async () => {

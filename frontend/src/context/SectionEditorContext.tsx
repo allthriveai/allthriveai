@@ -155,7 +155,7 @@ const SectionEditorContext = createContext<SectionEditorContextValue | null>(nul
  * Access the section editor context.
  * Must be used within a SectionEditorProvider.
  */
-// eslint-disable-next-line react-refresh/only-export-components
+
 export function useSectionEditorContext(): SectionEditorContextValue {
   const context = useContext(SectionEditorContext);
   if (!context) {

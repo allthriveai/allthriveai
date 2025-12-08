@@ -445,7 +445,7 @@ export function useBattleNotifications({
         wsRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [isAuthenticated, authLoading, autoConnect]);
 
   return {

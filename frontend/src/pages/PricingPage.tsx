@@ -230,11 +230,7 @@ function PricingPageContent() {
     }, 200);
   };
 
-  const faqs = [
-    {
-      question: 'How does the Creator plan work?',
-      answer: 'The Creator plan is completely free to join. When you sell prompts, templates, or courses on our marketplace, we take a small 8% fee on each sale. You keep 92% of your earnings with no monthly costs or upfront fees.',
-    },
+  const faqs: { question: string; answer: React.ReactNode }[] = [
     {
       question: 'Can I change plans anytime?',
       answer: 'Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we\'ll prorate the difference.',
@@ -244,8 +240,8 @@ function PricingPageContent() {
       answer: 'Your monthly AI request quota resets on your billing cycle date. Unused requests don\'t roll over, but you can purchase token packages for additional capacity. Token packages are available for purchase after signup and never expire.',
     },
     {
-      question: 'Do you offer refunds?',
-      answer: 'We offer a 14-day money-back guarantee on all paid plans. No questions asked.',
+      question: 'What happens when I cancel?',
+      answer: 'When you cancel, you keep full access until the end of your current billing period. After that, your account will be downgraded to the free tier.',
     },
     {
       question: 'Can I buy more AI tokens if I run out?',
@@ -257,7 +253,18 @@ function PricingPageContent() {
     },
     {
       question: 'I have an issue, how can I ask for help?',
-      answer: 'If you\'re logged in, use the support chat in the top menu for the fastest response. You can also report bugs or request features on our GitHub issues page at github.com/allthriveai/allthriveai/issues.',
+      answer: (
+        <>
+          If you're logged in, use the support chat in the top menu for the fastest response. You can also report bugs or request features on our{' '}
+          <a href="https://github.com/allthriveai/allthriveai/issues" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">
+            GitHub issues page
+          </a>.
+        </>
+      ),
+    },
+    {
+      question: 'How does the Creator plan work?',
+      answer: 'The Creator plan is completely free to join. When you sell prompts, templates, or courses on our marketplace, we take a small 8% fee on each sale. You keep 92% of your earnings with no monthly costs or upfront fees.',
     },
   ];
 
@@ -415,9 +422,17 @@ function PricingPageContent() {
     if (tier.tierType === 'creator_mentor') {
       featureList.push('Sell prompts, templates & courses');
       featureList.push('Only 8% fee on sales');
-      featureList.push('Creator analytics dashboard');
+      featureList.push('Creator insights dashboard');
       featureList.push('Shareable project portfolio');
       featureList.push('Community groups');
+      return featureList;
+    }
+
+    // Pro Learn tier gets simplified feature list
+    if (tier.tierType === 'pro_learn') {
+      featureList.push('Everything in Community Pro +');
+      featureList.push(`${tier.monthlyAiRequests.toLocaleString()} AI chats/month`);
+      featureList.push('Structured learning paths');
       return featureList;
     }
 
@@ -425,13 +440,23 @@ function PricingPageContent() {
       featureList.push(`${tier.monthlyAiRequests.toLocaleString()} AI chats/month`);
     }
 
-    if (tier.features.aiMentor) featureList.push('Pip AI assistant');
+    if (tier.features.aiMentor) {
+      if (tier.tierType === 'free') {
+        featureList.push('Limited Automated AI project creation');
+      } else {
+        featureList.push('Automated AI project creation');
+      }
+    }
+    featureList.push('PvP Prompt Battles');
     if (tier.features.quests) featureList.push('Gamified learning quests');
     if (tier.features.projects) featureList.push('Shareable project portfolio');
+    if (tier.tierType === 'free' || tier.tierType === 'community_pro') {
+      featureList.push('Access to Explore Project Feed');
+    }
     if (tier.features.circles) featureList.push('Community groups');
-    if (tier.features.marketplace) featureList.push('Prompt & template marketplace');
+    if (tier.features.marketplace) featureList.push('Access to Creator marketplace');
     if (tier.features.go1Courses) featureList.push('Learning paths & interactive courses');
-    if (tier.features.analytics) featureList.push('Portfolio analytics');
+    if (tier.features.analytics) featureList.push('Portfolio insights');
     if (tier.features.creatorTools) featureList.push('Sell courses & coaching');
 
     return featureList;

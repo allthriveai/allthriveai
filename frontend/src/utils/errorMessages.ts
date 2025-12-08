@@ -29,7 +29,7 @@ export interface UserFriendlyError {
 /**
  * Translate backend errors into user-friendly messages for YouTube integration
  */
-export function getYouTubeErrorMessage(error: any): UserFriendlyError {
+export function getYouTubeErrorMessage(error: ErrorResponse): UserFriendlyError {
   // Extract error details from various error formats
   const errorData = error?.response?.data || error;
   const statusCode = error?.response?.status || error?.statusCode;
@@ -147,7 +147,7 @@ export function getYouTubeErrorMessage(error: any): UserFriendlyError {
 /**
  * Translate backend errors into user-friendly messages for GitHub integration
  */
-export function getGitHubErrorMessage(error: any): UserFriendlyError {
+export function getGitHubErrorMessage(error: ErrorResponse): UserFriendlyError {
   const errorData = error?.response?.data || error;
   const statusCode = error?.response?.status || error?.statusCode;
   const errorMessage = errorData?.message || error?.message || '';
@@ -191,7 +191,7 @@ export function getGitHubErrorMessage(error: any): UserFriendlyError {
 /**
  * Generic error translator - automatically detects integration type
  */
-export function getUserFriendlyError(error: any, integration?: 'youtube' | 'github'): UserFriendlyError {
+export function getUserFriendlyError(error: ErrorResponse, integration?: 'youtube' | 'github'): UserFriendlyError {
   // Auto-detect integration from error context
   const errorData = error?.response?.data || error;
   const errorMessage = errorData?.message || error?.message || '';

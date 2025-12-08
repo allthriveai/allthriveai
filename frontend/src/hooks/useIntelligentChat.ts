@@ -588,7 +588,7 @@ export function useIntelligentChat({
       }
       setIsConnected(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []); // Only run on mount/unmount
 
   // Retry connection when auth finishes loading

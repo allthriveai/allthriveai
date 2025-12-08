@@ -186,7 +186,7 @@ function sanitizeUrl(url: string): string {
 /**
  * Sanitize headers by redacting sensitive values
  */
-function sanitizeHeaders(headers: Record<string, any>): Record<string, any> {
+function sanitizeHeaders(headers: Record<string, unknown>): Record<string, unknown> {
   const sensitiveHeaders = [
     'authorization',
     'cookie',
@@ -210,21 +210,21 @@ function sanitizeHeaders(headers: Record<string, any>): Record<string, any> {
 /**
  * Recursively sanitize object by removing sensitive keys
  */
-function sanitizeObject(obj: any): any {
+function sanitizeObject(obj: unknown): unknown {
   if (!obj || typeof obj !== 'object') {
     return obj;
   }
 
   const sensitiveKeys = ['password', 'token', 'secret', 'apiKey', 'api_key', 'accessToken', 'access_token'];
-  const sanitized: any = Array.isArray(obj) ? [] : {};
+  const sanitized: Record<string, unknown> = Array.isArray(obj) ? [] : {};
 
   for (const key in obj) {
     if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))) {
       sanitized[key] = 'REDACTED';
-    } else if (typeof obj[key] === 'object') {
-      sanitized[key] = sanitizeObject(obj[key]);
+    } else if (typeof (obj as Record<string, unknown>)[key] === 'object') {
+      sanitized[key] = sanitizeObject((obj as Record<string, unknown>)[key]);
     } else {
-      sanitized[key] = obj[key];
+      sanitized[key] = (obj as Record<string, unknown>)[key];
     }
   }
 
@@ -238,7 +238,7 @@ export function captureException(
   error: Error | unknown,
   context?: {
     tags?: Record<string, string>;
-    extra?: Record<string, any>;
+    extra?: Record<string, unknown>;
     level?: Sentry.SeverityLevel;
     user?: Sentry.User;
     fingerprint?: string[];
@@ -291,7 +291,7 @@ export function captureMessage(
   level: Sentry.SeverityLevel = 'info',
   context?: {
     tags?: Record<string, string>;
-    extra?: Record<string, any>;
+    extra?: Record<string, unknown>;
   }
 ) {
   if (!import.meta.env.PROD) {
@@ -319,7 +319,7 @@ export function captureMessage(
  * Set the current user for error tracking
  * Call this when user logs in/out
  */
-export function setUser(user: { id: string; email?: string; username?: string; [key: string]: any } | null) {
+export function setUser(user: { id: string; email?: string; username?: string; [key: string]: unknown } | null) {
   if (!import.meta.env.PROD) {
     return;
   }
@@ -343,7 +343,7 @@ export function setUser(user: { id: string; email?: string; username?: string; [
 export function addBreadcrumb(
   message: string,
   category: string,
-  data?: Record<string, any>,
+  data?: Record<string, unknown>,
   level: Sentry.SeverityLevel = 'info'
 ) {
   if (!import.meta.env.PROD) {

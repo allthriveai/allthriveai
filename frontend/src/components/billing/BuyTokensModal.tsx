@@ -149,7 +149,7 @@ export function BuyTokensModal({ isOpen, onClose, onSuccess }: BuyTokensModalPro
                       </div>
                       <p className="text-sm text-slate-400">{pkg.description}</p>
                       <div className="mt-3 text-xs text-slate-500">
-                        {(Number(pkg.price) / (pkg.tokenAmount / 1000000)).toFixed(2)}¢ per 1M tokens
+                        ${(Number(pkg.price) / (pkg.tokenAmount / 1000000)).toFixed(2)} per 1M tokens
                       </div>
                     </div>
                     <svg

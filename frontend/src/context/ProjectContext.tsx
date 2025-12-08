@@ -63,7 +63,7 @@ const ProjectContext = createContext<ProjectContextValue | null>(null);
 // Hook
 // ============================================================================
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export function useProjectContext(): ProjectContextValue {
   const context = useContext(ProjectContext);
   if (!context) {

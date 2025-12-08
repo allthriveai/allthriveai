@@ -481,7 +481,7 @@ export function useMatchmaking({
         wsRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   return {

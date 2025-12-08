@@ -35,15 +35,15 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
       onClick={onClose}
     >
       <div
-        className={`relative bg-brand-dark border border-primary-500/20 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 animate-in fade-in zoom-in-95 duration-200 ${className}`}
+        className={`relative bg-brand-dark border border-primary-500/20 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
-          <h2 className="text-2xl font-bold text-white mb-4 bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent">
+          <h2 className="text-2xl font-bold text-white mb-4 bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent flex-shrink-0">
             {title}
           </h2>
         )}
-        <div className="text-gray-300">{children}</div>
+        <div className="text-gray-300 overflow-y-auto flex-1">{children}</div>
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"

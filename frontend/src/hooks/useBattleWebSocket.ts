@@ -585,7 +585,7 @@ export function useBattleWebSocket({
         wsRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   // Reconnect when auth loads
