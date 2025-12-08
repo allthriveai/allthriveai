@@ -242,6 +242,9 @@ export default function SideQuestsPage() {
     setTrayOpen(true);
   };
 
+  // Calculate in-progress quests before early return
+  const inProgressQuests = myQuests.filter(q => q.status === 'in_progress');
+
   // Initialize scroll buttons on mount
   useEffect(() => {
     updateScrollButtons();
@@ -265,7 +268,6 @@ export default function SideQuestsPage() {
   const mainCategories = categories
     .filter(c => c.categoryType !== 'daily')
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-  const inProgressQuests = myQuests.filter(q => q.status === 'in_progress');
 
   // Difficulty order for sorting (beginner to advanced progression)
   const difficultyOrder: Record<string, number> = {

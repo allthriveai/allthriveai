@@ -9,10 +9,10 @@ Run with:
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.text import slugify
-from services.rss_sync_service import RSSFeedSyncService
 
 from core.integrations.rss_models import RSSFeedAgent
 from core.users.models import User, UserRole
+from services.rss_sync_service import RSSFeedSyncService
 
 
 class Command(BaseCommand):
