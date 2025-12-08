@@ -53,7 +53,7 @@ jobs:
 
       - name: Run backend tests
         run: |
-          pytest --cov=. --cov-report=xml
+          python manage.py test --verbosity=2 --keepdb
         env:
           DJANGO_SETTINGS_MODULE: config.settings
           DATABASE_URL: sqlite:///db.sqlite3
