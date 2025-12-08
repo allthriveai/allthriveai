@@ -2,6 +2,24 @@ import { useEffect, useMemo, useState } from 'react';
 import { Cloud, fetchSimpleIcons, renderSimpleIcon } from 'react-icon-cloud';
 import type { ComponentProps } from 'react';
 
+// Hook to detect mobile screen size
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < breakpoint);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
 
 type SimpleIcon = any;
 
@@ -36,7 +54,7 @@ const customIconImages = [
   '/lovable-icon-bg-light.png',
 ];
 
-const cloudProps: Omit<ComponentProps<typeof Cloud>, 'children'> = {
+const getCloudProps = (isMobile: boolean): Omit<ComponentProps<typeof Cloud>, 'children'> => ({
   containerProps: {
     style: {
       display: 'flex',
@@ -44,6 +62,7 @@ const cloudProps: Omit<ComponentProps<typeof Cloud>, 'children'> = {
       alignItems: 'center',
       width: '100%',
       height: '100%',
+      pointerEvents: isMobile ? 'none' : 'auto',
     },
   },
   options: {
@@ -51,18 +70,19 @@ const cloudProps: Omit<ComponentProps<typeof Cloud>, 'children'> = {
     depth: 1,
     wheelZoom: false,
     imageScale: 2,
-    activeCursor: 'pointer',
-    tooltip: 'native',
-    initial: [0.1, -0.1],
-    clickToFront: 500,
+    activeCursor: isMobile ? 'default' : 'pointer',
+    tooltip: isMobile ? null : 'native',
+    initial: isMobile ? [0, 0] : [0.1, -0.1],
+    clickToFront: isMobile ? 0 : 500,
     tooltipDelay: 0,
     outlineColour: '#0000',
-    maxSpeed: 0.02,
-    minSpeed: 0.01,
+    maxSpeed: isMobile ? 0 : 0.02,
+    minSpeed: isMobile ? 0 : 0.01,
     freezeActive: true,
     freezeDecel: true,
+    frozen: isMobile,
   },
-};
+});
 
 const renderCustomIcon = (icon: SimpleIcon) => {
   return renderSimpleIcon({
@@ -84,10 +104,13 @@ type IconData = Awaited<ReturnType<typeof fetchSimpleIcons>>;
 
 export function IconCloud() {
   const [data, setData] = useState<IconData | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     fetchSimpleIcons({ slugs: aiToolSlugs }).then(setData).catch(console.error);
   }, []);
+
+  const cloudProps = useMemo(() => getCloudProps(isMobile), [isMobile]);
 
   const renderedIcons = useMemo(() => {
     if (!data) return null;
