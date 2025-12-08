@@ -11,7 +11,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_DB: allthrive_ai
           POSTGRES_USER: allthrive
@@ -137,12 +137,14 @@ jobs:
 
       - name: Frontend TypeScript type check
         working-directory: frontend
-        run: npx tsc --noEmit
+        run: |
+          echo "Running TypeScript type check..."
+          npx tsc --noEmit
+          echo "✅ TypeScript compilation passed"
 
       - name: Frontend unit tests
         working-directory: frontend
-        run: npm test -- --run --coverage || true
-        continue-on-error: true
+        run: npm test -- --run --coverage
 
       - name: Validate SEO endpoints (robots.txt, sitemap, AI manifest)
         run: |
@@ -214,7 +216,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_DB: allthrive_ai
           POSTGRES_USER: allthrive
