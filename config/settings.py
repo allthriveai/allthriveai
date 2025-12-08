@@ -422,6 +422,7 @@ CELERY_TIMEZONE = TIME_ZONE
 # Celery SSL configuration for Redis with TLS (AWS ElastiCache)
 if REDIS_USE_TLS:
     import ssl
+
     CELERY_BROKER_USE_SSL = {
         'ssl_cert_reqs': ssl.CERT_REQUIRED,
     }

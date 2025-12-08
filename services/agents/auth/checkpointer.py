@@ -54,8 +54,7 @@ def get_postgres_connection_string() -> str:
     # Validate required fields
     if not host:
         raise ValueError(
-            'PostgreSQL HOST is not configured. '
-            'Ensure DB_HOST or DATABASE_URL environment variables are set.'
+            'PostgreSQL HOST is not configured. ' 'Ensure DB_HOST or DATABASE_URL environment variables are set.'
         )
 
     if not database:
