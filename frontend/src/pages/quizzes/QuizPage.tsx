@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { ToolRecommendationQuiz } from '@/components/tools/ToolRecommendationQuiz';
@@ -7,7 +7,7 @@ import { QuizCard } from '@/components/quiz/QuizCard';
 import { QuizProgress } from '@/components/quiz/QuizProgress';
 import { QuizResults } from '@/components/quiz/QuizResults';
 import { QuestCompletionCelebration } from '@/components/side-quests/QuestCompletionCelebration';
-import type { Quiz, QuizQuestion, QuizAnswerResponse, CompletedQuestInfo } from '@/components/quiz/types';
+import type { Quiz, QuizQuestion, CompletedQuestInfo } from '@/components/quiz/types';
 
 type QuizState = 'intro' | 'taking' | 'feedback' | 'results';
 
@@ -15,24 +15,7 @@ export default function QuizPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
 
-  // Special case: Tool Recommendation Quiz
-  if (slug === 'find-your-perfect-ai-tool') {
-    return (
-      <DashboardLayout>
-        {() => (
-          <div className="flex-1 overflow-auto">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <ToolRecommendationQuiz
-                onComplete={() => {
-                  // Optionally navigate somewhere after completion
-                }}
-              />
-            </div>
-          </div>
-        )}
-      </DashboardLayout>
-    );
-  }
+  // All hooks must be called before any conditional returns
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -80,9 +63,9 @@ export default function QuizPage() {
       setCurrentQuestionIndex(0);
       setScore(0);
       questionStartTime.current = Date.now();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to start quiz:', err);
-      const errorMessage = err?.error || 'Please log in to take quizzes. Click "Log In" in the sidebar to continue.';
+      const errorMessage = (err as { error?: string })?.error || 'Please log in to take quizzes. Click "Log In" in the sidebar to continue.';
       setError(errorMessage);
       setQuizState('intro');
     }
@@ -160,6 +143,25 @@ export default function QuizPage() {
   };
 
   const currentQuestion = questions[currentQuestionIndex];
+
+  // Special case: Tool Recommendation Quiz
+  if (slug === 'find-your-perfect-ai-tool') {
+    return (
+      <DashboardLayout>
+        {() => (
+          <div className="flex-1 overflow-auto">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <ToolRecommendationQuiz
+                onComplete={() => {
+                  // Optionally navigate somewhere after completion
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

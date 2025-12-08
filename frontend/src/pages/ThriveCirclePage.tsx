@@ -22,7 +22,6 @@ import {
 } from '@/components/thrive-circle/CircleActivityToast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faUsers,
   faCalendarWeek,
   faSpinner,
   faUserGroup,
@@ -259,7 +258,7 @@ export default function ThriveCirclePage() {
                 {/* Circle Members Grid */}
                 <CircleMembersGrid
                   members={myCircle?.members || []}
-                  currentUserId={user?.id}
+                  currentUserId={user?.id?.toString()}
                   onGiveKudos={setSelectedMember}
                   isLoading={isLoadingCircle}
                 />
@@ -274,7 +273,7 @@ export default function ThriveCirclePage() {
               {/* Row 2: Kudos Wall (100% - only shows if kudos exist) */}
               <KudosWall
                 kudos={kudosReceived || []}
-                currentUserId={user?.id}
+                currentUserId={user?.id?.toString()}
                 isLoading={isLoadingKudos}
               />
 

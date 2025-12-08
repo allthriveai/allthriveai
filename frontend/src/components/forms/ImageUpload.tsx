@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, DragEvent, ChangeEvent } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import type { DragEvent, ChangeEvent } from 'react';
 import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { api } from '@/services/api';
 import type { ApiError } from '@/types/api';

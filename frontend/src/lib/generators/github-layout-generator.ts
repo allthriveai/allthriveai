@@ -18,7 +18,6 @@ import type {
   ImageGalleryComponent,
   PromptComponent,
   DiagramComponent,
-  GitHubStatsComponent,
   GitHubLanguagesComponent,
   GitHubContributorsComponent,
 } from '@/types/components';
@@ -129,7 +128,7 @@ function convertLegacyBlocks(
               order: order++,
               data: {
                 content: block.content,
-                variant: 'body',
+                variant: 'prose',
               },
             }) as TextComponent
           );
@@ -147,8 +146,8 @@ function convertLegacyBlocks(
                   url: img.url,
                   alt: img.alt || 'Project screenshot',
                 })),
-                layout: block.images.length <= 2 ? 'grid-2' : 'grid-3',
-                caption: block.caption,
+                variant: 'grid',
+                columns: (block.images.length <= 2 ? 2 : 3) as 2 | 3 | 4,
               },
             }) as ImageGalleryComponent
           );
@@ -162,7 +161,7 @@ function convertLegacyBlocks(
               id: generateId(),
               order: order++,
               data: {
-                type: 'mermaid',
+                diagramType: 'mermaid',
                 code: block.code,
                 title: 'Architecture',
                 caption: block.caption || 'System architecture diagram',
@@ -201,7 +200,7 @@ function convertLegacyBlocks(
               order: order++,
               data: {
                 content: `\`\`\`\n${block.content}\n\`\`\``,
-                variant: 'body',
+                variant: 'prose',
               },
             }) as TextComponent
           );
@@ -232,44 +231,10 @@ function generateHeroComponent(
       variant: analysis.hero_image ? 'image' : 'gradient',
       gradientFrom: 'violet-600',
       gradientTo: 'indigo-600',
-      alignment: 'center',
-      ctaButtons: [
-        ...(repoData.html_url
-          ? [{ label: 'View on GitHub', url: repoData.html_url, variant: 'primary' as const }]
-          : []),
-        ...(repoData.homepage
-          ? [{ label: 'Live Demo', url: repoData.homepage, variant: 'secondary' as const }]
-          : []),
-      ],
+      ...(repoData.html_url && { primaryCta: { label: 'View on GitHub', url: repoData.html_url } }),
+      ...(repoData.homepage && { secondaryCta: { label: 'Live Demo', url: repoData.homepage } }),
     },
   }) as HeroComponent;
-}
-
-/**
- * Generate GitHub stats component
- */
-function generateGitHubStatsComponent(
-  input: GitHubLayoutInput,
-  order: number
-): GitHubStatsComponent {
-  const { repoData } = input;
-
-  return createComponent('github-stats', {
-    id: generateId(),
-    order,
-    data: {
-      owner: repoData.owner || '',
-      repo: repoData.name,
-      stats: {
-        stars: repoData.stargazers_count || 0,
-        forks: repoData.forks_count || 0,
-        issues: repoData.open_issues_count || 0,
-        watchers: repoData.watchers_count || 0,
-      },
-      variant: 'detailed',
-      showChart: true,
-    },
-  }) as GitHubStatsComponent;
 }
 
 /**
@@ -342,22 +307,54 @@ function generateLanguagesComponent(
   input: GitHubLayoutInput,
   order: number
 ): GitHubLanguagesComponent | null {
-  const { languages, repoData } = input;
+  const { languages } = input;
 
   if (!languages || Object.keys(languages).length === 0) {
     return null;
   }
 
+  // Transform Record<string, number> to array format
+  const totalBytes = Object.values(languages).reduce((sum, bytes) => sum + bytes, 0);
+  const languagesArray = Object.entries(languages).map(([name, bytes]) => ({
+    name,
+    percentage: Math.round((bytes / totalBytes) * 100),
+    color: getLanguageColor(name),
+    bytes,
+  }));
+
   return createComponent('github-languages', {
     id: generateId(),
     order,
     data: {
-      owner: repoData.owner || '',
-      repo: repoData.name,
-      languages,
+      title: 'Language Breakdown',
+      languages: languagesArray,
       variant: 'bar',
     },
   }) as GitHubLanguagesComponent;
+}
+
+// Helper function to get language colors (simplified)
+function getLanguageColor(language: string): string {
+  const colors: Record<string, string> = {
+    'TypeScript': '#3178c6',
+    'JavaScript': '#f1e05a',
+    'Python': '#3572A5',
+    'Java': '#b07219',
+    'Go': '#00ADD8',
+    'Rust': '#dea584',
+    'Ruby': '#701516',
+    'C++': '#f34b7d',
+    'C': '#555555',
+    'C#': '#178600',
+    'PHP': '#4F5D95',
+    'Swift': '#ffac45',
+    'Kotlin': '#A97BFF',
+    'Dart': '#00B4AB',
+    'HTML': '#e34c26',
+    'CSS': '#563d7c',
+    'SCSS': '#c6538c',
+  };
+  return colors[language] || '#8b949e';
 }
 
 /**
@@ -377,10 +374,9 @@ function generateContributorsComponent(
     id: generateId(),
     order,
     data: {
-      owner: repoData.owner || '',
-      repo: repoData.name,
+      title: `${repoData.owner || 'Unknown'}/${repoData.name} Contributors`,
       contributors: contributors.slice(0, 10).map((c) => ({
-        login: c.login,
+        username: c.login,
         avatarUrl: c.avatar_url,
         contributions: c.contributions,
         profileUrl: c.html_url,
@@ -424,7 +420,7 @@ function generateLinksComponent(
   order: number
 ): LinksComponent | null {
   const { repoData, analysis } = input;
-  const links: Array<{ label: string; url: string; type?: string }> = [];
+  const links: Array<{ label: string; url: string; type?: 'docs' | 'github' | 'demo' | 'video' | 'article' | 'external' }> = [];
 
   // GitHub repo link
   if (repoData.html_url) {
@@ -433,7 +429,7 @@ function generateLinksComponent(
 
   // Homepage/demo
   if (repoData.homepage) {
-    links.push({ label: 'Live Demo', url: repoData.homepage, type: 'website' });
+    links.push({ label: 'Live Demo', url: repoData.homepage, type: 'demo' });
   }
 
   // Demo URLs from analysis
@@ -509,7 +505,6 @@ function generateStatsComponent(
     data: {
       stats,
       variant: 'cards',
-      columns: stats.length,
     },
   }) as StatsComponent;
 }

@@ -9,6 +9,7 @@ export interface ExploreParams {
   tools?: number[];       // Tool IDs
   page?: number;
   page_size?: number;
+  sort?: string;          // Sort order (e.g., 'trending', 'new', 'top')
 }
 
 export interface UserTool {

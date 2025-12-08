@@ -4,7 +4,6 @@
  * Displays user's learning paths and recommendations on their profile.
  * Shows the "Find Your Perfect AI Tool" quiz prominently first for personalization.
  */
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -19,7 +18,6 @@ import {
   faArrowRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { LearningPathCard } from './LearningPathCard';
-import { SkillLevelBadge } from './SkillLevelBadge';
 import {
   useMyLearningPaths,
   useUserLearningPaths,
@@ -28,7 +26,7 @@ import {
 } from '@/hooks/useLearningPaths';
 import { useQuery } from '@tanstack/react-query';
 import { getQuiz, getQuizHistory } from '@/services/quiz';
-import type { UserLearningPath, TopicRecommendation } from '@/types/models';
+import type { TopicRecommendation } from '@/types/models';
 
 const PERSONALIZATION_QUIZ_SLUG = 'find-your-perfect-ai-tool';
 
@@ -39,10 +37,9 @@ interface LearningPathsTabProps {
 
 export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabProps) {
   const navigate = useNavigate();
-  const [selectedPath, setSelectedPath] = useState<UserLearningPath | null>(null);
 
   // Fetch personalization quiz details
-  const { data: personalizationQuiz, isLoading: isLoadingQuiz } = useQuery({
+  const { data: personalizationQuiz } = useQuery({
     queryKey: ['quiz', PERSONALIZATION_QUIZ_SLUG],
     queryFn: () => getQuiz(PERSONALIZATION_QUIZ_SLUG),
     enabled: isOwnProfile,
@@ -61,14 +58,16 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
     (attempt) => attempt.quiz?.slug === PERSONALIZATION_QUIZ_SLUG && attempt.isCompleted
   );
 
-  // Use different hooks for own profile vs other users
+  // Call both hooks unconditionally, then use the appropriate data
+  const myPathsResult = useMyLearningPaths();
+  const userPathsResult = useUserLearningPaths(username);
+
+  // Use the appropriate result based on profile type
   const {
     data: paths,
     isLoading: isLoadingPaths,
     error: pathsError,
-  } = isOwnProfile
-    ? useMyLearningPaths()
-    : useUserLearningPaths(username);
+  } = isOwnProfile ? myPathsResult : userPathsResult;
 
   const {
     data: recommendations,
@@ -198,7 +197,7 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
               <LearningPathCard
                 key={path.id}
                 path={path}
-                onClick={() => setSelectedPath(path)}
+                onClick={() => navigate(`/learn/${path.topic}`)}
               />
             ))}
           </div>

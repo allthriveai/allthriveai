@@ -62,7 +62,7 @@ const testimonials: Testimonial[] = [
 
 export function Testimonials() {
   // Fetch platform stats
-  const { data: stats, error, isLoading } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ['platform-stats'],
     queryFn: getPlatformStats,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes

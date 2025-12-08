@@ -103,6 +103,9 @@ def connect_provider(request, provider):
     # Generate state token for CSRF protection
     state = secrets.token_urlsafe(32)
 
+    # Get the 'next' parameter for redirect after OAuth completion
+    next_url = request.GET.get('next', f'{settings.FRONTEND_URL}/account/settings/integrations')
+
     # Store state in cache with user ID (expires in 10 minutes)
     cache_key = f'oauth_state:{state}'
     cache.set(
@@ -110,6 +113,7 @@ def connect_provider(request, provider):
         {
             'user_id': request.user.id,
             'provider': provider,
+            'next_url': next_url,
         },
         timeout=600,
     )
@@ -120,15 +124,8 @@ def connect_provider(request, provider):
     # Get authorization URL
     auth_url = oauth_service.get_authorization_url(redirect_uri, state)
 
-    return Response(
-        {
-            'success': True,
-            'data': {
-                'authUrl': auth_url,
-                'provider': provider,
-            },
-        }
-    )
+    # Redirect directly to the OAuth provider
+    return redirect(auth_url)
 
 
 @api_view(['GET'])
@@ -139,25 +136,31 @@ def oauth_callback(request, provider):
     state = request.GET.get('state')
     error = request.GET.get('error')
 
+    # Default redirect URL
+    default_redirect = f'{settings.FRONTEND_URL}/account/settings/integrations'
+
     # Handle OAuth errors
     if error:
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error={error}')
+        return redirect(f'{default_redirect}?error={error}')
 
     if not code or not state:
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error=missing_params')
+        return redirect(f'{default_redirect}?error=missing_params')
 
     # Verify state token
     cache_key = f'oauth_state:{state}'
     cached_data = cache.get(cache_key)
 
     if not cached_data:
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error=invalid_state')
+        return redirect(f'{default_redirect}?error=invalid_state')
 
     if cached_data['user_id'] != request.user.id:
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error=user_mismatch')
+        return redirect(f'{default_redirect}?error=user_mismatch')
 
     if cached_data['provider'] != provider:
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error=provider_mismatch')
+        return redirect(f'{default_redirect}?error=provider_mismatch')
+
+    # Get the next URL from cached state (or use default)
+    next_url = cached_data.get('next_url', default_redirect)
 
     # Clear state from cache
     cache.delete(cache_key)
@@ -178,8 +181,9 @@ def oauth_callback(request, provider):
             scope=token_data.get('scope'),
         )
 
-        # Redirect back to settings page with success
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?connected={provider}')
+        # Redirect back to the original page with success
+        separator = '&' if '?' in next_url else '?'
+        return redirect(f'{next_url}{separator}connected={provider}')
 
     except Exception as e:
         # Log error and redirect with error message
@@ -189,7 +193,8 @@ def oauth_callback(request, provider):
             extra={'user_id': request.user.id, 'provider': provider},
         )
 
-        return redirect(f'{settings.FRONTEND_URL}/account/settings/integrations?error=connection_failed')
+        separator = '&' if '?' in next_url else '?'
+        return redirect(f'{next_url}{separator}error=connection_failed')
 
 
 @api_view(['POST'])

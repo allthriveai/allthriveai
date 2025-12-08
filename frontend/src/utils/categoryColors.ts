@@ -118,21 +118,6 @@ const baseJewelColors = {
 } as const;
 
 /**
- * Legacy color name to jewel tone mapping
- */
-const legacyColorMapping: Record<string, keyof typeof baseJewelColors> = {
-  teal: 'jade',
-  cyan: 'sapphire',
-  blue: 'sapphire',
-  green: 'emerald',
-  purple: 'amethyst',
-  pink: 'rose-quartz',
-  red: 'ruby',
-  orange: 'topaz',
-  lime: 'peridot',
-};
-
-/**
  * True jewel tone colors - rich, saturated gemstone colors
  * Using CSS custom properties defined in index.css
  */

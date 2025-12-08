@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import {
   HELP_CATEGORIES,
-  HELP_QUESTIONS,
   getFeaturedQuestions,
   getQuestionsByCategory,
   searchHelpQuestions,
@@ -13,8 +12,6 @@ import {
 interface HelpQuestionsPanelProps {
   /** Callback when a help question is selected */
   onQuestionSelect: (question: HelpQuestion) => void;
-  /** Callback to close the help panel */
-  onClose: () => void;
 }
 
 /**
@@ -26,7 +23,7 @@ interface HelpQuestionsPanelProps {
  * - Featured/popular questions
  * - Beautiful card-based layout
  */
-export function HelpQuestionsPanel({ onQuestionSelect, onClose }: HelpQuestionsPanelProps) {
+export function HelpQuestionsPanel({ onQuestionSelect }: HelpQuestionsPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<HelpCategory | null>(null);
 

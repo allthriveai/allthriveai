@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { PhotoIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { PhotoIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { FaCamera } from 'react-icons/fa';
 
 interface BannerImageSectionProps {
@@ -26,7 +26,6 @@ export function BannerImageSection({
   setBannerUrl,
   handleBannerUpload,
   isUploadingBanner,
-  isSaving = false,
 }: BannerImageSectionProps) {
   const [showBannerEdit, setShowBannerEdit] = useState(false);
 

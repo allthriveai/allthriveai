@@ -29,8 +29,8 @@ export default function ExtensionAuthPage() {
               id: user.id,
               username: user.username,
               email: user.email,
-              fullName: user.full_name || '',
-              avatarUrl: user.avatar_url || '',
+              fullName: user.fullName || '',
+              avatarUrl: user.avatarUrl || '',
             });
 
             // Redirect to callback URL - the extension's webNavigation listener will detect this

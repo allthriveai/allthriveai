@@ -1,4 +1,5 @@
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import type { AuthState } from '@/types/models';
 import * as authService from '@/services/auth';
 import { ensureCsrfToken } from '@/services/api';

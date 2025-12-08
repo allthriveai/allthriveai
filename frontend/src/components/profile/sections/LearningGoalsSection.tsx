@@ -14,7 +14,7 @@ interface LearningGoalsSectionProps {
   onUpdate?: (content: LearningGoalsSectionContent) => void;
 }
 
-export function LearningGoalsSection({ content, user, isEditing, onUpdate }: LearningGoalsSectionProps) {
+export function LearningGoalsSection({ content, isEditing, onUpdate }: LearningGoalsSectionProps) {
   const [newTopic, setNewTopic] = useState('');
   const [newDescription, setNewDescription] = useState('');
 

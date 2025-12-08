@@ -9,11 +9,11 @@ import logging
 
 from django.core.cache import cache
 from rest_framework import status
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.integrations.authentication import CsrfEnforcedSessionAuthentication
 from core.integrations.github.constants import IMPORT_LOCK_TIMEOUT, IMPORT_RATE_LIMIT
 from core.integrations.github.helpers import (
     get_import_lock_key,
@@ -21,14 +21,6 @@ from core.integrations.github.helpers import (
     parse_github_url,
 )
 from core.projects.models import Project
-
-
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    """Session authentication without CSRF check for API endpoints."""
-
-    def enforce_csrf(self, request):
-        return  # Skip CSRF check
-
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +148,7 @@ def list_user_repos(request):
 # Temporarily disabled rate limiting for testing
 # @ratelimit(key='user', rate=IMPORT_RATE_LIMIT, method='POST')
 @api_view(['POST'])
-@authentication_classes([CsrfExemptSessionAuthentication])
+@authentication_classes([CsrfEnforcedSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def import_github_repo_async(request):
     """

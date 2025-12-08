@@ -112,7 +112,7 @@ export function BattleProjectLayout() {
               likeRewardId={likeRewardId}
               onShareClick={openShareModal}
               onCommentClick={openCommentTray}
-              variant="default"
+              variant="hero"
             />
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { Modal } from '@/components/ui/Modal';
+import { BuyTokensModal } from '@/components/billing';
 import {
   getSubscriptionStatus,
   getTokenBalance,
@@ -11,6 +12,7 @@ import {
   createPortalSession,
 } from '@/services/billing';
 import type { SubscriptionStatus, TokenBalance, Invoice } from '@/services/billing';
+import type { ApiError } from '@/types/api';
 
 // Status badge component
 function StatusBadge({ status, cancelAtPeriodEnd }: { status?: string; cancelAtPeriodEnd?: boolean }) {
@@ -77,6 +79,7 @@ function SubscriptionCard({
 
   const isFree = subscription.tierType === 'free';
   const isCanceling = subscription.cancelAtPeriodEnd;
+  const hasStripeCustomer = subscription.hasStripeCustomer ?? false;
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
@@ -176,30 +179,34 @@ function SubscriptionCard({
             >
               Change Plan
             </button>
-            <button
-              onClick={onManagePayment}
-              disabled={isManagingPayment}
-              className="px-4 py-2 bg-slate-700/50 text-slate-300 border border-slate-600 rounded-lg font-medium hover:bg-slate-700 transition-all disabled:opacity-50 flex items-center gap-2"
-            >
-              {isManagingPayment ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Opening...
-                </>
-              ) : (
-                'Manage Payment'
-              )}
-            </button>
-            {!isCanceling && (
-              <button
-                onClick={onCancelClick}
-                className="px-4 py-2 text-slate-400 hover:text-red-400 transition-colors text-sm"
-              >
-                Cancel Subscription
-              </button>
+            {hasStripeCustomer && (
+              <>
+                <button
+                  onClick={onManagePayment}
+                  disabled={isManagingPayment}
+                  className="px-4 py-2 bg-slate-700/50 text-slate-300 border border-slate-600 rounded-lg font-medium hover:bg-slate-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isManagingPayment ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Opening...
+                    </>
+                  ) : (
+                    'Manage Payment'
+                  )}
+                </button>
+                {!isCanceling && (
+                  <button
+                    onClick={onCancelClick}
+                    className="px-4 py-2 text-slate-400 hover:text-red-400 transition-colors text-sm"
+                  >
+                    Cancel Subscription
+                  </button>
+                )}
+              </>
             )}
           </>
         )}
@@ -423,6 +430,7 @@ export default function BillingSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [buyTokensModalOpen, setBuyTokensModalOpen] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -470,8 +478,9 @@ export default function BillingSettingsPage() {
       setCancelModalOpen(false);
       await loadData(); // Refresh data
     } catch (err) {
-      console.error('Failed to cancel subscription:', err);
-      setError('Failed to cancel subscription. Please try again.');
+      const errorMessage = (err as ApiError)?.error || 'Failed to cancel subscription. Please try again.';
+      console.error('Failed to cancel subscription:', errorMessage);
+      setError(errorMessage);
     } finally {
       setCancelLoading(false);
     }
@@ -484,8 +493,9 @@ export default function BillingSettingsPage() {
       const { url } = await createPortalSession();
       window.location.href = url;
     } catch (err) {
-      console.error('Failed to open payment portal:', err);
-      setError('Failed to open payment management. Please try again.');
+      const errorMessage = (err as ApiError)?.error || 'Failed to open payment management. Please try again.';
+      console.error('Failed to open payment portal:', errorMessage);
+      setError(errorMessage);
       setPortalLoading(false);
     }
   };
@@ -497,8 +507,9 @@ export default function BillingSettingsPage() {
       await reactivateSubscription();
       await loadData(); // Refresh data
     } catch (err) {
-      console.error('Failed to reactivate subscription:', err);
-      setError('Failed to reactivate subscription. Please try again.');
+      const errorMessage = (err as ApiError)?.error || 'Failed to reactivate subscription. Please try again.';
+      console.error('Failed to reactivate subscription:', errorMessage);
+      setError(errorMessage);
     } finally {
       setReactivateLoading(false);
     }
@@ -509,7 +520,12 @@ export default function BillingSettingsPage() {
   };
 
   const handleBuyTokens = () => {
-    window.location.href = '/pricing#tokens';
+    setBuyTokensModalOpen(true);
+  };
+
+  const handleTokenPurchaseSuccess = async () => {
+    // Refresh token balance after successful purchase
+    await loadData();
   };
 
   return (
@@ -556,24 +572,26 @@ export default function BillingSettingsPage() {
 
                 <InvoiceList invoices={invoices} loading={invoicesLoading} />
 
-                {/* Payment Method Section */}
-                <div className="glass-strong rounded p-6 border border-white/20">
-                  <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide mb-4">
-                    Payment Method
-                  </h3>
-                  <p className="text-sm text-slate-400 mb-4">
-                    Manage your payment methods, update card details, or change billing address through the Stripe Customer Portal.
-                  </p>
-                  <button
-                    onClick={handleManagePayment}
-                    className="flex items-center gap-2 text-primary-400 hover:text-primary-300 transition-colors"
-                  >
-                    Manage Payment Methods
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </button>
-                </div>
+                {/* Payment Method Section - only show if user has Stripe customer */}
+                {subscription?.hasStripeCustomer && (
+                  <div className="glass-strong rounded p-6 border border-white/20">
+                    <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide mb-4">
+                      Payment Method
+                    </h3>
+                    <p className="text-sm text-slate-400 mb-4">
+                      Manage your payment methods, update card details, or change billing address through the Stripe Customer Portal.
+                    </p>
+                    <button
+                      onClick={handleManagePayment}
+                      className="flex items-center gap-2 text-primary-400 hover:text-primary-300 transition-colors"
+                    >
+                      Manage Payment Methods
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -585,6 +603,12 @@ export default function BillingSettingsPage() {
           onConfirm={handleCancelSubscription}
           periodEnd={subscription?.currentPeriodEnd || ''}
           isLoading={cancelLoading}
+        />
+
+        <BuyTokensModal
+          isOpen={buyTokensModalOpen}
+          onClose={() => setBuyTokensModalOpen(false)}
+          onSuccess={handleTokenPurchaseSuccess}
         />
       </SettingsLayout>
     </DashboardLayout>

@@ -368,9 +368,11 @@ export function JudgingReveal({
   }
 
   // Reveal phases - show both submissions with staggered reveal
-  const leftRevealed = phase !== 'analyzing' && phase !== 'scoring';
-  const rightRevealed = phase === 'reveal-right' || phase === 'winner' || phase === 'complete';
-  const showWinner = phase === 'winner' || phase === 'complete';
+  // Cast phase to RevealPhase to allow comparison with all possible values
+  const currentPhase = phase as RevealPhase;
+  const leftRevealed: boolean = currentPhase !== 'analyzing' && currentPhase !== 'scoring';
+  const rightRevealed: boolean = currentPhase === 'reveal-right' || currentPhase === 'winner' || currentPhase === 'complete';
+  const showWinner: boolean = phase === 'winner' || phase === 'complete';
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">

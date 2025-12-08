@@ -25,7 +25,7 @@ interface Adventure {
   action?: () => void;
 }
 
-interface SageOnboardingModalProps {
+interface EmberOnboardingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectAdventure: (adventureId: Adventure['id']) => void;
@@ -97,12 +97,12 @@ function useTypewriter(text: string, speed: number = 30, startDelay: number = 0)
   return { displayedText, isComplete, skip };
 }
 
-export function SageOnboardingModal({
+export function EmberOnboardingModal({
   isOpen,
   onClose,
   onSelectAdventure,
   username = 'Adventurer',
-}: SageOnboardingModalProps) {
+}: EmberOnboardingModalProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState<'welcome' | 'adventure'>('welcome');
@@ -120,7 +120,7 @@ export function SageOnboardingModal({
       onClose();
 
       if (adventure.id === 'add_project') {
-        localStorage.setItem('sage_open_chat', 'true');
+        localStorage.setItem('ember_open_chat', 'true');
         const profilePath = user?.username ? `/${user.username}` : '/dashboard';
         navigate(profilePath);
       } else {
@@ -213,8 +213,8 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
   // Problem statements
   const problems = [
     { text: "Your AI projects are scattered across a dozen different tools.", delay: 0 },
-    { text: "You don't know where to start with all these AI options.", delay: 600 },
-    { text: "Hard to learn what's real vs. hype without wasting hours.", delay: 1200 },
+    { text: "There are so many AI tools it can feel overwhelming.", delay: 600 },
+    { text: "Hard to learn what's valuable vs. AI hype without wasting hours.", delay: 1200 },
   ];
 
   const line1 = useTypewriter(problems[0].text, 20, problems[0].delay);
@@ -265,38 +265,68 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
 
       {/* Fixed height content area */}
       <div className="h-[380px] flex flex-col">
-        {/* Problem statements */}
-        <div className="space-y-2 flex-1">
-          <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Sound familiar?</p>
+        {/* Problem statements - chat bubbles */}
+        <div className="flex-1">
+          <p className="text-slate-500 text-xs uppercase tracking-wider mb-3">Sound familiar?</p>
 
-          <DialogueBubble delay={0} className="border-slate-500/30">
-            <p className="text-slate-300 text-sm">
-              {line1.displayedText}
-              {!line1.isComplete && <span className="animate-pulse text-cyan-bright">|</span>}
-            </p>
-          </DialogueBubble>
+          <div className="space-y-2">
+            {/* Message 1 */}
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="flex justify-start"
+            >
+              <div className="bg-slate-800/80 px-4 py-2.5 rounded-2xl rounded-bl-md max-w-[90%] border border-slate-700/30">
+                <p className="text-slate-200 text-sm">
+                  {line1.displayedText}
+                  {!line1.isComplete && <span className="animate-pulse text-cyan-bright">|</span>}
+                </p>
+              </div>
+            </motion.div>
 
-          {dialogueStep >= 1 && (
-            <DialogueBubble delay={0.1} className="border-slate-500/30">
-              <p className="text-slate-300 text-sm">
-                {line2.displayedText}
-                {!line2.isComplete && line1.isComplete && (
-                  <span className="animate-pulse text-cyan-bright">|</span>
-                )}
-              </p>
-            </DialogueBubble>
-          )}
+            {/* Message 2 */}
+            <AnimatePresence>
+              {dialogueStep >= 1 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex justify-start"
+                >
+                  <div className="bg-slate-800/80 px-4 py-2.5 rounded-2xl rounded-bl-md max-w-[90%] border border-slate-700/30">
+                    <p className="text-slate-200 text-sm">
+                      {line2.displayedText}
+                      {!line2.isComplete && line1.isComplete && (
+                        <span className="animate-pulse text-cyan-bright">|</span>
+                      )}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          {dialogueStep >= 2 && (
-            <DialogueBubble delay={0.1} className="border-slate-500/30">
-              <p className="text-slate-300 text-sm">
-                {line3.displayedText}
-                {!line3.isComplete && line2.isComplete && (
-                  <span className="animate-pulse text-cyan-bright">|</span>
-                )}
-              </p>
-            </DialogueBubble>
-          )}
+            {/* Message 3 */}
+            <AnimatePresence>
+              {dialogueStep >= 2 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex justify-start"
+                >
+                  <div className="bg-slate-800/80 px-4 py-2.5 rounded-2xl rounded-bl-md max-w-[90%] border border-slate-700/30">
+                    <p className="text-slate-200 text-sm">
+                      {line3.displayedText}
+                      {!line3.isComplete && line2.isComplete && (
+                        <span className="animate-pulse text-cyan-bright">|</span>
+                      )}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* Bottom area - solution or skip hint */}
@@ -319,7 +349,7 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
                     A community where you can{' '}
                     <span className="text-cyan-400">explore</span>,{' '}
                     <span className="text-violet-400">play</span>,<br />
-                    and <span className="text-amber-400">showcase your AI work</span>.
+                    and <span className="text-amber-400">showcase your AI projects</span>.
                   </p>
                   <p className="text-slate-400 text-xs mt-2 italic">
                     Together, we All Thrive.
@@ -499,4 +529,4 @@ function AdventureStep({
   );
 }
 
-export default SageOnboardingModal;
+export default EmberOnboardingModal;

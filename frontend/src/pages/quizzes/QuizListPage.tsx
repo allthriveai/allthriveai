@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MagnifyingGlassIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { useSearchParams } from 'react-router-dom';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { getQuizzes } from '@/services/quiz';
 import { QuizPreviewCard } from '@/components/quiz/QuizPreviewCard';
 import type { Quiz, QuizDifficulty, QuizFilters } from '@/components/quiz/types';
 
 export default function QuizListPage() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);

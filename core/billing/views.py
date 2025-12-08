@@ -592,7 +592,8 @@ def create_portal_session_view(request):
             user=request.user,
             logger_instance=logger,
         )
-        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        error_code = 'NO_STRIPE_CUSTOMER' if 'No Stripe customer' in str(e) else 'PORTAL_ERROR'
+        return Response({'error': str(e), 'error_code': error_code}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])

@@ -22,6 +22,21 @@ vi.mock('@/hooks/useAuth', () => ({
   }),
 }));
 
+// Mock useActiveQuest to prevent QueryClient errors
+vi.mock('@/hooks/useActiveQuest', () => ({
+  useActiveQuest: () => ({
+    activeQuest: null,
+    questTrayOpen: false,
+    setQuestTrayOpen: vi.fn(),
+    selectedQuest: null,
+    setSelectedQuest: vi.fn(),
+    startQuest: vi.fn(),
+    completeQuest: vi.fn(),
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 // Mock window.matchMedia for components that use media queries
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

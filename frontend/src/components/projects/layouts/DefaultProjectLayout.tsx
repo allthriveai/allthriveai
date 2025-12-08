@@ -284,7 +284,7 @@ export function DefaultProjectLayout() {
   ) || [];
 
   // Check for template v2 sections
-  const hasTemplateSections = project.content?.templateVersion === 2 && project.content?.sections?.length > 0;
+  const hasTemplateSections = project.content?.templateVersion === 2 && (project.content?.sections?.length ?? 0) > 0;
 
   return (
     <>
@@ -475,7 +475,7 @@ export function DefaultProjectLayout() {
       {/* Project Details Section - show for owners even if empty (so they can add blocks) */}
       {hasTemplateSections ? (
         <ProjectSections
-          sections={project.content.sections}
+          sections={(project.content.sections || []) as import('@/types/sections').ProjectSection[]}
           isEditing={isEditing}
           onSectionUpdate={handleSectionUpdate}
           onAddSection={handleAddSection}

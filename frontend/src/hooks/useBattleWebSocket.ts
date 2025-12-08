@@ -81,6 +81,7 @@ interface WebSocketMessage {
   battle_id?: number;
   image_url?: string;
   winner_id?: number | null;
+  results?: any; // Judging results with scores and feedback
 }
 
 interface UseBattleWebSocketOptions {
@@ -584,7 +585,7 @@ export function useBattleWebSocket({
         wsRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   // Reconnect when auth loads

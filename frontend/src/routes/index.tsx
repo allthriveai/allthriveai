@@ -23,8 +23,6 @@ import LearnPage from '@/pages/LearnPage';
 import ToolDirectoryPage from '@/pages/ToolDirectoryPage';
 import ToolDetailPage from '@/pages/ToolDetailPage';
 import { ExplorePage } from '@/pages/ExplorePage';
-import PromptBattlePage from '@/pages/play/PromptBattlePage';
-import BattleDetailPage from '@/pages/play/BattleDetailPage';
 import { BattlesLobbyPage, BattlePage, BattleInvitePage } from '@/pages/battles';
 import { ChallengePage } from '@/pages/challenges';
 import ThriveCirclePage from '@/pages/ThriveCirclePage';

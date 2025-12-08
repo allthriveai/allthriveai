@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Cloud, fetchSimpleIcons, renderSimpleIcon } from 'react-icon-cloud';
 import type { ComponentProps } from 'react';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 type SimpleIcon = any;
 
 // AI tool slugs from Simple Icons

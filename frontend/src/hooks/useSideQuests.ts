@@ -25,7 +25,7 @@ export function useSideQuests() {
     error,
   } = useQuery({
     queryKey: ['side-quests', 'available'],
-    queryFn: getAvailableSideQuests,
+    queryFn: () => getAvailableSideQuests(),
     enabled: isAuthenticated,
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,

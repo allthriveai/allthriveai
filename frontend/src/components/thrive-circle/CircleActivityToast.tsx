@@ -69,9 +69,10 @@ const ACTIVITY_CONFIG: Record<CircleActivityType, { icon: typeof faStar; color: 
 
 function getActivityMessage(event: CircleActivityEvent): string {
   switch (event.type) {
-    case 'kudos_given':
+    case 'kudos_given': {
       const kudosLabel = event.kudosType ? KUDOS_CONFIG[event.kudosType]?.label : 'kudos';
       return `gave ${kudosLabel} to ${event.targetUsername}`;
+    }
     case 'project_created':
       return 'published a new project';
     case 'streak_achieved':

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, Fragment } from 'react';
+import { useState, Fragment } from 'react';
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react';
 import {
   FunnelIcon,

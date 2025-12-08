@@ -5,7 +5,6 @@
  * attention-grabbing format.
  */
 
-import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BoltIcon, FireIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 

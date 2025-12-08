@@ -66,12 +66,20 @@ class UserPublicSerializer(serializers.ModelSerializer):
         return f'{obj.first_name} {obj.last_name}'.strip() or obj.username
 
     def get_is_following(self, obj):
-        """Check if the current user is following this user."""
+        """Check if the current user is following this user.
+
+        Uses annotated _is_following if available (set by view for N+1 prevention),
+        otherwise falls back to database query.
+        """
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return False
         if request.user.id == obj.id:
             return None  # Can't follow yourself
+        # Use pre-annotated value if available (avoids N+1 in list views)
+        if hasattr(obj, '_is_following'):
+            return obj._is_following
+        # Fallback to query (for single-object serialization)
         return UserFollow.objects.filter(follower=request.user, following=obj).exists()
 
 
@@ -98,10 +106,18 @@ class FollowerSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_is_following(self, obj):
-        """Check if current user is following this follower back."""
+        """Check if current user is following this follower back.
+
+        Uses annotated _is_following_back if available (set by view for N+1 prevention),
+        otherwise falls back to database query.
+        """
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return False
+        # Use pre-annotated value if available (avoids N+1)
+        if hasattr(obj, '_is_following_back'):
+            return obj._is_following_back
+        # Fallback to query (for single-object serialization)
         return UserFollow.objects.filter(follower=request.user, following=obj.follower).exists()
 
 

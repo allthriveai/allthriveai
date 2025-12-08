@@ -20,11 +20,6 @@ const cardVariants = {
   exit: { opacity: 0, y: -10, scale: 0.95 },
 };
 
-const hoverScale = {
-  hover: { scale: 1.02 },
-  tap: { scale: 0.98 },
-};
-
 export function ChallengeSubmissionCard({
   submission,
   onVote,

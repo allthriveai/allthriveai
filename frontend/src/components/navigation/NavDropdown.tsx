@@ -17,7 +17,7 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Close dropdown when clicking outside
   useEffect(() => {

@@ -3,7 +3,7 @@
  */
 export interface ChatMessage {
   id: string;
-  sender: 'user' | 'agent';
+  sender: 'user' | 'assistant';
   content: string;
   timestamp?: Date;
   metadata?: Record<string, unknown>;

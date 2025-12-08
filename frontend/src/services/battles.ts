@@ -49,7 +49,10 @@ export interface BattleStats {
   wins: number;
   losses: number;
   ties: number;
+  draws?: number;
   winRate: number;
+  currentStreak?: number;
+  bestStreak?: number;
 }
 
 export interface UserBattlesResponse {

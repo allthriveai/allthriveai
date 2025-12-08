@@ -4,7 +4,8 @@
  * Displays featured image with zoom-on-hover and full-screen modal.
  */
 
-import { useState, type ComponentType } from 'react';
+import { useState } from 'react';
+import type { ComponentType } from 'react';
 import {
   DocumentTextIcon,
   CodeBracketIcon,

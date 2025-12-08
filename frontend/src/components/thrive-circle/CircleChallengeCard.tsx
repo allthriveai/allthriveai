@@ -21,6 +21,13 @@ interface CircleChallengeCardProps {
 }
 
 const CHALLENGE_ICONS: Record<CircleChallengeType, typeof faRocket> = {
+  // Backend challenge types
+  create_projects: faRocket,
+  give_feedback: faComments,
+  complete_quests: faTrophy,
+  earn_points: faStar,
+  maintain_streaks: faFire,
+  // Legacy challenge types (kept for backwards compatibility)
   projects_created: faRocket,
   comments_given: faComments,
   streak_days: faFire,
@@ -28,6 +35,13 @@ const CHALLENGE_ICONS: Record<CircleChallengeType, typeof faRocket> = {
 };
 
 const CHALLENGE_COLORS: Record<CircleChallengeType, { gradient: string; glow: string }> = {
+  // Backend challenge types
+  create_projects: { gradient: 'from-purple-500 to-pink-500', glow: 'shadow-[0_0_30px_rgba(168,85,247,0.3)]' },
+  give_feedback: { gradient: 'from-cyan-500 to-blue-500', glow: 'shadow-[0_0_30px_rgba(6,182,212,0.3)]' },
+  complete_quests: { gradient: 'from-emerald-500 to-green-500', glow: 'shadow-[0_0_30px_rgba(16,185,129,0.3)]' },
+  earn_points: { gradient: 'from-yellow-500 to-amber-500', glow: 'shadow-[0_0_30px_rgba(245,158,11,0.3)]' },
+  maintain_streaks: { gradient: 'from-orange-500 to-red-500', glow: 'shadow-[0_0_30px_rgba(249,115,22,0.3)]' },
+  // Legacy challenge types (kept for backwards compatibility)
   projects_created: { gradient: 'from-purple-500 to-pink-500', glow: 'shadow-[0_0_30px_rgba(168,85,247,0.3)]' },
   comments_given: { gradient: 'from-cyan-500 to-blue-500', glow: 'shadow-[0_0_30px_rgba(6,182,212,0.3)]' },
   streak_days: { gradient: 'from-orange-500 to-red-500', glow: 'shadow-[0_0_30px_rgba(249,115,22,0.3)]' },

@@ -132,8 +132,6 @@ const QUESTIONS = [
   },
 ];
 
-const COLORS = ['#0EA5E9', '#22D3EE', '#4ADEE7', '#FB37FF', '#A855F7', '#10B981', '#F59E0B'];
-
 export default function EthicsDefenderGame() {
   const [shipPosition, setShipPosition] = useState({ x: 50, y: 85 });
   const [lasers, setLasers] = useState<Laser[]>([]);

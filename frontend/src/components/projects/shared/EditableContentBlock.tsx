@@ -13,7 +13,7 @@ import { MermaidDiagram } from './MermaidDiagram';
 import { InlineEditableText } from './InlineEditable';
 import { EditableColumnsBlock } from './EditableColumnsBlock';
 import { IconCard } from './IconCard';
-import type { Project, ProjectBlock, ColumnBlock } from '@/types/models';
+import type { Project, ProjectBlock } from '@/types/models';
 
 // Configure marked options
 marked.setOptions({

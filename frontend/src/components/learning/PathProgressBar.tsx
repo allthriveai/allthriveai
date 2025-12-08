@@ -30,7 +30,6 @@ export function PathProgressBar({
   currentLevel,
   topicPoints,
   pointsToNextLevel,
-  progressPercentage,
 }: PathProgressBarProps) {
   // Calculate progress within current level
   const levels: LearningPathSkillLevel[] = ['beginner', 'intermediate', 'advanced', 'master'];
@@ -89,7 +88,6 @@ export function PathProgressBar({
                     ? levelColors[level]
                     : 'bg-gray-300 dark:bg-gray-600'
                 } ${isCurrent ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-gray-900' : ''}`}
-                style={{ ringColor: isCurrent ? levelColors[level].replace('bg-', '') : undefined }}
               />
             </div>
           );

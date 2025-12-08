@@ -10,22 +10,16 @@ const competitors = [
     battles: false,
     aiNative: false,
     vendorNeutral: true,
-  },
-  {
-    name: 'LinkedIn',
-    portfolio: true,
-    learning: true,
-    battles: false,
-    aiNative: false,
-    vendorNeutral: true,
+    marketplace: false,
   },
   {
     name: 'Behance/Dribbble',
-    portfolio: true,
+    portfolio: false,
     learning: false,
     battles: false,
     aiNative: false,
     vendorNeutral: true,
+    marketplace: false,
   },
   {
     name: 'Coursera/Udemy',
@@ -33,15 +27,35 @@ const competitors = [
     learning: true,
     battles: false,
     aiNative: false,
-    vendorNeutral: false,
+    vendorNeutral: true,
+    marketplace: true,
+  },
+  {
+    name: 'Product Hunt',
+    portfolio: false,
+    learning: false,
+    battles: false,
+    aiNative: false,
+    vendorNeutral: true,
+    marketplace: false,
   },
   {
     name: 'Midjourney',
     portfolio: true,
-    learning: false,
+    learning: true,
     battles: false,
     aiNative: true,
     vendorNeutral: false,
+    marketplace: false,
+  },
+  {
+    name: 'Gumroad',
+    portfolio: true,
+    learning: false,
+    battles: false,
+    aiNative: false,
+    vendorNeutral: false,
+    marketplace: true,
   },
   {
     name: 'All Thrive',
@@ -50,11 +64,12 @@ const competitors = [
     battles: true,
     aiNative: true,
     vendorNeutral: true,
+    marketplace: true,
     highlight: true,
   },
 ];
 
-const features = ['AI Automated\nPortfolio', 'Learning', 'Gamified\nChallenges', 'AI-Native', 'Vendor Neutral\nCommunity'];
+const features = ['AI Automated\nPortfolio', 'Learning', 'Prompt\nBattles', 'AI-Native', 'Vendor\nNeutral', 'Creator\nMarketplace'];
 
 
 export function CompetitionSlide() {
@@ -72,7 +87,7 @@ export function CompetitionSlide() {
             <GradientText>Competitive</GradientText> Landscape
           </h2>
           <p className="text-xl text-gray-400">
-            The only vendor-neutral AI portfolio + gamified learning platform
+            The only vendor neutral showcase and gamified learning platform
           </p>
         </motion.div>
 
@@ -101,7 +116,7 @@ export function CompetitionSlide() {
                     key={competitor.name}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 0.3 + index * 0.08 }}
+                    transition={{ duration: 0.4, delay: 0.3 + index * 0.1 }}
                     className={`border-b border-white/5 ${
                       competitor.highlight ? 'bg-cyan-500/10' : ''
                     }`}
@@ -139,6 +154,13 @@ export function CompetitionSlide() {
                     </td>
                     <td className="p-4 text-center">
                       {competitor.vendorNeutral ? (
+                        <CheckIcon className="w-5 h-5 text-green-400 mx-auto" />
+                      ) : (
+                        <XMarkIcon className="w-5 h-5 text-red-400/50 mx-auto" />
+                      )}
+                    </td>
+                    <td className="p-4 text-center">
+                      {competitor.marketplace ? (
                         <CheckIcon className="w-5 h-5 text-green-400 mx-auto" />
                       ) : (
                         <XMarkIcon className="w-5 h-5 text-red-400/50 mx-auto" />

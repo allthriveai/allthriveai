@@ -45,6 +45,8 @@ const buildProgress = [
   { label: 'Prompt Battles', status: 'done', description: 'Real-time 1v1 competitions' },
   { label: 'Gamified Learning', status: 'done', description: 'XP, levels, achievements' },
   { label: 'AI Chat Onboarding', status: 'done', description: 'Conversational profile setup' },
+  { label: 'Creator Marketplace', status: 'coming', description: 'Sell courses, templates & digital products' },
+  { label: 'Community & Private Chat', status: 'coming', description: 'Connect with other creators' },
 ];
 
 const roadmap = [
@@ -97,9 +99,20 @@ export function TractionSlide() {
                     transition={{ duration: 0.4, delay: 0.3 + index * 0.15 }}
                     className="flex items-start gap-3"
                   >
-                    <AnimatedCheck delay={0.4 + index * 0.15} />
+                    {item.status === 'done' ? (
+                      <AnimatedCheck delay={0.4 + index * 0.15} />
+                    ) : (
+                      <div className="w-5 h-5 flex-shrink-0 mt-0.5 rounded-full border-2 border-amber-400/50 bg-amber-400/10" />
+                    )}
                     <div>
-                      <div className="text-white font-medium text-sm">{item.label}</div>
+                      <div className="text-white font-medium text-sm flex items-center gap-2">
+                        {item.label}
+                        {item.status === 'coming' && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            Coming Soon
+                          </span>
+                        )}
+                      </div>
                       <div className="text-gray-500 text-xs">{item.description}</div>
                     </div>
                   </motion.div>

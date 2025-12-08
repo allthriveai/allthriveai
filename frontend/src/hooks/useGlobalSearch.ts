@@ -132,7 +132,7 @@ export function useGlobalSearchQuery() {
   // Clear results when query is too short
   useEffect(() => {
     if (!shouldSearch) {
-      setResults(null);
+      setResults({ projects: [], tools: [], quizzes: [], users: [] });
       setError(null);
     }
   }, [shouldSearch, setResults, setError]);

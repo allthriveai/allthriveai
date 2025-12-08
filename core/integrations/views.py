@@ -8,13 +8,13 @@ import logging
 from urllib.parse import urlparse
 
 from rest_framework import status
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from core.integrations.authentication import CsrfEnforcedSessionAuthentication
 from core.integrations.registry import IntegrationRegistry
 from core.integrations.tasks import import_project_generic_task
 from core.integrations.utils import (
@@ -48,15 +48,8 @@ class ImportThrottle(UserRateThrottle):
         return super().wait()
 
 
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    """Session authentication without CSRF check for API endpoints."""
-
-    def enforce_csrf(self, request):
-        return  # Skip CSRF check
-
-
 @api_view(['POST'])
-@authentication_classes([JWTAuthentication, CsrfExemptSessionAuthentication])
+@authentication_classes([JWTAuthentication, CsrfEnforcedSessionAuthentication])
 @permission_classes([IsAuthenticated])
 # @throttle_classes([ImportThrottle])  # Temporarily disabled for testing
 def import_from_url(request):
@@ -266,7 +259,7 @@ def list_integrations(request):
 
 
 @api_view(['POST'])
-@authentication_classes([JWTAuthentication, CsrfExemptSessionAuthentication])
+@authentication_classes([JWTAuthentication, CsrfEnforcedSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def scrape_url_for_project(request):
     """

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ExploreTemplate, FilterGroup } from '@/components/layouts/ExploreTemplate';
+import type { FilterGroup } from '@/components/layouts/ExploreTemplate';
+import { ExploreTemplate } from '@/components/layouts/ExploreTemplate';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { PhotoIcon } from '@heroicons/react/24/outline';
 import { exploreProjects } from '@/services/explore';

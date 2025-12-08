@@ -107,7 +107,7 @@ export default function SocialSettingsPage() {
       if (response.data.success && response.data.data.connected) {
         setGithubSyncStatus(response.data.data);
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently fail - user might not have GitHub connected
     }
   };

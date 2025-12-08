@@ -1,4 +1,4 @@
-import type { Project } from '@/types/models';
+import type { Project, Tool } from '@/types/models';
 
 // Mock projects for the explore preview section
 export const mockProjects: Partial<Project>[] = [
@@ -16,8 +16,8 @@ export const mockProjects: Partial<Project>[] = [
       heroDisplayMode: 'image' as const,
     },
     toolsDetails: [
-      { id: 1, name: 'OpenAI', slug: 'openai', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg', category: 'llm' },
-    ],
+      { id: 1, name: 'OpenAI', slug: 'openai', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg', category: 'chat' },
+    ] as Tool[],
   },
   {
     id: 2,
@@ -29,14 +29,14 @@ export const mockProjects: Partial<Project>[] = [
     isLikedByUser: true,
     content: {
       tags: ['Art', 'Neural Networks', 'Creative'],
-      heroDisplayMode: 'gradient' as const,
+      heroDisplayMode: 'quote' as const,
       heroGradientFrom: '#6366f1',
       heroGradientTo: '#ec4899',
       heroQuote: 'Transform Reality into Art',
     },
     toolsDetails: [
       { id: 2, name: 'Stable Diffusion', slug: 'stable-diffusion', logoUrl: '', category: 'image' },
-    ],
+    ] as Tool[],
   },
   {
     id: 3,
@@ -52,8 +52,8 @@ export const mockProjects: Partial<Project>[] = [
       heroDisplayMode: 'image' as const,
     },
     toolsDetails: [
-      { id: 3, name: 'Claude', slug: 'claude', logoUrl: '', category: 'llm' },
-    ],
+      { id: 3, name: 'Claude', slug: 'claude', logoUrl: '', category: 'chat' },
+    ] as Tool[],
   },
   {
     id: 4,
@@ -72,7 +72,7 @@ export const mockProjects: Partial<Project>[] = [
     },
     toolsDetails: [
       { id: 4, name: 'Suno', slug: 'suno', logoUrl: '', category: 'audio' },
-    ],
+    ] as Tool[],
   },
   {
     id: 5,
@@ -88,8 +88,8 @@ export const mockProjects: Partial<Project>[] = [
       heroDisplayMode: 'image' as const,
     },
     toolsDetails: [
-      { id: 5, name: 'LangChain', slug: 'langchain', logoUrl: '', category: 'framework' },
-    ],
+      { id: 5, name: 'LangChain', slug: 'langchain', logoUrl: '', category: 'code' },
+    ] as Tool[],
   },
   {
     id: 6,
@@ -101,14 +101,14 @@ export const mockProjects: Partial<Project>[] = [
     isLikedByUser: true,
     content: {
       tags: ['Video', 'Editing', 'Automation'],
-      heroDisplayMode: 'gradient' as const,
+      heroDisplayMode: 'quote' as const,
       heroGradientFrom: '#f43f5e',
       heroGradientTo: '#f97316',
       heroQuote: 'Edit Smarter, Not Harder',
     },
     toolsDetails: [
       { id: 6, name: 'Runway', slug: 'runway', logoUrl: '', category: 'video' },
-    ],
+    ] as Tool[],
   },
 ];
 

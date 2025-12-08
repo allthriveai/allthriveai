@@ -102,7 +102,7 @@ export default function ReferralsPage() {
           statusDisplay: ref.status_display,
         }));
         setReferrals(referralsData);
-      } catch (error) {
+      } catch (_error) {
         setError('Unable to load referral information. Please try again later.');
       } finally {
         setLoadingReferrals(false);

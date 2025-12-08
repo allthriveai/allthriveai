@@ -563,46 +563,52 @@ def cleanup_stale_battles() -> dict[str, Any]:
         'stuck_judging': 0,
     }
 
-    # Cancel expired battles that never completed
-    expired_battles = PromptBattle.objects.filter(
+    # Cancel expired battles that never completed - use bulk update for efficiency
+    expired_battles_qs = PromptBattle.objects.filter(
         status=BattleStatus.ACTIVE,
         phase__in=[BattlePhase.WAITING, BattlePhase.ACTIVE],
         expires_at__lt=now,
     )
-
-    for battle in expired_battles:
-        battle.status = BattleStatus.CANCELLED
-        battle.phase = BattlePhase.COMPLETE
-        battle.save(update_fields=['status', 'phase'])
-        results['expired_active'] += 1
+    results['expired_active'] = expired_battles_qs.update(
+        status=BattleStatus.CANCELLED,
+        phase=BattlePhase.COMPLETE,
+    )
 
     # Handle battles stuck in GENERATING phase (started more than 10 minutes ago)
+    # Note: This needs individual handling because we check submissions
     stuck_generating = PromptBattle.objects.filter(
         phase=BattlePhase.GENERATING,
         started_at__lt=now - timedelta(minutes=10),
-    )
+    ).prefetch_related('submissions')  # Prefetch to avoid N+1
 
+    battles_to_cancel = []
     for battle in stuck_generating:
         # Try to complete judging if both submissions have images
-        submissions = list(battle.submissions.all())
+        submissions = list(battle.submissions.all())  # Uses prefetched data
         if len(submissions) == 2 and all(s.generated_output_url for s in submissions):
             judge_battle_task.delay(battle.id)
         else:
-            # Cancel if incomplete
-            battle.status = BattleStatus.CANCELLED
-            battle.phase = BattlePhase.COMPLETE
-            battle.save(update_fields=['status', 'phase'])
+            # Mark for bulk cancellation
+            battles_to_cancel.append(battle.id)
+        # Count all stuck battles found (includes both sent-for-judging and cancelled)
         results['stuck_generating'] += 1
+
+    # Bulk cancel incomplete stuck battles
+    if battles_to_cancel:
+        PromptBattle.objects.filter(id__in=battles_to_cancel).update(
+            status=BattleStatus.CANCELLED,
+            phase=BattlePhase.COMPLETE,
+        )
 
     # Handle battles stuck in JUDGING phase (started more than 5 minutes ago)
     stuck_judging = PromptBattle.objects.filter(
         phase=BattlePhase.JUDGING,
         started_at__lt=now - timedelta(minutes=5),
-    )
+    ).values_list('id', flat=True)  # Only need IDs for task dispatch
 
-    for battle in stuck_judging:
+    for battle_id in stuck_judging:
         # Retry judging
-        judge_battle_task.delay(battle.id)
+        judge_battle_task.delay(battle_id)
         results['stuck_judging'] += 1
 
     total_cleaned = sum(results.values())

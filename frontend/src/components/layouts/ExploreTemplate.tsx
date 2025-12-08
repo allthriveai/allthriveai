@@ -1,5 +1,6 @@
-import { ReactNode, useState, useEffect } from 'react';
-import { MagnifyingGlassIcon, FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 
 export interface FilterOption {

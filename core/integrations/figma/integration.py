@@ -237,7 +237,6 @@ class FigmaIntegration(BaseIntegration):
             dict with import result
         """
         from django.contrib.auth import get_user_model
-        from django.utils import timezone
 
         from core.integrations.utils import (
             IntegrationErrorCode,
@@ -336,28 +335,63 @@ class FigmaIntegration(BaseIntegration):
             # Export a high-quality image for featured image
             featured_image_url = thumbnail_url
             try:
-                # Get first page ID for export
+                # Find the best node to export as featured image
+                # Priority: First significant frame on first page > First page thumbnail
                 document = file_data.get('document', {})
                 first_page = None
+                target_node_id = None
+
                 for child in document.get('children', []):
                     if child.get('type') == 'CANVAS':
                         first_page = child
                         break
 
                 if first_page:
+                    # Look for frames/artboards within the page (these are the actual designs)
+                    page_children = first_page.get('children', [])
+                    best_frame = None
+
+                    for frame in page_children:
+                        frame_type = frame.get('type', '')
+                        # Look for FRAME, COMPONENT, or COMPONENT_SET (actual design content)
+                        if frame_type in ('FRAME', 'COMPONENT', 'COMPONENT_SET'):
+                            # Prefer larger frames (likely main content, not small components)
+                            abs_box = frame.get('absoluteBoundingBox', {})
+                            width = abs_box.get('width', 0)
+                            height = abs_box.get('height', 0)
+
+                            # Skip very small frames (likely icons or small components)
+                            if width >= 200 and height >= 200:
+                                if best_frame is None:
+                                    best_frame = frame
+                                else:
+                                    # Prefer the first large frame we find
+                                    break
+
+                    if best_frame:
+                        target_node_id = best_frame.get('id')
+                        logger.info(f'Using frame "{best_frame.get("name")}" for featured image')
+                    else:
+                        # Fall back to first page if no suitable frame found
+                        target_node_id = first_page['id']
+                        logger.info('Using first page for featured image (no suitable frame found)')
+
+                if target_node_id:
+                    # Export at higher scale (3x) for better quality
                     images_data = figma_service.get_file_images(
                         file_key,
-                        node_ids=[first_page['id']],
-                        scale=2,
+                        node_ids=[target_node_id],
+                        scale=3,  # Higher scale for better quality
                         format='png',
                     )
                     images = images_data.get('images', {})
-                    if first_page['id'] in images:
-                        featured_image_url = images[first_page['id']]
+                    if target_node_id in images:
+                        featured_image_url = images[target_node_id]
+                        logger.info('Exported featured image at 3x scale')
             except Exception as e:
                 logger.warning(f'Failed to export featured image: {e}')
 
-            # Create description from design info
+            # Create description from design info - include file name for context
             description_parts = []
             if design_info.get('pageCount'):
                 description_parts.append(f'{design_info["pageCount"]} pages')
@@ -366,13 +400,14 @@ class FigmaIntegration(BaseIntegration):
             if design_info.get('styleCount'):
                 description_parts.append(f'{design_info["styleCount"]} styles')
 
-            description = (
-                f'A {design_type.replace("_", " ")} with ' + ', '.join(description_parts)
-                if description_parts
-                else f'A {design_type.replace("_", " ")} created in Figma'
-            )
+            # Create a meaningful description that references the actual project
+            design_type_display = design_type.replace('_', ' ')
+            if description_parts:
+                description = f'{file_name} - a {design_type_display} featuring ' + ', '.join(description_parts)
+            else:
+                description = f'{file_name} - a {design_type_display} created in Figma'
 
-            # Create project
+            # Create project with pending analysis status
             logger.info(f'Creating project for Figma file: {file_name}')
             new_project = Project.objects.create(
                 user=user,
@@ -395,7 +430,7 @@ class FigmaIntegration(BaseIntegration):
                         'style_count': design_info.get('styleCount', 0),
                         'version': file_data.get('version', ''),
                         'last_modified': file_data.get('lastModified', ''),
-                        'analyzed_at': timezone.now().isoformat(),
+                        'analysis_status': 'pending',  # Mark for async analysis
                     },
                     'blocks': [
                         {
@@ -412,6 +447,15 @@ class FigmaIntegration(BaseIntegration):
             )
 
             logger.info(f'Successfully imported Figma file {file_key} as project {new_project.id}')
+
+            # Trigger async MCP analysis to populate rich project details
+            try:
+                from core.projects.tasks import analyze_project_with_mcp
+
+                analyze_project_with_mcp.delay(new_project.id)
+                logger.info(f'Triggered MCP analysis for project {new_project.id}')
+            except Exception as e:
+                logger.warning(f'Failed to trigger MCP analysis for project {new_project.id}: {e}')
 
             project_url = f'/{user.username}/{new_project.slug}'
             return {

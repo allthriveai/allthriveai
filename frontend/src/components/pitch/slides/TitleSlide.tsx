@@ -82,7 +82,7 @@ export function TitleSlide() {
           transition={{ duration: 0.6, delay: 0.6 }}
           className="text-lg sm:text-xl text-gray-400 max-w-4xl whitespace-nowrap"
         >
-          A home for AI creators to Showcase, Learn, & Play
+          Showcase, Learn, & Play with AI
         </motion.p>
       </div>
     </PitchSlide>

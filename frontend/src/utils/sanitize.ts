@@ -1,4 +1,4 @@
-import DOMPurify from 'dompurify';
+import DOMPurify, { type Config } from 'dompurify';
 
 /**
  * Sanitize HTML content to prevent XSS attacks
@@ -6,11 +6,11 @@ import DOMPurify from 'dompurify';
  * @param options - Optional DOMPurify configuration
  * @returns Sanitized HTML string safe for rendering
  */
-export function sanitizeHtml(dirty: string, options?: DOMPurify.Config): string {
+export function sanitizeHtml(dirty: string, options?: Config): string {
   if (!dirty) return '';
 
   // Default configuration allows common formatting tags
-  const defaultConfig: DOMPurify.Config = {
+  const defaultConfig: Config = {
     ALLOWED_TAGS: [
       'p', 'br', 'strong', 'em', 'u', 's', 'a',
       'ul', 'ol', 'li', 'code', 'pre',
@@ -23,7 +23,8 @@ export function sanitizeHtml(dirty: string, options?: DOMPurify.Config): string 
   };
 
   const config = options || defaultConfig;
-  return DOMPurify.sanitize(dirty, config);
+  const result = DOMPurify.sanitize(dirty, config);
+  return typeof result === 'string' ? result : '';
 }
 
 /**
@@ -34,8 +35,9 @@ export function sanitizeHtml(dirty: string, options?: DOMPurify.Config): string 
 export function sanitizeText(dirty: string): string {
   if (!dirty) return '';
 
-  return DOMPurify.sanitize(dirty, {
+  const result = DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [],
     ALLOWED_ATTR: [],
   });
+  return typeof result === 'string' ? result : '';
 }

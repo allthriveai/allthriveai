@@ -134,7 +134,11 @@ describe('ChatInterface', () => {
         <ChatInterface
           {...defaultProps}
           messages={[]}
-          config={{ initialMessage: 'Welcome! How can I help?' }}
+          config={{
+            agentId: 'test-agent',
+            agentName: 'Test Agent',
+            initialMessage: 'Welcome! How can I help?'
+          }}
         />
       );
 

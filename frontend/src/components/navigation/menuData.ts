@@ -18,7 +18,6 @@ import {
   faWandSparkles,
   faDollarSign,
   faIdCard,
-  faFolderOpen,
   faCog,
   faPuzzlePiece,
   faTicket,

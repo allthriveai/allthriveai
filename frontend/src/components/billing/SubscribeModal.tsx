@@ -42,7 +42,7 @@ export function SubscribeModal({
   // If tier is pre-selected (from pricing page), start on payment step, otherwise tier selection
   const [step, setStep] = useState<'select' | 'payment'>(selectedTierSlug ? 'payment' : 'select');
   const [selectedTier, setSelectedTier] = useState<string | null>(selectedTierSlug || null);
-  const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
+  const [billingInterval] = useState<'monthly' | 'annual'>('monthly');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -221,7 +221,7 @@ export function SubscribeModal({
   // Get price display
   const getPriceDisplay = (tier: SubscriptionTier) => {
     // For now, show monthly pricing (backend handles monthly/annual)
-    const price = parseFloat(tier.priceMonthly);
+    const price = typeof tier.priceMonthly === 'number' ? tier.priceMonthly : parseFloat(tier.priceMonthly);
 
     if (price === 0) return 'Free';
 

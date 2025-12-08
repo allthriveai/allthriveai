@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { updateProject } from '@/services/projects';
 import { getTools } from '@/services/tools';
 import { uploadImage, uploadFile } from '@/services/upload';
@@ -37,6 +38,7 @@ export interface ProjectEditorRenderProps {
   allTools: any[];
   projectCategories: number[];
   availableCategories: Taxonomy[];
+  availableTopics: Taxonomy[];
   projectTopics: string[];
   isUploadingFeatured: boolean;
   heroDisplayMode: 'image' | 'video' | 'slideshow' | 'quote' | 'slideup';
@@ -52,6 +54,7 @@ export interface ProjectEditorRenderProps {
   isUploadingSlideUp1: boolean;
   isUploadingSlideUp2: boolean;
   isUploadingVideo: boolean;
+  showSettingsSidebar: boolean;
   isSaving: boolean;
   lastSaved: Date | null;
   hasUnsavedChanges: boolean;
@@ -561,6 +564,7 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
         isUploadingSlideUp2,
         isUploadingVideo,
         showSettingsSidebar,
+        setShowSettingsSidebar,
         isSaving,
         lastSaved,
         hasUnsavedChanges,
@@ -590,7 +594,6 @@ export function ProjectEditor({ project, onProjectUpdate, children, onSlugChange
         setSlideUpElement2Type,
         setSlideUpElement2Content,
         setSlideUpElement2Caption,
-        setShowSettingsSidebar,
         setFocusedBlockId,
         setShowAddMenu,
 

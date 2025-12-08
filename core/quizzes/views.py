@@ -329,6 +329,8 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'], url_path='stats')
     def quiz_stats(self, request):
         """Get user's quiz statistics"""
+        from django.db.models import Count
+
         attempts = self.get_queryset().filter(completed_at__isnull=False)
 
         total_attempts = attempts.count()
@@ -339,16 +341,28 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
         avg_score = attempts.aggregate(avg_score=Avg('score'), avg_total=Avg('total_questions'))
         average_percentage = (avg_score['avg_score'] / avg_score['avg_total'] * 100) if avg_score['avg_total'] else 0
 
-        # Topic breakdown
-        topic_stats = {}
-        topics = attempts.values('quiz__topic').distinct()
-        for topic_dict in topics:
-            topic = topic_dict['quiz__topic']
-            topic_attempts = attempts.filter(quiz__topic=topic)
-            topic_avg = topic_attempts.aggregate(avg_score=Avg('score'), avg_total=Avg('total_questions'))
-            topic_percentage = (topic_avg['avg_score'] / topic_avg['avg_total'] * 100) if topic_avg['avg_total'] else 0
+        # Topic breakdown - single query with annotation instead of N+1 loop
+        topic_aggregates = (
+            attempts.values('quiz__topic')
+            .annotate(
+                topic_count=Count('id'),
+                topic_avg_score=Avg('score'),
+                topic_avg_total=Avg('total_questions'),
+            )
+            .order_by('quiz__topic')
+        )
 
-            topic_stats[topic] = {'attempts': topic_attempts.count(), 'average_score': round(topic_percentage, 1)}
+        topic_stats = {}
+        for row in topic_aggregates:
+            topic = row['quiz__topic']
+            if row['topic_avg_total'] and row['topic_avg_total'] > 0:
+                topic_percentage = row['topic_avg_score'] / row['topic_avg_total'] * 100
+            else:
+                topic_percentage = 0
+            topic_stats[topic] = {
+                'attempts': row['topic_count'],
+                'average_score': round(topic_percentage, 1),
+            }
 
         return Response(
             {

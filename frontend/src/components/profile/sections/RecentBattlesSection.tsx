@@ -46,7 +46,8 @@ export function RecentBattlesSection({ content, user, isEditing, onUpdate }: Rec
     const fetchBattles = async () => {
       try {
         const data = await getUserBattles(user.username);
-        setBattles(data.battles?.slice(0, maxBattles) || []);
+        const battlesList: Battle[] = (data.battles as any)?.slice(0, maxBattles) || [];
+        setBattles(battlesList);
       } catch (error) {
         console.error('Failed to fetch battles:', error);
         setBattles([]);

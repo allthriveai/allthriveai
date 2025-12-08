@@ -188,15 +188,15 @@ export function ChallengeSubmitTray({
 
     setIsSubmitting(true);
 
-    try {
-      const data: CreateSubmissionData = {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        imageUrl: imageUrl.trim() || undefined,
-        externalUrl: externalUrl.trim() || undefined,
-        aiToolUsed: aiToolUsed.trim() || undefined,
-      };
+    const data: CreateSubmissionData = {
+      title: title.trim(),
+      description: description.trim() || undefined,
+      imageUrl: imageUrl.trim() || undefined,
+      externalUrl: externalUrl.trim() || undefined,
+      aiToolUsed: aiToolUsed.trim() || undefined,
+    };
 
+    try {
       await submitToChallenge(challenge.slug, data);
       onSuccess();
     } catch (err: unknown) {

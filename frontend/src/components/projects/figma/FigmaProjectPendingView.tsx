@@ -1,4 +1,4 @@
-import React from 'react';
+
 import type { Project } from '@/types/models';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 

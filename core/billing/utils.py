@@ -439,8 +439,12 @@ def get_subscription_status(user) -> dict:
     if subscription.tier.monthly_ai_requests > 0:
         ai_requests_remaining = max(0, subscription.tier.monthly_ai_requests - subscription.ai_requests_used_this_month)
 
+    # Check if user has a Stripe customer for billing management
+    has_stripe_customer = bool(subscription.stripe_customer_id)
+
     return {
         'has_subscription': True,
+        'has_stripe_customer': has_stripe_customer,
         'tier': {
             'name': subscription.tier.name,
             'slug': subscription.tier.slug,

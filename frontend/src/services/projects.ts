@@ -1,6 +1,5 @@
 import { api } from './api';
 import type { Project, ProjectPayload, PaginatedResponse, ProjectContent, ProjectType, Tool, Taxonomy } from '@/types/models';
-import type { ApiResponse } from '@/types/api';
 import type { CompletedQuestInfo } from '@/contexts/QuestCompletionContext';
 
 // Backend project response (before camelCase transform is applied)
@@ -56,9 +55,13 @@ function transformProject(data: ProjectApiResponse): Project {
     bannerUrl: data.bannerUrl,
     featuredImageUrl: data.featuredImageUrl || '',
     externalUrl: data.externalUrl || '',
-    tools: data.toolsDetails || data.tools || [],  // Use toolsDetails (full objects) first
+    tools: Array.isArray(data.toolsDetails) && typeof data.toolsDetails[0] === 'object'
+      ? data.toolsDetails.map((t: any) => t.id)
+      : data.tools || [],
     toolsDetails: data.toolsDetails || [],
-    categories: data.categoriesDetails || data.categories || [],  // Use categoriesDetails (full objects) first
+    categories: Array.isArray(data.categoriesDetails) && typeof data.categoriesDetails[0] === 'object'
+      ? data.categoriesDetails.map((c: any) => c.id)
+      : data.categories || [],
     categoriesDetails: data.categoriesDetails || [],
     topics: data.topics || [],
     tagsManuallyEdited: data.tagsManuallyEdited || false,

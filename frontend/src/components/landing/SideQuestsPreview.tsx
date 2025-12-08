@@ -44,20 +44,20 @@ function CoursePreview() {
       </div>
 
       <div className="flex-1 space-y-3">
-        {['Introduction to Prompts', 'Writing Clear Instructions', 'Advanced Techniques', 'Real-World Examples'].map((lesson, i) => (
+        {['Introduction to Prompts', 'Writing Clear Instructions', 'Advanced Techniques', 'Real-World Examples'].map((lesson, lessonIndex) => (
           <div
             key={lesson}
             className={`flex items-center gap-3 p-3 rounded-sm ${
-              i < 2 ? 'bg-green-500/10 border border-green-500/20' : 'bg-white/5 border border-white/10'
+              lessonIndex < 2 ? 'bg-green-500/10 border border-green-500/20' : 'bg-white/5 border border-white/10'
             }`}
           >
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-              i < 2 ? 'bg-green-500 text-white' : 'bg-white/10 text-gray-400'
+              lessonIndex < 2 ? 'bg-green-500 text-white' : 'bg-white/10 text-gray-400'
             }`}>
-              {i < 2 ? <FontAwesomeIcon icon={faCheck} className="w-3 h-3" /> : i + 1}
+              {lessonIndex < 2 ? <FontAwesomeIcon icon={faCheck} className="w-3 h-3" /> : lessonIndex + 1}
             </div>
-            <span className={i < 2 ? 'text-green-400' : 'text-gray-400'}>{lesson}</span>
-            {i < 2 && <span className="ml-auto text-green-400 text-xs">+25 Points</span>}
+            <span className={lessonIndex < 2 ? 'text-green-400' : 'text-gray-400'}>{lesson}</span>
+            {lessonIndex < 2 && <span className="ml-auto text-green-400 text-xs">+25 Points</span>}
           </div>
         ))}
       </div>
@@ -296,7 +296,7 @@ export function SideQuestsPreview() {
             role="tablist"
             aria-label="Learning modalities"
           >
-            {learningTypes.map((type, index) => {
+            {learningTypes.map((type) => {
               const isActive = activeType === type.id;
               const colorClasses = {
                 cyan: {
@@ -347,15 +347,15 @@ export function SideQuestsPreview() {
                   tabIndex={isActive ? 0 : -1}
                   onClick={() => handleTabClick(type.id)}
                   onKeyDown={handleKeyDown}
-                  className={`w-full text-left p-5 rounded-sm border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#020617] ${colorClasses.focusRing} ${
+                  className={`w-full text-left p-5 rounded-sm border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#020617] ${colorClasses?.focusRing || ''} ${
                     isActive
-                      ? `${colorClasses.activeBg} ${colorClasses.activeBorder}`
+                      ? `${colorClasses?.activeBg || ''} ${colorClasses?.activeBorder || ''}`
                       : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
                   }`}
                 >
                   <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-sm bg-gradient-to-br ${colorClasses.iconBg} flex items-center justify-center flex-shrink-0`} aria-hidden="true">
-                      <FontAwesomeIcon icon={type.icon} className={`w-6 h-6 ${colorClasses.icon}`} />
+                    <div className={`w-12 h-12 rounded-sm bg-gradient-to-br ${colorClasses?.iconBg || ''} flex items-center justify-center flex-shrink-0`} aria-hidden="true">
+                      <FontAwesomeIcon icon={type.icon} className={`w-6 h-6 ${colorClasses?.icon || ''}`} />
                     </div>
                     <div>
                       <h3 className={`font-semibold mb-1 ${isActive ? 'text-white' : 'text-gray-300'}`}>

@@ -24,7 +24,7 @@ import { DefaultProjectLayout } from './DefaultProjectLayout';
  * Determines the analysis status for a project based on its type.
  * Returns null for project types without async analysis.
  */
-function getAnalysisStatus(project: Project): 'pending' | 'complete' | null {
+function getAnalysisStatus(project: Project): 'pending' | 'complete' | 'failed' | null {
   const contentKey = project.type === 'github_repo'
     ? 'github'
     : project.type === 'figma_design'

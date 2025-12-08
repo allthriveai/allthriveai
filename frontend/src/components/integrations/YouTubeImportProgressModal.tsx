@@ -17,15 +17,12 @@ export function YouTubeImportProgressModal({
   const [importedCount, setImportedCount] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pollingActive, setPollingActive] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !sourceId) {
-      setPollingActive(false);
       return;
     }
 
-    setPollingActive(true);
     setImportedCount(0);
     setIsComplete(false);
     setError(null);
@@ -42,7 +39,6 @@ export function YouTubeImportProgressModal({
           // Check if import is complete (imported >= expected or no new imports in 5 seconds)
           if (videoCount > 0 && imported >= videoCount) {
             setIsComplete(true);
-            setPollingActive(false);
           }
         }
       } catch (err: any) {
@@ -54,7 +50,6 @@ export function YouTubeImportProgressModal({
     // Auto-complete after 30 seconds of inactivity or if videoCount reached
     const timeoutId = setTimeout(() => {
       setIsComplete(true);
-      setPollingActive(false);
     }, 30000);
 
     return () => {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FunnelIcon, ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
-import type { Topic, Tool } from '@/types/models';
+import type { Taxonomy } from '@/types/models';
 import { getCategoryColorClasses } from '@/utils/categoryColors';
 
 // Constants

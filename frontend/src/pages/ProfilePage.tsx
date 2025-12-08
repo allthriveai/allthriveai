@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
 import type { User, Project } from '@/types/models';
@@ -33,22 +33,15 @@ import {
   faGithub,
   faLinkedin,
   faTwitter,
-  faYoutube,
-  faInstagram,
 } from '@fortawesome/free-brands-svg-icons';
 import {
   faGlobe,
-  faCalendar,
   faSpinner,
   faUserPlus,
-  faEnvelope,
-  faTrophy,
   faTh,
   faList,
-  faStar,
   faArrowLeft,
   faArrowRight,
-  faMapMarkerAlt,
   faFlask,
   faChartLine,
   faGraduationCap,
@@ -84,7 +77,6 @@ export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
   const { user, isAuthenticated } = useAuth();
   const { tierStatus, isLoading: isTierLoading } = useThriveCircle();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<{ showcase: Project[]; playground: Project[] }>({
@@ -105,8 +97,6 @@ export default function ProfilePage() {
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<number>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showBattleModal, setShowBattleModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toolTrayOpen, setToolTrayOpen] = useState(false);
@@ -483,7 +473,7 @@ export default function ProfilePage() {
     total_points: displayUser.totalPoints,
     level: displayUser.level,
     tier: displayUser.tier,
-    current_streak_days: displayUser.currentStreakDays,
+    current_streak_days: displayUser.currentStreak,
     total_achievements_unlocked: displayUser.totalAchievementsUnlocked,
     lifetime_projects_created: displayUser.lifetimeProjectsCreated,
   } : null;
@@ -1373,7 +1363,6 @@ export default function ProfilePage() {
                         <div key={project.id} className="break-inside-avoid mb-6">
                           <ProjectCard
                             project={project}
-                            onEdit={() => navigate(`/${username}/${project.slug}/edit`)}
                             onDelete={async () => {}}
                             isOwner={canManagePosts}
                             variant="masonry"
@@ -1406,7 +1395,6 @@ export default function ProfilePage() {
                         <div key={project.id} className="break-inside-avoid mb-6">
                           <ProjectCard
                             project={project}
-                            onEdit={() => navigate(`/${username}/${project.slug}/edit`)}
                             onDelete={async () => {}}
                             isOwner={canManagePosts}
                             variant="masonry"

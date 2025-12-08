@@ -49,7 +49,7 @@ export default function IntegrationsSettingsPage() {
       description: 'Embed your Figma designs and prototypes in your portfolio',
       icon: faFigma,
       isConnected: false,
-      isAvailable: false,
+      isAvailable: true,
     },
     {
       id: 'instagram',
@@ -84,10 +84,8 @@ export default function IntegrationsSettingsPage() {
     selectedVideoIds: new Set<string>(),
   });
   const [youtubeChannelId, setYoutubeChannelId] = useState<string | null>(null);
-  const [youtubeChannelName, setYoutubeChannelName] = useState<string | null>(null);
   const [youtubeNeedsReconnect, setYoutubeNeedsReconnect] = useState(false);
   const [showDisconnectModal, setShowDisconnectModal] = useState<string | null>(null);
-  const [channelInfo, setChannelInfo] = useState<any>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showImportProgress, setShowImportProgress] = useState(false);
@@ -139,6 +137,25 @@ export default function IntegrationsSettingsPage() {
           );
         }
 
+        // Check Figma status
+        const figmaResponse = await api.get('/social/status/figma/');
+        const figmaData = figmaResponse.data.data || figmaResponse.data;
+
+        if (figmaData.connected && isMounted) {
+          setIntegrations(prev =>
+            prev.map(integration =>
+              integration.id === 'figma'
+                ? {
+                    ...integration,
+                    isConnected: true,
+                    username: figmaData.providerUsername || 'Figma User',
+                    connectedAt: figmaData.connectedAt,
+                  }
+                : integration
+            )
+          );
+        }
+
         // Check YouTube status (Google OAuth)
         const youtubeResponse = await api.get('/social/status/google/');
         const youtubeData = youtubeResponse.data.data || youtubeResponse.data;
@@ -169,7 +186,6 @@ export default function IntegrationsSettingsPage() {
             if (channelResponse.data?.success && channelResponse.data?.channel && isMounted) {
               const channelData = channelResponse.data.channel;
               setYoutubeChannelId(channelData.id);
-              setYoutubeChannelName(channelData.title);
 
               // Update with channel name
               setIntegrations(prev =>
@@ -283,9 +299,12 @@ export default function IntegrationsSettingsPage() {
           statusCode: error.statusCode,
           error: error.error
         });
-        const friendlyError = getUserFriendlyError(error, 'gitlab');
+        const friendlyError = getUserFriendlyError(error);
         setErrorMessage(friendlyError);
       }
+    } else if (integrationId === 'figma') {
+      // Redirect to Figma OAuth - backend handles the redirect
+      window.location.href = `${import.meta.env.VITE_API_URL || ''}/api/v1/social/connect/figma/`;
     } else {
       setErrorMessage({
         title: 'Coming Soon',
@@ -341,7 +360,7 @@ export default function IntegrationsSettingsPage() {
           )
         );
 
-        setChannelInfo(null);
+        setYoutubeChannelId(null);
         setLastSyncedAt(null);
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
@@ -369,7 +388,30 @@ export default function IntegrationsSettingsPage() {
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
         console.error('Failed to disconnect GitLab:', error);
-        const friendlyError = getUserFriendlyError(error, 'gitlab');
+        const friendlyError = getUserFriendlyError(error);
+        setErrorMessage(friendlyError);
+      }
+    } else if (integrationId === 'figma') {
+      try {
+        await api.post('/social/disconnect/figma/');
+
+        setIntegrations(prev =>
+          prev.map(integration =>
+            integration.id === 'figma'
+              ? {
+                  ...integration,
+                  isConnected: false,
+                  username: undefined,
+                  connectedAt: undefined,
+                }
+              : integration
+          )
+        );
+
+        setSuccessMessage(`${integrationName} disconnected successfully`);
+      } catch (error) {
+        console.error('Failed to disconnect Figma:', error);
+        const friendlyError = getUserFriendlyError(error);
         setErrorMessage(friendlyError);
       }
     } else {
@@ -870,7 +912,7 @@ export default function IntegrationsSettingsPage() {
                 <div className="text-3xl">⚠️</div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                    Disconnect {showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : 'Integration'}?
+                    Disconnect {showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : showDisconnectModal === 'figma' ? 'Figma' : 'Integration'}?
                   </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     {showDisconnectModal === 'youtube'
@@ -890,7 +932,7 @@ export default function IntegrationsSettingsPage() {
                 </button>
                 <button
                   onClick={() => {
-                    const integrationName = showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : 'Integration';
+                    const integrationName = showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : showDisconnectModal === 'figma' ? 'Figma' : 'Integration';
                     handleDisconnect(showDisconnectModal, integrationName);
                   }}
                   className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium text-sm"

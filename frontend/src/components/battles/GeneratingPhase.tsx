@@ -49,7 +49,6 @@ export function GeneratingPhase({
   opponentUsername,
   isJudging = false,
 }: GeneratingPhaseProps) {
-  const bothGenerating = myImageGenerating && opponentImageGenerating;
   const myDone = !myImageGenerating && myImageUrl;
   const prefersReducedMotion = useReducedMotion();
 

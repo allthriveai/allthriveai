@@ -1,12 +1,10 @@
-import { ReactNode, useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
   ChartBarIcon,
   EnvelopeIcon,
-  UsersIcon,
-  DocumentTextIcon,
-  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarItem {

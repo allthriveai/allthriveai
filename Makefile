@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status reset-onboarding
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status reset-onboarding
 
 help:
 	@echo "Available commands:"
@@ -41,7 +41,8 @@ help:
 	@echo "  make create-pip      - Create Pip bot user (if doesn't exist)"
 	@echo "  make recreate-pip    - Delete and recreate Pip with latest data"
 	@echo "  make seed-quizzes    - Seed initial quiz data"
-	@echo "  make seed-all        - Seed all initial data"
+	@echo "  make seed-challenge-types - Seed battle challenge types"
+	@echo "  make seed-all        - Seed all initial data (topics, categories, tools, quizzes, challenges, pip)"
 	@echo "  make reset-db        - ⚠️  DANGER: Flush database and reseed"
 	@echo ""
 	@echo "Testing:"
@@ -176,6 +177,10 @@ seed-quizzes:
 	@echo "Seeding quizzes..."
 	docker-compose exec web python manage.py seed_quizzes
 
+seed-challenge-types:
+	@echo "Seeding challenge types..."
+	docker-compose exec web python manage.py seed_challenge_types
+
 seed-all:
 	@echo "Seeding all initial data..."
 	docker-compose exec web python manage.py seed_topics
@@ -183,6 +188,8 @@ seed-all:
 	docker-compose exec web python manage.py seed_categories
 	docker-compose exec web python manage.py seed_tools
 	docker-compose exec web python manage.py seed_quizzes
+	docker-compose exec web python manage.py seed_challenge_types
+	docker-compose exec web python manage.py create_pip
 	@echo "✓ All data seeded successfully!"
 
 reset-db:
@@ -349,6 +356,7 @@ reset-onboarding:
 	@echo ""
 	@echo "// Clear all onboarding state for all users"
 	@echo "Object.keys(localStorage).filter(k => k.startsWith('ember_onboarding_')).forEach(k => localStorage.removeItem(k));"
+	@echo "localStorage.removeItem('ember_open_chat');"
 	@echo "localStorage.removeItem('allthrive_completed_quests');"
 	@echo "location.reload();"
 	@echo ""

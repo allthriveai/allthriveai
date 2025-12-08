@@ -1,4 +1,5 @@
-import { useState, ReactNode, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightAboutPanel } from '@/components/about';
@@ -7,14 +8,14 @@ import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
 import { CommentTray } from '@/components/projects/CommentTray';
 import { QuestTray } from '@/components/side-quests/QuestTray';
 import { Footer } from '@/components/landing/Footer';
-import { SageAdventureBanner, useSageOnboardingContextSafe } from '@/components/onboarding';
+import { EmberAdventureBanner, useEmberOnboardingContextSafe } from '@/components/onboarding';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveQuest } from '@/hooks/useActiveQuest';
 import type { Project, UserSideQuest } from '@/types/models';
 
 // Constants
 const GITHUB_OAUTH_TIMESTAMP_KEY = 'github_oauth_timestamp';
-const SAGE_OPEN_CHAT_KEY = 'sage_open_chat';
+const EMBER_OPEN_CHAT_KEY = 'ember_open_chat';
 const OVERLAY_CLASSNAME = 'fixed inset-0 bg-black/20 z-30 md:hidden';
 
 interface DashboardLayoutProps {
@@ -25,12 +26,13 @@ interface DashboardLayoutProps {
     openQuestTray: (quest: UserSideQuest) => void;
   }) => ReactNode);
   openAboutPanel?: boolean;
+  autoCollapseSidebar?: boolean;
 }
 
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
-  const onboardingContext = useSageOnboardingContextSafe();
+  const onboardingContext = useEmberOnboardingContextSafe();
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
@@ -43,7 +45,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const {
     questTrayOpen,
     selectedQuest,
-    activeQuest,
     openQuestTray,
     openActiveQuestTray,
     closeQuestTray,
@@ -106,13 +107,13 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     handleOpenAddProject();
   }, []);
 
-  // Check for Sage onboarding "Add Project" adventure - open chat in welcome mode
+  // Check for Ember onboarding "Add Project" adventure - open chat in welcome mode
   useEffect(() => {
-    const sageOpenChat = localStorage.getItem(SAGE_OPEN_CHAT_KEY);
+    const emberOpenChat = localStorage.getItem(EMBER_OPEN_CHAT_KEY);
 
-    if (sageOpenChat === 'true') {
+    if (emberOpenChat === 'true') {
       // Clear immediately to prevent re-triggering
-      localStorage.removeItem(SAGE_OPEN_CHAT_KEY);
+      localStorage.removeItem(EMBER_OPEN_CHAT_KEY);
 
       // Short delay to let the page render first
       setTimeout(() => {
@@ -212,7 +213,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           <div className="pt-16">
             {/* Ember Onboarding Banner - positioned below nav, not sticky */}
             {onboardingContext?.shouldShowBanner && (
-              <SageAdventureBanner
+              <EmberAdventureBanner
                 completedAdventures={onboardingContext.completedAdventures}
                 onAdventureClick={onboardingContext.completeAdventure}
                 onDismiss={onboardingContext.dismissOnboarding}
@@ -223,7 +224,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
             )}
             {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray }) : children}
           </div>
-          <Footer onOpenChat={handleMenuClick} />
+          <Footer onOpenChat={() => handleMenuClick('Chat')} />
         </main>
 
         {/* Right About Panel */}

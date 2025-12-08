@@ -7,7 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 export default function BattleDetailPage() {
   const { battleId } = useParams<{ battleId: string }>();
-  const { user } = useAuth();
+  const { } = useAuth();
   const navigate = useNavigate();
 
   const [battle, setBattle] = useState<any>(null);
@@ -20,7 +20,7 @@ export default function BattleDetailPage() {
     fetchBattle();
     const interval = setInterval(fetchBattle, 5000); // Refresh every 5 seconds
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [battleId]);
 
   const fetchBattle = async () => {
@@ -91,7 +91,7 @@ export default function BattleDetailPage() {
         const data = await response.json();
         setError(data.error || 'Failed to submit prompt');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Network error');
     } finally {
       setSubmitting(false);

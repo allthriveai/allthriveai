@@ -5,10 +5,9 @@
  * Designed for curated YouTube content where the video is the primary focus.
  */
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectContext } from '@/context/ProjectContext';
-import { updateProject } from '@/services/projects';
 import { ProjectActions } from '../shared/ProjectActions';
 import { ShareModal } from '../shared/ShareModal';
 import { CommentTray } from '../CommentTray';
@@ -24,7 +23,6 @@ import {
 export function VideoProjectLayout() {
   const {
     project,
-    setProject,
     isOwner,
     isLiked,
     heartCount,
@@ -49,16 +47,16 @@ export function VideoProjectLayout() {
   const [showMenu, setShowMenu] = useState(false);
 
   // Extract video info from content
-  const videoContent = project.content?.video || {};
+  // Handle both VideoContent object and legacy string format
+  const videoContent = typeof project.content?.video === 'object' ? project.content.video : {};
   const sectionContent = project.content?.sections?.[0]?.content || {};
-  const videoId = videoContent.videoId || sectionContent.videoId;
+  const videoId = videoContent.videoId || (typeof sectionContent === 'object' && 'videoId' in sectionContent ? sectionContent.videoId : undefined);
   const channelName = videoContent.channelName || '';
   const channelId = videoContent.channelId || '';
 
   // Detect if this is a YouTube Short (vertical video)
   // Check both video metadata and section content for isShort flag
-  const isShort = videoContent.isShort || sectionContent.isShort || false;
-  const duration = videoContent.duration || sectionContent.duration || 0;
+  const isShort = videoContent.isShort || (typeof sectionContent === 'object' && 'isShort' in sectionContent ? sectionContent.isShort : false) || false;
 
   // Build YouTube embed URL - disable autoplay for desktop/tablet
   const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&autoplay=0` : null;

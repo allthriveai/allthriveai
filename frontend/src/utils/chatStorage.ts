@@ -52,7 +52,7 @@ function getStorageKey(conversationId: string): string {
 function serializeMessage(message: ChatMessage): SerializedChatMessage {
   return {
     ...message,
-    timestamp: message.timestamp.toISOString(),
+    timestamp: message.timestamp?.toISOString() || new Date().toISOString(),
   };
 }
 

@@ -76,7 +76,7 @@ class Command(BaseCommand):
                 'tier_type': 'community_pro',
                 'slug': 'community-pro',
                 'name': 'Community Pro',
-                'description': 'Full community access with analytics and higher AI quota',
+                'description': 'Full community access with insights and higher AI quota',
                 'price_monthly': Decimal('15.00'),  # $15/month
                 'price_annual': Decimal('153.00'),  # $153/year (15% discount - save $27/year)
                 'trial_period_days': 7,

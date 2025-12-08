@@ -1,12 +1,11 @@
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { CheckCircleIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import { analytics } from '@/utils/analytics';
 
 export default function CheckoutSuccessPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     // Track successful checkout

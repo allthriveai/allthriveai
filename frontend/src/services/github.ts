@@ -176,7 +176,7 @@ export async function importGitHubRepoAsync(
     if (!result.success) {
       throw new ImportError(result.error || 'Import failed', {
         suggestion: result.suggestion,
-        project: result.project,
+        project: result.project as unknown as Project,
         errorCode: result.error_code,
       });
     }
@@ -207,13 +207,13 @@ export async function importGitHubRepoAsync(
     }
 
     // Extract enhanced error information from axios response
-    const errorData: GitHubError = axiosError.response?.data || {};
-    const errorMessage = errorData.error || axiosError.message || 'Failed to import repository';
+    const errorData = axiosError.response?.data as GitHubError | undefined;
+    const errorMessage = errorData?.error || axiosError.message || 'Failed to import repository';
 
     throw new ImportError(errorMessage, {
-      suggestion: errorData.suggestion,
-      project: errorData.project,
-      errorCode: errorData.error_code,
+      suggestion: errorData?.suggestion,
+      project: errorData?.project as unknown as Project,
+      errorCode: errorData?.error_code,
     });
   }
 }

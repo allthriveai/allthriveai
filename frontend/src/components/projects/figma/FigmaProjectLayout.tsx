@@ -1,4 +1,4 @@
-import React from 'react';
+
 import type { Project } from '@/types/models';
 import {
   SwatchIcon,
@@ -122,7 +122,7 @@ export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Colors</h3>
                   <div className="space-y-2">
-                    {designSystem.colors.slice(0, 10).map((color, index) => (
+                    {designSystem.colors.slice(0, 10).map((color: { name: string; description?: string }, index: number) => (
                       <div key={index} className="flex items-center gap-2">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{color.name}</p>
@@ -146,7 +146,7 @@ export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Text Styles</h3>
                   <div className="space-y-2">
-                    {designSystem.text_styles.slice(0, 10).map((style, index) => (
+                    {designSystem.text_styles.slice(0, 10).map((style: { name: string; description?: string }, index: number) => (
                       <div key={index}>
                         <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{style.name}</p>
                         {style.description && (
@@ -168,7 +168,7 @@ export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Effects</h3>
                   <div className="space-y-2">
-                    {designSystem.effects.slice(0, 10).map((effect, index) => (
+                    {designSystem.effects.slice(0, 10).map((effect: { name: string; description?: string }, index: number) => (
                       <div key={index}>
                         <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{effect.name}</p>
                         {effect.description && (
@@ -196,7 +196,7 @@ export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Components</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {components.map((component, index) => (
+              {components.map((component: { id?: string; name: string; type?: string }, index: number) => (
                 <div
                   key={component.id || index}
                   className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow"
@@ -219,7 +219,7 @@ export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Pages</h2>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md divide-y divide-gray-200 dark:divide-gray-700">
-              {pages.map((page, index) => (
+              {pages.map((page: { id?: string; name: string; type?: string; children_count?: number }, index: number) => (
                 <div key={page.id || index} className="p-4">
                   <div className="flex items-center justify-between">
                     <div>

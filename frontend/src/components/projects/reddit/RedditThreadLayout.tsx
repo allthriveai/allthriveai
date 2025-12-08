@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import type { Project } from '@/types/models';
 import { useAuth } from '@/hooks/useAuth';
 import { useReward } from 'react-rewards';
@@ -8,14 +8,12 @@ import { marked } from 'marked';
 import { sanitizeHtml } from '@/utils/sanitize';
 import {
   ChatBubbleLeftRightIcon,
-  ArrowUpIcon,
   ClockIcon,
   UserIcon,
   LinkIcon,
   HeartIcon,
   ShareIcon,
   ArrowLeftIcon,
-  HomeIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 
@@ -75,8 +73,6 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
     selftext,
     selftextHtml,
     selftext_html,
-    upvoteRatio,
-    upvote_ratio,
     linkFlairText,
     link_flair_text,
     linkFlairBackgroundColor,
@@ -91,7 +87,6 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
   const thumbnailImage = thumbnailUrl || thumbnail_url;
   const postSelftext = selftext || '';
   const postSelftextHtml = selftextHtml || selftext_html || '';
-  const upvotePercentage = upvoteRatio || upvote_ratio || 0;
   const linkFlair = linkFlairText || link_flair_text || '';
   const linkFlairBgColor = linkFlairBackgroundColor || link_flair_background_color || '';
   const commentCount = numComments || num_comments || 0;
@@ -102,27 +97,6 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
 
   // Clean author name (remove /u/ prefix if present)
   const cleanAuthor = author?.replace(/^\/u\//, '') || 'unknown';
-
-  // Extract clean post content from description (strip HTML and convert to markdown)
-  const extractPostContent = (description: string): string => {
-    if (!description) return '';
-
-    // Create a temporary div to parse HTML
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = description;
-
-    // Get the markdown content div if it exists
-    const mdDiv = tempDiv.querySelector('.md');
-    const textContent = mdDiv ? mdDiv.textContent : tempDiv.textContent;
-
-    // Clean up extra whitespace and return
-    return textContent?.trim() || '';
-  };
-
-  const postContent = extractPostContent(localProject.description || '');
-
-  // Convert markdown to HTML for rendering
-  const postContentHtml = postContent ? marked.parse(postContent) as string : '';
 
   // Format the date
   const postDate = createdUtc || created_utc;

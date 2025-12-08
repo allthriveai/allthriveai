@@ -20,7 +20,7 @@ import type { ProfileUser } from './ProfileSectionRenderer';
 import type { ProductListItem } from '@/types/marketplace';
 import { listMyProducts } from '@/services/marketplace';
 import { ProductCheckoutModal } from '@/components/marketplace';
-import { MediaUploader, type UploadedMedia } from '@/components/forms';
+import { MediaUploader } from '@/components/forms';
 
 interface StorefrontSectionProps {
   content: StorefrontSectionContent;

@@ -10,10 +10,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { XMarkIcon, CheckCircleIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDragon, faGamepad, faRocket, faCompass } from '@fortawesome/free-solid-svg-icons';
+import { faDragon, faGamepad, faRocket, faCompass, faUserPen } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '@/hooks/useAuth';
-
-type AdventureId = 'battle_pip' | 'add_project' | 'explore';
+import type { AdventureId } from '@/hooks/useEmberOnboarding';
 
 interface Adventure {
   id: AdventureId;
@@ -22,8 +21,10 @@ interface Adventure {
   icon: typeof faGamepad;
   gradient: string;
   path: string;
+  bannerOnly?: boolean; // If true, only shows in banner, not in opening paths
 }
 
+// Core adventures shown in both modal and banner
 const adventures: Adventure[] = [
   {
     id: 'battle_pip',
@@ -49,21 +50,30 @@ const adventures: Adventure[] = [
     gradient: 'from-amber-500 to-orange-500',
     path: '/explore',
   },
+  {
+    id: 'personalize',
+    title: 'Personalize Profile',
+    shortTitle: 'Profile',
+    icon: faUserPen,
+    gradient: 'from-pink-500 to-rose-500',
+    path: '/account/settings',
+    bannerOnly: true,
+  },
 ];
 
-interface SageAdventureBannerProps {
+interface EmberAdventureBannerProps {
   completedAdventures: AdventureId[];
   onAdventureClick: (adventureId: AdventureId) => void;
   onDismiss: () => void;
   onShowMoreRecommendations?: () => void;
 }
 
-export function SageAdventureBanner({
+export function EmberAdventureBanner({
   completedAdventures,
   onAdventureClick,
   onDismiss,
   onShowMoreRecommendations,
-}: SageAdventureBannerProps) {
+}: EmberAdventureBannerProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isExpanded] = useState(true);
@@ -80,7 +90,7 @@ export function SageAdventureBanner({
 
     // Special handling for add_project - navigate to user's profile and open chat
     if (adventure.id === 'add_project') {
-      localStorage.setItem('sage_open_chat', 'true');
+      localStorage.setItem('ember_open_chat', 'true');
       // Navigate to user's profile page (/:username)
       const profilePath = user?.username ? `/${user.username}` : '/dashboard';
       navigate(profilePath);
@@ -99,7 +109,7 @@ export function SageAdventureBanner({
           exit={{ opacity: 0, y: -20, height: 0 }}
           className="bg-gradient-to-r from-orange-100 via-amber-100 to-orange-100 dark:from-orange-500/20 dark:via-amber-500/20 dark:to-red-500/20 border-b border-orange-300 dark:border-orange-500/30"
         >
-          <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="max-w-[1920px] mx-auto pl-8 pr-6 py-3">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 flex items-center justify-center">
@@ -147,7 +157,7 @@ export function SageAdventureBanner({
           exit={{ opacity: 0, y: -20, height: 0 }}
           className="bg-gradient-to-r from-slate-100 via-slate-50 to-slate-100 dark:from-slate-800/80 dark:via-slate-800/60 dark:to-slate-800/80 border-b border-slate-300 dark:border-slate-700/50 backdrop-blur-sm"
         >
-          <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="max-w-[1920px] mx-auto pl-8 pr-6 py-3">
             <div className="flex items-center justify-between gap-4">
               {/* Ember avatar and message */}
               <div className="flex items-center gap-3 min-w-0">
@@ -232,4 +242,4 @@ export function SageAdventureBanner({
   );
 }
 
-export default SageAdventureBanner;
+export default EmberAdventureBanner;
