@@ -80,7 +80,6 @@ const getCloudProps = (isMobile: boolean): Omit<ComponentProps<typeof Cloud>, 'c
     minSpeed: isMobile ? 0 : 0.01,
     freezeActive: true,
     freezeDecel: true,
-    frozen: isMobile,
   },
 });
 

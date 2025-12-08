@@ -5,6 +5,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide reCAPTCHA badge - required disclosure is shown in forms */
+.grecaptcha-badge {
+  visibility: hidden !important;
+}
+
 /* =============================================================================
    CSS VARIABLES - Neon Glass Design System
    ============================================================================= */

@@ -11,6 +11,7 @@ import { AppRoutes } from '@/routes';
 import { Sentry } from '@/utils/sentry';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PostHogProvider } from '@/lib/analytics';
+import { ScrollToTop } from '@/components/ScrollToTop';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -61,6 +62,7 @@ function App() {
             <QueryClientProvider client={queryClient}>
               <SubscribeModalProvider>
                 <BrowserRouter>
+                  <ScrollToTop />
                   <AuthProvider>
                     <BattleNotificationProvider>
                       <EmberOnboardingProvider>

@@ -242,6 +242,10 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 _ssl_redirect_default = not DEBUG  # True in production, False in development
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=_ssl_redirect_default, cast=bool)
 
+# Trust the CloudFront-Forwarded-Proto header from CloudFront/ALB to determine if request is HTTPS
+# This is required when running behind CloudFront which terminates SSL
+SECURE_PROXY_SSL_HEADER = ('HTTP_CLOUDFRONT_FORWARDED_PROTO', 'https')
+
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
