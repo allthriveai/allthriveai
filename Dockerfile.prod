@@ -55,8 +55,9 @@ RUN pip install --no-cache-dir /wheels/* \
 # Copy application code
 COPY . .
 
-# Create non-root user
+# Create non-root user and logs directory
 RUN useradd --create-home --shell /bin/bash app \
+    && mkdir -p /app/logs \
     && chown -R app:app /app
 
 # Collect static files
