@@ -48,8 +48,8 @@ jobs:
       CELERY_RESULT_BACKEND: redis://localhost:6379/0
       # SEO configuration
       SITE_URL: http://localhost:8000
-      # JWT/Auth cookies
-      COOKIE_DOMAIN: localhost
+      # JWT/Auth cookies - empty string becomes None, avoiding production check
+      COOKIE_DOMAIN: ""
       # CSRF settings
       CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
     steps:

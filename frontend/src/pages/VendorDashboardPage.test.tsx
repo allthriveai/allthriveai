@@ -71,36 +71,36 @@ const mockAnalytics = {
     id: 1,
     name: 'AI Tool One',
     slug: 'ai-tool-one',
-    logo_url: 'https://example.com/logo1.png',
+    logoUrl: 'https://example.com/logo1.png',
     category: 'productivity',
     tagline: 'Boost your productivity with AI',
-    is_featured: true,
-    is_verified: true,
+    isFeatured: true,
+    isVerified: true,
   },
   period: {
     days: 30,
-    start_date: '2025-01-01',
-    end_date: '2025-01-31',
+    startDate: '2025-01-01',
+    endDate: '2025-01-31',
   },
   metrics: {
-    total_views: 1500,
-    popularity_score: 85.5,
-    total_bookmarks: 120,
-    recent_bookmarks: 25,
-    total_reviews: 45,
-    recent_reviews: 8,
-    avg_rating: 4.5,
-    projects_using_tool: 30,
-    category_rank: 3,
-    category_total: 50,
+    totalViews: 1500,
+    popularityScore: 85.5,
+    totalBookmarks: 120,
+    recentBookmarks: 25,
+    totalReviews: 45,
+    recentReviewsCount: 8,
+    avgRating: 4.5,
+    projectsUsingTool: 30,
+    categoryRank: 3,
+    categoryTotal: 50,
   },
-  similar_tools: [
-    { id: 10, name: 'Competitor A', slug: 'competitor-a', logo_url: '', view_count: 2000, popularity_score: 90 },
-    { id: 11, name: 'Competitor B', slug: 'competitor-b', logo_url: '', view_count: 1200, popularity_score: 75 },
+  similarTools: [
+    { id: 10, name: 'Competitor A', slug: 'competitor-a', logoUrl: '', viewCount: 2000, popularityScore: 90 },
+    { id: 11, name: 'Competitor B', slug: 'competitor-b', logoUrl: '', viewCount: 1200, popularityScore: 75 },
   ],
-  recent_reviews: [
-    { rating: 5, title: 'Great tool!', content: 'Love using this.', user__username: 'user1', created_at: '2025-01-15' },
-    { rating: 4, title: 'Very helpful', content: 'Makes work easier.', user__username: 'user2', created_at: '2025-01-14' },
+  recentReviews: [
+    { rating: 5, title: 'Great tool!', content: 'Love using this.', userUsername: 'user1', createdAt: '2025-01-15' },
+    { rating: 4, title: 'Very helpful', content: 'Makes work easier.', userUsername: 'user2', createdAt: '2025-01-14' },
   ],
 };
 
@@ -307,9 +307,10 @@ describe('VendorDashboardPage', () => {
       });
 
       expect(screen.getByText('1,500')).toBeInTheDocument(); // Views
-      expect(screen.getByText('Bookmarks')).toBeInTheDocument();
+      expect(screen.getByText('Favorites')).toBeInTheDocument();
       expect(screen.getByText('Reviews')).toBeInTheDocument();
-      expect(screen.getByText('Projects')).toBeInTheDocument();
+      // "Projects" appears in both metric card and similar tools table
+      expect(screen.getAllByText('Projects').length).toBeGreaterThan(0);
     });
 
     it('should display category performance', async () => {

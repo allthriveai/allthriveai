@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { TopNavigation } from '@/components/navigation/TopNavigation';
@@ -41,6 +41,9 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const [commentPanelOpen, setCommentPanelOpen] = useState(false);
   const [commentPanelProject, setCommentPanelProject] = useState<Project | null>(null);
 
+  // Track if component has mounted to avoid closing panels on initial render
+  const hasMounted = useRef(false);
+
   // Quest tray state using the hook
   const {
     questTrayOpen,
@@ -69,7 +72,13 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   }, [openAboutPanel]);
 
   // Close all panels when location changes (user navigates to a different page)
+  // Skip on initial mount to allow openAboutPanel prop to work
   useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
+    }
+
     setAboutOpen(false);
     setEventsOpen(false);
     setAddProjectOpen(false);

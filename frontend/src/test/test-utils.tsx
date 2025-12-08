@@ -3,6 +3,7 @@ import { render } from '@testing-library/react';
 import type { RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from '@/context/ThemeContext';
 
 // Create a new QueryClient for each test to ensure test isolation
 const createTestQueryClient = () =>
@@ -27,7 +28,11 @@ function AllTheProviders({ children }: AllTheProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>{children}</BrowserRouter>
+      <BrowserRouter>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
