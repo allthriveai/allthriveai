@@ -55,8 +55,15 @@ jobs:
         run: |
           pytest --cov=. --cov-report=xml
         env:
-          DJANGO_SETTINGS_MODULE: config.settings.test
+          DJANGO_SETTINGS_MODULE: config.settings
           DATABASE_URL: sqlite:///db.sqlite3
+          SECRET_KEY: ci-test-secret-key-for-deploy-workflow
+          DEBUG: "True"
+          SECURE_SSL_REDIRECT: "False"
+          ALLOWED_HOSTS: "localhost,127.0.0.1"
+          CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+          CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+          COOKIE_DOMAIN: ""
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
