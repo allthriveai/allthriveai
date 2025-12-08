@@ -67,7 +67,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Run frontend tests
         working-directory: frontend
@@ -138,7 +138,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Build frontend
         working-directory: frontend
@@ -263,8 +263,8 @@ jobs:
             --cluster ${{ env.ECS_CLUSTER }} \
             --task ${{ steps.task.outputs.task_arn }} \
             --container web \
-            --interactive \
-            --command "python manage.py migrate --noinput"
+            --command "python manage.py migrate --noinput" \
+            --non-interactive
 
   # Notify on completion
   notify:
