@@ -9,7 +9,7 @@ import { faGithub, faGitlab, faFigma, faInstagram, faTiktok, faYoutube } from '@
 import { faChevronDown, faChevronUp, faCheck, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { VideoPickerModal } from '@/components/integrations/VideoPickerModal';
 import { YouTubeImportProgressModal } from '@/components/integrations/YouTubeImportProgressModal';
-import { getUserFriendlyError, type UserFriendlyError } from '@/utils/errorMessages';
+import { getUserFriendlyError, type UserFriendlyError, type ErrorResponse } from '@/utils/errorMessages';
 
 interface Integration {
   id: string;
@@ -249,7 +249,7 @@ export default function IntegrationsSettingsPage() {
         }
       } catch (error) {
         console.error('Failed to get GitHub OAuth URL:', error);
-        const friendlyError = getUserFriendlyError(error, 'github');
+        const friendlyError = getUserFriendlyError(error as ErrorResponse, 'github');
         setErrorMessage(friendlyError);
       }
     } else if (integrationId === 'youtube') {
@@ -274,7 +274,7 @@ export default function IntegrationsSettingsPage() {
           statusCode: error.statusCode,
           error: error.error
         });
-        const friendlyError = getUserFriendlyError(error, 'youtube');
+        const friendlyError = getUserFriendlyError(error as ErrorResponse, 'youtube');
         setErrorMessage(friendlyError);
       }
     } else if (integrationId === 'gitlab') {
@@ -299,7 +299,7 @@ export default function IntegrationsSettingsPage() {
           statusCode: error.statusCode,
           error: error.error
         });
-        const friendlyError = getUserFriendlyError(error);
+        const friendlyError = getUserFriendlyError(error as ErrorResponse);
         setErrorMessage(friendlyError);
       }
     } else if (integrationId === 'figma') {
@@ -339,7 +339,7 @@ export default function IntegrationsSettingsPage() {
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
         console.error('Failed to disconnect GitHub:', error);
-        const friendlyError = getUserFriendlyError(error, 'github');
+        const friendlyError = getUserFriendlyError(error as ErrorResponse, 'github');
         setErrorMessage(friendlyError);
       }
     } else if (integrationId === 'youtube') {
@@ -365,7 +365,7 @@ export default function IntegrationsSettingsPage() {
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
         console.error('Failed to disconnect YouTube:', error);
-        const friendlyError = getUserFriendlyError(error, 'youtube');
+        const friendlyError = getUserFriendlyError(error as ErrorResponse, 'youtube');
         setErrorMessage(friendlyError);
       }
     } else if (integrationId === 'gitlab') {
@@ -388,7 +388,7 @@ export default function IntegrationsSettingsPage() {
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
         console.error('Failed to disconnect GitLab:', error);
-        const friendlyError = getUserFriendlyError(error);
+        const friendlyError = getUserFriendlyError(error as ErrorResponse);
         setErrorMessage(friendlyError);
       }
     } else if (integrationId === 'figma') {
@@ -411,7 +411,7 @@ export default function IntegrationsSettingsPage() {
         setSuccessMessage(`${integrationName} disconnected successfully`);
       } catch (error) {
         console.error('Failed to disconnect Figma:', error);
-        const friendlyError = getUserFriendlyError(error);
+        const friendlyError = getUserFriendlyError(error as ErrorResponse);
         setErrorMessage(friendlyError);
       }
     } else {
@@ -446,7 +446,7 @@ export default function IntegrationsSettingsPage() {
       }
     } catch (error: any) {
       console.error('Failed to toggle sync:', error);
-      const friendlyError = getUserFriendlyError(error, 'youtube');
+      const friendlyError = getUserFriendlyError(error as ErrorResponse, 'youtube');
       setErrorMessage(friendlyError);
     }
   };
@@ -476,7 +476,7 @@ export default function IntegrationsSettingsPage() {
       }
     } catch (error: any) {
       console.error('Failed to import channel:', error);
-      const friendlyError = getUserFriendlyError(error, 'youtube');
+      const friendlyError = getUserFriendlyError(error as ErrorResponse, 'youtube');
       setErrorMessage(friendlyError);
     }
   };
@@ -521,7 +521,7 @@ export default function IntegrationsSettingsPage() {
       }
     } catch (error: any) {
       console.error('Failed to sync:', error);
-      const friendlyError = getUserFriendlyError(error, 'youtube');
+      const friendlyError = getUserFriendlyError(error as ErrorResponse, 'youtube');
       setErrorMessage(friendlyError);
     } finally {
       setIsSyncing(false);
@@ -596,7 +596,7 @@ export default function IntegrationsSettingsPage() {
         response: error.response?.data,
         status: error.response?.status
       });
-      const friendlyError = getUserFriendlyError(error, 'youtube');
+      const friendlyError = getUserFriendlyError(error as ErrorResponse, 'youtube');
       setErrorMessage(friendlyError);
       throw error; // Re-throw to keep modal open
     }

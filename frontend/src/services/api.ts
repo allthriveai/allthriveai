@@ -92,6 +92,14 @@ api.interceptors.request.use(
 // Flag to prevent multiple concurrent redirects to auth page
 let isRedirectingToAuth = false;
 
+// Flag to prevent multiple concurrent token refresh attempts
+let isRefreshing = false;
+// Queue to hold requests while token is being refreshed
+let refreshQueue: Array<{
+  resolve: (value: unknown) => void;
+  reject: (reason?: unknown) => void;
+}> = [];
+
 // Response interceptor - transform data to camelCase, handle retries, and handle errors
 api.interceptors.response.use(
   (response) => {
@@ -134,35 +142,68 @@ api.interceptors.response.use(
         statusCode: error.response.status,
       };
 
-      // Handle 401 - token expired, redirect to auth
-      // Skip redirect if:
+      // Handle 401 - token expired, attempt refresh then redirect to auth
+      // Skip refresh/redirect if:
       // 1. The request has the X-Skip-Auth-Redirect header
       // 2. We're already redirecting (prevent multiple redirects)
-      // 3. We're already on the auth page
+      // 3. The failing request is the refresh endpoint itself (prevent infinite loops)
       const skipRedirect = error.config?.headers?.['X-Skip-Auth-Redirect'] === 'true';
-      if (error.response.status === 401 && !skipRedirect && !isRedirectingToAuth) {
+      const isRefreshEndpoint = error.config?.url?.includes('/auth/refresh');
+
+      if (error.response.status === 401 && !skipRedirect && !isRedirectingToAuth && !isRefreshEndpoint) {
         const currentPath = window.location.pathname;
         // Public paths: /auth, /explore, and user profiles (/:username)
-        // User profiles are single-segment paths that aren't known routes
         const knownRoutes = ['/auth', '/about', '/about-us', '/styleguide', '/learn', '/quizzes', '/tools', '/play', '/thrive-circle', '/account', '/dashboard'];
         const isKnownRoute = knownRoutes.some(route => currentPath === route || currentPath.startsWith(route + '/') || currentPath.startsWith(route + '?'));
-        // Check if it's a user profile path (single segment that's not a known route)
         const isUserProfile = /^\/[a-zA-Z0-9_-]+$/.test(currentPath) && !isKnownRoute;
         const isPublicPath = currentPath === '/auth' || currentPath.startsWith('/explore') || isUserProfile;
 
         if (!isPublicPath) {
-          // Set flag to prevent multiple redirects from concurrent requests
-          isRedirectingToAuth = true;
+          // Attempt silent token refresh before redirecting
+          if (!isRefreshing) {
+            isRefreshing = true;
 
-          // Clear any stale auth state
-          try {
-            sessionStorage.removeItem('auth_state');
-          } catch {
-            // Ignore storage errors
+            try {
+              // Attempt to refresh the token
+              await api.post('/auth/refresh/');
+
+              // Success! Token refreshed. Retry the original request.
+              isRefreshing = false;
+
+              // Resolve all queued requests
+              refreshQueue.forEach(({ resolve }) => resolve(api(error.config!)));
+              refreshQueue = [];
+
+              // Retry the original request
+              return api(error.config!);
+            } catch (refreshError) {
+              // Refresh failed - redirect to auth
+              isRefreshing = false;
+              isRedirectingToAuth = true;
+
+              // Reject all queued requests
+              refreshQueue.forEach(({ reject }) => reject(refreshError));
+              refreshQueue = [];
+
+              // Clear any stale auth state
+              try {
+                sessionStorage.removeItem('auth_state');
+              } catch {
+                // Ignore storage errors
+              }
+
+              // Log for observability
+              console.warn('Token refresh failed, redirecting to auth:', refreshError);
+
+              // Redirect to auth with return URL
+              window.location.href = `/auth?returnUrl=${encodeURIComponent(currentPath)}`;
+            }
+          } else {
+            // Token refresh already in progress - queue this request
+            return new Promise((resolve, reject) => {
+              refreshQueue.push({ resolve, reject });
+            });
           }
-
-          // Redirect to auth with return URL
-          window.location.href = `/auth?returnUrl=${encodeURIComponent(currentPath)}`;
         }
       }
 

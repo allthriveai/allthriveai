@@ -1,5 +1,6 @@
-import { ReactElement } from 'react';
-import { render, RenderOptions } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { render } from '@testing-library/react';
+import type { RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 
@@ -14,11 +15,6 @@ const createTestQueryClient = () =>
       mutations: {
         retry: false,
       },
-    },
-    logger: {
-      log: console.log,
-      warn: console.warn,
-      error: () => {}, // Suppress errors in tests
     },
   });
 
