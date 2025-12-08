@@ -496,3 +496,298 @@ class GuestCleanupTaskTestCase(TestCase):
         self.assertGreaterEqual(result['deleted_count'], 1)
         self.assertFalse(User.objects.filter(id=old_guest_id).exists())
         self.assertTrue(User.objects.filter(id=recent_guest_id).exists())
+
+
+class LinkInvitationE2ETestCase(TestCase):
+    """End-to-end tests for shareable link invitation flow.
+
+    Tests the complete flow:
+    1. Authenticated user generates a shareable battle link
+    2. Anyone can view invitation details via the link
+    3. Guest user accepts the invitation and joins the battle
+    4. Battle starts with both players
+    5. Guest can convert to full account after battle
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.client = APIClient()
+
+        # Create the challenger (link creator)
+        self.challenger = User.objects.create_user(
+            username='challenger',
+            email='challenger@example.com',
+            password='testpass123',
+        )
+
+        # Create challenge type
+        self.challenge_type = ChallengeType.objects.create(
+            key='link_test_challenge',
+            name='Link Test Challenge',
+            description='A test challenge for link invitations',
+            templates=['Create something amazing: {topic}'],
+            variables={'topic': ['AI', 'Space', 'Nature']},
+            is_active=True,
+        )
+
+    def test_full_link_invitation_flow_guest_user(self):
+        """Test complete flow: generate link -> guest accepts -> battle starts."""
+        # Step 1: Challenger generates a shareable link
+        self.client.force_authenticate(user=self.challenger)
+        generate_url = reverse('generate_battle_link')
+
+        response = self.client.post(
+            generate_url,
+            {
+                'challenge_type_key': 'link_test_challenge',
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('invite_url', response.data)
+        self.assertIn('invite_token', response.data)
+        self.assertIn('invitation', response.data)
+
+        invite_token = response.data['invite_token']
+        invitation_id = response.data['invitation']['id']
+
+        # Verify invitation was created with LINK type
+        invitation = BattleInvitation.objects.get(id=invitation_id)
+        self.assertEqual(invitation.invitation_type, InvitationType.LINK)
+        self.assertEqual(invitation.sender, self.challenger)
+        self.assertIsNone(invitation.recipient)  # No recipient yet
+        self.assertEqual(invitation.status, InvitationStatus.PENDING)
+
+        # Step 2: View invitation details (unauthenticated)
+        self.client.logout()
+        view_url = reverse('invitation_by_token', kwargs={'token': invite_token})
+
+        response = self.client.get(view_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['sender']['username'], 'challenger')
+        self.assertIn('challenge_text', response.data['battle'])
+        self.assertIn('expires_at', response.data)
+
+        # Step 3: Guest accepts the invitation
+        accept_url = reverse('accept_invitation_by_token', kwargs={'token': invite_token})
+
+        response = self.client.post(
+            accept_url,
+            {
+                'display_name': 'GuestChallenger',
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data.get('is_guest'))
+        self.assertIn('auth', response.data)
+        self.assertIn('id', response.data)  # Battle ID is returned as 'id'
+
+        # Verify guest user was created
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, InvitationStatus.ACCEPTED)
+        guest_user = invitation.recipient
+        self.assertIsNotNone(guest_user)
+        self.assertTrue(guest_user.is_guest)
+        self.assertEqual(guest_user.first_name, 'GuestChallenger')
+
+        # Step 4: Verify battle started with both players
+        battle = invitation.battle
+        battle.refresh_from_db()
+        self.assertEqual(battle.challenger, self.challenger)
+        self.assertEqual(battle.opponent, guest_user)
+        self.assertEqual(battle.status, BattleStatus.ACTIVE)
+        # Battle is now active with both players - phase may vary based on config
+
+        # Step 5: Guest converts to full account
+        self.client.force_authenticate(user=guest_user)
+        convert_url = reverse('convert_guest_account')
+
+        response = self.client.post(
+            convert_url,
+            {
+                'email': 'newplayer@example.com',
+                'password': 'securepass123',
+                'username': 'newplayer',
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['success'])
+
+        guest_user.refresh_from_db()
+        self.assertFalse(guest_user.is_guest)
+        self.assertEqual(guest_user.email, 'newplayer@example.com')
+        self.assertEqual(guest_user.username, 'newplayer')
+
+    def test_full_link_invitation_flow_authenticated_user(self):
+        """Test flow when an authenticated user accepts the link."""
+        # Create another user who will accept the invitation
+        opponent = User.objects.create_user(
+            username='opponent',
+            email='opponent@example.com',
+            password='testpass123',
+        )
+
+        # Step 1: Challenger generates link
+        self.client.force_authenticate(user=self.challenger)
+        generate_url = reverse('generate_battle_link')
+
+        response = self.client.post(generate_url)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        invite_token = response.data['invite_token']
+
+        # Step 2: Authenticated opponent accepts
+        self.client.force_authenticate(user=opponent)
+        accept_url = reverse('accept_invitation_by_token', kwargs={'token': invite_token})
+
+        response = self.client.post(accept_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn('is_guest', response.data)  # Not a guest flow
+        self.assertIn('id', response.data)  # Battle ID is returned as 'id'
+
+        # Verify battle has both players
+        invitation = BattleInvitation.objects.get(invite_token=invite_token)
+        battle = invitation.battle
+        battle.refresh_from_db()
+
+        self.assertEqual(battle.challenger, self.challenger)
+        self.assertEqual(battle.opponent, opponent)
+        self.assertEqual(battle.status, BattleStatus.ACTIVE)
+
+    def test_generate_link_requires_authentication(self):
+        """Test that generating a link requires authentication."""
+        generate_url = reverse('generate_battle_link')
+
+        response = self.client.post(generate_url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_cannot_accept_own_link_invitation(self):
+        """Test that challenger cannot accept their own link."""
+        self.client.force_authenticate(user=self.challenger)
+        generate_url = reverse('generate_battle_link')
+
+        response = self.client.post(generate_url)
+        invite_token = response.data['invite_token']
+
+        # Try to accept own invitation
+        accept_url = reverse('accept_invitation_by_token', kwargs={'token': invite_token})
+        response = self.client.post(accept_url)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('cannot accept your own', response.data['error'])
+
+    def test_link_invitation_expires(self):
+        """Test that expired link invitations cannot be accepted."""
+        self.client.force_authenticate(user=self.challenger)
+        generate_url = reverse('generate_battle_link')
+
+        response = self.client.post(generate_url)
+        invite_token = response.data['invite_token']
+
+        # Expire the invitation
+        invitation = BattleInvitation.objects.get(invite_token=invite_token)
+        invitation.expires_at = timezone.now() - timedelta(hours=1)
+        invitation.save(update_fields=['expires_at'])
+
+        # Try to accept expired invitation
+        self.client.logout()
+        accept_url = reverse('accept_invitation_by_token', kwargs={'token': invite_token})
+        response = self.client.post(accept_url)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('expired', response.data['error'])
+
+    def test_link_invitation_can_only_be_accepted_once(self):
+        """Test that a link invitation can only be accepted once."""
+        self.client.force_authenticate(user=self.challenger)
+        generate_url = reverse('generate_battle_link')
+
+        response = self.client.post(generate_url)
+        invite_token = response.data['invite_token']
+
+        # First acceptance (as guest)
+        self.client.logout()
+        accept_url = reverse('accept_invitation_by_token', kwargs={'token': invite_token})
+        response = self.client.post(accept_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Second acceptance attempt
+        response = self.client.post(accept_url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('already been responded', response.data['error'])
+
+    def test_invalid_link_token_returns_404(self):
+        """Test that invalid token returns 404."""
+        accept_url = reverse('accept_invitation_by_token', kwargs={'token': 'invalid_token_xyz'})
+        response = self.client.post(accept_url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_view_invalid_link_token_returns_404(self):
+        """Test that viewing invalid token returns 404."""
+        view_url = reverse('invitation_by_token', kwargs={'token': 'invalid_token_xyz'})
+        response = self.client.get(view_url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_generate_link_with_specific_challenge_type(self):
+        """Test generating link with a specific challenge type."""
+        self.client.force_authenticate(user=self.challenger)
+        generate_url = reverse('generate_battle_link')
+
+        response = self.client.post(
+            generate_url,
+            {
+                'challenge_type_key': 'link_test_challenge',
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        invitation = BattleInvitation.objects.get(invite_token=response.data['invite_token'])
+        self.assertEqual(invitation.battle.challenge_type.key, 'link_test_challenge')
+
+    def test_generate_link_with_invalid_challenge_type(self):
+        """Test generating link with invalid challenge type fails."""
+        self.client.force_authenticate(user=self.challenger)
+        generate_url = reverse('generate_battle_link')
+
+        response = self.client.post(
+            generate_url,
+            {
+                'challenge_type_key': 'nonexistent_challenge',
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('not found', response.data['error'])
+
+    def test_guest_display_name_sanitized_in_link_flow(self):
+        """Test that XSS in display name is sanitized during link acceptance."""
+        self.client.force_authenticate(user=self.challenger)
+        generate_url = reverse('generate_battle_link')
+
+        response = self.client.post(generate_url)
+        invite_token = response.data['invite_token']
+
+        # Accept with malicious display name
+        self.client.logout()
+        accept_url = reverse('accept_invitation_by_token', kwargs={'token': invite_token})
+        response = self.client.post(
+            accept_url,
+            {
+                'display_name': '<img src=x onerror=alert(1)>Hacker',
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        invitation = BattleInvitation.objects.get(invite_token=invite_token)
+        guest_user = invitation.recipient
+        # HTML tags should be stripped
+        self.assertNotIn('<img', guest_user.first_name)
+        self.assertNotIn('onerror', guest_user.first_name)
