@@ -166,7 +166,7 @@ services:
       - stripe-webhooks
 
   frontend:
-    image: node:20-alpine
+    image: node:20  # Use Debian-based image for better ARM64/AMD64 compatibility
     restart: unless-stopped
     ports:
       - "3000:3000"
