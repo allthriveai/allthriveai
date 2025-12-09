@@ -137,7 +137,12 @@ class EmbeddingService:
     def __init__(self):
         self._client = None
         self._fallback_client = None
-        self._provider = getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
+        # Use DEFAULT_AI_PROVIDER when set, otherwise fall back to FALLBACK_AI_PROVIDER.
+        self._provider = getattr(
+            settings,
+            'DEFAULT_AI_PROVIDER',
+            settings.FALLBACK_AI_PROVIDER,
+        )
         self._enable_fallback = getattr(settings, 'EMBEDDING_FALLBACK_TO_OPENAI', False)
         self._using_fallback = False
 

@@ -16,6 +16,7 @@ import requests
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
+from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from core.ai_usage.tracker import AIUsageTracker
@@ -158,7 +159,11 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         # If we reserved using token balance, now deduct the actual tokens
         # (subscription quota was already incremented atomically in check_and_reserve_ai_request)
         tokens_used = result.get('tokens_used', 0)
-        provider_used = result.get('provider', 'azure')
+        # Default to the configured provider if the result did not specify one.
+        provider_used = result.get(
+            'provider',
+            getattr(settings, 'DEFAULT_AI_PROVIDER', settings.FALLBACK_AI_PROVIDER),
+        )
         model_used = result.get('model', 'gpt-4')
 
         if 'token balance' in quota_reason.lower():
@@ -1142,9 +1147,12 @@ def _process_with_ai_provider(
     Returns:
         Dict with processing results
     """
-    from django.conf import settings
-
-    provider_name = getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
+    # Resolve provider name: prefer DEFAULT_AI_PROVIDER, then FALLBACK_AI_PROVIDER.
+    provider_name = getattr(
+        settings,
+        'DEFAULT_AI_PROVIDER',
+        settings.FALLBACK_AI_PROVIDER,
+    )
     # Let AIProvider pick the appropriate model based on the provider
     model = None
 

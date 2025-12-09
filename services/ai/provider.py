@@ -85,8 +85,9 @@ class AIProvider:
         self.user_id = user_id
         self.last_usage = None  # Track last request token usage
 
-        # Set provider (uses default from settings if not specified)
-        provider_type = provider or getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
+        # Set provider (uses default from settings if not specified).
+        # If DEFAULT_AI_PROVIDER is not set, fall back to FALLBACK_AI_PROVIDER.
+        provider_type = provider or getattr(settings, 'DEFAULT_AI_PROVIDER', settings.FALLBACK_AI_PROVIDER)
         self.set_provider(provider_type)
 
     def set_provider(self, provider: str) -> None:
