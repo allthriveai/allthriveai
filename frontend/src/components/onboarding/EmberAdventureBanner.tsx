@@ -170,7 +170,7 @@ export function EmberAdventureBanner({
                   <span className="text-orange-600 dark:text-orange-400 font-medium">Ember:</span>{' '}
                   <span className="hidden sm:inline">
                     {completedCount === 0
-                      ? 'Ready for an adventure?'
+                      ? 'Continue onboarding'
                       : completedCount === 1
                       ? 'Great start! Try another path:'
                       : 'One more to go!'}
