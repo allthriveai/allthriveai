@@ -229,6 +229,40 @@ jobs:
             --command "python manage.py migrate --noinput" \
             --interactive
 
+      - name: Setup OAuth providers
+        run: |
+          # Configure Django Site with correct domain (uses BACKEND_URL env var)
+          aws ecs execute-command \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task ${{ steps.task.outputs.task_arn }} \
+            --container web \
+            --command "python manage.py setup_oauth" \
+            --interactive
+
+          # Setup Google OAuth (if credentials are configured)
+          aws ecs execute-command \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task ${{ steps.task.outputs.task_arn }} \
+            --container web \
+            --command "python manage.py setup_google_oauth" \
+            --interactive || true
+
+          # Setup GitHub OAuth (if credentials are configured)
+          aws ecs execute-command \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task ${{ steps.task.outputs.task_arn }} \
+            --container web \
+            --command "python manage.py setup_github_oauth" \
+            --interactive || true
+
+          # Setup LinkedIn OAuth (if credentials are configured)
+          aws ecs execute-command \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task ${{ steps.task.outputs.task_arn }} \
+            --container web \
+            --command "python manage.py setup_linkedin_oauth" \
+            --interactive || true
+
   # Notify on completion
   notify:
     needs: [deploy-backend, deploy-frontend, migrate]
