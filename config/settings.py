@@ -692,6 +692,7 @@ else:
     # Rate limiting (SES sandbox: 1/sec, production: 14/sec default)
     AWS_SES_AUTO_THROTTLE = 0.5  # seconds between emails
     DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@allthrive.ai')
+    SERVER_EMAIL = config('SERVER_EMAIL', default=DEFAULT_FROM_EMAIL)  # Used for error emails
     ADMINS = [('Admin', config('ADMIN_EMAIL', default='admin@allthrive.ai'))]
 
 # Twilio SMS Configuration
