@@ -29,7 +29,7 @@ interface ActivityItem {
 
 interface CircleActivityFeedProps {
   activities?: ActivityItem[];
-  kudos?: Kudos[];
+  kudos?: Kudos[] | { results?: Kudos[] } | null;
   isLoading?: boolean;
 }
 
@@ -44,8 +44,25 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof faRocket; color: stri
 };
 
 // Generate activities from kudos
-function generateActivitiesFromKudos(kudos: Kudos[]): ActivityItem[] {
-  return kudos.map((k) => ({
+function generateActivitiesFromKudos(kudos: Kudos[] | { results?: Kudos[] } | null | undefined): ActivityItem[] {
+  // Handle various input formats defensively
+  let kudosArray: Kudos[];
+
+  if (!kudos) {
+    return [];
+  }
+
+  // Handle paginated response format { results: [...] }
+  if ('results' in kudos && Array.isArray(kudos.results)) {
+    kudosArray = kudos.results;
+  } else if (Array.isArray(kudos)) {
+    kudosArray = kudos;
+  } else {
+    console.warn('[CircleActivityFeed] Unexpected kudos format:', kudos);
+    return [];
+  }
+
+  return kudosArray.map((k) => ({
     id: k.id,
     type: 'kudos' as ActivityType,
     username: k.fromUser.username,

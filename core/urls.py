@@ -103,6 +103,7 @@ from .users.views import (
     reset_personalization_settings,
     reset_profile_sections,
     toggle_follow,
+    toggle_project_in_showcase,
     update_profile_sections,
 )
 from .views import ai_analytics_views, csp_report, db_health
@@ -199,6 +200,7 @@ urlpatterns = [
     path('users/<str:username>/profile-sections/', get_profile_sections, name='get_profile_sections'),
     path('users/<str:username>/profile-sections/update/', update_profile_sections, name='update_profile_sections'),
     path('users/<str:username>/profile-sections/reset/', reset_profile_sections, name='reset_profile_sections'),
+    path('me/profile-sections/toggle-project/', toggle_project_in_showcase, name='toggle_project_in_showcase'),
     # User battles endpoint (public)
     path('users/<str:username>/battles/', get_user_battles, name='user_battles'),
     # Project comment endpoints

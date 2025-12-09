@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
@@ -49,6 +49,7 @@ import {
   faStore,
   faBolt,
   faWandMagicSparkles,
+  faPenToSquare,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Helper to convert tier code to display name
@@ -75,7 +76,7 @@ const TAB_BUTTON_INACTIVE = 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, refreshUser } = useAuth();
   const { tierStatus, isLoading: isTierLoading } = useThriveCircle();
   const [searchParams, setSearchParams] = useSearchParams();
   const [profileUser, setProfileUser] = useState<User | null>(null);
@@ -130,6 +131,9 @@ export default function ProfilePage() {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialSectionsRef = useRef<string | null>(null); // Track initial state to detect changes
   const pendingSaveRef = useRef<boolean>(false); // Track if there's a pending save
+
+  // Avatar upload state
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
 
   // Check for public preview mode (owner viewing as visitor)
   const isPreviewMode = searchParams.get('preview') === 'public';
@@ -442,6 +446,108 @@ export default function ProfilePage() {
     setShowTemplatePicker(false);
   }, []);
 
+  // Get the project IDs in the featured_projects section (showcase)
+  const showcaseProjectIds = useMemo(() => {
+    const featuredSection = profileSections.find(s => s.type === 'featured_projects');
+    if (!featuredSection) return new Set<number>();
+    const content = featuredSection.content as { projectIds?: number[] };
+    return new Set(content?.projectIds || []);
+  }, [profileSections]);
+
+  // Handler for when showcase status is toggled from ProjectCard
+  const handleShowcaseToggle = useCallback((projectId: number, added: boolean) => {
+    // Update the profileSections state to reflect the change
+    setProfileSections(prevSections => {
+      return prevSections.map(section => {
+        if (section.type !== 'featured_projects') return section;
+
+        const content = section.content as { projectIds?: number[]; maxProjects: number };
+        const currentIds = content?.projectIds || [];
+
+        const newIds = added
+          ? [...currentIds, projectId]
+          : currentIds.filter(id => id !== projectId);
+
+        return {
+          ...section,
+          content: {
+            ...content,
+            projectIds: newIds,
+            maxProjects: content.maxProjects ?? 6,
+          },
+        };
+      });
+    });
+  }, []);
+
+  // Avatar change handler for inline editing
+  const handleAvatarChange = useCallback(async (fileOrUrl: string | File) => {
+    if (!user) return;
+
+    setIsAvatarUploading(true);
+    setSaveStatus('saving');
+
+    try {
+      let avatarUrl: string;
+
+      // Check if it's a File object (from ProfileHeader) or already a URL
+      if (fileOrUrl instanceof File) {
+        // Upload the file first
+        const formData = new FormData();
+        formData.append('file', fileOrUrl);
+        formData.append('folder', 'avatars');
+
+        const uploadResponse = await api.post('/upload/image/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        avatarUrl = uploadResponse.data.url;
+      } else if (fileOrUrl.startsWith('blob:')) {
+        // It's a blob URL from the file input - we need to fetch and upload
+        const response = await fetch(fileOrUrl);
+        const blob = await response.blob();
+        const file = new File([blob], 'avatar.jpg', { type: blob.type });
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'avatars');
+
+        const uploadResponse = await api.post('/upload/image/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        avatarUrl = uploadResponse.data.url;
+
+        // Revoke the blob URL to free memory
+        URL.revokeObjectURL(fileOrUrl);
+      } else {
+        avatarUrl = fileOrUrl;
+      }
+
+      // Update the user's profile with the new avatar URL
+      await api.patch('/me/profile/', { avatarUrl });
+
+      // Refresh the user data in auth context so it syncs everywhere
+      await refreshUser();
+
+      // Update local state to reflect the change
+      if (isActualOwner) {
+        setProfileUser(prev => prev ? { ...prev, avatarUrl } : prev);
+      }
+
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (error) {
+      console.error('Failed to update avatar:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } finally {
+      setIsAvatarUploading(false);
+    }
+  }, [user, isActualOwner, refreshUser]);
+
   // Recommended template for the user
   const recommendedTemplate = displayUser
     ? selectTemplateForUser({
@@ -736,6 +842,8 @@ export default function ProfilePage() {
                 setCurrentTemplate(template);
                 setShowTemplatePicker(true);
               }}
+              onAvatarChange={handleAvatarChange}
+              isAvatarUploading={isAvatarUploading}
             />
 
             {/* Tab Navigation for Showcase */}
@@ -1319,33 +1427,53 @@ export default function ProfilePage() {
                     );
                   })}
 
-                  {/* Select/Delete Buttons - For profile owner or admin on Playground tab only */}
-                  {canManagePosts &&
-                   activeTab === 'playground' && projects.playground.length > 0 && (
-                    <div className="flex items-center gap-2 md:ml-4 self-end md:self-auto">
-                      {selectionMode && selectedProjectIds.size > 0 && (
+                  {/* Action Buttons - Select (Playground only) and Edit Profile */}
+                  <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+                    {/* Select/Delete Buttons - For profile owner or admin on Playground tab only */}
+                    {canManagePosts &&
+                     activeTab === 'playground' && projects.playground.length > 0 && (
+                      <>
+                        {selectionMode && selectedProjectIds.size > 0 && (
+                          <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors text-sm font-medium bg-red-500/10 border-red-500/50 text-red-600 dark:text-red-400 hover:bg-red-500/20"
+                          >
+                            Delete ({selectedProjectIds.size})
+                          </button>
+                        )}
                         <button
-                          onClick={() => setShowDeleteConfirm(true)}
-                          className="flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors text-sm font-medium bg-red-500/10 border-red-500/50 text-red-600 dark:text-red-400 hover:bg-red-500/20"
+                          onClick={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
+                          className={`flex items-center gap-2 px-2 sm:px-3 py-2 border rounded-lg transition-colors text-sm font-medium ${
+                            selectionMode
+                              ? 'bg-teal-500/10 border-teal-500/50 text-teal-600 dark:text-teal-400'
+                              : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10'
+                          }`}
+                          aria-pressed={selectionMode}
+                          aria-label={selectionMode ? 'Cancel selection mode' : 'Enter selection mode'}
+                          title={selectionMode ? 'Cancel selection' : 'Select projects'}
                         >
-                          Delete ({selectedProjectIds.size})
+                          <FontAwesomeIcon icon={faList} className="w-3 h-3" aria-hidden="true" />
+                          <span className="hidden sm:inline">{selectionMode ? 'Cancel' : 'Select'}</span>
                         </button>
-                      )}
+                      </>
+                    )}
+
+                    {/* Edit Profile Button - For profile owner */}
+                    {isOwnProfile && (
                       <button
-                        onClick={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
-                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors text-sm font-medium ${
-                          selectionMode
-                            ? 'bg-teal-500/10 border-teal-500/50 text-teal-600 dark:text-teal-400'
-                            : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10'
-                        }`}
-                        aria-pressed={selectionMode}
-                        aria-label={selectionMode ? 'Cancel selection mode' : 'Enter selection mode'}
+                        onClick={() => {
+                          handleTabChange('showcase');
+                          // Small delay to ensure tab switch completes before entering edit mode
+                          setTimeout(() => setIsEditingShowcase(true), 100);
+                        }}
+                        className="flex items-center gap-2 px-2 sm:px-3 py-2 text-sm font-medium bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10 rounded-lg transition-colors"
+                        title="Edit Profile"
                       >
-                        <FontAwesomeIcon icon={faList} className="w-3 h-3" aria-hidden="true" />
-                        {selectionMode ? 'Cancel' : 'Select'}
+                        <FontAwesomeIcon icon={faPenToSquare} className="w-3 h-3" aria-hidden="true" />
+                        <span className="hidden sm:inline">Edit Profile</span>
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1369,6 +1497,9 @@ export default function ProfilePage() {
                             selectionMode={selectionMode}
                             isSelected={selectedProjectIds.has(project.id)}
                             onSelect={toggleSelection}
+                            showShowcaseButton={isOwnProfile}
+                            isInShowcase={showcaseProjectIds.has(project.id)}
+                            onShowcaseToggle={handleShowcaseToggle}
                           />
                         </div>
                       ))
@@ -1401,6 +1532,9 @@ export default function ProfilePage() {
                             selectionMode={selectionMode}
                             isSelected={selectedProjectIds.has(project.id)}
                             onSelect={toggleSelection}
+                            showShowcaseButton={isOwnProfile}
+                            isInShowcase={showcaseProjectIds.has(project.id)}
+                            onShowcaseToggle={handleShowcaseToggle}
                           />
                         </div>
                       ))

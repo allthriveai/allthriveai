@@ -176,7 +176,9 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
                   className={`w-full text-left px-4 py-2.5 text-sm transition-all duration-200 backdrop-blur-xl ${
                     item.path === '#'
                       ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
-                      : 'text-gray-900 dark:text-gray-100 hover:bg-white/[0.15] dark:hover:bg-white/[0.1] hover:scale-[1.02]'
+                      : item.className
+                        ? `${item.className} hover:bg-white/[0.15] dark:hover:bg-white/[0.1] hover:scale-[1.02]`
+                        : 'text-gray-900 dark:text-gray-100 hover:bg-white/[0.15] dark:hover:bg-white/[0.1] hover:scale-[1.02]'
                   }`}
                   disabled={item.path === '#'}
                 >
@@ -184,7 +186,7 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
                     {item.icon && (
                       <FontAwesomeIcon
                         icon={item.icon}
-                        className="w-4 h-4 !text-gray-400 dark:!text-gray-500"
+                        className={`w-4 h-4 ${item.className ? item.className : '!text-gray-400 dark:!text-gray-500'}`}
                       />
                     )}
                     <span>{item.label}</span>

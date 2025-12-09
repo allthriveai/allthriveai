@@ -6,7 +6,7 @@
  * where the sidebar is not shown.
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   MapPinIcon,
@@ -15,6 +15,7 @@ import {
   CheckIcon,
   XMarkIcon,
   EyeIcon,
+  CameraIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -50,6 +51,8 @@ interface ProfileHeaderProps {
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
   currentTemplate?: ProfileTemplate;
   onTemplateChange?: (template: ProfileTemplate) => void;
+  onAvatarChange?: (url: string) => void;
+  isAvatarUploading?: boolean;
 }
 
 // Helper to convert tier code to display name
@@ -82,8 +85,45 @@ export function ProfileHeader({
   saveStatus = 'idle',
   currentTemplate,
   onTemplateChange,
+  onAvatarChange,
+  isAvatarUploading,
 }: ProfileHeaderProps) {
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle avatar file selection
+  const handleAvatarClick = () => {
+    if (isEditing && onAvatarChange && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onAvatarChange) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+
+    // Create a preview URL immediately for better UX
+    const previewUrl = URL.createObjectURL(file);
+    onAvatarChange(previewUrl);
+
+    // Reset the input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   // Social links
   const socialLinks = [
@@ -115,12 +155,48 @@ export function ProfileHeader({
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-6">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-xl ring-4 ring-white dark:ring-gray-900 shadow-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+              {/* Hidden file input for avatar upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleFileChange}
+                className="hidden"
+                aria-label="Upload profile picture"
+              />
+              <div
+                className={`relative w-28 h-28 sm:w-36 sm:h-36 rounded-xl ring-4 ring-white dark:ring-gray-900 shadow-xl overflow-hidden bg-gray-100 dark:bg-gray-800 ${
+                  isEditing && onAvatarChange ? 'cursor-pointer group' : ''
+                }`}
+                onClick={handleAvatarClick}
+                role={isEditing && onAvatarChange ? 'button' : undefined}
+                tabIndex={isEditing && onAvatarChange ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (isEditing && onAvatarChange && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    handleAvatarClick();
+                  }
+                }}
+                aria-label={isEditing && onAvatarChange ? 'Click to change profile picture' : undefined}
+              >
                 <img
                   src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || 'User'}&background=random&size=150`}
                   alt={user?.fullName || user?.username || 'Profile'}
                   className="w-full h-full object-cover"
                 />
+                {/* Edit overlay - shown when editing */}
+                {isEditing && onAvatarChange && (
+                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isAvatarUploading ? (
+                      <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-white animate-spin" />
+                    ) : (
+                      <>
+                        <CameraIcon className="w-8 h-8 text-white mb-1" />
+                        <span className="text-white text-xs font-medium">Change Photo</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

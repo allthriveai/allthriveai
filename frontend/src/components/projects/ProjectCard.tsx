@@ -26,9 +26,10 @@ import {
   VideoCameraIcon,
   NewspaperIcon,
   MegaphoneIcon,
+  StarIcon,
 } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartIconSolid, MegaphoneIcon as MegaphoneIconSolid } from '@heroicons/react/24/solid';
-import { toggleProjectLike, deleteProjectById, toggleProjectPromotion } from '@/services/projects';
+import { HeartIcon as HeartIconSolid, MegaphoneIcon as MegaphoneIconSolid, StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
+import { toggleProjectLike, deleteProjectById, toggleProjectPromotion, toggleProjectInShowcase } from '@/services/projects';
 import { ProjectModal } from './ProjectModal';
 import { CommentTray } from './CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
@@ -50,6 +51,9 @@ interface ProjectCardProps {
   userAvatarUrl?: string;  // Owner's avatar URL
   onCommentClick?: (project: Project) => void;  // Optional callback for page-level comment panel
   onCardClick?: (projectId: number) => void;  // Optional callback for tracking clicks (called before navigation)
+  isInShowcase?: boolean;  // Is this project in the user's profile showcase section
+  onShowcaseToggle?: (projectId: number, added: boolean) => void;  // Callback when showcase status changes
+  showShowcaseButton?: boolean;  // Show the add/remove from showcase button
 }
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -66,7 +70,7 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const typeLabels = PROJECT_TYPE_LABELS;
 
-export const ProjectCard = memo(function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick, isInShowcase = false, onShowcaseToggle, showShowcaseButton = false }: ProjectCardProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
@@ -82,6 +86,8 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isPromoted, setIsPromoted] = useState(project.isPromoted ?? false);
   const [isPromoting, setIsPromoting] = useState(false);
+  const [inShowcase, setInShowcase] = useState(isInShowcase);
+  const [isTogglingShowcase, setIsTogglingShowcase] = useState(false);
   const Icon = typeIcons[project.type] || DocumentTextIcon;
   const projectUrl = `/${project.username}/${project.slug}`;
 
@@ -176,6 +182,27 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
       alert('Failed to toggle promotion. Please try again.');
     } finally {
       setIsPromoting(false);
+    }
+  };
+
+  const handleShowcaseClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isTogglingShowcase) return;
+
+    setIsTogglingShowcase(true);
+    try {
+      const result = await toggleProjectInShowcase(project.id);
+      setInShowcase(result.added);
+      if (onShowcaseToggle) {
+        onShowcaseToggle(project.id, result.added);
+      }
+    } catch (error: any) {
+      console.error('Failed to toggle showcase:', error);
+      const errorMsg = error?.response?.data?.error || 'Failed to update showcase. Please try again.';
+      alert(errorMsg);
+    } finally {
+      setIsTogglingShowcase(false);
     }
   };
 
@@ -357,7 +384,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
       <>
       <CardWrapper
         {...(cardProps as any)}
-        className={`block relative overflow-hidden shadow-lg hover:shadow-neon group ${
+        className={`block relative overflow-hidden shadow-lg hover:shadow-neon group cursor-pointer ${
           isSelected ? 'ring-4 ring-primary-500' : ''
         } ${dynamicHeightClass} ${dynamicWidthClass} ${!imageLoaded && (heroElement.type === 'image' || heroElement.type === 'slideshow') ? 'min-h-[400px]' : ''}`}
         style={{ borderRadius: 'var(--radius)' }}
@@ -815,6 +842,27 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                   </button>
                 )}
 
+                {/* Add to Showcase Button - Owner only */}
+                {showShowcaseButton && isOwner && !selectionMode && (
+                  <button
+                    onClick={handleShowcaseClick}
+                    disabled={isTogglingShowcase}
+                    className={`p-1.5 rounded-full transition-all hover:scale-105 group/showcase backdrop-blur-md border disabled:opacity-50 cursor-pointer ${
+                      inShowcase
+                        ? 'bg-yellow-500 border-yellow-400 hover:bg-yellow-600 shadow-[0_0_10px_rgba(234,179,8,0.5)]'
+                        : 'bg-white/10 border-white/10 hover:bg-white/20'
+                    }`}
+                    aria-label={inShowcase ? "Remove from Projects showcase" : "Add to Projects showcase"}
+                    title={inShowcase ? "Remove from Projects showcase" : "Add to Projects showcase"}
+                  >
+                    {inShowcase ? (
+                      <StarIconSolid className="w-4 h-4 text-white group-hover/showcase:scale-110 transition-transform drop-shadow-sm" />
+                    ) : (
+                      <StarIcon className="w-4 h-4 text-white group-hover/showcase:scale-110 transition-transform drop-shadow-sm" />
+                    )}
+                  </button>
+                )}
+
                 {/* Admin Promote Button */}
                 {isAdmin && !selectionMode && (
                   <button
@@ -910,7 +958,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
   return (
     <CardWrapper
       {...(cardProps as any)}
-      className={`block glass-subtle hover:glass-strong overflow-hidden group relative ${
+      className={`block glass-subtle hover:glass-strong overflow-hidden group relative cursor-pointer ${
         isSelected ? 'ring-4 ring-primary-500' : ''
       }`}
       style={{ borderRadius: 'var(--radius)' }}

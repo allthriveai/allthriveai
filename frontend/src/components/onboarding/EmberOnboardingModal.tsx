@@ -243,33 +243,33 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.3 }}
-      className="p-5"
+      className="p-4 sm:p-5"
       onClick={!allProblemsComplete ? handleSkip : undefined}
     >
       {/* Logo and title */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-4"
+        className="text-center mb-3 sm:mb-4"
       >
         <img
           src="/all-thrvie-logo.png"
           alt="All Thrive"
-          className="w-10 h-10 mx-auto mb-2"
+          className="w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-1.5 sm:mb-2"
         />
-        <h1 className="text-lg font-bold">
+        <h1 className="text-base sm:text-lg font-bold">
           Welcome to{' '}
           <span className="text-gradient-cyan">All Thrive</span>
         </h1>
       </motion.div>
 
-      {/* Fixed height content area */}
-      <div className="h-[380px] flex flex-col">
+      {/* Flexible content area - responsive height */}
+      <div className="min-h-[280px] sm:min-h-[340px] max-h-[50vh] sm:max-h-[380px] flex flex-col">
         {/* Problem statements - chat bubbles */}
-        <div className="flex-1">
-          <p className="text-slate-500 text-xs uppercase tracking-wider mb-3">Sound familiar?</p>
+        <div className="flex-1 overflow-y-auto">
+          <p className="text-slate-500 text-xs uppercase tracking-wider mb-2 sm:mb-3">Sound familiar?</p>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             {/* Message 1 */}
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -277,8 +277,8 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
               transition={{ duration: 0.3 }}
               className="flex justify-start"
             >
-              <div className="bg-slate-800/80 px-4 py-2.5 rounded-2xl rounded-bl-md max-w-[90%] border border-slate-700/30">
-                <p className="text-slate-200 text-sm">
+              <div className="bg-slate-800/80 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl rounded-bl-md max-w-[90%] border border-slate-700/30">
+                <p className="text-slate-200 text-xs sm:text-sm leading-snug">
                   {line1.displayedText}
                   {!line1.isComplete && <span className="animate-pulse text-cyan-bright">|</span>}
                 </p>
@@ -294,8 +294,8 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
                   transition={{ duration: 0.3 }}
                   className="flex justify-start"
                 >
-                  <div className="bg-slate-800/80 px-4 py-2.5 rounded-2xl rounded-bl-md max-w-[90%] border border-slate-700/30">
-                    <p className="text-slate-200 text-sm">
+                  <div className="bg-slate-800/80 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl rounded-bl-md max-w-[90%] border border-slate-700/30">
+                    <p className="text-slate-200 text-xs sm:text-sm leading-snug">
                       {line2.displayedText}
                       {!line2.isComplete && line1.isComplete && (
                         <span className="animate-pulse text-cyan-bright">|</span>
@@ -315,8 +315,8 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
                   transition={{ duration: 0.3 }}
                   className="flex justify-start"
                 >
-                  <div className="bg-slate-800/80 px-4 py-2.5 rounded-2xl rounded-bl-md max-w-[90%] border border-slate-700/30">
-                    <p className="text-slate-200 text-sm">
+                  <div className="bg-slate-800/80 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl rounded-bl-md max-w-[90%] border border-slate-700/30">
+                    <p className="text-slate-200 text-xs sm:text-sm leading-snug">
                       {line3.displayedText}
                       {!line3.isComplete && line2.isComplete && (
                         <span className="animate-pulse text-cyan-bright">|</span>
@@ -330,7 +330,7 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
         </div>
 
         {/* Bottom area - solution or skip hint */}
-        <div className="mt-auto pt-4">
+        <div className="mt-auto pt-3 sm:pt-4 flex-shrink-0">
           <AnimatePresence mode="wait">
             {allProblemsComplete ? (
               <motion.div
@@ -338,20 +338,20 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="text-center space-y-3"
+                className="text-center space-y-2 sm:space-y-3"
               >
                 {/* Solution message */}
-                <div className="px-4 py-3 rounded-lg bg-gradient-to-br from-cyan-500/10 via-violet-500/5 to-amber-500/10 border border-cyan-500/20">
-                  <p className="text-cyan-bright font-medium text-sm mb-1">
+                <div className="px-3 py-2 sm:px-4 sm:py-3 rounded-lg bg-gradient-to-br from-cyan-500/10 via-violet-500/5 to-amber-500/10 border border-cyan-500/20">
+                  <p className="text-cyan-bright font-medium text-xs sm:text-sm mb-0.5 sm:mb-1">
                     All Thrive has you covered.
                   </p>
-                  <p className="text-slate-300 text-sm">
+                  <p className="text-slate-300 text-xs sm:text-sm leading-snug">
                     A community where you can{' '}
                     <span className="text-cyan-400">explore</span>,{' '}
-                    <span className="text-violet-400">play</span>,<br />
+                    <span className="text-violet-400">play</span>,{' '}
                     and <span className="text-amber-400">showcase your AI projects</span>.
                   </p>
-                  <p className="text-slate-400 text-xs mt-2 italic">
+                  <p className="text-slate-400 text-[10px] sm:text-xs mt-1 sm:mt-2 italic">
                     Together, we All Thrive.
                   </p>
                 </div>
@@ -364,7 +364,7 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={onContinue}
-                  className="btn-primary px-6 py-2.5 text-sm shadow-neon"
+                  className="btn-primary px-5 py-2 sm:px-6 sm:py-2.5 text-sm shadow-neon"
                 >
                   Get Started
                 </motion.button>
@@ -377,7 +377,7 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
                 exit={{ opacity: 0 }}
                 className="text-center text-slate-600 text-xs"
               >
-                Click anywhere to skip
+                Tap anywhere to skip
               </motion.p>
             )}
           </AnimatePresence>

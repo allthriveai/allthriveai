@@ -193,7 +193,9 @@ export function MobileMenu({ isOpen, onClose, menuSections, onAddProject }: Mobi
                           className={`w-full text-left px-3 py-2 text-sm rounded-xl transition-all duration-200 backdrop-blur-xl ${
                             item.path === '#'
                               ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
-                              : 'text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-white/20 dark:hover:bg-white/10 hover:scale-[1.02]'
+                              : item.className
+                                ? `${item.className} hover:bg-white/20 dark:hover:bg-white/10 hover:scale-[1.02]`
+                                : 'text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-white/20 dark:hover:bg-white/10 hover:scale-[1.02]'
                           }`}
                           disabled={item.path === '#'}
                         >
@@ -202,7 +204,7 @@ export function MobileMenu({ isOpen, onClose, menuSections, onAddProject }: Mobi
                               {item.icon && (
                                 <FontAwesomeIcon
                                   icon={item.icon}
-                                  className="w-4 h-4 !text-gray-400 dark:!text-gray-500"
+                                  className={`w-4 h-4 ${item.className ? item.className : '!text-gray-400 dark:!text-gray-500'}`}
                                 />
                               )}
                               <span>{item.label}</span>

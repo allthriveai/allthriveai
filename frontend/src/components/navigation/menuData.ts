@@ -32,6 +32,7 @@ export interface MenuItem {
   onClick?: () => void;
   subItems?: MenuItem[];
   icon?: IconDefinition;
+  className?: string; // Custom class for styling (e.g., pink text for Prompt Battle)
 }
 
 export interface MenuSection {
@@ -59,7 +60,7 @@ export const getMenuSections = (
     items: [
       { label: "This Week's Challenge", path: '/challenges', icon: faTrophy },
       { label: 'Side Quests', path: '/play/side-quests', icon: faGamepad },
-      { label: 'Prompt Battle', path: '/play/prompt-battle', icon: faTrophy },
+      { label: 'Prompt Battle', path: '/play/prompt-battle', icon: faTrophy, className: 'text-pink-500 dark:text-pink-400' },
       { label: 'Quizzes', path: '/quizzes', icon: faBrain },
     ],
   },
