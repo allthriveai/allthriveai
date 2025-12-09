@@ -20,6 +20,7 @@ python-dotenv>=1.0.1
 # Server
 gunicorn>=22.0.0
 daphne>=4.1.0  # ASGI server for Django Channels
+whitenoise>=6.7.0  # Static file serving for production
 
 # Authentication
 django-allauth>=64.0.0
