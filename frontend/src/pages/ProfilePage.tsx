@@ -85,6 +85,7 @@ export default function ProfilePage() {
     playground: [],
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [userNotFound, setUserNotFound] = useState(false);
 
   // Initialize activeTab from URL or default to 'showcase' (or 'battles' for Pip)
@@ -204,8 +205,10 @@ export default function ProfilePage() {
   // Fetch profile user data (use isActualOwner, not isOwnProfile, to avoid refetch in preview mode)
   useEffect(() => {
     setUserNotFound(false);
+    setIsProfileLoading(true);
     if (isActualOwner) {
       setProfileUser(user);
+      setIsProfileLoading(false);
       return;
     }
     if (username) {
@@ -218,9 +221,13 @@ export default function ProfilePage() {
           console.error('Failed to load user profile:', error);
           setProfileUser(null);
           if (error?.statusCode === 404) setUserNotFound(true);
+        })
+        .finally(() => {
+          setIsProfileLoading(false);
         });
     } else {
       setProfileUser(user);
+      setIsProfileLoading(false);
     }
   }, [username, user, isActualOwner]);
 
@@ -765,7 +772,7 @@ export default function ProfilePage() {
     return baseTabs as { id: string; label: string }[];
   })();
 
-  if (isLoading) {
+  if (isLoading || isProfileLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[80vh]" role="status" aria-live="polite">

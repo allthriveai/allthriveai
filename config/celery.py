@@ -80,21 +80,21 @@ app.conf.beat_schedule = {
     },
     'sync-reddit-agents': {
         'task': 'core.integrations.reddit_tasks.sync_all_reddit_agents_task',
-        'schedule': crontab(hour='*/4'),  # Every 4 hours
+        'schedule': crontab(hour='*/4', minute=0),  # Every 4 hours at minute 0
         'options': {
             'expires': 3600,  # Task expires after 1 hour if not picked up
         },
     },
     'sync-rss-agents': {
         'task': 'core.integrations.rss_tasks.sync_all_rss_agents_task',
-        'schedule': crontab(hour='*/6'),  # Every 6 hours
+        'schedule': crontab(hour='*/6', minute=0),  # Every 6 hours at minute 0
         'options': {
             'expires': 3600,  # Task expires after 1 hour if not picked up
         },
     },
     'sync-youtube-feed-agents': {
         'task': 'core.integrations.youtube_feed_tasks.sync_all_youtube_feed_agents_task',
-        'schedule': crontab(hour='*/2'),  # Every 2 hours
+        'schedule': crontab(hour='*/2', minute=0),  # Every 2 hours at minute 0
         'options': {
             'expires': 3600,  # Task expires after 1 hour if not picked up
             'queue': 'youtube_sync',
