@@ -3,6 +3,7 @@
 import logging
 
 import requests
+from decouple import config
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import IntegrityError
@@ -22,8 +23,12 @@ logger = logging.getLogger(__name__)
 RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify'
 RECAPTCHA_SCORE_THRESHOLD = 0.5  # Minimum score to consider human (0.0 - 1.0)
 
-# Admin email to receive invitation requests
-ADMIN_EMAIL = 'allie@allthrive.ai'
+# Admin emails to receive invitation requests (comma-separated via env var)
+ADMIN_EMAILS = [
+    email.strip()
+    for email in config('INVITATION_ADMIN_EMAILS', default='allie@allthrive.ai').split(',')
+    if email.strip()
+]
 
 
 def get_client_ip(request):
@@ -239,7 +244,7 @@ def _send_invitation_emails(invitation: InvitationRequest):
             subject=f'New invitation request from {invitation.name}',
             body=text_content,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[ADMIN_EMAIL],
+            to=ADMIN_EMAILS,
         )
         email.attach_alternative(html_content, 'text/html')
         email.send(fail_silently=False)
