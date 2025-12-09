@@ -196,9 +196,14 @@ export async function getUserProjects(username: string): Promise<{
     playground: ProjectApiResponse[];
   }>(`/users/${username}/projects/`);
 
+  // Defensive coding: handle cases where response data might be malformed
+  // This can happen with cached responses or unexpected API changes
+  const showcase = Array.isArray(response.data?.showcase) ? response.data.showcase : [];
+  const playground = Array.isArray(response.data?.playground) ? response.data.playground : [];
+
   return {
-    showcase: response.data.showcase.map(transformProject),
-    playground: response.data.playground.map(transformProject),
+    showcase: showcase.map(transformProject),
+    playground: playground.map(transformProject),
   };
 }
 
