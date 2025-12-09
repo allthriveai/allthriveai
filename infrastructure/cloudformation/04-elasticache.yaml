@@ -71,10 +71,11 @@ Resources:
   # NOTE: This secret is created with just the auth_token. After the ElastiCache cluster
   # is created, you must update the secret manually to include the Redis URLs.
   # Use the update-redis-secret.sh script or manually update with:
-  #   - CELERY_BROKER_URL: rediss://:<auth_token>@<endpoint>:6379/0?ssl_cert_reqs=CERT_REQUIRED
-  #   - CELERY_RESULT_BACKEND: rediss://:<auth_token>@<endpoint>:6379/1?ssl_cert_reqs=CERT_REQUIRED
-  #   - REDIS_URL: rediss://:<auth_token>@<endpoint>:6379/2?ssl_cert_reqs=CERT_REQUIRED
-  #   - CACHE_URL: rediss://:<auth_token>@<endpoint>:6379/3?ssl_cert_reqs=CERT_REQUIRED
+  #   - CELERY_BROKER_URL: rediss://:<auth_token>@<endpoint>:6379/0?ssl_cert_reqs=required
+  #   - CELERY_RESULT_BACKEND: rediss://:<auth_token>@<endpoint>:6379/1?ssl_cert_reqs=required
+  #   - REDIS_URL: rediss://:<auth_token>@<endpoint>:6379/2?ssl_cert_reqs=required
+  #   - CACHE_URL: rediss://:<auth_token>@<endpoint>:6379/3?ssl_cert_reqs=required
+  # IMPORTANT: Use lowercase 'required' not 'CERT_REQUIRED' - redis-py expects lowercase
   RedisAuthSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -206,7 +207,7 @@ Outputs:
   RedisURL:
     Description: Redis connection URL (without auth token)
     Value: !Sub
-      - 'rediss://${Endpoint}:${Port}/0?ssl_cert_reqs=CERT_REQUIRED'
+      - 'rediss://${Endpoint}:${Port}/0?ssl_cert_reqs=required'
       - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
         Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
     Export:
@@ -215,7 +216,7 @@ Outputs:
   CeleryBrokerURL:
     Description: Celery broker URL (database 0)
     Value: !Sub
-      - 'rediss://${Endpoint}:${Port}/0?ssl_cert_reqs=CERT_REQUIRED'
+      - 'rediss://${Endpoint}:${Port}/0?ssl_cert_reqs=required'
       - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
         Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
     Export:
@@ -224,7 +225,7 @@ Outputs:
   CeleryResultBackendURL:
     Description: Celery result backend URL (database 1)
     Value: !Sub
-      - 'rediss://${Endpoint}:${Port}/1?ssl_cert_reqs=CERT_REQUIRED'
+      - 'rediss://${Endpoint}:${Port}/1?ssl_cert_reqs=required'
       - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
         Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
     Export:
@@ -233,7 +234,7 @@ Outputs:
   CacheURL:
     Description: Django cache URL (database 2)
     Value: !Sub
-      - 'rediss://${Endpoint}:${Port}/2?ssl_cert_reqs=CERT_REQUIRED'
+      - 'rediss://${Endpoint}:${Port}/2?ssl_cert_reqs=required'
       - Endpoint: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Address
         Port: !GetAtt CacheReplicationGroup.PrimaryEndPoint.Port
     Export:
