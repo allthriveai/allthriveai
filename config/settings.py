@@ -156,13 +156,17 @@ if DATABASE_URL:
 
     # Use django-db-connection-pool for production connection pooling
     # This provides SQLAlchemy-style connection pooling for better performance
+    # Pool sizing: Each ECS task gets POOL_SIZE + MAX_OVERFLOW connections
+    # With 2 tasks: 2 * (25 + 25) = 100 max connections
+    # RDS db.t3.medium supports ~100 connections, db.t3.large supports ~200
     if not DEBUG:
         DATABASES['default']['ENGINE'] = 'dj_db_conn_pool.backends.postgresql'
         DATABASES['default']['POOL_OPTIONS'] = {
-            'POOL_SIZE': 10,  # Base pool size (adjust based on worker count)
-            'MAX_OVERFLOW': 10,  # Extra connections allowed beyond POOL_SIZE
-            'RECYCLE': 600,  # Recycle connections after 10 minutes
+            'POOL_SIZE': 25,  # Base pool size per worker
+            'MAX_OVERFLOW': 25,  # Extra connections allowed beyond POOL_SIZE
+            'RECYCLE': 300,  # Recycle connections after 5 minutes (was 10)
             'PRE_PING': True,  # Verify connections before use
+            'POOL_TIMEOUT': 10,  # Wait max 10 seconds for a connection
         }
 
     # Add connection timeouts for PostgreSQL only (not SQLite)
