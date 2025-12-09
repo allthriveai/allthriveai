@@ -17,16 +17,27 @@ RUN apt-get update \
         netcat-traditional \
         ffmpeg \
         libpq5 \
-        ffmpeg \
         ca-certificates \
         curl \
         openssl \
         postgresql-client \
         redis \
-        aws-cli \
+        unzip \
         && update-ca-certificates \
         && curl -fsSL https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem -o /etc/ssl/certs/rds-us-east-1-bundle.pem \
         && rm -rf /var/lib/apt/lists/*
+
+# Install AWS CLI v2 (detect architecture for Apple Silicon vs AWS production)
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then \
+        AWS_CLI_ARCH="aarch64"; \
+    else \
+        AWS_CLI_ARCH="x86_64"; \
+    fi && \
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_CLI_ARCH}.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws
 
 # Install yt-dlp for Reddit video downloading
 RUN pip install --no-cache-dir yt-dlp

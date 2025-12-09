@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
+import { initializeMermaid } from '@/lib/mermaidConfig';
 
 /** Delay before rendering to ensure DOM ref is ready */
 const RENDER_DELAY_MS = 100;
@@ -60,16 +61,8 @@ function sanitizeMermaidCode(code: string): string {
   );
 }
 
-// Initialize Mermaid globally (only runs once)
-let mermaidInitialized = false;
-if (!mermaidInitialized) {
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: 'default',
-    securityLevel: 'loose',
-  });
-  mermaidInitialized = true;
-}
+// Initialize Mermaid with custom theme
+initializeMermaid();
 
 interface MermaidDiagramProps {
   /** Mermaid diagram code */

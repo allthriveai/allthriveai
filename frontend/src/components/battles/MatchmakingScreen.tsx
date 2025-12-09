@@ -18,6 +18,9 @@ import {
   PaperAirplaneIcon,
   CheckCircleIcon,
   GlobeAltIcon,
+  LinkIcon,
+  ClipboardDocumentIcon,
+  ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/solid';
 
 const PIP_AVATAR_URL = '/chatbot-chat.webp';
@@ -48,12 +51,16 @@ export function MatchmakingScreen({
 }: MatchmakingScreenProps) {
   const [selectedMode, setSelectedMode] = useState<'ai' | 'random' | null>(null);
   const [showHumanModal, setShowHumanModal] = useState(false);
-  const [modalView, setModalView] = useState<'options' | 'sms'>('options');
+  const [modalView, setModalView] = useState<'options' | 'sms' | 'link'>('options');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [friendName, setFriendName] = useState('');
   const [isSendingSms, setIsSendingSms] = useState(false);
   const [smsSuccess, setSmsSuccess] = useState<{ inviteUrl: string } | null>(null);
   const [smsError, setSmsError] = useState<string | null>(null);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Accessibility: refs and state for focus management
   const modalRef = useRef<HTMLDivElement>(null);
@@ -123,6 +130,41 @@ export function MatchmakingScreen({
     }
   };
 
+  const handleGenerateLink = async () => {
+    setIsGeneratingLink(true);
+    setLinkError(null);
+
+    try {
+      const response = await api.post('/battles/invitations/generate-link/');
+      setGeneratedLink(response.data.invite_url);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      setLinkError(err.response?.data?.error || 'Failed to generate link');
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!generatedLink) return;
+
+    try {
+      await navigator.clipboard.writeText(generatedLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = generatedLink;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
+
   const resetModal = () => {
     setShowHumanModal(false);
     setModalView('options');
@@ -130,6 +172,9 @@ export function MatchmakingScreen({
     setFriendName('');
     setSmsSuccess(null);
     setSmsError(null);
+    setGeneratedLink(null);
+    setLinkError(null);
+    setLinkCopied(false);
   };
 
   return (
@@ -445,10 +490,35 @@ export function MatchmakingScreen({
                           </div>
                           <div>
                             <h4 className="font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors">
-                              Challenge a Friend
+                              Send SMS Invite
                             </h4>
                             <p className="text-gray-600 dark:text-slate-400 text-sm">
                               Send an SMS invite to battle anyone you know
+                            </p>
+                          </div>
+                        </div>
+                      </motion.button>
+
+                      {/* Share a Link */}
+                      <motion.button
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => {
+                          setModalView('link');
+                          handleGenerateLink();
+                        }}
+                        className="w-full p-5 bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:border-pink-500/50 rounded-xl text-left transition-all group"
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center shrink-0 group-hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] transition-shadow">
+                            <LinkIcon className="w-6 h-6 text-pink-400" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-pink-600 dark:group-hover:text-pink-300 transition-colors">
+                              Share a Link
+                            </h4>
+                            <p className="text-gray-600 dark:text-slate-400 text-sm">
+                              Get a link to share via WhatsApp, iMessage, or anywhere
                             </p>
                           </div>
                         </div>
@@ -477,6 +547,94 @@ export function MatchmakingScreen({
                       </motion.button>
                     </div>
                   </motion.div>
+                ) : modalView === 'link' ? (
+                  /* Share Link view */
+                  <motion.div
+                    key="link-view"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => {
+                            setModalView('options');
+                            setGeneratedLink(null);
+                            setLinkError(null);
+                          }}
+                          className="p-1.5 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                          aria-label="Go back to options"
+                        >
+                          <svg className="w-5 h-5 text-gray-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Share Battle Link</h3>
+                      </div>
+                      <button
+                        onClick={resetModal}
+                        className="p-1 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                        aria-label="Close modal"
+                      >
+                        <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-slate-400" aria-hidden="true" />
+                      </button>
+                    </div>
+
+                    {isGeneratingLink ? (
+                      <div className="text-center py-8">
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          className="w-12 h-12 border-3 border-pink-500/30 border-t-pink-500 rounded-full mx-auto mb-4"
+                        />
+                        <p className="text-gray-600 dark:text-slate-400">Generating your battle link...</p>
+                      </div>
+                    ) : linkError ? (
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                          <XMarkIcon className="w-8 h-8 text-red-400" />
+                        </div>
+                        <p className="text-red-400 mb-4">{linkError}</p>
+                        <button
+                          onClick={handleGenerateLink}
+                          className="btn-secondary"
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    ) : generatedLink ? (
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-full bg-pink-500/20 flex items-center justify-center mx-auto mb-4">
+                          <LinkIcon className="w-8 h-8 text-pink-400" />
+                        </div>
+                        <p className="text-gray-600 dark:text-slate-400 mb-6">
+                          Share this link with a friend to start a battle!
+                        </p>
+                        <div className="bg-gray-100 dark:bg-slate-800/50 rounded-lg p-4 mb-6">
+                          <p className="text-sm text-pink-600 dark:text-pink-400 break-all font-mono">
+                            {generatedLink}
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleCopyLink}
+                          className="btn-primary w-full flex items-center justify-center gap-2"
+                        >
+                          {linkCopied ? (
+                            <>
+                              <ClipboardDocumentCheckIcon className="w-5 h-5" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <ClipboardDocumentIcon className="w-5 h-5" />
+                              Copy Link
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ) : null}
+                  </motion.div>
                 ) : (
                   /* SMS Form view */
                   <motion.div
@@ -496,7 +654,7 @@ export function MatchmakingScreen({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                           </svg>
                         </button>
-                        <h3 id="battle-human-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">Challenge a Friend</h3>
+                        <h3 id="battle-human-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">Send SMS Invite</h3>
                       </div>
                       <button
                         onClick={resetModal}

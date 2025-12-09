@@ -108,8 +108,8 @@ class HallucinationMetricsAdmin(admin.ModelAdmin):
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ['username', 'email', 'role', 'first_name', 'last_name', 'is_staff', 'date_joined']
-    list_filter = ['role', 'is_staff', 'is_superuser', 'is_active', 'date_joined']
+    list_display = ['username', 'email', 'role', 'tier', 'first_name', 'last_name', 'is_staff', 'date_joined']
+    list_filter = ['role', 'tier', 'is_staff', 'is_superuser', 'is_active', 'date_joined']
     search_fields = ['username', 'email', 'first_name', 'last_name']
     ordering = ['-date_joined']
 
@@ -117,7 +117,7 @@ class UserAdmin(BaseUserAdmin):
         (
             'Role & Profile',
             {
-                'fields': ('role', 'avatar_url', 'bio'),
+                'fields': ('role', 'tier', 'avatar_url', 'bio'),
             },
         ),
     )
@@ -126,7 +126,7 @@ class UserAdmin(BaseUserAdmin):
         (
             'Role & Profile',
             {
-                'fields': ('role', 'email', 'first_name', 'last_name'),
+                'fields': ('role', 'tier', 'email', 'first_name', 'last_name'),
             },
         ),
     )

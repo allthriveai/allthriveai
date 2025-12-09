@@ -1,4 +1,5 @@
 import logging
+import uuid
 from collections import Counter
 
 from django.db.models import Count, Prefetch
@@ -819,5 +820,109 @@ def reset_profile_sections(request, username):
         {
             'message': 'Profile sections reset to defaults',
             'profile_sections': serializer.data['profile_sections'],
+        }
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def toggle_project_in_showcase(request):
+    """Toggle a project in the user's featured_projects section.
+
+    Adds or removes a project from the user's profile showcase.
+    If no featured_projects section exists, one will be created.
+
+    Request body:
+        project_id: int - The ID of the project to toggle
+
+    Returns:
+        added: bool - Whether the project was added (True) or removed (False)
+        project_ids: list - Updated list of project IDs in the section
+    """
+    project_id = request.data.get('project_id')
+    if not project_id:
+        return Response(
+            {'error': 'project_id is required'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Verify the project exists and belongs to the user
+    try:
+        Project.objects.get(id=project_id, user=request.user)
+    except Project.DoesNotExist:
+        return Response(
+            {'error': 'Project not found or you do not own this project'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    user = request.user
+
+    # Initialize sections if empty
+    if not user.profile_sections:
+        user.profile_sections = User.get_default_profile_sections()
+
+    # Find the featured_projects section
+    featured_section = None
+    featured_section_index = None
+    for i, section in enumerate(user.profile_sections):
+        if section.get('type') == 'featured_projects':
+            featured_section = section
+            featured_section_index = i
+            break
+
+    # If no featured_projects section exists, create one
+    if featured_section is None:
+        featured_section = {
+            'id': str(uuid.uuid4()),
+            'type': 'featured_projects',
+            'visible': True,
+            'order': len(user.profile_sections),
+            'content': {'projectIds': [], 'maxProjects': 6},
+        }
+        user.profile_sections.append(featured_section)
+        featured_section_index = len(user.profile_sections) - 1
+
+    # Get current project IDs
+    content = featured_section.get('content', {})
+    project_ids = content.get('projectIds', [])
+    max_projects = content.get('maxProjects', 6)
+
+    # Toggle the project
+    if project_id in project_ids:
+        # Remove the project
+        project_ids.remove(project_id)
+        added = False
+    else:
+        # Check if we've reached the maximum
+        if len(project_ids) >= max_projects:
+            return Response(
+                {'error': f'Maximum of {max_projects} projects allowed in showcase'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Add the project
+        project_ids.append(project_id)
+        added = True
+
+    # Update the section
+    user.profile_sections[featured_section_index]['content']['projectIds'] = project_ids
+    user.save(update_fields=['profile_sections'])
+
+    StructuredLogger.log_service_operation(
+        service_name='ProfileSections',
+        operation='toggle_project',
+        success=True,
+        metadata={
+            'user_id': user.id,
+            'project_id': project_id,
+            'added': added,
+            'project_count': len(project_ids),
+        },
+        logger_instance=logger,
+    )
+
+    return Response(
+        {
+            'added': added,
+            'projectIds': project_ids,
         }
     )

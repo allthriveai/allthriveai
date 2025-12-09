@@ -10,14 +10,10 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import type { ProjectBlock } from '@/types/models';
+import { initializeMermaid } from '@/lib/mermaidConfig';
 
-// Initialize Mermaid
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'default',
-  securityLevel: 'loose',
-  fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-});
+// Initialize Mermaid with custom theme
+initializeMermaid();
 
 interface MermaidBlockProps {
   block: ProjectBlock & { id: string };

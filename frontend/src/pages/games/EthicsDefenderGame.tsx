@@ -161,11 +161,13 @@ export default function EthicsDefenderGame() {
     }
 
     const question = QUESTIONS[questionIndex];
+    // Position targets in a 2x2 grid, more centered for mobile
+    // Left column: 20-30%, Right column: 70-80%
     const targets: AnswerTarget[] = question.options.map((text, i) => ({
       id: i,
       text,
-      x: 15 + (i % 2) * 50 + Math.random() * 20,
-      y: 15 + Math.floor(i / 2) * 25 + Math.random() * 10,
+      x: 25 + (i % 2) * 50, // 25% or 75% - more centered
+      y: 22 + Math.floor(i / 2) * 22, // Tighter vertical spacing
       isCorrect: i === question.correctIndex,
       hit: false,
     }));
@@ -515,7 +517,7 @@ export default function EthicsDefenderGame() {
             transition={{ type: 'spring', bounce: 0.5 }}
           >
             <div
-              className={`relative px-4 py-3 rounded-xl text-center max-w-[180px] sm:max-w-[220px] transition-all ${
+              className={`relative px-2 py-2 sm:px-4 sm:py-3 rounded-xl text-center max-w-[140px] sm:max-w-[200px] transition-all ${
                 targetedAnswer === target.id
                   ? 'bg-cyan-500/40 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.5)]'
                   : 'glass-subtle border border-slate-600/50'
@@ -531,7 +533,7 @@ export default function EthicsDefenderGame() {
                   <FontAwesomeIcon icon={faCrosshairs} className="text-xl" />
                 </motion.div>
               )}
-              <span className="text-sm sm:text-base font-medium">{target.text}</span>
+              <span className="text-xs sm:text-sm font-medium leading-tight">{target.text}</span>
             </div>
           </motion.div>
         ))}
@@ -685,21 +687,21 @@ export default function EthicsDefenderGame() {
                 transition={{ duration: 0.5 }}
               >
                 <motion.div
-                  className="text-8xl mb-4"
+                  className="text-5xl sm:text-8xl mb-2 sm:mb-4"
                   animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.2, 1] }}
                   transition={{ duration: 0.5, repeat: 2 }}
                 >
                   <FontAwesomeIcon icon={faCheck} className="text-green-400 drop-shadow-[0_0_30px_rgba(74,222,128,0.8)]" />
                 </motion.div>
                 <motion.p
-                  className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-400"
+                  className="text-2xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-400"
                   animate={{ scale: [1, 1.1, 1] }}
                   transition={{ duration: 0.3, repeat: 3 }}
                 >
                   CORRECT!
                 </motion.p>
                 <motion.p
-                  className="text-2xl text-yellow-400 mt-2"
+                  className="text-lg sm:text-2xl text-yellow-400 mt-1 sm:mt-2"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
@@ -735,14 +737,14 @@ export default function EthicsDefenderGame() {
                   transition={{ duration: 0.4 }}
                 >
                   <motion.div
-                    className="text-8xl mb-4"
+                    className="text-5xl sm:text-8xl mb-2 sm:mb-4"
                     animate={{ x: [-5, 5, -5, 5, 0] }}
                     transition={{ duration: 0.4, repeat: 2 }}
                   >
                     <FontAwesomeIcon icon={faSkull} className="text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.8)]" />
                   </motion.div>
                   <motion.p
-                    className="text-4xl font-black text-red-500"
+                    className="text-2xl sm:text-4xl font-black text-red-500"
                     animate={{ x: [-3, 3, -3, 3, 0] }}
                     transition={{ duration: 0.3, repeat: 2 }}
                   >
@@ -898,11 +900,11 @@ export default function EthicsDefenderGame() {
                 ))}
               </div>
 
-              {/* Floating threat icons in background */}
+              {/* Floating threat icons in background - hidden on small mobile */}
               {['🤖', '⚠️', '🔒', '🌍', '🎯', '💡'].map((emoji, i) => (
                 <motion.div
                   key={emoji}
-                  className="absolute text-4xl opacity-20"
+                  className="absolute text-3xl sm:text-4xl opacity-20 hidden sm:block"
                   style={{
                     left: `${15 + i * 15}%`,
                     top: `${20 + (i % 3) * 25}%`,
@@ -925,13 +927,13 @@ export default function EthicsDefenderGame() {
               <div className="relative z-10 text-center px-4">
                 {/* Animated title with letter-by-letter reveal */}
                 <motion.div
-                  className="mb-6"
+                  className="mb-4 sm:mb-6"
                   initial={{ y: -50 }}
                   animate={{ y: 0 }}
                   transition={{ type: 'spring', bounce: 0.5 }}
                 >
                   <motion.h1
-                    className="text-5xl sm:text-7xl font-black tracking-tight"
+                    className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight"
                     animate={{
                       textShadow: [
                         '0 0 20px rgba(6, 182, 212, 0.5)',
@@ -957,7 +959,7 @@ export default function EthicsDefenderGame() {
 
                 {/* Subtitle with typewriter feel */}
                 <motion.p
-                  className="text-xl sm:text-2xl text-cyan-300 mb-8 font-medium"
+                  className="text-lg sm:text-xl md:text-2xl text-cyan-300 mb-6 sm:mb-8 font-medium"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
@@ -967,7 +969,7 @@ export default function EthicsDefenderGame() {
 
                 {/* Animated ship icon */}
                 <motion.div
-                  className="text-6xl mb-8"
+                  className="text-5xl sm:text-6xl mb-6 sm:mb-8"
                   animate={{
                     y: [0, -10, 0],
                     rotate: [0, 5, -5, 0],
@@ -983,33 +985,33 @@ export default function EthicsDefenderGame() {
 
                 {/* Controls hint with animated icons */}
                 <motion.div
-                  className="flex items-center justify-center gap-6 mb-10 text-slate-400"
+                  className="flex items-center justify-center gap-3 sm:gap-6 mb-8 sm:mb-10 text-slate-400"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.8 }}
                 >
                   <motion.span
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-1 sm:gap-2"
                     animate={{ x: [-2, 2, -2] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
                   >
-                    <span className="text-2xl">👆</span>
-                    <span className="text-lg">Aim</span>
+                    <span className="text-xl sm:text-2xl">👆</span>
+                    <span className="text-sm sm:text-lg">Aim</span>
                   </motion.span>
                   <motion.span
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-1 sm:gap-2"
                     animate={{ scale: [1, 1.1, 1] }}
                     transition={{ duration: 0.5, repeat: Infinity }}
                   >
-                    <span className="text-2xl">🖱️</span>
-                    <span className="text-lg">Click to Fire</span>
+                    <span className="text-xl sm:text-2xl">🖱️</span>
+                    <span className="text-sm sm:text-lg">Tap to Fire</span>
                   </motion.span>
                 </motion.div>
 
                 {/* Pulsing start button */}
                 <motion.button
                   onClick={() => setupQuestion(0)}
-                  className="relative px-12 py-5 text-2xl font-bold rounded-2xl overflow-hidden group"
+                  className="relative px-8 py-4 sm:px-12 sm:py-5 text-xl sm:text-2xl font-bold rounded-2xl overflow-hidden group"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 1, type: 'spring' }}
@@ -1075,12 +1077,15 @@ export default function EthicsDefenderGame() {
         {/* Instructions */}
         {gameState === 'playing' && (
           <motion.div
-            className="absolute bottom-6 left-0 right-0 flex justify-center z-20 px-4 pointer-events-none"
+            className="absolute bottom-6 left-0 right-0 flex justify-center z-20 px-2 sm:px-4 pointer-events-none"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="glass-subtle px-4 py-2 rounded-xl border border-cyan-500/20 text-center">
-              <p className="text-cyan-neon text-sm">Move to aim at answers • Click or press SPACE to fire!</p>
+            <div className="glass-subtle px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-cyan-500/20 text-center">
+              <p className="text-cyan-neon text-xs sm:text-sm">
+                <span className="sm:hidden">Tap to aim & fire!</span>
+                <span className="hidden sm:inline">Move to aim at answers • Click or press SPACE to fire!</span>
+              </p>
             </div>
           </motion.div>
         )}

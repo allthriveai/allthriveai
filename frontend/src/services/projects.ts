@@ -332,3 +332,23 @@ export async function toggleProjectPromotion(projectId: number): Promise<{
     promotedAt: response.data.data.promotedAt,
   };
 }
+
+/**
+ * Toggle a project in the user's profile showcase (featured_projects section)
+ * Adds or removes the project from the showcase section
+ */
+export async function toggleProjectInShowcase(projectId: number): Promise<{
+  added: boolean;
+  projectIds: number[];
+}> {
+  const response = await api.post<{
+    added: boolean;
+    projectIds: number[];
+  }>('/me/profile-sections/toggle-project/', {
+    project_id: projectId,
+  });
+  return {
+    added: response.data.added,
+    projectIds: response.data.projectIds,
+  };
+}
