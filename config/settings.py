@@ -466,19 +466,43 @@ CHAT_SESSION_TTL = config('CHAT_SESSION_TTL', default=1800, cast=int)  # 30 minu
 # Django Channels Configuration
 ASGI_APPLICATION = 'config.asgi.application'
 
-# Channels Redis URL (DB 3)
-_redis_url = _ensure_redis_ssl_params(os.environ.get('REDIS_URL') or config('REDIS_URL', default=_build_redis_url(3)))
+# Channels Redis Configuration (DB 3)
+# For AWS ElastiCache with TLS, use dictionary-based host config instead of URL string
+# because channels_redis doesn't properly parse ssl_cert_reqs from URL query params
+if REDIS_USE_TLS and REDIS_HOST:
+    import ssl as _ssl_module
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [_redis_url],  # Use DB 3 for Channels
-            'capacity': 1500,  # Max messages to store per channel
-            'expiry': 10,  # Message expiry in seconds
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [
+                    {
+                        'address': (REDIS_HOST, int(REDIS_PORT)),
+                        'password': REDIS_AUTH_TOKEN or None,
+                        'ssl': True,
+                        'ssl_cert_reqs': _ssl_module.CERT_NONE,  # AWS ElastiCache with encryption in transit
+                        'db': 3,  # Channels DB
+                    }
+                ],
+                'capacity': 1500,  # Max messages to store per channel
+                'expiry': 10,  # Message expiry in seconds
+            },
         },
-    },
-}
+    }
+else:
+    # Local development: use simple URL
+    _channels_redis_url = config('REDIS_URL', default='redis://localhost:6379/3')
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [_channels_redis_url],
+                'capacity': 1500,  # Max messages to store per channel
+                'expiry': 10,  # Message expiry in seconds
+            },
+        },
+    }
 
 # Cache Configuration
 # Use Redis for caching (DB 2 for cache)
