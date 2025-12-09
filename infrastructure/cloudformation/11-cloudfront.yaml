@@ -109,6 +109,10 @@ Resources:
           CachePolicyId: !Ref FrontendCachePolicy
           OriginRequestPolicyId: !Ref FrontendOriginRequestPolicy
           ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
+          # CloudFront Function for SPA routing - rewrites non-file paths to /index.html
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt SPARoutingFunction.FunctionARN
 
         CacheBehaviors:
           # API Behavior
@@ -184,16 +188,21 @@ Resources:
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: !Ref APIOriginRequestPolicy
 
-        # Custom Error Responses (for SPA routing)
-        CustomErrorResponses:
-          - ErrorCode: 403
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 10
-          - ErrorCode: 404
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 10
+        # Custom Error Responses - REMOVED
+        # We now use a CloudFront Function (SPARoutingFunction) to handle SPA routing
+        # by rewriting non-file paths to /index.html at the viewer-request stage.
+        # This allows API 404s to pass through correctly instead of being converted
+        # to 200 with index.html, which was breaking frontend error handling.
+        #
+        # CustomErrorResponses:
+        #   - ErrorCode: 403
+        #     ResponseCode: 200
+        #     ResponsePagePath: /index.html
+        #     ErrorCachingMinTTL: 10
+        #   - ErrorCode: 404
+        #     ResponseCode: 200
+        #     ResponsePagePath: /index.html
+        #     ErrorCachingMinTTL: 10
 
         # Logging (optional)
         # Logging:
@@ -205,6 +214,45 @@ Resources:
           Value: !Sub ${EnvironmentName}-allthrive-distribution
         - Key: Environment
           Value: !Ref EnvironmentName
+
+  # CloudFront Function for SPA Routing
+  # Rewrites non-file paths to /index.html so React Router can handle them
+  # This replaces CustomErrorResponses which was breaking API 404s
+  SPARoutingFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub ${EnvironmentName}-allthrive-spa-routing
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Rewrite SPA routes to index.html
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+
+          // Don't rewrite if path starts with known backend/asset prefixes
+          var backendPrefixes = ['/api/', '/ws/', '/media/', '/admin/', '/static/', '/assets/'];
+          for (var i = 0; i < backendPrefixes.length; i++) {
+            if (uri.startsWith(backendPrefixes[i])) {
+              return request;
+            }
+          }
+
+          // Don't rewrite if it looks like a file (has extension)
+          if (uri.match(/\.[a-zA-Z0-9]{2,5}$/)) {
+            return request;
+          }
+
+          // Don't rewrite root path
+          if (uri === '/') {
+            return request;
+          }
+
+          // For all other paths (SPA routes), rewrite to index.html
+          request.uri = '/index.html';
+          return request;
+        }
 
   # Cache Policies
   FrontendCachePolicy:
