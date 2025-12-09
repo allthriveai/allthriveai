@@ -220,8 +220,8 @@ export default function ProfilePage() {
         .catch((error) => {
           console.error('Failed to load user profile:', error);
           setProfileUser(null);
-          // Check for 404 - axios errors have response.status, not statusCode
-          if (error?.response?.status === 404) setUserNotFound(true);
+          // Check for 404 - our API interceptor transforms errors to ApiError with statusCode
+          if (error?.statusCode === 404) setUserNotFound(true);
         })
         .finally(() => {
           setIsProfileLoading(false);

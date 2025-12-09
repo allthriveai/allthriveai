@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status reset-onboarding
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status reset-onboarding cloudfront-clear-cache
 
 help:
 	@echo "Available commands:"
@@ -78,6 +78,9 @@ help:
 	@echo "  make clean-cache     - Clean cache files only"
 	@echo "  make clean-volumes   - ⚠️  Remove Docker volumes (data loss!)"
 	@echo "  make clean-all       - ⚠️  Remove containers, volumes, and cache"
+	@echo ""
+	@echo "AWS Deployment:"
+	@echo "  make cloudfront-clear-cache - Invalidate CloudFront cache (ENVIRONMENT=production|staging)"
 	@echo ""
 	@echo "Django:"
 	@echo "  make collectstatic   - Collect static files"
@@ -363,3 +366,29 @@ reset-onboarding:
 	@echo ""
 	@echo "This will clear all onboarding state and show the Ember modal again."
 	@echo ""
+
+# AWS Deployment Commands
+cloudfront-clear-cache:
+	@echo "Invalidating CloudFront cache..."
+	@ENVIRONMENT=$${ENVIRONMENT:-production}; \
+	AWS_REGION=$${AWS_REGION:-us-east-1}; \
+	echo "Environment: $$ENVIRONMENT"; \
+	echo "AWS Region: $$AWS_REGION"; \
+	DIST_ID=$$(aws cloudformation describe-stacks \
+		--stack-name $$ENVIRONMENT-allthrive-cloudfront \
+		--region $$AWS_REGION \
+		--query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
+		--output text 2>/dev/null); \
+	if [ -z "$$DIST_ID" ] || [ "$$DIST_ID" = "None" ]; then \
+		echo "❌ Error: Could not find CloudFront distribution for $$ENVIRONMENT environment"; \
+		echo "Make sure the stack '$$ENVIRONMENT-allthrive-cloudfront' exists in $$AWS_REGION"; \
+		exit 1; \
+	fi; \
+	echo "Distribution ID: $$DIST_ID"; \
+	INVALIDATION_ID=$$(aws cloudfront create-invalidation \
+		--distribution-id $$DIST_ID \
+		--paths "/*" \
+		--query 'Invalidation.Id' \
+		--output text); \
+	echo "✓ Invalidation created: $$INVALIDATION_ID"; \
+	echo "CloudFront cache is being cleared. This may take a few minutes."
