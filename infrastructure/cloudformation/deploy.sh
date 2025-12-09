@@ -158,9 +158,13 @@ deploy_all() {
 
     # Phase 7: ALB
     log_info "=== Phase 7: ALB ==="
+    local alb_params="ParameterKey=EnvironmentName,ParameterValue=$ENVIRONMENT"
+    if [[ -n "${CERTIFICATE_ARN:-}" ]]; then
+        alb_params="$alb_params ParameterKey=CertificateArn,ParameterValue=$CERTIFICATE_ARN"
+    fi
     deploy_stack "${STACK_PREFIX}-alb" \
         "$script_dir/09-alb.yaml" \
-        "ParameterKey=EnvironmentName,ParameterValue=$ENVIRONMENT"
+        "$alb_params"
 
     log_success "=== Infrastructure deployment complete ==="
     echo ""
@@ -212,6 +216,29 @@ deploy_ecs() {
     done
 
     log_success "ECS deployment complete"
+}
+
+# Deploy ALB only (useful for updating listener rules)
+deploy_alb() {
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local cert_arn="${CERTIFICATE_ARN:-}"
+
+    log_info "Deploying ALB..."
+
+    local params="ParameterKey=EnvironmentName,ParameterValue=$ENVIRONMENT"
+
+    if [[ -n "$cert_arn" ]]; then
+        params="$params ParameterKey=CertificateArn,ParameterValue=$cert_arn"
+        log_info "Using certificate: $cert_arn"
+    else
+        log_warning "No CERTIFICATE_ARN provided - HTTPS listener and WebSocket rules will NOT be created!"
+    fi
+
+    deploy_stack "${STACK_PREFIX}-alb" \
+        "$script_dir/09-alb.yaml" \
+        "$params"
+
+    log_success "ALB deployment complete"
 }
 
 # Deploy CloudFront only
@@ -318,6 +345,7 @@ usage() {
     echo ""
     echo "Commands:"
     echo "  all         Deploy all infrastructure (default)"
+    echo "  alb         Deploy ALB only (requires CERTIFICATE_ARN for WebSocket support)"
     echo "  ecs         Deploy ECS services only"
     echo "  cloudfront  Deploy CloudFront only"
     echo "  outputs     Show all stack outputs"
@@ -327,10 +355,11 @@ usage() {
     echo "  ENVIRONMENT      Environment name (default: production)"
     echo "  AWS_REGION       AWS region (default: us-east-1)"
     echo "  DOMAIN_NAME      Custom domain for CloudFront"
-    echo "  CERTIFICATE_ARN  ACM certificate ARN for HTTPS"
+    echo "  CERTIFICATE_ARN  ACM certificate ARN for HTTPS (required for WebSocket listener rules)"
     echo ""
     echo "Examples:"
     echo "  ENVIRONMENT=staging ./deploy.sh all"
+    echo "  CERTIFICATE_ARN=arn:aws:acm:us-east-1:xxx:certificate/xxx ./deploy.sh alb"
     echo "  DOMAIN_NAME=allthrive.ai CERTIFICATE_ARN=arn:aws:acm:... ./deploy.sh cloudfront"
 }
 
@@ -341,6 +370,9 @@ check_aws_credentials
 case "${1:-all}" in
     all)
         deploy_all
+        ;;
+    alb)
+        deploy_alb
         ;;
     ecs)
         deploy_ecs

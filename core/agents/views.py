@@ -58,7 +58,8 @@ DESCRIPTION: [cleaned version of the final prompt]
 Be creative and engaging but concise."""
 
     try:
-        ai = AIProvider(provider='azure')
+        # Use the configured default AI provider instead of hard-coding Azure.
+        ai = AIProvider()
         response = ai.complete(prompt=prompt, max_tokens=300, temperature=0.7)
 
         # Parse the response

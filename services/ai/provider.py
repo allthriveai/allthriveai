@@ -85,8 +85,9 @@ class AIProvider:
         self.user_id = user_id
         self.last_usage = None  # Track last request token usage
 
-        # Set provider (uses default from settings if not specified)
-        provider_type = provider or getattr(settings, 'DEFAULT_AI_PROVIDER', 'azure')
+        # Set provider (uses default from settings if not specified).
+        # If DEFAULT_AI_PROVIDER is not set, fall back to FALLBACK_AI_PROVIDER.
+        provider_type = provider or getattr(settings, 'DEFAULT_AI_PROVIDER', settings.FALLBACK_AI_PROVIDER)
         self.set_provider(provider_type)
 
     def set_provider(self, provider: str) -> None:
@@ -289,7 +290,7 @@ class AIProvider:
         **kwargs,
     ) -> str:
         """OpenAI completion with timeout."""
-        model_name = model or 'gpt-4'
+        model_name = model or getattr(settings, 'DEFAULT_OPENAI_MODEL', 'gpt-5-mini-2025-08-07')
 
         messages = []
         if system_message:
@@ -469,7 +470,7 @@ class AIProvider:
         **kwargs,
     ):
         """OpenAI streaming completion."""
-        model_name = model or 'gpt-4'
+        model_name = model or getattr(settings, 'DEFAULT_OPENAI_MODEL', 'gpt-5-mini-2025-08-07')
 
         messages = []
         if system_message:
@@ -550,7 +551,7 @@ class AIProvider:
         if self._provider == AIProviderType.AZURE:
             return getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
         elif self._provider == AIProviderType.OPENAI:
-            return 'gpt-4'
+            return getattr(settings, 'DEFAULT_OPENAI_MODEL', 'gpt-5-mini-2025-08-07')
         elif self._provider == AIProviderType.ANTHROPIC:
             return 'claude-3-5-sonnet-20241022'
         elif self._provider == AIProviderType.GEMINI:
@@ -593,7 +594,7 @@ class AIProvider:
             from langchain_openai import ChatOpenAI
 
             return ChatOpenAI(
-                model=kwargs.pop('model', 'gpt-4'),
+                model=kwargs.pop('model', getattr(settings, 'DEFAULT_OPENAI_MODEL', 'gpt-5-mini-2025-08-07')),
                 api_key=getattr(settings, 'OPENAI_API_KEY', ''),
                 temperature=temperature,
                 **kwargs,

@@ -382,8 +382,13 @@ AZURE_OPENAI_API_VERSION = config('AZURE_OPENAI_API_VERSION', default='2024-02-1
 AZURE_OPENAI_DEPLOYMENT_NAME = config('AZURE_OPENAI_DEPLOYMENT_NAME', default='gpt-4')
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT = config('AZURE_OPENAI_EMBEDDING_DEPLOYMENT', default='text-embedding-3-small')
 
+# Fallback AI Provider (used when DEFAULT_AI_PROVIDER is not set)
+FALLBACK_AI_PROVIDER = config('FALLBACK_AI_PROVIDER', default='azure')
+
 # Default AI Provider (options: azure, openai, anthropic)
-DEFAULT_AI_PROVIDER = config('DEFAULT_AI_PROVIDER', default='azure')
+# If not explicitly set, falls back to FALLBACK_AI_PROVIDER.
+DEFAULT_AI_PROVIDER = config('DEFAULT_AI_PROVIDER', default=FALLBACK_AI_PROVIDER)
+DEFAULT_OPENAI_MODEL = config('DEFAULT_OPENAI_MODEL', default='gpt-5-mini-2025-08-07')
 
 # LangSmith Configuration (AI Gateway Observability)
 LANGSMITH_API_KEY = config('LANGSMITH_API_KEY', default='')

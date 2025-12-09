@@ -132,7 +132,11 @@ class AIProviderSettings:
             azure_openai_endpoint=getattr(django_settings, 'AZURE_OPENAI_ENDPOINT', ''),
             azure_openai_api_version=getattr(django_settings, 'AZURE_OPENAI_API_VERSION', '2024-02-15-preview'),
             azure_openai_deployment_name=getattr(django_settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4'),
-            default_provider=getattr(django_settings, 'DEFAULT_AI_PROVIDER', 'azure'),
+            default_provider=getattr(
+                django_settings,
+                'DEFAULT_AI_PROVIDER',
+                django_settings.FALLBACK_AI_PROVIDER,
+            ),
             gemini_model_name=getattr(django_settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash'),
             cost_tracking_enabled=getattr(django_settings, 'AI_COST_TRACKING_ENABLED', True),
             monthly_spend_limit_usd=getattr(django_settings, 'AI_MONTHLY_SPEND_LIMIT_USD', 1000.0),
