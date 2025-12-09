@@ -727,6 +727,7 @@ SOCIALACCOUNT_ADAPTER = 'core.auth.adapter.CustomSocialAccountAdapter'
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Optional for OAuth (they verify with provider)
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'  # Always use HTTPS for OAuth callbacks
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_LOGIN_ON_GET = True  # Skip intermediate page and go directly to provider
