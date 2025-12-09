@@ -383,7 +383,8 @@ AZURE_OPENAI_DEPLOYMENT_NAME = config('AZURE_OPENAI_DEPLOYMENT_NAME', default='g
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT = config('AZURE_OPENAI_EMBEDDING_DEPLOYMENT', default='text-embedding-3-small')
 
 # Default AI Provider (options: azure, openai, anthropic)
-DEFAULT_AI_PROVIDER = config('DEFAULT_AI_PROVIDER', default='azure')
+DEFAULT_AI_PROVIDER = config('DEFAULT_AI_PROVIDER', default='openai')
+DEFAULT_OPENAI_MODEL = config('DEFAULT_OPENAI_MODEL', default='gpt-5-mini-2025-08-07')
 
 # LangSmith Configuration (AI Gateway Observability)
 LANGSMITH_API_KEY = config('LANGSMITH_API_KEY', default='')
