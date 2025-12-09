@@ -60,8 +60,10 @@ RUN useradd --create-home --shell /bin/bash app \
     && mkdir -p /app/logs \
     && chown -R app:app /app
 
-# Collect static files
-RUN python manage.py collectstatic --noinput --clear \
+# Collect static files (using dummy SECRET_KEY for build only - real key used at runtime)
+RUN SECRET_KEY=build-time-placeholder-key \
+    DATABASE_URL=sqlite:///db.sqlite3 \
+    python manage.py collectstatic --noinput --clear \
     && chown -R app:app /app/logs
 
 USER app
