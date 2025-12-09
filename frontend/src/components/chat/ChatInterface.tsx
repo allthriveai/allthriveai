@@ -225,13 +225,13 @@ export function ChatInterface({
 
     return (
       <div
-        className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+        className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-end'}`}
       >
         <div
           className={`max-w-[85%] sm:max-w-sm md:max-w-md px-4 py-2 rounded-lg whitespace-pre-wrap ${
             message.sender === 'user'
               ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+              : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
           }`}
         >
           {message.content}

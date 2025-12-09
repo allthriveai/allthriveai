@@ -1230,12 +1230,12 @@ export function IntelligentChatPanel({
 
     // Standard text message
     return (
-      <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div className={`flex ${isUser ? 'justify-end' : 'justify-end'}`}>
         <div
           className={`max-w-[85%] px-4 py-2 rounded-lg ${
             isUser
               ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+              : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
           }`}
         >
           {isUser ? (
