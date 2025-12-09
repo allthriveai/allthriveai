@@ -190,20 +190,25 @@ class BattleConsumer(AsyncWebsocketConsumer):
 
     async def send_battle_state(self):
         """Send current battle state to this client."""
-        battle = await self._get_battle()
-        if not battle:
-            return
+        try:
+            battle = await self._get_battle()
+            if not battle:
+                logger.warning(f'Battle {self.battle_id} not found when sending state')
+                return
 
-        state = await self._build_battle_state(battle)
-        await self.send(
-            text_data=json.dumps(
-                {
-                    'event': 'battle_state',
-                    'state': state,
-                    'timestamp': self._get_timestamp(),
-                }
+            state = await self._build_battle_state(battle)
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        'event': 'battle_state',
+                        'state': state,
+                        'timestamp': self._get_timestamp(),
+                    }
+                )
             )
-        )
+        except Exception as e:
+            logger.error(f'Error sending battle state for battle {self.battle_id}: {e}', exc_info=True)
+            await self._send_error('Failed to load battle state')
 
     async def _handle_submission(self, prompt_text: str):
         """Handle a user submitting their prompt."""
@@ -457,7 +462,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def _build_battle_state(self, battle: PromptBattle) -> dict:
         """Build the battle state dictionary for the client."""
-        # Determine opponent
+        # Determine opponent (can be None for pending SMS invitations)
         if self.user.id == battle.challenger_id:
             opponent = battle.opponent
             my_connected = battle.challenger_connected
@@ -483,8 +488,9 @@ class BattleConsumer(AsyncWebsocketConsumer):
             pass
 
         # Get opponent submission if it exists (for reveal/complete phases)
+        # Only try to get opponent submission if opponent is set
         opponent_submission = None
-        if battle.phase in [BattlePhase.REVEAL, BattlePhase.COMPLETE]:
+        if opponent and battle.phase in [BattlePhase.REVEAL, BattlePhase.COMPLETE]:
             try:
                 opp_sub = BattleSubmission.objects.get(battle=battle, user=opponent)
                 opponent_submission = {
@@ -504,6 +510,24 @@ class BattleConsumer(AsyncWebsocketConsumer):
             remaining = (battle.expires_at - timezone.now()).total_seconds()
             time_remaining = max(0, int(remaining))
 
+        # Build opponent data (handle null opponent for pending SMS invitations)
+        opponent_data = None
+        if opponent:
+            opponent_data = {
+                'id': opponent.id,
+                'username': opponent.username,
+                'avatar_url': getattr(opponent, 'avatar_url', None),
+                'connected': opponent_connected,
+            }
+        else:
+            # Placeholder for pending invitation - opponent hasn't accepted yet
+            opponent_data = {
+                'id': 0,
+                'username': 'Waiting for opponent...',
+                'avatar_url': None,
+                'connected': False,
+            }
+
         return {
             'id': battle.id,
             'phase': battle.phase,
@@ -518,12 +542,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
             'duration_minutes': battle.duration_minutes,
             'time_remaining': time_remaining,
             'my_connected': my_connected,
-            'opponent': {
-                'id': opponent.id,
-                'username': opponent.username,
-                'avatar_url': getattr(opponent, 'avatar_url', None),
-                'connected': opponent_connected,
-            },
+            'opponent': opponent_data,
             'my_submission': my_submission,
             'opponent_submission': opponent_submission,
             'winner_id': battle.winner_id,
