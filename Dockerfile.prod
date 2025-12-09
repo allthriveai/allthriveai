@@ -60,9 +60,10 @@ RUN useradd --create-home --shell /bin/bash app \
     && mkdir -p /app/logs \
     && chown -R app:app /app
 
-# Collect static files (using dummy SECRET_KEY for build only - real key used at runtime)
+# Collect static files (using build-time placeholders - real values used at runtime)
 RUN SECRET_KEY=build-time-placeholder-key \
     DATABASE_URL=sqlite:///db.sqlite3 \
+    COOKIE_DOMAIN=.allthrive.ai \
     python manage.py collectstatic --noinput --clear \
     && chown -R app:app /app/logs
 
