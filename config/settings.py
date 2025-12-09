@@ -467,10 +467,12 @@ CHAT_SESSION_TTL = config('CHAT_SESSION_TTL', default=1800, cast=int)  # 30 minu
 ASGI_APPLICATION = 'config.asgi.application'
 
 # Channels Redis Configuration (DB 3)
-# For AWS ElastiCache with TLS, use dictionary-based host config instead of URL string
-# because channels_redis doesn't properly parse ssl_cert_reqs from URL query params
+# For AWS ElastiCache with TLS, use rediss:// URL with ssl_cert_reqs as a kwarg
+# The kwarg must be lowercase 'none' (not 'CERT_NONE' or ssl.CERT_NONE)
+# because channels_redis passes it to aioredis.ConnectionPool.from_url()
 if REDIS_USE_TLS and REDIS_HOST:
-    import ssl as _ssl_module
+    # Build rediss:// URL for TLS connection
+    _channels_redis_url = f'rediss://:{REDIS_AUTH_TOKEN}@{REDIS_HOST}:{REDIS_PORT}/3'
 
     CHANNEL_LAYERS = {
         'default': {
@@ -478,11 +480,8 @@ if REDIS_USE_TLS and REDIS_HOST:
             'CONFIG': {
                 'hosts': [
                     {
-                        'address': (REDIS_HOST, int(REDIS_PORT)),
-                        'password': REDIS_AUTH_TOKEN or None,
-                        'ssl': True,
-                        'ssl_cert_reqs': _ssl_module.CERT_NONE,  # AWS ElastiCache with encryption in transit
-                        'db': 3,  # Channels DB
+                        'address': _channels_redis_url,
+                        'ssl_cert_reqs': 'none',  # lowercase string for redis-py compatibility
                     }
                 ],
                 'capacity': 1500,  # Max messages to store per channel
