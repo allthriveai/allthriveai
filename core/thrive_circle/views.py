@@ -268,7 +268,7 @@ class ThriveCircleViewSet(viewsets.ReadOnlyModelViewSet):
                 is_archived=False,
             )
             .select_related('user')
-            .order_by('-published_at')[:limit]
+            .order_by('-published_date')[:limit]
         )
 
         return Response(ProjectSerializer(projects, many=True).data)

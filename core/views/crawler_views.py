@@ -151,7 +151,7 @@ def explore_view(request):
                     # For traditional search engines, only check is_profile_public
                     projects_query = projects_query.filter(user__is_profile_public=True)
 
-                projects = projects_query.order_by('-published_at')[:20]
+                projects = projects_query.order_by('-published_date')[:20]
                 context['projects'] = list(projects)
             except Exception as e:
                 logger.error(f'Failed to fetch projects for crawler: {e}')
@@ -390,7 +390,7 @@ def profile_view(request, username):
                     Project.objects.filter(user=user, is_showcased=True, is_private=False, is_archived=False)
                     .select_related('user')
                     .prefetch_related('tools', 'categories')
-                    .order_by('-published_at')
+                    .order_by('-published_date')
                 )
 
                 # Convert to list to avoid N+1 on .count()
