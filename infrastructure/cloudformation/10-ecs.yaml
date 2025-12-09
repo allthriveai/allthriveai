@@ -190,6 +190,12 @@ Resources:
               Value: '6379'
             - Name: REDIS_USE_TLS
               Value: 'True'
+            - Name: DEFAULT_FROM_EMAIL
+              Value: 'noreply@allthrive.ai'
+            - Name: ADMIN_EMAIL
+              Value: 'support@allthrive.ai'
+            - Name: INVITATION_ADMIN_EMAILS
+              Value: 'allie@allthrive.ai,imnet4all@gmail.com'
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
@@ -361,6 +367,12 @@ Resources:
               Value: '6379'
             - Name: REDIS_USE_TLS
               Value: 'True'
+            - Name: DEFAULT_FROM_EMAIL
+              Value: 'noreply@allthrive.ai'
+            - Name: ADMIN_EMAIL
+              Value: 'support@allthrive.ai'
+            - Name: INVITATION_ADMIN_EMAILS
+              Value: 'allie@allthrive.ai,imnet4all@gmail.com'
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
@@ -494,6 +506,12 @@ Resources:
               Value: '6379'
             - Name: REDIS_USE_TLS
               Value: 'True'
+            - Name: DEFAULT_FROM_EMAIL
+              Value: 'noreply@allthrive.ai'
+            - Name: ADMIN_EMAIL
+              Value: 'support@allthrive.ai'
+            - Name: INVITATION_ADMIN_EMAILS
+              Value: 'allie@allthrive.ai,imnet4all@gmail.com'
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
