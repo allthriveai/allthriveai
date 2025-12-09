@@ -174,9 +174,12 @@ Resources:
           Value: !Ref EnvironmentName
 
   # Listener Rule for WebSocket paths (HTTPS)
+  # IMPORTANT: This rule routes /ws/* to the WebSocket target group for Django Channels
+  # Without this rule, WebSocket connections fail with 403 or route to wrong target group
   WebSocketListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Condition: HasCertificate
+    DependsOn: HTTPSListener
     Properties:
       ListenerArn: !Ref HTTPSListener
       Priority: 10
