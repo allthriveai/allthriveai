@@ -772,6 +772,13 @@ export default function ProfilePage() {
     return baseTabs as { id: string; label: string }[];
   })();
 
+  // If user not found, render the 404 page directly
+  // IMPORTANT: Check this BEFORE loading states to avoid race condition where
+  // isLoading is still true but userNotFound is already set
+  if (userNotFound) {
+    return <NotFoundPage />;
+  }
+
   if (isLoading || isProfileLoading) {
     return (
       <DashboardLayout>
@@ -781,11 +788,6 @@ export default function ProfilePage() {
         </div>
       </DashboardLayout>
     );
-  }
-
-  // If user not found, render the 404 page directly
-  if (userNotFound) {
-    return <NotFoundPage />;
   }
 
   // Determine if we're on the Showcase tab (full-width layout)
