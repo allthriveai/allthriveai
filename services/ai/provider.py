@@ -51,6 +51,50 @@ def _convert_url_for_docker(url: str) -> str:
     return url
 
 
+def _is_s3_url(url: str) -> bool:
+    """Check if URL is an AWS S3 URL that needs IAM authentication."""
+    return 's3.amazonaws.com' in url or 's3.us-east-1.amazonaws.com' in url
+
+
+def _fetch_s3_image(url: str) -> tuple[bytes, str]:
+    """
+    Fetch image from S3 using IAM credentials.
+
+    Args:
+        url: S3 URL in format https://s3.region.amazonaws.com/bucket/key
+
+    Returns:
+        Tuple of (image_bytes, content_type)
+    """
+    import re
+
+    from services.integrations.storage.storage_service import get_storage_service
+
+    # Parse S3 URL to extract bucket and key
+    # Format: https://s3.us-east-1.amazonaws.com/bucket-name/path/to/object.png
+    match = re.match(r'https?://s3[.\w-]*\.amazonaws\.com/([^/]+)/(.+)', url)
+    if not match:
+        raise ValueError(f'Invalid S3 URL format: {url}')
+
+    bucket_name = match.group(1)
+    object_key = match.group(2)
+
+    # Get storage service and fetch object
+    storage = get_storage_service()
+
+    # Use the minio client to get object directly
+    try:
+        response = storage.client.get_object(bucket_name, object_key)
+        image_data = response.read()
+        content_type = response.headers.get('Content-Type', 'image/png')
+        response.close()
+        response.release_conn()
+        return image_data, content_type
+    except Exception as e:
+        logger.error(f'Failed to fetch S3 image {url}: {e}')
+        raise
+
+
 class AIProvider:
     """
     Global AI provider class that can switch between Azure OpenAI, OpenAI, and Anthropic.
@@ -903,12 +947,18 @@ class AIProvider:
         if image_bytes:
             parts.append({'mime_type': 'image/png', 'data': image_bytes})
         elif image_url:
-            # Fetch image from URL (convert localhost to Docker hostname if needed)
-            fetch_url = _convert_url_for_docker(image_url)
-            response = httpx.get(fetch_url, timeout=30)
-            response.raise_for_status()
-            content_type = response.headers.get('content-type', 'image/png')
-            parts.append({'mime_type': content_type, 'data': response.content})
+            # Check if this is an S3 URL that needs IAM authentication
+            if _is_s3_url(image_url):
+                # Use storage service to fetch image with IAM credentials
+                image_data, content_type = _fetch_s3_image(image_url)
+                parts.append({'mime_type': content_type, 'data': image_data})
+            else:
+                # Fetch image from URL (convert localhost to Docker hostname if needed)
+                fetch_url = _convert_url_for_docker(image_url)
+                response = httpx.get(fetch_url, timeout=30)
+                response.raise_for_status()
+                content_type = response.headers.get('content-type', 'image/png')
+                parts.append({'mime_type': content_type, 'data': response.content})
 
         # Add text prompt
         parts.append(prompt)
