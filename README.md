@@ -122,6 +122,15 @@ Run `make help` to see all available commands. Here are the most commonly used:
 - `make clean-cache` - Clean cache only
 - `make clean-all` - ⚠️ Remove everything
 
+### AWS Deployment
+- `make aws-validate` - Validate AWS infrastructure (RDS, Redis, S3, Secrets, ECS, env vars)
+- `make cloudfront-clear-cache` - Invalidate CloudFront cache
+
+AWS commands default to `ENVIRONMENT=production`. Use `ENVIRONMENT=staging` for staging:
+```bash
+make aws-validate ENVIRONMENT=staging
+```
+
 **See [Makefile Reference](docs/MAKEFILE_REFERENCE.md) for complete command list.**
 
 ## Documentation

@@ -226,6 +226,9 @@ Resources:
                   - ecs:DescribeTaskDefinition
                   - ecs:RegisterTaskDefinition
                   - ecs:DeregisterTaskDefinition
+                  - ecs:ListTasks
+                  - ecs:DescribeTasks
+                  - ecs:RunTask
                 Resource: '*'
               - Effect: Allow
                 Action:

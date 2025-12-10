@@ -86,6 +86,18 @@ make frontend        # Run frontend locally (or cd frontend && npm run dev -- --
 | `make clean-volumes` | DANGER: Remove Docker volumes |
 | `make clean-all` | DANGER: Remove containers, volumes, and cache |
 
+### AWS Deployment
+| Command | Description |
+|---------|-------------|
+| `make aws-validate` | Validate AWS infrastructure (RDS, Redis, S3, Secrets, ECS, env vars) |
+| `make cloudfront-clear-cache` | Invalidate CloudFront cache |
+
+**Note**: AWS commands default to `ENVIRONMENT=production`. Use `ENVIRONMENT=staging` for staging:
+```bash
+make aws-validate ENVIRONMENT=staging
+make cloudfront-clear-cache ENVIRONMENT=staging
+```
+
 ## Frontend (Local Development)
 ```bash
 cd frontend && npm run dev -- --port 3000   # Start dev server

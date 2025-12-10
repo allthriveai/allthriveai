@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status reset-onboarding cloudfront-clear-cache
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status reset-onboarding aws-validate cloudfront-clear-cache
 
 help:
 	@echo "Available commands:"
@@ -80,6 +80,7 @@ help:
 	@echo "  make clean-all       - ⚠️  Remove containers, volumes, and cache"
 	@echo ""
 	@echo "AWS Deployment:"
+	@echo "  make aws-validate    - Validate AWS infrastructure connections (ENVIRONMENT=production|staging)"
 	@echo "  make cloudfront-clear-cache - Invalidate CloudFront cache (ENVIRONMENT=production|staging)"
 	@echo ""
 	@echo "Django:"
@@ -368,6 +369,156 @@ reset-onboarding:
 	@echo ""
 
 # AWS Deployment Commands
+aws-validate:
+	@echo "=== AWS Infrastructure Validation ==="
+	@echo ""
+	@ENVIRONMENT=$${ENVIRONMENT:-production}; \
+	AWS_REGION=$${AWS_REGION:-us-east-1}; \
+	echo "Environment: $$ENVIRONMENT"; \
+	echo "AWS Region: $$AWS_REGION"; \
+	echo ""; \
+	echo "=== Databases & Caching ==="; \
+	echo ""; \
+	echo "[ ] PostgreSQL (RDS):"; \
+	aws rds describe-db-instances --region $$AWS_REGION \
+		--query 'DBInstances[?contains(DBInstanceIdentifier, `allthrive`)].{ID:DBInstanceIdentifier,Status:DBInstanceStatus,Endpoint:Endpoint.Address}' \
+		--output table 2>/dev/null || echo "   ❌ Could not fetch RDS instances"; \
+	echo ""; \
+	echo "[ ] Redis (ElastiCache):"; \
+	aws elasticache describe-replication-groups --region $$AWS_REGION \
+		--query 'ReplicationGroups[?contains(ReplicationGroupId, `allthrive`)].{ID:ReplicationGroupId,Status:Status,Endpoint:NodeGroups[0].PrimaryEndpoint.Address}' \
+		--output table 2>/dev/null || echo "   ❌ Could not fetch ElastiCache clusters"; \
+	echo ""; \
+	echo "=== S3 Storage ==="; \
+	echo ""; \
+	echo "[ ] Media Bucket:"; \
+	aws s3 ls 2>/dev/null | grep allthrive-media || echo "   ❌ No allthrive-media bucket found"; \
+	echo ""; \
+	echo "=== Secrets Manager ==="; \
+	echo ""; \
+	echo "[ ] Required Secrets:"; \
+	for secret in "django/secret-key" "rds/master" "ai/api-keys" "stripe/credentials" "redis/auth" "oauth/credentials"; do \
+		aws secretsmanager describe-secret --secret-id "$$ENVIRONMENT/allthrive/$$secret" --region $$AWS_REGION \
+			--query '{Name:Name,Status:"✅ Found"}' --output text 2>/dev/null || echo "   ❌ $$ENVIRONMENT/allthrive/$$secret - NOT FOUND"; \
+	done; \
+	echo ""; \
+	echo "=== ECS Services ==="; \
+	echo ""; \
+	echo "[ ] Service Health:"; \
+	aws ecs describe-services --cluster $$ENVIRONMENT-allthrive-cluster --region $$AWS_REGION \
+		--services $$ENVIRONMENT-allthrive-web $$ENVIRONMENT-allthrive-celery $$ENVIRONMENT-allthrive-celery-beat $$ENVIRONMENT-allthrive-weaviate \
+		--query 'services[*].{Service:serviceName,Running:runningCount,Desired:desiredCount,Status:status}' \
+		--output table 2>/dev/null || echo "   ❌ Could not fetch ECS services"; \
+	echo ""; \
+	echo "=== Environment Variables (Checking for localhost issues) ==="; \
+	echo ""; \
+	echo "Fetching from web task definition..."; \
+	TASK_DEF=$$(aws ecs describe-services --cluster $$ENVIRONMENT-allthrive-cluster --region $$AWS_REGION \
+		--services $$ENVIRONMENT-allthrive-web --query 'services[0].taskDefinition' --output text 2>/dev/null); \
+	if [ -n "$$TASK_DEF" ]; then \
+		echo ""; \
+		echo "[ ] Database:"; \
+		aws ecs describe-task-definition --task-definition $$TASK_DEF --region $$AWS_REGION \
+			--query 'taskDefinition.containerDefinitions[0].secrets[?Name==`DATABASE_URL`].{Var:Name,Source:ValueFrom}' \
+			--output table 2>/dev/null; \
+		echo ""; \
+		echo "[ ] Redis (REDIS_HOST):"; \
+		REDIS_HOST=$$(aws ecs describe-task-definition --task-definition $$TASK_DEF --region $$AWS_REGION \
+			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`REDIS_HOST`].Value' --output text 2>/dev/null); \
+		if [ -z "$$REDIS_HOST" ] || [ "$$REDIS_HOST" = "None" ] || [ "$$REDIS_HOST" = "localhost" ]; then \
+			echo "   ❌ REDIS_HOST = $$REDIS_HOST (PROBLEM: should be ElastiCache endpoint)"; \
+		else \
+			echo "   ✅ REDIS_HOST = $$REDIS_HOST"; \
+		fi; \
+		echo ""; \
+		echo "[ ] Celery Broker (from Secrets):"; \
+		aws ecs describe-task-definition --task-definition $$TASK_DEF --region $$AWS_REGION \
+			--query 'taskDefinition.containerDefinitions[0].secrets[?Name==`CELERY_BROKER_URL`].{Var:Name,Source:ValueFrom}' \
+			--output table 2>/dev/null; \
+		echo ""; \
+		echo "[ ] Weaviate:"; \
+		WEAVIATE_URL=$$(aws ecs describe-task-definition --task-definition $$TASK_DEF --region $$AWS_REGION \
+			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`WEAVIATE_URL`].Value' --output text 2>/dev/null); \
+		if [ -z "$$WEAVIATE_URL" ] || [ "$$WEAVIATE_URL" = "None" ]; then \
+			echo "   ❌ WEAVIATE_URL = NOT SET (will default to localhost:8080)"; \
+		elif echo "$$WEAVIATE_URL" | grep -q "localhost"; then \
+			echo "   ❌ WEAVIATE_URL = $$WEAVIATE_URL (PROBLEM: points to localhost)"; \
+		else \
+			echo "   ✅ WEAVIATE_URL = $$WEAVIATE_URL"; \
+		fi; \
+		echo ""; \
+		echo "[ ] Frontend URL:"; \
+		FRONTEND_URL=$$(aws ecs describe-task-definition --task-definition $$TASK_DEF --region $$AWS_REGION \
+			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`FRONTEND_URL`].Value' --output text 2>/dev/null); \
+		if [ -z "$$FRONTEND_URL" ] || [ "$$FRONTEND_URL" = "None" ]; then \
+			echo "   ❌ FRONTEND_URL = NOT SET (will default to localhost:3000)"; \
+		elif echo "$$FRONTEND_URL" | grep -q "localhost"; then \
+			echo "   ❌ FRONTEND_URL = $$FRONTEND_URL (PROBLEM: points to localhost)"; \
+		else \
+			echo "   ✅ FRONTEND_URL = $$FRONTEND_URL"; \
+		fi; \
+		echo ""; \
+		echo "[ ] S3/MinIO:"; \
+		MINIO_ENDPOINT=$$(aws ecs describe-task-definition --task-definition $$TASK_DEF --region $$AWS_REGION \
+			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`MINIO_ENDPOINT`].Value' --output text 2>/dev/null); \
+		if [ -z "$$MINIO_ENDPOINT" ] || [ "$$MINIO_ENDPOINT" = "None" ]; then \
+			echo "   ❌ MINIO_ENDPOINT = NOT SET"; \
+		elif echo "$$MINIO_ENDPOINT" | grep -q "localhost"; then \
+			echo "   ❌ MINIO_ENDPOINT = $$MINIO_ENDPOINT (PROBLEM: points to localhost)"; \
+		else \
+			echo "   ✅ MINIO_ENDPOINT = $$MINIO_ENDPOINT"; \
+		fi; \
+	else \
+		echo "   ❌ Could not fetch task definition"; \
+	fi; \
+	echo ""; \
+	echo "=== Celery Task Definition Check ==="; \
+	echo ""; \
+	CELERY_TASK=$$(aws ecs describe-services --cluster $$ENVIRONMENT-allthrive-cluster --region $$AWS_REGION \
+		--services $$ENVIRONMENT-allthrive-celery --query 'services[0].taskDefinition' --output text 2>/dev/null); \
+	if [ -n "$$CELERY_TASK" ]; then \
+		echo "Celery Task: $$CELERY_TASK"; \
+		echo ""; \
+		echo "[ ] Celery WEAVIATE_URL:"; \
+		CELERY_WEAVIATE=$$(aws ecs describe-task-definition --task-definition $$CELERY_TASK --region $$AWS_REGION \
+			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`WEAVIATE_URL`].Value' --output text 2>/dev/null); \
+		if [ -z "$$CELERY_WEAVIATE" ] || [ "$$CELERY_WEAVIATE" = "None" ]; then \
+			echo "   ❌ WEAVIATE_URL = NOT SET (will default to localhost:8080)"; \
+		elif echo "$$CELERY_WEAVIATE" | grep -q "localhost"; then \
+			echo "   ❌ WEAVIATE_URL = $$CELERY_WEAVIATE (PROBLEM: points to localhost)"; \
+		else \
+			echo "   ✅ WEAVIATE_URL = $$CELERY_WEAVIATE"; \
+		fi; \
+		echo ""; \
+		echo "[ ] Celery FRONTEND_URL:"; \
+		CELERY_FRONTEND=$$(aws ecs describe-task-definition --task-definition $$CELERY_TASK --region $$AWS_REGION \
+			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`FRONTEND_URL`].Value' --output text 2>/dev/null); \
+		if [ -z "$$CELERY_FRONTEND" ] || [ "$$CELERY_FRONTEND" = "None" ]; then \
+			echo "   ❌ FRONTEND_URL = NOT SET (will default to localhost:3000)"; \
+		elif echo "$$CELERY_FRONTEND" | grep -q "localhost"; then \
+			echo "   ❌ FRONTEND_URL = $$CELERY_FRONTEND (PROBLEM: points to localhost)"; \
+		else \
+			echo "   ✅ FRONTEND_URL = $$CELERY_FRONTEND"; \
+		fi; \
+	fi; \
+	echo ""; \
+	echo "=== ECR Repository ==="; \
+	echo ""; \
+	echo "[ ] Backend Image:"; \
+	aws ecr describe-images --repository-name $$ENVIRONMENT/allthrive-backend --region $$AWS_REGION \
+		--query 'imageDetails | sort_by(@, &imagePushedAt) | [-1].{Tag:imageTags[0],Pushed:imagePushedAt}' \
+		--output table 2>/dev/null || echo "   ❌ Could not fetch ECR images"; \
+	echo ""; \
+	echo "=== CloudWatch Log Groups ==="; \
+	echo ""; \
+	echo "[ ] Log Groups:"; \
+	for svc in web celery celery-beat weaviate; do \
+		aws logs describe-log-groups --log-group-name-prefix "/ecs/$$ENVIRONMENT-allthrive-$$svc" --region $$AWS_REGION \
+			--query 'logGroups[0].{Name:logGroupName}' --output text 2>/dev/null && echo "   ✅ /ecs/$$ENVIRONMENT-allthrive-$$svc" || echo "   ❌ /ecs/$$ENVIRONMENT-allthrive-$$svc - NOT FOUND"; \
+	done; \
+	echo ""; \
+	echo "=== Validation Complete ==="
+
 cloudfront-clear-cache:
 	@echo "Invalidating CloudFront cache..."
 	@ENVIRONMENT=$${ENVIRONMENT:-production}; \
