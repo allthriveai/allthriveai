@@ -6,12 +6,12 @@ const problems = [
   {
     icon: FolderOpenIcon,
     title: 'Scattered Creations',
-    description: 'AI builders create across 50+ tools - Midjourney, Claude, Replit, ChatGPT - but building a portfolio of it all takes forever.',
+    description: 'AI builders produce work across 50+ tools, making it hard to organize, track, or showcase anything in one place.',
   },
   {
     icon: AcademicCapIcon,
     title: 'Learning is Boring',
-    description: 'You can learn anything from ChatGPT, but it\'s passive and forgettable. No progress tracking, no community, no fun.',
+    description: 'ChatGPT teaches anything, but learners struggle to retain lessons without tracking, feedback, or community.',
   },
   {
     icon: UserGroupIcon,
@@ -50,8 +50,8 @@ export function ProblemSlide() {
             >
               <GlassCard className="h-full" hover>
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
-                    <problem.icon className="w-8 h-8 text-red-400" />
+                  <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mb-4">
+                    <problem.icon className="w-8 h-8 text-orange-400" />
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-3">
                     {problem.title}

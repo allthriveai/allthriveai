@@ -227,7 +227,7 @@ jobs:
         run: npm run build
         env:
           VITE_API_URL: ${{ vars.API_URL || 'https://api.allthrive.ai' }}
-          VITE_WS_URL: ${{ vars.WS_URL || 'wss://api.allthrive.ai' }}
+          VITE_WS_URL: ${{ vars.WS_URL || 'wss://ws.allthrive.ai' }}
           VITE_APP_URL: ${{ vars.APP_URL || 'https://allthrive.ai' }}
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}

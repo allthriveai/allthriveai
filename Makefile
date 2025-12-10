@@ -398,8 +398,11 @@ aws-validate:
 	echo ""; \
 	echo "[ ] Required Secrets:"; \
 	for secret in "django/secret-key" "rds/master" "ai/api-keys" "stripe/credentials" "redis/auth" "oauth/credentials"; do \
-		aws secretsmanager describe-secret --secret-id "$$ENVIRONMENT/allthrive/$$secret" --region $$AWS_REGION \
-			--query '{Name:Name,Status:"✅ Found"}' --output text 2>/dev/null || echo "   ❌ $$ENVIRONMENT/allthrive/$$secret - NOT FOUND"; \
+		if aws secretsmanager describe-secret --secret-id "$$ENVIRONMENT/allthrive/$$secret" --region $$AWS_REGION >/dev/null 2>&1; then \
+			echo "   ✅ $$ENVIRONMENT/allthrive/$$secret"; \
+		else \
+			echo "   ❌ $$ENVIRONMENT/allthrive/$$secret - NOT FOUND"; \
+		fi; \
 	done; \
 	echo ""; \
 	echo "=== ECS Services ==="; \
@@ -424,7 +427,7 @@ aws-validate:
 		echo ""; \
 		echo "[ ] Redis (REDIS_HOST):"; \
 		REDIS_HOST=$$(aws ecs describe-task-definition --task-definition $$TASK_DEF --region $$AWS_REGION \
-			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`REDIS_HOST`].Value' --output text 2>/dev/null); \
+			--query 'taskDefinition.containerDefinitions[0].environment[?name==`REDIS_HOST`].value' --output text 2>/dev/null); \
 		if [ -z "$$REDIS_HOST" ] || [ "$$REDIS_HOST" = "None" ] || [ "$$REDIS_HOST" = "localhost" ]; then \
 			echo "   ❌ REDIS_HOST = $$REDIS_HOST (PROBLEM: should be ElastiCache endpoint)"; \
 		else \
@@ -438,7 +441,7 @@ aws-validate:
 		echo ""; \
 		echo "[ ] Weaviate:"; \
 		WEAVIATE_URL=$$(aws ecs describe-task-definition --task-definition $$TASK_DEF --region $$AWS_REGION \
-			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`WEAVIATE_URL`].Value' --output text 2>/dev/null); \
+			--query 'taskDefinition.containerDefinitions[0].environment[?name==`WEAVIATE_URL`].value' --output text 2>/dev/null); \
 		if [ -z "$$WEAVIATE_URL" ] || [ "$$WEAVIATE_URL" = "None" ]; then \
 			echo "   ❌ WEAVIATE_URL = NOT SET (will default to localhost:8080)"; \
 		elif echo "$$WEAVIATE_URL" | grep -q "localhost"; then \
@@ -449,7 +452,7 @@ aws-validate:
 		echo ""; \
 		echo "[ ] Frontend URL:"; \
 		FRONTEND_URL=$$(aws ecs describe-task-definition --task-definition $$TASK_DEF --region $$AWS_REGION \
-			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`FRONTEND_URL`].Value' --output text 2>/dev/null); \
+			--query 'taskDefinition.containerDefinitions[0].environment[?name==`FRONTEND_URL`].value' --output text 2>/dev/null); \
 		if [ -z "$$FRONTEND_URL" ] || [ "$$FRONTEND_URL" = "None" ]; then \
 			echo "   ❌ FRONTEND_URL = NOT SET (will default to localhost:3000)"; \
 		elif echo "$$FRONTEND_URL" | grep -q "localhost"; then \
@@ -460,7 +463,7 @@ aws-validate:
 		echo ""; \
 		echo "[ ] S3/MinIO:"; \
 		MINIO_ENDPOINT=$$(aws ecs describe-task-definition --task-definition $$TASK_DEF --region $$AWS_REGION \
-			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`MINIO_ENDPOINT`].Value' --output text 2>/dev/null); \
+			--query 'taskDefinition.containerDefinitions[0].environment[?name==`MINIO_ENDPOINT`].value' --output text 2>/dev/null); \
 		if [ -z "$$MINIO_ENDPOINT" ] || [ "$$MINIO_ENDPOINT" = "None" ]; then \
 			echo "   ❌ MINIO_ENDPOINT = NOT SET"; \
 		elif echo "$$MINIO_ENDPOINT" | grep -q "localhost"; then \
@@ -481,7 +484,7 @@ aws-validate:
 		echo ""; \
 		echo "[ ] Celery WEAVIATE_URL:"; \
 		CELERY_WEAVIATE=$$(aws ecs describe-task-definition --task-definition $$CELERY_TASK --region $$AWS_REGION \
-			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`WEAVIATE_URL`].Value' --output text 2>/dev/null); \
+			--query 'taskDefinition.containerDefinitions[0].environment[?name==`WEAVIATE_URL`].value' --output text 2>/dev/null); \
 		if [ -z "$$CELERY_WEAVIATE" ] || [ "$$CELERY_WEAVIATE" = "None" ]; then \
 			echo "   ❌ WEAVIATE_URL = NOT SET (will default to localhost:8080)"; \
 		elif echo "$$CELERY_WEAVIATE" | grep -q "localhost"; then \
@@ -492,7 +495,7 @@ aws-validate:
 		echo ""; \
 		echo "[ ] Celery FRONTEND_URL:"; \
 		CELERY_FRONTEND=$$(aws ecs describe-task-definition --task-definition $$CELERY_TASK --region $$AWS_REGION \
-			--query 'taskDefinition.containerDefinitions[0].environment[?Name==`FRONTEND_URL`].Value' --output text 2>/dev/null); \
+			--query 'taskDefinition.containerDefinitions[0].environment[?name==`FRONTEND_URL`].value' --output text 2>/dev/null); \
 		if [ -z "$$CELERY_FRONTEND" ] || [ "$$CELERY_FRONTEND" = "None" ]; then \
 			echo "   ❌ FRONTEND_URL = NOT SET (will default to localhost:3000)"; \
 		elif echo "$$CELERY_FRONTEND" | grep -q "localhost"; then \
@@ -516,6 +519,97 @@ aws-validate:
 		aws logs describe-log-groups --log-group-name-prefix "/ecs/$$ENVIRONMENT-allthrive-$$svc" --region $$AWS_REGION \
 			--query 'logGroups[0].{Name:logGroupName}' --output text 2>/dev/null && echo "   ✅ /ecs/$$ENVIRONMENT-allthrive-$$svc" || echo "   ❌ /ecs/$$ENVIRONMENT-allthrive-$$svc - NOT FOUND"; \
 	done; \
+	echo ""; \
+	echo "=== DNS & Certificates ==="; \
+	echo ""; \
+	echo "[ ] Domain DNS Records:"; \
+	for domain in "allthrive.ai" "api.allthrive.ai" "www.allthrive.ai" "ws.allthrive.ai"; do \
+		RESOLVED=$$(dig +short $$domain 2>/dev/null | head -1); \
+		if [ -n "$$RESOLVED" ]; then \
+			echo "   ✅ $$domain -> $$RESOLVED"; \
+		else \
+			echo "   ❌ $$domain - NOT RESOLVING"; \
+		fi; \
+	done; \
+	echo ""; \
+	echo "[ ] ACM Certificates:"; \
+	for CERT_ARN in $$(aws acm list-certificates --region $$AWS_REGION --query 'CertificateSummaryList[?contains(DomainName, `allthrive`)].CertificateArn' --output text 2>/dev/null); do \
+		if [ -n "$$CERT_ARN" ] && [ "$$CERT_ARN" != "None" ]; then \
+			CERT_INFO=$$(aws acm describe-certificate --certificate-arn $$CERT_ARN --region $$AWS_REGION \
+				--query 'Certificate.{Status:Status,Domains:SubjectAlternativeNames}' --output json 2>/dev/null); \
+			STATUS=$$(echo "$$CERT_INFO" | jq -r '.Status'); \
+			DOMAINS=$$(echo "$$CERT_INFO" | jq -r '.Domains | join(", ")'); \
+			if [ "$$STATUS" = "ISSUED" ]; then \
+				echo "   ✅ $$STATUS: $$DOMAINS"; \
+			else \
+				echo "   ⚠️  $$STATUS: $$DOMAINS"; \
+			fi; \
+		fi; \
+	done; \
+	echo ""; \
+	echo "=== WebSocket Configuration ==="; \
+	echo ""; \
+	echo "[ ] WebSocket DNS (ws.allthrive.ai):"; \
+	WS_DNS=$$(dig +short ws.allthrive.ai 2>/dev/null | head -1); \
+	if [ -n "$$WS_DNS" ]; then \
+		if echo "$$WS_DNS" | grep -q "elb.amazonaws.com"; then \
+			echo "   ✅ ws.allthrive.ai -> $$WS_DNS (ALB direct - correct for WebSocket)"; \
+		elif echo "$$WS_DNS" | grep -q "cloudfront"; then \
+			echo "   ❌ ws.allthrive.ai -> $$WS_DNS (CloudFront - WebSocket may not work!)"; \
+		else \
+			echo "   ⚠️  ws.allthrive.ai -> $$WS_DNS (verify this supports WebSocket)"; \
+		fi; \
+	else \
+		echo "   ❌ ws.allthrive.ai - NOT CONFIGURED (WebSocket connections will fail!)"; \
+	fi; \
+	echo ""; \
+	echo "[ ] ALB WebSocket Target Group:"; \
+	WS_TG_ARN=$$(aws elbv2 describe-target-groups --region $$AWS_REGION \
+		--query "TargetGroups[?contains(TargetGroupName, \`$$ENVIRONMENT-allthrive-ws\`)].TargetGroupArn" --output text 2>/dev/null); \
+	if [ -n "$$WS_TG_ARN" ] && [ "$$WS_TG_ARN" != "None" ]; then \
+		HEALTHY=$$(aws elbv2 describe-target-health --target-group-arn $$WS_TG_ARN --region $$AWS_REGION \
+			--query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`] | length(@)' --output text 2>/dev/null); \
+		TOTAL=$$(aws elbv2 describe-target-health --target-group-arn $$WS_TG_ARN --region $$AWS_REGION \
+			--query 'TargetHealthDescriptions | length(@)' --output text 2>/dev/null); \
+		if [ "$$HEALTHY" = "$$TOTAL" ] && [ "$$TOTAL" != "0" ]; then \
+			echo "   ✅ WebSocket target group: $$HEALTHY/$$TOTAL healthy"; \
+		else \
+			echo "   ⚠️  WebSocket target group: $$HEALTHY/$$TOTAL healthy"; \
+		fi; \
+	else \
+		echo "   ❌ WebSocket target group not found"; \
+	fi; \
+	echo ""; \
+	echo "[ ] ALB Certificate (ws.allthrive.ai support):"; \
+	ALB_ARN=$$(aws elbv2 describe-load-balancers --names $$ENVIRONMENT-allthrive-alb --region $$AWS_REGION \
+		--query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null); \
+	if [ -n "$$ALB_ARN" ] && [ "$$ALB_ARN" != "None" ]; then \
+		LISTENER_CERT=$$(aws elbv2 describe-listeners --load-balancer-arn $$ALB_ARN --region $$AWS_REGION \
+			--query 'Listeners[?Port==`443`].Certificates[0].CertificateArn' --output text 2>/dev/null); \
+		if [ -n "$$LISTENER_CERT" ] && [ "$$LISTENER_CERT" != "None" ]; then \
+			HAS_WS=$$(aws acm describe-certificate --certificate-arn $$LISTENER_CERT --region $$AWS_REGION \
+				--query 'Certificate.SubjectAlternativeNames[?contains(@, `ws.`)]' --output text 2>/dev/null); \
+			if [ -n "$$HAS_WS" ]; then \
+				echo "   ✅ ALB certificate includes ws.allthrive.ai"; \
+			else \
+				echo "   ❌ ALB certificate does NOT include ws.allthrive.ai (WebSocket TLS will fail!)"; \
+			fi; \
+		else \
+			echo "   ❌ No HTTPS listener certificate found"; \
+		fi; \
+	else \
+		echo "   ❌ ALB not found"; \
+	fi; \
+	echo ""; \
+	echo "[ ] CloudFront WebSocket Bypass:"; \
+	API_DNS=$$(dig +short api.allthrive.ai 2>/dev/null | head -1); \
+	WS_DNS=$$(dig +short ws.allthrive.ai 2>/dev/null | head -1); \
+	if [ "$$API_DNS" != "$$WS_DNS" ]; then \
+		echo "   ✅ api.allthrive.ai and ws.allthrive.ai resolve to different endpoints (correct)"; \
+	else \
+		echo "   ⚠️  api.allthrive.ai and ws.allthrive.ai resolve to same endpoint"; \
+		echo "      If both go through CloudFront, WebSocket may fail (HTTP/2 issue)"; \
+	fi; \
 	echo ""; \
 	echo "=== Validation Complete ==="
 
