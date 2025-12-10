@@ -193,6 +193,20 @@ export default function ProfilePage() {
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Check for Ember onboarding "Personalize Profile" adventure - open AI profile generator tray
+  useEffect(() => {
+    const emberOpenProfileGenerator = localStorage.getItem('ember_open_profile_generator');
+
+    if (emberOpenProfileGenerator === 'true' && isOwnProfile) {
+      // Clear immediately to prevent re-triggering
+      localStorage.removeItem('ember_open_profile_generator');
+
+      // Short delay to let the page render first
+      setTimeout(() => {
+        setShowProfileGeneratorTray(true);
+      }, 300);
+    }
+  }, [isOwnProfile]);
 
   // Update URL when tab changes
   const handleTabChange = (tab: 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | 'battles') => {

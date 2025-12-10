@@ -176,6 +176,13 @@ Resources:
               Value: !If [HasFrontendUrl, !Ref FrontendUrl, 'http://localhost:3000']
             - Name: FRONTEND_URL
               Value: !If [HasFrontendUrl, !Ref FrontendUrl, 'http://localhost:3000']
+            # Weaviate Vector Database
+            - Name: WEAVIATE_HOST
+              Value: !Sub 'weaviate.${EnvironmentName}.allthrive.local'
+            - Name: WEAVIATE_PORT
+              Value: '8080'
+            - Name: WEAVIATE_URL
+              Value: !Sub 'http://weaviate.${EnvironmentName}.allthrive.local:8080'
             - Name: AWS_STORAGE_BUCKET_NAME
               Value: !ImportValue
                 Fn::Sub: ${EnvironmentName}-MediaBucketName
@@ -411,6 +418,13 @@ Resources:
               Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
             - Name: FRONTEND_URL
               Value: !If [HasFrontendUrl, !Ref FrontendUrl, 'http://localhost:3000']
+            # Weaviate Vector Database
+            - Name: WEAVIATE_HOST
+              Value: !Sub 'weaviate.${EnvironmentName}.allthrive.local'
+            - Name: WEAVIATE_PORT
+              Value: '8080'
+            - Name: WEAVIATE_URL
+              Value: !Sub 'http://weaviate.${EnvironmentName}.allthrive.local:8080'
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
@@ -554,6 +568,13 @@ Resources:
               Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
             - Name: FRONTEND_URL
               Value: !If [HasFrontendUrl, !Ref FrontendUrl, 'http://localhost:3000']
+            # Weaviate Vector Database
+            - Name: WEAVIATE_HOST
+              Value: !Sub 'weaviate.${EnvironmentName}.allthrive.local'
+            - Name: WEAVIATE_PORT
+              Value: '8080'
+            - Name: WEAVIATE_URL
+              Value: !Sub 'http://weaviate.${EnvironmentName}.allthrive.local:8080'
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub

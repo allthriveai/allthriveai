@@ -94,6 +94,11 @@ export function EmberAdventureBanner({
       // Navigate to user's profile page (/:username)
       const profilePath = user?.username ? `/${user.username}` : '/dashboard';
       navigate(profilePath);
+    } else if (adventure.id === 'personalize') {
+      // Navigate to user's profile and open the AI profile generator tray
+      localStorage.setItem('ember_open_profile_generator', 'true');
+      const profilePath = user?.username ? `/${user.username}` : '/dashboard';
+      navigate(profilePath);
     } else {
       navigate(adventure.path);
     }

@@ -207,9 +207,9 @@ function FeaturedProjectCard({
           {/* Tools/Topics */}
           {((project.tools && project.tools.length > 0) || (project.topics && project.topics.length > 0)) && (
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {project.tools?.slice(0, isHero ? 5 : 3).map((tool: any) => (
+              {project.tools?.slice(0, isHero ? 5 : 3).map((tool: any, idx: number) => (
                 <span
-                  key={typeof tool === 'string' ? tool : tool.slug}
+                  key={typeof tool === 'string' ? tool : (tool.slug || tool.name || `tool-${idx}`)}
                   className="px-2 py-0.5 text-xs bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded"
                 >
                   {typeof tool === 'string' ? tool : tool.name}
