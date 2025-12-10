@@ -306,3 +306,83 @@ def track_github_imported(user, repo_url: str = ''):
     _log_completion('GitHub import', user.id, completed)
 
     return completed
+
+
+def track_page_visited(user, page_path: str = '', page_name: str = ''):
+    """
+    Track when a user visits a specific page (for guided quests).
+
+    Call this from your page views or frontend tracking.
+
+    Usage:
+        from core.thrive_circle.signals import track_page_visited
+        track_page_visited(request.user, page_path='/explore', page_name='Explore')
+    """
+    completed = track_quest_action(
+        user,
+        'page_visited',
+        {
+            'page_path': page_path,
+            'page_name': page_name,
+        },
+    )
+
+    _log_completion('Page visit', user.id, completed)
+
+    return completed
+
+
+def track_description_added(user, project):
+    """
+    Track when a user adds a description to their project.
+
+    Call this from your project update handler.
+
+    Usage:
+        from core.thrive_circle.signals import track_description_added
+        track_description_added(request.user, project)
+    """
+    # Only track if description was actually added (non-empty)
+    if not project.description or len(project.description.strip()) < 20:
+        return []
+
+    completed = track_quest_action(
+        user,
+        'description_added',
+        {
+            'project_id': project.id,
+            'description_length': len(project.description),
+        },
+    )
+
+    _log_completion('Description added', user.id, completed)
+
+    return completed
+
+
+def track_feedback_given(user, project, feedback_type: str = 'constructive'):
+    """
+    Track when a user provides feedback on a project.
+
+    Call this when detecting feedback-style comments.
+
+    Usage:
+        from core.thrive_circle.signals import track_feedback_given
+        track_feedback_given(request.user, project, feedback_type='constructive')
+    """
+    # Don't track feedback on own projects
+    if project.user == user:
+        return []
+
+    completed = track_quest_action(
+        user,
+        'feedback_given',
+        {
+            'project_id': project.id,
+            'feedback_type': feedback_type,
+        },
+    )
+
+    _log_completion('Feedback given', user.id, completed)
+
+    return completed

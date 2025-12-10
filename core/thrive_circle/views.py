@@ -37,6 +37,7 @@ from .serializers import (
     WeeklyGoalSerializer,
 )
 from .services import PointsService
+from .signals import track_page_visited
 from .utils import get_week_start, safe_int_param
 
 logger = logging.getLogger(__name__)
@@ -768,6 +769,61 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
         user_quest.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['post'], url_path='track-page-visit')
+    def track_page_visit(self, request):
+        """
+        Track when a user visits a specific page (for guided quests).
+
+        Request body:
+            {
+                "page_path": "/explore",
+                "page_name": "Explore"  # Optional human-readable name
+            }
+
+        Returns:
+            {
+                "tracked": true,
+                "completed_quests": [...]  # If any quests were completed
+            }
+        """
+        user = request.user
+        page_path = request.data.get('page_path', '')
+        page_name = request.data.get('page_name', '')
+
+        if not page_path:
+            return Response(
+                {'error': 'page_path is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        completed = track_page_visited(user, page_path=page_path, page_name=page_name)
+
+        # Format completed quests for frontend celebration
+        completed_quests = []
+        if completed:
+            completed_user_quests = UserSideQuest.objects.filter(
+                user=user,
+                side_quest_id__in=completed,
+                is_completed=True,
+            ).select_related('side_quest', 'side_quest__category')
+
+            for uq in completed_user_quests:
+                completed_quests.append(
+                    {
+                        'id': str(uq.side_quest.id),
+                        'title': uq.side_quest.title,
+                        'pointsAwarded': uq.points_awarded,
+                        'categoryName': uq.side_quest.category.name if uq.side_quest.category else None,
+                    }
+                )
+
+        return Response(
+            {
+                'tracked': True,
+                'completedQuests': completed_quests,
+            }
+        )
 
 
 # =============================================================================

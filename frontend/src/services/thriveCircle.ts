@@ -347,3 +347,28 @@ export async function getKudosGiven(limit: number = 20): Promise<Kudos[]> {
   const response = await api.get(`/me/circles/kudos/given/?limit=${limit}`);
   return response.data as Kudos[];
 }
+
+// =============================================================================
+// Quest Tracking API
+// =============================================================================
+
+export interface TrackPageVisitResponse {
+  tracked: boolean;
+  completedQuests: Array<{
+    id: string;
+    title: string;
+    pointsAwarded: number;
+    categoryName: string | null;
+  }>;
+}
+
+/**
+ * Track a page visit for quest progress (guided quests)
+ */
+export async function trackPageVisit(pagePath: string, pageName?: string): Promise<TrackPageVisitResponse> {
+  const response = await api.post('/me/side-quests/track-page-visit/', {
+    page_path: pagePath,
+    page_name: pageName || '',
+  });
+  return response.data as TrackPageVisitResponse;
+}

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useReward } from 'react-rewards';
-import { XMarkIcon, TrophyIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, TrophyIcon, SparklesIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import type { CompletedQuestInfo } from '@/components/quiz/types';
 
@@ -10,6 +11,7 @@ interface QuestCompletionCelebrationProps {
 }
 
 export function QuestCompletionCelebration({ completedQuests, onClose }: QuestCompletionCelebrationProps) {
+  const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [currentQuestIndex, setCurrentQuestIndex] = useState(0);
   const hasTriggeredConfetti = useRef(false);
@@ -49,6 +51,14 @@ export function QuestCompletionCelebration({ completedQuests, onClose }: QuestCo
     } else {
       handleClose();
     }
+  };
+
+  const handleTryAnother = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+      navigate('/side-quests');
+    }, 300);
   };
 
   if (completedQuests.length === 0) return null;
@@ -185,23 +195,36 @@ export function QuestCompletionCelebration({ completedQuests, onClose }: QuestCo
               </div>
             )}
 
-            {/* Action button */}
-            <button
-              onClick={handleNext}
-              className="w-full py-3 px-6 rounded-xl font-bold text-slate-900 transition-all transform hover:scale-105"
-              style={{
-                background: 'linear-gradient(135deg, #4ade80, #22d3ee)',
-              }}
-            >
-              {currentQuestIndex < completedQuests.length - 1 ? (
-                <span>Next Quest ({currentQuestIndex + 1}/{completedQuests.length})</span>
-              ) : (
-                <div className="flex items-center justify-center gap-2">
-                  <CheckIcon className="w-5 h-5" />
-                  <span>Awesome!</span>
-                </div>
+            {/* Action buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={handleNext}
+                className="w-full py-3 px-6 rounded-xl font-bold text-slate-900 transition-all transform hover:scale-105"
+                style={{
+                  background: 'linear-gradient(135deg, #4ade80, #22d3ee)',
+                }}
+              >
+                {currentQuestIndex < completedQuests.length - 1 ? (
+                  <span>Next Quest ({currentQuestIndex + 1}/{completedQuests.length})</span>
+                ) : (
+                  <div className="flex items-center justify-center gap-2">
+                    <CheckIcon className="w-5 h-5" />
+                    <span>Awesome!</span>
+                  </div>
+                )}
+              </button>
+
+              {/* Try Another Side Quest button - only show on last quest */}
+              {currentQuestIndex === completedQuests.length - 1 && (
+                <button
+                  onClick={handleTryAnother}
+                  className="w-full py-3 px-6 rounded-xl font-semibold text-white/90 transition-all hover:bg-white/10 border border-white/20 flex items-center justify-center gap-2"
+                >
+                  <RocketLaunchIcon className="w-5 h-5" />
+                  <span>Try Another Side Quest</span>
+                </button>
               )}
-            </button>
+            </div>
 
             {/* Total Points summary for multiple quests */}
             {completedQuests.length > 1 && currentQuestIndex === completedQuests.length - 1 && (

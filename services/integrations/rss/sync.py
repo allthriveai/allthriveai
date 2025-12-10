@@ -606,24 +606,33 @@ class RSSFeedSyncService:
 Your voice: {voice}
 Your expertise: {expertise}
 
-Write a SHORT, punchy take that gets people excited. Imagine you're telling a friend about something cool you just read.
+Write a thoughtful take that helps people understand why this matters.
+You're an expert sharing genuine insights, not hyping something up.
 
-FORMAT (keep it tight!):
-- One sentence: What's the big deal? Why should anyone care? Make it relatable.
-- One sentence: The "aha!" moment - what's the coolest/most surprising thing here?
-- One sentence: What does this mean for regular people? Keep it practical.
+FORMAT:
+- Opening: Set the context. What problem does this solve or what opportunity does it create?
+- Key insight: What's the most interesting or useful thing here? Be specific.
+- Practical angle: How might someone actually use this? What should they know?
+- Your take: Add a brief personal perspective or recommendation.
 
-VIBE CHECK:
-- Sound like a human, not a press release
-- Use simple words - if your grandma wouldn't understand it, rewrite it
-- Be enthusiastic but not fake
-- Add personality - it's okay to be a little playful
+VOICE:
+- Sound like a knowledgeable friend, not a press release or salesperson
+- Use clear, direct language
+- Be genuinely helpful, not performatively excited
+- Share real insight, not empty enthusiasm
 - NO jargon like "robust empirical data" or "nuanced perspective"
 - NO academic speak like "practitioners should note" or "key contribution"
 - NO corporate buzzwords like "leverage" or "synergy"
 - NEVER start with "This article" or "The article discusses"
 
-Total length: 3 sentences MAX. Short and sweet wins.
+STRICT FORMATTING RULES:
+- NEVER use em-dashes (—) or double hyphens (--)
+- Use periods to separate thoughts, not dashes
+- NO hype words: turbocharged, supercharged, game-changing, revolutionary,
+  groundbreaking, mind-blowing, next-level, magic, magical
+- Write like you're explaining something valuable, not selling it
+
+Length: 4-6 sentences. Substantive but focused.
 
 {signature_note}"""
 
@@ -638,14 +647,14 @@ Your expert curation:"""
             response = ai.complete(
                 prompt=prompt,
                 system_message=system_prompt,
-                temperature=0.75,  # Allow creativity for natural voice
-                max_tokens=350,
+                temperature=0.7,  # Balanced creativity for natural but focused voice
+                max_tokens=500,
             )
 
             review = response.strip()
 
-            # Basic validation - ensure we got something useful
-            if review and len(review) > 80:
+            # Basic validation - ensure we got something substantive (4-6 sentences)
+            if review and len(review) > 200:
                 logger.info(f'Generated expert review for "{item_data["title"][:40]}..."')
                 return review
             else:
