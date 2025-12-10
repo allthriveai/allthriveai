@@ -429,10 +429,13 @@ class RSSFeedSyncService:
 
     @classmethod
     def _create_feed_item(cls, agent: RSSFeedAgent, item_data: dict):
-        """Create a new RSS feed item and project."""
+        """Create a new RSS feed item and project with expert review."""
         with transaction.atomic():
-            # Build content structure for RSS article
-            content = cls._build_rss_article_content(item_data, agent)
+            # Generate expert review using agent's persona
+            expert_review = cls._generate_expert_review(agent, item_data)
+
+            # Build content structure with expert review
+            content = cls._build_rss_article_content(item_data, agent, expert_review)
 
             # Extract topics from article content
             topics = cls._extract_topics_from_article(item_data)
@@ -440,11 +443,14 @@ class RSSFeedSyncService:
             # Detect difficulty level
             difficulty = cls._detect_difficulty_level(item_data)
 
+            # Use expert review as project description, fallback to original
+            project_description = expert_review or (item_data['description'][:500] if item_data['description'] else '')
+
             # Create project
             project = Project.objects.create(
                 user=agent.agent_user,
                 title=item_data['title'],
-                description=item_data['description'][:500] if item_data['description'] else '',
+                description=project_description,
                 type=Project.ProjectType.RSS_ARTICLE,
                 external_url=item_data['permalink'],
                 featured_image_url=item_data['thumbnail_url'],
@@ -538,16 +544,88 @@ class RSSFeedSyncService:
         logger.debug(f'Updated RSS feed item: {project.title}')
 
     @classmethod
-    def _build_rss_article_content(cls, item_data: dict, agent: RSSFeedAgent) -> dict:
+    def _generate_expert_review(cls, agent: RSSFeedAgent, item_data: dict) -> str | None:
+        """Generate a 2-3 sentence expert review using the agent's persona.
+
+        Args:
+            agent: The RSS feed agent with persona configuration
+            item_data: Article data including title and description
+
+        Returns:
+            Expert review text, or None if generation fails
+        """
+        try:
+            ai = AIProvider(provider='openai')
+            user = agent.agent_user
+            persona = agent.settings.get('persona', {})
+            source_name = agent.settings.get('source_name', agent.source_name)
+
+            # Build persona context
+            voice = persona.get('voice', 'analytical')
+            expertise = ', '.join(persona.get('expertise_areas', ['technology', 'AI']))
+            signature_phrases = persona.get('signature_phrases', [])
+
+            # Build system prompt with persona
+            system_prompt = f"""You are {user.first_name} {user.last_name}, an expert reviewer covering {source_name}.
+
+Your voice: {voice}
+Your expertise: {expertise}
+
+Write a 2-3 sentence expert review that:
+- Gives YOUR insightful take on why this matters, not just a summary
+- Highlights what practitioners or readers should pay attention to
+- Sounds like a real human expert sharing a quick analysis
+- Makes readers curious to learn more while providing immediate value
+- Does NOT start with "This article" or generic phrases
+
+{f"You sometimes use phrases like: {', '.join(signature_phrases[:2])}" if signature_phrases else ""}
+
+Important: Keep it brief (2-3 sentences max), insightful, and natural."""
+
+            prompt = f"""Review this article from {source_name}:
+
+Title: {item_data['title']}
+
+Description: {item_data.get('description', '')[:800] or 'No description available'}
+
+Your expert review (2-3 sentences):"""
+
+            response = ai.complete(
+                prompt=prompt,
+                system_message=system_prompt,
+                temperature=0.7,  # Allow some creativity for natural voice
+                max_tokens=200,
+            )
+
+            review = response.strip()
+
+            # Basic validation - ensure we got something useful
+            if review and len(review) > 50:
+                logger.info(f'Generated expert review for "{item_data["title"][:40]}..."')
+                return review
+            else:
+                logger.warning(f'Expert review too short or empty for "{item_data["title"][:40]}..."')
+                return None
+
+        except Exception as e:
+            logger.error(f'Error generating expert review: {e}', exc_info=True)
+            return None
+
+    @classmethod
+    def _build_rss_article_content(cls, item_data: dict, agent: RSSFeedAgent, expert_review: str | None = None) -> dict:
         """Build structured content for RSS article project.
 
-        Creates a rich project page with sections for overview, image, and link back to source.
+        Creates a review-first layout with the expert's analysis as the primary content
+        and a subtle link to the original source at the end.
         """
         import uuid
 
         sections = []
+        user = agent.agent_user
+        source_name = agent.settings.get('source_name', agent.source_name)
+        reviewer_name = f'{user.first_name} {user.last_name}'.strip() or source_name
 
-        # 1. Overview Section
+        # 1. Overview Section - Expert review as primary description
         overview_section = {
             'id': str(uuid.uuid4()),
             'type': 'overview',
@@ -555,20 +633,23 @@ class RSSFeedSyncService:
             'order': 0,
             'content': {
                 'headline': item_data['title'],
-                'description': item_data['description'] or '',
-                'metrics': [],
+                'description': expert_review or item_data['description'] or '',
+                'metrics': [
+                    {'icon': 'user', 'label': 'Reviewed by', 'value': reviewer_name},
+                ],
             },
         }
 
-        # Add publish date and author as metrics if available
+        # Add publish date
         if item_data.get('published_at'):
             overview_section['content']['metrics'].append(
                 {'icon': 'clock', 'label': 'Published', 'value': format_article_date(item_data['published_at'])}
             )
 
+        # Add original author if available
         if item_data.get('author'):
             overview_section['content']['metrics'].append(
-                {'icon': 'user', 'label': 'Author', 'value': item_data['author']}
+                {'icon': 'pencil', 'label': 'Author', 'value': item_data['author']}
             )
 
         # Add preview image if available
@@ -577,41 +658,25 @@ class RSSFeedSyncService:
 
         sections.append(overview_section)
 
-        # 2. Links Section - Prominent CTA to read full article
+        # 2. Links Section - Subtle link at the end
         links_section = {
             'id': str(uuid.uuid4()),
             'type': 'links',
             'enabled': True,
             'order': 1,
             'content': {
+                'style': 'subtle',  # Use subtle styling for expert review source links
                 'links': [
                     {
-                        'label': 'Read Full Article',
+                        'label': f'Read full article on {source_name}',
                         'url': item_data['permalink'],
                         'icon': 'external',
-                        'description': f'Read the complete article on {agent.source_name}',
+                        'description': '',  # Keep it minimal
                     }
-                ]
+                ],
             },
         }
         sections.append(links_section)
-
-        # 3. Custom Section - Additional metadata (categories, tags)
-        if item_data.get('categories'):
-            custom_blocks = []
-
-            # Add categories/tags as a text block
-            tags_text = ', '.join([f'`{cat}`' for cat in item_data['categories']])
-            custom_blocks.append({'id': str(uuid.uuid4()), 'type': 'text', 'content': f'**Topics:** {tags_text}'})
-
-            custom_section = {
-                'id': str(uuid.uuid4()),
-                'type': 'custom',
-                'enabled': True,
-                'order': 2,
-                'content': {'title': 'Article Info', 'blocks': custom_blocks},
-            }
-            sections.append(custom_section)
 
         return {'templateVersion': 2, 'sections': sections}
 

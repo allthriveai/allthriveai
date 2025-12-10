@@ -9,6 +9,7 @@ import { CommentTray } from '@/components/projects/CommentTray';
 import { QuestTray } from '@/components/side-quests/QuestTray';
 import { Footer } from '@/components/landing/Footer';
 import { EmberAdventureBanner, useEmberOnboardingContextSafe } from '@/components/onboarding';
+import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveQuest } from '@/hooks/useActiveQuest';
 import type { Project, UserSideQuest } from '@/types/models';
@@ -131,6 +132,15 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     }
   }, [location.pathname]);
 
+  // Listen for custom event to open add project chat (used by ClippedTab, etc.)
+  useEffect(() => {
+    const handleOpenAddProjectEvent = () => {
+      handleOpenAddProject(false);
+    };
+    window.addEventListener('openAddProject', handleOpenAddProjectEvent);
+    return () => window.removeEventListener('openAddProject', handleOpenAddProjectEvent);
+  }, []);
+
   const handleMenuClick = useCallback((menuItem: string) => {
     if (menuItem === 'About Us') {
       setAboutOpen((wasOpen) => {
@@ -207,6 +217,9 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   return (
     <div className="relative h-screen w-full overflow-hidden">
       {/* Background is now handled by CSS in index.css - uses CSS gradients instead of images */}
+
+      {/* Impersonation Banner - shows when admin is impersonating a user */}
+      <ImpersonationBanner />
 
       {/* Main App Layout */}
       <div className="relative z-10 flex flex-col h-full">

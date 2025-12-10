@@ -20,7 +20,7 @@ from core.projects.models import Project
 
 from .metrics import MetricsCollector
 from .security import RateLimiter
-from .tasks import process_chat_message_task
+from .tasks import _get_user_friendly_error, process_chat_message_task
 
 logger = logging.getLogger(__name__)
 
@@ -156,10 +156,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             logger.debug(f'Message queued: task_id={task.id}, user={self.user.id}')
 
         except json.JSONDecodeError:
-            await self.send_error('Invalid JSON format')
+            await self.send_error('Invalid message format. Please try again.')
         except Exception as e:
             logger.error(f'Error processing WebSocket message: {e}', exc_info=True)
-            await self.send_error('Failed to process message')
+            await self.send_error(_get_user_friendly_error(e))
 
     async def chat_message(self, event: dict[str, Any]):
         """

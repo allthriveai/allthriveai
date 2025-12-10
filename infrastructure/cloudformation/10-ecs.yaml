@@ -64,6 +64,14 @@ Parameters:
     Default: ''
     Description: Frontend URL (e.g., https://allthrive.ai)
 
+  BetaMode:
+    Type: String
+    Default: 'True'
+    AllowedValues:
+      - 'True'
+      - 'False'
+    Description: Enable beta mode to bypass all subscription/feature gates (for beta testing)
+
 Resources:
   # ECS Cluster
   ECSCluster:
@@ -160,6 +168,8 @@ Resources:
           Environment:
             - Name: DEBUG
               Value: 'False'
+            - Name: BETA_MODE
+              Value: !Ref BetaMode
             - Name: DJANGO_SETTINGS_MODULE
               Value: config.settings
             # IMPORTANT: Must include all domain variants for OAuth to work
@@ -377,6 +387,8 @@ Resources:
           Environment:
             - Name: DEBUG
               Value: 'False'
+            - Name: BETA_MODE
+              Value: !Ref BetaMode
             - Name: DJANGO_SETTINGS_MODULE
               Value: config.settings
             - Name: AWS_STORAGE_BUCKET_NAME
@@ -425,6 +437,12 @@ Resources:
               Value: '8080'
             - Name: WEAVIATE_URL
               Value: !Sub 'http://weaviate.${EnvironmentName}.allthrive.local:8080'
+            # Web Scraper Configuration (for URL imports)
+            # Set SCRAPER_PROXY_ENABLED to 'true' and configure proxy URL in Secrets Manager if needed
+            - Name: SCRAPER_PROXY_ENABLED
+              Value: 'false'
+            - Name: SCRAPER_PROXY_DOMAINS
+              Value: ''
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
@@ -549,6 +567,8 @@ Resources:
           Environment:
             - Name: DEBUG
               Value: 'False'
+            - Name: BETA_MODE
+              Value: !Ref BetaMode
             - Name: DJANGO_SETTINGS_MODULE
               Value: config.settings
             - Name: REDIS_HOST

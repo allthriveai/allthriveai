@@ -10,7 +10,7 @@ from functools import wraps
 from django.http import JsonResponse
 from rest_framework import permissions
 
-from .utils import can_access_feature, can_make_ai_request, get_user_subscription
+from .utils import can_access_feature, can_make_ai_request, get_user_subscription, is_beta_mode
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,10 @@ class HasActiveSubscription(permissions.BasePermission):
     message = 'An active subscription is required to access this feature.'
 
     def has_permission(self, request, view):
+        # Beta mode bypasses subscription checks
+        if is_beta_mode():
+            return request.user and request.user.is_authenticated
+
         if not request.user or not request.user.is_authenticated:
             return False
 
@@ -64,6 +68,10 @@ class RequiresFeature(permissions.BasePermission):
 
         if not request.user or not request.user.is_authenticated:
             return False
+
+        # Beta mode bypasses all feature checks
+        if is_beta_mode():
+            return True
 
         has_access = can_access_feature(request.user, self.feature_name)
 
@@ -149,6 +157,10 @@ class CanMakeAIRequest(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
+        # Beta mode bypasses AI request limits
+        if is_beta_mode():
+            return True
+
         can_request, reason = can_make_ai_request(request.user)
 
         if not can_request:
@@ -177,6 +189,10 @@ def require_feature(feature_name):
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return JsonResponse({'error': 'Authentication required'}, status=401)
+
+            # Beta mode bypasses all feature checks
+            if is_beta_mode():
+                return view_func(request, *args, **kwargs)
 
             if not can_access_feature(request.user, feature_name):
                 feature_names = {
@@ -223,6 +239,10 @@ def require_ai_quota(view_func):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Authentication required'}, status=401)
 
+        # Beta mode bypasses AI quota checks
+        if is_beta_mode():
+            return view_func(request, *args, **kwargs)
+
         can_request, reason = can_make_ai_request(request.user)
 
         if not can_request:
@@ -254,6 +274,10 @@ def require_active_subscription(view_func):
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Authentication required'}, status=401)
+
+        # Beta mode bypasses subscription checks
+        if is_beta_mode():
+            return view_func(request, *args, **kwargs)
 
         subscription = get_user_subscription(request.user)
 

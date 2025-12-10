@@ -9,9 +9,59 @@ import {
   CheckIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSpinner, faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons';
+import { faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { useProfileGeneratorChat, type ProfileChatMessage } from '@/hooks/useProfileGeneratorChat';
 import type { ProfileSection } from '@/types/profileSections';
+
+// Typing animation component for welcome message
+function TypingMessage({
+  content,
+  onComplete,
+  typingSpeed = 15
+}: {
+  content: string;
+  onComplete?: () => void;
+  typingSpeed?: number;
+}) {
+  const [displayedContent, setDisplayedContent] = useState('');
+  const [isComplete, setIsComplete] = useState(false);
+
+  useEffect(() => {
+    if (isComplete) return;
+
+    let currentIndex = 0;
+    const interval = setInterval(() => {
+      if (currentIndex < content.length) {
+        setDisplayedContent(content.slice(0, currentIndex + 1));
+        currentIndex++;
+      } else {
+        clearInterval(interval);
+        setIsComplete(true);
+        onComplete?.();
+      }
+    }, typingSpeed);
+
+    return () => clearInterval(interval);
+  }, [content, typingSpeed, onComplete, isComplete]);
+
+  return (
+    <div className="prose prose-sm dark:prose-invert max-w-none">
+      <ReactMarkdown
+        components={{
+          p: ({ children }) => <p className="mb-2 last:mb-0 text-sm">{children}</p>,
+          ul: ({ children }) => <ul className="mb-2 last:mb-0 text-sm list-disc list-inside">{children}</ul>,
+          li: ({ children }) => <li className="mb-1">{children}</li>,
+          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+        }}
+      >
+        {displayedContent}
+      </ReactMarkdown>
+      {!isComplete && (
+        <span className="inline-block w-1 h-4 ml-0.5 bg-purple-500 animate-pulse" />
+      )}
+    </div>
+  );
+}
 
 interface ProfileGeneratorTrayProps {
   isOpen: boolean;
@@ -23,6 +73,7 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
   const { state, sendMessage, resetChat, applyGeneratedSections } = useProfileGeneratorChat();
   const [inputValue, setInputValue] = useState('');
   const [shouldRender, setShouldRender] = useState(true);
+  const [welcomeTypingComplete, setWelcomeTypingComplete] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -37,7 +88,7 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
   useEffect(() => {
     if (isOpen) {
       setShouldRender(true);
-      // Focus input when opening
+      // Focus input when opening (after typing animation has time to start)
       setTimeout(() => {
         inputRef.current?.focus();
       }, 300);
@@ -76,6 +127,7 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
 
   // Handle starting over
   const handleStartOver = useCallback(() => {
+    setWelcomeTypingComplete(false);
     resetChat();
   }, [resetChat]);
 
@@ -84,6 +136,7 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
   // Render a single message
   const renderMessage = (message: ProfileChatMessage) => {
     const isUser = message.role === 'user';
+    const isWelcomeMessage = message.id === 'welcome-msg';
 
     return (
       <div
@@ -99,6 +152,12 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
         >
           {isUser ? (
             <span className="whitespace-pre-wrap break-words text-sm">{message.content}</span>
+          ) : isWelcomeMessage && !welcomeTypingComplete ? (
+            <TypingMessage
+              content={message.content}
+              onComplete={() => setWelcomeTypingComplete(true)}
+              typingSpeed={12}
+            />
           ) : (
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown
@@ -140,9 +199,11 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
         <div className="flex-shrink-0 px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center shadow-lg">
-                <FontAwesomeIcon icon={faWandMagicSparkles} className="w-5 h-5 text-white" />
-              </div>
+              <img
+                src="/all-thrvie-logo-blue.png"
+                alt="AllThrive"
+                className="w-10 h-10 rounded-xl shadow-lg object-cover"
+              />
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   AI Profile Generator

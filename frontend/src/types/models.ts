@@ -109,7 +109,7 @@ export const StorageKeys = {
 } as const;
 
 // Project types
-export type ProjectType = 'github_repo' | 'figma_design' | 'image_collection' | 'prompt' | 'reddit_thread' | 'video' | 'battle' | 'rss_article' | 'other';
+export type ProjectType = 'github_repo' | 'figma_design' | 'image_collection' | 'prompt' | 'reddit_thread' | 'video' | 'battle' | 'rss_article' | 'clipped' | 'other';
 
 // Project redirect
 export interface ProjectRedirect {

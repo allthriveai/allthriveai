@@ -32,17 +32,16 @@ function getCookie(name: string): string | null {
   return null;
 }
 
-const WELCOME_MESSAGE = `Hey! I'm here to help create an amazing profile that showcases your work.
+const WELCOME_MESSAGE = `Hey! I'm here to help create an amazing profile that showcases who you are.
 
-I'll ask you a couple of quick questions to understand what makes you unique, then I'll analyze your projects and create personalized profile sections for you.
-
-**What would you like to highlight most on your profile?**
+**Tell me a bit about yourself!** What do you do, what are you passionate about, or what would you like people to know about you?
 
 For example:
-- Your technical skills and expertise
-- Specific projects you're proud of
-- Your learning journey and growth
-- Your creative or artistic work`;
+- "I'm a full-stack developer who loves building AI tools"
+- "I'm a designer exploring the intersection of art and technology"
+- "I'm learning to code and documenting my journey"
+
+Share as much or as little as you'd like — I'll use this to craft your profile!`;
 
 export interface UseProfileGeneratorChatReturn {
   state: ProfileGeneratorState;

@@ -2,49 +2,23 @@
  * HeroImage - Image display mode for project hero
  *
  * Displays featured image with zoom-on-hover and full-screen modal.
+ * Returns null if no image is provided (hides the component entirely).
  */
 
 import { useState } from 'react';
-import type { ComponentType } from 'react';
-import {
-  DocumentTextIcon,
-  CodeBracketIcon,
-  PhotoIcon,
-  ChatBubbleLeftRightIcon,
-} from '@heroicons/react/24/outline';
 
 interface HeroImageProps {
   imageUrl: string | null | undefined;
   projectTitle: string;
-  projectType: string;
+  projectType?: string; // Optional, kept for backwards compatibility
 }
 
-// Type icons for fallback display
-const typeIcons: Record<string, ComponentType<{ className?: string }>> = {
-  github_repo: CodeBracketIcon,
-  figma_design: PhotoIcon,
-  image_collection: PhotoIcon,
-  prompt: ChatBubbleLeftRightIcon,
-  reddit_thread: ChatBubbleLeftRightIcon,
-  other: DocumentTextIcon,
-};
-
-export function HeroImage({ imageUrl, projectTitle, projectType }: HeroImageProps) {
+export function HeroImage({ imageUrl, projectTitle }: HeroImageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const Icon = typeIcons[projectType] || DocumentTextIcon;
-
-  // No image - show fallback
+  // No image - hide the component entirely
   if (!imageUrl) {
-    return (
-      <div className="w-full aspect-video rounded-2xl md:rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center p-6 md:p-12 text-center shadow-2xl relative overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        <div className="relative z-10">
-          <Icon className="w-16 h-16 md:w-24 md:h-24 text-white/20 mx-auto mb-4 md:mb-6" />
-          <p className="text-white/40 text-base md:text-lg font-light">No featured image provided</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

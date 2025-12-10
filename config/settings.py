@@ -21,6 +21,10 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
+# Beta Mode: When enabled, bypasses all subscription/feature gates
+# Set BETA_MODE=True in environment to enable unlimited access for all users
+BETA_MODE = config('BETA_MODE', default=False, cast=bool)
+
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # AWS ECS/ALB health checks use container private IPs (10.x.x.x) in the Host header.
@@ -389,10 +393,36 @@ AZURE_OPENAI_EMBEDDING_DEPLOYMENT = config('AZURE_OPENAI_EMBEDDING_DEPLOYMENT', 
 # Fallback AI Provider (used when DEFAULT_AI_PROVIDER is not set)
 FALLBACK_AI_PROVIDER = config('FALLBACK_AI_PROVIDER', default='azure')
 
-# Default AI Provider (options: azure, openai, anthropic)
+# Default AI Provider (options: azure, openai, anthropic, gemini)
 # If not explicitly set, falls back to FALLBACK_AI_PROVIDER.
 DEFAULT_AI_PROVIDER = config('DEFAULT_AI_PROVIDER', default=FALLBACK_AI_PROVIDER)
-DEFAULT_OPENAI_MODEL = config('DEFAULT_OPENAI_MODEL', default='gpt-5-mini-2025-08-07')
+
+# AI Models by Purpose
+# - default: General purpose, supports temperature, cost-effective
+# - reasoning: Complex multi-step tasks, no temperature support
+# - image: Image generation (always uses Gemini)
+# - vision: Image understanding/analysis
+AI_MODELS = {
+    'openai': {
+        'default': config('OPENAI_MODEL_DEFAULT', default='gpt-4o-mini'),
+        'reasoning': config('OPENAI_MODEL_REASONING', default='gpt-5-mini-2025-08-07'),
+    },
+    'anthropic': {
+        'default': config('ANTHROPIC_MODEL_DEFAULT', default='claude-3-5-haiku-20241022'),
+        'reasoning': config('ANTHROPIC_MODEL_REASONING', default='claude-sonnet-4-20250514'),
+    },
+    'gemini': {
+        'default': config('GEMINI_MODEL_DEFAULT', default='gemini-2.0-flash'),
+        'image': config('GEMINI_MODEL_IMAGE', default='gemini-2.0-flash-preview-image-generation'),
+        'vision': config('GEMINI_MODEL_VISION', default='gemini-2.0-flash'),
+    },
+    'azure': {
+        'default': config('AZURE_MODEL_DEFAULT', default='gpt-4'),
+    },
+}
+
+# Legacy setting - kept for backwards compatibility, maps to AI_MODELS['openai']['default']
+DEFAULT_OPENAI_MODEL = AI_MODELS['openai']['default']
 
 # LangSmith Configuration (AI Gateway Observability)
 LANGSMITH_API_KEY = config('LANGSMITH_API_KEY', default='')

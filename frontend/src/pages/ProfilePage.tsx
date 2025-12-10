@@ -11,7 +11,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { getUserAchievements } from '@/services/achievements';
 import type { AchievementProgressData } from '@/types/achievements';
 import { ActivityInsightsTab } from '@/components/profile/ActivityInsightsTab';
-import { FavoritesTab } from '@/components/profile/FavoritesTab';
+import { ClippedTab } from '@/components/profile/ClippedTab';
 import { MarketplaceTab } from '@/components/profile/MarketplaceTab';
 import { LearningPathsTab } from '@/components/learning';
 import { AchievementBadge } from '@/components/achievements/AchievementBadge';
@@ -46,7 +46,7 @@ import {
   faFlask,
   faChartLine,
   faGraduationCap,
-  faHeart,
+  faPaperclip,
   faStore,
   faBolt,
   faWandMagicSparkles,
@@ -90,11 +90,11 @@ export default function ProfilePage() {
   const [userNotFound, setUserNotFound] = useState(false);
 
   // Initialize activeTab from URL or default to 'showcase' (or 'battles' for Pip)
-  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | 'battles' | null;
+  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | null;
   const isPipProfile = username?.toLowerCase() === 'pip';
   const defaultTab = isPipProfile ? 'battles' : 'showcase';
-  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | 'battles'>(
-    tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity', 'marketplace', 'battles'].includes(tabFromUrl) ? tabFromUrl : defaultTab
+  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles'>(
+    tabFromUrl && ['showcase', 'playground', 'clipped', 'learning', 'activity', 'marketplace', 'battles'].includes(tabFromUrl) ? tabFromUrl : defaultTab
   );
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<number>>(new Set());
@@ -152,8 +152,8 @@ export default function ProfilePage() {
 
   // Sync activeTab with URL query parameter
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | 'battles' | null;
-    if (tabFromUrl && ['showcase', 'playground', 'favorites', 'learning', 'activity', 'marketplace', 'battles'].includes(tabFromUrl)) {
+    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | null;
+    if (tabFromUrl && ['showcase', 'playground', 'clipped', 'learning', 'activity', 'marketplace', 'battles'].includes(tabFromUrl)) {
       // Security: only allow Activity and Learning tabs for authenticated users viewing their own profile
       if ((tabFromUrl === 'activity' || tabFromUrl === 'learning') && (!isAuthenticated || !isOwnProfile)) {
         setActiveTab('showcase');
@@ -209,7 +209,7 @@ export default function ProfilePage() {
   }, [isOwnProfile]);
 
   // Update URL when tab changes
-  const handleTabChange = (tab: 'showcase' | 'playground' | 'favorites' | 'learning' | 'activity' | 'marketplace' | 'battles') => {
+  const handleTabChange = (tab: 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles') => {
     setActiveTab(tab);
     setSearchParams({ tab });
     if (selectionMode) {
@@ -723,7 +723,7 @@ export default function ProfilePage() {
   const isCuration = isCurationTier(displayUser?.tier);
   const isCreator = displayUser?.role === 'creator';
 
-  // Build tabs array - exclude favorites, learning, activity, and playground for curation tier users (agents)
+  // Build tabs array - exclude clipped, learning, activity, and playground for curation tier users (agents)
   // Only show Shop tab for users with creator role
   // Special: Pip gets only a Battles tab (no Posts since Pip doesn't have projects)
   const tabs = (() => {
@@ -740,7 +740,7 @@ export default function ProfilePage() {
       const baseTabs = [
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
-        { id: 'favorites', label: 'Favorites' },
+        { id: 'clipped', label: 'Clipped' },
       ];
       if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
       baseTabs.push({ id: 'learning', label: 'Learning' });
@@ -759,7 +759,7 @@ export default function ProfilePage() {
       const baseTabs = [
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
-        { id: 'favorites', label: 'Favorites' },
+        { id: 'clipped', label: 'Clipped' },
       ];
       if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
       return baseTabs as { id: string; label: string }[];
@@ -774,7 +774,7 @@ export default function ProfilePage() {
     }
     const baseTabs = [
       { id: 'showcase', label: 'Showcase' },
-      { id: 'favorites', label: 'Favorites' },
+      { id: 'clipped', label: 'Clipped' },
     ];
     if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
     return baseTabs as { id: string; label: string }[];
@@ -871,7 +871,7 @@ export default function ProfilePage() {
                     const tabIcons = {
                       showcase: faTh,
                       playground: faFlask,
-                      favorites: faHeart,
+                      clipped: faPaperclip,
                       marketplace: faStore,
                       learning: faGraduationCap,
                       activity: faChartLine,
@@ -1349,18 +1349,18 @@ export default function ProfilePage() {
                         <FontAwesomeIcon icon={faFlask} className="w-3 h-3" />
                       </button>
 
-                      {/* Favorites Icon - Hidden for curation tier */}
+                      {/* Clipped Icon - Hidden for curation tier */}
                       {!isCuration && (
                         <button
-                          onClick={() => handleTabChange('favorites')}
+                          onClick={() => handleTabChange('clipped')}
                           className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                            activeTab === 'favorites'
+                            activeTab === 'clipped'
                               ? 'bg-pink-500 text-white shadow-md'
                               : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
                           }`}
-                          title="Favorites"
+                          title="Clipped"
                         >
-                          <FontAwesomeIcon icon={faHeart} className="w-3 h-3" />
+                          <FontAwesomeIcon icon={faPaperclip} className="w-3 h-3" />
                         </button>
                       )}
 
@@ -1410,7 +1410,7 @@ export default function ProfilePage() {
                     const tabIcons = {
                       showcase: faTh,
                       playground: faFlask,
-                      favorites: faHeart,
+                      clipped: faPaperclip,
                       marketplace: faStore,
                       learning: faGraduationCap,
                       activity: faChartLine,
@@ -1559,15 +1559,15 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* Favorites Tab - Full width layout */}
-              {activeTab === 'favorites' && (
+              {/* Clipped Tab - Full width layout */}
+              {activeTab === 'clipped' && (
                 <div
                   className="pb-20"
                   role="tabpanel"
-                  id="tabpanel-favorites"
-                  aria-labelledby="tab-favorites"
+                  id="tabpanel-clipped"
+                  aria-labelledby="tab-clipped"
                 >
-                  <FavoritesTab
+                  <ClippedTab
                     username={username || user?.username || ''}
                     isOwnProfile={isOwnProfile}
                   />

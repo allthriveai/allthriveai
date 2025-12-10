@@ -155,6 +155,7 @@ export interface ResourceLink {
 export interface LinksSectionContent {
   links: ResourceLink[];
   title?: string;
+  style?: 'default' | 'subtle';  // 'subtle' for expert review source links
 }
 
 // ============================================================================

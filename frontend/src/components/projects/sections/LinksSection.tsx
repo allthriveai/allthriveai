@@ -45,11 +45,12 @@ interface ResourceLinkCardProps {
   link: ResourceLink;
   index: number;
   isEditing?: boolean;
+  isSubtle?: boolean;
   onUpdate?: (index: number, link: ResourceLink) => void;
   onDelete?: (index: number) => void;
 }
 
-function ResourceLinkCard({ link, index, isEditing, onUpdate, onDelete }: ResourceLinkCardProps) {
+function ResourceLinkCard({ link, index, isEditing, isSubtle, onUpdate, onDelete }: ResourceLinkCardProps) {
   const Icon = getLinkIcon(link.icon);
 
   const handleLabelChange = useCallback(
@@ -157,6 +158,23 @@ function ResourceLinkCard({ link, index, isEditing, onUpdate, onDelete }: Resour
     );
   }
 
+  // Subtle style - simple text link for expert review source links
+  if (isSubtle) {
+    return (
+      <a
+        href={link.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+      >
+        <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+        <span className="underline underline-offset-2 decoration-gray-300 dark:decoration-gray-600 group-hover:decoration-primary-400">
+          {link.label}
+        </span>
+      </a>
+    );
+  }
+
   return (
     <a
       href={link.url}
@@ -191,7 +209,8 @@ function ResourceLinkCard({ link, index, isEditing, onUpdate, onDelete }: Resour
 }
 
 export function LinksSection({ content, isEditing, onUpdate }: LinksSectionProps) {
-  const { links, title } = content;
+  const { links, title, style } = content;
+  const isSubtle = style === 'subtle';
 
   const handleTitleChange = useCallback(
     async (newTitle: string) => {
@@ -238,6 +257,24 @@ export function LinksSection({ content, isEditing, onUpdate }: LinksSectionProps
   // Allow empty in edit mode
   if ((!links || links.length === 0) && !isEditing) {
     return null;
+  }
+
+  // Subtle style for expert review source links - no header, simple inline links
+  if (isSubtle && !isEditing) {
+    return (
+      <section className="project-section" data-section-type="links">
+        <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
+          {links?.map((link, index) => (
+            <ResourceLinkCard
+              key={index}
+              link={link}
+              index={index}
+              isSubtle={true}
+            />
+          ))}
+        </div>
+      </section>
+    );
   }
 
   return (

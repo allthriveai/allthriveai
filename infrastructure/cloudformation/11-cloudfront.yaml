@@ -221,6 +221,23 @@ Resources:
             OriginRequestPolicyId: !Ref APIOriginRequestPolicy
 
           # Obscured Django Admin (thrive-manage instead of /admin)
+          # Need both patterns: exact path and wildcard for subpaths
+          - PathPattern: '/thrive-manage'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: !Ref APIOriginRequestPolicy
           - PathPattern: '/thrive-manage/*'
             TargetOriginId: ALBBackendOrigin
             ViewerProtocolPolicy: redirect-to-https
@@ -365,7 +382,7 @@ Resources:
           ];
 
           // Also check for exact matches
-          var exactMatches = ['/sitemap.xml', '/robots.txt', '/metrics'];
+          var exactMatches = ['/sitemap.xml', '/robots.txt', '/metrics', '/thrive-manage'];
           if (exactMatches.indexOf(uri) !== -1) {
             return request;
           }

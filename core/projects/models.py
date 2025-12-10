@@ -55,6 +55,7 @@ class Project(models.Model):
         RSS_ARTICLE = 'rss_article', 'RSS Article'
         BATTLE = 'battle', 'Prompt Battle'
         PRODUCT = 'product', 'Digital Product'
+        CLIPPED = 'clipped', 'Clipped'  # External content user saved from the web
         OTHER = 'other', 'Other'
 
     class DifficultyLevel(models.TextChoices):

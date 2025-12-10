@@ -32,6 +32,55 @@ class AIProviderType(Enum):
     GEMINI = 'gemini'
 
 
+# Valid purpose types for model selection
+VALID_PURPOSES = ('default', 'reasoning', 'image', 'vision')
+
+
+def get_model_for_purpose(provider: str, purpose: str = 'default') -> str:
+    """Get the configured model for a given provider and purpose.
+
+    Args:
+        provider: Provider type (openai, anthropic, gemini, azure)
+        purpose: Purpose type (default, reasoning, image, vision)
+
+    Returns:
+        Model name from settings.AI_MODELS
+    """
+    # Validate purpose
+    if purpose not in VALID_PURPOSES:
+        logger.warning(f'Invalid AI purpose "{purpose}", falling back to "default". Valid: {VALID_PURPOSES}')
+        purpose = 'default'
+
+    ai_models = getattr(settings, 'AI_MODELS', {})
+    provider_models = ai_models.get(provider, {})
+
+    # Try to get the specific purpose model, fall back to default
+    model = provider_models.get(purpose) or provider_models.get('default')
+
+    if not model:
+        # Ultimate fallbacks if settings not configured
+        fallbacks = {
+            'openai': 'gpt-4o-mini',
+            'anthropic': 'claude-3-5-haiku-20241022',
+            'gemini': 'gemini-2.0-flash',
+            'azure': 'gpt-4',
+        }
+        model = fallbacks.get(provider, 'gpt-4o-mini')
+        logger.warning(f'No model configured for {provider}/{purpose}, using fallback: {model}')
+
+    return model
+
+
+def is_reasoning_model(model_name: str) -> bool:
+    """Check if a model is a reasoning model that doesn't support temperature.
+
+    Reasoning models (o1, o3, gpt-5) use internal chain-of-thought and don't
+    support temperature, top_p, or other sampling parameters.
+    """
+    reasoning_prefixes = ('o1', 'o3', 'gpt-5')
+    return any(model_name.startswith(prefix) for prefix in reasoning_prefixes)
+
+
 def _convert_url_for_docker(url: str) -> str:
     """
     Convert localhost URLs to Docker-internal hostnames when running inside Docker.
@@ -235,6 +284,7 @@ class AIProvider:
         self,
         prompt: str,
         model: str | None = None,
+        purpose: str = 'default',
         temperature: float = 0.7,
         max_tokens: int | None = None,
         system_message: str | None = None,
@@ -246,8 +296,11 @@ class AIProvider:
 
         Args:
             prompt: The user prompt/message
-            model: Model name (provider-specific). If None, uses default for provider.
-            temperature: Sampling temperature (0-1)
+            model: Model name (provider-specific). If None, uses purpose-based selection.
+            purpose: Purpose for model selection ('default', 'reasoning', 'image', 'vision').
+                    'default' uses gpt-4o-mini (supports temperature, cost-effective).
+                    'reasoning' uses gpt-5-mini (complex tasks, no temperature).
+            temperature: Sampling temperature (0-1). Ignored for reasoning models.
             max_tokens: Maximum tokens to generate
             system_message: System message/instructions
             timeout: Request timeout in seconds (default: 60)
@@ -261,6 +314,10 @@ class AIProvider:
             Exception: If the API call fails
         """
         timeout = timeout or DEFAULT_AI_TIMEOUT
+
+        # Resolve model from purpose if not explicitly provided
+        if model is None:
+            model = get_model_for_purpose(self._provider.value, purpose)
 
         try:
             if self._provider == AIProviderType.AZURE:
@@ -281,6 +338,7 @@ class AIProvider:
                     'model': model or self.current_model,
                     'user_id': self.user_id,
                     'error_type': type(e).__name__,
+                    'purpose': purpose,
                 },
                 exc_info=True,
             )
@@ -297,7 +355,8 @@ class AIProvider:
         **kwargs,
     ) -> str:
         """Azure OpenAI completion with timeout."""
-        deployment_name = model or getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
+        # Model is resolved in complete() before being passed here
+        deployment_name = model
 
         messages = []
         if system_message:
@@ -334,15 +393,16 @@ class AIProvider:
         **kwargs,
     ) -> str:
         """OpenAI completion with timeout."""
-        model_name = model or getattr(settings, 'DEFAULT_OPENAI_MODEL', 'gpt-5-mini-2025-08-07')
+        # Model is resolved in complete() before being passed here
+        model_name = model
 
         messages = []
         if system_message:
             messages.append({'role': 'system', 'content': system_message})
         messages.append({'role': 'user', 'content': prompt})
 
-        # Newer OpenAI models (o1, o3, gpt-5) require max_completion_tokens instead of max_tokens
-        uses_new_token_param = any(model_name.startswith(prefix) for prefix in ('o1', 'o3', 'gpt-5'))
+        # Check if this is a reasoning model
+        reasoning = is_reasoning_model(model_name)
 
         # Build request parameters
         request_params = {
@@ -353,14 +413,15 @@ class AIProvider:
         }
 
         # Add token limit with the correct parameter name
+        # Reasoning models (o1, o3, gpt-5) require max_completion_tokens instead of max_tokens
         if max_tokens is not None:
-            if uses_new_token_param:
+            if reasoning:
                 request_params['max_completion_tokens'] = max_tokens
             else:
                 request_params['max_tokens'] = max_tokens
 
-        # Add temperature (some reasoning models don't support it)
-        if not model_name.startswith(('o1', 'o3')):
+        # Add temperature (reasoning models don't support it)
+        if not reasoning:
             request_params['temperature'] = temperature
 
         response = self._client.chat.completions.create(**request_params)
@@ -386,7 +447,8 @@ class AIProvider:
         **kwargs,
     ) -> str:
         """Anthropic completion with timeout."""
-        model_name = model or 'claude-3-5-sonnet-20241022'
+        # Model is resolved in complete() before being passed here
+        model_name = model
         max_tokens = max_tokens or 1024  # Anthropic requires max_tokens
 
         # Anthropic client uses httpx which accepts timeout via client config
@@ -422,7 +484,8 @@ class AIProvider:
         **kwargs,
     ) -> str:
         """Google Gemini completion with timeout."""
-        model_name = model or getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
+        # Model is resolved in complete() before being passed here
+        model_name = model
 
         generation_config = {
             'temperature': temperature,
@@ -460,6 +523,7 @@ class AIProvider:
         self,
         prompt: str,
         model: str | None = None,
+        purpose: str = 'default',
         temperature: float = 0.7,
         max_tokens: int | None = None,
         system_message: str | None = None,
@@ -470,8 +534,9 @@ class AIProvider:
 
         Args:
             prompt: The user prompt/message
-            model: Model name (provider-specific)
-            temperature: Sampling temperature (0-1)
+            model: Model name (provider-specific). If None, uses purpose-based selection.
+            purpose: Purpose for model selection ('default', 'reasoning').
+            temperature: Sampling temperature (0-1). Ignored for reasoning models.
             max_tokens: Maximum tokens to generate
             system_message: System message/instructions
             **kwargs: Additional provider-specific parameters
@@ -479,6 +544,10 @@ class AIProvider:
         Yields:
             Text chunks as they are generated
         """
+        # Resolve model from purpose if not explicitly provided
+        if model is None:
+            model = get_model_for_purpose(self._provider.value, purpose)
+
         if self._provider == AIProviderType.AZURE:
             yield from self._stream_azure(prompt, model, temperature, max_tokens, system_message, **kwargs)
         elif self._provider == AIProviderType.OPENAI:
@@ -529,16 +598,37 @@ class AIProvider:
         **kwargs,
     ):
         """OpenAI streaming completion."""
-        model_name = model or getattr(settings, 'DEFAULT_OPENAI_MODEL', 'gpt-5-mini-2025-08-07')
+        # Model is resolved in stream_complete() before being passed here
+        model_name = model
 
         messages = []
         if system_message:
             messages.append({'role': 'system', 'content': system_message})
         messages.append({'role': 'user', 'content': prompt})
 
-        stream = self._client.chat.completions.create(
-            model=model_name, messages=messages, temperature=temperature, max_tokens=max_tokens, stream=True, **kwargs
-        )
+        # Check if this is a reasoning model
+        reasoning = is_reasoning_model(model_name)
+
+        # Build request params
+        request_params = {
+            'model': model_name,
+            'messages': messages,
+            'stream': True,
+            **kwargs,
+        }
+
+        # Reasoning models require max_completion_tokens instead of max_tokens
+        if max_tokens is not None:
+            if reasoning:
+                request_params['max_completion_tokens'] = max_tokens
+            else:
+                request_params['max_tokens'] = max_tokens
+
+        # Reasoning models don't support temperature
+        if not reasoning:
+            request_params['temperature'] = temperature
+
+        stream = self._client.chat.completions.create(**request_params)
 
         for chunk in stream:
             if chunk.choices and len(chunk.choices) > 0:
@@ -555,7 +645,8 @@ class AIProvider:
         **kwargs,
     ):
         """Anthropic streaming completion."""
-        model_name = model or 'claude-3-5-sonnet-20241022'
+        # Model is resolved in stream_complete() before being passed here
+        model_name = model
         max_tokens = max_tokens or 1024
 
         with self._client.messages.stream(
@@ -607,15 +698,7 @@ class AIProvider:
     @property
     def current_model(self) -> str:
         """Get the default model name for the current provider."""
-        if self._provider == AIProviderType.AZURE:
-            return getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
-        elif self._provider == AIProviderType.OPENAI:
-            return getattr(settings, 'DEFAULT_OPENAI_MODEL', 'gpt-5-mini-2025-08-07')
-        elif self._provider == AIProviderType.ANTHROPIC:
-            return 'claude-3-5-sonnet-20241022'
-        elif self._provider == AIProviderType.GEMINI:
-            return getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
-        return 'unknown'
+        return get_model_for_purpose(self._provider.value, 'default')
 
     @property
     def client(self):
@@ -730,8 +813,8 @@ class AIProvider:
         if not api_key:
             raise ValueError('Google API key not configured. Set GOOGLE_API_KEY in settings.')
 
-        # Use the image generation model - gemini-3-pro-image-preview for best quality
-        model_name = model or getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-3-pro-image-preview')
+        # Use the configured image generation model from AI_MODELS
+        model_name = model or get_model_for_purpose('gemini', 'image')
 
         logger.info(
             'Generating image with Gemini',
@@ -930,9 +1013,8 @@ class AIProvider:
         """Gemini vision completion."""
         import httpx
 
-        # Default to Gemini image model from settings (must support vision/multimodal)
-        # Use GEMINI_IMAGE_MODEL as it's designed for multimodal tasks
-        model_name = model or getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-2.0-flash-exp')
+        # Use the configured vision model from AI_MODELS
+        model_name = model or get_model_for_purpose('gemini', 'vision')
 
         generation_config = {'temperature': temperature}
         if max_tokens:

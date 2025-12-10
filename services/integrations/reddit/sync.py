@@ -151,7 +151,11 @@ class RedditRSSParser:
 class RedditSyncService:
     """Service for syncing Reddit threads from RSS feeds."""
 
-    USER_AGENT = 'Mozilla/5.0 (compatible; AllThrive/1.0; +https://allthrive.ai)'
+    # Use a real browser User-Agent - Reddit blocks bot-like UAs
+    USER_AGENT = (
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    )
 
     # Subreddits that require stricter moderation
     STRICT_MODERATION_SUBREDDITS = [
@@ -425,7 +429,7 @@ class RedditSyncService:
         except Exception as e:
             logger.warning(f'Failed to fetch metrics for {permalink}: {e}')
             return {
-                'score': 0,
+                'score': None,  # None indicates API failure - skip score filtering
                 'num_comments': 0,
                 'upvote_ratio': 0,
                 'image_url': '',
@@ -443,6 +447,7 @@ class RedditSyncService:
                 'url': '',
                 'over_18': False,
                 'spoiler': False,
+                'api_blocked': True,  # Flag to indicate API was blocked
             }
 
     @classmethod
@@ -753,12 +758,16 @@ class RedditSyncService:
         metrics = cls.fetch_post_metrics(post_data['permalink'])
 
         # Check if post meets minimum score threshold from agent settings
+        # If score is None (API blocked), skip the score check and allow the post
         min_score = agent.settings.get('min_score', 0)
-        if metrics['score'] < min_score:
+        if metrics['score'] is not None and metrics['score'] < min_score:
             logger.info(
                 f'Skipping post {post_data["reddit_post_id"]} - score {metrics["score"]} below minimum {min_score}'
             )
             return  # Skip this post
+
+        if metrics.get('api_blocked'):
+            logger.warning(f'Reddit API blocked for {post_data["reddit_post_id"]} - proceeding without metrics')
 
         # Skip NSFW content marked by Reddit
         if metrics.get('over_18', False):

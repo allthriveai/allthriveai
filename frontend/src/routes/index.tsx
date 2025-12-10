@@ -37,6 +37,7 @@ import OnboardingPage from '@/pages/OnboardingPage';
 import VendorDashboardPage from '@/pages/VendorDashboardPage';
 import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
 import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
+import AdminImpersonatePage from '@/pages/admin/ImpersonatePage';
 import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
 import ExtensionPage from '@/pages/ExtensionPage';
 import PitchDeckPage from '@/pages/PitchDeckPage';
@@ -257,6 +258,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <AdminInvitationsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/impersonate"
+        element={
+          <ProtectedRoute>
+            <AdminImpersonatePage />
           </ProtectedRoute>
         }
       />

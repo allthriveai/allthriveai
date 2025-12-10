@@ -28,6 +28,7 @@ class ProjectService:
         'reddit_thread',
         'rss_article',
         'battle',
+        'clipped',
         'other',
     ]
 

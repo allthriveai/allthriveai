@@ -76,6 +76,30 @@ User: "Help me create an infographic" or "Create an image for me" or "Make a vis
 }}
 ```
 
+User: "https://www.reddit.com/r/midjourney/..." or any URL pasted
+```json
+{{
+  "analysis": "User shared a URL - they want to import this as a project",
+  "plan_type": "single",
+  "agents": [
+    {{"agent": "project", "task": "Import the webpage/URL as a portfolio project", "depends_on": null}}
+  ],
+  "synthesis_needed": false
+}}
+```
+
+User: "Import this: https://github.com/..." or GitHub URL
+```json
+{{
+  "analysis": "User wants to import a GitHub repository",
+  "plan_type": "single",
+  "agents": [
+    {{"agent": "project", "task": "Import the GitHub repository as a project", "depends_on": null}}
+  ],
+  "synthesis_needed": false
+}}
+```
+
 User: "What's my learning progress and recommend projects based on my interests?"
 ```json
 {{

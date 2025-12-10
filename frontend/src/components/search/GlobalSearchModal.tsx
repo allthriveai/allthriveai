@@ -434,7 +434,6 @@ export function GlobalSearchModal() {
               open
             </span>
           </div>
-          <span className="text-gray-600">Powered by semantic search</span>
         </div>
       </div>
     </div>

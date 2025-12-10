@@ -31,6 +31,8 @@ import {
   EyeIcon,
   EyeSlashIcon,
 } from '@heroicons/react/24/outline';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPaperclip } from '@fortawesome/free-solid-svg-icons';
 
 /**
  * Strip HTML tags and normalize text for comparison.
@@ -380,14 +382,23 @@ export function DefaultProjectLayout() {
                 </div>
 
                 {/* Title - Inline Editable for Owners */}
-                <InlineEditableTitle
-                  value={project.title}
-                  isEditable={isEditing}
-                  onChange={handleTitleChange}
-                  placeholder="Enter project title..."
-                  className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/70 tracking-tight leading-tight drop-shadow-2xl"
-                  as="h1"
-                />
+                <div className="flex items-center gap-3 flex-wrap">
+                  <InlineEditableTitle
+                    value={project.title}
+                    isEditable={isEditing}
+                    onChange={handleTitleChange}
+                    placeholder="Enter project title..."
+                    className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/70 tracking-tight leading-tight drop-shadow-2xl"
+                    as="h1"
+                  />
+                  {/* Clipped Badge */}
+                  {project.type === 'clipped' && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-pink-500/20 text-pink-300 text-sm font-medium rounded-full border border-pink-500/30 backdrop-blur-sm">
+                      <FontAwesomeIcon icon={faPaperclip} className="w-3.5 h-3.5" />
+                      Clipped
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Description - Inline Editable for Owners */}

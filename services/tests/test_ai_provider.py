@@ -195,3 +195,230 @@ class AIProviderTestCase(TestCase):
                 self.assertEqual(len(messages), 2)
                 self.assertEqual(messages[0]['role'], 'system')
                 self.assertEqual(messages[0]['content'], 'You are a helpful AI.')
+
+
+class PurposeBasedModelSelectionTestCase(TestCase):
+    """Test cases for purpose-based model selection (gpt-4o-mini default, gpt-5 for reasoning)."""
+
+    def test_get_model_for_purpose_default(self):
+        """Test that default purpose returns gpt-4o-mini."""
+        from services.ai.provider import get_model_for_purpose
+
+        model = get_model_for_purpose('openai', 'default')
+        self.assertEqual(model, 'gpt-4o-mini')
+
+    def test_get_model_for_purpose_reasoning(self):
+        """Test that reasoning purpose returns gpt-5-mini."""
+        from services.ai.provider import get_model_for_purpose
+
+        model = get_model_for_purpose('openai', 'reasoning')
+        self.assertIn('gpt-5', model)
+
+    def test_get_model_for_purpose_gemini_image(self):
+        """Test that image purpose for gemini returns image model."""
+        from services.ai.provider import get_model_for_purpose
+
+        model = get_model_for_purpose('gemini', 'image')
+        self.assertIn('image', model.lower())
+
+    def test_get_model_for_purpose_invalid_falls_back(self):
+        """Test that invalid purpose falls back to default with warning."""
+        from services.ai.provider import get_model_for_purpose
+
+        with self.assertLogs('services.ai.provider', level='WARNING') as logs:
+            model = get_model_for_purpose('openai', 'invalid_purpose')
+
+        self.assertEqual(model, 'gpt-4o-mini')
+        self.assertTrue(any('Invalid AI purpose' in log for log in logs.output))
+
+    def test_get_model_for_purpose_unknown_provider_fallback(self):
+        """Test fallback for unknown provider."""
+        from services.ai.provider import get_model_for_purpose
+
+        with self.assertLogs('services.ai.provider', level='WARNING') as logs:
+            model = get_model_for_purpose('unknown_provider', 'default')
+
+        self.assertEqual(model, 'gpt-4o-mini')
+        self.assertTrue(any('No model configured' in log for log in logs.output))
+
+
+class ReasoningModelDetectionTestCase(TestCase):
+    """Test cases for is_reasoning_model() helper."""
+
+    def test_is_reasoning_model_gpt5(self):
+        """Test that gpt-5 models are detected as reasoning."""
+        from services.ai.provider import is_reasoning_model
+
+        self.assertTrue(is_reasoning_model('gpt-5-mini-2025-08-07'))
+        self.assertTrue(is_reasoning_model('gpt-5-pro'))
+        self.assertTrue(is_reasoning_model('gpt-5'))
+
+    def test_is_reasoning_model_o1_o3(self):
+        """Test that o1 and o3 models are detected as reasoning."""
+        from services.ai.provider import is_reasoning_model
+
+        self.assertTrue(is_reasoning_model('o1-preview'))
+        self.assertTrue(is_reasoning_model('o1-mini'))
+        self.assertTrue(is_reasoning_model('o3-mini'))
+
+    def test_is_reasoning_model_standard_models(self):
+        """Test that standard models are NOT detected as reasoning."""
+        from services.ai.provider import is_reasoning_model
+
+        self.assertFalse(is_reasoning_model('gpt-4o-mini'))
+        self.assertFalse(is_reasoning_model('gpt-4o'))
+        self.assertFalse(is_reasoning_model('gpt-4-turbo'))
+        self.assertFalse(is_reasoning_model('claude-3-5-sonnet'))
+        self.assertFalse(is_reasoning_model('gemini-2.0-flash'))
+
+
+class OpenAIReasoningModelHandlingTestCase(TestCase):
+    """Test that reasoning models correctly handle temperature and max_tokens parameters."""
+
+    @patch('openai.OpenAI')
+    def test_reasoning_model_no_temperature(self, mock_openai_client):
+        """Test that reasoning models don't receive temperature parameter."""
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message.content = 'Test response'
+        mock_response.usage = Mock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+        mock_response.usage.total_tokens = 30
+
+        mock_client_instance = Mock()
+        mock_client_instance.chat.completions.create.return_value = mock_response
+        mock_openai_client.return_value = mock_client_instance
+
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-key'):
+            ai = AIProvider(provider='openai')
+            ai.complete('Test prompt', purpose='reasoning', temperature=0.7)
+
+            call_args = mock_client_instance.chat.completions.create.call_args
+            # Temperature should NOT be in kwargs for reasoning models
+            self.assertNotIn('temperature', call_args.kwargs)
+
+    @patch('openai.OpenAI')
+    def test_default_model_has_temperature(self, mock_openai_client):
+        """Test that default models receive temperature parameter."""
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message.content = 'Test response'
+        mock_response.usage = Mock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+        mock_response.usage.total_tokens = 30
+
+        mock_client_instance = Mock()
+        mock_client_instance.chat.completions.create.return_value = mock_response
+        mock_openai_client.return_value = mock_client_instance
+
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-key'):
+            ai = AIProvider(provider='openai')
+            ai.complete('Test prompt', purpose='default', temperature=0.7)
+
+            call_args = mock_client_instance.chat.completions.create.call_args
+            # Temperature SHOULD be in kwargs for default models
+            self.assertIn('temperature', call_args.kwargs)
+            self.assertEqual(call_args.kwargs['temperature'], 0.7)
+
+    @patch('openai.OpenAI')
+    def test_reasoning_model_uses_max_completion_tokens(self, mock_openai_client):
+        """Test that reasoning models use max_completion_tokens instead of max_tokens."""
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message.content = 'Test response'
+        mock_response.usage = Mock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+        mock_response.usage.total_tokens = 30
+
+        mock_client_instance = Mock()
+        mock_client_instance.chat.completions.create.return_value = mock_response
+        mock_openai_client.return_value = mock_client_instance
+
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-key'):
+            ai = AIProvider(provider='openai')
+            ai.complete('Test prompt', purpose='reasoning', max_tokens=500)
+
+            call_args = mock_client_instance.chat.completions.create.call_args
+            # Should use max_completion_tokens for reasoning models
+            self.assertIn('max_completion_tokens', call_args.kwargs)
+            self.assertNotIn('max_tokens', call_args.kwargs)
+            self.assertEqual(call_args.kwargs['max_completion_tokens'], 500)
+
+    @patch('openai.OpenAI')
+    def test_default_model_uses_max_tokens(self, mock_openai_client):
+        """Test that default models use max_tokens parameter."""
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message.content = 'Test response'
+        mock_response.usage = Mock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+        mock_response.usage.total_tokens = 30
+
+        mock_client_instance = Mock()
+        mock_client_instance.chat.completions.create.return_value = mock_response
+        mock_openai_client.return_value = mock_client_instance
+
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-key'):
+            ai = AIProvider(provider='openai')
+            ai.complete('Test prompt', purpose='default', max_tokens=500)
+
+            call_args = mock_client_instance.chat.completions.create.call_args
+            # Should use max_tokens for default models
+            self.assertIn('max_tokens', call_args.kwargs)
+            self.assertNotIn('max_completion_tokens', call_args.kwargs)
+            self.assertEqual(call_args.kwargs['max_tokens'], 500)
+
+    @patch('openai.OpenAI')
+    def test_purpose_selects_correct_model(self, mock_openai_client):
+        """Test that purpose parameter selects the correct model."""
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message.content = 'Test response'
+        mock_response.usage = Mock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+        mock_response.usage.total_tokens = 30
+
+        mock_client_instance = Mock()
+        mock_client_instance.chat.completions.create.return_value = mock_response
+        mock_openai_client.return_value = mock_client_instance
+
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-key'):
+            ai = AIProvider(provider='openai')
+
+            # Test default purpose
+            ai.complete('Test prompt', purpose='default')
+            call_args = mock_client_instance.chat.completions.create.call_args
+            self.assertEqual(call_args.kwargs['model'], 'gpt-4o-mini')
+
+            # Test reasoning purpose
+            ai.complete('Test prompt', purpose='reasoning')
+            call_args = mock_client_instance.chat.completions.create.call_args
+            self.assertIn('gpt-5', call_args.kwargs['model'])
+
+    @patch('openai.OpenAI')
+    def test_explicit_model_overrides_purpose(self, mock_openai_client):
+        """Test that explicit model parameter overrides purpose-based selection."""
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message.content = 'Test response'
+        mock_response.usage = Mock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+        mock_response.usage.total_tokens = 30
+
+        mock_client_instance = Mock()
+        mock_client_instance.chat.completions.create.return_value = mock_response
+        mock_openai_client.return_value = mock_client_instance
+
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-key'):
+            ai = AIProvider(provider='openai')
+
+            # Explicit model should override purpose
+            ai.complete('Test prompt', model='gpt-4-turbo', purpose='reasoning')
+            call_args = mock_client_instance.chat.completions.create.call_args
+            self.assertEqual(call_args.kwargs['model'], 'gpt-4-turbo')

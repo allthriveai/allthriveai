@@ -6,6 +6,7 @@ Helper functions for billing operations, permissions, and token management.
 
 import logging
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -20,6 +21,16 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def is_beta_mode():
+    """Check if beta mode is enabled (bypasses all subscription gates)."""
+    return getattr(settings, 'BETA_MODE', False)
+
+
+def _log_beta_access(user, feature: str):
+    """Log when beta mode grants feature access (for auditing)."""
+    logger.debug(f'Beta mode: granting {feature} access to user {user.id}')
 
 
 # Transient errors that should be retried
@@ -69,6 +80,10 @@ def can_access_feature(user, feature: str) -> bool:
     Returns:
         True if user has access, False otherwise
     """
+    # Beta mode grants access to all features
+    if is_beta_mode():
+        return True
+
     subscription = get_user_subscription(user)
     if not subscription or not subscription.is_active:
         # Use free tier limits if no active subscription
@@ -114,6 +129,10 @@ def can_make_ai_request(user) -> tuple[bool, str]:
     Returns:
         Tuple of (can_make_request: bool, reason: str)
     """
+    # Beta mode allows unlimited AI requests
+    if is_beta_mode():
+        return True, 'Beta mode - unlimited access'
+
     subscription = get_user_subscription(user)
     if not subscription:
         return False, 'No subscription found'
@@ -157,6 +176,10 @@ def check_and_reserve_ai_request(user) -> tuple[bool, str]:
     Returns:
         Tuple of (success: bool, message: str)
     """
+    # Beta mode allows unlimited AI requests without reservation
+    if is_beta_mode():
+        return True, 'Beta mode - unlimited access'
+
     try:
         with transaction.atomic():
             # Lock the subscription row to prevent concurrent modifications
@@ -424,14 +447,46 @@ def get_subscription_status(user) -> dict:
     Returns:
         Dict with subscription details
     """
+    beta_mode = is_beta_mode()
     subscription = get_user_subscription(user)
     token_balance = get_or_create_token_balance(user)
 
+    # In beta mode, return full access even without subscription
     if not subscription:
+        if beta_mode:
+            return {
+                'has_subscription': False,
+                'tier': 'none',
+                'status': 'none',
+                'beta_mode': True,
+                'is_active': True,  # Considered active in beta
+                'ai_requests': {
+                    'limit': 0,  # 0 = unlimited
+                    'used': 0,
+                    'remaining': None,  # None = unlimited
+                    'reset_date': None,
+                },
+                'tokens': {
+                    'balance': token_balance.balance,
+                    'total_purchased': token_balance.total_purchased,
+                    'total_used': token_balance.total_used,
+                },
+                'features': {
+                    'marketplace': True,
+                    'go1_courses': True,
+                    'ai_mentor': True,
+                    'quests': True,
+                    'circles': True,
+                    'projects': True,
+                    'creator_tools': True,
+                    'analytics': True,
+                },
+            }
         return {
             'has_subscription': False,
             'tier': 'none',
             'status': 'none',
+            'beta_mode': False,
         }
 
     # Calculate AI requests remaining
@@ -442,34 +497,20 @@ def get_subscription_status(user) -> dict:
     # Check if user has a Stripe customer for billing management
     has_stripe_customer = bool(subscription.stripe_customer_id)
 
-    return {
-        'has_subscription': True,
-        'has_stripe_customer': has_stripe_customer,
-        'tier': {
-            'name': subscription.tier.name,
-            'slug': subscription.tier.slug,
-            'price_monthly': float(subscription.tier.price_monthly),
-            'price_annual': float(subscription.tier.price_annual),
-        },
-        'status': subscription.status,
-        'is_active': subscription.is_active,
-        'is_trial': subscription.is_trial,
-        'current_period_start': subscription.current_period_start,
-        'current_period_end': subscription.current_period_end,
-        'cancel_at_period_end': subscription.cancel_at_period_end,
-        'trial_end': subscription.trial_end,
-        'ai_requests': {
-            'limit': subscription.tier.monthly_ai_requests,
-            'used': subscription.ai_requests_used_this_month,
-            'remaining': ai_requests_remaining,
-            'reset_date': subscription.ai_requests_reset_date,
-        },
-        'tokens': {
-            'balance': token_balance.balance,
-            'total_purchased': token_balance.total_purchased,
-            'total_used': token_balance.total_used,
-        },
-        'features': {
+    # In beta mode, override all features to True
+    if beta_mode:
+        features = {
+            'marketplace': True,
+            'go1_courses': True,
+            'ai_mentor': True,
+            'quests': True,
+            'circles': True,
+            'projects': True,
+            'creator_tools': True,
+            'analytics': True,
+        }
+    else:
+        features = {
             'marketplace': subscription.tier.has_marketplace_access,
             'go1_courses': subscription.tier.has_go1_courses,
             'ai_mentor': subscription.tier.has_ai_mentor,
@@ -478,7 +519,37 @@ def get_subscription_status(user) -> dict:
             'projects': subscription.tier.has_projects,
             'creator_tools': subscription.tier.has_creator_tools,
             'analytics': subscription.tier.has_analytics,
+        }
+
+    return {
+        'has_subscription': True,
+        'has_stripe_customer': has_stripe_customer,
+        'beta_mode': beta_mode,
+        'tier': {
+            'name': subscription.tier.name,
+            'slug': subscription.tier.slug,
+            'price_monthly': float(subscription.tier.price_monthly),
+            'price_annual': float(subscription.tier.price_annual),
         },
+        'status': subscription.status,
+        'is_active': subscription.is_active or beta_mode,  # Active in beta mode
+        'is_trial': subscription.is_trial,
+        'current_period_start': subscription.current_period_start,
+        'current_period_end': subscription.current_period_end,
+        'cancel_at_period_end': subscription.cancel_at_period_end,
+        'trial_end': subscription.trial_end,
+        'ai_requests': {
+            'limit': 0 if beta_mode else subscription.tier.monthly_ai_requests,  # 0 = unlimited in beta
+            'used': subscription.ai_requests_used_this_month,
+            'remaining': None if beta_mode else ai_requests_remaining,  # None = unlimited in beta
+            'reset_date': subscription.ai_requests_reset_date,
+        },
+        'tokens': {
+            'balance': token_balance.balance,
+            'total_purchased': token_balance.total_purchased,
+            'total_used': token_balance.total_used,
+        },
+        'features': features,
     }
 
 

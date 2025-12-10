@@ -65,6 +65,7 @@ export interface SubscriptionStatus {
   tierName: string;
   tierSlug: string;
   tierType: string;
+  betaMode?: boolean;  // When true, all features are unlocked
   features: {
     marketplace: boolean;
     go1Courses: boolean;
@@ -78,7 +79,7 @@ export interface SubscriptionStatus {
   aiRequests: {
     limit: number;
     used: number;
-    remaining: number | null;
+    remaining: number | null;  // null = unlimited (beta mode)
   };
   tokens: {
     balance: number;

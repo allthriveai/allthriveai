@@ -734,3 +734,44 @@ class PersonalizationSettings(models.Model):
         self.allow_time_tracking = True
         self.allow_scroll_tracking = True
         self.save()
+
+
+class ImpersonationLog(models.Model):
+    """Audit log for admin impersonation (masquerade) sessions.
+
+    Tracks when admins log in as other users for support/testing purposes.
+    All impersonation actions are logged for security auditing.
+    """
+
+    admin_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='impersonation_sessions',
+        help_text='The admin who initiated the impersonation',
+    )
+    target_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='impersonated_sessions',
+        help_text='The user being impersonated',
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    reason = models.TextField(blank=True, help_text='Optional reason for impersonation')
+
+    class Meta:
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['admin_user', '-started_at']),
+            models.Index(fields=['target_user', '-started_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.admin_user.username} -> {self.target_user.username} at {self.started_at}'
+
+    def end_session(self):
+        """Mark the impersonation session as ended."""
+        self.ended_at = timezone.now()
+        self.save(update_fields=['ended_at'])

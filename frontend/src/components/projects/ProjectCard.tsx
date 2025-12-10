@@ -321,13 +321,10 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
     };
   };
 
-  // For RSS articles, link directly to external URL if available
-  const shouldLinkExternal = project.type === 'rss_article' && project.externalUrl;
-  const CardWrapper = selectionMode ? 'div' : (shouldLinkExternal ? 'a' : Link);
+  // Keep users on-site for all project types (including RSS articles which now show expert reviews)
+  const CardWrapper = selectionMode ? 'div' : Link;
   const cardProps = selectionMode
     ? { onClick: handleClick, style: { cursor: 'pointer' } }
-    : shouldLinkExternal
-    ? { href: project.externalUrl, target: '_blank', rel: 'noopener noreferrer', onClick: handleClick }
     : { to: projectUrl, onClick: handleClick };
 
   // Masonry variant - Flexible height for text, portrait for media

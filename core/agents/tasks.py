@@ -37,6 +37,93 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+def _get_user_friendly_error(exception: Exception) -> str:
+    """
+    Convert technical exceptions into user-friendly error messages.
+
+    Args:
+        exception: The exception that occurred
+
+    Returns:
+        A user-friendly error message string
+    """
+    error_str = str(exception).lower()
+    exception_type = type(exception).__name__
+
+    # OpenAI / AI provider errors
+    if 'rate limit' in error_str or 'ratelimit' in error_str:
+        return 'Our AI service is experiencing high demand. Please wait a moment and try again.'
+
+    if 'quota' in error_str or 'insufficient_quota' in error_str:
+        return 'AI service quota exceeded. Please try again later or contact support.'
+
+    if 'invalid_api_key' in error_str or 'authentication' in error_str:
+        return 'AI service configuration issue. Our team has been notified.'
+
+    if 'context_length_exceeded' in error_str or 'token' in error_str and 'limit' in error_str:
+        return 'Your message is too long. Please try a shorter message.'
+
+    if 'content_filter' in error_str or 'responsibleaipolicyviolation' in error_str:
+        return "Your request couldn't be processed due to content policy. Please rephrase your message."
+
+    if 'timeout' in error_str or 'timed out' in error_str:
+        return 'The request took too long. Please try again with a simpler request.'
+
+    if 'connection' in error_str and ('refused' in error_str or 'error' in error_str):
+        return 'Unable to connect to AI service. Please try again in a moment.'
+
+    # URL/Web scraping errors - rate limiting
+    if 'rate limit exceeded' in error_str and ('try again' in error_str or 'please' in error_str):
+        # This is our scraper's rate limit - extract domain if present
+        if 'for ' in error_str:
+            # Extract domain name from "Rate limit exceeded for reddit.com"
+            return "You've hit a rate limit for this website. Please wait a minute and try again."
+        return 'Rate limit reached. Please wait a moment and try again.'
+
+    if 'rate limited' in error_str or 'too many requests' in error_str or '429' in error_str:
+        return 'Too many requests to this website. Please wait a minute and try again.'
+
+    # URL/Web scraping errors - access issues
+    if 'access denied' in error_str or 'blocking automated' in error_str:
+        return 'This website is blocking automated access. Try a different URL or import manually.'
+
+    if 'url' in error_str and ('invalid' in error_str or 'fetch' in error_str):
+        return "Unable to access the provided URL. Please check that it's correct and publicly accessible."
+
+    if 'scrape' in error_str or 'webpage' in error_str:
+        return 'Unable to import content from this webpage. The site may be blocking automated access.'
+
+    # GitHub errors
+    if 'github' in error_str:
+        if 'not found' in error_str or '404' in error_str:
+            return 'GitHub repository not found. Please check the URL and ensure the repo is public or you have access.'
+        if 'rate limit' in error_str:
+            return 'GitHub API rate limit reached. Please try again in a few minutes.'
+        if 'authentication' in error_str or 'token' in error_str:
+            return 'GitHub authentication required. Please connect your GitHub account in settings.'
+
+    # Permission/auth errors
+    if 'permission' in error_str or 'forbidden' in error_str or '403' in error_str:
+        return "You don't have permission to perform this action."
+
+    if 'not found' in error_str or '404' in error_str:
+        return 'The requested resource was not found.'
+
+    # Database/server errors
+    if 'database' in error_str or 'db' in error_str:
+        return 'A database error occurred. Please try again.'
+
+    if exception_type in ('ConnectionError', 'ConnectionRefusedError'):
+        return 'Service temporarily unavailable. Please try again.'
+
+    if exception_type == 'ValidationError':
+        return f'Invalid input: {str(exception)[:100]}'
+
+    # Default: log the full error for debugging but show a generic message
+    logger.debug(f'Unhandled error type for user message: {exception_type}: {error_str[:200]}')
+    return 'Something went wrong processing your request. Please try again or rephrase your message.'
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_chat_message_task(self, conversation_id: str, message: str, user_id: int, channel_name: str):
     """
@@ -70,6 +157,12 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
             logger.warning(f'User {user_id} quota exceeded: {quota_reason}')
             # Get subscription status for frontend to show upgrade options
             subscription_status = get_subscription_status(user)
+
+            # Extract ai_requests data and convert date to string for serialization
+            ai_requests = subscription_status.get('ai_requests', {})
+            if 'reset_date' in ai_requests and ai_requests['reset_date']:
+                ai_requests = {**ai_requests, 'reset_date': str(ai_requests['reset_date'])}
+
             async_to_sync(channel_layer.group_send)(
                 channel_name,
                 {
@@ -79,7 +172,7 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
                     'reason': quota_reason,
                     'subscription': {
                         'tier': subscription_status.get('tier', {}).get('name', 'Free'),
-                        'ai_requests': subscription_status.get('ai_requests', {}),
+                        'ai_requests': ai_requests,
                         'tokens': subscription_status.get('tokens', {}),
                     },
                     'can_purchase_tokens': True,
@@ -224,13 +317,16 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         logger.error(f'Failed to process message (non-recoverable): {e}', exc_info=True)
         MetricsCollector.record_circuit_breaker_failure('langgraph_agent')
 
+        # Get user-friendly error message
+        user_error = _get_user_friendly_error(e)
+
         try:
             async_to_sync(channel_layer.group_send)(
                 channel_name,
                 {
                     'type': 'chat.message',
                     'event': 'error',
-                    'error': 'Failed to process message. Please try again.',
+                    'error': user_error,
                 },
             )
         except Exception as notify_error:

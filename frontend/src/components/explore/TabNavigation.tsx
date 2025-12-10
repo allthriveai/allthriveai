@@ -1,6 +1,6 @@
-import { SparklesIcon, FireIcon, ClockIcon, UserGroupIcon, NewspaperIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, FireIcon, ClockIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
-export type ExploreTab = 'for-you' | 'trending' | 'new' | 'news' | 'profiles';
+export type ExploreTab = 'for-you' | 'trending' | 'new' | 'profiles';
 
 interface TabConfig {
   id: ExploreTab;
@@ -12,7 +12,6 @@ const tabs: TabConfig[] = [
   { id: 'for-you', label: 'For You', icon: <SparklesIcon className="w-5 h-5" /> },
   { id: 'trending', label: 'Trending', icon: <FireIcon className="w-5 h-5" /> },
   { id: 'new', label: 'New', icon: <ClockIcon className="w-5 h-5" /> },
-  { id: 'news', label: 'News', icon: <NewspaperIcon className="w-5 h-5" /> },
   { id: 'profiles', label: 'Profiles', icon: <UserGroupIcon className="w-5 h-5" /> },
 ];
 

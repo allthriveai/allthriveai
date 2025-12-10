@@ -71,5 +71,11 @@ global.ResizeObserver = class ResizeObserver {
   unobserve() {}
 } as any;
 
+// Mock scrollIntoView - not available in jsdom
+Element.prototype.scrollIntoView = vi.fn();
+
+// Mock window.scrollTo - not available in jsdom
+window.scrollTo = vi.fn();
+
 // Suppress console errors in tests (optional - remove if you want to see them)
 // global.console.error = () => {};

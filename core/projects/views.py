@@ -636,6 +636,68 @@ def user_liked_projects(request, username):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+def user_clipped_projects(request, username):
+    """Get the combined clipped content for a given user.
+
+    This powers the Clipped tab on profile pages. It combines:
+    1. Projects the user has hearted (liked) on the platform
+    2. External projects the user has created with type='clipped'
+
+    Security:
+    - Only returns projects that are public (is_private=False, not archived)
+    - Rate limited similarly to other public project endpoints
+    - Uses select_related/prefetch_related to avoid N+1 queries
+    """
+    apply_throttle(request)
+
+    start_time = time.time()
+
+    try:
+        profile_user = User.objects.get(username=username.lower())
+    except User.DoesNotExist:
+        logger.warning(
+            f'Clipped projects access attempt for non-existent user: {username} '
+            f'from IP: {request.META.get("REMOTE_ADDR")}'
+        )
+        elapsed = time.time() - start_time
+        if elapsed < MIN_RESPONSE_TIME_SECONDS:
+            time.sleep(MIN_RESPONSE_TIME_SECONDS - elapsed)
+        return Response({'error': 'User not found', 'results': []}, status=404)
+
+    MAX_CLIPPED_PROJECTS = 500
+
+    # Get projects the user has hearted (liked)
+    liked_projects = (
+        Project.objects.filter(
+            likes__user=profile_user,
+            is_private=False,
+            is_archived=False,
+        )
+        .select_related('user')
+        .prefetch_related('tools', 'likes')
+    )
+
+    # Get projects the user owns with type='clipped' (external content)
+    clipped_type_projects = (
+        Project.objects.filter(
+            user=profile_user,
+            type=Project.ProjectType.CLIPPED,
+            is_private=False,
+            is_archived=False,
+        )
+        .select_related('user')
+        .prefetch_related('tools', 'likes')
+    )
+
+    # Combine both querysets, remove duplicates, order by created_at
+    combined = (liked_projects | clipped_type_projects).distinct().order_by('-created_at')[:MAX_CLIPPED_PROJECTS]
+
+    serializer = ProjectSerializer(combined, many=True, context={'request': request})
+    return Response({'results': serializer.data})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def explore_projects(request):
     """Explore projects with filtering, search, and pagination.
 
@@ -783,31 +845,8 @@ def explore_projects(request):
         except (ValueError, IndexError):
             filter_topic_names = None  # Invalid topics, ignore
 
-    # Apply tab-specific filters
-    if tab == 'news':
-        # Filter for RSS article projects only
-        # Sort by published_date (original article date) when available, otherwise by created_at
-        from django.db.models.functions import Coalesce
-
-        queryset = (
-            queryset.filter(type='rss_article')
-            .annotate(effective_date=Coalesce('published_date', 'created_at'))
-            .order_by('-effective_date')
-        )
-
-        # Paginate and return news feed
-        page_size = min(int(request.GET.get('page_size', 30)), 100)
-        page_num = int(request.GET.get('page', 1))
-
-        paginator = ProjectPagination()
-        paginator.page_size = page_size
-        page = paginator.paginate_queryset(queryset, request)
-
-        serializer = ProjectSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
-
     # Apply sorting or personalization based on tab
-    elif tab == 'for-you':
+    if tab == 'for-you':
         # Use new personalization engine for "For You" feed
         from services.personalization import ColdStartService, PersonalizationEngine
 

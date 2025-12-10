@@ -9,6 +9,13 @@ from .agents.auth_chat_views import auth_chat_finalize, auth_chat_state, auth_ch
 from .agents.profile_views import profile_generate_auto, profile_generate_stream, profile_preview_sections
 from .agents.project_chat_views import project_chat_stream_v2
 from .agents.views import ConversationViewSet, CreateProjectFromImageView, MessageViewSet, detect_intent
+from .auth.impersonation import (
+    impersonation_status,
+    list_impersonatable_users,
+    list_impersonation_logs,
+    start_impersonation,
+    stop_impersonation,
+)
 from .auth.views import (
     UserProfileView,
     convert_guest_account,
@@ -59,6 +66,7 @@ from .projects.views import (
     public_user_projects,
     semantic_search,
     toggle_project_promotion,
+    user_clipped_projects,
     user_liked_projects,
 )
 from .quizzes.views import QuizAttemptViewSet, QuizViewSet
@@ -172,6 +180,12 @@ urlpatterns = [
     path('admin/invitations/<int:invitation_id>/reject/', reject_invitation, name='admin_reject_invitation'),
     path('admin/invitations/bulk-approve/', bulk_approve_invitations, name='admin_bulk_approve_invitations'),
     path('admin/invitations/bulk-reject/', bulk_reject_invitations, name='admin_bulk_reject_invitations'),
+    # Admin Impersonation (Masquerade) endpoints
+    path('admin/impersonate/start/', start_impersonation, name='admin_start_impersonation'),
+    path('admin/impersonate/stop/', stop_impersonation, name='admin_stop_impersonation'),
+    path('admin/impersonate/status/', impersonation_status, name='admin_impersonation_status'),
+    path('admin/impersonate/logs/', list_impersonation_logs, name='admin_impersonation_logs'),
+    path('admin/impersonate/users/', list_impersonatable_users, name='admin_impersonatable_users'),
     # Explore endpoints (public)
     path('projects/explore/', explore_projects, name='explore_projects'),
     path('projects/topic-suggestions/', get_topic_suggestions, name='topic_suggestions'),
@@ -190,6 +204,7 @@ urlpatterns = [
     path('users/<str:username>/projects/', public_user_projects, name='public_user_projects'),
     path('users/<str:username>/projects/<str:slug>/', get_project_by_slug, name='get_project_by_slug'),
     path('users/<str:username>/liked-projects/', user_liked_projects, name='user_liked_projects'),
+    path('users/<str:username>/clipped-projects/', user_clipped_projects, name='user_clipped_projects'),
     # Follow endpoints
     path('users/<str:username>/follow/', toggle_follow, name='toggle_follow'),
     path('users/<str:username>/followers/', list_followers, name='list_followers'),

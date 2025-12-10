@@ -25,7 +25,7 @@ export default function ExploreProjectsPage() {
   async function loadProjects() {
     try {
       setIsLoading(true);
-      const response = await exploreProjects({ tab: 'all', page_size: 100 });
+      const response = await exploreProjects({ tab: 'new', page_size: 100 });
       setAllProjects(response.results || []);
     } catch (err: any) {
       console.error('Failed to load projects:', err);

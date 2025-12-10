@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   ChartBarIcon,
   EnvelopeIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarItem {
@@ -45,6 +46,11 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
       path: '/admin/invitations',
       icon: EnvelopeIcon,
       badge: pendingInvitationsCount > 0 ? pendingInvitationsCount : undefined,
+    },
+    {
+      label: 'Impersonate',
+      path: '/admin/impersonate',
+      icon: UserGroupIcon,
     },
     // Future admin sections can be added here:
     // {

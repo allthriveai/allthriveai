@@ -93,14 +93,13 @@ export function ExplorePage() {
   }, [filterOptions, selectedToolSlugs]);
 
   // Map tab to API tab parameter (memoized)
-  type TabType = 'all' | 'new' | 'for-you' | 'trending' | 'news';
+  type TabType = 'new' | 'for-you' | 'trending';
   const apiTab: TabType = useMemo(() => {
     switch (activeTab) {
       case 'for-you': return 'for-you' as const;
       case 'trending': return 'trending' as const;
       case 'new': return 'new' as const;
-      case 'news': return 'news' as const;
-      default: return 'all' as const;
+      default: return 'for-you' as const;
     }
   }, [activeTab]);
 
@@ -176,14 +175,14 @@ export function ExplorePage() {
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Fetch quizzes (exclude from profiles and news tabs)
+  // Fetch quizzes (exclude from profiles tab)
   const {
     data: quizzesData,
     isLoading: isLoadingQuizzes,
   } = useQuery({
     queryKey: ['exploreQuizzes', searchQuery],
     queryFn: () => getQuizzes({ search: searchQuery || undefined }),
-    enabled: activeTab !== 'profiles' && activeTab !== 'news',
+    enabled: activeTab !== 'profiles',
     staleTime: 30 * 1000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -221,9 +220,9 @@ export function ExplorePage() {
     return searchQuery && semanticResults ? semanticResults : allProjects;
   }, [searchQuery, semanticResults, allProjects]);
 
-  // Don't show quizzes in profiles or news tabs
+  // Don't show quizzes in profiles tab
   const displayQuizzes = useMemo(() => {
-    if (activeTab === 'profiles' || activeTab === 'news') return [];
+    if (activeTab === 'profiles') return [];
     return quizzesData?.results || [];
   }, [activeTab, quizzesData?.results]);
   const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isWaitingForFilters;

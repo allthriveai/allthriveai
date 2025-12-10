@@ -237,6 +237,14 @@ export async function getLikedProjects(username: string): Promise<Project[]> {
 }
 
 /**
+ * Get all clipped content for a user (hearted projects + external clipped projects)
+ */
+export async function getClippedProjects(username: string): Promise<Project[]> {
+  const response = await api.get<{ results: ProjectApiResponse[] }>(`/users/${username}/clipped-projects/`);
+  return response.data.results.map(transformProject);
+}
+
+/**
  * Delete a redirect for a project
  */
 export async function deleteProjectRedirect(projectId: number, redirectId: number): Promise<void> {

@@ -88,6 +88,7 @@ httpx[http2]>=0.27.0  # HTTP client with HTTP/2 support for YouTube API
 tenacity>=9.0.0  # Retry logic for API calls
 beautifulsoup4>=4.12.0  # HTML parsing for URL import scraping
 playwright>=1.40.0  # Headless browser for JavaScript-rendered pages
+curl_cffi>=0.7.0  # Browser TLS fingerprint impersonation for anti-bot evasion
 
 # MCP & YAML
 fastmcp>=2.0.0  # MCP client for multi-source analysis

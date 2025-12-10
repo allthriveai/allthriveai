@@ -52,6 +52,10 @@ class ImportGitHubProjectInput(BaseModel):
     url: str = Field(description='GitHub repository URL (e.g., https://github.com/user/repo)')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
     is_private: bool = Field(default=False, description='Whether to mark the project as private (hidden from public)')
+    is_owned: bool = Field(
+        default=True,
+        description='Whether the user owns/created this project (True) or is clipping external content (False)',
+    )
 
 
 class CreateProductInput(BaseModel):
@@ -70,6 +74,10 @@ class ScrapeWebpageInput(BaseModel):
     url: str = Field(description='The URL of the webpage to scrape (e.g., https://example.com/project)')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
     is_private: bool = Field(default=False, description='Whether to mark the project as private')
+    is_owned: bool = Field(
+        default=True,
+        description='Whether the user owns/created this project (True) or is clipping external content (False)',
+    )
 
 
 # Tools
@@ -283,6 +291,7 @@ def import_github_project(
     url: str,
     is_showcase: bool = True,
     is_private: bool = False,
+    is_owned: bool = True,
     state: dict | None = None,
 ) -> dict:
     """
@@ -390,11 +399,13 @@ def import_github_project(
     # Create project with full metadata
     # NOTE: banner_url is left empty (defaults to gradient on frontend)
     #       featured_image_url gets the hero image for cards/sharing
+    # Determine project type based on ownership
+    project_type = Project.ProjectType.GITHUB_REPO if is_owned else Project.ProjectType.CLIPPED
     project = Project.objects.create(
         user=user,
         title=repo_summary.get('name', repo),
         description=analysis.get('description') or repo_summary.get('description', ''),
-        type=Project.ProjectType.GITHUB_REPO,
+        type=project_type,
         external_url=url,
         # Set featured image for cards/sharing - banner stays empty (gradient)
         featured_image_url=hero_image,
@@ -558,6 +569,7 @@ def scrape_webpage_for_project(
     url: str,
     is_showcase: bool = True,
     is_private: bool = False,
+    is_owned: bool = True,
     state: dict | None = None,
 ) -> dict:
     """
@@ -667,11 +679,13 @@ def scrape_webpage_for_project(
             content['links'] = extracted.links
 
         # Create the project with full metadata
+        # Determine project type based on ownership
+        project_type = Project.ProjectType.OTHER if is_owned else Project.ProjectType.CLIPPED
         project = Project.objects.create(
             user=user,
             title=extracted.title or 'Imported Project',
             description=analysis.get('description') or extracted.description or '',
-            type=Project.ProjectType.OTHER,
+            type=project_type,
             external_url=url,
             featured_image_url=hero_image,
             content=content,

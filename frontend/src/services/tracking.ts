@@ -13,7 +13,6 @@ export type ClickSource =
   | 'explore_for_you'
   | 'explore_trending'
   | 'explore_new'
-  | 'explore_news'
   | 'search'
   | 'profile'
   | 'related';
@@ -159,8 +158,6 @@ export function getClickSourceFromTab(tab: string): ClickSource {
       return 'explore_trending';
     case 'new':
       return 'explore_new';
-    case 'news':
-      return 'explore_news';
     default:
       return 'explore_new';
   }
