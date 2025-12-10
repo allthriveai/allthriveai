@@ -162,9 +162,11 @@ Resources:
               Value: 'False'
             - Name: DJANGO_SETTINGS_MODULE
               Value: config.settings
+            # IMPORTANT: Must include all domain variants for OAuth to work
+            # api.${Domain} is required for django-allauth OAuth callbacks
             - Name: ALLOWED_HOSTS
               Value: !Sub
-                - '${ALBDns},${Domain}'
+                - '${ALBDns},${Domain},www.${Domain},api.${Domain}'
                 - ALBDns: !ImportValue
                     Fn::Sub: ${EnvironmentName}-ALBDNSName
                   Domain: !If [HasDomain, !Ref DomainName, 'localhost']
@@ -901,6 +903,121 @@ Resources:
           PredefinedMetricType: ECSServiceAverageCPUUtilization
         ScaleInCooldown: 300
         ScaleOutCooldown: 60
+
+  # CloudWatch Alarms for Service Health
+  # These alert when critical services are down or unhealthy
+
+  CeleryServiceAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${EnvironmentName}-celery-service-unhealthy
+      AlarmDescription: Celery worker service has no running tasks - battle processing will fail
+      MetricName: RunningTaskCount
+      Namespace: ECS/ContainerInsights
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+        - Name: ServiceName
+          Value: !GetAtt CeleryService.Name
+      TreatMissingData: breaching
+
+  CeleryBeatServiceAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${EnvironmentName}-celery-beat-unhealthy
+      AlarmDescription: Celery Beat service is down - scheduled tasks (battle cleanup) will not run
+      MetricName: RunningTaskCount
+      Namespace: ECS/ContainerInsights
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+        - Name: ServiceName
+          Value: !GetAtt CeleryBeatService.Name
+      TreatMissingData: breaching
+
+  # Alarm for high CPU on Celery (indicates backlog of tasks)
+  CeleryCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${EnvironmentName}-celery-high-cpu
+      AlarmDescription: Celery workers under heavy load - tasks may be backing up (including battle judging)
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 85
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+        - Name: ServiceName
+          Value: !GetAtt CeleryService.Name
+
+  # Log Metric Filter - Track Celery Task Failures
+  # This catches task exceptions and timeouts
+  CeleryTaskFailureMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref CeleryLogGroup
+      FilterPattern: '?ERROR ?Exception ?Traceback ?"Task failed" ?SoftTimeLimitExceeded ?TimeLimitExceeded'
+      MetricTransformations:
+        - MetricName: CeleryTaskFailures
+          MetricNamespace: !Sub ${EnvironmentName}/Celery
+          MetricValue: '1'
+          DefaultValue: 0
+
+  # Alarm when task failures exceed threshold
+  CeleryTaskFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${EnvironmentName}-celery-task-failures
+      AlarmDescription: High rate of Celery task failures - battles may not be completing
+      MetricName: CeleryTaskFailures
+      Namespace: !Sub ${EnvironmentName}/Celery
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  # Log Metric Filter - Track Battle-specific errors
+  BattleErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref CeleryLogGroup
+      FilterPattern: '"judge_battle" ?failed ?error ?exception'
+      MetricTransformations:
+        - MetricName: BattleJudgingErrors
+          MetricNamespace: !Sub ${EnvironmentName}/Battles
+          MetricValue: '1'
+          DefaultValue: 0
+
+  # Alarm for battle judging failures
+  BattleJudgingFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${EnvironmentName}-battle-judging-failures
+      AlarmDescription: Battle judging tasks are failing - battles may be stuck
+      MetricName: BattleJudgingErrors
+      Namespace: !Sub ${EnvironmentName}/Battles
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
 
 Conditions:
   HasDomain: !Not [!Equals [!Ref DomainName, '']]

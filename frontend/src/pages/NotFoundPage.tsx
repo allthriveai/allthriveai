@@ -99,6 +99,7 @@ export default function NotFoundPage() {
   }, [handleMove]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent page scrolling while playing
     if (e.touches.length > 0) {
       handleMove(e.touches[0].clientX, e.touches[0].clientY);
     }
@@ -184,6 +185,15 @@ export default function NotFoundPage() {
     fireLaser();
   }, [fireLaser]);
 
+  // Handle touch start - move ship and fire, prevent scrolling
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent page scrolling
+    if (e.touches.length > 0) {
+      handleMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    fireLaser();
+  }, [handleMove, fireLaser]);
+
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -242,8 +252,34 @@ export default function NotFoundPage() {
     laserIdRef.current = 0;
   }, []);
 
+  // Prevent body scroll on mobile when this page is mounted
+  useEffect(() => {
+    // Save original styles
+    const originalOverflow = document.body.style.overflow;
+    const originalPosition = document.body.style.position;
+    const originalHeight = document.body.style.height;
+    const originalWidth = document.body.style.width;
+    const htmlOverflow = document.documentElement.style.overflow;
+
+    // Lock body scroll
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.height = '100%';
+    document.body.style.width = '100%';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      // Restore original styles
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = originalPosition;
+      document.body.style.height = originalHeight;
+      document.body.style.width = originalWidth;
+      document.documentElement.style.overflow = htmlOverflow;
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden font-sans text-white">
+    <div className="fixed inset-0 bg-background overflow-hidden font-sans text-white">
       {/* Ambient Background Effects */}
       <div className="fixed inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
       <div className="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
@@ -269,11 +305,11 @@ export default function NotFoundPage() {
       {/* Game Container */}
       <div
         ref={containerRef}
-        className="relative w-full h-screen cursor-crosshair select-none"
+        className="absolute inset-0 cursor-crosshair select-none touch-none"
         onMouseMove={handleMouseMove}
         onTouchMove={handleTouchMove}
         onClick={handleFire}
-        onTouchStart={handleFire}
+        onTouchStart={handleTouchStart}
       >
         {/* Logo, Score & Timer Display */}
         <div className="absolute top-4 left-4 md:top-6 md:left-6 z-20 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">

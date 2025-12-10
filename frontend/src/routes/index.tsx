@@ -48,22 +48,9 @@ export function AppRoutes() {
     <Routes>
       {/* Landing page - public, redirects authenticated users to /explore */}
       <Route path="/" element={<LandingPage />} />
-      <Route
-        path="/about"
-        element={
-          <ProtectedRoute>
-            <AboutPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/about-us"
-        element={
-          <ProtectedRoute>
-            <AboutPage />
-          </ProtectedRoute>
-        }
-      />
+      {/* About page - public route */}
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/about-us" element={<AboutPage />} />
       <Route
         path="/styleguide"
         element={

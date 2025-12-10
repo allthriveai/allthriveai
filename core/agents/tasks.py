@@ -282,6 +282,34 @@ def _process_with_orchestrator(
 
     result = {'project_created': False, 'intent': 'orchestrated'}
 
+    # Fast-path: Check for obvious image generation requests to skip supervisor LLM call
+    # This routes directly to Gemini without using OpenAI for routing
+    message_lower = message.lower()
+    image_keywords = [
+        'create an image',
+        'create an infographic',
+        'make an image',
+        'make an infographic',
+        'generate an image',
+        'generate an infographic',
+        'help me create an infographic',
+        'create a visual',
+        'make a visual',
+        'create image',
+        'create infographic',
+        'nano banana',
+    ]
+    if any(keyword in message_lower for keyword in image_keywords):
+        logger.info('Fast-path: Routing directly to image generation (Gemini)')
+        result['intent'] = 'image_generation'
+        return _process_image_generation(
+            conversation_id=conversation_id,
+            message=message,
+            user=user,
+            channel_name=channel_name,
+            channel_layer=channel_layer,
+        )
+
     # Get orchestration plan first to determine routing
     supervisor = get_supervisor(user_id=user.id)
     plan = supervisor.create_plan(message, conversation_history)
@@ -1350,7 +1378,7 @@ def _process_image_generation(
     """
     from .models import ImageGenerationIteration, ImageGenerationSession
 
-    logger.info(f'Processing image generation: conversation={conversation_id}')
+    logger.info(f'Processing image generation: conversation={conversation_id}, message="{message}"')
 
     # Check if the message is too vague/generic and needs more details
     vague_prompts = [
@@ -1363,13 +1391,30 @@ def _process_image_generation(
         'generate an infographic',
         'i want an image',
         'i want an infographic',
+        'i want to create an infographic',
+        'i want to create an image',
+        'i want to make an infographic',
+        'i want to make an image',
         'create a visual',
         'make a visual',
+        # "Help me" variations
+        'help me create an infographic',
+        'help me create an image',
+        'help me make an infographic',
+        'help me make an image',
+        'help me generate an infographic',
+        'help me generate an image',
+        "i'm interested in creating an infographic",
+        "i'd like to create an infographic",
+        "i'd like to make an infographic",
     ]
     normalized_message = message.lower().strip()
+    # Also check if message contains vague phrases (not just startswith)
     is_vague_request = any(
-        normalized_message == vague or normalized_message.startswith(vague) for vague in vague_prompts
+        normalized_message == vague or normalized_message.startswith(vague) or vague in normalized_message
+        for vague in vague_prompts
     )
+    logger.info(f'Vague request check: normalized="{normalized_message}", is_vague={is_vague_request}')
 
     if is_vague_request:
         # Send a prompt asking for more details with explicit format choice

@@ -64,6 +64,18 @@ User: "Find me some AI agent projects"
 }}
 ```
 
+User: "Help me create an infographic" or "Create an image for me" or "Make a visual"
+```json
+{{
+  "analysis": "User wants to generate an image or infographic",
+  "plan_type": "single",
+  "agents": [
+    {{"agent": "image_generation", "task": "Generate image/infographic based on user description", "depends_on": null}}
+  ],
+  "synthesis_needed": false
+}}
+```
+
 User: "What's my learning progress and recommend projects based on my interests?"
 ```json
 {{

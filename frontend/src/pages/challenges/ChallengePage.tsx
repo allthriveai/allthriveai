@@ -103,8 +103,17 @@ export default function ChallengePage() {
         : await getCurrentChallenge();
       setChallenge(data);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load challenge';
-      setError(errorMessage);
+      // Check if this is a "no challenge found" 404 (not a real error)
+
+      const axiosError = err as any;
+      const isNotFound = axiosError?.response?.status === 404 &&
+        axiosError?.response?.data?.detail?.toLowerCase().includes('no active challenge');
+
+      // Don't set error for expected "no challenge" case - just leave challenge as null
+      if (!isNotFound) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load challenge';
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }

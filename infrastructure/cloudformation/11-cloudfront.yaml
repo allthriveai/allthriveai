@@ -30,10 +30,17 @@ Parameters:
       - PriceClass_All
     Description: CloudFront price class
 
+  HostedZoneId:
+    Type: String
+    Default: ''
+    Description: Route53 Hosted Zone ID for DNS records
+
 Conditions:
+  HasHostedZone: !Not [!Equals [!Ref HostedZoneId, '']]
   HasCustomDomain: !Not [!Equals [!Ref DomainName, '']]
   HasCertificate: !Not [!Equals [!Ref CertificateArn, '']]
   UseCustomDomain: !And [!Condition HasCustomDomain, !Condition HasCertificate]
+  CreateDNSRecords: !And [!Condition UseCustomDomain, !Condition HasHostedZone]
 
 Resources:
   # CloudFront Distribution
@@ -49,10 +56,13 @@ Resources:
         IPV6Enabled: true
 
         # Custom domain configuration
+        # IMPORTANT: api.${DomainName} must be included for OAuth (django-allauth) to work
+        # OAuth callbacks use api.allthrive.ai/accounts/* endpoints
         Aliases: !If
           - UseCustomDomain
           - - !Ref DomainName
             - !Sub www.${DomainName}
+            - !Sub api.${DomainName}
           - !Ref AWS::NoValue
 
         ViewerCertificate: !If
@@ -188,6 +198,114 @@ Resources:
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: !Ref APIOriginRequestPolicy
 
+          # OAuth/Accounts Behavior (django-allauth)
+          # IMPORTANT: Required for Google, GitHub, LinkedIn OAuth login
+          # These routes handle OAuth callbacks and must go to Django backend
+          - PathPattern: '/accounts/*'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            # Use AWS managed CachingDisabled policy (no caching for auth)
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: !Ref APIOriginRequestPolicy
+
+          # Obscured Django Admin (thrive-manage instead of /admin)
+          - PathPattern: '/thrive-manage/*'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: !Ref APIOriginRequestPolicy
+
+          # SEO: Sitemaps (Django-generated)
+          - PathPattern: '/sitemap*.xml'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            CachePolicyId: !Ref SEOCachePolicy
+            OriginRequestPolicyId: !Ref FrontendOriginRequestPolicy
+
+          # SEO: robots.txt (Django-generated)
+          - PathPattern: '/robots.txt'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            CachePolicyId: !Ref SEOCachePolicy
+            OriginRequestPolicyId: !Ref FrontendOriginRequestPolicy
+
+          # Well-known paths (AI plugin manifest, etc.)
+          - PathPattern: '/.well-known/*'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            CachePolicyId: !Ref SEOCachePolicy
+            OriginRequestPolicyId: !Ref FrontendOriginRequestPolicy
+
+          # Prometheus metrics endpoint
+          - PathPattern: '/metrics'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: !Ref FrontendOriginRequestPolicy
+
+          # Health check endpoint
+          - PathPattern: '/db/health/*'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: !Ref FrontendOriginRequestPolicy
+
         # Custom Error Responses - REMOVED
         # We now use a CloudFront Function (SPARoutingFunction) to handle SPA routing
         # by rewriting non-file paths to /index.html at the viewer-request stage.
@@ -232,7 +350,30 @@ Resources:
           var uri = request.uri;
 
           // Don't rewrite if path starts with known backend/asset prefixes
-          var backendPrefixes = ['/api/', '/ws/', '/media/', '/admin/', '/static/', '/assets/'];
+          // IMPORTANT: These paths are served by Django backend, not S3
+          var backendPrefixes = [
+            '/api/',           // REST API
+            '/ws/',            // WebSockets
+            '/media/',         // User uploads
+            '/admin/',         // Django admin (legacy path)
+            '/accounts/',      // OAuth (django-allauth)
+            '/thrive-manage/', // Obscured Django admin
+            '/db/',            // Health checks
+            '/.well-known/',   // AI plugin manifest, etc.
+            '/static/',        // Static files
+            '/assets/'         // Asset files
+          ];
+
+          // Also check for exact matches
+          var exactMatches = ['/sitemap.xml', '/robots.txt', '/metrics'];
+          if (exactMatches.indexOf(uri) !== -1) {
+            return request;
+          }
+
+          // Check sitemap pattern (sitemap-*.xml)
+          if (uri.match(/^\/sitemap.*\.xml$/)) {
+            return request;
+          }
           for (var i = 0; i < backendPrefixes.length; i++) {
             if (uri.startsWith(backendPrefixes[i])) {
               return request;
@@ -276,6 +417,27 @@ Resources:
 
   # Note: API and WebSocket behaviors use AWS managed CachingDisabled policy
   # Policy ID: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+
+  # Cache policy for SEO files (sitemaps, robots.txt)
+  # Short TTL since these can change frequently
+  SEOCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub ${EnvironmentName}-allthrive-seo-cache
+        Comment: Cache policy for SEO files (sitemaps, robots.txt)
+        DefaultTTL: 3600      # 1 hour
+        MaxTTL: 86400         # 1 day
+        MinTTL: 60            # 1 minute
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
 
   MediaCachePolicy:
     Type: AWS::CloudFront::CachePolicy
@@ -381,6 +543,48 @@ Resources:
             ModeBlock: true
             Override: true
             Protection: true
+
+  # Route53 DNS Records
+  # These point all domain variants to CloudFront
+  # IMPORTANT: api.${DomainName} is required for OAuth to work
+
+  ApexDomainRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDNSRecords
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront hosted zone ID (constant)
+        EvaluateTargetHealth: false
+
+  WwwDomainRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDNSRecords
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub www.${DomainName}
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+        EvaluateTargetHealth: false
+
+  # IMPORTANT: api.${DomainName} must point to CloudFront for OAuth to work
+  # OAuth callbacks use api.allthrive.ai/accounts/* endpoints
+  ApiDomainRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDNSRecords
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub api.${DomainName}
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+        EvaluateTargetHealth: false
 
 Outputs:
   CloudFrontDistributionId:

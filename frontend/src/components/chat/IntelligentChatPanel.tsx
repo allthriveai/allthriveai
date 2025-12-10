@@ -1035,7 +1035,7 @@ export function IntelligentChatPanel({
     // Default empty state - conversational greeting with quick actions
     const quickActions: Array<{ label: string; icon: string | import('@fortawesome/fontawesome-svg-core').IconDefinition; prompt: string }> = [
       { label: 'Add a project', icon: faFolderPlus, prompt: 'I want to add a new project to my profile' },
-      { label: 'Make an infographic', icon: 'banana', prompt: 'Help me create an infographic' },
+      { label: 'Make an infographic', icon: 'banana', prompt: 'I want to create an infographic' },
       { label: 'Brainstorm ideas', icon: faLightbulb, prompt: 'Help me brainstorm some ideas' },
       { label: 'Find something', icon: faMagnifyingGlass, prompt: 'Help me find something on All Thrive' },
     ];

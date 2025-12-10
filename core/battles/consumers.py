@@ -447,6 +447,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
         try:
             battle = PromptBattle.objects.get(id=self.battle_id)
             battle.phase = new_phase
+            battle.phase_changed_at = timezone.now()
             if new_phase == BattlePhase.ACTIVE:
                 battle.status = BattleStatus.ACTIVE
                 battle.started_at = timezone.now()

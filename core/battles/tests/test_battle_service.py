@@ -596,6 +596,177 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TransactionTestCase):
         mock_shuffle.assert_called_once()
 
 
+class BattleServiceJudgeBattleCustomCriteriaTestCase(TransactionTestCase):
+    """Test cases for judge_battle with custom challenge type criteria.
+
+    This tests the scenario where a ChallengeType has custom judging criteria
+    with names that differ from the default (e.g., "Challenge Relevance" instead
+    of "Relevance"). The AI must use the exact criterion names for proper scoring.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.user1 = User.objects.create_user(
+            username='user1',
+            email='user1@example.com',
+            password='testpass123',
+        )
+
+        self.user2 = User.objects.create_user(
+            username='user2',
+            email='user2@example.com',
+            password='testpass123',
+        )
+
+        # Create challenge type with CUSTOM criteria names
+        self.challenge_type = ChallengeType.objects.create(
+            key='dreamscape_design',
+            name='Dreamscape Design',
+            description='Create a dreamlike scene',
+            judging_criteria=[
+                {'name': 'Creative Vision', 'weight': 30, 'description': 'How original?'},
+                {'name': 'Visual Impact', 'weight': 25, 'description': 'How striking?'},
+                {'name': 'Challenge Relevance', 'weight': 25, 'description': 'How relevant?'},
+                {'name': 'Artistic Cohesion', 'weight': 20, 'description': 'How cohesive?'},
+            ],
+        )
+
+        self.battle = PromptBattle.objects.create(
+            challenger=self.user1,
+            opponent=self.user2,
+            challenge_text='Create a dream world',
+            challenge_type=self.challenge_type,
+            phase=BattlePhase.JUDGING,
+            status=BattleStatus.ACTIVE,
+        )
+
+        self.submission1 = BattleSubmission.objects.create(
+            battle=self.battle,
+            user=self.user1,
+            prompt_text='User 1 prompt',
+            submission_type='image',
+            generated_output_url='https://example.com/image1.png',
+        )
+
+        self.submission2 = BattleSubmission.objects.create(
+            battle=self.battle,
+            user=self.user2,
+            prompt_text='User 2 prompt',
+            submission_type='image',
+            generated_output_url='https://example.com/image2.png',
+        )
+
+        self.service = BattleService()
+
+    @patch('core.battles.models.BattleVote.objects.create')
+    @patch('services.ai.provider.AIProvider')
+    def test_judge_battle_uses_custom_criteria_names(self, mock_ai_provider_class, mock_vote_create):
+        """Test that judge_battle uses custom criteria names from challenge type.
+
+        This is a regression test for a bug where the judging prompt hardcoded
+        criterion names, causing mismatches when ChallengeType had custom names
+        like 'Challenge Relevance' vs 'Relevance'.
+        """
+
+        # Mock responses using the CUSTOM criteria names
+        def mock_complete_with_image(prompt, image_url, model):
+            # Verify the prompt contains the custom criteria names
+            assert 'Creative Vision' in prompt, 'Prompt should contain custom criterion name "Creative Vision"'
+            assert 'Challenge Relevance' in prompt, 'Prompt should contain custom criterion name "Challenge Relevance"'
+            assert 'Artistic Cohesion' in prompt, 'Prompt should contain custom criterion name "Artistic Cohesion"'
+
+            if 'image1' in image_url:
+                return """
+                {
+                    "scores": {
+                        "Creative Vision": 90,
+                        "Visual Impact": 85,
+                        "Challenge Relevance": 88,
+                        "Artistic Cohesion": 82
+                    },
+                    "feedback": "Excellent creative vision!"
+                }
+                """
+            else:
+                return """
+                {
+                    "scores": {
+                        "Creative Vision": 70,
+                        "Visual Impact": 75,
+                        "Challenge Relevance": 72,
+                        "Artistic Cohesion": 68
+                    },
+                    "feedback": "Good effort."
+                }
+                """
+
+        mock_ai_instance = MagicMock()
+        mock_ai_instance.complete_with_image.side_effect = mock_complete_with_image
+        mock_ai_instance.last_usage = {'total_tokens': 500}
+        mock_ai_provider_class.return_value = mock_ai_instance
+
+        result = self.service.judge_battle(self.battle)
+
+        # User1 should win with higher scores
+        self.assertEqual(result['winner_id'], self.user1.id)
+
+        # Verify scores were calculated correctly using custom criteria weights
+        # User1: (90*30 + 85*25 + 88*25 + 82*20) / 100 = 86.65
+        # User2: (70*30 + 75*25 + 72*25 + 68*20) / 100 = 71.35
+        self.submission1.refresh_from_db()
+        self.submission2.refresh_from_db()
+
+        # Scores should NOT be the same (the bug caused both to be 50 + some fraction)
+        self.assertNotEqual(self.submission1.score, self.submission2.score)
+        # User1 should have higher score
+        self.assertGreater(self.submission1.score, self.submission2.score)
+        # Verify scores are in expected range (not defaulting to 50)
+        self.assertGreater(self.submission1.score, 80)  # Should be ~86.65
+        self.assertGreater(self.submission2.score, 65)  # Should be ~71.35
+
+    @patch('core.battles.models.BattleVote.objects.create')
+    @patch('services.ai.provider.AIProvider')
+    def test_judge_battle_tiebreaker_uses_custom_criteria(self, mock_ai_provider_class, mock_vote_create):
+        """Test that tiebreaker logic uses custom criteria names correctly."""
+
+        # Mock responses with tied total scores but different "Creative Vision"
+        def mock_complete_with_image(prompt, image_url, model):
+            if 'image1' in image_url:
+                return """
+                {
+                    "scores": {
+                        "Creative Vision": 90,
+                        "Visual Impact": 70,
+                        "Challenge Relevance": 70,
+                        "Artistic Cohesion": 70
+                    },
+                    "feedback": "High creativity!"
+                }
+                """
+            else:
+                return """
+                {
+                    "scores": {
+                        "Creative Vision": 70,
+                        "Visual Impact": 80,
+                        "Challenge Relevance": 75,
+                        "Artistic Cohesion": 75
+                    },
+                    "feedback": "Balanced approach!"
+                }
+                """
+
+        mock_ai_instance = MagicMock()
+        mock_ai_instance.complete_with_image.side_effect = mock_complete_with_image
+        mock_ai_instance.last_usage = {'total_tokens': 500}
+        mock_ai_provider_class.return_value = mock_ai_instance
+
+        result = self.service.judge_battle(self.battle)
+
+        # User1 should win due to higher "Creative Vision" (highest weighted criterion)
+        self.assertEqual(result['winner_id'], self.user1.id)
+
+
 class BattleServiceAwardPointsTestCase(TestCase):
     """Test cases for BattleService point awarding and achievement tracking."""
 

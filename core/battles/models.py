@@ -242,6 +242,20 @@ class PromptBattle(models.Model):
         help_text='Current phase of the real-time battle',
     )
 
+    # Track when the phase last changed (for detecting stuck battles)
+    phase_changed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='When the battle phase last changed (used for stuck battle detection)',
+    )
+
+    # Track judging retry attempts to prevent infinite loops
+    judging_retry_count = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='Number of times judging has been retried (force-complete after 3)',
+    )
+
     # Connection tracking for real-time battles
     challenger_connected = models.BooleanField(default=False, help_text='Is challenger connected via WebSocket')
     opponent_connected = models.BooleanField(default=False, help_text='Is opponent connected via WebSocket')
@@ -327,6 +341,18 @@ class PromptBattle(models.Model):
 
         self.status = BattleStatus.CANCELLED
         self.save(update_fields=['status'])
+
+    def set_phase(self, new_phase: str, save: bool = True) -> None:
+        """Update the battle phase and track when it changed.
+
+        Args:
+            new_phase: The new phase to transition to
+            save: Whether to save immediately (default True)
+        """
+        self.phase = new_phase
+        self.phase_changed_at = timezone.now()
+        if save:
+            self.save(update_fields=['phase', 'phase_changed_at'])
 
     @property
     def is_expired(self):

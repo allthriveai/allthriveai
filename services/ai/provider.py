@@ -297,14 +297,29 @@ class AIProvider:
             messages.append({'role': 'system', 'content': system_message})
         messages.append({'role': 'user', 'content': prompt})
 
-        response = self._client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            timeout=timeout,
+        # Newer OpenAI models (o1, o3, gpt-5) require max_completion_tokens instead of max_tokens
+        uses_new_token_param = any(model_name.startswith(prefix) for prefix in ('o1', 'o3', 'gpt-5'))
+
+        # Build request parameters
+        request_params = {
+            'model': model_name,
+            'messages': messages,
+            'timeout': timeout,
             **kwargs,
-        )
+        }
+
+        # Add token limit with the correct parameter name
+        if max_tokens is not None:
+            if uses_new_token_param:
+                request_params['max_completion_tokens'] = max_tokens
+            else:
+                request_params['max_tokens'] = max_tokens
+
+        # Add temperature (some reasoning models don't support it)
+        if not model_name.startswith(('o1', 'o3')):
+            request_params['temperature'] = temperature
+
+        response = self._client.chat.completions.create(**request_params)
 
         # Store token usage for tracking
         if hasattr(response, 'usage'):

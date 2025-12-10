@@ -158,9 +158,8 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
     channel_layer = get_channel_layer()
     group_name = f'battle_{battle_id}'
 
-    # Transition to judging phase
-    battle.phase = BattlePhase.JUDGING
-    battle.save(update_fields=['phase'])
+    # Transition to judging phase and track the time
+    battle.set_phase(BattlePhase.JUDGING)
 
     async_to_sync(channel_layer.group_send)(
         group_name,
@@ -191,8 +190,7 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
         )
 
         # Transition to reveal phase - SAVE TO DATABASE so state refresh includes opponent submission
-        battle.phase = BattlePhase.REVEAL
-        battle.save(update_fields=['phase'])
+        battle.set_phase(BattlePhase.REVEAL)
 
         async_to_sync(channel_layer.group_send)(
             group_name,
@@ -404,7 +402,8 @@ def handle_battle_timeout_task(battle_id: int) -> dict[str, Any]:
         # No one submitted - cancel battle
         battle.status = BattleStatus.CANCELLED
         battle.phase = BattlePhase.COMPLETE
-        battle.save(update_fields=['status', 'phase'])
+        battle.phase_changed_at = timezone.now()
+        battle.save(update_fields=['status', 'phase', 'phase_changed_at'])
 
         async_to_sync(channel_layer.group_send)(
             group_name,
@@ -423,9 +422,10 @@ def handle_battle_timeout_task(battle_id: int) -> dict[str, Any]:
         winner = submissions[0].user
         battle.winner_id = winner.id
         battle.phase = BattlePhase.COMPLETE
+        battle.phase_changed_at = timezone.now()
         battle.status = BattleStatus.COMPLETED
         battle.completed_at = timezone.now()
-        battle.save(update_fields=['winner_id', 'phase', 'status', 'completed_at'])
+        battle.save(update_fields=['winner_id', 'phase', 'phase_changed_at', 'status', 'completed_at'])
 
         async_to_sync(channel_layer.group_send)(
             group_name,
@@ -443,7 +443,8 @@ def handle_battle_timeout_task(battle_id: int) -> dict[str, Any]:
     else:
         # Both submitted - proceed to generating/judging
         battle.phase = BattlePhase.GENERATING
-        battle.save(update_fields=['phase'])
+        battle.phase_changed_at = timezone.now()
+        battle.save(update_fields=['phase', 'phase_changed_at'])
 
         async_to_sync(channel_layer.group_send)(
             group_name,
@@ -500,7 +501,8 @@ def _check_and_trigger_judging(battle_id: int) -> None:
             # Transition to judging phase ATOMICALLY before triggering task
             # This prevents duplicate judging tasks
             battle.phase = BattlePhase.JUDGING
-            battle.save(update_fields=['phase'])
+            battle.phase_changed_at = timezone.now()
+            battle.save(update_fields=['phase', 'phase_changed_at'])
 
             logger.info(f'Both submissions have images for battle {battle_id}, triggering judging')
 
@@ -536,6 +538,10 @@ def cleanup_expired_queue_entries() -> dict[str, Any]:
     return {'status': 'success', 'expired_count': expired_count}
 
 
+# Maximum number of judging retries before force-completing
+MAX_JUDGING_RETRIES = 3
+
+
 @shared_task(
     time_limit=120,
     soft_time_limit=90,
@@ -548,6 +554,7 @@ def cleanup_stale_battles() -> dict[str, Any]:
     - Are in WAITING/ACTIVE phase but expired
     - Are in GENERATING phase but no activity for 10+ minutes
     - Are in JUDGING phase but no activity for 5+ minutes
+    - Force-completes battles that have exceeded retry limits
 
     Should be run periodically (e.g., every 15 minutes) via Celery Beat.
 
@@ -556,11 +563,14 @@ def cleanup_stale_battles() -> dict[str, Any]:
     """
     from datetime import timedelta
 
+    from django.db.models import Q
+
     now = timezone.now()
     results = {
         'expired_active': 0,
         'stuck_generating': 0,
         'stuck_judging': 0,
+        'force_completed': 0,
     }
 
     # Cancel expired battles that never completed - use bulk update for efficiency
@@ -572,44 +582,93 @@ def cleanup_stale_battles() -> dict[str, Any]:
     results['expired_active'] = expired_battles_qs.update(
         status=BattleStatus.CANCELLED,
         phase=BattlePhase.COMPLETE,
+        phase_changed_at=now,
     )
 
-    # Handle battles stuck in GENERATING phase (started more than 10 minutes ago)
-    # Note: This needs individual handling because we check submissions
-    stuck_generating = PromptBattle.objects.filter(
-        phase=BattlePhase.GENERATING,
-        started_at__lt=now - timedelta(minutes=10),
-    ).prefetch_related('submissions')  # Prefetch to avoid N+1
+    # Handle battles stuck in GENERATING phase
+    # Use phase_changed_at if available, fall back to created_at
+    stuck_generating_cutoff = now - timedelta(minutes=10)
+    stuck_generating = (
+        PromptBattle.objects.filter(
+            phase=BattlePhase.GENERATING,
+        )
+        .filter(
+            Q(phase_changed_at__lt=stuck_generating_cutoff)
+            | (Q(phase_changed_at__isnull=True) & Q(created_at__lt=stuck_generating_cutoff))
+        )
+        .prefetch_related('submissions')
+    )
 
     battles_to_cancel = []
     for battle in stuck_generating:
         # Try to complete judging if both submissions have images
-        submissions = list(battle.submissions.all())  # Uses prefetched data
+        submissions = list(battle.submissions.all())
         if len(submissions) == 2 and all(s.generated_output_url for s in submissions):
             judge_battle_task.delay(battle.id)
+            logger.info(f'Cleanup: Triggering judging for stuck GENERATING battle {battle.id}')
         else:
-            # Mark for bulk cancellation
             battles_to_cancel.append(battle.id)
-        # Count all stuck battles found (includes both sent-for-judging and cancelled)
+            logger.info(f'Cleanup: Cancelling incomplete GENERATING battle {battle.id}')
         results['stuck_generating'] += 1
 
-    # Bulk cancel incomplete stuck battles
     if battles_to_cancel:
         PromptBattle.objects.filter(id__in=battles_to_cancel).update(
             status=BattleStatus.CANCELLED,
             phase=BattlePhase.COMPLETE,
+            phase_changed_at=now,
         )
 
-    # Handle battles stuck in JUDGING phase (started more than 5 minutes ago)
+    # Handle battles stuck in JUDGING phase
+    # Use phase_changed_at if available, fall back to created_at
+    stuck_judging_cutoff = now - timedelta(minutes=5)
     stuck_judging = PromptBattle.objects.filter(
         phase=BattlePhase.JUDGING,
-        started_at__lt=now - timedelta(minutes=5),
-    ).values_list('id', flat=True)  # Only need IDs for task dispatch
+    ).filter(
+        Q(phase_changed_at__lt=stuck_judging_cutoff)
+        | (Q(phase_changed_at__isnull=True) & Q(created_at__lt=stuck_judging_cutoff))
+    )
 
-    for battle_id in stuck_judging:
-        # Retry judging
-        judge_battle_task.delay(battle_id)
+    battles_to_force_complete = []
+    for battle in stuck_judging:
+        if battle.judging_retry_count >= MAX_JUDGING_RETRIES:
+            # Too many retries - force complete the battle
+            battles_to_force_complete.append(battle.id)
+            logger.warning(
+                f'Cleanup: Force-completing battle {battle.id} after {battle.judging_retry_count} judging retries'
+            )
+        else:
+            # Increment retry count and retry judging
+            PromptBattle.objects.filter(id=battle.id).update(judging_retry_count=battle.judging_retry_count + 1)
+            judge_battle_task.delay(battle.id)
+            logger.info(
+                f'Cleanup: Retrying judging for stuck battle {battle.id} (attempt {battle.judging_retry_count + 1})'
+            )
         results['stuck_judging'] += 1
+
+    # Force-complete battles that exceeded retry limits
+    if battles_to_force_complete:
+        # Complete as a tie (no winner) since we couldn't determine scores
+        PromptBattle.objects.filter(id__in=battles_to_force_complete).update(
+            status=BattleStatus.COMPLETED,
+            phase=BattlePhase.COMPLETE,
+            phase_changed_at=now,
+            completed_at=now,
+            winner=None,  # No winner - judging failed
+        )
+        results['force_completed'] = len(battles_to_force_complete)
+
+        # Notify via channel layer that these battles are complete
+        channel_layer = get_channel_layer()
+        for battle_id in battles_to_force_complete:
+            async_to_sync(channel_layer.group_send)(
+                f'battle_{battle_id}',
+                {
+                    'type': 'battle_event',
+                    'event': 'battle_complete',
+                    'winner_id': None,
+                    'message': 'Battle completed due to judging timeout. Result is a tie.',
+                },
+            )
 
     total_cleaned = sum(results.values())
     if total_cleaned > 0:
