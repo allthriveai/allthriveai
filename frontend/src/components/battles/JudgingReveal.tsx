@@ -69,8 +69,7 @@ const ANALYSIS_MESSAGES = [
   { icon: StarIcon, text: 'Calculating final scores...' },
 ];
 
-// Criteria display order - matches backend judging criteria
-const CRITERIA_ORDER = ['Creativity', 'Visual Impact', 'Relevance', 'Cohesion'];
+// Note: Criteria are dynamic based on challenge type, so we render whatever the backend returns
 
 export function JudgingReveal({
   mySubmission,
@@ -520,19 +519,15 @@ export function JudgingReveal({
                   transition={{ delay: 0.3 }}
                   className="grid grid-cols-2 gap-2"
                 >
-                  {CRITERIA_ORDER.map((criterion) => {
-                    const score = mySubmission.criteriaScores?.[criterion];
-                    if (score == null) return null;
-                    return (
-                      <div
-                        key={criterion}
-                        className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-white/5"
-                      >
-                        <span className="text-xs text-slate-400">{criterion}</span>
-                        <span className="text-sm font-semibold text-cyan-300">{score}</span>
-                      </div>
-                    );
-                  })}
+                  {Object.entries(mySubmission.criteriaScores).map(([criterion, score]) => (
+                    <div
+                      key={criterion}
+                      className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-white/5"
+                    >
+                      <span className="text-xs text-slate-400">{criterion}</span>
+                      <span className="text-sm font-semibold text-cyan-300">{score}</span>
+                    </div>
+                  ))}
                 </motion.div>
               )}
 
@@ -660,19 +655,15 @@ export function JudgingReveal({
                   transition={{ delay: 0.3 }}
                   className="grid grid-cols-2 gap-2"
                 >
-                  {CRITERIA_ORDER.map((criterion) => {
-                    const score = opponentSubmission.criteriaScores?.[criterion];
-                    if (score == null) return null;
-                    return (
-                      <div
-                        key={criterion}
-                        className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-white/5"
-                      >
-                        <span className="text-xs text-slate-400">{criterion}</span>
-                        <span className="text-sm font-semibold text-pink-300">{score}</span>
-                      </div>
-                    );
-                  })}
+                  {Object.entries(opponentSubmission.criteriaScores).map(([criterion, score]) => (
+                    <div
+                      key={criterion}
+                      className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-white/5"
+                    >
+                      <span className="text-xs text-slate-400">{criterion}</span>
+                      <span className="text-sm font-semibold text-pink-300">{score}</span>
+                    </div>
+                  ))}
                 </motion.div>
               )}
 

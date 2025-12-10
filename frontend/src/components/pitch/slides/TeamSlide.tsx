@@ -4,27 +4,30 @@ import { PitchSlide, GlassCard, GradientText } from '../PitchSlide';
 const team = [
   {
     name: 'Allie Jones',
-    role: 'Founder & CEO/CTO',
-    bio: 'Designer, engineer, and builder passionate about AI creativity tools. Over 15 years of engineering experience spanning open-source development, product design, and enterprise pre-sales engineering including 8 years at Acquia (creator of Drupal). Open-source contributor and technical leader focused on building scalable, creator-friendly AI products.',
+    role: 'CEO/CTO',
+    founder: true,
+    bio: 'Engineer, builder, and sales leader passionate about AI creativity tools. 15+ years in open-source and software architecture, including 8 years at Acquia.',
     image: '/allie-jones.jpeg',
   },
   {
     name: 'Gina Levy',
-    role: 'Founder & Chief Community & Growth Officer',
-    bio: 'Community-driven marketer and growth leader. Founder of Kinlia, a 50K+ event-focused community. Hosted over 500 in-person and virtual events. Harvard graduate, and an award-winning filmmaker whose work has premiered at Sundance and been shortlisted for the Academy Awards. Expert in fostering engagement, storytelling, and vibrant user communities.',
+    role: 'Chief Community & Growth Officer',
+    founder: true,
+    bio: 'Community-driven marketer and growth leader. Founder of Kinlia (50K+ community). Harvard graduate and Sundance filmmaker shortlisted for the Academy Awards.',
     image: '/gina.jpeg',
   },
   {
     name: 'Imnet Worku Edossa',
-    role: 'Founder & Chief AI Systems Officer',
-    bio: 'Technical leader focused on turning AI and cloud infrastructure into scalable products. Senior full-stack engineer and architect with 15+ years of experience leading engineering teams in enterprise dev ops and platform automation across Kubernetes, CI/CD, and developer tooling.',
+    role: 'Chief AI Systems Officer',
+    founder: true,
+    bio: 'Technical leader turning AI and cloud infrastructure into scalable products. 15+ years leading engineering teams in enterprise DevOps and platform automation.',
     image: '/imnet.jpeg',
   },
 ];
 
 const advisors = [
   { name: 'Debbie Hudzik', role: 'Financial Advisor' },
-  { name: 'TBD', role: 'Advisor' },
+  { name: 'Thomas Wythe', role: 'Technical and Startup Advisor' },
   { name: 'TBD', role: 'Advisor' },
 ];
 
@@ -37,13 +40,13 @@ export function TeamSlide() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="text-center mb-10"
         >
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
             The <GradientText>Team</GradientText>
           </h2>
           <p className="text-xl text-gray-400">
-            Builders who understand AI creators
+            Builders who understand AI creators and building community
           </p>
         </motion.div>
 
@@ -57,8 +60,8 @@ export function TeamSlide() {
               transition={{ duration: 0.5, delay: 0.2 + index * 0.15 }}
             >
               <GlassCard className="text-center p-6 h-full" hover>
-                {/* Avatar placeholder */}
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500/30 to-green-500/30 mx-auto mb-4 flex items-center justify-center border-2 border-white/10">
+                {/* Avatar */}
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500/30 to-green-500/30 mx-auto mb-4 flex items-center justify-center border-2 border-white/10 overflow-hidden">
                   {member.image ? (
                     <img
                       src={member.image}
@@ -72,7 +75,8 @@ export function TeamSlide() {
                   )}
                 </div>
                 <h3 className="text-xl font-bold text-white mb-1">{member.name}</h3>
-                <p className="text-cyan-400 font-medium text-sm mb-2">{member.role}</p>
+                <p className="text-cyan-400 font-medium text-sm">{member.role}</p>
+                {member.founder && <p className="text-gray-500 text-xs mb-2">Founder</p>}
                 <p className="text-gray-400 text-sm">{member.bio}</p>
               </GlassCard>
             </motion.div>
