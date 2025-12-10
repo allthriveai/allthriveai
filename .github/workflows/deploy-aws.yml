@@ -321,7 +321,7 @@ jobs:
             --distribution-id ${{ steps.cloudfront.outputs.distribution_id }} \
             --paths "/*"
 
-  # Run database migrations
+  # Run database migrations using a one-off ECS task (more reliable than execute-command)
   migrate:
     needs: deploy-backend
     runs-on: ubuntu-latest
@@ -332,113 +332,115 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ vars.ENVIRONMENT || 'production' }}-allthrive-github-actions-role
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Get task ARN
-        id: task
+      - name: Get service network configuration
+        id: network
         run: |
-          # Wait a moment for tasks to be fully running after deployment
-          sleep 10
+          echo "🔍 Getting network configuration from web service..."
 
-          TASK_ARN=$(aws ecs list-tasks \
+          # Get the network configuration from the existing service
+          NETWORK_CONFIG=$(aws ecs describe-services \
             --cluster ${{ env.ECS_CLUSTER }} \
-            --service-name ${{ env.ECS_SERVICE_WEB }} \
-            --desired-status RUNNING \
-            --query 'taskArns[0]' \
+            --services ${{ env.ECS_SERVICE_WEB }} \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+            --output json)
+
+          SUBNETS=$(echo $NETWORK_CONFIG | jq -r '.subnets | join(",")')
+          SECURITY_GROUPS=$(echo $NETWORK_CONFIG | jq -r '.securityGroups | join(",")')
+          ASSIGN_PUBLIC_IP=$(echo $NETWORK_CONFIG | jq -r '.assignPublicIp')
+
+          echo "subnets=$SUBNETS" >> $GITHUB_OUTPUT
+          echo "security_groups=$SECURITY_GROUPS" >> $GITHUB_OUTPUT
+          echo "assign_public_ip=$ASSIGN_PUBLIC_IP" >> $GITHUB_OUTPUT
+
+          # Get the task definition
+          TASK_DEF=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE_WEB }} \
+            --query 'services[0].taskDefinition' \
             --output text)
 
-          if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "None" ]; then
-            echo "❌ No running tasks found"
-            exit 1
-          fi
-
-          echo "✅ Found task: $TASK_ARN"
-          echo "task_arn=$TASK_ARN" >> $GITHUB_OUTPUT
-
-      - name: Install Session Manager plugin
-        run: |
-          curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
-          sudo dpkg -i session-manager-plugin.deb
+          echo "task_definition=$TASK_DEF" >> $GITHUB_OUTPUT
+          echo "✅ Network config retrieved"
 
       - name: Run migrations
         id: migrate
         run: |
-          echo "🔄 Running database migrations..."
+          echo "🔄 Running database migrations via one-off task..."
 
-          # Run migration with timeout and capture output
-          # Using script to handle pseudo-terminal requirements
-          MIGRATE_OUTPUT=$(timeout 300 aws ecs execute-command \
+          # Run a one-off task with migration command override
+          TASK_ARN=$(aws ecs run-task \
             --cluster ${{ env.ECS_CLUSTER }} \
-            --task ${{ steps.task.outputs.task_arn }} \
-            --container web \
-            --command "python manage.py migrate --noinput && echo 'MIGRATION_SUCCESS'" \
-            --interactive 2>&1) || MIGRATE_EXIT=$?
+            --task-definition ${{ steps.network.outputs.task_definition }} \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.network.outputs.subnets }}],securityGroups=[${{ steps.network.outputs.security_groups }}],assignPublicIp=${{ steps.network.outputs.assign_public_ip }}}" \
+            --overrides '{"containerOverrides":[{"name":"web","command":["python","manage.py","migrate","--noinput"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
 
-          echo "$MIGRATE_OUTPUT"
+          echo "📦 Started migration task: $TASK_ARN"
+          echo "task_arn=$TASK_ARN" >> $GITHUB_OUTPUT
 
-          # Check if migration was successful
-          if echo "$MIGRATE_OUTPUT" | grep -q "MIGRATION_SUCCESS"; then
+          # Wait for the task to complete
+          echo "⏳ Waiting for migration task to complete..."
+          aws ecs wait tasks-stopped \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN
+
+          # Check the exit code
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].containers[?name==`web`].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" = "0" ]; then
             echo "✅ Migrations completed successfully"
-          elif echo "$MIGRATE_OUTPUT" | grep -q "No migrations to apply"; then
-            echo "✅ No migrations to apply"
-          elif echo "$MIGRATE_OUTPUT" | grep -q "EOF" || echo "$MIGRATE_OUTPUT" | grep -q "Cannot perform start session"; then
-            echo "❌ ECS Execute Command session failed - retrying..."
-            sleep 5
-
-            # Retry once
-            MIGRATE_OUTPUT=$(timeout 300 aws ecs execute-command \
-              --cluster ${{ env.ECS_CLUSTER }} \
-              --task ${{ steps.task.outputs.task_arn }} \
-              --container web \
-              --command "python manage.py migrate --noinput && echo 'MIGRATION_SUCCESS'" \
-              --interactive 2>&1) || true
-
-            echo "$MIGRATE_OUTPUT"
-
-            if echo "$MIGRATE_OUTPUT" | grep -q "MIGRATION_SUCCESS"; then
-              echo "✅ Migrations completed successfully on retry"
-            elif echo "$MIGRATE_OUTPUT" | grep -q "No migrations to apply"; then
-              echo "✅ No migrations to apply"
-            else
-              echo "❌ Migration failed after retry"
-              exit 1
-            fi
           else
-            echo "❌ Migration failed"
+            echo "❌ Migration failed with exit code: $EXIT_CODE"
+
+            # Get the stopped reason for debugging
+            STOPPED_REASON=$(aws ecs describe-tasks \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --tasks $TASK_ARN \
+              --query 'tasks[0].stoppedReason' \
+              --output text)
+            echo "Stopped reason: $STOPPED_REASON"
+
             exit 1
           fi
 
-      - name: Setup OAuth providers
+      - name: Run post-deploy commands
         run: |
-          # Configure Django Site with correct domain (uses BACKEND_URL env var)
-          timeout 60 aws ecs execute-command \
-            --cluster ${{ env.ECS_CLUSTER }} \
-            --task ${{ steps.task.outputs.task_arn }} \
-            --container web \
-            --command "python manage.py setup_oauth" \
-            --interactive || echo "⚠️ setup_oauth failed or timed out"
+          echo "🔧 Running post-deployment commands..."
 
-          # Setup Google OAuth (if credentials are configured)
-          timeout 60 aws ecs execute-command \
+          # Run OAuth setup as a one-off task
+          TASK_ARN=$(aws ecs run-task \
             --cluster ${{ env.ECS_CLUSTER }} \
-            --task ${{ steps.task.outputs.task_arn }} \
-            --container web \
-            --command "python manage.py setup_google_oauth" \
-            --interactive || echo "⚠️ setup_google_oauth skipped"
+            --task-definition ${{ steps.network.outputs.task_definition }} \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.network.outputs.subnets }}],securityGroups=[${{ steps.network.outputs.security_groups }}],assignPublicIp=${{ steps.network.outputs.assign_public_ip }}}" \
+            --overrides '{"containerOverrides":[{"name":"web","command":["sh","-c","python manage.py setup_oauth && python manage.py setup_google_oauth || true && python manage.py setup_github_oauth || true && python manage.py setup_linkedin_oauth || true"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
 
-          # Setup GitHub OAuth (if credentials are configured)
-          timeout 60 aws ecs execute-command \
-            --cluster ${{ env.ECS_CLUSTER }} \
-            --task ${{ steps.task.outputs.task_arn }} \
-            --container web \
-            --command "python manage.py setup_github_oauth" \
-            --interactive || echo "⚠️ setup_github_oauth skipped"
+          echo "📦 Started post-deploy task: $TASK_ARN"
 
-          # Setup LinkedIn OAuth (if credentials are configured)
-          timeout 60 aws ecs execute-command \
+          # Wait for completion
+          aws ecs wait tasks-stopped \
             --cluster ${{ env.ECS_CLUSTER }} \
-            --task ${{ steps.task.outputs.task_arn }} \
-            --container web \
-            --command "python manage.py setup_linkedin_oauth" \
-            --interactive || echo "⚠️ setup_linkedin_oauth skipped"
+            --tasks $TASK_ARN
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].containers[?name==`web`].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo "✅ Post-deploy commands completed"
+          else
+            echo "⚠️ Post-deploy commands had issues (exit code: $EXIT_CODE) - continuing anyway"
+          fi
 
   # Notify on completion
   notify:

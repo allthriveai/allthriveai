@@ -94,7 +94,10 @@ class GenerateProfileSectionsInput(BaseModel):
     sections_to_generate: list[str] = Field(
         default=[], description='Which sections to generate. Uses template defaults if empty.'
     )
-    user_data: dict = Field(description='User data from gather_user_data tool')
+    user_data: dict = Field(
+        default={},
+        description='User data from gather_user_data tool. If empty, will be fetched automatically.',
+    )
     focus_areas: list[str] = Field(default=[], description='Specific areas the user wants to highlight')
 
 
@@ -285,7 +288,7 @@ def select_template_for_user(
 
 @tool(args_schema=GenerateProfileSectionsInput)
 def generate_profile_sections(
-    user_data: dict,
+    user_data: dict | None = None,
     template: str = '',
     sections_to_generate: list[str] | None = None,
     focus_areas: list[str] | None = None,
@@ -294,9 +297,8 @@ def generate_profile_sections(
     """
     Generate profile section content based on user data and template.
 
-    This tool uses the gathered user data to create personalized content
-    for each profile section. If no template is specified, it auto-selects
-    based on user characteristics (tier, role, projects).
+    This tool creates personalized profile sections. If user_data is not provided,
+    it will automatically fetch the user's data first.
 
     Templates:
     - explorer: New users, learners
@@ -311,8 +313,17 @@ def generate_profile_sections(
     if not state or 'user_id' not in state:
         return {'success': False, 'error': 'User not authenticated'}
 
+    # Auto-fetch user data if not provided or invalid
     if not user_data or not user_data.get('success'):
-        return {'success': False, 'error': 'Invalid user data provided'}
+        logger.info('Auto-fetching user data for generate_profile_sections')
+        user_data = gather_user_data.func(
+            include_projects=True,
+            include_achievements=True,
+            include_interests=True,
+            state=state,
+        )
+        if not user_data or not user_data.get('success'):
+            return {'success': False, 'error': 'Failed to gather user data'}
 
     basic = user_data.get('basic_info', {})
     social = user_data.get('social_links', {})
