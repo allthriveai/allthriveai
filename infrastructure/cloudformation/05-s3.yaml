@@ -44,9 +44,9 @@ Resources:
               SSEAlgorithm: AES256
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: true
+        BlockPublicPolicy: false
         IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+        RestrictPublicBuckets: false
       CorsConfiguration:
         CorsRules:
           - AllowedHeaders:
@@ -170,6 +170,20 @@ Resources:
         OriginAccessControlOriginType: s3
         SigningBehavior: always
         SigningProtocol: sigv4
+
+  # Bucket Policy for Media (public read for public/ prefix)
+  MediaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MediaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowPublicReadForPublicPrefix
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub ${MediaBucket.Arn}/public/*
 
   # Bucket Policy for Frontend (CloudFront access)
   FrontendBucketPolicy:
