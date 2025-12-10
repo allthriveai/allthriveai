@@ -18,7 +18,7 @@ from core.users.models import User
 
 from .constants import MIN_RESPONSE_TIME_SECONDS, PROMOTION_DURATION_DAYS
 from .models import Project, ProjectLike
-from .serializers import ProjectSerializer
+from .serializers import ProjectCardSerializer, ProjectSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -68,13 +68,16 @@ def build_paginated_response(
         tab: Tab name for URL building (e.g., 'for-you', 'trending')
         metadata_key: Key name for metadata in response (default: 'personalization')
         promoted_projects: Optional list of promoted projects to prepend on page 1
+
+    Uses ProjectCardSerializer (lightweight) instead of ProjectSerializer
+    to reduce payload size by ~90% (excludes heavy content field).
     """
-    serializer = ProjectSerializer(projects, many=True)
+    serializer = ProjectCardSerializer(projects, many=True)
     results = serializer.data
 
     # Prepend promoted projects on page 1
     if page_num == 1 and promoted_projects:
-        promoted_serializer = ProjectSerializer(promoted_projects, many=True)
+        promoted_serializer = ProjectCardSerializer(promoted_projects, many=True)
         results = promoted_serializer.data + results
 
     # Handle different metadata count keys
@@ -131,7 +134,20 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Bind project to the authenticated user and let the model handle slug
         # generation / uniqueness on save.
-        serializer.save(user=self.request.user)
+        project = serializer.save(user=self.request.user)
+
+        # Auto-assign category if project doesn't have one
+        # This runs in-band for immediate feedback (categories are important for display)
+        if not project.categories.exists():
+            try:
+                from core.taxonomy.services import auto_assign_category_to_project
+
+                auto_assign_category_to_project(project)
+            except Exception as e:
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.warning(f'Failed to auto-assign category to project {project.id}: {e}')
 
         # Invalidate user projects cache
         self._invalidate_user_cache(self.request.user)
@@ -729,11 +745,23 @@ def explore_projects(request):
     sort = request.GET.get('sort', 'newest')
 
     # Build base queryset - all public projects (not private, not archived)
+    # Performance optimizations:
+    # 1. select_related('user') - single JOIN for user data
+    # 2. prefetch_related('tools', 'categories') - batch load M2M in 2 queries
+    # 3. annotate is_liked_by_user - single subquery instead of N+1
+    from django.db.models import Exists, OuterRef
+
     queryset = (
         Project.objects.filter(is_private=False, is_archived=False)
         .select_related('user')
-        .prefetch_related('tools', 'likes')
+        .prefetch_related('tools', 'categories')
     )
+
+    # Annotate is_liked_by_user to avoid N+1 queries in serializer
+    # This adds a single subquery instead of 1 query per project
+    if request.user.is_authenticated:
+        user_like_subquery = ProjectLike.objects.filter(project=OuterRef('pk'), user=request.user)
+        queryset = queryset.annotate(_is_liked_by_user_annotation=Exists(user_like_subquery))
 
     # Get promoted projects for page 1 (shown at top of feed regardless of tab)
     # Only include promotions that haven't expired (within PROMOTION_DURATION_DAYS)
@@ -981,12 +1009,12 @@ def explore_projects(request):
             page_size=page_size,
         )
 
-        serializer = ProjectSerializer(diverse_projects, many=True)
+        serializer = ProjectCardSerializer(diverse_projects, many=True)
         results = serializer.data
 
         # Prepend promoted projects on page 1
         if page_num == 1 and promoted_projects:
-            promoted_serializer = ProjectSerializer(promoted_projects, many=True)
+            promoted_serializer = ProjectCardSerializer(promoted_projects, many=True)
             results = promoted_serializer.data + results
 
         # Build paginated response
@@ -1021,7 +1049,19 @@ def explore_projects(request):
         queryset = queryset.order_by('-created_at')
 
     # Apply pagination with user diversity for newest sort
-    page_size = min(int(request.GET.get('page_size', 30)), 100)
+    # Mobile optimization: detect mobile via User-Agent and reduce default page size
+    # This significantly reduces initial payload for mobile users
+    user_agent = request.headers.get('user-agent', '').lower()
+    is_mobile = any(device in user_agent for device in ['iphone', 'android', 'mobile', 'ipad'])
+
+    # Use smaller default page size for mobile (12 vs 30)
+    # Frontend can still override with explicit page_size param
+    default_page_size = 12 if is_mobile else 30
+    requested_page_size = request.GET.get('page_size')
+    if requested_page_size:
+        page_size = min(int(requested_page_size), 100)
+    else:
+        page_size = default_page_size
     page_num = int(request.GET.get('page', 1))
 
     if sort == 'newest' or sort is None:
@@ -1039,12 +1079,12 @@ def explore_projects(request):
             page_size=page_size,
         )
 
-        serializer = ProjectSerializer(diverse_projects, many=True)
+        serializer = ProjectCardSerializer(diverse_projects, many=True)
         results = serializer.data
 
         # Prepend promoted projects on page 1
         if page_num == 1 and promoted_projects:
-            promoted_serializer = ProjectSerializer(promoted_projects, many=True)
+            promoted_serializer = ProjectCardSerializer(promoted_projects, many=True)
             results = promoted_serializer.data + results
 
         # Build paginated response manually
@@ -1066,12 +1106,12 @@ def explore_projects(request):
     paginator.page_size = page_size
     page = paginator.paginate_queryset(queryset, request)
 
-    serializer = ProjectSerializer(page, many=True)
+    serializer = ProjectCardSerializer(page, many=True)
     results = serializer.data
 
     # Prepend promoted projects on page 1
     if page_num == 1 and promoted_projects:
-        promoted_serializer = ProjectSerializer(promoted_projects, many=True)
+        promoted_serializer = ProjectCardSerializer(promoted_projects, many=True)
         results = promoted_serializer.data + results
 
     response = paginator.get_paginated_response(results)

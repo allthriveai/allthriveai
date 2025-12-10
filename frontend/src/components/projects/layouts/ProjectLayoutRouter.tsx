@@ -18,6 +18,8 @@ import { FigmaProjectPendingView } from '../figma/FigmaProjectPendingView';
 import { RedditThreadLayout } from '../reddit/RedditThreadLayout';
 import { VideoProjectLayout } from './VideoProjectLayout';
 import { BattleProjectLayout } from './BattleProjectLayout';
+import { CuratedArticleLayout } from './CuratedArticleLayout';
+import { ClippedArticleLayout } from './ClippedArticleLayout';
 import { DefaultProjectLayout } from './DefaultProjectLayout';
 
 /**
@@ -80,6 +82,16 @@ export function ProjectLayoutRouter() {
   // Battle Layout - for saved prompt battle results
   if (project.type === 'battle') {
     return <BattleProjectLayout />;
+  }
+
+  // Curated Article Layout - for RSS articles from expert curators
+  if (project.type === 'rss_article') {
+    return <CuratedArticleLayout />;
+  }
+
+  // Clipped Article Layout - for user-saved web content
+  if (project.type === 'clipped') {
+    return <ClippedArticleLayout />;
   }
 
   // Default layout for all other project types:

@@ -31,7 +31,7 @@ app.autodiscover_tasks(
 # (Celery autodiscover only looks for tasks.py files)
 app.conf.imports = [
     'core.integrations.reddit_tasks',
-    # 'core.integrations.rss_tasks',  # DISABLED: RSS feed sync removed in favor of expert curation
+    'core.integrations.rss_tasks',  # Expert curation articles with AI-generated hero images
     'core.integrations.youtube_feed_tasks',
 ]
 
@@ -85,14 +85,14 @@ app.conf.beat_schedule = {
             'expires': 3600,  # Task expires after 1 hour if not picked up
         },
     },
-    # DISABLED: RSS feed sync removed in favor of expert curation
-    # 'sync-rss-agents': {
-    #     'task': 'core.integrations.rss_tasks.sync_all_rss_agents_task',
-    #     'schedule': crontab(hour='*/6', minute=0),  # Every 6 hours at minute 0
-    #     'options': {
-    #         'expires': 3600,  # Task expires after 1 hour if not picked up
-    #     },
-    # },
+    # Expert curation articles - daily sync with AI-generated hero images
+    'sync-rss-agents': {
+        'task': 'core.integrations.rss_tasks.sync_all_rss_agents_task',
+        'schedule': crontab(hour=4, minute=0),  # Daily at 4 AM UTC
+        'options': {
+            'expires': 7200,  # Task expires after 2 hours if not picked up
+        },
+    },
     'sync-youtube-feed-agents': {
         'task': 'core.integrations.youtube_feed_tasks.sync_all_youtube_feed_agents_task',
         'schedule': crontab(hour='*/2', minute=0),  # Every 2 hours at minute 0

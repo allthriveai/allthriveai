@@ -33,6 +33,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperclip } from '@fortawesome/free-solid-svg-icons';
+import { getCategoryColors } from '@/utils/categoryColors';
 
 /**
  * Strip HTML tags and normalize text for comparison.
@@ -294,8 +295,17 @@ export function DefaultProjectLayout() {
       <EditModeIndicator isOwner={isOwner} isEditMode={isEditMode} onToggle={toggleEditMode} isSaving={isSaving} />
 
       {/* Full Height Hero Section */}
+      {(() => {
+        // Get category colors for consistent theming
+        const primaryCategory = project.categoriesDetails?.[0];
+        const { from: categoryFromColor, to: categoryToColor } = getCategoryColors(
+          primaryCategory?.color,
+          project.id
+        );
+
+        return (
       <div className="relative min-h-screen w-full flex items-center overflow-hidden bg-gray-900">
-        {/* Background Layer */}
+        {/* Background Layer - Category colored gradient with animated orbs */}
         <div className="absolute inset-0 z-0">
           {project.bannerUrl ? (
             <>
@@ -307,10 +317,43 @@ export function DefaultProjectLayout() {
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-gray-900 via-gray-900/80 to-gray-900/40 backdrop-blur-[1px]" />
+              <div
+                className="absolute inset-0 backdrop-blur-[1px]"
+                style={{
+                  background: `linear-gradient(to right, rgba(10,10,18,0.95), rgba(10,10,18,0.7) 50%, ${categoryFromColor}20 100%)`
+                }}
+              />
             </>
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-primary-900 to-gray-900" />
+            <>
+              {/* Dark base with category-colored gradient orbs */}
+              <div
+                className="w-full h-full"
+                style={{
+                  background: `linear-gradient(135deg, #0a0a12 0%, #0f1420 50%, #0a0a12 100%)`
+                }}
+              />
+              {/* Animated category color orbs */}
+              <div
+                className="absolute top-0 left-0 w-[60%] h-[60%] rounded-full blur-[120px] opacity-30"
+                style={{ background: categoryFromColor }}
+              />
+              <div
+                className="absolute bottom-0 right-0 w-[50%] h-[50%] rounded-full blur-[100px] opacity-20"
+                style={{ background: categoryToColor }}
+              />
+              <div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] rounded-full blur-[80px] opacity-15"
+                style={{ background: categoryFromColor }}
+              />
+              {/* Top accent line */}
+              <div
+                className="absolute top-0 left-0 right-0 h-px"
+                style={{
+                  background: `linear-gradient(to right, transparent, ${categoryFromColor}50, transparent)`
+                }}
+              />
+            </>
           )}
         </div>
 
@@ -364,8 +407,21 @@ export function DefaultProjectLayout() {
             {/* Left Column: Text Content */}
             <div className="space-y-6 lg:space-y-10">
               <div className="space-y-6 relative">
-                {/* Author Badge */}
-                <div className="flex items-center gap-4">
+                {/* Author Badge & Category */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* Category Badge - prominent display */}
+                  {primaryCategory && (
+                    <span
+                      className="px-4 py-1.5 text-sm font-semibold rounded-full border backdrop-blur-xl shadow-lg"
+                      style={{
+                        backgroundColor: `${categoryFromColor}20`,
+                        borderColor: `${categoryFromColor}40`,
+                        color: categoryFromColor,
+                      }}
+                    >
+                      {primaryCategory.name}
+                    </span>
+                  )}
                   <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xl px-4 py-2 rounded-full border border-white/20 text-white/90 text-sm shadow-lg">
                     <span className="font-light opacity-70">by</span>
                     <Link to={`/${project.username}`} className="font-semibold hover:text-primary-300 transition-colors">
@@ -482,6 +538,8 @@ export function DefaultProjectLayout() {
           </div>
         </div>
       </div>
+        );
+      })()}
 
       {/* Project Details Section - show for owners even if empty (so they can add blocks) */}
       {hasTemplateSections ? (

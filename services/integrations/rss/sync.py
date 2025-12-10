@@ -15,6 +15,7 @@ from core.projects.models import Project
 from core.taxonomy.models import Taxonomy
 from services.ai import AIProvider
 from services.ai.topic_extraction import TopicExtractionService
+from services.integrations.storage.storage_service import get_storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -443,6 +444,15 @@ class RSSFeedSyncService:
             # Detect difficulty level
             difficulty = cls._detect_difficulty_level(item_data)
 
+            # Determine featured image - use RSS thumbnail or generate with Gemini
+            featured_image_url = item_data.get('thumbnail_url') or ''
+            if not featured_image_url:
+                # Generate a beautiful hero image using Gemini
+                generated_url = cls._generate_hero_image(item_data, topics)
+                if generated_url:
+                    featured_image_url = generated_url
+                    logger.info(f'Using AI-generated hero for "{item_data["title"][:40]}..."')
+
             # Use expert review as project description, fallback to original
             project_description = expert_review or (item_data['description'][:500] if item_data['description'] else '')
 
@@ -453,7 +463,7 @@ class RSSFeedSyncService:
                 description=project_description,
                 type=Project.ProjectType.RSS_ARTICLE,
                 external_url=item_data['permalink'],
-                featured_image_url=item_data['thumbnail_url'],
+                featured_image_url=featured_image_url,
                 content=content,
                 topics=topics,
                 difficulty_level=difficulty,
@@ -465,6 +475,9 @@ class RSSFeedSyncService:
 
             # Add categories from RSS feed categories (with AI fallback)
             cls._add_categories_to_project(project, item_data.get('categories', []), item_data)
+
+            # Extract and add tools mentioned in article
+            cls._add_tools_to_project(project, item_data)
 
             # Prepare metadata with serializable datetime
             metadata = dict(item_data)
@@ -503,9 +516,18 @@ class RSSFeedSyncService:
             project.description = item_data['description'][:500]
             updated = True
 
+        # Update featured image - use RSS thumbnail, or generate if missing
         if item_data['thumbnail_url'] and project.featured_image_url != item_data['thumbnail_url']:
             project.featured_image_url = item_data['thumbnail_url']
             updated = True
+        elif not project.featured_image_url:
+            # No image - try to generate one
+            topics = project.topics or cls._extract_topics_from_article(item_data)
+            generated_url = cls._generate_hero_image(item_data, topics)
+            if generated_url:
+                project.featured_image_url = generated_url
+                updated = True
+                logger.info(f'Generated hero image for existing article: {project.title[:40]}...')
 
         # Update content structure if empty or content changed
         if not project.content or not project.content.get('sections'):
@@ -521,6 +543,10 @@ class RSSFeedSyncService:
             # Add categories if not already set (with AI fallback)
             if not project.categories.exists():
                 cls._add_categories_to_project(project, item_data.get('categories', []), item_data)
+
+        # Add tools if not already set
+        if not project.tools.exists():
+            cls._add_tools_to_project(project, item_data)
 
         # Update difficulty if empty
         if not project.difficulty_level:
@@ -545,14 +571,19 @@ class RSSFeedSyncService:
 
     @classmethod
     def _generate_expert_review(cls, agent: RSSFeedAgent, item_data: dict) -> str | None:
-        """Generate a 2-3 sentence expert review using the agent's persona.
+        """Generate an engaging expert review using the agent's persona.
+
+        Creates a structured analysis with:
+        - A compelling opening hook
+        - Key insights with context
+        - Actionable takeaways
 
         Args:
             agent: The RSS feed agent with persona configuration
             item_data: Article data including title and description
 
         Returns:
-            Expert review text, or None if generation fails
+            Expert review text with Markdown formatting, or None if generation fails
         """
         try:
             ai = AIProvider(provider='openai')
@@ -565,42 +596,56 @@ class RSSFeedSyncService:
             expertise = ', '.join(persona.get('expertise_areas', ['technology', 'AI']))
             signature_phrases = persona.get('signature_phrases', [])
 
-            # Build system prompt with persona
-            system_prompt = f"""You are {user.first_name} {user.last_name}, an expert reviewer covering {source_name}.
+            # Build system prompt with persona for engaging content
+            signature_note = (
+                f"Your signature style includes: {', '.join(signature_phrases[:2])}" if signature_phrases else ''
+            )
+            system_prompt = f"""You are {user.first_name} {user.last_name}, a fun and knowledgeable curator "
+                "who makes AI news accessible and exciting."
 
 Your voice: {voice}
 Your expertise: {expertise}
 
-Write a 2-3 sentence expert review that:
-- Gives YOUR insightful take on why this matters, not just a summary
-- Highlights what practitioners or readers should pay attention to
-- Sounds like a real human expert sharing a quick analysis
-- Makes readers curious to learn more while providing immediate value
-- Does NOT start with "This article" or generic phrases
+Write a SHORT, punchy take that gets people excited. Imagine you're telling a friend about something cool you just read.
 
-{f"You sometimes use phrases like: {', '.join(signature_phrases[:2])}" if signature_phrases else ""}
+FORMAT (keep it tight!):
+- One sentence: What's the big deal? Why should anyone care? Make it relatable.
+- One sentence: The "aha!" moment - what's the coolest/most surprising thing here?
+- One sentence: What does this mean for regular people? Keep it practical.
 
-Important: Keep it brief (2-3 sentences max), insightful, and natural."""
+VIBE CHECK:
+- Sound like a human, not a press release
+- Use simple words - if your grandma wouldn't understand it, rewrite it
+- Be enthusiastic but not fake
+- Add personality - it's okay to be a little playful
+- NO jargon like "robust empirical data" or "nuanced perspective"
+- NO academic speak like "practitioners should note" or "key contribution"
+- NO corporate buzzwords like "leverage" or "synergy"
+- NEVER start with "This article" or "The article discusses"
 
-            prompt = f"""Review this article from {source_name}:
+Total length: 3 sentences MAX. Short and sweet wins.
+
+{signature_note}"""
+
+            prompt = f"""Curate this article from {source_name}:
 
 Title: {item_data['title']}
 
-Description: {item_data.get('description', '')[:800] or 'No description available'}
+Description: {item_data.get('description', '')[:1000] or 'No description available'}
 
-Your expert review (2-3 sentences):"""
+Your expert curation:"""
 
             response = ai.complete(
                 prompt=prompt,
                 system_message=system_prompt,
-                temperature=0.7,  # Allow some creativity for natural voice
-                max_tokens=200,
+                temperature=0.75,  # Allow creativity for natural voice
+                max_tokens=350,
             )
 
             review = response.strip()
 
             # Basic validation - ensure we got something useful
-            if review and len(review) > 50:
+            if review and len(review) > 80:
                 logger.info(f'Generated expert review for "{item_data["title"][:40]}..."')
                 return review
             else:
@@ -836,6 +881,43 @@ Description: {description[:800] if description else 'No description available'}"
             logger.warning(f'No categories matched for project "{project.title}"')
 
     @classmethod
+    def _add_tools_to_project(cls, project: Project, item_data: dict):
+        """Extract and add AI tools mentioned in the article.
+
+        Searches the article title and description for known tool names
+        from our taxonomy and links them to the project.
+        """
+        import re
+
+        from core.tools.models import Tool
+
+        # Combine text for searching
+        text = f"{item_data.get('title', '')} {item_data.get('description', '')}".lower()
+
+        if not text.strip():
+            return
+
+        # Get all active tools
+        tools = Tool.objects.filter(is_active=True)
+        matched_tools = []
+
+        for tool in tools:
+            tool_name_lower = tool.name.lower()
+
+            # Check for word boundary match to avoid false positives
+            # e.g., "GPT-4" should match but "script" shouldn't match "JavaScript"
+            pattern = r'\b' + re.escape(tool_name_lower) + r'\b'
+            if re.search(pattern, text):
+                matched_tools.append(tool)
+                logger.debug(f'Found tool "{tool.name}" in article "{project.title[:40]}..."')
+
+        if matched_tools:
+            project.tools.add(*matched_tools)
+            logger.info(
+                f'Added {len(matched_tools)} tools to project "{project.title}": ' f'{[t.name for t in matched_tools]}'
+            )
+
+    @classmethod
     def _detect_difficulty_level(cls, item_data: dict) -> str:
         """Detect content difficulty level using AI.
 
@@ -889,6 +971,81 @@ Description: {item_data.get('description', '')[:500]}"""
             logger.error(f'Error detecting difficulty level: {e}', exc_info=True)
             # Default to intermediate if AI fails
             return 'intermediate'
+
+    @classmethod
+    def _generate_hero_image(cls, item_data: dict, topics: list[str]) -> str | None:
+        """Generate a beautiful hero image for the article using Gemini.
+
+        Creates an abstract, artistic hero image inspired by the article's title and topics.
+        The image uses the neon glass aesthetic with cyan and emerald tones.
+
+        Args:
+            item_data: Article data including title
+            topics: Extracted topics for the article
+
+        Returns:
+            Public S3 URL of the generated image, or None if generation fails
+        """
+        try:
+            ai = AIProvider(provider='gemini')
+
+            # Build a creative prompt for the hero image
+            title = item_data.get('title', '')
+            topic_str = ', '.join(topics[:5]) if topics else 'technology, innovation'
+
+            prompt = f"""Create a stunning, abstract hero image for a tech article.
+
+Article title: "{title}"
+Topics: {topic_str}
+
+Design requirements:
+- Modern, abstract art style with geometric shapes and flowing gradients
+- Primary colors: cyan (#22D3EE), emerald (#4ade80), deep violet (#7c3aed)
+- Subtle glass/frosted effects with soft glows
+- Dark background (near black or deep blue-black)
+- NO text, NO logos, NO faces, NO realistic objects
+- Think: abstract data visualization meets digital art
+- Should evoke innovation, technology, and creativity
+- Landscape format (16:9 aspect ratio)
+- Professional quality suitable for a tech publication header
+
+Create a beautiful, ethereal image that captures the essence of the topic."""
+
+            # Generate image using Gemini
+            image_bytes, mime_type, _text = ai.generate_image(prompt=prompt, timeout=120)
+
+            if not image_bytes:
+                logger.warning(f'No image generated for article: {title[:50]}...')
+                return None
+
+            # Determine file extension from mime type
+            ext_map = {
+                'image/png': 'png',
+                'image/jpeg': 'jpg',
+                'image/webp': 'webp',
+            }
+            extension = ext_map.get(mime_type, 'png')
+
+            # Upload to S3 as public file
+            storage = get_storage_service()
+            url, error = storage.upload_file(
+                file_data=image_bytes,
+                filename=f'hero.{extension}',
+                content_type=mime_type or 'image/png',
+                folder='article-heroes',
+                is_public=True,
+            )
+
+            if error:
+                logger.error(f'Failed to upload hero image: {error}')
+                return None
+
+            logger.info(f'Generated hero image for "{title[:40]}...": {url}')
+            return url
+
+        except Exception as e:
+            logger.error(f'Error generating hero image: {e}', exc_info=True)
+            return None
 
     @classmethod
     def sync_all_active_agents(cls) -> dict:

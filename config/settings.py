@@ -329,7 +329,8 @@ STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 # reCAPTCHA v3 Configuration (for bot protection)
 # Get your keys from: https://www.google.com/recaptcha/admin
 RECAPTCHA_SECRET_KEY = config('RECAPTCHA_SECRET_KEY', default='')
-GEMINI_MODEL_NAME = config('GEMINI_MODEL_NAME', default='gemini-3-pro-preview')
+GEMINI_MODEL_NAME = config('GEMINI_MODEL_NAME', default='gemini-2.0-flash')
+# Image generation model - gemini-3-pro-image-preview is the best quality
 GEMINI_IMAGE_MODEL = config('GEMINI_IMAGE_MODEL', default='gemini-3-pro-image-preview')
 
 # Weaviate Vector Database Configuration
@@ -413,7 +414,7 @@ AI_MODELS = {
     },
     'gemini': {
         'default': config('GEMINI_MODEL_DEFAULT', default='gemini-2.0-flash'),
-        'image': config('GEMINI_MODEL_IMAGE', default='gemini-2.0-flash-preview-image-generation'),
+        'image': config('GEMINI_IMAGE_MODEL', default='gemini-3-pro-image-preview'),
         'vision': config('GEMINI_MODEL_VISION', default='gemini-2.0-flash'),
     },
     'azure': {

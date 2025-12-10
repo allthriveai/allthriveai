@@ -164,7 +164,7 @@ Resources:
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: !Ref WebSocketOriginRequestPolicy
 
-          # Media Files Behavior
+          # Media Files Behavior (with image optimization)
           - PathPattern: '/media/*'
             TargetOriginId: S3MediaOrigin
             ViewerProtocolPolicy: redirect-to-https
@@ -178,6 +178,11 @@ Resources:
             Compress: true
             CachePolicyId: !Ref MediaCachePolicy
             OriginRequestPolicyId: !Ref MediaOriginRequestPolicy
+            # CloudFront Function for responsive image optimization
+            # Adds width/quality params based on device type for future image resizing
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !GetAtt ImageOptimizationFunction.FunctionARN
 
           # Admin Behavior (no caching)
           - PathPattern: '/admin/*'
@@ -412,6 +417,67 @@ Resources:
           return request;
         }
 
+  # CloudFront Function for Image Optimization
+  # Adds responsive image parameters based on device type (mobile/tablet/desktop)
+  # This prepares URLs for future image resizing via AWS Serverless Image Handler
+  ImageOptimizationFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub ${EnvironmentName}-allthrive-image-optimization
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Add responsive image parameters based on device type
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+
+          // Only process image requests
+          var imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+          var isImage = imageExtensions.some(function(ext) {
+            return uri.toLowerCase().endsWith(ext);
+          });
+
+          if (!isImage) {
+            return request;
+          }
+
+          // Skip if already has optimization params
+          var qs = request.querystring || {};
+          if (qs.w || qs.width || qs.h || qs.height) {
+            return request;
+          }
+
+          // Detect device type from CloudFront headers
+          var headers = request.headers;
+          var isMobile = headers['cloudfront-is-mobile-viewer'] &&
+                        headers['cloudfront-is-mobile-viewer'].value === 'true';
+          var isTablet = headers['cloudfront-is-tablet-viewer'] &&
+                        headers['cloudfront-is-tablet-viewer'].value === 'true';
+
+          // Set width based on device (for future image handler)
+          var width = '1200'; // Desktop default
+          if (isMobile) {
+            width = '400';
+          } else if (isTablet) {
+            width = '800';
+          }
+
+          // Add optimization params to querystring object
+          qs.w = { value: width };
+          qs.q = { value: '80' };
+
+          // Request WebP if browser supports it
+          var acceptHeader = headers['accept'];
+          if (acceptHeader && acceptHeader.value && acceptHeader.value.indexOf('image/webp') !== -1) {
+            qs.f = { value: 'webp' };
+          }
+
+          request.querystring = qs;
+          return request;
+        }
+
   # Cache Policies
   FrontendCachePolicy:
     Type: AWS::CloudFront::CachePolicy
@@ -461,7 +527,7 @@ Resources:
     Properties:
       CachePolicyConfig:
         Name: !Sub ${EnvironmentName}-allthrive-media-cache
-        Comment: Cache policy for media files
+        Comment: Cache policy for media files (with image optimization params)
         DefaultTTL: 604800
         MaxTTL: 31536000
         MinTTL: 86400
@@ -471,9 +537,18 @@ Resources:
           EnableAcceptEncodingBrotli: true
           EnableAcceptEncodingGzip: true
           HeadersConfig:
-            HeaderBehavior: none
+            HeaderBehavior: whitelist
+            Headers:
+              - Accept  # For WebP/AVIF content negotiation
           QueryStringsConfig:
-            QueryStringBehavior: none
+            # Include image optimization params in cache key
+            # This ensures different sizes are cached separately
+            QueryStringBehavior: whitelist
+            QueryStrings:
+              - w       # Width
+              - h       # Height
+              - q       # Quality
+              - f       # Format (webp, avif, etc.)
 
   # Origin Request Policies
   FrontendOriginRequestPolicy:
@@ -524,13 +599,24 @@ Resources:
     Properties:
       OriginRequestPolicyConfig:
         Name: !Sub ${EnvironmentName}-allthrive-media-origin
-        Comment: Origin request policy for media
+        Comment: Origin request policy for media (with device detection headers)
         CookiesConfig:
           CookieBehavior: none
         HeadersConfig:
-          HeaderBehavior: none
+          # Forward device detection headers for image optimization
+          HeaderBehavior: whitelist
+          Headers:
+            - Accept
+            - CloudFront-Is-Mobile-Viewer
+            - CloudFront-Is-Tablet-Viewer
         QueryStringsConfig:
-          QueryStringBehavior: none
+          # Forward image optimization params
+          QueryStringBehavior: whitelist
+          QueryStrings:
+            - w
+            - h
+            - q
+            - f
 
   # Security Headers Policy
   SecurityHeadersPolicy:

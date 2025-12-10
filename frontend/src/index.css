@@ -10,6 +10,16 @@
   visibility: hidden !important;
 }
 
+/* Impersonation mode - shift fixed elements down when impersonation banner is shown */
+body.impersonating {
+  /* Shift the main nav down by the banner height (40px / 2.5rem) */
+  --impersonation-offset: 2.5rem;
+}
+
+body:not(.impersonating) {
+  --impersonation-offset: 0px;
+}
+
 /* =============================================================================
    CSS VARIABLES - Neon Glass Design System
    ============================================================================= */

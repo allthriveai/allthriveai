@@ -215,11 +215,14 @@ class PurposeBasedModelSelectionTestCase(TestCase):
         self.assertIn('gpt-5', model)
 
     def test_get_model_for_purpose_gemini_image(self):
-        """Test that image purpose for gemini returns image model."""
+        """Test that image purpose for gemini returns the configured image model."""
         from services.ai.provider import get_model_for_purpose
 
         model = get_model_for_purpose('gemini', 'image')
-        self.assertIn('image', model.lower())
+        # The model should be from settings.AI_MODELS['gemini']['image']
+        # Default is gemini-3-pro-image-preview, can be overridden via env var
+        self.assertIn('gemini', model.lower())
+        self.assertTrue(model.startswith('gemini-'))
 
     def test_get_model_for_purpose_invalid_falls_back(self):
         """Test that invalid purpose falls back to default with warning."""

@@ -5,10 +5,13 @@ Includes LangSmith tracing and cost tracking.
 """
 
 import logging
+import time
 from enum import Enum
 
 from django.conf import settings
 from langsmith.run_helpers import traceable
+
+from core.logging_utils import StructuredLogger
 
 logger = logging.getLogger(__name__)
 
@@ -314,33 +317,101 @@ class AIProvider:
             Exception: If the API call fails
         """
         timeout = timeout or DEFAULT_AI_TIMEOUT
+        start_time = time.time()
 
         # Resolve model from purpose if not explicitly provided
         if model is None:
             model = get_model_for_purpose(self._provider.value, purpose)
 
+        # Log request start
+        logger.debug(
+            f'AI completion started: provider={self._provider.value}, model={model}, purpose={purpose}',
+            extra={
+                'provider': self._provider.value,
+                'model': model,
+                'purpose': purpose,
+                'user_id': self.user_id,
+                'prompt_length': len(prompt),
+                'has_system_message': bool(system_message),
+            },
+        )
+
         try:
             if self._provider == AIProviderType.AZURE:
-                return self._complete_azure(prompt, model, temperature, max_tokens, system_message, timeout, **kwargs)
+                result = self._complete_azure(prompt, model, temperature, max_tokens, system_message, timeout, **kwargs)
             elif self._provider == AIProviderType.OPENAI:
-                return self._complete_openai(prompt, model, temperature, max_tokens, system_message, timeout, **kwargs)
+                result = self._complete_openai(
+                    prompt, model, temperature, max_tokens, system_message, timeout, **kwargs
+                )
             elif self._provider == AIProviderType.ANTHROPIC:
-                return self._complete_anthropic(
+                result = self._complete_anthropic(
                     prompt, model, temperature, max_tokens, system_message, timeout, **kwargs
                 )
             elif self._provider == AIProviderType.GEMINI:
-                return self._complete_gemini(prompt, model, temperature, max_tokens, system_message, timeout, **kwargs)
+                result = self._complete_gemini(
+                    prompt, model, temperature, max_tokens, system_message, timeout, **kwargs
+                )
+            else:
+                raise ValueError(f'Unsupported provider: {self._provider}')
+
+            # Calculate duration and log success
+            duration_ms = (time.time() - start_time) * 1000
+
+            StructuredLogger.log_api_call(
+                service=f'AI:{self._provider.value}',
+                endpoint=f'/completions/{model}',
+                method='POST',
+                status_code=200,
+                duration_ms=duration_ms,
+                success=True,
+                logger_instance=logger,
+            )
+
+            # Log token usage if available
+            if self.last_usage:
+                logger.info(
+                    f'AI completion success: provider={self._provider.value}, model={model}, '
+                    f'tokens={self.last_usage.get("total_tokens", "N/A")}, duration={duration_ms:.0f}ms',
+                    extra={
+                        'provider': self._provider.value,
+                        'model': model,
+                        'purpose': purpose,
+                        'user_id': self.user_id,
+                        'prompt_tokens': self.last_usage.get('prompt_tokens'),
+                        'completion_tokens': self.last_usage.get('completion_tokens'),
+                        'total_tokens': self.last_usage.get('total_tokens'),
+                        'duration_ms': round(duration_ms, 2),
+                        'response_length': len(result) if result else 0,
+                    },
+                )
+
+            return result
+
         except Exception as e:
-            logger.error(
-                f'{self._provider.value} completion failed: {e}',
+            duration_ms = (time.time() - start_time) * 1000
+
+            StructuredLogger.log_api_call(
+                service=f'AI:{self._provider.value}',
+                endpoint=f'/completions/{model}',
+                method='POST',
+                duration_ms=duration_ms,
+                success=False,
+                error=e,
+                logger_instance=logger,
+            )
+
+            StructuredLogger.log_error(
+                message=f'AI completion failed: {self._provider.value}/{model}',
+                error=e,
                 extra={
                     'provider': self._provider.value,
-                    'model': model or self.current_model,
-                    'user_id': self.user_id,
-                    'error_type': type(e).__name__,
+                    'model': model,
                     'purpose': purpose,
+                    'user_id': self.user_id,
+                    'prompt_length': len(prompt),
+                    'duration_ms': round(duration_ms, 2),
                 },
-                exc_info=True,
+                logger_instance=logger,
             )
             raise
 
@@ -544,18 +615,78 @@ class AIProvider:
         Yields:
             Text chunks as they are generated
         """
+        start_time = time.time()
+
         # Resolve model from purpose if not explicitly provided
         if model is None:
             model = get_model_for_purpose(self._provider.value, purpose)
 
-        if self._provider == AIProviderType.AZURE:
-            yield from self._stream_azure(prompt, model, temperature, max_tokens, system_message, **kwargs)
-        elif self._provider == AIProviderType.OPENAI:
-            yield from self._stream_openai(prompt, model, temperature, max_tokens, system_message, **kwargs)
-        elif self._provider == AIProviderType.ANTHROPIC:
-            yield from self._stream_anthropic(prompt, model, temperature, max_tokens, system_message, **kwargs)
-        elif self._provider == AIProviderType.GEMINI:
-            yield from self._stream_gemini(prompt, model, temperature, max_tokens, system_message, **kwargs)
+        logger.debug(
+            f'AI stream started: provider={self._provider.value}, model={model}, purpose={purpose}',
+            extra={
+                'provider': self._provider.value,
+                'model': model,
+                'purpose': purpose,
+                'user_id': self.user_id,
+                'prompt_length': len(prompt),
+                'streaming': True,
+            },
+        )
+
+        chunk_count = 0
+        total_chars = 0
+
+        try:
+            if self._provider == AIProviderType.AZURE:
+                stream = self._stream_azure(prompt, model, temperature, max_tokens, system_message, **kwargs)
+            elif self._provider == AIProviderType.OPENAI:
+                stream = self._stream_openai(prompt, model, temperature, max_tokens, system_message, **kwargs)
+            elif self._provider == AIProviderType.ANTHROPIC:
+                stream = self._stream_anthropic(prompt, model, temperature, max_tokens, system_message, **kwargs)
+            elif self._provider == AIProviderType.GEMINI:
+                stream = self._stream_gemini(prompt, model, temperature, max_tokens, system_message, **kwargs)
+            else:
+                raise ValueError(f'Unsupported provider: {self._provider}')
+
+            for chunk in stream:
+                chunk_count += 1
+                total_chars += len(chunk) if chunk else 0
+                yield chunk
+
+            # Log success after stream completes
+            duration_ms = (time.time() - start_time) * 1000
+            logger.info(
+                f'AI stream complete: provider={self._provider.value}, model={model}, '
+                f'chunks={chunk_count}, chars={total_chars}, duration={duration_ms:.0f}ms',
+                extra={
+                    'provider': self._provider.value,
+                    'model': model,
+                    'purpose': purpose,
+                    'user_id': self.user_id,
+                    'chunk_count': chunk_count,
+                    'total_chars': total_chars,
+                    'duration_ms': round(duration_ms, 2),
+                    'streaming': True,
+                },
+            )
+
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            StructuredLogger.log_error(
+                message=f'AI stream failed: {self._provider.value}/{model}',
+                error=e,
+                extra={
+                    'provider': self._provider.value,
+                    'model': model,
+                    'purpose': purpose,
+                    'user_id': self.user_id,
+                    'chunk_count': chunk_count,
+                    'duration_ms': round(duration_ms, 2),
+                    'streaming': True,
+                },
+                logger_instance=logger,
+            )
+            raise
 
     def _stream_azure(
         self,
@@ -803,6 +934,8 @@ class AIProvider:
                 with open('output.png', 'wb') as f:
                     f.write(image_bytes)
         """
+        start_time = time.time()
+
         try:
             from google import genai
             from google.genai import types
@@ -817,11 +950,15 @@ class AIProvider:
         model_name = model or get_model_for_purpose('gemini', 'image')
 
         logger.info(
-            'Generating image with Gemini',
+            f'AI image generation started: model={model_name}',
             extra={
+                'provider': 'gemini',
                 'model': model_name,
+                'purpose': 'image',
                 'user_id': self.user_id,
+                'prompt_length': len(prompt),
                 'has_reference_images': bool(reference_images),
+                'reference_image_count': len(reference_images) if reference_images else 0,
                 'history_length': len(conversation_history) if conversation_history else 0,
             },
         )
@@ -901,37 +1038,72 @@ class AIProvider:
                     elif part.text:
                         text_response = part.text
 
+            duration_ms = (time.time() - start_time) * 1000
+
             if image_bytes:
+                StructuredLogger.log_api_call(
+                    service='AI:gemini',
+                    endpoint=f'/image-generation/{model_name}',
+                    method='POST',
+                    status_code=200,
+                    duration_ms=duration_ms,
+                    success=True,
+                    logger_instance=logger,
+                )
                 logger.info(
-                    'Image generated successfully',
+                    f'AI image generation success: model={model_name}, '
+                    f'size={len(image_bytes)} bytes, duration={duration_ms:.0f}ms',
                     extra={
+                        'provider': 'gemini',
                         'model': model_name,
+                        'purpose': 'image',
                         'user_id': self.user_id,
-                        'image_size': len(image_bytes),
+                        'image_size_bytes': len(image_bytes),
                         'mime_type': mime_type,
+                        'duration_ms': round(duration_ms, 2),
+                        'has_text_response': bool(text_response),
                     },
                 )
             else:
                 logger.warning(
-                    'No image in response',
+                    f'AI image generation returned no image: model={model_name}, duration={duration_ms:.0f}ms',
                     extra={
+                        'provider': 'gemini',
                         'model': model_name,
+                        'purpose': 'image',
                         'user_id': self.user_id,
-                        'text_response': text_response[:100] if text_response else None,
+                        'duration_ms': round(duration_ms, 2),
+                        'text_response_preview': text_response[:100] if text_response else None,
                     },
                 )
 
             return image_bytes, mime_type, text_response
 
         except Exception as e:
-            logger.error(
-                f'Image generation failed: {e}',
+            duration_ms = (time.time() - start_time) * 1000
+
+            StructuredLogger.log_api_call(
+                service='AI:gemini',
+                endpoint=f'/image-generation/{model_name}',
+                method='POST',
+                duration_ms=duration_ms,
+                success=False,
+                error=e,
+                logger_instance=logger,
+            )
+
+            StructuredLogger.log_error(
+                message=f'AI image generation failed: gemini/{model_name}',
+                error=e,
                 extra={
+                    'provider': 'gemini',
                     'model': model_name,
+                    'purpose': 'image',
                     'user_id': self.user_id,
-                    'error_type': type(e).__name__,
+                    'prompt_length': len(prompt),
+                    'duration_ms': round(duration_ms, 2),
                 },
-                exc_info=True,
+                logger_instance=logger,
             )
             raise
 
@@ -968,35 +1140,97 @@ class AIProvider:
         if not image_url and not image_bytes:
             raise ValueError('Either image_url or image_bytes must be provided')
 
+        start_time = time.time()
+        resolved_model = model or get_model_for_purpose(self._provider.value, 'vision')
+
+        logger.debug(
+            f'AI vision completion started: provider={self._provider.value}, model={resolved_model}',
+            extra={
+                'provider': self._provider.value,
+                'model': resolved_model,
+                'purpose': 'vision',
+                'user_id': self.user_id,
+                'prompt_length': len(prompt),
+                'has_image_url': bool(image_url),
+                'has_image_bytes': bool(image_bytes),
+                'image_bytes_size': len(image_bytes) if image_bytes else 0,
+            },
+        )
+
         try:
             if self._provider == AIProviderType.GEMINI:
-                return self._complete_with_image_gemini(
+                result = self._complete_with_image_gemini(
                     prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
                 )
             elif self._provider == AIProviderType.OPENAI:
-                return self._complete_with_image_openai(
+                result = self._complete_with_image_openai(
                     prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
                 )
             elif self._provider == AIProviderType.AZURE:
-                return self._complete_with_image_azure(
+                result = self._complete_with_image_azure(
                     prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
                 )
             elif self._provider == AIProviderType.ANTHROPIC:
-                return self._complete_with_image_anthropic(
+                result = self._complete_with_image_anthropic(
                     prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
                 )
             else:
                 raise ValueError(f'Vision not supported for provider: {self._provider}')
-        except Exception as e:
-            logger.error(
-                f'{self._provider.value} vision completion failed: {e}',
+
+            duration_ms = (time.time() - start_time) * 1000
+
+            StructuredLogger.log_api_call(
+                service=f'AI:{self._provider.value}',
+                endpoint=f'/vision/{resolved_model}',
+                method='POST',
+                status_code=200,
+                duration_ms=duration_ms,
+                success=True,
+                logger_instance=logger,
+            )
+
+            logger.info(
+                f'AI vision completion success: provider={self._provider.value}, model={resolved_model}, '
+                f'duration={duration_ms:.0f}ms',
                 extra={
                     'provider': self._provider.value,
-                    'model': model or 'default',
+                    'model': resolved_model,
+                    'purpose': 'vision',
                     'user_id': self.user_id,
-                    'error_type': type(e).__name__,
+                    'duration_ms': round(duration_ms, 2),
+                    'response_length': len(result) if result else 0,
+                    'prompt_tokens': self.last_usage.get('prompt_tokens') if self.last_usage else None,
+                    'completion_tokens': self.last_usage.get('completion_tokens') if self.last_usage else None,
                 },
-                exc_info=True,
+            )
+
+            return result
+
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+
+            StructuredLogger.log_api_call(
+                service=f'AI:{self._provider.value}',
+                endpoint=f'/vision/{resolved_model}',
+                method='POST',
+                duration_ms=duration_ms,
+                success=False,
+                error=e,
+                logger_instance=logger,
+            )
+
+            StructuredLogger.log_error(
+                message=f'AI vision completion failed: {self._provider.value}/{resolved_model}',
+                error=e,
+                extra={
+                    'provider': self._provider.value,
+                    'model': resolved_model,
+                    'purpose': 'vision',
+                    'user_id': self.user_id,
+                    'prompt_length': len(prompt),
+                    'duration_ms': round(duration_ms, 2),
+                },
+                logger_instance=logger,
             )
             raise
 

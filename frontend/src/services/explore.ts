@@ -94,10 +94,13 @@ export async function semanticSearch(query: string, filters?: SemanticSearchFilt
 
 /**
  * Explore top user profiles
+ * @param page - Page number
+ * @param page_size - Number of results per page
+ * @param include_all - If true, include users without projects (e.g., beta testers, agents)
  */
-export async function exploreProfiles(page: number = 1, page_size: number = 20): Promise<PaginatedResponse<User>> {
+export async function exploreProfiles(page: number = 1, page_size: number = 20, include_all: boolean = true): Promise<PaginatedResponse<User>> {
   const response = await api.get<PaginatedResponse<User>>('/users/explore/', {
-    params: { page, page_size }
+    params: { page, page_size, include_all }
   });
   return response.data;
 }

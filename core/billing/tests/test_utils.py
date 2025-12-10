@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from core.billing.models import (
@@ -112,8 +112,9 @@ class CanAccessFeatureTestCase(TestCase):
         self.assertTrue(can_access_feature(self.user, 'marketplace'))
         self.assertTrue(can_access_feature(self.user, 'ai_mentor'))
 
+    @override_settings(BETA_MODE=False)
     def test_access_disallowed_feature(self):
-        """Test accessing a disallowed feature."""
+        """Test accessing a disallowed feature (non-beta mode)."""
         self.assertFalse(can_access_feature(self.user, 'go1_courses'))
         self.assertFalse(can_access_feature(self.user, 'analytics'))
 
@@ -125,9 +126,17 @@ class CanAccessFeatureTestCase(TestCase):
         self.assertTrue(can_access_feature(self.user, 'go1_courses'))
         self.assertTrue(can_access_feature(self.user, 'analytics'))
 
+    @override_settings(BETA_MODE=False)
     def test_access_unknown_feature(self):
-        """Test accessing an unknown feature."""
+        """Test accessing an unknown feature (non-beta mode)."""
         self.assertFalse(can_access_feature(self.user, 'unknown_feature'))
+
+    @override_settings(BETA_MODE=True)
+    def test_access_all_features_in_beta_mode(self):
+        """Test that beta mode grants access to all features."""
+        self.assertTrue(can_access_feature(self.user, 'go1_courses'))
+        self.assertTrue(can_access_feature(self.user, 'analytics'))
+        self.assertTrue(can_access_feature(self.user, 'unknown_feature'))
 
 
 class CanMakeAiRequestTestCase(TestCase):
@@ -144,8 +153,9 @@ class CanMakeAiRequestTestCase(TestCase):
         self.tier.monthly_ai_requests = 20
         self.tier.save()
 
+    @override_settings(BETA_MODE=False)
     def test_can_make_request_within_limit(self):
-        """Test user within subscription limit can make request."""
+        """Test user within subscription limit can make request (non-beta mode)."""
         self.subscription.ai_requests_used_this_month = 10
         self.subscription.ai_requests_reset_date = timezone.now().date()
         self.subscription.save()
@@ -155,8 +165,9 @@ class CanMakeAiRequestTestCase(TestCase):
         self.assertTrue(can_request)
         self.assertEqual(reason, 'Within subscription limit')
 
+    @override_settings(BETA_MODE=False)
     def test_cannot_make_request_at_limit(self):
-        """Test user at limit cannot make request without tokens."""
+        """Test user at limit cannot make request without tokens (non-beta mode)."""
         self.subscription.ai_requests_used_this_month = 20
         self.subscription.ai_requests_reset_date = timezone.now().date()
         self.subscription.save()
@@ -171,8 +182,25 @@ class CanMakeAiRequestTestCase(TestCase):
         self.assertFalse(can_request)
         self.assertIn('exceeded', reason.lower())
 
+    @override_settings(BETA_MODE=True)
+    def test_can_make_request_in_beta_mode(self):
+        """Test user can always make requests in beta mode regardless of limits."""
+        self.subscription.ai_requests_used_this_month = 20
+        self.subscription.ai_requests_reset_date = timezone.now().date()
+        self.subscription.save()
+
+        token_balance = UserTokenBalance.objects.get(user=self.user)
+        token_balance.balance = 0
+        token_balance.save()
+
+        can_request, reason = can_make_ai_request(self.user)
+
+        self.assertTrue(can_request)
+        self.assertIn('beta', reason.lower())
+
+    @override_settings(BETA_MODE=False)
     def test_can_make_request_with_tokens_fallback(self):
-        """Test user at limit can make request with token fallback."""
+        """Test user at limit can make request with token fallback (non-beta mode)."""
         self.subscription.ai_requests_used_this_month = 20
         self.subscription.ai_requests_reset_date = timezone.now().date()
         self.subscription.save()
@@ -203,8 +231,9 @@ class CheckAndReserveAiRequestTestCase(TestCase):
         self.tier.monthly_ai_requests = 20
         self.tier.save()
 
+    @override_settings(BETA_MODE=False)
     def test_reserve_increments_counter(self):
-        """Test that reserving increments the counter."""
+        """Test that reserving increments the counter (non-beta mode)."""
         self.subscription.ai_requests_used_this_month = 0
         self.subscription.ai_requests_reset_date = timezone.now().date()
         self.subscription.save()
@@ -215,8 +244,9 @@ class CheckAndReserveAiRequestTestCase(TestCase):
         self.subscription.refresh_from_db()
         self.assertEqual(self.subscription.ai_requests_used_this_month, 1)
 
+    @override_settings(BETA_MODE=False)
     def test_reserve_fails_at_limit(self):
-        """Test that reserve fails when at limit without tokens."""
+        """Test that reserve fails when at limit without tokens (non-beta mode)."""
         self.subscription.ai_requests_used_this_month = 20
         self.subscription.ai_requests_reset_date = timezone.now().date()
         self.subscription.save()
@@ -231,8 +261,9 @@ class CheckAndReserveAiRequestTestCase(TestCase):
         self.assertFalse(success)
         self.assertIn('exceeded', message.lower())
 
+    @override_settings(BETA_MODE=False)
     def test_reserve_succeeds_with_tokens(self):
-        """Test that reserve succeeds at limit with tokens."""
+        """Test that reserve succeeds at limit with tokens (non-beta mode)."""
         self.subscription.ai_requests_used_this_month = 20
         self.subscription.ai_requests_reset_date = timezone.now().date()
         self.subscription.save()
@@ -245,6 +276,25 @@ class CheckAndReserveAiRequestTestCase(TestCase):
 
         self.assertTrue(success)
         self.assertIn('token', message.lower())
+
+    @override_settings(BETA_MODE=True)
+    def test_reserve_succeeds_in_beta_mode(self):
+        """Test that reserve always succeeds in beta mode without incrementing counter."""
+        self.subscription.ai_requests_used_this_month = 20
+        self.subscription.ai_requests_reset_date = timezone.now().date()
+        self.subscription.save()
+
+        token_balance = UserTokenBalance.objects.get(user=self.user)
+        token_balance.balance = 0
+        token_balance.save()
+
+        success, message = check_and_reserve_ai_request(self.user)
+
+        self.assertTrue(success)
+        self.assertIn('beta', message.lower())
+        # Counter should NOT be incremented in beta mode
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.ai_requests_used_this_month, 20)
 
 
 class DeductTokensTestCase(TestCase):
@@ -306,8 +356,9 @@ class ProcessAiRequestTestCase(TestCase):
         self.tier.monthly_ai_requests = 20
         self.tier.save()
 
+    @override_settings(BETA_MODE=False)
     def test_process_using_subscription(self):
-        """Test processing request using subscription allowance."""
+        """Test processing request using subscription allowance (non-beta mode)."""
         self.subscription.ai_requests_used_this_month = 0
         self.subscription.ai_requests_reset_date = timezone.now().date()
         self.subscription.save()
@@ -320,8 +371,9 @@ class ProcessAiRequestTestCase(TestCase):
         self.subscription.refresh_from_db()
         self.assertEqual(self.subscription.ai_requests_used_this_month, 1)
 
+    @override_settings(BETA_MODE=False)
     def test_process_using_tokens(self):
-        """Test processing request using token balance."""
+        """Test processing request using token balance (non-beta mode)."""
         self.subscription.ai_requests_used_this_month = 20  # At limit
         self.subscription.ai_requests_reset_date = timezone.now().date()
         self.subscription.save()
@@ -357,8 +409,9 @@ class GetSubscriptionStatusTestCase(TestCase):
         self.tier.has_ai_mentor = True
         self.tier.save()
 
+    @override_settings(BETA_MODE=False)
     def test_get_status_with_subscription(self):
-        """Test getting status for user with subscription."""
+        """Test getting status for user with subscription (non-beta mode)."""
         self.subscription.ai_requests_used_this_month = 5
         self.subscription.save()
 
@@ -374,6 +427,27 @@ class GetSubscriptionStatusTestCase(TestCase):
         self.assertEqual(status['ai_requests']['used'], 5)
         self.assertEqual(status['ai_requests']['remaining'], 15)
         self.assertEqual(status['tokens']['balance'], 1000)
+        self.assertTrue(status['features']['marketplace'])
+        self.assertTrue(status['features']['ai_mentor'])
+
+    @override_settings(BETA_MODE=True)
+    def test_get_status_in_beta_mode(self):
+        """Test getting status in beta mode shows unlimited access."""
+        self.subscription.ai_requests_used_this_month = 5
+        self.subscription.save()
+
+        token_balance = UserTokenBalance.objects.get(user=self.user)
+        token_balance.balance = 1000
+        token_balance.save()
+
+        status = get_subscription_status(self.user)
+
+        self.assertTrue(status['has_subscription'])
+        self.assertTrue(status['is_active'])
+        self.assertTrue(status['beta_mode'])
+        # In beta mode, remaining is None (unlimited)
+        self.assertIsNone(status['ai_requests']['remaining'])
+        # All features should be True in beta mode
         self.assertTrue(status['features']['marketplace'])
         self.assertTrue(status['features']['ai_mentor'])
 

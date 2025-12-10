@@ -6,6 +6,7 @@ This module provides intelligent, automatic personalization by:
 - Auto-tagging users based on their projects and behavior
 - Calculating confidence scores for preferences
 - Generating UserTags with minimal user effort
+- Automatically assigning categories to projects
 """
 
 import logging
@@ -13,10 +14,126 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from core.taxonomy.models import UserTag
+from core.taxonomy.models import Taxonomy, UserTag
 from core.tools.models import Tool
+from services.ai import AIProvider
 
 logger = logging.getLogger(__name__)
+
+
+def auto_assign_category_to_project(project, force: bool = False) -> Taxonomy | None:
+    """
+    Automatically assign a category to a project using AI analysis.
+
+    Analyzes the project title and description to determine the best
+    matching category from the available taxonomy.
+
+    Args:
+        project: Project instance to categorize
+        force: If True, reassign even if project already has categories
+
+    Returns:
+        The assigned Taxonomy category, or None if assignment failed
+    """
+    # Skip if project already has categories (unless forced)
+    if not force and project.categories.exists():
+        logger.debug(f"Project '{project.title}' already has categories, skipping auto-assign")
+        return None
+
+    # Skip if tags were manually edited
+    if project.tags_manually_edited:
+        logger.debug(f"Project '{project.title}' has manually edited tags, skipping auto-assign")
+        return None
+
+    try:
+        # Get available categories
+        available_categories = list(
+            Taxonomy.objects.filter(taxonomy_type='category', is_active=True).values_list('name', flat=True)
+        )
+
+        if not available_categories:
+            logger.warning('No active categories found in taxonomy')
+            return None
+
+        # Use AI to determine category
+        ai = AIProvider(provider='openai')
+
+        system_message = f"""You are an AI content categorizer for a tech/AI learning platform.
+Analyze the project title and description, and classify it into ONE of these categories:
+
+{', '.join(available_categories)}
+
+Rules:
+1. Choose the SINGLE most relevant category
+2. If the content is about AI tools, models, or LLMs, use "AI Models & Research"
+3. If it's about building chatbots or conversation systems, use "Chatbots & Conversation"
+4. For code/development projects, use "Developer & Coding"
+5. For image/video generation, use "Images & Video"
+6. If nothing fits well, use the closest match
+
+Respond with ONLY the category name, exactly as written above."""
+
+        combined_text = f"""Title: {project.title}
+
+Description: {project.description[:800] if project.description else 'No description available'}"""
+
+        response = ai.complete(
+            prompt=combined_text,
+            system_message=system_message,
+            max_tokens=50,
+            temperature=0.1,
+        )
+
+        if not response:
+            logger.warning(f'No AI response for project category: {project.title}')
+            return None
+
+        category_name = response.strip().strip('"\'')
+
+        # Find matching category
+        category = Taxonomy.objects.filter(taxonomy_type='category', is_active=True, name__iexact=category_name).first()
+
+        if not category:
+            # Try case-insensitive partial match
+            for cat_name in available_categories:
+                if cat_name.lower() in category_name.lower() or category_name.lower() in cat_name.lower():
+                    category = Taxonomy.objects.filter(
+                        taxonomy_type='category', is_active=True, name__iexact=cat_name
+                    ).first()
+                    if category:
+                        break
+
+        if category:
+            project.categories.add(category)
+            logger.info(f'Auto-assigned category "{category.name}" to project "{project.title}"')
+            return category
+        else:
+            # Fallback: assign a default category based on project type
+            default_categories = {
+                'github_repo': 'Developer & Coding',
+                'figma_design': 'Design (Mockups & UI)',
+                'video': 'Images & Video',
+                'prompt': 'Chatbots & Conversation',
+                'image_collection': 'Images & Video',
+                'rss_article': 'AI Models & Research',
+                'battle': 'Images & Video',
+            }
+            default_name = default_categories.get(project.type, 'AI Models & Research')
+            fallback = Taxonomy.objects.filter(
+                taxonomy_type='category', is_active=True, name__iexact=default_name
+            ).first()
+
+            if fallback:
+                project.categories.add(fallback)
+                logger.info(f'Assigned fallback category "{fallback.name}" to project "{project.title}"')
+                return fallback
+
+            logger.warning(f'Could not assign any category to project "{project.title}"')
+            return None
+
+    except Exception as e:
+        logger.error(f'Error auto-assigning category to project: {e}', exc_info=True)
+        return None
 
 
 def extract_tools_from_project(project) -> list[Tool]:

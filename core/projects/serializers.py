@@ -335,3 +335,87 @@ class ProjectSerializer(serializers.ModelSerializer):
         if not validated_data.get('banner_url'):
             validated_data['banner_url'] = DEFAULT_BANNER_IMAGE
         return super().create(validated_data)
+
+
+class ProjectCardSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for explore/feed cards.
+
+    Optimized for mobile performance by:
+    - Excluding heavy 'content' field (can be up to 100KB per project)
+    - Excluding nested tool/category details (just IDs)
+    - Using annotated is_liked_by_user from view (no N+1 queries)
+    - Minimal fields needed for card rendering
+
+    Use this for explore page, feeds, and any list views where full content isn't needed.
+    """
+
+    username = serializers.ReadOnlyField(source='user.username')
+    user_avatar_url = serializers.ReadOnlyField(source='user.avatar_url')
+    heart_count = serializers.ReadOnlyField()
+    # Use annotated value from queryset if available, otherwise compute
+    is_liked_by_user = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Project
+        fields = [
+            'id',
+            'username',
+            'user_avatar_url',
+            'title',
+            'slug',
+            'description',
+            'type',
+            'is_promoted',
+            'banner_url',
+            'featured_image_url',
+            'external_url',
+            'tools',  # Just IDs for filtering
+            'categories',  # Just IDs for filtering
+            'topics',
+            'heart_count',
+            'is_liked_by_user',
+            'published_date',
+            'created_at',
+        ]
+
+    def get_is_liked_by_user(self, obj):
+        """Use annotated value if available, otherwise check manually.
+
+        When the view uses .annotate(is_liked_by_user=Exists(...)), this uses
+        the pre-computed value. Falls back to manual check for compatibility.
+        """
+        # Check for annotated value first (avoids N+1)
+        if hasattr(obj, '_is_liked_by_user_annotation'):
+            return obj._is_liked_by_user_annotation
+
+        # Fallback for non-annotated querysets
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # Check if likes are prefetched
+            if hasattr(obj, '_prefetched_objects_cache') and 'likes' in obj._prefetched_objects_cache:
+                return any(like.user_id == request.user.id for like in obj.likes.all())
+            return obj.likes.filter(user=request.user).exists()
+        return False
+
+    def to_representation(self, instance):
+        """Convert snake_case to camelCase for frontend compatibility."""
+        data = super().to_representation(instance)
+
+        field_mapping = {
+            'user_avatar_url': 'userAvatarUrl',
+            'is_promoted': 'isPromoted',
+            'banner_url': 'bannerUrl',
+            'featured_image_url': 'featuredImageUrl',
+            'external_url': 'externalUrl',
+            'heart_count': 'heartCount',
+            'is_liked_by_user': 'isLikedByUser',
+            'published_date': 'publishedDate',
+            'created_at': 'createdAt',
+        }
+
+        camel_case_data = {}
+        for key, value in data.items():
+            new_key = field_mapping.get(key, key)
+            camel_case_data[new_key] = value
+
+        return camel_case_data

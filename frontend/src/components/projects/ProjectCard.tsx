@@ -38,6 +38,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useReward } from 'react-rewards';
 import { getCategoryColors } from '@/utils/categoryColors';
 import { DynamicGradientCard } from './DynamicGradientCard';
+import { generateSrcSet, generateSizes, getOptimizedImageUrl } from '@/utils/imageOptimization';
 
 interface ProjectCardProps {
   project: Project;
@@ -417,10 +418,13 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                         <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 rounded-lg" style={{ backgroundSize: '200% 200%' }} />
                       )}
                       <img
-                        src={heroElement.url}
+                        src={getOptimizedImageUrl(heroElement.url, { width: 400 })}
+                        srcSet={generateSrcSet(heroElement.url, [280, 400, 560])}
+                        sizes="(max-width: 640px) 280px, 400px"
                         alt={project.title}
                         className={`w-full h-full object-cover rounded-lg transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
                         loading="lazy"
+                        decoding="async"
                         onLoad={() => {
                           setTimeout(() => setImageLoaded(true), 50);
                         }}
@@ -437,10 +441,13 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                     <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800" style={{ backgroundSize: '200% 200%' }} />
                   )}
                   <img
-                    src={heroElement.url}
+                    src={getOptimizedImageUrl(heroElement.url, { width: 800 })}
+                    srcSet={generateSrcSet(heroElement.url, [400, 600, 800, 1200])}
+                    sizes={generateSizes(400, 600, 800)}
                     alt={project.title}
                     className={`w-full h-auto object-cover ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
                     loading="lazy"
+                    decoding="async"
                     onLoad={(e) => {
                       const img = e.currentTarget;
                       setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
@@ -547,10 +554,13 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                   <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800" style={{ backgroundSize: '200% 200%' }} />
                 )}
                 <img
-                  src={heroElement.images[0]}
+                  src={getOptimizedImageUrl(heroElement.images[0], { width: 800 })}
+                  srcSet={generateSrcSet(heroElement.images[0], [400, 600, 800, 1200])}
+                  sizes={generateSizes(400, 600, 800)}
                   alt={project.title}
                   className={`w-full h-auto block ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
                   loading="lazy"
+                  decoding="async"
                   onLoad={(e) => {
                     const img = e.currentTarget;
                     setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
@@ -571,10 +581,13 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                     <div className="flex-1 relative overflow-hidden">
                       {heroElement.myImageUrl ? (
                         <img
-                          src={heroElement.myImageUrl}
+                          src={getOptimizedImageUrl(heroElement.myImageUrl, { width: 400 })}
+                          srcSet={generateSrcSet(heroElement.myImageUrl, [280, 400, 560])}
+                          sizes="(max-width: 640px) 280px, 400px"
                           alt="Your submission"
                           className="w-full h-full object-cover"
                           loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="w-full h-full bg-slate-800 flex items-center justify-center">
@@ -600,10 +613,13 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                     <div className="flex-1 relative overflow-hidden">
                       {heroElement.opponentImageUrl ? (
                         <img
-                          src={heroElement.opponentImageUrl}
+                          src={getOptimizedImageUrl(heroElement.opponentImageUrl, { width: 400 })}
+                          srcSet={generateSrcSet(heroElement.opponentImageUrl, [280, 400, 560])}
+                          sizes="(max-width: 640px) 280px, 400px"
                           alt="Opponent submission"
                           className="w-full h-full object-cover"
                           loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="w-full h-full bg-slate-800 flex items-center justify-center">
@@ -718,10 +734,26 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
           </div>
         )}
 
-        {/* GRADIENT OVERLAY & FOOTER */}
-        {/* Always render footer absolute at bottom for seamless overlay look */}
-        {/* Show by default on mobile (md:opacity-0), show on hover on desktop (md:group-hover:opacity-100) */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
+        {/* CURATED ARTICLE WITH IMAGE: Title overlay - visible by default, hidden on hover (footer shows title) */}
+        {/* Uses glassmorphism effect for a premium feel - only shown when card has an actual image */}
+        {project.type === 'rss_article' && heroElement.type === 'image' && (
+          <div className="absolute bottom-4 left-4 right-4 z-20 opacity-100 group-hover:opacity-0 transition-opacity duration-300 pointer-events-none">
+            <div className="backdrop-blur-xl bg-black/30 rounded p-4 shadow-lg">
+              <h3 className="text-lg font-bold line-clamp-2 leading-snug text-white drop-shadow-sm">
+                {project.title}
+              </h3>
+            </div>
+          </div>
+        )}
+
+        {/* GRADIENT OVERLAY & FOOTER - Shows on hover for all cards */}
+        {/* For curated articles WITH images: appears on hover (replacing the static title) */}
+        {/* For other cards (including curated without images): shows by default on mobile, hover on desktop */}
+        <div className={`absolute bottom-0 left-0 right-0 z-20 transition-opacity duration-300 ${
+          project.type === 'rss_article' && heroElement.type === 'image'
+            ? 'opacity-0 group-hover:opacity-100'  // Curated with image: hidden by default, show on hover
+            : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'  // Others: mobile default, desktop hover
+        }`}>
           {/* Gradient Background for smooth overlay fade */}
           {/* For gradient cards, use a subtle dark gradient that lets the animations show through */}
           <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent ${isGradient ? '-top-full' : '-top-64 md:-top-40'}`} />
@@ -754,7 +786,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
             <div className="flex items-center justify-between pt-1">
               {/* Left side - Avatar and Action buttons */}
               <div className="flex items-center gap-2">
-                {/* User Avatar */}
+                {/* User Avatar - Special treatment for curated articles */}
                 {!selectionMode && (
                   <button
                     onClick={(e) => {
@@ -762,8 +794,13 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                       e.stopPropagation();
                       navigate(`/${project.username}`);
                     }}
-                    className="w-9 h-9 rounded-full border-2 border-white/80 shadow-lg overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0 hover:border-white hover:scale-105 transition-all cursor-pointer"
-                    aria-label={`View ${project.username}'s profile`}
+                    className={`rounded-full border-2 border-white/80 shadow-lg overflow-hidden flex items-center justify-center flex-shrink-0 hover:border-white hover:scale-105 transition-all cursor-pointer ${
+                      project.type === 'rss_article'
+                        ? 'w-8 h-8 bg-gradient-to-br from-cyan-400 to-emerald-400'
+                        : 'w-9 h-9 bg-gradient-to-br from-primary-400 to-primary-600'
+                    }`}
+                    aria-label={project.type === 'rss_article' ? `Curated by ${project.username}` : `View ${project.username}'s profile`}
+                    title={project.type === 'rss_article' ? `Curated by ${project.username}` : undefined}
                   >
                     {userAvatarUrl ? (
                       <img
@@ -894,23 +931,40 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                 )}
               </div>
 
-              {/* Right side - Tools */}
-              {project.toolsDetails && project.toolsDetails.length > 0 && (
-                <button
-                  onClick={handleToolClick}
-                  className="p-2 rounded-full transition-all hover:scale-110 bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 cursor-pointer"
-                  title={project.toolsDetails[0].name}
-                >
-                  {project.toolsDetails[0].logoUrl ? (
-                    <img
-                      src={project.toolsDetails[0].logoUrl}
-                      alt={project.toolsDetails[0].name}
-                      className="w-5 h-5 rounded object-contain"
-                    />
-                  ) : (
-                    <CodeBracketIcon className="w-5 h-5 text-white" />
-                  )}
-                </button>
+              {/* Right side - Tools (for regular projects) or Topics (for curated articles) */}
+              {project.type === 'rss_article' ? (
+                // For curated articles, show category/topic badges
+                project.categoriesDetails && project.categoriesDetails.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    {project.categoriesDetails.slice(0, 2).map((category) => (
+                      <span
+                        key={category.id}
+                        className="px-2 py-1 text-[10px] font-semibold rounded-full bg-gradient-to-r from-cyan-500/20 to-emerald-500/20 text-white backdrop-blur-md border border-cyan-500/30"
+                      >
+                        {category.name}
+                      </span>
+                    ))}
+                  </div>
+                )
+              ) : (
+                // For regular projects, show tools
+                project.toolsDetails && project.toolsDetails.length > 0 && (
+                  <button
+                    onClick={handleToolClick}
+                    className="p-2 rounded-full transition-all hover:scale-110 bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 cursor-pointer"
+                    title={project.toolsDetails[0].name}
+                  >
+                    {project.toolsDetails[0].logoUrl ? (
+                      <img
+                        src={project.toolsDetails[0].logoUrl}
+                        alt={project.toolsDetails[0].name}
+                        className="w-5 h-5 rounded object-contain"
+                      />
+                    ) : (
+                      <CodeBracketIcon className="w-5 h-5 text-white" />
+                    )}
+                  </button>
+                )
               )}
             </div>
           </div>

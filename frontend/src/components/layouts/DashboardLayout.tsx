@@ -232,7 +232,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto scroll-pt-16">
-          <div className="pt-16">
+          <div style={{ paddingTop: 'calc(4rem + var(--impersonation-offset, 0px))' }}>
             {/* Ember Onboarding Banner - positioned below nav, not sticky */}
             {onboardingContext?.shouldShowBanner && (
               <EmberAdventureBanner

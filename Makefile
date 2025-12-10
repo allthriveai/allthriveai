@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status reset-onboarding aws-validate cloudfront-clear-cache
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache
 
 help:
 	@echo "Available commands:"
@@ -55,6 +55,8 @@ help:
 	@echo "  make test-proxy      - Test Docker proxy connectivity (run this first!)"
 	@echo "  make test-coverage   - Run backend tests with coverage report"
 	@echo "  make reset-onboarding - Print JS to reset Ember onboarding (run in browser console)"
+	@echo "  make stop-impersonation - Print JS to stop admin impersonation (run in browser console)"
+	@echo "  make end-all-impersonations - End all active impersonation sessions in database"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  make lint            - Run linting for all code"
@@ -367,6 +369,25 @@ reset-onboarding:
 	@echo ""
 	@echo "This will clear all onboarding state and show the Ember modal again."
 	@echo ""
+
+stop-impersonation:
+	@echo ""
+	@echo "🎭 To stop impersonation, run this in your browser console (on localhost:3000):"
+	@echo ""
+	@echo "fetch('/api/v1/admin/impersonate/stop/', { method: 'POST', credentials: 'include' })"
+	@echo "  .then(r => r.json())"
+	@echo "  .then(d => { console.log('Stopped impersonation:', d); location.reload(); })"
+	@echo "  .catch(e => console.error('Error:', e));"
+	@echo ""
+	@echo "Or to just clear cookies and log out completely:"
+	@echo ""
+	@echo "document.cookie.split(';').forEach(c => document.cookie = c.trim().split('=')[0] + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/');"
+	@echo "location.reload();"
+	@echo ""
+
+end-all-impersonations:
+	@echo "Ending all active impersonation sessions in the database..."
+	docker-compose exec web python manage.py shell -c "from core.users.models import ImpersonationLog; from django.utils import timezone; count = ImpersonationLog.objects.filter(ended_at__isnull=True).update(ended_at=timezone.now()); print(f'Ended {count} active impersonation session(s)')"
 
 # AWS Deployment Commands
 aws-validate:

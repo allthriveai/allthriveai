@@ -168,7 +168,7 @@ export default function QuizPage() {
       {() => (
         <>
         <div className="flex-1 overflow-auto">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-4xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-8">
             {loading && (
               <div className="text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-primary-600"></div>
@@ -294,12 +294,12 @@ export default function QuizPage() {
 
             {/* Taking Quiz State */}
             {(quizState === 'taking' || quizState === 'feedback') && currentQuestion && (
-              <div>
+              <div className="flex flex-col min-h-[calc(100dvh-12rem)] sm:min-h-0">
                 <QuizProgress
                   current={currentQuestionIndex + 1}
                   total={questions.length}
                 />
-                <div className="relative">
+                <div className="relative flex-1 flex items-center py-4">
                   <QuizCard
                     question={currentQuestion}
                     onAnswer={handleAnswer}

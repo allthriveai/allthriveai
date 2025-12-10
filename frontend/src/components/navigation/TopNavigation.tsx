@@ -54,8 +54,9 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
     <>
       {/* Top Navigation Bar - Liquid Glass Effect */}
       <nav
-        className="fixed top-0 left-0 right-0 z-50 border-b border-white/20 dark:border-white/10"
+        className="fixed left-0 right-0 z-50 border-b border-white/20 dark:border-white/10"
         style={{
+          top: 'var(--impersonation-offset, 0)',
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',

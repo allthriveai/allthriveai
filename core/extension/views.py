@@ -206,14 +206,14 @@ def create_clipped_project(request):
             title=title[:200],  # Limit title length
             description=description[:500] if description else '',
             content=content,
-            type=Project.ProjectType.PROMPT,  # Default to Prompt for clipped content
+            type=Project.ProjectType.CLIPPED,  # Use CLIPPED type for web clips
             external_url=source_url[:500] if source_url else '',
             is_private=visibility == 'private',
             is_showcased=True,  # Auto-showcase clipped projects
             topics=tags[:15] if tags else [],  # Limit to 15 tags
         )
 
-        # Handle categories
+        # Handle categories - use provided or auto-assign
         if category_slugs:
             categories = Taxonomy.objects.filter(
                 slug__in=category_slugs,
@@ -221,6 +221,25 @@ def create_clipped_project(request):
                 is_active=True,
             )
             project.categories.set(categories)
+        else:
+            # Auto-assign category using AI
+            try:
+                from core.taxonomy.services import auto_assign_category_to_project
+
+                auto_assign_category_to_project(project)
+            except Exception as e:
+                logger.warning(f'Failed to auto-assign category to clipped project: {e}')
+
+        # Auto-extract and link tools from title/description
+        try:
+            from core.taxonomy.services import extract_tools_from_project
+
+            tools = extract_tools_from_project(project)
+            if tools:
+                project.tools.add(*tools)
+                logger.info(f'Auto-linked {len(tools)} tools to clipped project: {[t.name for t in tools]}')
+        except Exception as e:
+            logger.warning(f'Failed to auto-extract tools from clipped project: {e}')
 
         # Handle images - store first image as featured
         if images and len(images) > 0:

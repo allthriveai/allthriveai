@@ -3,7 +3,9 @@ import { motion } from 'framer-motion';
 
 interface DynamicGradientCardProps {
   title: string;
+  /** Primary gradient color (from category jewel colors) */
   fromColor: string;
+  /** Secondary gradient color (from category jewel colors) */
   toColor: string;
   categoryName?: string;
   projectId?: number;
@@ -11,35 +13,48 @@ interface DynamicGradientCardProps {
 
 /**
  * Generates deterministic orb positions based on project ID
+ * Uses the category's jewel colors for a cohesive look
  */
-function generateOrbStyles(projectId: number, fromColor: string, toColor: string) {
+function generateOrbStyles(projectId: number, _fromColor: string, toColor: string) {
   const seed = projectId || 1;
 
   return [
     {
       id: 'orb1',
-      color: fromColor,
-      size: 60 + (seed % 20),
-      x: 10 + (seed % 30),
-      y: 10 + ((seed * 2) % 30),
+      color: 'rgba(255,255,255,0.4)',
+      opacity: 0.6,
+      size: 80 + (seed % 30),
+      x: 15 + (seed % 25),
+      y: 15 + ((seed * 2) % 25),
+      blur: 'blur-[80px]',
     },
     {
       id: 'orb2',
-      color: toColor,
-      size: 50 + ((seed * 3) % 25),
-      x: 60 + ((seed * 4) % 30),
-      y: 50 + ((seed * 5) % 30),
+      color: 'rgba(255,255,255,0.3)',
+      opacity: 0.5,
+      size: 70 + ((seed * 3) % 35),
+      x: 70 + ((seed * 4) % 20),
+      y: 60 + ((seed * 5) % 25),
+      blur: 'blur-[70px]',
     },
     {
       id: 'orb3',
-      color: `${fromColor}88`,
-      size: 40 + ((seed * 6) % 20),
-      x: 30 + ((seed * 7) % 40),
-      y: 70 + ((seed * 8) % 20),
+      color: toColor,
+      opacity: 0.4,
+      size: 60 + ((seed * 6) % 25),
+      x: 40 + ((seed * 7) % 30),
+      y: 80 + ((seed * 8) % 15),
+      blur: 'blur-[60px]',
     },
   ];
 }
 
+/**
+ * DynamicGradientCard - Beautiful gradient card using category jewel colors
+ *
+ * Displays a dark background with animated jewel-colored orbs based on the
+ * project's category. Each category has its own jewel tone (sapphire, emerald, etc.)
+ */
 export const DynamicGradientCard = memo(function DynamicGradientCard({
   title,
   fromColor,
@@ -59,27 +74,58 @@ export const DynamicGradientCard = memo(function DynamicGradientCard({
         background: `linear-gradient(135deg, ${fromColor} 0%, ${toColor} 100%)`,
       }}
     >
-      {/* Static gradient mesh/orbs layer - no animations */}
+      {/* Subtle grid pattern overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.08]"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+        }}
+      />
+
+      {/* Animated gradient orbs layer using category colors */}
       <div className="absolute inset-0 overflow-hidden">
-        {orbs.map((orb) => (
-          <div
+        {orbs.map((orb, index) => (
+          <motion.div
             key={orb.id}
-            className="absolute rounded-full blur-3xl"
+            className={`absolute rounded-full ${orb.blur}`}
             style={{
               width: `${orb.size}%`,
               height: `${orb.size}%`,
-              background: `radial-gradient(circle, ${orb.color}66 0%, transparent 70%)`,
+              background: `radial-gradient(circle, ${orb.color} 0%, transparent 70%)`,
+              opacity: orb.opacity,
               left: `${orb.x}%`,
               top: `${orb.y}%`,
               transform: 'translate(-50%, -50%)',
+            }}
+            animate={{
+              x: [0, 10, -5, 0],
+              y: [0, -8, 5, 0],
+              scale: [1, 1.05, 0.98, 1],
+            }}
+            transition={{
+              duration: 8 + index * 2,
+              repeat: Infinity,
+              ease: 'easeInOut',
             }}
           />
         ))}
       </div>
 
+      {/* Top accent line */}
+      <div
+        className="absolute top-0 left-0 right-0 h-px"
+        style={{
+          background: `linear-gradient(to right, transparent, rgba(255,255,255,0.5), transparent)`,
+        }}
+      />
+
       {/* Wave pattern overlay with animated squiggles */}
       <svg
-        className="absolute inset-0 w-full h-full opacity-[0.08] pointer-events-none"
+        className="absolute inset-0 w-full h-full opacity-[0.15] pointer-events-none"
         preserveAspectRatio="none"
       >
         <defs>
@@ -87,7 +133,7 @@ export const DynamicGradientCard = memo(function DynamicGradientCard({
             <motion.path
               initial={{ d: 'M0 10 Q 25 0, 50 10 T 100 10' }}
               fill="none"
-              stroke="white"
+              stroke="rgba(255,255,255,0.6)"
               strokeWidth="1"
               animate={{
                 d: [
@@ -108,7 +154,7 @@ export const DynamicGradientCard = memo(function DynamicGradientCard({
       </svg>
 
       {/* Noise texture overlay */}
-      <div className="absolute inset-0 bg-noise-subtle opacity-40 mix-blend-overlay pointer-events-none" />
+      <div className="absolute inset-0 bg-noise-subtle opacity-20 mix-blend-overlay pointer-events-none" />
 
       {/* Content - Title shown by default on desktop, hidden on hover (footer overlay shows it) */}
       <div className="text-center relative z-10 group-hover:opacity-0 transition-opacity duration-300 hidden md:block">
@@ -116,14 +162,24 @@ export const DynamicGradientCard = memo(function DynamicGradientCard({
           {title}
         </h3>
         {categoryName && (
-          <span className="inline-block mt-3 px-3 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90 backdrop-blur-sm">
+          <span
+            className="inline-block mt-3 px-3 py-1 text-xs font-medium rounded-full backdrop-blur-sm border bg-white/20 border-white/30 text-white"
+          >
             {categoryName}
           </span>
         )}
       </div>
 
       {/* Bottom fade for footer overlap */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+
+      {/* Subtle glow at bottom */}
+      <div
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-px"
+        style={{
+          background: `linear-gradient(to right, transparent, rgba(255,255,255,0.4), transparent)`,
+        }}
+      />
     </div>
   );
 });

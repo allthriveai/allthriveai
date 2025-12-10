@@ -20,17 +20,17 @@ export interface ImpersonatableUser {
 }
 
 export interface ImpersonationSession {
-  is_impersonating: boolean;
-  original_user?: {
+  isImpersonating: boolean;
+  originalUser?: {
     id: number;
     username: string;
   };
-  target_user?: {
+  targetUser?: {
     id: number;
     username: string;
   };
-  session_id?: number;
-  started_at?: string;
+  sessionId?: number;
+  startedAt?: string;
 }
 
 export interface ImpersonationLog {

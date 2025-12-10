@@ -36,18 +36,21 @@ class UserPagination(PageNumberPagination):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def explore_users(request):
-    """Explore top user profiles with pagination.
+    """Explore user profiles with pagination.
 
     Query parameters:
     - page: page number (default: 1)
     - page_size: results per page (default: 20, max: 100)
+    - include_all: if 'true', include users without projects (default: false)
 
     Returns paginated list of users sorted by:
     1. Number of projects (descending)
     2. Join date (most recent first)
-
-    Returns users with at least one non-archived project.
     """
+    from core.users.models import UserRole
+
+    include_all = request.GET.get('include_all', 'false').lower() == 'true'
+
     # Prefetch projects with their tools to avoid N+1 queries
     projects_prefetch = Prefetch(
         'projects',
@@ -57,20 +60,30 @@ def explore_users(request):
         to_attr='projects_list',
     )
 
-    # Get users with projects, annotate with counts
+    # Base queryset - active users, exclude system accounts
     queryset = (
         User.objects.filter(
             is_active=True,
-            projects__is_archived=False,
+            is_profile_public=True,
         )
-        .annotate(
-            project_count=Count('projects', filter=Q(projects__is_archived=False), distinct=True),
+        .exclude(
+            username__in=['system', 'pip']  # Exclude system accounts
         )
-        .filter(project_count__gt=0)  # Only users with projects
-        .prefetch_related(projects_prefetch)
-        .order_by('-project_count', '-date_joined')
-        .distinct()
+        .exclude(
+            role=UserRole.ADMIN  # Don't show admins in explore
+        )
     )
+
+    # Annotate with project count
+    queryset = queryset.annotate(
+        project_count=Count('projects', filter=Q(projects__is_archived=False), distinct=True),
+    )
+
+    # Filter to only users with projects unless include_all is set
+    if not include_all:
+        queryset = queryset.filter(project_count__gt=0)
+
+    queryset = queryset.prefetch_related(projects_prefetch).order_by('-project_count', '-date_joined').distinct()
 
     # Apply pagination
     paginator = UserPagination()

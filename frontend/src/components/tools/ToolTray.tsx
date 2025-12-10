@@ -34,8 +34,9 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
   const [showLinksDropdown, setShowLinksDropdown] = useState(false);
 
   // Track if tray should be rendered (for slide-out animation)
-  // Start with true so the tray renders immediately (closed position), allowing slide-in animation
-  const [shouldRender, setShouldRender] = useState(true);
+  const [shouldRender, setShouldRender] = useState(false);
+  // Track the visual open state (delayed to allow animation)
+  const [visuallyOpen, setVisuallyOpen] = useState(false);
 
   // Projects using this tool
   const [projectsUsingTool, setProjectsUsingTool] = useState<Project[]>([]);
@@ -48,6 +49,24 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
       setShouldRender(false);
     }
   };
+
+  // Handle open/close with proper animation timing
+  useEffect(() => {
+    if (isOpen) {
+      // First render the component (in closed position)
+      setShouldRender(true);
+      // Then after a frame, trigger the open animation
+      const timer = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setVisuallyOpen(true);
+        });
+      });
+      return () => cancelAnimationFrame(timer);
+    } else {
+      // Immediately start close animation
+      setVisuallyOpen(false);
+    }
+  }, [isOpen]);
 
   // Load tool data when tray is open and toolSlug changes
   // This avoids unnecessary background requests while scrolling feeds
@@ -416,7 +435,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
       {/* Backdrop overlay */}
       <div
         className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ease-in-out ${
-          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          visuallyOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
         aria-hidden="true"
@@ -425,7 +444,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
       {/* Right Sidebar Drawer - Smooth slide animation */}
       <aside
         className={`fixed right-0 top-0 h-full w-full md:w-96 lg:w-[32rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
+          visuallyOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
