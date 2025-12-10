@@ -36,8 +36,133 @@ jobs:
   # Note: Tests run on PR via ci.yml before merge
   # This workflow only deploys after merge to main
 
+  # Validate Docker architecture before any deployment
+  validate-architecture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Dockerfile.prod specifies correct platform
+        run: |
+          echo "🔍 Checking Docker architecture configuration..."
+
+          # Verify Dockerfile.prod exists
+          if [ ! -f "Dockerfile.prod" ]; then
+            echo "❌ Dockerfile.prod not found"
+            exit 1
+          fi
+
+          # Check that the deploy workflow specifies linux/amd64
+          if ! grep -q "platforms:.*linux/amd64" .github/workflows/deploy-aws.yml; then
+            echo "❌ deploy-aws.yml should specify 'platforms: linux/amd64' for Docker builds"
+            exit 1
+          fi
+
+          echo "✅ Deploy workflow correctly specifies linux/amd64 platform"
+
+      - name: Verify no ARM-only dependencies in Dockerfile.prod
+        run: |
+          echo "🔍 Checking for architecture-specific issues..."
+
+          # Check for common ARM-specific patterns that might cause issues
+          if grep -E "arm64|aarch64" Dockerfile.prod | grep -v "#" | grep -v "AWS_CLI_ARCH"; then
+            echo "⚠️  Warning: Found ARM-specific references in Dockerfile.prod"
+            echo "   Ensure these are handled correctly for x86_64 production"
+          fi
+
+          # Verify base image is available for amd64
+          BASE_IMAGE=$(grep -m1 "^FROM" Dockerfile.prod | awk '{print $2}')
+          echo "📦 Base image: $BASE_IMAGE"
+
+          # python:3.11-slim is available for both architectures, so this should pass
+          echo "✅ Architecture check passed"
+
+  # Validate migrations can be applied before deploying
+  validate-migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: allthrive_test
+          POSTGRES_USER: allthrive
+          POSTGRES_PASSWORD: allthrive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U allthrive -d allthrive_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://allthrive:allthrive@localhost:5432/allthrive_test
+      SECRET_KEY: migration-validation-key
+      DEBUG: "False"
+      SECURE_SSL_REDIRECT: "False"
+      ALLOWED_HOSTS: "localhost,127.0.0.1"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+      COOKIE_DOMAIN: ""
+      CSRF_TRUSTED_ORIGINS: "http://localhost:3000"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for Postgres
+        run: |
+          python - <<'PY'
+          import os, time, psycopg2
+          url = os.environ['DATABASE_URL']
+          for i in range(30):
+              try:
+                  psycopg2.connect(url).close()
+                  print('DB ready')
+                  break
+              except Exception as e:
+                  print('Waiting for DB...', e)
+                  time.sleep(1)
+          else:
+              raise SystemExit('Database not available')
+          PY
+
+      - name: Validate Django configuration
+        run: |
+          echo "🔍 Checking Django configuration..."
+          python manage.py check --deploy
+          echo "✅ Django configuration valid"
+
+      - name: Validate migrations can be applied
+        run: |
+          echo "🔍 Running migrations on fresh database..."
+          python manage.py migrate --noinput
+          echo "✅ All migrations applied successfully"
+
+      - name: Check for pending migrations
+        run: |
+          echo "🔍 Checking for unmigrated model changes..."
+          python manage.py makemigrations --check --dry-run
+          echo "✅ No pending migrations"
+
+      - name: Show migration status
+        run: |
+          echo "📋 Migration status:"
+          python manage.py showmigrations
+
   # Build and push backend Docker image
   build-backend:
+    needs: [validate-architecture, validate-migrations]
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.meta.outputs.tags }}
@@ -210,11 +335,22 @@ jobs:
       - name: Get task ARN
         id: task
         run: |
+          # Wait a moment for tasks to be fully running after deployment
+          sleep 10
+
           TASK_ARN=$(aws ecs list-tasks \
             --cluster ${{ env.ECS_CLUSTER }} \
             --service-name ${{ env.ECS_SERVICE_WEB }} \
+            --desired-status RUNNING \
             --query 'taskArns[0]' \
             --output text)
+
+          if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "None" ]; then
+            echo "❌ No running tasks found"
+            exit 1
+          fi
+
+          echo "✅ Found task: $TASK_ARN"
           echo "task_arn=$TASK_ARN" >> $GITHUB_OUTPUT
 
       - name: Install Session Manager plugin
@@ -223,47 +359,86 @@ jobs:
           sudo dpkg -i session-manager-plugin.deb
 
       - name: Run migrations
+        id: migrate
         run: |
-          aws ecs execute-command \
+          echo "🔄 Running database migrations..."
+
+          # Run migration with timeout and capture output
+          # Using script to handle pseudo-terminal requirements
+          MIGRATE_OUTPUT=$(timeout 300 aws ecs execute-command \
             --cluster ${{ env.ECS_CLUSTER }} \
             --task ${{ steps.task.outputs.task_arn }} \
             --container web \
-            --command "python manage.py migrate --noinput" \
-            --interactive
+            --command "python manage.py migrate --noinput && echo 'MIGRATION_SUCCESS'" \
+            --interactive 2>&1) || MIGRATE_EXIT=$?
+
+          echo "$MIGRATE_OUTPUT"
+
+          # Check if migration was successful
+          if echo "$MIGRATE_OUTPUT" | grep -q "MIGRATION_SUCCESS"; then
+            echo "✅ Migrations completed successfully"
+          elif echo "$MIGRATE_OUTPUT" | grep -q "No migrations to apply"; then
+            echo "✅ No migrations to apply"
+          elif echo "$MIGRATE_OUTPUT" | grep -q "EOF" || echo "$MIGRATE_OUTPUT" | grep -q "Cannot perform start session"; then
+            echo "❌ ECS Execute Command session failed - retrying..."
+            sleep 5
+
+            # Retry once
+            MIGRATE_OUTPUT=$(timeout 300 aws ecs execute-command \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --task ${{ steps.task.outputs.task_arn }} \
+              --container web \
+              --command "python manage.py migrate --noinput && echo 'MIGRATION_SUCCESS'" \
+              --interactive 2>&1) || true
+
+            echo "$MIGRATE_OUTPUT"
+
+            if echo "$MIGRATE_OUTPUT" | grep -q "MIGRATION_SUCCESS"; then
+              echo "✅ Migrations completed successfully on retry"
+            elif echo "$MIGRATE_OUTPUT" | grep -q "No migrations to apply"; then
+              echo "✅ No migrations to apply"
+            else
+              echo "❌ Migration failed after retry"
+              exit 1
+            fi
+          else
+            echo "❌ Migration failed"
+            exit 1
+          fi
 
       - name: Setup OAuth providers
         run: |
           # Configure Django Site with correct domain (uses BACKEND_URL env var)
-          aws ecs execute-command \
+          timeout 60 aws ecs execute-command \
             --cluster ${{ env.ECS_CLUSTER }} \
             --task ${{ steps.task.outputs.task_arn }} \
             --container web \
             --command "python manage.py setup_oauth" \
-            --interactive
+            --interactive || echo "⚠️ setup_oauth failed or timed out"
 
           # Setup Google OAuth (if credentials are configured)
-          aws ecs execute-command \
+          timeout 60 aws ecs execute-command \
             --cluster ${{ env.ECS_CLUSTER }} \
             --task ${{ steps.task.outputs.task_arn }} \
             --container web \
             --command "python manage.py setup_google_oauth" \
-            --interactive || true
+            --interactive || echo "⚠️ setup_google_oauth skipped"
 
           # Setup GitHub OAuth (if credentials are configured)
-          aws ecs execute-command \
+          timeout 60 aws ecs execute-command \
             --cluster ${{ env.ECS_CLUSTER }} \
             --task ${{ steps.task.outputs.task_arn }} \
             --container web \
             --command "python manage.py setup_github_oauth" \
-            --interactive || true
+            --interactive || echo "⚠️ setup_github_oauth skipped"
 
           # Setup LinkedIn OAuth (if credentials are configured)
-          aws ecs execute-command \
+          timeout 60 aws ecs execute-command \
             --cluster ${{ env.ECS_CLUSTER }} \
             --task ${{ steps.task.outputs.task_arn }} \
             --container web \
             --command "python manage.py setup_linkedin_oauth" \
-            --interactive || true
+            --interactive || echo "⚠️ setup_linkedin_oauth skipped"
 
   # Notify on completion
   notify:

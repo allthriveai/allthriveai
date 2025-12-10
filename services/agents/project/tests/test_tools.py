@@ -28,7 +28,7 @@ class TestCreateProjectTool:
 
     def test_create_project_success(self, mock_user, agent_state):
         """Test successful project creation."""
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             # Mock successful project creation
             mock_project = Mock()
             mock_project.id = 123
@@ -81,7 +81,7 @@ class TestCreateProjectTool:
 
     def test_create_project_service_error(self, agent_state):
         """Test handling of service errors."""
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             mock_service.create_project.return_value = (None, 'Database error')
 
             result = create_project.func(
@@ -100,13 +100,13 @@ class TestFetchGitHubMetadataTool:
 
     def test_fetch_github_metadata_success(self, github_api_response):
         """Test successful GitHub metadata fetch."""
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             mock_service.is_github_url.return_value = True
 
-            with patch('services.project_agent.tools.cache') as mock_cache:
+            with patch('services.agents.project.tools.cache') as mock_cache:
                 mock_cache.get.return_value = None  # Cache miss
 
-                with patch('services.project_agent.tools.requests.get') as mock_get:
+                with patch('services.agents.project.tools.requests.get') as mock_get:
                     mock_response = Mock()
                     mock_response.status_code = 200
                     mock_response.json.return_value = github_api_response
@@ -125,7 +125,7 @@ class TestFetchGitHubMetadataTool:
 
     def test_fetch_github_metadata_invalid_url(self):
         """Test handling of invalid GitHub URL."""
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             mock_service.is_github_url.return_value = False
 
             result = fetch_github_metadata.invoke({'url': 'https://not-github.com/repo'})
@@ -147,10 +147,10 @@ class TestFetchGitHubMetadataTool:
             'project_type': 'github_repo',
         }
 
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             mock_service.is_github_url.return_value = True
 
-            with patch('services.project_agent.tools.cache') as mock_cache:
+            with patch('services.agents.project.tools.cache') as mock_cache:
                 mock_cache.get.return_value = cached_result
 
                 result = fetch_github_metadata.invoke({'url': 'https://github.com/user/cached-project'})
@@ -160,13 +160,13 @@ class TestFetchGitHubMetadataTool:
 
     def test_fetch_github_metadata_repo_not_found(self):
         """Test handling of 404 response."""
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             mock_service.is_github_url.return_value = True
 
-            with patch('services.project_agent.tools.cache') as mock_cache:
+            with patch('services.agents.project.tools.cache') as mock_cache:
                 mock_cache.get.return_value = None
 
-                with patch('services.project_agent.tools.requests.get') as mock_get:
+                with patch('services.agents.project.tools.requests.get') as mock_get:
                     mock_response = Mock()
                     mock_response.status_code = 404
                     mock_get.return_value = mock_response
@@ -178,13 +178,13 @@ class TestFetchGitHubMetadataTool:
 
     def test_fetch_github_metadata_api_error(self):
         """Test handling of API errors."""
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             mock_service.is_github_url.return_value = True
 
-            with patch('services.project_agent.tools.cache') as mock_cache:
+            with patch('services.agents.project.tools.cache') as mock_cache:
                 mock_cache.get.return_value = None
 
-                with patch('services.project_agent.tools.requests.get') as mock_get:
+                with patch('services.agents.project.tools.requests.get') as mock_get:
                     mock_response = Mock()
                     mock_response.status_code = 500
                     mock_get.return_value = mock_response
@@ -196,13 +196,13 @@ class TestFetchGitHubMetadataTool:
 
     def test_fetch_github_metadata_network_error(self):
         """Test handling of network errors."""
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             mock_service.is_github_url.return_value = True
 
-            with patch('services.project_agent.tools.cache') as mock_cache:
+            with patch('services.agents.project.tools.cache') as mock_cache:
                 mock_cache.get.return_value = None
 
-                with patch('services.project_agent.tools.requests.get') as mock_get:
+                with patch('services.agents.project.tools.requests.get') as mock_get:
                     mock_get.side_effect = requests.RequestException('Network error')
 
                     result = fetch_github_metadata.invoke({'url': 'https://github.com/user/repo'})
@@ -216,7 +216,7 @@ class TestExtractURLInfoTool:
 
     def test_extract_url_info_github(self):
         """Test URL extraction with GitHub link."""
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             mock_service.extract_urls_from_text.return_value = ['https://github.com/user/repo']
             mock_service.infer_project_type_from_url.return_value = 'github_repo'
             mock_service.is_github_url.return_value = True
@@ -232,7 +232,7 @@ class TestExtractURLInfoTool:
 
     def test_extract_url_info_no_urls(self):
         """Test URL extraction with no URLs."""
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             mock_service.extract_urls_from_text.return_value = []
 
             result = extract_url_info.invoke({'text': 'No URLs here, just text'})
@@ -243,7 +243,7 @@ class TestExtractURLInfoTool:
 
     def test_extract_url_info_multiple_urls(self):
         """Test URL extraction with multiple URLs."""
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             mock_service.extract_urls_from_text.return_value = [
                 'https://github.com/user/repo',
                 'https://example.com/docs',
@@ -263,7 +263,7 @@ class TestExtractURLInfoTool:
 
     def test_extract_url_info_non_github(self):
         """Test URL extraction with non-GitHub link."""
-        with patch('services.project_agent.tools.ProjectService') as mock_service:
+        with patch('services.agents.project.tools.ProjectService') as mock_service:
             mock_service.extract_urls_from_text.return_value = ['https://behance.net/gallery/123']
             mock_service.infer_project_type_from_url.return_value = 'image_collection'
             mock_service.is_github_url.return_value = False

@@ -1378,7 +1378,7 @@ def _process_image_generation(
     """
     from .models import ImageGenerationIteration, ImageGenerationSession
 
-    logger.info(f'Processing image generation: conversation={conversation_id}, message="{message}"')
+    logger.info(f'Processing image generation: conversation={conversation_id}')
 
     # Check if the message is too vague/generic and needs more details
     vague_prompts = [
@@ -1414,7 +1414,6 @@ def _process_image_generation(
         normalized_message == vague or normalized_message.startswith(vague) or vague in normalized_message
         for vague in vague_prompts
     )
-    logger.info(f'Vague request check: normalized="{normalized_message}", is_vague={is_vague_request}')
 
     if is_vague_request:
         # Send a prompt asking for more details with explicit format choice

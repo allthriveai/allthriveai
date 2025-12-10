@@ -1,6 +1,17 @@
 # AllThrive AI - Production Dockerfile
 # =====================================
 # Multi-stage build for optimized production image
+#
+# IMPORTANT: Architecture Note
+# ----------------------------
+# This image is built for linux/amd64 (x86_64) for AWS ECS deployment.
+# The platform is specified in .github/workflows/deploy-aws.yml:
+#   platforms: linux/amd64
+#
+# If building locally on Apple Silicon (M1/M2/M3), use:
+#   docker build --platform=linux/amd64 -f Dockerfile.prod -t allthrive-prod .
+#
+# DO NOT push ARM images to production - they will cause "exec format error"
 
 # Stage 1: Builder
 FROM python:3.11-slim AS builder

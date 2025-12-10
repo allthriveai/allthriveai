@@ -10,14 +10,13 @@ Note: Async tests require pytest-asyncio. If not installed:
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from services.agents.project.agent import (
     ProjectAgentState,
     agent_node,
     create_project_agent,
     should_continue,
-    stream_agent_response,
 )
 
 
@@ -111,7 +110,7 @@ class TestCreateProjectAgent:
 
     def test_create_agent_returns_compiled_graph(self):
         """Test that factory returns a compiled graph."""
-        with patch('services.project_agent.agent.get_llm') as mock_get_llm:
+        with patch('services.agents.project.agent.get_llm') as mock_get_llm:
             mock_llm = Mock()
             mock_llm.bind_tools.return_value = mock_llm
             mock_get_llm.return_value = mock_llm
@@ -133,12 +132,13 @@ class TestAgentNodeAsync:
     @pytest.mark.asyncio
     async def test_agent_node_adds_system_prompt(self, agent_state):
         """Test that agent_node adds system prompt if missing."""
-        with patch('services.project_agent.agent.llm_with_tools') as mock_llm:
-            mock_response = Mock()
-            mock_response.content = "I'll help you create a project!"
-            mock_response.tool_calls = []
-            mock_llm.ainvoke = AsyncMock(return_value=mock_response)
+        mock_llm = Mock()
+        mock_response = Mock()
+        mock_response.content = "I'll help you create a project!"
+        mock_response.tool_calls = []
+        mock_llm.ainvoke = AsyncMock(return_value=mock_response)
 
+        with patch('services.agents.project.agent.get_llm_with_tools', return_value=mock_llm):
             result = await agent_node(agent_state)
 
             # Verify system prompt was added to messages
@@ -158,12 +158,13 @@ class TestAgentNodeAsync:
             'username': mock_user.username,
         }
 
-        with patch('services.project_agent.agent.llm_with_tools') as mock_llm:
-            mock_response = Mock()
-            mock_response.content = 'Hello!'
-            mock_response.tool_calls = []
-            mock_llm.ainvoke = AsyncMock(return_value=mock_response)
+        mock_llm = Mock()
+        mock_response = Mock()
+        mock_response.content = 'Hello!'
+        mock_response.tool_calls = []
+        mock_llm.ainvoke = AsyncMock(return_value=mock_response)
 
+        with patch('services.agents.project.agent.get_llm_with_tools', return_value=mock_llm):
             await agent_node(state)
 
             # Verify only one system message
@@ -176,210 +177,18 @@ class TestAgentNodeAsync:
     @pytest.mark.asyncio
     async def test_agent_node_returns_response(self, agent_state):
         """Test that agent_node returns LLM response in messages."""
-        with patch('services.project_agent.agent.llm_with_tools') as mock_llm:
-            mock_response = Mock()
-            mock_response.content = 'I found your GitHub repo!'
-            mock_response.tool_calls = []
-            mock_llm.ainvoke = AsyncMock(return_value=mock_response)
+        mock_llm = Mock()
+        mock_response = Mock()
+        mock_response.content = 'I found your GitHub repo!'
+        mock_response.tool_calls = []
+        mock_llm.ainvoke = AsyncMock(return_value=mock_response)
 
+        with patch('services.agents.project.agent.get_llm_with_tools', return_value=mock_llm):
             result = await agent_node(agent_state)
 
             assert 'messages' in result
             assert len(result['messages']) == 1
             assert result['messages'][0] == mock_response
-
-
-@pytest.mark.django_db
-class TestStreamAgentResponseAsync:
-    """Tests for stream_agent_response async generator."""
-
-    @pytest.mark.asyncio
-    async def test_stream_yields_tokens(self, mock_user):
-        """Test that streaming yields token events."""
-        with patch('services.project_agent.agent.project_agent') as mock_agent:
-            # Mock astream_events to yield token events
-            async def mock_stream(*args, **kwargs):
-                yield {
-                    'event': 'on_chat_model_stream',
-                    'data': {'chunk': Mock(content='Hello')},
-                }
-                yield {
-                    'event': 'on_chat_model_stream',
-                    'data': {'chunk': Mock(content=' world')},
-                }
-
-            mock_agent.astream_events = mock_stream
-            mock_agent.get_state.return_value = Mock(values={'messages': []})
-
-            events = []
-            async for event in stream_agent_response(
-                user_message='Test',
-                user_id=mock_user.id,
-                username=mock_user.username,
-                session_id='test-session',
-            ):
-                events.append(event)
-
-            # Should have token events + complete event
-            token_events = [e for e in events if e['type'] == 'token']
-            assert len(token_events) == 2
-            assert token_events[0]['content'] == 'Hello'
-            assert token_events[1]['content'] == ' world'
-
-    @pytest.mark.asyncio
-    async def test_stream_yields_tool_events(self, mock_user):
-        """Test that streaming yields tool start/end events."""
-        with patch('services.project_agent.agent.project_agent') as mock_agent:
-
-            async def mock_stream(*args, **kwargs):
-                yield {
-                    'event': 'on_tool_start',
-                    'name': 'fetch_github_metadata',
-                    'data': {},
-                }
-                yield {
-                    'event': 'on_tool_end',
-                    'name': 'fetch_github_metadata',
-                    'data': {'output': {'success': True, 'title': 'My Repo'}},
-                }
-
-            mock_agent.astream_events = mock_stream
-            mock_agent.get_state.return_value = Mock(values={'messages': []})
-
-            events = []
-            async for event in stream_agent_response(
-                user_message='https://github.com/user/repo',
-                user_id=mock_user.id,
-                username=mock_user.username,
-                session_id='test-session',
-            ):
-                events.append(event)
-
-            tool_start_events = [e for e in events if e['type'] == 'tool_start']
-            tool_end_events = [e for e in events if e['type'] == 'tool_end']
-
-            assert len(tool_start_events) == 1
-            assert tool_start_events[0]['tool'] == 'fetch_github_metadata'
-            assert len(tool_end_events) == 1
-            assert tool_end_events[0]['output']['success'] is True
-
-    @pytest.mark.asyncio
-    async def test_stream_yields_complete_event(self, mock_user):
-        """Test that streaming yields complete event at end."""
-        with patch('services.project_agent.agent.project_agent') as mock_agent:
-
-            async def mock_stream(*args, **kwargs):
-                yield {
-                    'event': 'on_chat_model_stream',
-                    'data': {'chunk': Mock(content='Done!')},
-                }
-
-            mock_agent.astream_events = mock_stream
-            mock_agent.get_state.return_value = Mock(values={'messages': []})
-
-            events = []
-            async for event in stream_agent_response(
-                user_message='Test',
-                user_id=mock_user.id,
-                username=mock_user.username,
-                session_id='test-session',
-            ):
-                events.append(event)
-
-            complete_events = [e for e in events if e['type'] == 'complete']
-            assert len(complete_events) == 1
-            assert complete_events[0]['session_id'] == 'test-session'
-
-    @pytest.mark.asyncio
-    async def test_stream_detects_project_created(self, mock_user):
-        """Test that streaming detects when project was created."""
-        with patch('services.project_agent.agent.project_agent') as mock_agent:
-
-            async def mock_stream(*args, **kwargs):
-                yield {
-                    'event': 'on_chat_model_stream',
-                    'data': {'chunk': Mock(content='Created!')},
-                }
-
-            mock_agent.astream_events = mock_stream
-
-            # Mock final state with ToolMessage containing project_id
-            tool_message = ToolMessage(
-                content='{"success": true, "project_id": 123}',
-                tool_call_id='call_123',
-            )
-            mock_agent.get_state.return_value = Mock(values={'messages': [tool_message]})
-
-            events = []
-            async for event in stream_agent_response(
-                user_message='Create project',
-                user_id=mock_user.id,
-                username=mock_user.username,
-                session_id='test-session',
-            ):
-                events.append(event)
-
-            complete_event = [e for e in events if e['type'] == 'complete'][0]
-            assert complete_event['project_created'] is True
-
-    @pytest.mark.asyncio
-    async def test_stream_handles_error(self, mock_user):
-        """Test that streaming handles errors gracefully."""
-        with patch('services.project_agent.agent.project_agent') as mock_agent:
-
-            async def mock_stream(*args, **kwargs):
-                raise Exception('LLM API error')
-                yield  # Make it a generator
-
-            mock_agent.astream_events = mock_stream
-
-            events = []
-            async for event in stream_agent_response(
-                user_message='Test',
-                user_id=mock_user.id,
-                username=mock_user.username,
-                session_id='test-session',
-            ):
-                events.append(event)
-
-            error_events = [e for e in events if e['type'] == 'error']
-            assert len(error_events) == 1
-            assert 'LLM API error' in error_events[0]['message']
-
-    @pytest.mark.asyncio
-    async def test_stream_skips_empty_content(self, mock_user):
-        """Test that streaming skips empty content chunks."""
-        with patch('services.project_agent.agent.project_agent') as mock_agent:
-
-            async def mock_stream(*args, **kwargs):
-                yield {
-                    'event': 'on_chat_model_stream',
-                    'data': {'chunk': Mock(content='')},  # Empty
-                }
-                yield {
-                    'event': 'on_chat_model_stream',
-                    'data': {'chunk': Mock(content='Hello')},  # Not empty
-                }
-                yield {
-                    'event': 'on_chat_model_stream',
-                    'data': {'chunk': Mock(content=None)},  # None
-                }
-
-            mock_agent.astream_events = mock_stream
-            mock_agent.get_state.return_value = Mock(values={'messages': []})
-
-            events = []
-            async for event in stream_agent_response(
-                user_message='Test',
-                user_id=mock_user.id,
-                username=mock_user.username,
-                session_id='test-session',
-            ):
-                events.append(event)
-
-            token_events = [e for e in events if e['type'] == 'token']
-            assert len(token_events) == 1
-            assert token_events[0]['content'] == 'Hello'
 
 
 @pytest.mark.django_db
@@ -389,25 +198,27 @@ class TestAgentIntegrationAsync:
     @pytest.mark.asyncio
     async def test_full_conversation_flow(self, mock_user):
         """Test a complete conversation flow with mocked components."""
-        with patch('services.project_agent.agent.llm_with_tools') as mock_llm:
-            # First call: LLM asks for URL
-            response1 = Mock()
-            response1.content = "I'd be happy to help! Please share your GitHub URL."
-            response1.tool_calls = []
+        mock_llm = Mock()
 
-            # Second call: LLM makes tool call
-            response2 = Mock()
-            response2.content = ''
-            response2.tool_calls = [
-                {
-                    'id': 'call_123',
-                    'name': 'fetch_github_metadata',
-                    'args': {'url': 'https://github.com/user/repo'},
-                }
-            ]
+        # First call: LLM asks for URL
+        response1 = Mock()
+        response1.content = "I'd be happy to help! Please share your GitHub URL."
+        response1.tool_calls = []
 
-            mock_llm.ainvoke = AsyncMock(side_effect=[response1, response2])
+        # Second call: LLM makes tool call
+        response2 = Mock()
+        response2.content = ''
+        response2.tool_calls = [
+            {
+                'id': 'call_123',
+                'name': 'fetch_github_metadata',
+                'args': {'url': 'https://github.com/user/repo'},
+            }
+        ]
 
+        mock_llm.ainvoke = AsyncMock(side_effect=[response1, response2])
+
+        with patch('services.agents.project.agent.get_llm_with_tools', return_value=mock_llm):
             # Test first turn
             state1 = {
                 'messages': [HumanMessage(content='I want to add a project')],

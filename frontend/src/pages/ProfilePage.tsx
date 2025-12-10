@@ -18,6 +18,7 @@ import { AchievementBadge } from '@/components/achievements/AchievementBadge';
 import { BattlesTab } from '@/components/battles';
 import { getUserBattles } from '@/services/battles';
 import { ToolTray } from '@/components/tools/ToolTray';
+import { ProfileGeneratorTray } from '@/components/profile/ProfileGeneratorTray';
 import { MasonryGrid } from '@/components/common/MasonryGrid';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
@@ -123,7 +124,7 @@ export default function ProfilePage() {
   const [profileSections, setProfileSections] = useState<ProfileSection[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(true);
   const [isEditingShowcase, setIsEditingShowcase] = useState(false);
-  const [isGeneratingProfile, setIsGeneratingProfile] = useState(false);
+  const [showProfileGeneratorTray, setShowProfileGeneratorTray] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<ProfileTemplate | undefined>();
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
@@ -426,25 +427,17 @@ export default function ProfilePage() {
     setProfileSections(reorderedSections);
   }, []);
 
-  const handleGenerateProfile = useCallback(async () => {
+  // Open the AI profile generator tray for conversational generation
+  const handleGenerateProfile = useCallback(() => {
     if (!username) return;
-
-    setIsGeneratingProfile(true);
-    try {
-      const response = await api.post('/profile/generate/preview/');
-      if (response.data.success && response.data.sections) {
-        setProfileSections(response.data.sections);
-        setIsEditingShowcase(true); // Enter edit mode to let user review
-      } else {
-        alert('Failed to generate profile. Please try again.');
-      }
-    } catch (error) {
-      console.error('Failed to generate profile:', error);
-      alert('Failed to generate profile. Please try again.');
-    } finally {
-      setIsGeneratingProfile(false);
-    }
+    setShowProfileGeneratorTray(true);
   }, [username]);
+
+  // Handle sections generated from the AI conversation
+  const handleAIGeneratedSections = useCallback((sections: ProfileSection[]) => {
+    setProfileSections(sections);
+    setIsEditingShowcase(true); // Enter edit mode to let user review
+  }, []);
 
   // Template change handler
   const handleTemplateChange = useCallback((template: ProfileTemplate) => {
@@ -907,15 +900,10 @@ export default function ProfilePage() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={handleGenerateProfile}
-                      disabled={isGeneratingProfile}
                       className="px-4 py-2 text-sm font-medium text-purple-600 dark:text-purple-400 border border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors flex items-center gap-2"
                     >
-                      {isGeneratingProfile ? (
-                        <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <FontAwesomeIcon icon={faWandMagicSparkles} className="w-4 h-4" />
-                      )}
-                      {isGeneratingProfile ? 'Generating...' : 'Generate with AI'}
+                      <FontAwesomeIcon icon={faWandMagicSparkles} className="w-4 h-4" />
+                      Generate with AI
                     </button>
                   </div>
                 </div>
@@ -1637,6 +1625,13 @@ export default function ProfilePage() {
           isOpen={toolTrayOpen}
           onClose={() => setToolTrayOpen(false)}
           toolSlug={selectedToolSlug}
+        />
+
+        {/* AI Profile Generator Tray */}
+        <ProfileGeneratorTray
+          isOpen={showProfileGeneratorTray}
+          onClose={() => setShowProfileGeneratorTray(false)}
+          onSectionsGenerated={handleAIGeneratedSections}
         />
 
         {/* Delete Confirmation Modal */}

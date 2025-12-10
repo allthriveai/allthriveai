@@ -18,20 +18,20 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
 from core.agents.security import validate_chat_input
-from core.billing.permissions import CanMakeAIRequest
+from core.billing.permissions import CanMakeAIRequest  # Used by other endpoints
 
 logger = logging.getLogger(__name__)
 
 
 @csrf_exempt
 @require_http_methods(['POST'])
-@api_view(['POST'])
-@permission_classes([IsAuthenticated, CanMakeAIRequest])
-@ratelimit(key='user', rate='10/m', method='POST')  # 10 requests per minute
 def profile_generate_stream(request):
     """
     Streaming endpoint for interactive profile generation.
     Uses Server-Sent Events (SSE) to stream AI responses.
+
+    Note: This is a plain Django view (not DRF @api_view) to properly support
+    SSE streaming without CSRF enforcement issues.
 
     Request body:
         {
@@ -41,6 +41,7 @@ def profile_generate_stream(request):
     """
     logger.info('[PROFILE_AGENT] Streaming request received')
 
+    # Manual authentication check (since we're not using DRF's @api_view)
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'Authentication required'}, status=401)
 

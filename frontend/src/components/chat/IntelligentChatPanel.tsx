@@ -1034,7 +1034,7 @@ export function IntelligentChatPanel({
 
     // Default empty state - conversational greeting with quick actions
     const quickActions: Array<{ label: string; icon: string | import('@fortawesome/fontawesome-svg-core').IconDefinition; prompt: string }> = [
-      { label: 'Add a project', icon: faFolderPlus, prompt: 'I want to add a new project to my profile' },
+      { label: 'Paste in a URL', icon: faFolderPlus, prompt: 'I want to add a new project to my profile' },
       { label: 'Make an infographic', icon: 'banana', prompt: 'I want to create an infographic' },
       { label: 'Brainstorm ideas', icon: faLightbulb, prompt: 'Help me brainstorm some ideas' },
       { label: 'Find something', icon: faMagnifyingGlass, prompt: 'Help me find something on All Thrive' },
@@ -1189,7 +1189,7 @@ export function IntelligentChatPanel({
 
   // Custom message renderer for different message types
   const renderMessage = useCallback((message: ChatMessage) => {
-    const isUser = message.sender === 'user' || message.sender === 'assistant';
+    const isUser = message.sender === 'user';
     const messageType = message.metadata?.type;
 
     // Handle generating state (loading indicator)
@@ -1230,12 +1230,12 @@ export function IntelligentChatPanel({
 
     // Standard text message
     return (
-      <div className={`flex ${isUser ? 'justify-end' : 'justify-end'}`}>
+      <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
         <div
           className={`max-w-[85%] px-4 py-2 rounded-lg ${
             isUser
               ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white'
-              : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700'
           }`}
         >
           {isUser ? (

@@ -73,6 +73,15 @@ repos:
   # Custom hooks for AllThrive AI rules
   - repo: local
     hooks:
+      # Check Docker architecture compatibility (ARM vs x86)
+      - id: check-docker-platform
+        name: Check Docker Platform (ARM/x86)
+        entry: python scripts/pre-commit-hooks/check_docker_platform.py
+        language: python
+        files: (Dockerfile\.prod|docker-compose.*\.ya?ml|\.sh)$
+        pass_filenames: true
+        verbose: true
+
       # Check for hardcoded URLs
       - id: no-hardcoded-urls
         name: No Hardcoded URLs
