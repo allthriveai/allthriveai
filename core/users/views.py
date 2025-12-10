@@ -2,7 +2,7 @@ import logging
 import uuid
 from collections import Counter
 
-from django.db.models import Count, Prefetch
+from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -43,38 +43,32 @@ def explore_users(request):
     - page_size: results per page (default: 20, max: 100)
 
     Returns paginated list of users sorted by:
-    1. Number of showcase projects (descending)
+    1. Number of projects (descending)
     2. Join date (most recent first)
 
-    Only returns users with at least one showcase project.
+    Returns users with at least one non-archived project.
     """
-    # Prefetch showcase projects with their tools to avoid N+1 queries
-    showcase_projects_prefetch = Prefetch(
+    # Prefetch projects with their tools to avoid N+1 queries
+    projects_prefetch = Prefetch(
         'projects',
         queryset=Project.objects.filter(
-            is_showcased=True,
             is_archived=False,
         ).prefetch_related('tools'),
-        to_attr='showcase_projects_list',
+        to_attr='projects_list',
     )
 
-    # Get users with showcase projects, annotate with counts
+    # Get users with projects, annotate with counts
     queryset = (
         User.objects.filter(
             is_active=True,
-            projects__is_showcased=True,
             projects__is_archived=False,
         )
         .annotate(
-            project_count=Count('projects', distinct=True),
-            showcase_count=Count(
-                'projects',
-                distinct=True,
-            ),
+            project_count=Count('projects', filter=Q(projects__is_archived=False), distinct=True),
         )
-        .filter(showcase_count__gt=0)  # Only users with showcase projects
-        .prefetch_related(showcase_projects_prefetch)
-        .order_by('-showcase_count', '-date_joined')
+        .filter(project_count__gt=0)  # Only users with projects
+        .prefetch_related(projects_prefetch)
+        .order_by('-project_count', '-date_joined')
         .distinct()
     )
 
@@ -107,9 +101,9 @@ def explore_users(request):
                 }
             )
 
-        # Get top 3 tools from prefetched showcase projects (no extra queries)
+        # Get top 3 tools from prefetched projects (no extra queries)
         tool_counter = Counter()
-        for project in getattr(user, 'showcase_projects_list', []):
+        for project in getattr(user, 'projects_list', []):
             for tool in project.tools.all():
                 tool_counter[tool] += 1
 

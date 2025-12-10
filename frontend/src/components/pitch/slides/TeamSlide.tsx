@@ -4,21 +4,21 @@ import { PitchSlide, GlassCard, GradientText } from '../PitchSlide';
 const team = [
   {
     name: 'Allie Jones',
-    role: 'Technical Founder & CEO',
-    bio: 'Designer & builder passionate about AI creativity tools',
-    image: null,
+    role: 'Founder & CEO/CTO',
+    bio: 'Designer, engineer, and builder passionate about AI creativity tools. Over 15 years of engineering experience spanning open-source development, product design, and enterprise pre-sales engineering including 8 years at Acquia (creator of Drupal). Open-source contributor and technical leader focused on building scalable, creator-friendly AI products.',
+    image: '/allie-jones.jpeg',
   },
   {
     name: 'Gina Levy',
-    role: 'Chief Community Officer',
-    bio: '',
-    image: null,
+    role: 'Founder & Chief Community & Growth Officer',
+    bio: 'Community-driven marketer and growth leader. Founder of Kinlia, a 50K+ event-focused community. Hosted over 500 in-person and virtual events. Harvard graduate, and an award-winning filmmaker whose work has premiered at Sundance and been shortlisted for the Academy Awards. Expert in fostering engagement, storytelling, and vibrant user communities.',
+    image: '/gina.jpeg',
   },
   {
     name: 'Imnet Worku Edossa',
-    role: 'Chief AI Systems Officer',
-    bio: '',
-    image: null,
+    role: 'Founder & Chief AI Systems Officer',
+    bio: 'Technical leader focused on turning AI and cloud infrastructure into scalable products. Senior full-stack engineer and architect with 15+ years of experience leading engineering teams in enterprise dev ops and platform automation across Kubernetes, CI/CD, and developer tooling.',
+    image: '/imnet.jpeg',
   },
 ];
 

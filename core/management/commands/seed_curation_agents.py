@@ -265,6 +265,7 @@ class Command(BaseCommand):
                     'first_name': display_name,
                     'last_name': 'Reddit Agent',
                     'role': UserRole.AGENT,
+                    'tier': 'curation',
                     'bio': bio,
                     'avatar_url': '/Reddit-logo.svg',
                     'is_active': True,

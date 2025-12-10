@@ -6,19 +6,19 @@ const solutions = [
   {
     icon: SparklesIcon,
     title: 'AI-Automated Portfolio',
-    description: 'Your portfolio builds itself from your real work. Paste a URL, clip from the web, or auto-sync - All Thrive handles the rest. Minutes, not hours.',
+    description: 'Your portfolio builds itself from your real work. Paste a URL, clip from the web, or auto-sync. All Thrive handles the rest.',
     color: 'cyan',
   },
   {
     icon: RocketLaunchIcon,
     title: 'Learn by Playing',
-    description: 'Prompt Battles (head-to-head prompting competitions), weekly challenges, and personalized learning paths. Gamified, social, and tailored to how you actually learn.',
+    description: 'Build real prompting skills through person vs person prompt battles.',
     color: 'green',
   },
   {
     icon: UsersIcon,
     title: 'Vendor-Neutral Community',
-    description: 'One home for all AI creators - not locked to any single tool. Use ChatGPT, Claude, Midjourney, or any AI. Grow your community as you try any AI tool.',
+    description: 'No more jumping between Reddit threads and Discords. Learn about any AI tool and get inspired by what others are creating.',
     color: 'purple',
   },
 ];

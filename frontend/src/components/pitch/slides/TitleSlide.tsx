@@ -80,9 +80,9 @@ export function TitleSlide() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="text-lg sm:text-xl text-gray-400 max-w-4xl whitespace-nowrap"
+          className="text-lg sm:text-xl text-gray-400 max-w-3xl"
         >
-          Showcase, Learn, & Play with AI
+          A community platform for AI creators to share projects, learn through challenges, and grow together.
         </motion.p>
       </div>
     </PitchSlide>
