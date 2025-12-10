@@ -409,6 +409,8 @@ Resources:
               Value: 'allie@allthrive.ai,imnet4all@gmail.com'
             - Name: COOKIE_DOMAIN
               Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
+            - Name: FRONTEND_URL
+              Value: !If [HasFrontendUrl, !Ref FrontendUrl, 'http://localhost:3000']
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
@@ -550,6 +552,8 @@ Resources:
               Value: 'allie@allthrive.ai,imnet4all@gmail.com'
             - Name: COOKIE_DOMAIN
               Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
+            - Name: FRONTEND_URL
+              Value: !If [HasFrontendUrl, !Ref FrontendUrl, 'http://localhost:3000']
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
