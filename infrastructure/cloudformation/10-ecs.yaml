@@ -181,6 +181,21 @@ Resources:
               Value: !Ref AWS::Region
             - Name: USE_S3_STORAGE
               Value: 'True'
+            # MinIO/S3 configuration for battle image uploads
+            - Name: MINIO_ENDPOINT
+              Value: !Sub 's3.${AWS::Region}.amazonaws.com'
+            - Name: MINIO_ENDPOINT_PUBLIC
+              Value: !Sub 's3.${AWS::Region}.amazonaws.com'
+            - Name: MINIO_BUCKET_NAME
+              Value: !ImportValue
+                Fn::Sub: ${EnvironmentName}-MediaBucketName
+            - Name: MINIO_USE_SSL
+              Value: 'True'
+            # Empty strings make MinIO SDK use IAM role credentials
+            - Name: MINIO_ACCESS_KEY
+              Value: ''
+            - Name: MINIO_SECRET_KEY
+              Value: ''
             - Name: ECS_ALLOW_ALL_HOSTS
               Value: 'True'
             - Name: REDIS_HOST
@@ -362,6 +377,21 @@ Resources:
               Value: !Ref AWS::Region
             - Name: USE_S3_STORAGE
               Value: 'True'
+            # MinIO/S3 configuration for battle image uploads
+            - Name: MINIO_ENDPOINT
+              Value: !Sub 's3.${AWS::Region}.amazonaws.com'
+            - Name: MINIO_ENDPOINT_PUBLIC
+              Value: !Sub 's3.${AWS::Region}.amazonaws.com'
+            - Name: MINIO_BUCKET_NAME
+              Value: !ImportValue
+                Fn::Sub: ${EnvironmentName}-MediaBucketName
+            - Name: MINIO_USE_SSL
+              Value: 'True'
+            # Empty strings make MinIO SDK use IAM role credentials
+            - Name: MINIO_ACCESS_KEY
+              Value: ''
+            - Name: MINIO_SECRET_KEY
+              Value: ''
             - Name: REDIS_HOST
               Value: !ImportValue
                 Fn::Sub: ${EnvironmentName}-CachePrimaryEndpoint

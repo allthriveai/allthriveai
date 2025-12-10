@@ -10,6 +10,7 @@ from io import BytesIO
 
 from django.conf import settings
 from minio import Minio
+from minio.credentials import IamAwsProvider
 from minio.error import S3Error
 
 logger = logging.getLogger(__name__)
@@ -20,16 +21,38 @@ class StorageService:
 
     def __init__(self):
         """Initialize MinIO client."""
-        # Minio 7.2.0+ uses endpoint, access_key, secret_key as positional args
-        self.client = Minio(
-            endpoint=settings.MINIO_ENDPOINT,
-            access_key=settings.MINIO_ACCESS_KEY,
-            secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_USE_SSL,
-        )
+        endpoint = settings.MINIO_ENDPOINT
+        access_key = settings.MINIO_ACCESS_KEY
+        secret_key = settings.MINIO_SECRET_KEY
+        use_ssl = settings.MINIO_USE_SSL
+
+        # Check if we're using AWS S3 (endpoint contains amazonaws.com)
+        # and credentials are empty (using IAM role)
+        is_aws = 'amazonaws.com' in endpoint
+        use_iam = is_aws and (not access_key or not secret_key)
+
+        if use_iam:
+            # Use IAM role credentials for AWS ECS/EC2
+            logger.info(f'Using IAM credentials for S3 endpoint: {endpoint}')
+            self.client = Minio(
+                endpoint=endpoint,
+                credentials=IamAwsProvider(),
+                secure=use_ssl,
+            )
+        else:
+            # Use explicit credentials (local MinIO or explicit AWS keys)
+            self.client = Minio(
+                endpoint=endpoint,
+                access_key=access_key,
+                secret_key=secret_key,
+                secure=use_ssl,
+            )
+
         self.bucket_name = settings.MINIO_BUCKET_NAME
         self._bucket_verified = False
         self._bucket_lock = threading.Lock()
+        # Track if we're using AWS S3 (skip bucket creation - managed by CloudFormation)
+        self._is_aws = 'amazonaws.com' in endpoint
 
     def _ensure_bucket_exists(self):
         """Create bucket if it doesn't exist (lazy initialization)."""
@@ -42,6 +65,15 @@ class StorageService:
                 return
 
             try:
+                # On AWS S3, bucket is managed by CloudFormation - just verify it exists
+                if self._is_aws:
+                    # For AWS, assume bucket exists (created by CloudFormation)
+                    # Calling bucket_exists requires s3:ListBucket which IAM role may not have
+                    logger.info(f'Using AWS S3 bucket (managed by CloudFormation): {self.bucket_name}')
+                    self._bucket_verified = True
+                    return
+
+                # For local MinIO, check and create bucket if needed
                 if not self.client.bucket_exists(bucket_name=self.bucket_name):
                     self.client.make_bucket(bucket_name=self.bucket_name)
                     self._set_public_read_policy()

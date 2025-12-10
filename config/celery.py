@@ -138,13 +138,15 @@ app.conf.beat_schedule = {
         },
     },
     # Billing tasks
-    'billing-check-low-token-balances': {
-        'task': 'core.billing.tasks.check_low_token_balances_task',
-        'schedule': crontab(hour='*/6'),  # Every 6 hours
-        'options': {
-            'expires': 3600,  # Expires after 1 hour
-        },
-    },
+    # DISABLED: Low balance notifications need more thought before enabling
+    # TODO: Add cooldown period, better targeting, and user preferences
+    # 'billing-check-low-token-balances': {
+    #     'task': 'core.billing.tasks.check_low_token_balances_task',
+    #     'schedule': crontab(hour='*/6'),  # Every 6 hours
+    #     'options': {
+    #         'expires': 3600,  # Expires after 1 hour
+    #     },
+    # },
     'billing-reset-monthly-ai-requests': {
         'task': 'core.billing.tasks.reset_monthly_ai_requests_task',
         'schedule': crontab(hour=0, minute=5),  # Daily at 00:05 AM

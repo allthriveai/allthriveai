@@ -37,6 +37,7 @@ class CheckLowTokenBalancesTaskTestCase(TestCase):
     def test_identifies_users_below_low_threshold(self):
         """Test that users with low balances are identified."""
         self.token_balance.balance = LOW_BALANCE_THRESHOLD - 1  # Just below threshold
+        self.token_balance.total_purchased = 10000  # User has purchased tokens
         self.token_balance.save()
 
         with patch('core.billing.tasks.send_low_balance_notification') as mock_notify:
@@ -59,6 +60,7 @@ class CheckLowTokenBalancesTaskTestCase(TestCase):
     def test_critical_alert_level_for_very_low_balance(self):
         """Test that critical alert is sent for very low balance."""
         self.token_balance.balance = ZERO_BALANCE_THRESHOLD - 50  # Almost depleted
+        self.token_balance.total_purchased = 10000  # User has purchased tokens
         self.token_balance.save()
 
         with patch('core.billing.tasks.send_low_balance_notification') as mock_notify:
@@ -69,8 +71,9 @@ class CheckLowTokenBalancesTaskTestCase(TestCase):
             self.assertEqual(call_kwargs['alert_level'], 'critical')
 
     def test_zero_balance_users_notified(self):
-        """Test that users with zero balance are notified."""
+        """Test that users with zero balance are notified (only if they purchased tokens)."""
         self.token_balance.balance = 0
+        self.token_balance.total_purchased = 10000  # User has purchased tokens
         self.token_balance.save()
 
         with patch('core.billing.tasks.send_low_balance_notification') as mock_notify:
@@ -79,6 +82,36 @@ class CheckLowTokenBalancesTaskTestCase(TestCase):
             mock_notify.assert_called_once()
             call_kwargs = mock_notify.call_args[1]
             self.assertEqual(call_kwargs['alert_level'], 'depleted')
+
+    def test_free_users_not_notified(self):
+        """Test that free users who never purchased tokens are NOT notified."""
+        # User has zero balance but never purchased tokens (default state for free users)
+        self.token_balance.balance = 0
+        self.token_balance.total_purchased = 0  # Never purchased
+        self.token_balance.save()
+
+        with patch('core.billing.tasks.send_low_balance_notification') as mock_notify:
+            result = check_low_token_balances_task()
+
+            mock_notify.assert_not_called()
+            self.assertEqual(result['notifications_sent'], 0)
+
+    def test_curation_bots_not_notified(self):
+        """Test that curation bots (tier='curation') are NOT notified."""
+        # Set user as a curation bot
+        self.user.tier = 'curation'
+        self.user.save()
+
+        # Even if they somehow have purchased tokens, they shouldn't be notified
+        self.token_balance.balance = 0
+        self.token_balance.total_purchased = 10000
+        self.token_balance.save()
+
+        with patch('core.billing.tasks.send_low_balance_notification') as mock_notify:
+            result = check_low_token_balances_task()
+
+            mock_notify.assert_not_called()
+            self.assertEqual(result['notifications_sent'], 0)
 
 
 class ResetMonthlyAiRequestsTaskTestCase(TestCase):

@@ -69,11 +69,20 @@ def check_low_token_balances_task(self):
     from core.billing.models import UserSubscription, UserTokenBalance
 
     try:
-        # Find users with low balances who haven't been notified recently
-        low_balance_users = UserTokenBalance.objects.filter(
-            balance__lt=LOW_BALANCE_THRESHOLD,
-            balance__gt=0,  # Still have some tokens
-        ).select_related('user')
+        # Find users with low balances who have actually purchased tokens
+        # Skip users who never purchased (free tier users with balance=0)
+        # Skip curation bots (tier='curation') - they are not real users
+        low_balance_users = (
+            UserTokenBalance.objects.filter(
+                balance__lt=LOW_BALANCE_THRESHOLD,
+                balance__gt=0,  # Still have some tokens
+                total_purchased__gt=0,  # Only users who have purchased tokens
+            )
+            .exclude(
+                user__tier='curation',  # Exclude curation bots
+            )
+            .select_related('user')
+        )
 
         notifications_sent = 0
 
@@ -124,10 +133,19 @@ def check_low_token_balances_task(self):
                     logger_instance=logger,
                 )
 
-        # Also check for users at zero balance
-        zero_balance_users = UserTokenBalance.objects.filter(
-            balance__lte=0,
-        ).select_related('user')
+        # Also check for users at zero balance WHO HAVE PURCHASED TOKENS BEFORE
+        # This excludes free tier users who never bought tokens
+        # Also excludes curation bots (tier='curation')
+        zero_balance_users = (
+            UserTokenBalance.objects.filter(
+                balance__lte=0,
+                total_purchased__gt=0,  # Only users who have purchased tokens
+            )
+            .exclude(
+                user__tier='curation',  # Exclude curation bots
+            )
+            .select_related('user')
+        )
 
         for balance in zero_balance_users:
             user = balance.user
