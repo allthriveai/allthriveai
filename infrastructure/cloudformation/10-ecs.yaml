@@ -196,6 +196,8 @@ Resources:
               Value: 'support@allthrive.ai'
             - Name: INVITATION_ADMIN_EMAILS
               Value: 'allie@allthrive.ai,imnet4all@gmail.com'
+            - Name: COOKIE_DOMAIN
+              Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
@@ -373,6 +375,8 @@ Resources:
               Value: 'support@allthrive.ai'
             - Name: INVITATION_ADMIN_EMAILS
               Value: 'allie@allthrive.ai,imnet4all@gmail.com'
+            - Name: COOKIE_DOMAIN
+              Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
@@ -512,6 +516,8 @@ Resources:
               Value: 'support@allthrive.ai'
             - Name: INVITATION_ADMIN_EMAILS
               Value: 'allie@allthrive.ai,imnet4all@gmail.com'
+            - Name: COOKIE_DOMAIN
+              Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
           Secrets:
             - Name: SECRET_KEY
               ValueFrom: !Sub
