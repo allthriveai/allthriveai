@@ -16,6 +16,7 @@ import {
 } from '@heroicons/react/24/solid';
 import { api } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
+import { clearGuestBattleId } from '@/routes/ProtectedRoute';
 
 interface GuestSignupModalProps {
   isOpen: boolean;
@@ -51,6 +52,9 @@ export function GuestSignupModal({
       });
 
       setSuccess(true);
+
+      // Clear guest battle ID since they're now a full user
+      clearGuestBattleId();
 
       // Refresh auth to get updated user data
       await refreshUser();

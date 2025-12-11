@@ -24,7 +24,7 @@ import {
   ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/solid';
 
-const PIP_AVATAR_URL = '/chatbot-chat.png';
+const PIP_AVATAR_URL = '/chatbot-chat.webp';
 import { api } from '@/services/api';
 
 interface QueueStatus {

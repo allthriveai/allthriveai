@@ -14,7 +14,7 @@ import {
   WifiIcon,
 } from '@heroicons/react/24/solid';
 
-const PIP_AVATAR_URL = '/chatbot-chat.png';
+const PIP_AVATAR_URL = '/chatbot-chat.webp';
 
 export type PlayerStatus = 'connected' | 'disconnected' | 'typing' | 'submitted' | 'idle';
 

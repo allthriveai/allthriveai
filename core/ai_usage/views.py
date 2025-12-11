@@ -5,11 +5,15 @@ All endpoints require admin authentication (IsAdminUser permission).
 """
 
 import logging
+from datetime import timedelta
 
+from django.db.models import Q
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+from core.logging_utils import StructuredLogger
 from core.permissions import IsAdminRole
 
 from .cache_service import (
@@ -46,7 +50,15 @@ def dashboard_overview(request):
         data = get_overview_kpis(days=days)
         return Response(data)
     except Exception as e:
-        logger.error(f'[ADMIN_ANALYTICS] Error fetching overview: {e}', exc_info=True)
+        StructuredLogger.log_service_operation(
+            service_name='AdminAnalytics',
+            operation='fetch_overview',
+            user=request.user,
+            success=False,
+            metadata={'days': days if 'days' in locals() else None},
+            error=e,
+            logger_instance=logger,
+        )
         return Response(
             {'error': 'Failed to fetch overview metrics'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -86,7 +98,15 @@ def dashboard_timeseries(request):
         data = get_timeseries_data(metric=metric, days=days)
         return Response({'data': data})
     except Exception as e:
-        logger.error(f'[ADMIN_ANALYTICS] Error fetching timeseries: {e}', exc_info=True)
+        StructuredLogger.log_service_operation(
+            service_name='AdminAnalytics',
+            operation='fetch_timeseries',
+            user=request.user,
+            success=False,
+            metadata={'metric': metric if 'metric' in locals() else None, 'days': days if 'days' in locals() else None},
+            error=e,
+            logger_instance=logger,
+        )
         return Response(
             {'error': 'Failed to fetch timeseries data'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -126,7 +146,18 @@ def dashboard_ai_breakdown(request):
         data = get_ai_breakdown(breakdown_type=breakdown_type, days=days)
         return Response({'breakdown': data})
     except Exception as e:
-        logger.error(f'[ADMIN_ANALYTICS] Error fetching AI breakdown: {e}', exc_info=True)
+        StructuredLogger.log_service_operation(
+            service_name='AdminAnalytics',
+            operation='fetch_ai_breakdown',
+            user=request.user,
+            success=False,
+            metadata={
+                'type': breakdown_type if 'breakdown_type' in locals() else None,
+                'days': days if 'days' in locals() else None,
+            },
+            error=e,
+            logger_instance=logger,
+        )
         return Response(
             {'error': 'Failed to fetch AI breakdown'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -159,7 +190,15 @@ def dashboard_user_growth(request):
         data = get_user_growth_metrics(days=days)
         return Response(data)
     except Exception as e:
-        logger.error(f'[ADMIN_ANALYTICS] Error fetching user growth: {e}', exc_info=True)
+        StructuredLogger.log_service_operation(
+            service_name='AdminAnalytics',
+            operation='fetch_user_growth',
+            user=request.user,
+            success=False,
+            metadata={'days': days if 'days' in locals() else None},
+            error=e,
+            logger_instance=logger,
+        )
         return Response(
             {'error': 'Failed to fetch user growth metrics'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -218,8 +257,217 @@ def dashboard_content_metrics(request):
             }
         )
     except Exception as e:
-        logger.error(f'[ADMIN_ANALYTICS] Error fetching content metrics: {e}', exc_info=True)
+        StructuredLogger.log_service_operation(
+            service_name='AdminAnalytics',
+            operation='fetch_content_metrics',
+            user=request.user,
+            success=False,
+            metadata={'days': days if 'days' in locals() else None},
+            error=e,
+            logger_instance=logger,
+        )
         return Response(
             {'error': 'Failed to fetch content metrics'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminRole])
+def dashboard_guest_battles(request):
+    """
+    GET /api/admin/analytics/guest-battles/
+
+    Returns guest user and battle metrics with conversion funnel.
+
+    Query params:
+        - days: Number of days (default: 30)
+
+    Response:
+        {
+            "totalGuests": 123,
+            "guestsConverted": 45,
+            "conversionRate": 36.6,
+            "battlesWithGuests": 100,
+            "totalBattles": 500,
+            "guestWins": 30,
+            "guestLosses": 60,
+            "guestTies": 10,
+            "recentGuests": [...],
+            "conversionFunnel": {...}
+        }
+    """
+    try:
+        from core.audits.models import UserAuditLog
+        from core.battles.models import PromptBattle
+        from core.users.models import User
+
+        days = int(request.GET.get('days', 30))
+        end_date = timezone.now()
+        start_date = end_date - timedelta(days=days)
+
+        # Total guest users created in the time period (from audit log)
+        total_guests_period = UserAuditLog.objects.filter(
+            action=UserAuditLog.Action.GUEST_CREATED,
+            timestamp__gte=start_date,
+            timestamp__lte=end_date,
+            success=True,
+        ).count()
+
+        # Guest users who converted in the time period (from audit log)
+        guests_converted_period = UserAuditLog.objects.filter(
+            action=UserAuditLog.Action.GUEST_CONVERTED,
+            timestamp__gte=start_date,
+            timestamp__lte=end_date,
+            success=True,
+        ).count()
+
+        # Current guests who haven't converted (all-time)
+        current_guests = User.objects.filter(is_guest=True).count()
+
+        # All-time conversion metrics for funnel (from audit logs)
+        all_time_guests_created = UserAuditLog.objects.filter(
+            action=UserAuditLog.Action.GUEST_CREATED,
+            success=True,
+        ).count()
+        all_time_converted = UserAuditLog.objects.filter(
+            action=UserAuditLog.Action.GUEST_CONVERTED,
+            success=True,
+        ).count()
+
+        # Use max of audit log count or current guests + converted (for accuracy)
+        all_time_guests = max(all_time_guests_created, current_guests + all_time_converted)
+
+        # Guests who completed at least one battle
+        guests_with_battles = (
+            User.objects.filter(
+                is_guest=True,
+            )
+            .filter(Q(battles_initiated__status='completed') | Q(battles_received__status='completed'))
+            .distinct()
+            .count()
+        )
+
+        # Get user IDs of converted users from audit log
+        converted_user_ids = UserAuditLog.objects.filter(
+            action=UserAuditLog.Action.GUEST_CONVERTED,
+            success=True,
+        ).values_list('user_id', flat=True)
+
+        # Converted users who had battles
+        converted_with_battles = (
+            User.objects.filter(
+                id__in=converted_user_ids,
+            )
+            .filter(Q(battles_initiated__isnull=False) | Q(battles_received__isnull=False))
+            .distinct()
+            .count()
+        )
+
+        # Conversion rate for period
+        total_ever_guests_period = total_guests_period + guests_converted_period
+        conversion_rate = (
+            (guests_converted_period / total_ever_guests_period * 100) if total_ever_guests_period > 0 else 0
+        )
+
+        # All-time conversion rate
+        all_time_conversion_rate = (all_time_converted / all_time_guests * 100) if all_time_guests > 0 else 0
+
+        # Battles involving guest users
+        battles_with_guests = (
+            PromptBattle.objects.filter(
+                Q(challenger__is_guest=True) | Q(opponent__is_guest=True),
+                created_at__gte=start_date,
+                created_at__lte=end_date,
+            )
+            .distinct()
+            .count()
+        )
+
+        # Total battles in the period
+        total_battles = PromptBattle.objects.filter(
+            created_at__gte=start_date,
+            created_at__lte=end_date,
+        ).count()
+
+        # Guest wins/losses - check both challenger and opponent
+        guest_battles = PromptBattle.objects.filter(
+            Q(challenger__is_guest=True) | Q(opponent__is_guest=True),
+            status='completed',
+            created_at__gte=start_date,
+            created_at__lte=end_date,
+        ).distinct()
+
+        guest_wins = guest_battles.filter(winner__is_guest=True).count()
+        guest_losses = guest_battles.exclude(winner__isnull=True).exclude(winner__is_guest=True).count()
+        guest_ties = guest_battles.filter(winner__isnull=True).count()
+
+        # Recent guest users (last 10) - use camelCase for frontend
+        recent_guests_qs = User.objects.filter(
+            is_guest=True,
+        ).order_by('-date_joined')[:10]
+
+        recent_guests = [
+            {
+                'id': g.id,
+                'username': g.username,
+                'dateJoined': g.date_joined.isoformat(),
+            }
+            for g in recent_guests_qs
+        ]
+
+        # Build conversion funnel data
+        conversion_funnel = {
+            'invited': all_time_guests,  # Total guests ever created
+            'joinedBattle': guests_with_battles + converted_with_battles,  # Completed at least one battle
+            'converted': all_time_converted,  # Became full users
+            'rates': {
+                'inviteToJoin': round(
+                    ((guests_with_battles + converted_with_battles) / all_time_guests * 100)
+                    if all_time_guests > 0
+                    else 0,
+                    1,
+                ),
+                'joinToConvert': round(
+                    (all_time_converted / (guests_with_battles + converted_with_battles) * 100)
+                    if (guests_with_battles + converted_with_battles) > 0
+                    else 0,
+                    1,
+                ),
+                'overallConversion': round(all_time_conversion_rate, 1),
+            },
+        }
+
+        return Response(
+            {
+                'totalGuests': total_guests_period,
+                'currentGuests': current_guests,
+                'guestsConverted': guests_converted_period,
+                'conversionRate': round(conversion_rate, 1),
+                'allTimeConversionRate': round(all_time_conversion_rate, 1),
+                'battlesWithGuests': battles_with_guests,
+                'totalBattles': total_battles,
+                'guestBattlePercentage': round(
+                    (battles_with_guests / total_battles * 100) if total_battles > 0 else 0, 1
+                ),
+                'guestWins': guest_wins,
+                'guestLosses': guest_losses,
+                'guestTies': guest_ties,
+                'recentGuests': recent_guests,
+                'conversionFunnel': conversion_funnel,
+            }
+        )
+    except Exception as e:
+        StructuredLogger.log_service_operation(
+            service_name='AdminAnalytics',
+            operation='fetch_guest_battle_metrics',
+            user=request.user,
+            success=False,
+            metadata={'days': days if 'days' in locals() else None},
+            error=e,
+            logger_instance=logger,
+        )
+        return Response(
+            {'error': 'Failed to fetch guest battle metrics'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

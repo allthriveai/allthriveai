@@ -12,6 +12,7 @@ export { BattleResults } from './BattleResults';
 export { BattlesTab } from './BattlesTab';
 export { ChallengeDisplay } from './ChallengeDisplay';
 export { GeneratingPhase } from './GeneratingPhase';
+export { GuestSignupBanner } from './GuestSignupBanner';
 export { GuestSignupModal } from './GuestSignupModal';
 export { JudgingReveal } from './JudgingReveal';
 export { MatchmakingScreen } from './MatchmakingScreen';

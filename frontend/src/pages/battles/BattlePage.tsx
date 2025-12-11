@@ -20,7 +20,7 @@ import {
   BattleArena,
   BattleCountdown,
   GeneratingPhase,
-  GuestSignupModal,
+  GuestSignupBanner,
   JudgingReveal,
   WaitingForOpponent,
   type PlayerStatus,
@@ -161,16 +161,24 @@ export function BattlePage() {
   // Use WebSocket state if available, otherwise fallback to REST
   const battleState = wsBattleState || restBattleState;
 
-  // Show guest signup modal when battle completes for guest users
+  // Show guest signup banner when battle completes for guest users
   useEffect(() => {
     if (isGuestUser && battleState?.phase === 'complete') {
-      // Delay showing modal to let the reveal animation finish
-      const timer = setTimeout(() => {
+      // Check if this is a returning guest (battle already loaded via REST, not just completed)
+      // If loaded via REST fallback, show banner immediately
+      // If just completed via WebSocket, delay to let reveal animation finish
+      if (restBattleState) {
+        // Returning guest - show banner immediately
         setShowGuestSignupModal(true);
-      }, 5000); // Show after 5 seconds to let user see results
-      return () => clearTimeout(timer);
+      } else {
+        // Battle just completed - delay to let user see results
+        const timer = setTimeout(() => {
+          setShowGuestSignupModal(true);
+        }, 5000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [isGuestUser, battleState?.phase]);
+  }, [isGuestUser, battleState?.phase, restBattleState]);
 
   // Determine battle result for guest signup modal
   const battleResult = useMemo(() => {
@@ -473,14 +481,10 @@ export function BattlePage() {
     <DashboardLayout>
       <div className="min-h-screen bg-background">{renderPhaseContent()}</div>
 
-      {/* Guest signup modal - shown after battle completes for guest users */}
-      <GuestSignupModal
-        isOpen={showGuestSignupModal}
-        onClose={() => setShowGuestSignupModal(false)}
-        onSuccess={() => {
-          // User converted to full account
-          setShowGuestSignupModal(false);
-        }}
+      {/* Guest signup banner - shown after battle completes for guest users */}
+      <GuestSignupBanner
+        isVisible={showGuestSignupModal}
+        onDismiss={() => setShowGuestSignupModal(false)}
         battleResult={battleResult}
       />
     </DashboardLayout>

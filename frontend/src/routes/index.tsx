@@ -5,7 +5,10 @@ function RedirectWithQuery({ to }: { to: string }) {
   const location = useLocation();
   return <Navigate to={`${to}${location.search}`} replace />;
 }
-import { ProtectedRoute } from './ProtectedRoute';
+import { ProtectedRoute, setGuestBattleId, clearGuestBattleId, getGuestBattleId } from './ProtectedRoute';
+
+// Re-export guest helpers for use elsewhere
+export { setGuestBattleId, clearGuestBattleId, getGuestBattleId };
 import LandingPage from '@/pages/LandingPage';
 import AboutPage from '@/pages/AboutPage';
 import AuthPage from '@/pages/AuthPage';

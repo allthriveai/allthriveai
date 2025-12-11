@@ -22,7 +22,7 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayoutProps) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -31,10 +31,10 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
 
   // Redirect if not admin
   useEffect(() => {
-    if (user && user.role !== 'admin') {
+    if (!isLoading && user && user.role !== 'admin') {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, isLoading, navigate]);
 
   const adminNavItems: AdminSidebarItem[] = [
     {
@@ -98,7 +98,8 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
     setIsDropdownOpen(false);
   };
 
-  if (!user || user.role !== 'admin') {
+  // Show nothing while loading or if not admin
+  if (isLoading || !user || user.role !== 'admin') {
     return null;
   }
 

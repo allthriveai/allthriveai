@@ -20,6 +20,7 @@ import {
 import { api } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { setGuestBattleId } from '@/routes/ProtectedRoute';
 
 interface InvitationData {
   invitation_id: number;
@@ -104,6 +105,8 @@ export function BattleInvitePage() {
       // Navigate to the battle - the response contains the serialized battle
       const battleId = response.data?.id;
       if (battleId) {
+        // Store battle ID so guest can return to it later
+        setGuestBattleId(battleId);
         navigate(`/battles/${battleId}`);
       } else {
         console.error('No battle ID in response:', response.data);

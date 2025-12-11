@@ -81,6 +81,7 @@ from .social.views import (
 from .social.views import oauth_callback as social_oauth_callback
 from .taxonomy.views import TaxonomyViewSet, UserTagViewSet, track_interaction, user_personalization_overview
 from .thrive_circle.views import (
+    AdminCircleViewSet,
     CircleViewSet,
     PointActivityViewSet,
     QuestCategoryViewSet,
@@ -180,6 +181,11 @@ urlpatterns = [
         'admin/analytics/user-growth/', admin_analytics_views.dashboard_user_growth, name='admin_dashboard_user_growth'
     ),
     path('admin/analytics/content/', admin_analytics_views.dashboard_content_metrics, name='admin_dashboard_content'),
+    path(
+        'admin/analytics/guest-battles/',
+        admin_analytics_views.dashboard_guest_battles,
+        name='admin_dashboard_guest_battles',
+    ),
     # Admin Invitation Management endpoints (admin-only)
     path('admin/invitations/', list_invitations, name='admin_list_invitations'),
     path('admin/invitations/stats/', invitation_stats, name='admin_invitation_stats'),
@@ -193,6 +199,12 @@ urlpatterns = [
     path('admin/impersonate/status/', impersonation_status, name='admin_impersonation_status'),
     path('admin/impersonate/logs/', list_impersonation_logs, name='admin_impersonation_logs'),
     path('admin/impersonate/users/', list_impersonatable_users, name='admin_impersonatable_users'),
+    # Admin Circle Management endpoints
+    path('admin/circles/', AdminCircleViewSet.as_view({'get': 'list'}), name='admin_circles_list'),
+    path('admin/circles/users/', AdminCircleViewSet.as_view({'get': 'users'}), name='admin_circles_users'),
+    path('admin/circles/assign/', AdminCircleViewSet.as_view({'post': 'assign'}), name='admin_circles_assign'),
+    path('admin/circles/remove/', AdminCircleViewSet.as_view({'post': 'remove'}), name='admin_circles_remove'),
+    path('admin/circles/move/', AdminCircleViewSet.as_view({'post': 'move'}), name='admin_circles_move'),
     # Explore endpoints (public)
     path('projects/explore/', explore_projects, name='explore_projects'),
     path('projects/topic-suggestions/', get_topic_suggestions, name='topic_suggestions'),

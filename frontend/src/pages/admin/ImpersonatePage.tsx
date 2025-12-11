@@ -19,7 +19,7 @@ import {
 } from '@/services/impersonation';
 
 export default function ImpersonatePage() {
-  const { user, refreshUser } = useAuth();
+  const { user, isLoading: authLoading, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const [users, setUsers] = useState<ImpersonatableUser[]>([]);
@@ -35,10 +35,10 @@ export default function ImpersonatePage() {
 
   // Redirect if not admin
   useEffect(() => {
-    if (user && user.role !== 'admin') {
+    if (!authLoading && user && user.role !== 'admin') {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   // Fetch impersonatable users
   const fetchUsers = useCallback(async () => {
@@ -129,7 +129,8 @@ export default function ImpersonatePage() {
     return `${diffHours} hr`;
   };
 
-  if (!user || user.role !== 'admin') {
+  // Show nothing while loading or if not admin
+  if (authLoading || !user || user.role !== 'admin') {
     return null;
   }
 
@@ -333,12 +334,12 @@ export default function ImpersonatePage() {
                       >
                         <div className="md:col-span-3">
                           <p className="font-medium text-slate-900 dark:text-white">
-                            @{log.admin_user.username}
+                            @{log.admin_user?.username || 'Unknown'}
                           </p>
                         </div>
                         <div className="md:col-span-3">
                           <p className="text-slate-700 dark:text-slate-300">
-                            @{log.target_user.username}
+                            @{log.target_user?.username || 'Unknown'}
                           </p>
                         </div>
                         <div className="md:col-span-3">
