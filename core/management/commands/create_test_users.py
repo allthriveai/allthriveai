@@ -1,4 +1,4 @@
-"""Management command to create fake beta test users for admin impersonation."""
+"""Management command to create fake test users for admin impersonation."""
 
 import secrets
 
@@ -8,6 +8,15 @@ from django.core.management.base import BaseCommand
 from core.users.models import UserRole
 
 User = get_user_model()
+
+# Username format styles
+USERNAME_STYLES = [
+    'firstname_lastname',  # alex_chen
+    'firstnamelastname',  # alexchen
+    'firstname.lastname',  # alex.chen
+    'firstinitial_lastname',  # a_chen
+    'firstname_lastinitial',  # alex_c
+]
 
 # Sample data for generating realistic fake users
 FIRST_NAMES = [
@@ -160,7 +169,7 @@ AVATAR_STYLES = [
 
 
 class Command(BaseCommand):
-    help = 'Create fake beta test users that admins can impersonate'
+    help = 'Create fake test users that admins can impersonate'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -170,33 +179,74 @@ class Command(BaseCommand):
             help='Number of fake users to create (default: 10)',
         )
         parser.add_argument(
-            '--prefix',
-            type=str,
-            default='beta',
-            help='Username prefix (default: beta)',
-        )
-        parser.add_argument(
             '--delete-existing',
             action='store_true',
-            help='Delete existing beta users before creating new ones',
+            help='Delete existing test users before creating new ones',
         )
+        parser.add_argument(
+            '--delete-beta',
+            action='store_true',
+            help='Delete old beta_ prefixed users',
+        )
+
+    def _generate_username(self, first_name: str, last_name: str) -> str:
+        """Generate a realistic-looking username."""
+        style = secrets.choice(USERNAME_STYLES)
+        fn = first_name.lower()
+        ln = last_name.lower()
+
+        if style == 'firstname_lastname':
+            return f'{fn}_{ln}'
+        elif style == 'firstnamelastname':
+            return f'{fn}{ln}'
+        elif style == 'firstname.lastname':
+            return f'{fn}.{ln}'
+        elif style == 'firstinitial_lastname':
+            return f'{fn[0]}_{ln}'
+        elif style == 'firstname_lastinitial':
+            return f'{fn}_{ln[0]}'
+        else:
+            return f'{fn}_{ln}'
+
+    def _get_unique_username(self, first_name: str, last_name: str) -> str:
+        """Generate a unique username, adding a number suffix if needed."""
+        base_username = self._generate_username(first_name, last_name)
+        username = base_username
+
+        # If username exists, add incrementing number
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            counter += 1
+            username = f'{base_username}{counter}'
+            if counter > 100:  # Safety limit
+                # Fallback to guaranteed unique
+                username = f'{base_username}_{secrets.token_hex(3)}'
+                break
+
+        return username
 
     def handle(self, *args, **options):
         count = options['count']
-        prefix = options['prefix']
         delete_existing = options['delete_existing']
+        delete_beta = options['delete_beta']
 
+        # Delete old beta_ prefixed users if requested
+        if delete_beta:
+            deleted, _ = User.objects.filter(username__startswith='beta_').delete()
+            self.stdout.write(self.style.WARNING(f'Deleted {deleted} old beta_ prefixed users'))
+
+        # Delete test users created by this command (have @test.allthrive.ai email)
         if delete_existing:
-            deleted, _ = User.objects.filter(username__startswith=f'{prefix}_').delete()
-            self.stdout.write(self.style.WARNING(f'Deleted {deleted} existing beta users'))
+            deleted, _ = User.objects.filter(email__endswith='@test.allthrive.ai').delete()
+            self.stdout.write(self.style.WARNING(f'Deleted {deleted} existing test users'))
 
         created_users = []
 
         for i in range(1, count + 1):
             first_name = secrets.choice(FIRST_NAMES)
             last_name = secrets.choice(LAST_NAMES)
-            username = f'{prefix}_{first_name.lower()}_{i}'
-            email = f'{username}@beta.allthrive.ai'
+            username = self._get_unique_username(first_name, last_name)
+            email = f'{username}@test.allthrive.ai'
 
             # Check if user already exists
             if User.objects.filter(username=username).exists():
@@ -241,13 +291,13 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'Created user: {username} ({first_name} {last_name})'))
 
         self.stdout.write('')
-        self.stdout.write(self.style.SUCCESS(f'Successfully created {len(created_users)} beta users'))
+        self.stdout.write(self.style.SUCCESS(f'Successfully created {len(created_users)} test users'))
         self.stdout.write('')
         self.stdout.write('To impersonate these users:')
         self.stdout.write('  1. Log in as an admin')
-        self.stdout.write('  2. POST /api/v1/admin/impersonate/start/ with {"username": "beta_alex_1"}')
-        self.stdout.write('  3. POST /api/v1/admin/impersonate/stop/ to return to your admin account')
+        self.stdout.write('  2. Go to /admin/impersonate and select a user')
+        self.stdout.write('  3. Click "Stop" in the banner to return to your admin account')
         self.stdout.write('')
         self.stdout.write('Created users:')
         for user in created_users:
-            self.stdout.write(f'  - {user.username} ({user.first_name} {user.last_name})')
+            self.stdout.write(f'  - @{user.username} ({user.first_name} {user.last_name})')

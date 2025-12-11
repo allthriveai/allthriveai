@@ -354,6 +354,8 @@ class ProjectCardSerializer(serializers.ModelSerializer):
     heart_count = serializers.ReadOnlyField()
     # Use annotated value from queryset if available, otherwise compute
     is_liked_by_user = serializers.SerializerMethodField()
+    # Lightweight content field - only populated for battle projects
+    content = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -376,6 +378,7 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'is_liked_by_user',
             'published_date',
             'created_at',
+            'content',  # Only populated for battle projects
         ]
 
     def get_is_liked_by_user(self, obj):
@@ -396,6 +399,40 @@ class ProjectCardSerializer(serializers.ModelSerializer):
                 return any(like.user_id == request.user.id for like in obj.likes.all())
             return obj.likes.filter(user=request.user).exists()
         return False
+
+    def get_content(self, obj):
+        """Return minimal content for card rendering.
+
+        Only returns data needed for specific card types:
+        - Battle projects: battleResult with image URLs for VS layout
+        - Other projects: None (full content available on detail page)
+        """
+        if obj.type != 'battle' or not obj.content:
+            return None
+
+        battle_result = obj.content.get('battleResult')
+        if not battle_result:
+            return None
+
+        # Return only the fields needed for card rendering
+        # Camel case keys to match frontend expectations
+        return {
+            'battleResult': {
+                'won': battle_result.get('won'),
+                'isTie': battle_result.get('is_tie'),
+                'challengeText': battle_result.get('challenge_text'),
+                'mySubmission': {
+                    'imageUrl': battle_result.get('my_submission', {}).get('image_url'),
+                }
+                if battle_result.get('my_submission')
+                else None,
+                'opponentSubmission': {
+                    'imageUrl': battle_result.get('opponent_submission', {}).get('image_url'),
+                }
+                if battle_result.get('opponent_submission')
+                else None,
+            }
+        }
 
     def to_representation(self, instance):
         """Convert snake_case to camelCase for frontend compatibility."""

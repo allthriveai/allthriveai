@@ -21,12 +21,43 @@ import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
 
 /**
- * Format the expert review into structured HTML with headers and bullets
+ * Format the expert review into structured HTML with headers and sections
+ * Handles markdown-style headers (## Header) and paragraphs
  */
 function formatExpertReview(review: string): string {
   if (!review) return '';
 
-  // Split into sentences for better readability
+  // Check if the review has markdown headers
+  if (review.includes('## ')) {
+    // Split by markdown headers
+    const sections = review.split(/^## /m).filter(Boolean);
+
+    let html = '';
+    sections.forEach((section, index) => {
+      const lines = section.trim().split('\n');
+      const header = lines[0].trim();
+      const content = lines.slice(1).join(' ').trim();
+
+      if (index === 0 && !review.startsWith('## ')) {
+        // First section without a header (intro text)
+        html += `<p class="text-xl font-medium leading-relaxed mb-6">${section.trim()}</p>`;
+      } else if (header && content) {
+        html += `
+          <div class="mb-6">
+            <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-white/50 mb-2">${header}</h3>
+            <p class="text-lg leading-relaxed text-gray-700 dark:text-white/90">${content}</p>
+          </div>
+        `;
+      } else if (header) {
+        // Header with content on same line or no content
+        html += `<p class="text-lg leading-relaxed mb-4 text-gray-700 dark:text-white/90">${header}</p>`;
+      }
+    });
+
+    return html;
+  }
+
+  // Fallback: Split into sentences for better readability
   const sentences = review.split(/(?<=[.!?])\s+/).filter(Boolean);
 
   if (sentences.length <= 2) {
@@ -35,7 +66,6 @@ function formatExpertReview(review: string): string {
   }
 
   // For longer reviews, structure them nicely
-  // First sentence as lead paragraph
   const lead = sentences[0];
   const rest = sentences.slice(1);
 

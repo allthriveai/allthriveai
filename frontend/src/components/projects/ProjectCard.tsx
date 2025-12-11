@@ -577,14 +577,14 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                 <div className="relative w-full" style={{ aspectRatio: '9 / 16' }}>
                   {/* Stacked vertical layout */}
                   <div className="absolute inset-0 flex flex-col">
-                    {/* My submission - top half */}
+                    {/* First submission - top half */}
                     <div className="flex-1 relative overflow-hidden">
                       {heroElement.myImageUrl ? (
                         <img
                           src={getOptimizedImageUrl(heroElement.myImageUrl, { width: 400 })}
                           srcSet={generateSrcSet(heroElement.myImageUrl, [280, 400, 560])}
                           sizes="(max-width: 640px) 280px, 400px"
-                          alt="Your submission"
+                          alt="Battle submission"
                           className="w-full h-full object-cover"
                           loading="lazy"
                           decoding="async"
@@ -594,29 +594,25 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                           <span className="text-slate-600 text-sm">No image</span>
                         </div>
                       )}
-                      {/* Winner badge on my image */}
+                      {/* Winner badge on first image (if this submission won) */}
                       {heroElement.won && (
                         <div className="absolute top-2 left-2 p-1.5 rounded-full bg-amber-500 shadow-lg">
                           <TrophyIcon className="w-4 h-4 text-white" />
                         </div>
                       )}
-                      {/* "YOU" label */}
-                      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/80 text-white">
-                        YOU
-                      </div>
                     </div>
 
                     {/* Divider gap */}
                     <div className="h-1 bg-slate-900" />
 
-                    {/* Opponent submission - bottom half */}
+                    {/* Second submission - bottom half */}
                     <div className="flex-1 relative overflow-hidden">
                       {heroElement.opponentImageUrl ? (
                         <img
                           src={getOptimizedImageUrl(heroElement.opponentImageUrl, { width: 400 })}
                           srcSet={generateSrcSet(heroElement.opponentImageUrl, [280, 400, 560])}
                           sizes="(max-width: 640px) 280px, 400px"
-                          alt="Opponent submission"
+                          alt="Battle submission"
                           className="w-full h-full object-cover"
                           loading="lazy"
                           decoding="async"
@@ -626,16 +622,12 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                           <span className="text-slate-600 text-sm">No image</span>
                         </div>
                       )}
-                      {/* Winner badge on opponent image */}
+                      {/* Winner badge on second image (if opponent won) */}
                       {!heroElement.won && !heroElement.isTie && (
-                        <div className="absolute top-2 right-2 p-1.5 rounded-full bg-amber-500 shadow-lg">
+                        <div className="absolute top-2 left-2 p-1.5 rounded-full bg-amber-500 shadow-lg">
                           <TrophyIcon className="w-4 h-4 text-white" />
                         </div>
                       )}
-                      {/* "OPPONENT" label */}
-                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-violet-500/80 text-white">
-                        OPPONENT
-                      </div>
                     </div>
                   </div>
 
@@ -648,18 +640,14 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                     </div>
                   </div>
 
-                  {/* Result banner at bottom */}
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
-                    <div className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm ${
-                      heroElement.isTie
-                        ? 'bg-slate-700/80 text-slate-300'
-                        : heroElement.won
-                        ? 'bg-amber-500/90 text-white'
-                        : 'bg-slate-700/80 text-slate-300'
-                    }`}>
-                      {heroElement.isTie ? 'TIE' : heroElement.won ? 'VICTORY' : 'DEFEAT'}
+                  {/* Tie badge at bottom (only show if it's a tie) */}
+                  {heroElement.isTie && (
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
+                      <div className="px-3 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm bg-slate-700/80 text-slate-300">
+                        TIE
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             )}

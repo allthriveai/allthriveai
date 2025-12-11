@@ -16,6 +16,24 @@ class RSSFeedAgent(models.Model):
         PAUSED = 'paused', 'Paused'
         ERROR = 'error', 'Error'
 
+    class VisualStyle(models.TextChoices):
+        """Visual styles for AI-generated hero images.
+
+        Each curator can have a signature visual style that makes their
+        curated articles recognizable and unique.
+        """
+
+        NEO_BRUTALISM = 'neo_brutalism', 'Neo-Brutalism'
+        DARK_ACADEMIA = 'dark_academia', 'Dark Academia'
+        CYBERPUNK = 'cyberpunk', 'Cyberpunk'
+        ORGANIC_NATURE = 'organic_nature', 'Organic / Nature-Inspired'
+        SCANDINAVIAN_CALM = 'scandinavian_calm', 'Scandinavian Calm'
+        EDITORIAL_MAGAZINE = 'editorial_magazine', 'Editorial Magazine'
+        CORPORATE_CLEAN = 'corporate_clean', 'Corporate Clean'
+        CONSTRUCTIVIST_BAUHAUS = 'constructivist_bauhaus', 'Constructivist / Bauhaus'
+        ZEN_MONOCHROME = 'zen_monochrome', 'Zen Monochrome'
+        GLASS_NEON = 'glass_neon', 'Glass Neon'
+
     agent_user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -47,6 +65,13 @@ class RSSFeedAgent(models.Model):
         default=Status.ACTIVE,
         db_index=True,
         help_text='Agent status (active/paused/error)',
+    )
+
+    visual_style = models.CharField(
+        max_length=30,
+        choices=VisualStyle.choices,
+        default=VisualStyle.CYBERPUNK,
+        help_text='Visual style for AI-generated hero images',
     )
 
     # Sync settings stored as JSON

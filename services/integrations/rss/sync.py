@@ -59,6 +59,94 @@ CATEGORY_MAPPING = {
     'web3': 'Blockchain',
 }
 
+# Visual style prompts for curator-specific hero image generation
+# Each style is either PHOTOREALISTIC or ABSTRACT - no AI slop middle ground
+VISUAL_STYLE_PROMPTS = {
+    'neo_brutalism': """
+STYLE: Abstract geometric art (flat vector style)
+- Bold, saturated flat colors (hot pink, electric blue, bright yellow, lime green)
+- Thick black outlines, hard edges
+- Simple geometric shapes - circles, squares, triangles
+- High contrast, no gradients, no 3D effects
+- Like a bold poster or album cover
+- Think: Bauhaus meets punk rock zine
+""",
+    'dark_academia': """
+STYLE: Moody fine art photography or oil painting aesthetic
+- Rich warm tones: deep brown, burgundy, gold, amber
+- Dramatic chiaroscuro lighting (like Rembrandt or Caravaggio)
+- Either photorealistic or painterly - nothing in between
+- Atmospheric, cinematic quality
+- Shot on medium format film aesthetic
+- Think: museum-quality still life or architectural photography
+""",
+    'cyberpunk': """
+STYLE: Hyper-realistic night photography or abstract data visualization
+- Neon accent colors (cyan, magenta) against pure black
+- If realistic: wet city streets, reflections, lens flares
+- If abstract: clean data streams, minimal circuit patterns
+- High contrast, deep blacks
+- Think: Blade Runner cinematography or Bloomberg terminal aesthetics
+""",
+    'organic_nature': """
+STYLE: Fine art nature photography (National Geographic quality)
+- Photorealistic macro or landscape photography
+- Earth tones: sage, terracotta, forest green
+- Golden hour or soft diffused lighting
+- Shallow depth of field, bokeh
+- Think: award-winning nature documentary still
+""",
+    'scandinavian_calm': """
+STYLE: Minimalist product photography or abstract gradient art
+- Muted pastels: soft gray, blush, pale blue, cream
+- Either clean studio photography with soft shadows
+- Or simple abstract gradients and shapes
+- Lots of negative space, very minimal
+- Think: Apple product photography or Dieter Rams design
+""",
+    'editorial_magazine': """
+STYLE: High-end editorial photography
+- Bold, dramatic lighting and composition
+- Strong shadows, high contrast
+- Photorealistic, magazine-cover quality
+- Dynamic angles, intentional cropping
+- Think: Vogue, Wired, or Bloomberg Businessweek covers
+""",
+    'corporate_clean': """
+STYLE: Clean isometric illustration or infographic style
+- Flat colors: navy, teal, white, gray
+- Simple geometric shapes, clean lines
+- Isometric perspective if 3D elements
+- Minimal, professional, trustworthy
+- Think: Stripe or Linear website illustrations
+""",
+    'constructivist_bauhaus': """
+STYLE: Bold abstract geometric art
+- Primary colors only: red, blue, yellow, black, white
+- Hard-edge geometric shapes
+- Flat, no gradients, no textures
+- Strong diagonals, asymmetric balance
+- Think: actual Bauhaus posters, Kandinsky, El Lissitzky
+""",
+    'zen_monochrome': """
+STYLE: Black and white fine art or ink wash painting
+- Pure black, white, gray only
+- Either photorealistic B&W photography
+- Or abstract ink wash / sumi-e style
+- Abundant negative space
+- Single focal point
+- Think: Hiroshi Sugimoto photography or traditional calligraphy
+""",
+    'glass_neon': """
+STYLE: Abstract light photography or minimal neon art
+- Dark/black background
+- Clean neon light trails or glass refractions
+- Long exposure light painting aesthetic
+- Simple, elegant, not busy
+- Think: James Turrell light installations or minimal neon signage
+""",
+}
+
 
 def clean_html(text: str) -> str:
     """Remove HTML tags and decode HTML entities from text."""
@@ -447,11 +535,13 @@ class RSSFeedSyncService:
             # Determine featured image - use RSS thumbnail or generate with Gemini
             featured_image_url = item_data.get('thumbnail_url') or ''
             if not featured_image_url:
-                # Generate a beautiful hero image using Gemini
-                generated_url = cls._generate_hero_image(item_data, topics)
+                # Generate a beautiful hero image using Gemini with curator's visual style
+                generated_url = cls._generate_hero_image(item_data, topics, agent.visual_style)
                 if generated_url:
                     featured_image_url = generated_url
-                    logger.info(f'Using AI-generated hero for "{item_data["title"][:40]}..."')
+                    logger.info(
+                        f'Using AI-generated hero for "{item_data["title"][:40]}..." ' f'(style: {agent.visual_style})'
+                    )
 
             # Use expert review as project description, fallback to original
             project_description = expert_review or (item_data['description'][:500] if item_data['description'] else '')
@@ -472,6 +562,10 @@ class RSSFeedSyncService:
             )
             project.ensure_unique_slug()
             project.save()
+
+            # Set created_at to the RSS published date so articles appear in correct order
+            if item_data.get('published_at'):
+                Project.objects.filter(pk=project.pk).update(created_at=item_data['published_at'])
 
             # Add categories from RSS feed categories (with AI fallback)
             cls._add_categories_to_project(project, item_data.get('categories', []), item_data)
@@ -521,13 +615,16 @@ class RSSFeedSyncService:
             project.featured_image_url = item_data['thumbnail_url']
             updated = True
         elif not project.featured_image_url:
-            # No image - try to generate one
+            # No image - try to generate one with curator's visual style
             topics = project.topics or cls._extract_topics_from_article(item_data)
-            generated_url = cls._generate_hero_image(item_data, topics)
+            generated_url = cls._generate_hero_image(item_data, topics, agent.visual_style)
             if generated_url:
                 project.featured_image_url = generated_url
                 updated = True
-                logger.info(f'Generated hero image for existing article: {project.title[:40]}...')
+                logger.info(
+                    f'Generated hero image for existing article: {project.title[:40]}... '
+                    f'(style: {agent.visual_style})'
+                )
 
         # Update content structure if empty or content changed
         if not project.content or not project.content.get('sections'):
@@ -609,11 +706,16 @@ Your expertise: {expertise}
 Write a thoughtful take that helps people understand why this matters.
 You're an expert sharing genuine insights, not hyping something up.
 
-FORMAT:
-- Opening: Set the context. What problem does this solve or what opportunity does it create?
-- Key insight: What's the most interesting or useful thing here? Be specific.
-- Practical angle: How might someone actually use this? What should they know?
-- Your take: Add a brief personal perspective or recommendation.
+FORMAT (use these exact markdown headers):
+
+## The Big Picture
+One paragraph (2-3 sentences) setting context. What problem does this solve or what opportunity does it create?
+
+## Key Insight
+One paragraph (2-3 sentences) on the most interesting or useful thing here. Be specific about what makes this notable.
+
+## What This Means For You
+One paragraph (2-3 sentences) on practical implications. How might someone actually use this? What should they know?
 
 VOICE:
 - Sound like a knowledgeable friend, not a press release or salesperson
@@ -631,8 +733,7 @@ STRICT FORMATTING RULES:
 - NO hype words: turbocharged, supercharged, game-changing, revolutionary,
   groundbreaking, mind-blowing, next-level, magic, magical
 - Write like you're explaining something valuable, not selling it
-
-Length: 4-6 sentences. Substantive but focused.
+- ALWAYS use the markdown headers exactly as shown above
 
 {signature_note}"""
 
@@ -648,7 +749,7 @@ Your expert curation:"""
                 prompt=prompt,
                 system_message=system_prompt,
                 temperature=0.7,  # Balanced creativity for natural but focused voice
-                max_tokens=500,
+                max_tokens=800,  # Longer for structured sections with headers
             )
 
             review = response.strip()
@@ -792,11 +893,12 @@ Analyze the article title and description, and classify it into ONE of these cat
 
 Rules:
 1. Choose the SINGLE most relevant category
-2. If the content is about AI tools, models, or LLMs, use "AI & Machine Learning"
-3. If it's a tutorial or how-to guide, consider "Tutorial"
-4. If it's a project showcase or case study, use "Project Showcase"
-5. For news about tech industry, use "News"
-6. If nothing fits well, use "General"
+2. If the content is about AI models, LLMs, or research papers, use "AI Models & Research"
+3. If it's about AI agents or multi-tool systems, use "AI Agents & Multi-Tool Systems"
+4. If it's about coding, programming, or developer tools, use "Developer & Coding"
+5. If it's about automation or workflows, use "Workflows & Automation"
+6. If it's about productivity tools or methods, use "Productivity"
+7. If nothing fits well, default to "AI Models & Research"
 
 Respond with ONLY the category name, exactly as written above."""
 
@@ -887,7 +989,21 @@ Description: {description[:800] if description else 'No description available'}"
             project.categories.add(*matched_categories)
             logger.info(f'Added {len(matched_categories)} categories to project "{project.title}"')
         else:
-            logger.warning(f'No categories matched for project "{project.title}"')
+            # Final fallback: Assign a default category to ensure every article has at least one
+            # Try "AI Models & Research" first (most relevant for our tech RSS feeds)
+            default_category = Taxonomy.objects.filter(
+                taxonomy_type='category', is_active=True, name__iexact='AI Models & Research'
+            ).first()
+
+            if not default_category:
+                # Last resort: just pick the first active category
+                default_category = Taxonomy.objects.filter(taxonomy_type='category', is_active=True).first()
+
+            if default_category:
+                project.categories.add(default_category)
+                logger.info(f'Assigned default category "{default_category.name}" to project "{project.title}"')
+            else:
+                logger.warning(f'No categories matched and no default available for project "{project.title}"')
 
     @classmethod
     def _add_tools_to_project(cls, project: Project, item_data: dict):
@@ -982,15 +1098,16 @@ Description: {item_data.get('description', '')[:500]}"""
             return 'intermediate'
 
     @classmethod
-    def _generate_hero_image(cls, item_data: dict, topics: list[str]) -> str | None:
-        """Generate a beautiful hero image for the article using Gemini.
+    def _generate_hero_image(cls, item_data: dict, topics: list[str], visual_style: str | None = None) -> str | None:
+        """Generate a unique hero image for the article using Gemini.
 
-        Creates an abstract, artistic hero image inspired by the article's title and topics.
-        The image uses the neon glass aesthetic with cyan and emerald tones.
+        Creates a high-quality, meaningful image that visually represents the article's content.
+        Each curator can have their own signature visual style.
 
         Args:
             item_data: Article data including title
             topics: Extracted topics for the article
+            visual_style: Curator's visual style preference (e.g., 'dark_academia', 'cyberpunk')
 
         Returns:
             Public S3 URL of the generated image, or None if generation fails
@@ -1000,25 +1117,43 @@ Description: {item_data.get('description', '')[:500]}"""
 
             # Build a creative prompt for the hero image
             title = item_data.get('title', '')
-            topic_str = ', '.join(topics[:5]) if topics else 'technology, innovation'
 
-            prompt = f"""Create a stunning, abstract hero image for a tech article.
+            # Get description for additional context
+            description = item_data.get('description', '')[:500]
 
-Article title: "{title}"
-Topics: {topic_str}
+            # Get curator-specific style prompt or default to cyberpunk
+            style_prompt = VISUAL_STYLE_PROMPTS.get(visual_style, VISUAL_STYLE_PROMPTS['cyberpunk'])
 
-Design requirements:
-- Modern, abstract art style with geometric shapes and flowing gradients
-- Primary colors: cyan (#22D3EE), emerald (#4ade80), deep violet (#7c3aed)
-- Subtle glass/frosted effects with soft glows
-- Dark background (near black or deep blue-black)
-- NO text, NO logos, NO faces, NO realistic objects
-- Think: abstract data visualization meets digital art
-- Should evoke innovation, technology, and creativity
-- Landscape format (16:9 aspect ratio)
-- Professional quality suitable for a tech publication header
+            prompt = (
+                f"""Create a hero image for this AI/tech article. """
+                f"""The image MUST visually represent the article's topic.
 
-Create a beautiful, ethereal image that captures the essence of the topic."""
+ARTICLE: "{title}"
+{f'CONTEXT: {description}' if description else ''}
+
+STEP 1 - UNDERSTAND THE TOPIC:
+"""
+                f"""First, identify what this article is actually about """
+                f"""(AI alignment, machine learning, coding, security, etc.) """
+                f"""and create imagery that represents THAT topic.
+
+STEP 2 - APPLY VISUAL STYLE:
+Render the topic-relevant imagery using this aesthetic:
+{style_prompt}
+
+CRITICAL REQUIREMENTS:
+"""
+                f"""1. The image MUST relate to the article's subject matter - """
+                f"""if it's about AI alignment, show AI/neural concepts; """
+                f"""if about coding, show code/development concepts
+"""
+                f"""2. Apply the visual style as an artistic treatment on the topic imagery, """
+                f"""not as a replacement for it
+3. FORMAT: VERTICAL 9:16 aspect ratio (portrait mode)
+"""
+                f"""4. AVOID: No text overlays, no human faces, no company logos, """
+                f"""no generic library/office scenes unless directly relevant"""
+            )
 
             # Generate image using Gemini
             image_bytes, mime_type, _text = ai.generate_image(prompt=prompt, timeout=120)

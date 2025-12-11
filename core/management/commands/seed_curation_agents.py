@@ -84,6 +84,7 @@ RSS_AGENTS = [
         'username': 'sarah-chen',
         'first_name': 'Sarah',
         'last_name': 'Chen',
+        'visual_style': 'glass_neon',  # Futuristic AI elegance
         'bio': (
             'AI industry analyst with a decade of experience covering major AI labs. '
             'I break down product launches and company announcements so you understand what actually matters. '
@@ -105,6 +106,7 @@ RSS_AGENTS = [
         'username': 'marcus-johnson',
         'first_name': 'Marcus',
         'last_name': 'Johnson',
+        'visual_style': 'editorial_magazine',  # Polished, authoritative
         'bio': (
             'Staff engineer turned technical writer. 15 years building distributed systems, '
             'now I translate complex engineering decisions into practical insights. '
@@ -126,6 +128,7 @@ RSS_AGENTS = [
         'username': 'dr-james-okonkwo',
         'first_name': 'James',
         'last_name': 'Okonkwo',
+        'visual_style': 'dark_academia',  # Scholarly, research-focused
         'bio': (
             'ML researcher specializing in interpretability and alignment. '
             'PhD from Berkeley, postdoc at MIRI. I read the papers so you get the key insights '
@@ -147,6 +150,7 @@ RSS_AGENTS = [
         'username': 'alex-reyes',
         'first_name': 'Alex',
         'last_name': 'Reyes',
+        'visual_style': 'cyberpunk',  # Cutting-edge, tech-forward security
         'bio': (
             'Security researcher focused on AI red teaming and adversarial robustness. '
             'Former pentester, now I probe AI systems for weaknesses. '
@@ -168,6 +172,7 @@ RSS_AGENTS = [
         'username': 'priya-sharma',
         'first_name': 'Priya',
         'last_name': 'Sharma',
+        'visual_style': 'organic_nature',  # Approachable, warm
         'bio': (
             'Developer advocate and AI coding tools expert. '
             'I test every update so you know which features are worth adopting. '
@@ -189,6 +194,7 @@ RSS_AGENTS = [
         'username': 'dr-emily-rodriguez',
         'first_name': 'Emily',
         'last_name': 'Rodriguez',
+        'visual_style': 'neo_brutalism',  # Bold, disruptive
         'bio': (
             'LLM researcher with focus on scaling laws and emergent capabilities. '
             'PhD from Stanford, former research scientist at Google Brain. '
@@ -210,6 +216,7 @@ RSS_AGENTS = [
         'username': 'kevin-nakamura',
         'first_name': 'Kevin',
         'last_name': 'Nakamura',
+        'visual_style': 'constructivist_bauhaus',  # Innovative, artistic
         'bio': (
             'Open source ML engineer and local AI enthusiast. '
             'I run models on everything from M1 Macs to homelab servers. '
@@ -231,6 +238,7 @@ RSS_AGENTS = [
         'username': 'dr-michael-torres',
         'first_name': 'Michael',
         'last_name': 'Torres',
+        'visual_style': 'zen_monochrome',  # Focused, minimal
         'bio': (
             'AGI researcher tracking frontier lab developments. '
             'PhD in cognitive science, now focused on reasoning systems and world models. '
@@ -509,6 +517,7 @@ class Command(BaseCommand):
         last_name = config.get('last_name', '')
         bio = config['bio']
         persona = config.get('persona', {})
+        visual_style = config.get('visual_style', 'cyberpunk')
 
         self.stdout.write(f'  Creating {first_name} {last_name} ({source_name})...')
 
@@ -548,9 +557,14 @@ class Command(BaseCommand):
                     'name': f'{source_name} RSS Agent',
                     'source_name': source_name,
                     'status': RSSFeedAgent.Status.ACTIVE,
+                    'visual_style': visual_style,
                     'settings': agent_settings,
                 },
             )
+            # Update visual_style if agent already exists
+            if not config_created and agent_config.visual_style != visual_style:
+                agent_config.visual_style = visual_style
+                agent_config.save(update_fields=['visual_style'])
 
         status = 'created' if config_created else 'exists'
         self.stdout.write(self.style.SUCCESS(f'  ✅ {source_name} ({status})'))

@@ -37,6 +37,14 @@ vi.mock('@/hooks/useActiveQuest', () => ({
   }),
 }));
 
+// Mock QuestCompletionContext to prevent "useQuestCompletion must be used within a QuestCompletionProvider" errors
+vi.mock('@/contexts/QuestCompletionContext', () => ({
+  QuestCompletionProvider: ({ children }: { children: React.ReactNode }) => children,
+  useQuestCompletion: () => ({
+    showCelebration: vi.fn(),
+  }),
+}));
+
 // Mock window.matchMedia for components that use media queries
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
