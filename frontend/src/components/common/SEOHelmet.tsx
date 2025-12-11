@@ -45,7 +45,7 @@ const getBaseUrl = (): string => {
  */
 export function SEO({
   title = 'All Thrive AI - AI Portfolio Platform with Gamified Learning & Discovery',
-  description = 'Showcase your AI projects, discover innovative work, and level up your skills through interactive challenges. Automate your AI portfolio, earn achievements, and connect with the community.',
+  description = 'The gamified AI portfolio platform for creators. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.',
   keywords = 'AI portfolio, machine learning projects, AI learning platform, gamified learning, AI community, project showcase, AI tools, deep learning, developer portfolio, coding challenges',
   image = `${getBaseUrl()}/og-image.jpg`,
   url,
@@ -95,7 +95,7 @@ export function SEO({
 export const SEOPresets = {
   home: {
     title: 'All Thrive AI - AI Portfolio Platform with Gamified Learning & Discovery',
-    description: 'Showcase your AI projects, discover innovative work, and level up your skills through interactive challenges. Automate your AI portfolio, earn achievements, and connect with the community.',
+    description: 'The gamified AI portfolio platform for creators. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.',
     keywords: 'AI portfolio, machine learning projects, AI learning platform, gamified learning, AI community, project showcase',
   },
   about: {

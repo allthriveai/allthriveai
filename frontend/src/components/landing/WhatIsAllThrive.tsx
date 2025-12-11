@@ -61,7 +61,7 @@ export function WhatIsAllThrive() {
           </h2>
 
           <p className="text-xl sm:text-2xl text-gray-400 leading-relaxed max-w-2xl mx-auto">
-            Automate your AI portfolio, compete in Prompt Battles, earn achievements, and level up your skills alongside a community of AI creators.
+            Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.
           </p>
         </motion.div>
       </div>
