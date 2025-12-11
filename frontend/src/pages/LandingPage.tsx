@@ -4,6 +4,7 @@ import { SEO, SEOPresets } from '@/components/common/SEO';
 import { Modal } from '@/components/ui/Modal';
 import { SkipLink } from '@/components/ui/SkipLink';
 import { HeroSection } from '@/components/landing/HeroSection';
+import { WhatIsAllThrive } from '@/components/landing/WhatIsAllThrive';
 import { ExplorePreview } from '@/components/landing/ExplorePreview';
 import { AutomatedProfile } from '@/components/landing/AutomatedProfile';
 import { SideQuestsPreview } from '@/components/landing/SideQuestsPreview';
@@ -226,7 +227,10 @@ function LandingPageContent() {
         {/* Section 1: Hero with CTA */}
         <HeroSection onRequestInvite={handleRequestInvite} isModalOpen={isModalOpen} />
 
-        {/* Section 2: Automated Profile Creation */}
+        {/* Section 2: What Is AllThrive - Platform Overview */}
+        <WhatIsAllThrive />
+
+        {/* Section 3: Automated Profile Creation */}
         <AutomatedProfile />
 
         {/* Section 3: Explore Feed Preview */}

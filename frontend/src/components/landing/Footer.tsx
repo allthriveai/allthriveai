@@ -47,7 +47,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-gray-600 dark:text-gray-400 text-sm mb-6 leading-relaxed">
-              The gamified AI portfolio platform for creators. Build your AI portfolio,
+              The gamified AI portfolio platform for creators. Automate your AI portfolio,
               compete in Prompt Battles, earn achievements, and level up your skills.
             </p>
             {/* Social links */}
