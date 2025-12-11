@@ -298,7 +298,7 @@ export function JudgingReveal({
                   <img
                     src={submission.imageUrl}
                     alt="Submission preview"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 )}
                 <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center">
@@ -467,7 +467,7 @@ export function JudgingReveal({
                 <motion.img
                   src={mySubmission.imageUrl}
                   alt="Your creation"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   initial={{ scale: 1.1 }}
                   animate={{ scale: 1 }}
                   transition={{ duration: 0.5 }}
@@ -594,7 +594,7 @@ export function JudgingReveal({
                 <motion.img
                   src={opponentSubmission.imageUrl}
                   alt={`${opponent.username}'s creation`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   initial={{ scale: 1.1 }}
                   animate={{ scale: rightRevealed ? 1 : 1.1 }}
                   transition={{ duration: 0.5 }}

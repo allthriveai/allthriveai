@@ -62,11 +62,8 @@ export function ProtectedRoute({
   }
 
   // Redirect authenticated users away from login page
-  if (redirectIfAuthenticated && isAuthenticated) {
-    // If guest user, redirect to their battle instead of explore
-    if (isGuestUser && guestBattleId) {
-      return <Navigate to={`/battles/${guestBattleId}`} replace />;
-    }
+  // BUT allow guest users to stay - they're trying to convert to a full account
+  if (redirectIfAuthenticated && isAuthenticated && !isGuestUser) {
     return <Navigate to="/explore" replace />;
   }
 

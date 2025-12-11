@@ -122,17 +122,17 @@ export function PromptEditor({
       animate={{ opacity: 1, y: 0 }}
       className="w-full"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      {/* Header - stacks on mobile to prevent overlap */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <label htmlFor="prompt-editor-textarea" className="flex items-center gap-2 cursor-pointer">
-          <SparklesIcon className="w-5 h-5 text-cyan-400" aria-hidden="true" />
-          <span className="text-white font-medium">Your Creative Direction</span>
+          <SparklesIcon className="w-5 h-5 text-cyan-400 shrink-0" aria-hidden="true" />
+          <span className="text-white font-medium text-sm sm:text-base">Your Prompt</span>
         </label>
 
         {localTimeRemaining !== null && localTimeRemaining !== undefined && (
           <motion.div
             className={`
-              px-3 py-1 rounded-full font-mono text-sm font-bold
+              px-3 py-1.5 rounded-full font-mono text-base sm:text-sm font-bold self-start sm:self-auto
               ${localTimeRemaining <= 30
                 ? 'bg-rose-500/20 text-rose-400 animate-pulse'
                 : localTimeRemaining <= 60

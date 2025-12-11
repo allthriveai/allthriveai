@@ -176,7 +176,7 @@ export function BattleResults({
             <motion.img
               src={submission.imageUrl}
               alt={`${player.username}'s creation`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               initial={{ scale: 1.1 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5 }}
