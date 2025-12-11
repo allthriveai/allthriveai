@@ -559,8 +559,8 @@ export function useIntelligentChat({
 
     // Check WebSocket connection AFTER adding user message
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      onError?.('WebSocket is not connected. Attempting to reconnect...');
-      // Try to reconnect
+      // Don't show alarming error - just try to reconnect silently
+      // The connection status indicator shows "Offline" which is enough feedback
       connectFnRef.current?.();
       return;
     }
@@ -597,6 +597,25 @@ export function useIntelligentChat({
       connectFnRef.current?.();
     }
   }, [authLoading, isAuthenticated, isConnecting]);
+
+  // Reconnect when user returns to the page (mobile tab switching, etc.)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // User returned to the page - check if we need to reconnect
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          // Reset reconnect attempts for fresh start
+          setReconnectAttempts(0);
+          connectFnRef.current?.();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // Debounced save to localStorage - prevents excessive writes during streaming
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);

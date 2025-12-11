@@ -59,8 +59,10 @@ export function MatchmakingScreen({
   const [smsError, setSmsError] = useState<string | null>(null);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [challengeType, setChallengeType] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [messageCopied, setMessageCopied] = useState(false);
 
   // Accessibility: refs and state for focus management
   const modalRef = useRef<HTMLDivElement>(null);
@@ -136,12 +138,43 @@ export function MatchmakingScreen({
 
     try {
       const response = await api.post('/battles/invitations/generate-link/');
-      setGeneratedLink(response.data.inviteUrl);
+      setGeneratedLink(response.data.inviteUrl || response.data.invite_url);
+      // Get challenge type from the response
+      const battleData = response.data.invitation?.battle_data;
+      if (battleData?.challenge_type_name) {
+        setChallengeType(battleData.challenge_type_name);
+      }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       setLinkError(err.response?.data?.error || 'Failed to generate link');
     } finally {
       setIsGeneratingLink(false);
+    }
+  };
+
+  // Generate the shareable message
+  const getShareMessage = () => {
+    const challengeText = challengeType ? ` Can you beat me at "${challengeType}"?` : '';
+    return `I challenge you to a Prompt Battle!${challengeText} Accept my challenge:\n${generatedLink}`;
+  };
+
+  const handleCopyMessage = async () => {
+    if (!generatedLink) return;
+
+    try {
+      await navigator.clipboard.writeText(getShareMessage());
+      setMessageCopied(true);
+      setTimeout(() => setMessageCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = getShareMessage();
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setMessageCopied(true);
+      setTimeout(() => setMessageCopied(false), 2000);
     }
   };
 
@@ -173,8 +206,10 @@ export function MatchmakingScreen({
     setSmsSuccess(null);
     setSmsError(null);
     setGeneratedLink(null);
+    setChallengeType(null);
     setLinkError(null);
     setLinkCopied(false);
+    setMessageCopied(false);
   };
 
   return (
@@ -606,34 +641,63 @@ export function MatchmakingScreen({
                     ) : generatedLink ? (
                       <div className="text-center">
                         <div className="w-16 h-16 rounded-full bg-pink-500/20 flex items-center justify-center mx-auto mb-4">
-                          <LinkIcon className="w-8 h-8 text-pink-400" />
+                          <BoltIcon className="w-8 h-8 text-pink-400" />
                         </div>
-                        <p className="text-gray-600 dark:text-slate-400 mb-4">
-                          Share this link with a friend to start a battle!
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                          Your Battle Challenge is Ready!
+                        </h4>
+                        <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">
+                          Copy the message below and send it to challenge a friend
                         </p>
-                        <div className="bg-gray-100 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-lg p-4 mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 text-left">
-                              <p className="text-sm text-pink-600 dark:text-pink-400 break-all font-mono">
-                                {generatedLink}
-                              </p>
-                            </div>
-                            <button
-                              onClick={handleCopyLink}
-                              className="shrink-0 p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                              aria-label="Copy link to clipboard"
-                            >
-                              {linkCopied ? (
-                                <ClipboardDocumentCheckIcon className="w-5 h-5 text-emerald-500" />
-                              ) : (
-                                <ClipboardDocumentIcon className="w-5 h-5 text-gray-400 hover:text-pink-400 transition-colors" />
-                              )}
-                            </button>
-                          </div>
-                          {linkCopied && (
-                            <p className="text-xs text-emerald-500 mt-2 text-center">Copied to clipboard!</p>
-                          )}
+
+                        {/* Shareable message box */}
+                        <div className="bg-gray-100 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-lg p-4 mb-4 text-left">
+                          <p className="text-gray-800 dark:text-slate-200 text-sm whitespace-pre-wrap">
+                            {getShareMessage()}
+                          </p>
                         </div>
+
+                        {/* Copy Message button - Primary */}
+                        <button
+                          onClick={handleCopyMessage}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-pink-500 to-violet-500 text-white font-medium hover:from-pink-600 hover:to-violet-600 transition-all mb-3"
+                        >
+                          {messageCopied ? (
+                            <>
+                              <ClipboardDocumentCheckIcon className="w-5 h-5" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <ClipboardDocumentIcon className="w-5 h-5" />
+                              Copy Message to Share
+                            </>
+                          )}
+                        </button>
+
+                        {/* Copy just the link - Secondary */}
+                        <button
+                          onClick={handleCopyLink}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors text-sm"
+                        >
+                          {linkCopied ? (
+                            <>
+                              <LinkIcon className="w-4 h-4" />
+                              Link copied!
+                            </>
+                          ) : (
+                            <>
+                              <LinkIcon className="w-4 h-4" />
+                              Copy link only
+                            </>
+                          )}
+                        </button>
+
+                        <p className="text-xs text-gray-500 dark:text-slate-500 mt-4">
+                          You'll be notified when your friend accepts the challenge.
+                          <br />
+                          <span className="text-amber-500">This link expires in 24 hours.</span>
+                        </p>
                       </div>
                     ) : null}
                   </motion.div>

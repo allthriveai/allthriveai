@@ -272,13 +272,13 @@ export function Personalization() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+      <div className="glass-subtle rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
           Personalization
         </h2>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Select your interests and preferences to personalize your experience.
           We also automatically generate tags based on your activity.
         </p>
@@ -291,33 +291,33 @@ export function Personalization() {
       )}
 
       {/* Theme Preference */}
-      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+      <div className="glass-subtle rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800">
+        <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3 sm:mb-4">
           {theme === 'dark' ? <MoonIcon className="w-5 h-5" /> : <SunIcon className="w-5 h-5" />}
           Appearance
         </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
           Choose how All Thrive looks to you. Your preference will be saved automatically.
         </p>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <button
             onClick={() => theme === 'dark' && toggleTheme()}
-            className={`p-4 rounded-lg border-2 transition-all ${
+            className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
               theme === 'light'
                 ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                 : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0">
-                <SunIcon className="w-6 h-6 text-white" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0">
+                <SunIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div className="text-left flex-1">
                 <div className="flex items-center gap-2">
-                  <h4 className="font-semibold text-gray-900 dark:text-white">Light</h4>
+                  <h4 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white">Light</h4>
                   {theme === 'light' && (
-                    <CheckIcon className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+                    <CheckIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
                   )}
                 </div>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -329,21 +329,21 @@ export function Personalization() {
 
           <button
             onClick={() => theme === 'light' && toggleTheme()}
-            className={`p-4 rounded-lg border-2 transition-all ${
+            className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
               theme === 'dark'
                 ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                 : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center flex-shrink-0">
-                <MoonIcon className="w-6 h-6 text-white" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <MoonIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div className="text-left flex-1">
                 <div className="flex items-center gap-2">
-                  <h4 className="font-semibold text-gray-900 dark:text-white">Dark</h4>
+                  <h4 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white">Dark</h4>
                   {theme === 'dark' && (
-                    <CheckIcon className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+                    <CheckIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
                   )}
                 </div>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -356,21 +356,21 @@ export function Personalization() {
       </div>
 
       {/* Recommendation Controls */}
-      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between mb-4">
+      <div className="glass-subtle rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <AdjustmentsHorizontalIcon className="w-5 h-5" />
               Recommendation Controls
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
               Fine-tune what influences your personalized recommendations.
             </p>
           </div>
           <button
             onClick={handleResetSettings}
             disabled={settingsSaving || settingsLoading}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 w-full sm:w-auto"
           >
             <ArrowPathIcon className="w-4 h-4" />
             Reset to Defaults
@@ -391,135 +391,135 @@ export function Personalization() {
           <div className="space-y-6">
             {/* Recommendation Signals */}
             <div>
-              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 sm:mb-4">
                 What should influence your recommendations?
               </h4>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {/* Topic selections toggle */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <TagIcon className="w-5 h-5 text-primary-500" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Topic Selections</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Use your selected topics above</p>
+                <div className="flex items-center justify-between gap-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <TagIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">Topic Selections</p>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Use your selected topics above</p>
                     </div>
                   </div>
                   <button
                     onClick={() => handleToggleSetting('use_topic_selections', !settings.use_topic_selections)}
                     disabled={settingsSaving}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       settings.use_topic_selections
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
+                        : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.use_topic_selections ? 'translate-x-6' : ''
+                        settings.use_topic_selections ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
                 </div>
 
                 {/* Learn from views toggle */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <EyeIcon className="w-5 h-5 text-blue-500" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Views & Engagement</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Learn from projects you view</p>
+                <div className="flex items-center justify-between gap-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <EyeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">Views & Engagement</p>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Learn from projects you view</p>
                     </div>
                   </div>
                   <button
                     onClick={() => handleToggleSetting('learn_from_views', !settings.learn_from_views)}
                     disabled={settingsSaving}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       settings.learn_from_views
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
+                        : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.learn_from_views ? 'translate-x-6' : ''
+                        settings.learn_from_views ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
                 </div>
 
                 {/* Learn from likes toggle */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <HeartIcon className="w-5 h-5 text-red-500" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Likes & Bookmarks</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Learn from projects you like or save</p>
+                <div className="flex items-center justify-between gap-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <HeartIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">Likes & Bookmarks</p>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Learn from projects you like or save</p>
                     </div>
                   </div>
                   <button
                     onClick={() => handleToggleSetting('learn_from_likes', !settings.learn_from_likes)}
                     disabled={settingsSaving}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       settings.learn_from_likes
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
+                        : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.learn_from_likes ? 'translate-x-6' : ''
+                        settings.learn_from_likes ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
                 </div>
 
                 {/* Skill level toggle */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <AcademicCapIcon className="w-5 h-5 text-amber-500" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Skill Level</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Match content to your experience level</p>
+                <div className="flex items-center justify-between gap-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <AcademicCapIcon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">Skill Level</p>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Match content to your experience level</p>
                     </div>
                   </div>
                   <button
                     onClick={() => handleToggleSetting('consider_skill_level', !settings.consider_skill_level)}
                     disabled={settingsSaving}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       settings.consider_skill_level
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
+                        : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.consider_skill_level ? 'translate-x-6' : ''
+                        settings.consider_skill_level ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
                 </div>
 
                 {/* Social signals toggle */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <UserGroupIcon className="w-5 h-5 text-purple-500" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Social Context</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Consider what people you follow like</p>
+                <div className="flex items-center justify-between gap-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <UserGroupIcon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">Social Context</p>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Consider what people you follow like</p>
                     </div>
                   </div>
                   <button
                     onClick={() => handleToggleSetting('use_social_signals', !settings.use_social_signals)}
                     disabled={settingsSaving}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       settings.use_social_signals
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
+                        : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.use_social_signals ? 'translate-x-6' : ''
+                        settings.use_social_signals ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
@@ -529,11 +529,11 @@ export function Personalization() {
 
             {/* Discovery Balance Slider */}
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 sm:mb-4">
                 Discovery vs Familiar
               </h4>
-              <div className="space-y-3">
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+              <div className="space-y-2 sm:space-y-3">
+                <div className="flex justify-between text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
                   <span>More of what I like</span>
                   <span>Surprise me more</span>
                 </div>
@@ -547,7 +547,7 @@ export function Personalization() {
                   className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-500"
                 />
                 <div className="text-center">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
                     {settings.discovery_balance < 33
                       ? 'Mostly familiar content'
                       : settings.discovery_balance > 66
@@ -560,61 +560,61 @@ export function Personalization() {
 
             {/* Privacy Controls */}
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 sm:mb-4 flex items-center gap-2">
                 <ShieldCheckIcon className="w-4 h-4" />
                 Privacy Controls
               </h4>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
                 Control what behavioral data we collect to improve recommendations.
               </p>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {/* Time tracking toggle */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <ClockIcon className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Time Tracking</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Track how long you view content</p>
+                <div className="flex items-center justify-between gap-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <ClockIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">Time Tracking</p>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Track how long you view content</p>
                     </div>
                   </div>
                   <button
                     onClick={() => handleToggleSetting('allow_time_tracking', !settings.allow_time_tracking)}
                     disabled={settingsSaving}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       settings.allow_time_tracking
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
+                        : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.allow_time_tracking ? 'translate-x-6' : ''
+                        settings.allow_time_tracking ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
                 </div>
 
                 {/* Scroll tracking toggle */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <EyeIcon className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Scroll Tracking</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Track scroll depth on content</p>
+                <div className="flex items-center justify-between gap-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <EyeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">Scroll Tracking</p>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Track scroll depth on content</p>
                     </div>
                   </div>
                   <button
                     onClick={() => handleToggleSetting('allow_scroll_tracking', !settings.allow_scroll_tracking)}
                     disabled={settingsSaving}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       settings.allow_scroll_tracking
                         ? 'bg-primary-500'
-                        : 'bg-gray-300 dark:bg-gray-500 ring-1 ring-inset ring-gray-400 dark:ring-gray-400'
+                        : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.allow_scroll_tracking ? 'translate-x-6' : ''
+                        settings.allow_scroll_tracking ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
@@ -626,21 +626,21 @@ export function Personalization() {
       </div>
 
       {/* Topics Section */}
-      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between mb-4">
+      <div className="glass-subtle rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <TagIcon className="w-5 h-5" />
               Topics
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
               Select topics you're interested in to personalize your Explore feed.
             </p>
           </div>
           <button
             onClick={handleSaveTopics}
             disabled={isSavingTopics}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white rounded-lg transition-colors text-sm font-medium"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white rounded-lg transition-colors text-sm font-medium w-full sm:w-auto"
           >
             {isSavingTopics ? (
               <>
@@ -656,7 +656,7 @@ export function Personalization() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 mt-4 sm:mt-6">
           {availableTopics.map((topic) => {
             const isSelected = selectedTopicIds.has(topic.id);
             const colorClass: string = topic.color ? (COLOR_CLASSES as Record<string, string>)[topic.color] || 'bg-gray-500' : 'bg-gray-500';
@@ -665,24 +665,24 @@ export function Personalization() {
               <button
                 key={topic.id}
                 onClick={() => toggleTopic(topic.id)}
-                className={`text-left p-4 rounded-lg border-2 transition-all ${
+                className={`text-left p-3 sm:p-4 rounded-lg border-2 transition-all ${
                   isSelected
                     ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                     : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
-                <div className="flex items-start gap-3">
-                  <div className={`w-4 h-4 rounded-full mt-0.5 flex-shrink-0 ${colorClass}`} />
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <div className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full mt-0.5 flex-shrink-0 ${colorClass}`} />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-semibold text-sm text-gray-900 dark:text-white">
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                      <h4 className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-white truncate">
                         {topic.name}
                       </h4>
                       {isSelected && (
-                        <CheckIcon className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+                        <CheckIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
                       )}
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                    <p className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
                       {topic.description}
                     </p>
                   </div>
@@ -693,8 +693,8 @@ export function Personalization() {
         </div>
 
         {selectedTopicIds.size > 0 && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
               You've selected {selectedTopicIds.size} topic{selectedTopicIds.size !== 1 ? 's' : ''}.
               These will be used to personalize your Explore feed.
             </p>
@@ -960,31 +960,31 @@ export function Personalization() {
       )}
 
       {/* Your Data Section */}
-      <div className="glass-subtle rounded-xl p-6 border border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="glass-subtle rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <ShieldCheckIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+          <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
             Your Data
           </h3>
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-6">
           You have full control over your personalization data. Export a copy or delete it at any time.
         </p>
 
         {dataError && (
           <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-600 dark:text-red-400">{dataError}</p>
+            <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{dataError}</p>
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Export Data */}
-          <div className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-            <div className="flex items-start gap-3">
-              <ArrowDownTrayIcon className="w-5 h-5 text-blue-500 mt-0.5" />
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <ArrowDownTrayIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium text-gray-900 dark:text-white">Export Your Data</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Export Your Data</p>
+                <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Download all your personalization data including settings, topics, and detected preferences as a JSON file.
                 </p>
               </div>
@@ -992,7 +992,7 @@ export function Personalization() {
             <button
               onClick={handleExportData}
               disabled={isExporting}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50 w-full sm:w-auto flex-shrink-0"
             >
               {isExporting ? (
                 <>
@@ -1009,12 +1009,12 @@ export function Personalization() {
           </div>
 
           {/* Delete Data */}
-          <div className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex items-start gap-3">
-              <TrashIcon className="w-5 h-5 text-red-500 mt-0.5" />
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <TrashIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium text-gray-900 dark:text-white">Delete Personalization Data</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Delete Personalization Data</p>
+                <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Permanently delete all your topics, detected preferences, interaction history, and settings.
                   This action cannot be undone.
                 </p>
@@ -1023,7 +1023,7 @@ export function Personalization() {
             <button
               onClick={() => setShowDeleteConfirm(true)}
               disabled={isDeleting}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 w-full sm:w-auto flex-shrink-0"
             >
               <TrashIcon className="w-4 h-4" />
               Delete
@@ -1033,39 +1033,39 @@ export function Personalization() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 max-w-md mx-4 shadow-xl border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                  <ExclamationTriangleIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 sm:p-6 max-w-md w-full shadow-xl border border-gray-200 dark:border-gray-700">
+              <div className="flex items-start sm:items-center gap-3 mb-3 sm:mb-4">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                  <ExclamationTriangleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />
                 </div>
-                <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                <h4 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                   Delete All Personalization Data?
                 </h4>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
                 This will permanently delete:
               </p>
-              <ul className="text-sm text-gray-600 dark:text-gray-400 mb-6 space-y-1 ml-4">
+              <ul className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-6 space-y-1 ml-4">
                 <li>• All your selected topics and interests</li>
                 <li>• All auto-detected preferences</li>
                 <li>• Your interaction history</li>
                 <li>• Your recommendation settings</li>
               </ul>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-6">
                 Your "For You" feed will be reset. This action cannot be undone.
               </p>
-              <div className="flex gap-3 justify-end">
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 sm:justify-end">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  className="px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors w-full sm:w-auto"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteData}
                   disabled={isDeleting}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 w-full sm:w-auto"
                 >
                   {isDeleting ? (
                     <>

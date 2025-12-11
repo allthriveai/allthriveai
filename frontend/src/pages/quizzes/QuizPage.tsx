@@ -274,7 +274,7 @@ export default function QuizPage() {
                 <div className="text-center">
                   <button
                     onClick={handleStartQuiz}
-                    className="px-8 py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-lg font-semibold transition-colors"
+                    className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-xl text-lg font-bold transition-all duration-300 shadow-lg hover:shadow-xl"
                   >
                     Start Quiz
                   </button>

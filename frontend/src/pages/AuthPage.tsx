@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion, useMotionValue, useTransform, useReducedMotion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -14,7 +14,15 @@ import {
   faCalendar,
   faLightbulb,
   faRocket,
+  faGift,
 } from '@fortawesome/free-solid-svg-icons';
+import {
+  validateReferralCode,
+  storeReferralCode,
+  getStoredReferralCode,
+  getStoredReferrerUsername,
+} from '@/services/referral';
+import { analytics } from '@/utils/analytics';
 
 // App-themed icons that represent AllThrive features
 const floatingIcons = [
@@ -154,14 +162,65 @@ const reducedMotionVariants = {
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
   const prefersReducedMotion = useReducedMotion() ?? false;
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
+  // Referral code state
+  const [referralInfo, setReferralInfo] = useState<{
+    code: string;
+    referrerUsername: string;
+    isValid: boolean;
+  } | null>(null);
+  const [isValidatingReferral, setIsValidatingReferral] = useState(false);
+
   // Subtle parallax effect for background (disabled if reduced motion)
   const bgX = useTransform(mouseX, [0, window.innerWidth], [5, -5]);
   const bgY = useTransform(mouseY, [0, window.innerHeight], [5, -5]);
+
+  // Capture and validate referral code from URL or localStorage
+  useEffect(() => {
+    const captureReferralCode = async () => {
+      // Check URL params first
+      const refCode = searchParams.get('ref');
+
+      // If we have a code in URL, validate and store it
+      if (refCode) {
+        setIsValidatingReferral(true);
+        const result = await validateReferralCode(refCode);
+
+        if (result.valid && result.referrerUsername) {
+          storeReferralCode(refCode, result.referrerUsername);
+          setReferralInfo({
+            code: refCode,
+            referrerUsername: result.referrerUsername,
+            isValid: true,
+          });
+          // Track referral code captured from URL
+          analytics.referralCodeCaptured(refCode, result.referrerUsername, 'url');
+        }
+        setIsValidatingReferral(false);
+        return;
+      }
+
+      // Check localStorage for previously stored code
+      const storedCode = getStoredReferralCode();
+      const storedReferrer = getStoredReferrerUsername();
+      if (storedCode && storedReferrer) {
+        setReferralInfo({
+          code: storedCode,
+          referrerUsername: storedReferrer,
+          isValid: true,
+        });
+        // Track referral code loaded from localStorage
+        analytics.referralCodeCaptured(storedCode, storedReferrer, 'localStorage');
+      }
+    };
+
+    captureReferralCode();
+  }, [searchParams]);
 
   useEffect(() => {
     if (prefersReducedMotion) return;
@@ -308,6 +367,43 @@ export default function AuthPage() {
               Join thousands of creators exploring AI.
             </motion.p>
           </motion.div>
+
+          {/* Referral Banner */}
+          {isValidatingReferral && (
+            <motion.div
+              className="mb-6 p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="flex items-center justify-center gap-2 text-cyan-400">
+                <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Validating referral code...</span>
+              </div>
+            </motion.div>
+          )}
+
+          {referralInfo?.isValid && !isValidatingReferral && (
+            <motion.div
+              className="mb-6 p-4 rounded-xl bg-gradient-to-r from-cyan-500/10 to-green-500/10 border border-cyan-500/30"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-400 to-green-400 flex items-center justify-center">
+                  <FontAwesomeIcon icon={faGift} className="w-5 h-5 text-slate-900" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-white">
+                    Referred by <span className="text-cyan-400">@{referralInfo.referrerUsername}</span>
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Sign up to connect with your referrer!
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {/* OAuth Buttons */}
           <motion.div

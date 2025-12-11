@@ -552,6 +552,32 @@ companies:
     founded_year: 2024
     headquarters: San Francisco, CA
 
+  - name: WorkOS
+    tagline: Enterprise-ready authentication and user management
+    description: >
+      WorkOS provides modern identity infrastructure for B2B SaaS applications. Offers SSO,
+      directory sync, admin portal, and user management APIs that integrate in minutes.
+      Powers authentication for leading companies with enterprise-grade security.
+    website_url: https://workos.com
+    logo_url: /logos/WorkOS_idsaLi9qTS_0.svg
+    founded_year: 2019
+    headquarters: San Francisco, CA
+    twitter_handle: WorkOS
+    github_url: https://github.com/workos
+
+  - name: Cloudflare
+    tagline: Build and protect your entire network with one platform
+    description: >
+      Cloudflare provides a global cloud platform that delivers security, performance,
+      and reliability services. Known for CDN, DDoS protection, DNS, Workers serverless
+      platform, R2 storage, and AI inference at the edge.
+    website_url: https://cloudflare.com
+    logo_url: /logos/cloudflare.jpeg
+    founded_year: 2009
+    headquarters: San Francisco, CA
+    twitter_handle: Cloudflare
+    github_url: https://github.com/cloudflare
+
 
 # -----------------------------------------------------------------------------
 # TOOLS - Chat & Conversational AI
@@ -3219,3 +3245,150 @@ tools:
       - date: '2025-10-30'
         title: 10,000 Components Milestone
         description: Community library reaches 10,000 curated, production-ready components.
+
+  # === INFRASTRUCTURE & DEVOPS ===
+  - name: WorkOS
+    company: WorkOS
+    tagline: Enterprise-ready authentication and identity management
+    description: >
+      WorkOS provides modern identity infrastructure for B2B SaaS applications. Drop-in
+      authentication with SSO support for 70+ identity providers, SCIM directory sync,
+      admin portal, fine-grained authorization, and user management. Designed for
+      developers who need enterprise features without enterprise complexity. Free tier
+      available with pay-as-you-grow pricing.
+    category: infrastructure
+    tool_type: ai_tool
+    website_url: https://workos.com
+    logo_url: /logos/WorkOS_idsaLi9qTS_0.svg
+    documentation_url: https://workos.com/docs
+    pricing_url: https://workos.com/pricing
+    github_url: https://github.com/workos
+    pricing_model: freemium
+    has_free_tier: true
+    starting_price: Free up to 1M MAUs
+    api_available: true
+    tags:
+      - Authentication
+      - SSO
+      - Identity
+      - Enterprise
+      - Security
+      - SAML
+      - SCIM
+      - User Management
+    key_features:
+      - title: Single Sign-On (SSO)
+        description: Support for 70+ identity providers including Okta, Azure AD, Google Workspace, and OneLogin
+      - title: Directory Sync (SCIM)
+        description: Real-time user and group provisioning from enterprise directories
+      - title: Admin Portal
+        description: Self-serve portal for IT admins to configure SSO and directory connections
+      - title: Fine-Grained Authorization (FGA)
+        description: Relationship-based access control for complex permission models
+      - title: User Management
+        description: Complete authentication with MFA, passwordless, and social login
+    use_cases:
+      - title: Enterprise SSO
+        description: Add SAML and OIDC SSO to your app for enterprise customers
+        example: Allow enterprise customers to sign in with their existing identity provider
+      - title: User Provisioning
+        description: Automatically sync users and groups from HR systems
+        example: Onboard and offboard users automatically when they join or leave a company
+      - title: Multi-tenant Authorization
+        description: Build complex permission systems for B2B applications
+        example: Implement organization-based roles and permissions with FGA
+    usage_tips:
+      - Start with AuthKit for quick authentication setup
+      - Use the Admin Portal to reduce support burden for SSO configuration
+      - Implement Directory Sync early for enterprise customers
+      - Leverage webhooks for real-time user lifecycle events
+      - Use the SDK for your language (Node.js, Python, Ruby, Go, etc.)
+    best_practices:
+      - Enable MFA for all production environments
+      - Implement proper session management
+      - Use environment variables for API keys
+      - Test SSO flows with sandbox identity providers
+      - Set up webhook handlers for user events
+    whats_new:
+      - date: '2025-12-01'
+        title: AuthKit 2.0
+        description: Redesigned authentication UI components with improved customization and accessibility.
+      - date: '2025-11-15'
+        title: Fine-Grained Authorization GA
+        description: Relationship-based access control now generally available with improved performance.
+      - date: '2025-10-28'
+        title: Python SDK 5.0
+        description: Major update with async support and improved type hints.
+
+  - name: Cloudflare
+    company: Cloudflare
+    tagline: Global cloud platform for security, performance, and AI at the edge
+    description: >
+      Cloudflare provides a global cloud platform powering millions of websites and APIs.
+      Offers CDN, DDoS protection, WAF, DNS, SSL/TLS, and the Workers serverless platform
+      for running code at the edge. R2 provides S3-compatible object storage with zero egress
+      fees. Workers AI enables running AI models at the edge with low latency. Includes
+      Cloudflare Pages for frontend hosting and D1 serverless SQL database.
+    category: infrastructure
+    tool_type: ai_tool
+    website_url: https://cloudflare.com
+    logo_url: /logos/cloudflare.jpeg
+    documentation_url: https://developers.cloudflare.com
+    pricing_url: https://cloudflare.com/plans
+    github_url: https://github.com/cloudflare
+    pricing_model: freemium
+    has_free_tier: true
+    starting_price: Free tier available
+    api_available: true
+    tags:
+      - CDN
+      - Security
+      - Edge Computing
+      - Serverless
+      - DNS
+      - DDoS Protection
+      - AI Inference
+      - Object Storage
+    key_features:
+      - title: Workers
+        description: Serverless JavaScript/TypeScript execution at the edge with global deployment
+      - title: Workers AI
+        description: Run AI models at the edge with low latency inference across 300+ data centers
+      - title: R2 Object Storage
+        description: S3-compatible storage with zero egress fees and automatic global distribution
+      - title: CDN & DDoS Protection
+        description: Global content delivery with enterprise-grade DDoS mitigation
+      - title: Cloudflare Pages
+        description: Full-stack platform for deploying frontend applications with Git integration
+    use_cases:
+      - title: Edge Computing
+        description: Run serverless functions close to users for low-latency applications
+        example: Deploy API endpoints that execute in milliseconds worldwide
+      - title: AI at the Edge
+        description: Run LLMs and ML models with Workers AI for fast inference
+        example: Build AI-powered features without managing GPU infrastructure
+      - title: Web Security
+        description: Protect websites and APIs from attacks and abuse
+        example: Block bots, prevent DDoS attacks, and secure API endpoints
+    usage_tips:
+      - Use Workers for API endpoints and edge logic
+      - Leverage R2 for static assets and user uploads
+      - Enable Argo Smart Routing for faster dynamic content
+      - Use Page Rules for custom caching behavior
+      - Deploy with Wrangler CLI for fast iterations
+    best_practices:
+      - Enable HTTPS and set minimum TLS version
+      - Use Workers KV for global key-value storage
+      - Implement rate limiting for API protection
+      - Set up proper cache headers for static assets
+      - Use Cloudflare Access for zero-trust security
+    whats_new:
+      - date: '2025-12-05'
+        title: Workers AI Expanded Models
+        description: Added support for Llama 3.2, Mistral, and new image generation models at the edge.
+      - date: '2025-11-20'
+        title: D1 General Availability
+        description: Serverless SQL database now GA with improved performance and larger storage limits.
+      - date: '2025-11-01'
+        title: Vectorize Vector Database
+        description: Native vector database for AI applications with seamless Workers integration.

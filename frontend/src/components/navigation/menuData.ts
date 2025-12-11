@@ -19,8 +19,6 @@ import {
   faDollarSign,
   faIdCard,
   faCog,
-  faPuzzlePiece,
-  faTicket,
   faStore,
 } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
@@ -71,7 +69,7 @@ export const getMenuSections = (
     items: [
       { label: 'Learning Paths', path: '#', icon: faGraduationCap },
       { label: 'Quizzes', path: '/quizzes', icon: faBrain },
-      { label: 'Marketplace', path: '/marketplace', icon: faStore },
+      { label: 'Marketplace (Coming Soon)', icon: faStore },
       { label: 'Tool Directory', path: '/tools', icon: faWrench },
     ],
   },
@@ -108,11 +106,11 @@ export const getMenuSections = (
   {
     title: 'ACCOUNT',
     icon: faUser,
-    path: username ? `/${username}?tab=showcase` : '#',
+    path: username ? `/${username}?tab=playground` : '#',
     items: [
       {
         label: 'My Profile',
-        path: username ? `/${username}?tab=showcase` : '#',
+        path: username ? `/${username}?tab=playground` : '#',
         icon: faIdCard,
       },
       {
@@ -120,9 +118,8 @@ export const getMenuSections = (
         path: username ? `/${username}?tab=activity` : '#',
         icon: faTrophy,
       },
-      { label: 'My Account', path: '/account/settings', icon: faCog },
-      { label: 'Chrome Extension', path: '#', icon: faPuzzlePiece },
-      { label: 'My Referral Codes', path: '/account/settings/referrals', icon: faTicket },
+      { label: 'Account Settings', path: '/account/settings', icon: faCog },
+      { label: 'Onboarding', path: '/onboarding', icon: faWandSparkles },
     ],
   },
 ];
@@ -136,10 +133,10 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
   'Side Quests': (path) => path === '/play/side-quests',
   'Prompt Battle': (path) => path === '/play/prompt-battle',
   'Chat': (_, search) => search.includes('chat='),
-  'My Account': (path, search) => path === '/account/settings' && !search,
-  'My Referral Codes': (path) => path === '/account/settings/referrals',
+  'Account Settings': (path, search) => path === '/account/settings' && !search,
+  'Onboarding': (path) => path === '/onboarding',
   'My Profile': (path, search, username) =>
-    username ? path === `/${username}` && (search.includes('tab=showcase') || !search.includes('tab=')) : false,
+    username ? path === `/${username}` && (search.includes('tab=playground') || !search.includes('tab=')) : false,
   'Activity & Points': (path, search, username) =>
     username ? path === `/${username}` && search.includes('tab=activity') : false,
   'Your Thrive Circle': (path) => path === '/thrive-circle',

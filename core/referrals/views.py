@@ -199,6 +199,12 @@ class ReferralCodeViewSet(viewsets.ModelViewSet):
         )
 
 
+class ApplyReferralThrottle(UserRateThrottle):
+    """Limit referral application attempts to prevent abuse."""
+
+    rate = '5/hour'
+
+
 class ReferralViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing referrals made by the user.
 
@@ -213,6 +219,98 @@ class ReferralViewSet(viewsets.ReadOnlyModelViewSet):
         """Return referrals made by the authenticated user."""
         return Referral.objects.filter(referrer=self.request.user).select_related(
             'referrer', 'referred_user', 'referral_code'
+        )
+
+    @action(detail=False, methods=['post'], throttle_classes=[ApplyReferralThrottle])
+    def apply(self, request):
+        """Apply a referral code to the current user after signup.
+
+        This endpoint should be called after a user successfully signs up
+        with a referral code. It creates the referral relationship and
+        credits the referrer.
+
+        Request body:
+            code (str): The referral code to apply
+
+        Returns:
+            - 200: Referral applied successfully
+            - 400: Invalid request or user already has a referral
+            - 404: Referral code not found
+        """
+        from django.db import IntegrityError
+
+        code = request.data.get('code', '').strip()
+
+        if not code:
+            return Response(
+                {'success': False, 'error': 'Referral code is required'}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Quick check before starting transaction (not authoritative due to race conditions)
+        if hasattr(request.user, 'referred_by'):
+            return Response(
+                {'success': False, 'error': 'You have already used a referral code'}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            referral_code = ReferralCode.objects.select_related('user').get(code__iexact=code)
+        except ReferralCode.DoesNotExist:
+            return Response({'success': False, 'error': 'Invalid referral code'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if trying to use own code
+        if referral_code.user == request.user:
+            return Response(
+                {'success': False, 'error': 'You cannot use your own referral code'}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if code is still valid
+        if not referral_code.is_valid():
+            return Response(
+                {'success': False, 'error': 'This referral code is no longer valid'}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            with transaction.atomic():
+                # Lock the referral code row to prevent race conditions on uses_count
+                locked_code = ReferralCode.objects.select_for_update().get(pk=referral_code.pk)
+
+                # Re-check validity after acquiring lock (may have changed)
+                if not locked_code.is_valid():
+                    return Response(
+                        {'success': False, 'error': 'This referral code is no longer valid'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Create the referral record
+                # The OneToOneField on referred_user will raise IntegrityError if duplicate
+                Referral.objects.create(
+                    referrer=locked_code.user,
+                    referred_user=request.user,
+                    referral_code=locked_code,
+                    status=ReferralStatus.COMPLETED,
+                )
+
+                # Increment the usage count on the referral code (now safely locked)
+                locked_code.increment_usage()
+
+                logger.info(
+                    f'Referral applied: {locked_code.user.username} referred {request.user.username} '
+                    f'using code {locked_code.code}'
+                )
+
+        except IntegrityError:
+            # Race condition: another request already created a referral for this user
+            logger.warning(f'Duplicate referral attempt for user {request.user.username}')
+            return Response(
+                {'success': False, 'error': 'You have already used a referral code'}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {
+                'success': True,
+                'message': f'Referral from {referral_code.user.username} applied successfully!',
+                'referrer_username': referral_code.user.username,
+            }
         )
 
 

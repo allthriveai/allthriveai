@@ -14,6 +14,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.vary import vary_on_headers
 from django_ratelimit.decorators import ratelimit
 
+from core.battles.models import BattleInvitation, InvitationStatus
 from core.projects.models import Project
 from core.tools.models import Tool
 from core.users.models import User
@@ -406,3 +407,54 @@ def profile_view(request, username):
         return serve_react_or_crawler(request, 'profile.html', context)
 
     return _get_cached_response(cache_key, generate_response)
+
+
+@vary_on_headers('User-Agent')
+@cache_control(public=True, max_age=300)  # 5 minutes cache (shorter since invites expire)
+@ratelimit(key='header:user-agent', rate='200/h', method=['GET'])
+def battle_invite_view(request, token):
+    """
+    Battle invite page - either React app or crawler template.
+
+    For crawlers (including iMessage, WhatsApp preview bots), serves HTML
+    with battle-specific Open Graph meta tags so link previews show
+    "You've been challenged to a Prompt Battle!" instead of generic site info.
+    """
+    try:
+        invitation = BattleInvitation.objects.select_related('sender', 'battle').get(
+            invite_token=token, status=InvitationStatus.PENDING
+        )
+    except BattleInvitation.DoesNotExist:
+        # Still serve the React app - it will show appropriate error
+        is_bot = is_crawler(request)
+        if is_bot:
+            # For crawlers, return 404
+            raise Http404('Invitation not found or expired') from None
+        else:
+            return serve_react_or_crawler(request, 'battle_invite.html', {'sender_name': 'Someone'})
+
+    # Check if expired
+    if invitation.is_expired:
+        is_bot = is_crawler(request)
+        if is_bot:
+            raise Http404('Invitation has expired')
+        else:
+            return serve_react_or_crawler(request, 'battle_invite.html', {'sender_name': 'Someone'})
+
+    is_bot = is_crawler(request)
+    cache_key = f'battle_invite:{token}:{"crawler" if is_bot else "user"}:v1'
+
+    def generate_response():
+        sender = invitation.sender
+        sender_name = sender.first_name or sender.username
+
+        context = {
+            'sender_name': sender_name,
+            'sender_username': sender.username,
+            'challenge_type': invitation.battle.challenge_type.name if invitation.battle.challenge_type else None,
+            'expires_at': invitation.expires_at.strftime('%B %d, %Y at %I:%M %p') if invitation.expires_at else None,
+        }
+
+        return serve_react_or_crawler(request, 'battle_invite.html', context)
+
+    return _get_cached_response(cache_key, generate_response, ttl=300)

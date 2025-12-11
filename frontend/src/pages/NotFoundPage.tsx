@@ -590,11 +590,11 @@ export default function NotFoundPage() {
 
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
                   <Link
-                    to="/"
+                    to="/explore"
                     className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-white font-semibold rounded-xl transition-all shadow-neon hover:shadow-neon-lg text-sm sm:text-base"
                   >
                     <FontAwesomeIcon icon={faHome} />
-                    Go Home
+                    Explore
                   </Link>
 
                   <button
@@ -613,7 +613,7 @@ export default function NotFoundPage() {
         {/* Page Not Found Pill - centered at top, mobile-friendly */}
         {!gameWon && (
           <motion.div
-            className="absolute top-20 sm:top-6 left-0 right-0 flex justify-center z-20 px-4"
+            className="absolute top-14 sm:top-6 left-0 right-0 flex justify-center z-20 px-4"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
@@ -630,11 +630,11 @@ export default function NotFoundPage() {
               <span className="text-white font-semibold text-sm sm:text-base text-center">Lost in the cosmos</span>
               <span className="text-slate-400 text-xs sm:text-sm hidden sm:inline">Fight your way back &amp; destroy the 404!</span>
               <Link
-                to="/"
+                to="/explore"
                 className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-neon text-xs sm:text-sm font-medium rounded-lg transition-all"
               >
                 <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
-                Home
+                Explore
               </Link>
             </div>
           </motion.div>

@@ -131,6 +131,21 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
                 />
               )}
 
+              {/* Mobile Add Project Button */}
+              {isAuthenticated && user?.username && onAddProject && (
+                <button
+                  onClick={onAddProject}
+                  className="sm:hidden p-2 rounded-xl transition-all duration-300 hover:scale-105 border border-white/20"
+                  style={{
+                    background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+                    boxShadow: '0 2px 8px rgba(34, 211, 238, 0.15)',
+                  }}
+                  aria-label="Add Project"
+                >
+                  <PlusIcon className="w-5 h-5 text-slate-900" />
+                </button>
+              )}
+
               {/* Search Button */}
               <button
                 onClick={openSearch}

@@ -140,9 +140,11 @@ export function ChatInterface({
     return { valid, errors };
   };
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom only when there are messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   // Auto-focus input when opened
@@ -337,7 +339,7 @@ export function ChatInterface({
         )}
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 overscroll-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
           {/* Custom content replaces entire messages area */}
           {customContent ? (
             customContent

@@ -156,17 +156,20 @@ export function GlobalSearchModal() {
           {isLoading && (
             <div className="w-5 h-5 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
           )}
-          <div className="flex items-center gap-1 text-xs text-gray-500">
+          {/* Desktop: show keyboard hint */}
+          <div className="hidden sm:flex items-center gap-1 text-xs text-gray-500">
             <kbd className="px-1.5 py-0.5 bg-gray-800 rounded border border-gray-700">
               {isMac ? 'esc' : 'Esc'}
             </kbd>
             <span>to close</span>
           </div>
+          {/* Close button - larger and more prominent on mobile */}
           <button
             onClick={closeSearch}
-            className="p-1 rounded-lg hover:bg-gray-800 transition-colors"
+            className="p-2 -mr-1 rounded-xl hover:bg-gray-800 transition-colors"
+            aria-label="Close search"
           >
-            <XMarkIcon className="w-5 h-5 text-gray-400" />
+            <XMarkIcon className="w-6 h-6 sm:w-5 sm:h-5 text-gray-300 sm:text-gray-400" />
           </button>
         </div>
 
@@ -417,8 +420,8 @@ export function GlobalSearchModal() {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-2 border-t border-primary-500/20 text-xs text-gray-500">
+        {/* Footer - hidden on mobile, shows keyboard shortcuts on desktop */}
+        <div className="hidden sm:flex items-center justify-between px-4 py-2 border-t border-primary-500/20 text-xs text-gray-500">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-gray-800 rounded border border-gray-700">Tab</kbd>

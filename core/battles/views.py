@@ -1,7 +1,10 @@
 """Views for Prompt Battle feature."""
 
 import bleach
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.db.models import Q
+from django.utils import timezone
 from django_ratelimit.decorators import ratelimit
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -585,6 +588,16 @@ def get_invitation_by_token(request, token):
     if invitation.status != InvitationStatus.PENDING:
         return Response({'error': 'Invitation has already been responded to.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Check if the battle is still valid (not cancelled or expired)
+    if invitation.battle.status == BattleStatus.CANCELLED:
+        return Response(
+            {'error': 'The challenger has cancelled this battle invitation.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if invitation.battle.status == BattleStatus.EXPIRED:
+        return Response({'error': 'This battle has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
     return Response(
         {
             'invitation_id': invitation.id,
@@ -624,6 +637,16 @@ def accept_invitation_by_token(request, token):
     if invitation.status != InvitationStatus.PENDING:
         return Response({'error': 'Invitation has already been responded to.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Check if the battle is still valid (not cancelled or expired)
+    if invitation.battle.status == BattleStatus.CANCELLED:
+        return Response(
+            {'error': 'The challenger has cancelled this battle invitation.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if invitation.battle.status == BattleStatus.EXPIRED:
+        return Response({'error': 'This battle has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
     # Determine if user is authenticated or needs guest account
     is_authenticated = request.user and request.user.is_authenticated
     is_guest_flow = False
@@ -662,6 +685,36 @@ def accept_invitation_by_token(request, token):
 
         battle = invitation.battle
         battle.refresh_from_db()
+
+        # Notify the challenger via WebSocket that their invitation was accepted
+        # This allows them to navigate to the battle
+        try:
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                challenger_group = f'battle_notifications_{invitation.sender.id}'
+                async_to_sync(channel_layer.group_send)(
+                    challenger_group,
+                    {
+                        'type': 'battle_notification',
+                        'event': 'invitation_accepted',
+                        'battle_id': battle.id,
+                        'opponent': {
+                            'id': accepting_user.id,
+                            'username': accepting_user.username,
+                        },
+                        'timestamp': timezone.now().isoformat(),
+                    },
+                )
+        except Exception as ws_error:
+            # Log but don't fail the request if WebSocket notification fails
+            StructuredLogger.log_warning(
+                message='Failed to send WebSocket notification for invitation acceptance',
+                extra={
+                    'battle_id': battle.id,
+                    'challenger_id': invitation.sender.id,
+                    'error': str(ws_error),
+                },
+            )
 
         # Build response
         battle_serializer = PromptBattleSerializer(battle, context={'request': request})

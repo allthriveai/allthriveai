@@ -5,14 +5,14 @@
 
 export const SEOPresets = {
   home: {
-    title: 'All Thrive - Showcase, Learn & Play with AI',
-    description: 'The community platform for AI creators. Automate your AI portfolio, learn something new with gamified challenges, and compete in Prompt Battles. Create with AI anywhere. Consolidate here. Thrive together.',
-    keywords: 'AI portfolio, AI projects, prompt battles, AI challenges, gamified learning, AI showcase, AI community, AI builders, automate portfolio, explore AI',
+    title: 'All Thrive - Gamified AI Portfolio Platform',
+    description: 'The gamified AI portfolio platform for creators. Build your AI portfolio, compete in Prompt Battles, earn achievements, and level up your skills.',
+    keywords: 'AI portfolio, AI projects, prompt battles, AI challenges, gamified learning, AI showcase, AI community, AI builders, achievements, level up',
   },
   about: {
     title: 'About All Thrive',
-    description: 'All Thrive is the community platform for AI creators. Showcase your work, learn something new, and compete in Prompt Battles. Create with AI anywhere. Consolidate here. Thrive together.',
-    keywords: 'about allthrive, AI platform, AI creators, AI community, cross-platform AI, AI showcase',
+    description: 'All Thrive is the gamified AI portfolio platform for creators. Build your AI portfolio, compete in Prompt Battles, earn achievements, and level up your skills.',
+    keywords: 'about allthrive, AI platform, AI creators, AI community, AI portfolio, gamified learning',
   },
   explore: {
     title: 'Explore AI Creations',

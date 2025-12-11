@@ -108,6 +108,14 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
     await sendMessage(message);
   }, [inputValue, state.isStreaming, sendMessage]);
 
+  // Handle input focus - scroll into view on mobile when keyboard opens
+  const handleInputFocus = useCallback(() => {
+    // Small delay to wait for keyboard to open
+    setTimeout(() => {
+      inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  }, []);
+
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -190,9 +198,10 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
 
       {/* Right Sidebar Drawer */}
       <aside
-        className={`fixed right-0 top-0 h-full w-full md:w-[28rem] lg:w-[32rem] border-l border-gray-200 dark:border-gray-700 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ease-in-out bg-white dark:bg-gray-900 ${
+        className={`fixed right-0 top-0 h-[100dvh] w-full md:w-[28rem] lg:w-[32rem] border-l border-gray-200 dark:border-gray-700 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ease-in-out bg-white dark:bg-gray-900 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{ maxHeight: '100dvh' }}
         onTransitionEnd={handleTransitionEnd}
       >
         {/* Header */}
@@ -302,8 +311,8 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
           </div>
         )}
 
-        {/* Input Area */}
-        <div className="flex-shrink-0 px-4 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        {/* Input Area - sticky at bottom, safe area padding for mobile */}
+        <div className="flex-shrink-0 px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <div className="flex gap-3">
             <div className="flex-1 relative">
               <textarea
@@ -311,11 +320,12 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
+                onFocus={handleInputFocus}
                 placeholder={state.isStreaming ? 'Waiting for response...' : 'Type your message...'}
                 disabled={state.isStreaming}
                 rows={1}
-                className="w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:text-white resize-none disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ minHeight: '48px', maxHeight: '120px' }}
+                className="w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-xl text-base md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:text-white resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ minHeight: '48px', maxHeight: '120px', fontSize: 'max(16px, 1rem)' }}
               />
             </div>
             <button

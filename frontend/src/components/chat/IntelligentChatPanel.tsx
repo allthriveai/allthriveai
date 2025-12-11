@@ -8,8 +8,6 @@ import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './ChatInterface';
 import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
 import { GeneratedImageMessage } from './GeneratedImageMessage';
-import { HelpQuestionsPanel } from './HelpQuestionsPanel';
-import type { HelpQuestion } from '@/data/helpQuestions';
 import { useIntelligentChat, type ChatMessage, type QuotaExceededInfo } from '@/hooks/useIntelligentChat';
 import { useAuth } from '@/hooks/useAuth';
 import { setProjectFeaturedImage, createProjectFromImageSession } from '@/services/projects';
@@ -107,8 +105,8 @@ export function IntelligentChatPanel({
     }
   }, [searchParams, setSearchParams]);
 
-  // Help mode state - start in help mode if supportMode prop is true
-  const [helpMode, setHelpMode] = useState(supportMode);
+  // Support mode state - no longer shows FAQ panel, just direct chat
+  const isSupportMode = supportMode;
 
   // Handle project creation - redirect to the new project page
   const handleProjectCreated = useCallback((projectUrl: string) => {
@@ -125,7 +123,7 @@ export function IntelligentChatPanel({
     setQuotaExceeded(info);
   }, []);
 
-  const { messages, isConnected, isLoading, sendMessage } = useIntelligentChat({
+  const { messages, isConnected, isConnecting, isLoading, sendMessage, clearMessages } = useIntelligentChat({
     conversationId,
     onError: (err) => setError(err),
     onProjectCreated: handleProjectCreated,
@@ -139,9 +137,22 @@ export function IntelligentChatPanel({
     if (!content.trim() && (!attachments || attachments.length === 0)) return;
     if (isLoading || isUploading) return;
 
+    // Handle /clear command - reset conversation
+    if (content.trim().toLowerCase() === '/clear') {
+      clearMessages();
+      setHasInteracted(false);
+      setError(undefined);
+      setQuotaExceeded(null);
+      // Reset any integration states
+      setGithubStep('idle');
+      setGitlabStep('idle');
+      setFigmaStep('idle');
+      setShowIntegrationPicker(false);
+      return;
+    }
+
     setError(undefined);
     setHasInteracted(true);
-    setHelpMode(false); // Close help panel when user sends a message
 
     // Handle Figma URL when in ready state
     if (figmaStep === 'ready' && content.trim()) {
@@ -415,14 +426,6 @@ export function IntelligentChatPanel({
     }
   }, [sendMessage]);
 
-  // Help mode handlers
-  const handleHelpQuestionSelect = useCallback((question: HelpQuestion) => {
-    // Close help mode and send the question's message to the AI
-    setHelpMode(false);
-    sendMessage(question.chatMessage);
-  }, [sendMessage]);
-
-
   // Fetch all integration connection statuses
   const fetchIntegrationStatuses = useCallback(async () => {
     setLoadingIntegrationStatus(true);
@@ -511,9 +514,9 @@ export function IntelligentChatPanel({
         sendMessage('Create an image or infographic for me');
         break;
       case 'ask-help':
-        // Show help questions panel
-        setHelpMode(true);
+        // Directly start support conversation
         setHasInteracted(true);
+        sendMessage('I need help with something');
         break;
       case 'describe':
         sendMessage("I'd like to describe something to you");
@@ -923,6 +926,23 @@ export function IntelligentChatPanel({
   const renderEmptyState = () => {
     if (messages.length > 0 || hasInteracted) return null;
 
+    // Support mode - simple chat-first experience
+    if (isSupportMode) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-center px-6">
+          <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-4">
+            <span className="text-3xl">💬</span>
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+            How can we help?
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-sm">
+            Ask me anything about All Thrive. I'm here to help with your questions, troubleshooting, or feedback.
+          </p>
+        </div>
+      );
+    }
+
     // Welcome mode for new users after onboarding
     // Temporarily disabled - re-enable once onboarding flow is revised
     // if (welcomeMode) {
@@ -1325,12 +1345,14 @@ export function IntelligentChatPanel({
               className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                 isConnected
                   ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                  : isConnecting
+                  ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
                   : 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400'
               }`}
-              title={isConnected ? 'Connected' : 'Disconnected'}
+              title={isConnected ? 'Connected' : isConnecting ? 'Reconnecting' : 'Disconnected'}
             >
-              <span className="mr-1.5">{isConnected ? '●' : '○'}</span>
-              {isConnected ? 'Live' : 'Offline'}
+              <span className="mr-1.5">{isConnected ? '●' : isConnecting ? '◐' : '○'}</span>
+              {isConnected ? 'Live' : isConnecting ? 'Reconnecting...' : 'Offline'}
             </div>
           </div>
 
@@ -1366,13 +1388,6 @@ export function IntelligentChatPanel({
           <>
             {renderQuotaExceeded()}
             {renderIntegrationPicker()}
-          </>
-        ) : helpMode ? (
-          <>
-            {renderQuotaExceeded()}
-            <HelpQuestionsPanel
-              onQuestionSelect={handleHelpQuestionSelect}
-            />
           </>
         ) : githubStep !== 'idle' ? (
           <>

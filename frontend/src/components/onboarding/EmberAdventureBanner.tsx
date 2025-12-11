@@ -180,11 +180,7 @@ export function EmberAdventureBanner({
                       ? 'Great start! Try another path:'
                       : 'One more to go!'}
                   </span>
-                  <span className="sm:hidden">
-                    {completedCount === 0
-                      ? 'Continue onboarding'
-                      : `${completedAdventures.length}/${adventures.length}`}
-                  </span>
+                  <span className="sm:hidden">Continue onboarding</span>
                 </span>
 
                 {/* Dismiss button - mobile only, at end of message row */}

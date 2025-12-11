@@ -121,6 +121,10 @@ export function BattleInvitePage() {
     );
   }
 
+  // Check error type for specific messaging
+  const isExpiredError = error?.toLowerCase().includes('expired');
+  const isCancelledError = error?.toLowerCase().includes('cancelled');
+
   if (error) {
     return (
       <DashboardLayout>
@@ -130,14 +134,66 @@ export function BattleInvitePage() {
             animate={{ opacity: 1, scale: 1 }}
             className="glass-card p-8 max-w-md text-center"
           >
-            <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
-              <XCircleIcon className="w-10 h-10 text-red-400" />
-            </div>
-            <h2 className="text-xl font-bold text-white mb-2">Invitation Error</h2>
-            <p className="text-slate-400 mb-6">{error}</p>
-            <button onClick={() => navigate('/battles')} className="btn-primary">
-              Go to Battles
-            </button>
+            {isExpiredError ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-4">
+                  <ClockIcon className="w-10 h-10 text-amber-400" />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">Challenge Expired</h2>
+                <p className="text-slate-400 mb-4">
+                  This battle invitation has expired. Battle links are only valid for 24 hours.
+                </p>
+                <p className="text-slate-500 text-sm mb-6">
+                  Ask your friend to send you a new challenge link, or start your own battle and invite them!
+                </p>
+                <div className="space-y-3">
+                  <button onClick={() => navigate('/battles')} className="btn-primary w-full">
+                    Start a New Battle
+                  </button>
+                  <button
+                    onClick={() => navigate('/explore')}
+                    className="w-full px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                  >
+                    Explore All Thrive
+                  </button>
+                </div>
+              </>
+            ) : isCancelledError ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-slate-500/20 flex items-center justify-center mx-auto mb-4">
+                  <XCircleIcon className="w-10 h-10 text-slate-400" />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">Challenge Cancelled</h2>
+                <p className="text-slate-400 mb-4">
+                  The challenger has cancelled this battle invitation.
+                </p>
+                <p className="text-slate-500 text-sm mb-6">
+                  They may have started a different battle or changed their mind. You can challenge them back or find another opponent!
+                </p>
+                <div className="space-y-3">
+                  <button onClick={() => navigate('/battles')} className="btn-primary w-full">
+                    Start Your Own Battle
+                  </button>
+                  <button
+                    onClick={() => navigate('/explore')}
+                    className="w-full px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                  >
+                    Explore All Thrive
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                  <XCircleIcon className="w-10 h-10 text-red-400" />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">Invitation Error</h2>
+                <p className="text-slate-400 mb-6">{error}</p>
+                <button onClick={() => navigate('/battles')} className="btn-primary">
+                  Go to Battles
+                </button>
+              </>
+            )}
           </motion.div>
         </div>
       </DashboardLayout>

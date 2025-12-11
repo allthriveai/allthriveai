@@ -222,7 +222,7 @@ function LandingPageContent() {
       <SEO {...SEOPresets.home} />
       <SkipLink />
 
-      <main id="main-content" className="min-h-screen bg-[#020617] text-white overflow-x-hidden">
+      <div id="main-content" className="bg-[#020617] text-white overflow-x-hidden">
         {/* Section 1: Hero with CTA */}
         <HeroSection onRequestInvite={handleRequestInvite} isModalOpen={isModalOpen} />
 
@@ -243,7 +243,7 @@ function LandingPageContent() {
 
         {/* Footer */}
         <Footer />
-      </main>
+      </div>
 
       {/* Request Invitation Modal */}
       <Modal

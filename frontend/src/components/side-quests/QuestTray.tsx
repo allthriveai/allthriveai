@@ -321,16 +321,16 @@ export function QuestTray({ isOpen, onClose, quest, userQuest, onStartQuest, isS
           }}
         />
 
-        {/* Close button */}
+        {/* Close button - larger tap target for mobile */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onClose();
           }}
-          className="absolute top-4 right-4 p-2 rounded-xl transition-all hover:bg-white/5 dark:hover:bg-white/5 hover:bg-black/5 z-20"
+          className="absolute top-4 right-4 p-3 rounded-xl transition-all bg-white/10 dark:bg-white/10 hover:bg-white/20 dark:hover:bg-white/20 z-20"
           aria-label="Close"
         >
-          <XMarkIcon className="w-6 h-6 text-muted" />
+          <XMarkIcon className="w-6 h-6 text-white/80" />
         </button>
 
         {/* Cinematic content */}

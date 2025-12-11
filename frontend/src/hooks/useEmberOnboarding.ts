@@ -75,16 +75,20 @@ export function useEmberOnboarding() {
     }
   }, [user?.id, state, isLoaded]);
 
-  // Should show the initial modal (first time user)
-  const shouldShowModal = isAuthenticated && isLoaded && !state.hasSeenModal && !state.isDismissed;
+  // Should show the initial modal (first time user, but NOT for guest users)
+  // Guest users are temporary accounts created for battle invitations - they shouldn't see onboarding
+  const shouldShowModal =
+    isAuthenticated && isLoaded && !state.hasSeenModal && !state.isDismissed && !user?.isGuest;
 
   // Should show the banner (has seen modal, hasn't dismissed, hasn't completed all)
+  // Also skip for guest users
   const shouldShowBanner =
     isAuthenticated &&
     isLoaded &&
     state.hasSeenModal &&
     !state.isDismissed &&
-    state.completedAdventures.length < 3;
+    state.completedAdventures.length < 3 &&
+    !user?.isGuest;
 
   // All adventures completed
   const allAdventuresComplete = state.completedAdventures.length === 3;

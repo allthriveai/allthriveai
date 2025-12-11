@@ -1,4 +1,10 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+
+// Redirect component that preserves query parameters
+function RedirectWithQuery({ to }: { to: string }) {
+  const location = useLocation();
+  return <Navigate to={`${to}${location.search}`} replace />;
+}
 import { ProtectedRoute } from './ProtectedRoute';
 import LandingPage from '@/pages/LandingPage';
 import AboutPage from '@/pages/AboutPage';
@@ -301,9 +307,9 @@ export function AppRoutes() {
         }
       />
 
-      {/* Redirect all other auth routes to /auth */}
-      <Route path="/login" element={<Navigate to="/auth" replace />} />
-      <Route path="/signup" element={<Navigate to="/auth" replace />} />
+      {/* Redirect all other auth routes to /auth (preserving query params for referral codes) */}
+      <Route path="/login" element={<RedirectWithQuery to="/auth" />} />
+      <Route path="/signup" element={<RedirectWithQuery to="/auth" />} />
 
       {/* Extension - landing page and auth */}
       <Route

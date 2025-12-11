@@ -7,7 +7,7 @@ export default function PersonalizationSettingsPage() {
     <DashboardLayout>
       {() => (
         <SettingsLayout>
-          <div className="p-8">
+          <div className="p-4 sm:p-6 lg:p-8">
             <Personalization />
           </div>
         </SettingsLayout>

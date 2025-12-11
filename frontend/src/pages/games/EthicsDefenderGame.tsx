@@ -152,6 +152,8 @@ export default function EthicsDefenderGame() {
   const laserIdRef = useRef(0);
   const particleIdRef = useRef(0);
   const alienIdRef = useRef(0);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const hasMoved = useRef(false);
 
   // Setup question targets
   const setupQuestion = useCallback((questionIndex: number) => {
@@ -206,8 +208,24 @@ export default function EthicsDefenderGame() {
     handleMove(e.clientX, e.clientY);
   }, [handleMove]);
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      hasMoved.current = false;
+      handleMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, [handleMove]);
+
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length > 0) {
+      // Check if moved significantly (more than 10px)
+      if (touchStartRef.current) {
+        const dx = Math.abs(e.touches[0].clientX - touchStartRef.current.x);
+        const dy = Math.abs(e.touches[0].clientY - touchStartRef.current.y);
+        if (dx > 10 || dy > 10) {
+          hasMoved.current = true;
+        }
+      }
       handleMove(e.touches[0].clientX, e.touches[0].clientY);
     }
   }, [handleMove]);
@@ -329,6 +347,15 @@ export default function EthicsDefenderGame() {
     }
   }, [gameState, fireLaser]);
 
+  // Handle touch end - only fire if this was a tap (no significant movement)
+  const handleTouchEnd = useCallback(() => {
+    if (!hasMoved.current && gameState === 'playing') {
+      fireLaser();
+    }
+    touchStartRef.current = null;
+    hasMoved.current = false;
+  }, [gameState, fireLaser]);
+
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -434,9 +461,10 @@ export default function EthicsDefenderGame() {
         ref={containerRef}
         className="relative w-full h-screen overflow-hidden cursor-crosshair"
         onMouseMove={handleMouseMove}
+        onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         onClick={handleFire}
-        onTouchEnd={handleFire}
       >
         {/* HUD - positioned at bottom corners */}
         {gameState !== 'intro' && (

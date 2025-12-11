@@ -66,6 +66,51 @@ export function BattleResults({
   const isWinner = winnerId === myPlayer.id;
   const isTie = winnerId === null && mySubmission?.score === opponentSubmission?.score;
 
+  // Generate friendly feedback for the loser based on criteria comparison
+  const getLossFeedback = (): string => {
+    if (!mySubmission?.criteriaScores || !opponentSubmission?.criteriaScores) {
+      return "Your prompt was creative, but your opponent's execution edged you out this time.";
+    }
+
+    // Find the criteria where user lost the most points
+    const criteriaComparison = Object.entries(mySubmission.criteriaScores).map(([criterion, myScore]) => {
+      const theirScore = opponentSubmission.criteriaScores?.[criterion] ?? 0;
+      return { criterion, myScore, theirScore, diff: theirScore - myScore };
+    });
+
+    // Sort by biggest difference (where opponent did better)
+    const biggestGap = criteriaComparison
+      .filter(c => c.diff > 0)
+      .sort((a, b) => b.diff - a.diff)[0];
+
+    if (!biggestGap) {
+      return "It was incredibly close! Keep experimenting with your prompts.";
+    }
+
+    // Generate friendly, encouraging feedback based on the criteria they struggled with
+    const feedbackMap: Record<string, string> = {
+      'creativity': "Try thinking outside the box with more unexpected elements or unique combinations in your prompts.",
+      'Creativity': "Try thinking outside the box with more unexpected elements or unique combinations in your prompts.",
+      'adherence': "Focus on including all the key elements from the challenge theme more explicitly in your prompt.",
+      'Adherence': "Focus on including all the key elements from the challenge theme more explicitly in your prompt.",
+      'theme_adherence': "Focus on including all the key elements from the challenge theme more explicitly in your prompt.",
+      'Theme Adherence': "Focus on including all the key elements from the challenge theme more explicitly in your prompt.",
+      'quality': "Adding more descriptive details about lighting, style, and composition can help improve visual quality.",
+      'Quality': "Adding more descriptive details about lighting, style, and composition can help improve visual quality.",
+      'visual_quality': "Adding more descriptive details about lighting, style, and composition can help improve visual quality.",
+      'Visual Quality': "Adding more descriptive details about lighting, style, and composition can help improve visual quality.",
+      'composition': "Consider the arrangement and balance of elements - try specifying layout, perspective, or focal points.",
+      'Composition': "Consider the arrangement and balance of elements - try specifying layout, perspective, or focal points.",
+      'originality': "Push for more unique angles or unexpected interpretations of the theme next time.",
+      'Originality': "Push for more unique angles or unexpected interpretations of the theme next time.",
+      'technical': "Be more specific about technical aspects like resolution, style, and artistic techniques.",
+      'Technical': "Be more specific about technical aspects like resolution, style, and artistic techniques.",
+    };
+
+    return feedbackMap[biggestGap.criterion] ||
+      `Your opponent scored higher on ${biggestGap.criterion.toLowerCase()}. Try focusing on that aspect next time!`;
+  };
+
   const handleSaveToProfile = async () => {
     if (!onSaveToProfile || isSaving || isSaved) return;
     setIsSaving(true);
@@ -288,11 +333,14 @@ export function BattleResults({
                 </span>
               </motion.div>
             ) : (
-              <div className="inline-flex flex-col items-center gap-3 px-8 py-6 rounded-2xl bg-slate-800/50 border border-slate-600">
+              <div className="inline-flex flex-col items-center gap-4 px-8 py-6 rounded-2xl bg-slate-800/50 border border-slate-600 max-w-lg">
                 <span className="text-2xl font-bold text-slate-300">
                   {opponent.username} Wins!
                 </span>
-                <span className="text-slate-400">Better luck next time! +10 points for participating</span>
+                <p className="text-slate-400 text-center leading-relaxed">
+                  {getLossFeedback()}
+                </p>
+                <span className="text-sm text-cyan-400">+10 points for participating</span>
               </div>
             )}
           </motion.div>

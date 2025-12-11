@@ -123,40 +123,40 @@ function QuestCard({ quest }: { quest: QuestItem }) {
         whileHover={{ scale: 1.02, y: -2 }}
         whileTap={{ scale: 0.98 }}
         className={`
-          relative p-4 rounded-xl border transition-all duration-200 group
+          relative p-3 sm:p-4 rounded-xl border transition-all duration-200 group
           ${quest.completed
             ? 'bg-slate-800/30 border-slate-700/50 opacity-75'
             : `${colors.bg} ${colors.border} hover:shadow-lg`
           }
         `}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-2 sm:gap-3">
           {/* Icon */}
           <div
             className={`
-              w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
+              w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0
               ${quest.completed ? 'bg-emerald-500/20' : colors.iconBg}
             `}
           >
             {quest.completed ? (
-              <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
+              <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
             ) : (
-              <FontAwesomeIcon icon={Icon} className={`text-sm ${colors.text}`} />
+              <FontAwesomeIcon icon={Icon} className={`text-xs sm:text-sm ${colors.text}`} />
             )}
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-1 sm:gap-2">
               <h3
-                className={`font-medium text-sm ${
+                className={`font-medium text-xs sm:text-sm ${
                   quest.completed ? 'text-slate-500 line-through' : 'text-white'
                 }`}
               >
                 {quest.title}
               </h3>
               <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
+                className={`text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 ${
                   quest.completed
                     ? 'bg-emerald-500/20 text-emerald-400'
                     : `${colors.bg} ${colors.text}`
@@ -165,14 +165,14 @@ function QuestCard({ quest }: { quest: QuestItem }) {
                 +{quest.points}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-1 line-clamp-1">{quest.description}</p>
+            <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 sm:mt-1 line-clamp-1">{quest.description}</p>
           </div>
 
           {/* Arrow */}
           {!quest.completed && (
             <FontAwesomeIcon
               icon={faChevronRight}
-              className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0 text-xs mt-3"
+              className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0 text-xs mt-2 sm:mt-3"
             />
           )}
         </div>
@@ -221,51 +221,55 @@ export default function OnboardingPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Header with Ember */}
-        <div className="mb-8">
-          <div className="flex items-start gap-4 mb-6">
-            {/* Ember */}
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', delay: 0.1 }}
-              className="flex-shrink-0"
-            >
-              <FontAwesomeIcon
-                icon={faDragon}
-                className="text-5xl text-orange-500 drop-shadow-[0_0_12px_rgba(0,0,0,0.8)]"
-              />
-            </motion.div>
-
-            <div className="flex-1">
+        <div className="mb-6 sm:mb-8">
+          {/* Mobile: Stack vertically, Desktop: Row layout */}
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
+            {/* Top row on mobile: Ember + Title */}
+            <div className="flex items-center sm:items-start gap-3 sm:gap-4">
+              {/* Ember */}
               <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', delay: 0.1 }}
+                className="flex-shrink-0"
               >
-                <h1 className="text-2xl font-bold text-white mb-1">
-                  Ember's Quest Board
-                </h1>
-                <p className="text-slate-300 text-sm">
-                  {emberMessage}
-                </p>
+                <FontAwesomeIcon
+                  icon={faDragon}
+                  className="text-4xl sm:text-5xl text-orange-500 drop-shadow-[0_0_12px_rgba(0,0,0,0.8)]"
+                />
               </motion.div>
+
+              <div className="flex-1 min-w-0">
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <h1 className="text-xl sm:text-2xl font-bold text-white mb-0.5 sm:mb-1">
+                    Ember's Quest Board
+                  </h1>
+                  <p className="text-slate-300 text-xs sm:text-sm line-clamp-2 sm:line-clamp-none">
+                    {emberMessage}
+                  </p>
+                </motion.div>
+              </div>
             </div>
 
-            {/* Points Badge */}
+            {/* Points Badge - Full width on mobile, auto on desktop */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3 }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/30"
+              className="flex items-center justify-between sm:justify-start gap-2 px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/30 sm:flex-shrink-0"
             >
               <FontAwesomeIcon icon={faFire} className="text-orange-400" />
               <div className="text-right">
                 <p className="text-xs text-slate-400">Points Earned</p>
-                <p className="text-lg font-bold text-orange-400">
+                <p className="text-base sm:text-lg font-bold text-orange-400">
                   {progress.earnedPoints}
-                  <span className="text-slate-500 text-sm font-normal"> / {progress.totalPoints}</span>
+                  <span className="text-slate-500 text-xs sm:text-sm font-normal"> / {progress.totalPoints}</span>
                 </p>
               </div>
             </motion.div>
@@ -276,13 +280,13 @@ export default function OnboardingPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="glass-panel p-4"
+            className="glass-panel p-3 sm:p-4"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-slate-400">
+              <span className="text-xs sm:text-sm text-slate-400">
                 {progress.completedCount} of {progress.totalCount} quests completed
               </span>
-              <span className="text-sm font-medium text-orange-400">
+              <span className="text-xs sm:text-sm font-medium text-orange-400">
                 {progress.progressPercentage}%
               </span>
             </div>
@@ -298,7 +302,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Quest Grid by Category */}
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {Object.entries(progress.categories).map(([categoryKey, category], catIndex) => {
             if (category.items.length === 0) return null;
 
@@ -314,19 +318,19 @@ export default function OnboardingPage() {
                 transition={{ delay: 0.3 + catIndex * 0.1 }}
               >
                 {/* Category Header */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-8 h-8 rounded-lg ${colors.iconBg} flex items-center justify-center`}>
-                    <FontAwesomeIcon icon={categoryIcon} className={`text-sm ${colors.text}`} />
+                <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${colors.iconBg} flex items-center justify-center flex-shrink-0`}>
+                    <FontAwesomeIcon icon={categoryIcon} className={`text-xs sm:text-sm ${colors.text}`} />
                   </div>
-                  <h2 className="text-lg font-semibold text-white">{category.title}</h2>
-                  <span className="text-xs text-slate-500">
+                  <h2 className="text-base sm:text-lg font-semibold text-white truncate">{category.title}</h2>
+                  <span className="text-xs text-slate-500 flex-shrink-0">
                     {completedInCategory}/{category.items.length}
                   </span>
-                  <div className="flex-1 h-px bg-slate-700/50" />
+                  <div className="flex-1 h-px bg-slate-700/50 hidden sm:block" />
                 </div>
 
                 {/* Quest Cards Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                   {category.items.map((quest) => (
                     <QuestCard key={quest.id} quest={quest} />
                   ))}
@@ -342,15 +346,15 @@ export default function OnboardingPage() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.5 }}
-            className="mt-12 text-center"
+            className="mt-8 sm:mt-12 text-center"
           >
-            <div className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-yellow-500/20 border border-orange-500/30">
-              <FontAwesomeIcon icon={faTrophy} className="text-3xl text-amber-400" />
-              <div className="text-left">
-                <p className="text-white font-semibold">Quest Master Achievement Unlocked!</p>
-                <p className="text-sm text-slate-300">You've completed all of Ember's quests</p>
+            <div className="inline-flex flex-col sm:flex-row items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-yellow-500/20 border border-orange-500/30">
+              <FontAwesomeIcon icon={faTrophy} className="text-2xl sm:text-3xl text-amber-400" />
+              <div className="text-center sm:text-left">
+                <p className="text-white font-semibold text-sm sm:text-base">Quest Master Achievement Unlocked!</p>
+                <p className="text-xs sm:text-sm text-slate-300">You've completed all of Ember's quests</p>
               </div>
-              <SparklesIcon className="w-6 h-6 text-amber-400" />
+              <SparklesIcon className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 hidden sm:block" />
             </div>
           </motion.div>
         )}

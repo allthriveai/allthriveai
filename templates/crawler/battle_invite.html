@@ -1,0 +1,56 @@
+{% extends "crawler/base.html" %}
+
+{% block title %}{{ sender_name }} challenged you to a Prompt Battle! | AllThrive{% endblock %}
+
+{% block description %}{{ sender_name }} wants to battle you in an AI image generation duel! Accept the challenge and prove your prompting skills.{% endblock %}
+
+{% block og_type %}website{% endblock %}
+{% block og_title %}{{ sender_name }} challenged you to a Prompt Battle!{% endblock %}
+{% block og_description %}Think you can beat {{ sender_name }} at AI image generation? Accept this Prompt Battle challenge and prove your prompting skills!{% endblock %}
+{% block og_image %}{{ request.scheme }}://{{ request.get_host }}/static/battle-og-image.jpg{% endblock %}
+
+{% block twitter_title %}{{ sender_name }} challenged you to a Prompt Battle!{% endblock %}
+{% block twitter_description %}Think you can beat {{ sender_name }} at AI image generation? Accept this Prompt Battle challenge and prove your prompting skills!{% endblock %}
+{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}/static/battle-og-image.jpg{% endblock %}
+
+{% block content %}
+<article>
+    <h1>You've Been Challenged to a Prompt Battle!</h1>
+
+    <div class="challenge-info">
+        <p><strong>{{ sender_name }}</strong> wants to battle you in an AI image generation duel!</p>
+
+        {% if challenge_type %}
+        <p>Challenge Type: <strong>{{ challenge_type }}</strong></p>
+        {% endif %}
+
+        {% if expires_at %}
+        <p class="meta-info">This challenge expires on {{ expires_at }}</p>
+        {% endif %}
+    </div>
+
+    <h2>What is a Prompt Battle?</h2>
+    <p>Prompt Battles are head-to-head AI image generation duels where two players compete to create the best image based on a shared challenge.</p>
+
+    <h3>How it works:</h3>
+    <ol>
+        <li><strong>Accept the Challenge</strong> - Click the link to accept and join the battle</li>
+        <li><strong>Write Your Prompt</strong> - You'll have limited time to craft the perfect AI image prompt</li>
+        <li><strong>AI Generates Images</strong> - Both prompts are used to generate images simultaneously</li>
+        <li><strong>AI Judges the Winner</strong> - An AI judge evaluates both images and declares a winner</li>
+    </ol>
+
+    <h2>Ready to Battle?</h2>
+    <p>Click the link to accept {{ sender_name }}'s challenge and prove your prompting skills!</p>
+</article>
+{% endblock %}
+
+{% block extra_styles %}
+.challenge-info {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+{% endblock %}

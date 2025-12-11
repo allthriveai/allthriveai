@@ -238,18 +238,28 @@ class AIProvider:
         )
 
     def _initialize_openai_client(self):
-        """Initialize OpenAI client."""
+        """Initialize OpenAI client.
+
+        Supports using an AI gateway (OpenRouter, etc.) by setting OPENAI_BASE_URL.
+        """
         try:
             from openai import OpenAI
         except ImportError as e:
             raise ImportError('OpenAI library not installed. Install with: pip install openai') from e
 
         api_key = getattr(settings, 'OPENAI_API_KEY', None)
+        base_url = getattr(settings, 'OPENAI_BASE_URL', None)
 
         if not api_key:
             raise ValueError('OpenAI API key not configured. Set OPENAI_API_KEY in settings.')
 
-        return OpenAI(api_key=api_key)
+        # If base_url is set, use it for AI gateway; otherwise use default OpenAI API
+        client_kwargs = {'api_key': api_key}
+        if base_url:
+            client_kwargs['base_url'] = base_url
+            logger.info(f'Using AI gateway at: {base_url}')
+
+        return OpenAI(**client_kwargs)
 
     def _initialize_anthropic_client(self):
         """Initialize Anthropic client."""
@@ -866,12 +876,18 @@ class AIProvider:
         elif self._provider == AIProviderType.OPENAI:
             from langchain_openai import ChatOpenAI
 
-            return ChatOpenAI(
-                model=kwargs.pop('model', getattr(settings, 'DEFAULT_OPENAI_MODEL', 'gpt-5-mini-2025-08-07')),
-                api_key=getattr(settings, 'OPENAI_API_KEY', ''),
-                temperature=temperature,
+            # Support AI gateway via OPENAI_BASE_URL
+            openai_kwargs = {
+                'model': kwargs.pop('model', getattr(settings, 'DEFAULT_OPENAI_MODEL', 'gpt-5-mini-2025-08-07')),
+                'api_key': getattr(settings, 'OPENAI_API_KEY', ''),
+                'temperature': temperature,
                 **kwargs,
-            )
+            }
+            base_url = getattr(settings, 'OPENAI_BASE_URL', '')
+            if base_url:
+                openai_kwargs['base_url'] = base_url
+
+            return ChatOpenAI(**openai_kwargs)
 
         elif self._provider == AIProviderType.ANTHROPIC:
             from langchain_anthropic import ChatAnthropic

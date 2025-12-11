@@ -47,9 +47,8 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-gray-600 dark:text-gray-400 text-sm mb-6 leading-relaxed">
-              The community platform for AI creators. Showcase your projects,
-              learn through gamified challenges, and grow with a community
-              built for the AI era.
+              The gamified AI portfolio platform for creators. Build your AI portfolio,
+              compete in Prompt Battles, earn achievements, and level up your skills.
             </p>
             {/* Social links */}
             <div className="flex items-center gap-3">

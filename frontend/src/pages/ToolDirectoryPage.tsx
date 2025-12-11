@@ -468,19 +468,36 @@ function ToolDirectoryPageContent() {
 
                 {/* Alphabet Navigation (if more than 3 letters and no active search/filters) */}
                 {letters.length > 3 && !searchQuery && Object.keys(filters).length === 0 && (
-                  <div className="fixed bottom-8 right-8 glass-strong rounded-xl p-3 shadow-2xl border border-gray-200 dark:border-gray-800">
-                    <div className="flex flex-col gap-1">
-                      {letters.map((letter) => (
-                        <a
-                          key={letter}
-                          href={`#${letter}`}
-                          className="w-8 h-8 flex items-center justify-center text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
-                        >
-                          {letter}
-                        </a>
-                      ))}
+                  <>
+                    {/* Desktop: Fixed vertical sidebar on right */}
+                    <div className="hidden md:block fixed bottom-8 right-4 lg:right-8 glass-strong rounded-xl p-2 lg:p-3 shadow-2xl border border-gray-200 dark:border-gray-800 max-h-[70vh] overflow-y-auto z-40">
+                      <div className="flex flex-col gap-0.5 lg:gap-1">
+                        {letters.map((letter) => (
+                          <a
+                            key={letter}
+                            href={`#${letter}`}
+                            className="w-7 h-7 lg:w-8 lg:h-8 flex items-center justify-center text-xs lg:text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+                          >
+                            {letter}
+                          </a>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                    {/* Mobile: Fixed horizontal bar at bottom */}
+                    <div className="md:hidden fixed bottom-4 left-4 right-4 glass-strong rounded-xl p-2 shadow-2xl border border-gray-200 dark:border-gray-800 z-40">
+                      <div className="flex gap-1 overflow-x-auto scrollbar-hide">
+                        {letters.map((letter) => (
+                          <a
+                            key={letter}
+                            href={`#${letter}`}
+                            className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+                          >
+                            {letter}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
               </>
             )}

@@ -9,6 +9,7 @@ from core.sitemaps import ProjectSitemap, StaticViewSitemap, ToolSitemap, UserPr
 from core.views.core_views import ai_plugin_manifest, db_health, robots_txt
 from core.views.crawler_views import (
     about_view,
+    battle_invite_view,
     explore_view,
     homepage_view,
     profile_view,
@@ -47,6 +48,8 @@ urlpatterns = [
     path('about', about_view, name='about'),
     path('explore', explore_view, name='explore'),
     path('tools', tools_directory_view, name='tools'),
+    # Battle invite links with crawler support (for link previews in iMessage, WhatsApp, etc.)
+    path('battle/invite/<str:token>', battle_invite_view, name='battle_invite'),
     # User profiles and projects with crawler support
     re_path(r'^@(?P<username>[a-zA-Z0-9_-]+)/(?P<slug>[a-zA-Z0-9_-]+)$', project_detail_view, name='project_detail'),
     re_path(r'^@(?P<username>[a-zA-Z0-9_-]+)$', profile_view, name='profile'),

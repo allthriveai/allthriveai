@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { animated } from '@react-spring/web';
-import { CheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckIcon, XMarkIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import type { QuizQuestion } from './types';
 
@@ -75,6 +76,95 @@ export function QuizCard({
       className={canSwipe ? 'touch-none cursor-grab active:cursor-grabbing' : ''}
     >
       <div className="rounded p-4 sm:p-6 md:p-8 shadow-2xl max-w-2xl mx-auto select-none border border-white/20 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
+        {/* Feedback - Now at top for mobile visibility */}
+        <AnimatePresence>
+          {showFeedback && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className={`mb-4 sm:mb-6 p-4 sm:p-5 rounded-xl border-2 backdrop-blur-sm relative overflow-hidden ${
+                isCorrect
+                  ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/40 dark:to-emerald-900/40 border-green-500'
+                  : 'bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/40 dark:to-rose-900/40 border-red-500'
+              }`}
+            >
+              {/* Celebration particles for correct answers */}
+              {isCorrect && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1, rotate: [0, 15, -15, 0] }}
+                    transition={{ delay: 0.1, duration: 0.5 }}
+                    className="absolute -top-1 -left-1"
+                  >
+                    <SparklesIcon className="w-6 h-6 text-yellow-400" />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1, rotate: [0, -15, 15, 0] }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                    className="absolute -top-1 -right-1"
+                  >
+                    <SparklesIcon className="w-6 h-6 text-yellow-400" />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: [0, 1, 1, 0], y: [-10, -30] }}
+                    transition={{ delay: 0.3, duration: 1 }}
+                    className="absolute top-2 left-1/2 -translate-x-1/2 text-2xl"
+                  >
+                    🎉
+                  </motion.div>
+                </>
+              )}
+
+              <div className="flex items-center gap-3">
+                {isCorrect ? (
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                    className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-green-500 flex items-center justify-center"
+                  >
+                    <CheckIcon className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 0.3 }}
+                    className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-red-500 flex items-center justify-center"
+                  >
+                    <XMarkIcon className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+                  </motion.div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <motion.p
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className={`font-bold text-lg sm:text-xl ${
+                      isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+                    }`}
+                  >
+                    {isCorrect ? 'Correct! 🎯' : 'Not quite...'}
+                  </motion.p>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.25 }}
+                    className="text-sm sm:text-base text-gray-700 dark:text-gray-300 line-clamp-2"
+                  >
+                    {question.explanation}
+                  </motion.p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Question Image */}
         {question.imageUrl && (
           <img
@@ -139,38 +229,6 @@ export function QuizCard({
           <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50/90 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg backdrop-blur-sm">
             <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">
               <span className="font-semibold">💡 Hint:</span> {question.hint}
-            </p>
-          </div>
-        )}
-
-        {/* Feedback */}
-        {showFeedback && (
-          <div
-            className={`mt-4 sm:mt-6 p-4 sm:p-6 rounded-lg border-2 backdrop-blur-sm ${
-              isCorrect
-                ? 'bg-green-50/90 dark:bg-green-900/30 border-green-500'
-                : 'bg-red-50/90 dark:bg-red-900/30 border-red-500'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              {isCorrect ? (
-                <>
-                  <CheckIcon className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
-                  <span className="font-bold text-green-700 dark:text-green-300 text-base sm:text-lg">
-                    Correct!
-                  </span>
-                </>
-              ) : (
-                <>
-                  <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />
-                  <span className="font-bold text-red-700 dark:text-red-300 text-base sm:text-lg">
-                    Incorrect
-                  </span>
-                </>
-              )}
-            </div>
-            <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 max-h-[20vh] overflow-y-auto">
-              {question.explanation}
             </p>
           </div>
         )}

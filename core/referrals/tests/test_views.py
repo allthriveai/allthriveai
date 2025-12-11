@@ -405,6 +405,87 @@ class ReferralViewSetTestCase(TestCase):
         # Should return 405 Method Not Allowed
         self.assertEqual(response.status_code, 405)
 
+    def test_apply_referral_success(self):
+        """Test successfully applying a referral code."""
+        # Create a new user who will be referred
+        new_user = User.objects.create_user(username='newuser', email='newuser@example.com', password='testpass123')
+        self.client.force_authenticate(user=new_user)
+
+        response = self.client.post('/api/v1/me/referrals/apply/', {'code': self.referral_code.code})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['success'])
+        self.assertEqual(response.data['referrer_username'], self.referrer.username)
+
+        # Verify referral was created
+        referral = Referral.objects.get(referred_user=new_user)
+        self.assertEqual(referral.referrer, self.referrer)
+        self.assertEqual(referral.referral_code, self.referral_code)
+        self.assertEqual(referral.status, 'completed')
+
+        # Verify usage count was incremented
+        self.referral_code.refresh_from_db()
+        self.assertEqual(self.referral_code.uses_count, 1)
+
+    def test_apply_referral_requires_code(self):
+        """Test that apply endpoint requires a code."""
+        new_user = User.objects.create_user(
+            username='nocodeuser', email='nocodeuser@example.com', password='testpass123'
+        )
+        self.client.force_authenticate(user=new_user)
+
+        response = self.client.post('/api/v1/me/referrals/apply/', {})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.data['success'])
+
+    def test_apply_referral_invalid_code(self):
+        """Test applying a non-existent referral code."""
+        new_user = User.objects.create_user(
+            username='invalidcodeuser', email='invalidcodeuser@example.com', password='testpass123'
+        )
+        self.client.force_authenticate(user=new_user)
+
+        response = self.client.post('/api/v1/me/referrals/apply/', {'code': 'DOESNOTEXIST'})
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(response.data['success'])
+
+    def test_apply_referral_cannot_use_own_code(self):
+        """Test that users cannot use their own referral code."""
+        self.client.force_authenticate(user=self.referrer)
+
+        response = self.client.post('/api/v1/me/referrals/apply/', {'code': self.referral_code.code})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.data['success'])
+        self.assertIn('own referral code', response.data['error'])
+
+    def test_apply_referral_already_referred(self):
+        """Test that users cannot be referred twice."""
+        # Create a new user and refer them once
+        new_user = User.objects.create_user(
+            username='alreadyreferred', email='alreadyreferred@example.com', password='testpass123'
+        )
+        Referral.objects.create(
+            referrer=self.referrer, referred_user=new_user, referral_code=self.referral_code, status='completed'
+        )
+
+        self.client.force_authenticate(user=new_user)
+
+        response = self.client.post('/api/v1/me/referrals/apply/', {'code': self.referral_code.code})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.data['success'])
+        self.assertIn('already used', response.data['error'])
+
+    def test_apply_referral_requires_authentication(self):
+        """Test that apply endpoint requires authentication."""
+        self.client.force_authenticate(user=None)
+
+        response = self.client.post('/api/v1/me/referrals/apply/', {'code': self.referral_code.code})
+        self.assertEqual(response.status_code, 401)
+
 
 class ReferralCodeCollisionHandlingTestCase(TestCase):
     """Test referral code collision handling during auto-creation."""

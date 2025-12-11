@@ -301,6 +301,60 @@ export const analytics = {
   },
 
   // ============================================================================
+  // Referral Tracking
+  // ============================================================================
+
+  referralCodeCaptured: (code: string, referrerUsername: string, source: 'url' | 'localStorage') => {
+    track('referral_code_captured', {
+      referral_code: code,
+      referrer_username: referrerUsername,
+      source,
+    });
+  },
+
+  referralCodeValidated: (code: string, isValid: boolean, referrerUsername?: string) => {
+    track('referral_code_validated', {
+      referral_code: code,
+      is_valid: isValid,
+      referrer_username: referrerUsername,
+    });
+  },
+
+  referralCodeApplied: (code: string, referrerUsername: string) => {
+    track('referral_code_applied', {
+      referral_code: code,
+      referrer_username: referrerUsername,
+    });
+  },
+
+  referralCodeFailed: (code: string, error: string) => {
+    track('referral_code_failed', {
+      referral_code: code,
+      error,
+    });
+  },
+
+  referralCodeExpired: (code: string) => {
+    track('referral_code_expired', {
+      referral_code: code,
+    });
+  },
+
+  referralCodeShared: (code: string, shareMethod: 'copy_code' | 'copy_link' | 'native_share') => {
+    track('referral_code_shared', {
+      referral_code: code,
+      share_method: shareMethod,
+    });
+  },
+
+  referralLinkVisited: (code: string, referrerUsername: string) => {
+    track('referral_link_visited', {
+      referral_code: code,
+      referrer_username: referrerUsername,
+    });
+  },
+
+  // ============================================================================
   // User Identification (call after login)
   // ============================================================================
 

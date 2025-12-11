@@ -1,10 +1,11 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthState } from '@/types/models';
 import * as authService from '@/services/auth';
 import { ensureCsrfToken } from '@/services/api';
 import { setUser as setSentryUser } from '@/utils/sentry';
 import { analytics } from '@/utils/analytics';
+import { applyStoredReferralCode, hasPendingReferralCode } from '@/services/referral';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
@@ -21,6 +22,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
     error: null,
   });
+
+  // Track if we've already tried to apply a referral code to prevent duplicate attempts
+  const referralAppliedRef = useRef(false);
 
   // Check authentication status on mount
   useEffect(() => {
@@ -54,6 +58,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tier: user.subscription_tier,
         totalPoints: user.total_points,
       });
+
+      // Apply pending referral code if user just signed up
+      // Only try once per session to avoid repeated API calls
+      if (!referralAppliedRef.current && hasPendingReferralCode()) {
+        referralAppliedRef.current = true;
+        try {
+          const result = await applyStoredReferralCode();
+          if (result.success) {
+            console.log('Referral code applied successfully:', result.message);
+          } else if (result.error) {
+            // Log but don't show error to user (might be existing user, invalid code, etc.)
+            console.log('Referral code not applied:', result.error);
+          }
+        } catch (error) {
+          console.warn('Failed to apply referral code:', error);
+        }
+      }
     } catch {
       setAuthState({
         user: null,

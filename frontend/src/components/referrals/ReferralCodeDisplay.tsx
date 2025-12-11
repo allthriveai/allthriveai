@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CheckIcon, ClipboardIcon, ShareIcon, PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { analytics } from '@/utils/analytics';
 
 interface ReferralCodeDisplayProps {
   code: string;
@@ -31,16 +32,22 @@ export function ReferralCodeDisplay({
       await navigator.clipboard.writeText(code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      // Track referral code shared via copy code
+      analytics.referralCodeShared(code, 'copy_code');
     } catch (error) {
       console.error('Failed to copy code:', error);
     }
   };
 
-  const handleCopyUrl = async () => {
+  const handleCopyUrl = async (trackEvent = true) => {
     try {
       await navigator.clipboard.writeText(referralUrl);
       setCopiedUrl(true);
       setTimeout(() => setCopiedUrl(false), 2000);
+      // Track referral code shared via copy link (unless called as fallback)
+      if (trackEvent) {
+        analytics.referralCodeShared(code, 'copy_link');
+      }
     } catch (error) {
       console.error('Failed to copy URL:', error);
     }
@@ -54,12 +61,15 @@ export function ReferralCodeDisplay({
           text: `Use my referral code to join All Thrive AI: ${code}`,
           url: referralUrl,
         });
+        // Track referral code shared via native share
+        analytics.referralCodeShared(code, 'native_share');
       } catch (error) {
-        console.error('Failed to share:', error);
+        // User cancelled share or share failed
+        console.debug('Share cancelled or failed:', error);
       }
     } else {
       // Fallback to copying URL if Web Share API is not available
-      handleCopyUrl();
+      handleCopyUrl(true);
     }
   };
 
@@ -185,36 +195,38 @@ export function ReferralCodeDisplay({
       {/* Referral Code Display */}
       <div className="mb-4">
         {!isEditing ? (
-          <div className="flex items-center gap-3 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                Your Referral Code
-              </label>
-              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-wider font-mono">
-                {code}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              {onCodeUpdate && (
-                <button
-                  onClick={handleEdit}
-                  className="p-3 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
-                  title="Edit code"
-                >
-                  <PencilIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                </button>
-              )}
-              <button
-                onClick={handleCopyCode}
-                className="p-3 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
-                title="Copy code"
-              >
-                {copied ? (
-                  <CheckIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
-                ) : (
-                  <ClipboardIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+          <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  Your Referral Code
+                </label>
+                <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-wider font-mono truncate">
+                  {code}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {onCodeUpdate && (
+                  <button
+                    onClick={handleEdit}
+                    className="p-3 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+                    title="Edit code"
+                  >
+                    <PencilIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  </button>
                 )}
-              </button>
+                <button
+                  onClick={handleCopyCode}
+                  className="p-3 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+                  title="Copy code"
+                >
+                  {copied ? (
+                    <CheckIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <ClipboardIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -222,8 +234,8 @@ export function ReferralCodeDisplay({
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
               Customize Your Referral Code
             </label>
-            <div className="flex items-start gap-2">
-              <div className="flex-1">
+            <div className="space-y-3">
+              <div>
                 <input
                   type="text"
                   value={editValue}
@@ -231,7 +243,7 @@ export function ReferralCodeDisplay({
                   onBlur={() => editValue && checkAvailability(editValue)}
                   placeholder="ENTER-CODE"
                   maxLength={20}
-                  className="w-full px-4 py-3 text-xl font-bold font-mono tracking-wider uppercase bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-3 text-lg sm:text-xl font-bold font-mono tracking-wider uppercase bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
                 {error && (
                   <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -250,7 +262,7 @@ export function ReferralCodeDisplay({
                 <button
                   onClick={handleSave}
                   disabled={!!error || isChecking || isAvailable === false}
-                  className="px-4 py-3 bg-primary-500 hover:bg-primary-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                  className="flex-1 sm:flex-none px-4 py-3 bg-primary-500 hover:bg-primary-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
                 >
                   Save
                 </button>
@@ -271,26 +283,26 @@ export function ReferralCodeDisplay({
         <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">
           Referral Link
         </label>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={referralUrl}
             readOnly
-            className="flex-1 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg border border-slate-300 dark:border-slate-600 font-mono"
+            className="flex-1 min-w-0 px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg border border-slate-300 dark:border-slate-600 font-mono truncate"
           />
           <button
-            onClick={handleCopyUrl}
-            className="px-4 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors flex items-center gap-2"
+            onClick={() => handleCopyUrl()}
+            className="shrink-0 px-4 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors flex items-center justify-center gap-2"
           >
             {copiedUrl ? (
               <>
                 <CheckIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Copied!</span>
+                <span>Copied!</span>
               </>
             ) : (
               <>
                 <ClipboardIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Copy Link</span>
+                <span>Copy Link</span>
               </>
             )}
           </button>
@@ -298,7 +310,7 @@ export function ReferralCodeDisplay({
       </div>
 
       {/* Stats and Share */}
-      <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
         <div className="text-sm">
           <span className="text-slate-600 dark:text-slate-400">Uses: </span>
           <span className="font-semibold text-slate-900 dark:text-slate-100">
@@ -308,10 +320,10 @@ export function ReferralCodeDisplay({
         </div>
         <button
           onClick={handleShare}
-          className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition-colors flex items-center gap-2"
+          className="w-full sm:w-auto px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition-colors flex items-center justify-center gap-2"
         >
           <ShareIcon className="w-4 h-4" />
-          <span className="hidden sm:inline">Share</span>
+          <span>Share</span>
         </button>
       </div>
     </div>

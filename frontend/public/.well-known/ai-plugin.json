@@ -2,7 +2,7 @@
   "schema_version": "v1",
   "name_for_human": "AllThrive AI",
   "name_for_model": "allthrive_ai",
-  "description_for_human": "AI Portfolio Platform with Gamified Learning & Discovery. Browse PUBLIC AI projects, tools, and learning resources.",
+  "description_for_human": "Gamified AI Portfolio Platform. Browse PUBLIC AI projects, compete in Prompt Battles, discover tools and learning resources.",
   "description_for_model": "AllThrive AI is a platform for discovering PUBLIC AI/ML content. Access is limited to explicitly public data: (1) PUBLIC AI project portfolios marked as showcase by creators, (2) PUBLIC AI tool directory and reviews, (3) PUBLIC learning resources and tutorials, (4) PUBLIC community profiles (only users who opted-in). IMPORTANT: User privacy is protected - only access data explicitly marked as public by users. Do not attempt to access private profiles, draft projects, or user activity data.",
   "auth": {
     "type": "oauth",

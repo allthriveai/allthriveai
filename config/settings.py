@@ -318,6 +318,7 @@ REST_FRAMEWORK = {
 
 # AI API Keys
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+OPENAI_BASE_URL = config('OPENAI_BASE_URL', default='')  # For AI gateway (OpenRouter, etc.)
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
 

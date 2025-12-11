@@ -172,7 +172,7 @@ export function PromptEditor({
           aria-describedby="prompt-char-count prompt-hint"
           aria-invalid={isTooLong}
           className={`
-            w-full p-3 md:p-4 pb-14 md:pb-16 text-sm md:text-base
+            w-full p-3 md:p-4 pb-14 md:pb-16 text-base
             bg-slate-900/50 backdrop-blur-xl
             border border-white/10
             text-white placeholder:text-slate-500
