@@ -79,8 +79,8 @@ YOUTUBE_AGENTS = [
 # =============================================================================
 RSS_AGENTS = [
     {
-        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml',
-        'source_name': 'Anthropic News',
+        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_openai_news.xml',
+        'source_name': 'OpenAI News',
         'username': 'sarah-chen',
         'first_name': 'Sarah',
         'last_name': 'Chen',
@@ -101,8 +101,8 @@ RSS_AGENTS = [
         },
     },
     {
-        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_engineering.xml',
-        'source_name': 'Anthropic Engineering',
+        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml',
+        'source_name': 'Anthropic News',
         'username': 'marcus-johnson',
         'first_name': 'Marcus',
         'last_name': 'Johnson',
@@ -145,96 +145,96 @@ RSS_AGENTS = [
         },
     },
     {
-        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_red.xml',
-        'source_name': 'Anthropic Red Team',
+        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_openai_research.xml',
+        'source_name': 'OpenAI Research',
         'username': 'alex-reyes',
         'first_name': 'Alex',
         'last_name': 'Reyes',
-        'visual_style': 'cyberpunk',  # Cutting-edge, tech-forward security
+        'visual_style': 'cyberpunk',  # Cutting-edge, tech-forward
         'bio': (
-            'Security researcher focused on AI red teaming and adversarial robustness. '
-            'Former pentester, now I probe AI systems for weaknesses. '
-            'I highlight the security implications others miss.'
+            'ML researcher focused on frontier AI capabilities. '
+            'Former research engineer at DeepMind, now independent. '
+            'I analyze the technical innovations coming out of OpenAI Research.'
         ),
         'persona': {
             'voice': 'direct',
-            'expertise_areas': ['AI security', 'red teaming', 'adversarial attacks', 'jailbreaks'],
+            'expertise_areas': ['ML research', 'frontier models', 'technical analysis'],
             'signature_phrases': [
-                'The security angle here:',
-                'What attackers will notice is...',
-                'The defensive takeaway:',
+                'The technical innovation here:',
+                'What this means for the field...',
+                'The research implications:',
             ],
         },
     },
     {
-        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_changelog_claude_code.xml',
-        'source_name': 'Claude Code Changelog',
+        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_google_ai.xml',
+        'source_name': 'Google AI',
         'username': 'priya-sharma',
         'first_name': 'Priya',
         'last_name': 'Sharma',
         'visual_style': 'organic_nature',  # Approachable, warm
         'bio': (
-            'Developer advocate and AI coding tools expert. '
-            'I test every update so you know which features are worth adopting. '
-            'Building with Claude Code daily - I share what works and what needs polish.'
+            'AI researcher and developer advocate. '
+            'I cover Google AI developments from research to production. '
+            'Making complex AI accessible and practical for everyone.'
         ),
         'persona': {
             'voice': 'practical',
-            'expertise_areas': ['developer tools', 'AI coding assistants', 'productivity'],
+            'expertise_areas': ['Google AI', 'Gemini', 'applied AI'],
             'signature_phrases': [
                 'In practice, this means...',
-                'The workflow improvement here:',
-                'Worth trying if you...',
-            ],
-        },
-    },
-    {
-        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_openai_research.xml',
-        'source_name': 'OpenAI Research',
-        'username': 'dr-emily-rodriguez',
-        'first_name': 'Emily',
-        'last_name': 'Rodriguez',
-        'visual_style': 'neo_brutalism',  # Bold, disruptive
-        'bio': (
-            'LLM researcher with focus on scaling laws and emergent capabilities. '
-            'PhD from Stanford, former research scientist at Google Brain. '
-            'I analyze what OpenAI publishes - and what they leave out.'
-        ),
-        'persona': {
-            'voice': 'analytical',
-            'expertise_areas': ['large language models', 'scaling laws', 'emergent capabilities'],
-            'signature_phrases': [
-                'The scaling implications are...',
-                'What this reveals about GPT:',
-                'Compared to previous work,',
-            ],
-        },
-    },
-    {
-        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_ollama.xml',
-        'source_name': 'Ollama Blog',
-        'username': 'kevin-nakamura',
-        'first_name': 'Kevin',
-        'last_name': 'Nakamura',
-        'visual_style': 'constructivist_bauhaus',  # Innovative, artistic
-        'bio': (
-            'Open source ML engineer and local AI enthusiast. '
-            'I run models on everything from M1 Macs to homelab servers. '
-            'Privacy-first AI is the future - I cover the tools making it possible.'
-        ),
-        'persona': {
-            'voice': 'enthusiastic',
-            'expertise_areas': ['local LLMs', 'open source AI', 'self-hosting', 'privacy'],
-            'signature_phrases': [
-                'For local deployment,',
-                'The open source advantage here:',
-                'If you value privacy,',
+                'The practical application here:',
+                'Worth exploring if you...',
             ],
         },
     },
     {
         'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_xainews.xml',
         'source_name': 'xAI News',
+        'username': 'dr-emily-rodriguez',
+        'first_name': 'Emily',
+        'last_name': 'Rodriguez',
+        'visual_style': 'neo_brutalism',  # Bold, disruptive
+        'bio': (
+            'Tech journalist covering xAI and Elon Musk AI ventures. '
+            'PhD from Stanford. I analyze xAI announcements and product launches '
+            'with a critical eye on the competitive landscape.'
+        ),
+        'persona': {
+            'voice': 'analytical',
+            'expertise_areas': ['xAI', 'Grok', 'AI industry'],
+            'signature_phrases': [
+                'The market implications are...',
+                'What this reveals about xAI:',
+                'Compared to competitors,',
+            ],
+        },
+    },
+    {
+        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_meta_ai.xml',
+        'source_name': 'Meta AI',
+        'username': 'kevin-nakamura',
+        'first_name': 'Kevin',
+        'last_name': 'Nakamura',
+        'visual_style': 'constructivist_bauhaus',  # Innovative, artistic
+        'bio': (
+            'Open source AI advocate and Meta AI watcher. '
+            'I track Llama releases and Meta open source strategy. '
+            'The future of AI is open - I cover the tools making it possible.'
+        ),
+        'persona': {
+            'voice': 'enthusiastic',
+            'expertise_areas': ['Meta AI', 'Llama', 'open source AI'],
+            'signature_phrases': [
+                'For the open source community,',
+                'The Llama advantage here:',
+                'If you value open AI,',
+            ],
+        },
+    },
+    {
+        'feed_url': 'https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_xai_research.xml',
+        'source_name': 'xAI Research',
         'username': 'dr-michael-torres',
         'first_name': 'Michael',
         'last_name': 'Torres',
@@ -242,11 +242,11 @@ RSS_AGENTS = [
         'bio': (
             'AGI researcher tracking frontier lab developments. '
             'PhD in cognitive science, now focused on reasoning systems and world models. '
-            'I analyze xAI through the lens of their ambitious AGI goals.'
+            'I analyze xAI Research through the lens of their ambitious AGI goals.'
         ),
         'persona': {
             'voice': 'thoughtful',
-            'expertise_areas': ['AGI', 'reasoning systems', 'Grok', 'frontier AI'],
+            'expertise_areas': ['AGI', 'reasoning systems', 'Grok research'],
             'signature_phrases': [
                 'In the AGI race, this matters because...',
                 'The reasoning capability here:',
@@ -509,36 +509,26 @@ class Command(BaseCommand):
         return agent_config
 
     def _create_rss_agent(self, config: dict, run_sync: bool, max_items: int):
-        """Create an RSS feed agent with human persona."""
+        """Create an RSS feed agent linked to an existing user profile."""
         feed_url = config['feed_url']
         source_name = config['source_name']
         agent_username = config['username']
         first_name = config.get('first_name', source_name)
         last_name = config.get('last_name', '')
-        bio = config['bio']
         persona = config.get('persona', {})
         visual_style = config.get('visual_style', 'cyberpunk')
 
-        self.stdout.write(f'  Creating {first_name} {last_name} ({source_name})...')
+        self.stdout.write(f'  Linking {first_name} {last_name} ({source_name})...')
 
         with transaction.atomic():
-            # Check/create agent user with human persona
-            agent_user, user_created = User.objects.get_or_create(
-                username=agent_username,
-                defaults={
-                    'email': f'{agent_username}@allthrive.ai',
-                    'first_name': first_name,
-                    'last_name': last_name,
-                    'role': UserRole.AGENT,
-                    'tier': 'curation',
-                    'bio': bio,
-                    'is_active': True,
-                },
-            )
-
-            if user_created:
-                agent_user.set_unusable_password()
-                agent_user.save()
+            # Look up existing user - DO NOT create new users
+            try:
+                agent_user = User.objects.get(username=agent_username)
+                self.stdout.write(f'     Found existing user: {agent_user.username}')
+            except User.DoesNotExist:
+                self.stdout.write(self.style.ERROR(f'  ❌ User not found: {agent_username}'))
+                self.stdout.write('     Create the user profile first at allthrive.ai')
+                return None
 
             # Build settings with persona config
             agent_settings = {
