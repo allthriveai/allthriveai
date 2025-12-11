@@ -55,6 +55,13 @@ export function BattleInvitePage() {
 
       try {
         const response = await api.get(`/battles/invite/${token}/`);
+
+        // If invitation already accepted, redirect to the battle
+        if (response.data.already_accepted && response.data.battle_id) {
+          navigate(`/battles/${response.data.battle_id}`);
+          return;
+        }
+
         setInvitation(response.data);
       } catch (err: unknown) {
         const error = err as { response?: { data?: { error?: string } } };
@@ -65,7 +72,7 @@ export function BattleInvitePage() {
     };
 
     fetchInvitation();
-  }, [token]);
+  }, [token, navigate]);
 
   const handleAccept = async () => {
     if (!token || !isAuthenticated) return;
@@ -317,41 +324,18 @@ export function BattleInvitePage() {
             {/* Actions */}
             {!isAuthenticated ? (
               <div className="space-y-4">
-                {/* Question prompt */}
-                <p className="text-center text-slate-300 font-medium">
-                  Do you have an account?
-                </p>
-
-                {/* Sign in option - Primary for existing users */}
-                <button
-                  onClick={() => navigate(`/auth?redirect=/battle/invite/${token}`)}
-                  className="btn-primary w-full flex items-center justify-center gap-2"
-                >
-                  <UserPlusIcon className="w-5 h-5" />
-                  Sign In
-                </button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-700" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="bg-slate-800 px-2 text-slate-500">or</span>
-                  </div>
-                </div>
-
-                {/* Play as Guest option */}
+                {/* Continue as Guest - Primary action for quick play */}
                 <button
                   onClick={handleAcceptAsGuest}
                   disabled={isAcceptingAsGuest}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700/50 transition-colors disabled:opacity-50"
+                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isAcceptingAsGuest ? (
                     <>
                       <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                        className="w-5 h-5 border-2 border-slate-400/30 border-t-slate-400 rounded-full"
+                        className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
                       />
                       Joining Battle...
                     </>
@@ -364,8 +348,26 @@ export function BattleInvitePage() {
                 </button>
 
                 <p className="text-center text-slate-500 text-xs">
-                  You can create an account after the battle to save your progress
+                  Jump right into the battle - no account needed!
                 </p>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-700" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="bg-slate-800 px-2 text-slate-500">or</span>
+                  </div>
+                </div>
+
+                {/* Sign in option - Secondary for existing users */}
+                <button
+                  onClick={() => navigate(`/auth?redirect=/battle/invite/${token}`)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700/50 transition-colors"
+                >
+                  <UserPlusIcon className="w-5 h-5" />
+                  Sign in to your account
+                </button>
               </div>
             ) : (
               <button

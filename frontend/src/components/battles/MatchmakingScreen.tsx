@@ -24,7 +24,7 @@ import {
   ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/solid';
 
-const PIP_AVATAR_URL = '/chatbot-chat.webp';
+const PIP_AVATAR_URL = '/prompt-battle.png';
 import { api } from '@/services/api';
 
 interface QueueStatus {
@@ -47,7 +47,7 @@ export function MatchmakingScreen({
   queueStatus,
   isConnecting,
   onMatchWithPip,
-  onFindRandomMatch,
+  onFindRandomMatch: _onFindRandomMatch,
   onLeaveQueue,
 }: MatchmakingScreenProps) {
   const navigate = useNavigate();
@@ -64,7 +64,6 @@ export function MatchmakingScreen({
   const [pendingBattleId, setPendingBattleId] = useState<number | null>(null);
   const [challengeType, setChallengeType] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
-  const [linkCopied, setLinkCopied] = useState(false);
   const [messageCopied, setMessageCopied] = useState(false);
 
   // Accessibility: refs and state for focus management
@@ -127,12 +126,6 @@ export function MatchmakingScreen({
   const handleBattlePip = () => {
     setSelectedMode('ai');
     onMatchWithPip();
-  };
-
-  const handleFindOpponent = () => {
-    setSelectedMode('random');
-    setShowHumanModal(false);
-    onFindRandomMatch();
   };
 
   const handleSendSms = async () => {
@@ -215,26 +208,6 @@ export function MatchmakingScreen({
     }
   };
 
-  const handleCopyLink = async () => {
-    if (!generatedLink) return;
-
-    try {
-      await navigator.clipboard.writeText(generatedLink);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = generatedLink;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    }
-  };
-
   const resetModal = () => {
     setShowHumanModal(false);
     setModalView('options');
@@ -246,7 +219,6 @@ export function MatchmakingScreen({
     setPendingBattleId(null);
     setChallengeType(null);
     setLinkError(null);
-    setLinkCopied(false);
     setMessageCopied(false);
   };
 
@@ -550,27 +522,29 @@ export function MatchmakingScreen({
                     </p>
 
                     <div className="space-y-4">
-                      {/* Challenge a Friend via SMS */}
-                      <motion.button
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        onClick={() => setModalView('sms')}
-                        className="w-full p-5 bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:border-emerald-500/50 rounded-xl text-left transition-all group"
+                      {/* Challenge a Friend via SMS - Coming Soon */}
+                      <div
+                        className="w-full p-5 bg-gray-100 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl text-left opacity-60 cursor-not-allowed"
                       >
                         <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] transition-shadow">
+                          <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
                             <DevicePhoneMobileIcon className="w-6 h-6 text-emerald-400" />
                           </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors">
-                              Send SMS Invite
-                            </h4>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold text-gray-900 dark:text-white">
+                                Send SMS Invite
+                              </h4>
+                              <span className="px-2 py-0.5 text-xs font-medium bg-amber-500/20 text-amber-400 rounded-full">
+                                Coming Soon
+                              </span>
+                            </div>
                             <p className="text-gray-600 dark:text-slate-400 text-sm">
                               Send an SMS invite to battle anyone you know
                             </p>
                           </div>
                         </div>
-                      </motion.button>
+                      </div>
 
                       {/* Share a Link */}
                       <motion.button
@@ -597,27 +571,29 @@ export function MatchmakingScreen({
                         </div>
                       </motion.button>
 
-                      {/* Find Random Opponent */}
-                      <motion.button
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        onClick={handleFindOpponent}
-                        className="w-full p-5 bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:border-cyan-500/50 rounded-xl text-left transition-all group"
+                      {/* Find Random Opponent - Coming Soon */}
+                      <div
+                        className="w-full p-5 bg-gray-100 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl text-left opacity-60 cursor-not-allowed"
                       >
                         <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center shrink-0 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.2)] transition-shadow">
+                          <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center shrink-0">
                             <GlobeAltIcon className="w-6 h-6 text-cyan-400" />
                           </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
-                              Find an Opponent
-                            </h4>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold text-gray-900 dark:text-white">
+                                Find an Opponent
+                              </h4>
+                              <span className="px-2 py-0.5 text-xs font-medium bg-amber-500/20 text-amber-400 rounded-full">
+                                Coming Soon
+                              </span>
+                            </div>
                             <p className="text-gray-600 dark:text-slate-400 text-sm">
                               Match with a random AllThrive member
                             </p>
                           </div>
                         </div>
-                      </motion.button>
+                      </div>
                     </div>
                   </motion.div>
                 ) : modalView === 'link' ? (
@@ -720,24 +696,6 @@ export function MatchmakingScreen({
                             {getShareMessage()}
                           </p>
                         </motion.button>
-
-                        {/* Copy just the link - Secondary */}
-                        <button
-                          onClick={handleCopyLink}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors text-sm"
-                        >
-                          {linkCopied ? (
-                            <>
-                              <LinkIcon className="w-4 h-4" />
-                              Link copied!
-                            </>
-                          ) : (
-                            <>
-                              <LinkIcon className="w-4 h-4" />
-                              Copy link only
-                            </>
-                          )}
-                        </button>
 
                         <p className="text-xs text-gray-500 dark:text-slate-500 mt-4">
                           You'll be notified when your friend accepts the challenge.

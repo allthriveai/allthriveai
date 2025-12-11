@@ -586,7 +586,15 @@ def get_invitation_by_token(request, token):
         return Response({'error': 'Invitation has expired.'}, status=status.HTTP_400_BAD_REQUEST)
 
     if invitation.status != InvitationStatus.PENDING:
-        return Response({'error': 'Invitation has already been responded to.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Invitation already accepted - return battle info so frontend can redirect
+        return Response(
+            {
+                'already_accepted': True,
+                'battle_id': invitation.battle.id,
+                'battle_status': invitation.battle.status,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     # Check if the battle is still valid (not cancelled or expired)
     if invitation.battle.status == BattleStatus.CANCELLED:

@@ -41,7 +41,7 @@ const aiToolSlugs = [
   'nodedotjs',
   'firebase',
   'vercel',
-  'amazonaws',
+  'amazonwebservices',
   'googlecloud',
   'canva',
   'figma',
