@@ -246,7 +246,7 @@ export function ChatInterface({
     <>
       {/* Sliding Panel */}
       <div
-        className={`fixed right-0 top-16 w-full md:w-[480px] h-[calc(100vh-4rem)] border-l border-gray-200 dark:border-gray-700 flex flex-col shadow-2xl transition-all duration-300 z-40 bg-white/95 dark:bg-gray-900/95 ${
+        className={`fixed right-0 top-0 md:top-16 w-full md:w-[480px] h-[100dvh] md:h-[calc(100vh-4rem)] border-l border-gray-200 dark:border-gray-700 flex flex-col shadow-2xl transition-all duration-300 z-40 bg-white dark:bg-gray-900 md:bg-white/95 md:dark:bg-gray-900/95 ${
           isOpen ? 'translate-x-0 opacity-100 visible' : 'translate-x-full opacity-0 invisible pointer-events-none'
         }`}
         style={{
@@ -387,7 +387,7 @@ export function ChatInterface({
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-200 dark:border-gray-800 p-3 sm:p-4 flex-shrink-0 bg-white dark:bg-gray-900 overflow-visible relative">
+        <div className="border-t border-gray-200 dark:border-gray-800 p-3 sm:p-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4 flex-shrink-0 bg-white dark:bg-gray-900 overflow-visible relative">
           {/* Attachment Preview */}
           {attachments.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">

@@ -14,6 +14,7 @@ from rest_framework.throttling import UserRateThrottle
 from core.users.models import User
 
 from .models import (
+    Circle,
     CircleMembership,
     Kudos,
     PointActivity,
@@ -259,17 +260,18 @@ class ThriveCircleViewSet(viewsets.ReadOnlyModelViewSet):
         user = request.user
         limit = safe_int_param(request.query_params.get('limit'), default=10, min_val=1, max_val=50)
 
-        # Get users in the same tier (excluding current user)
-        same_tier_users = User.objects.filter(tier=user.tier).exclude(id=user.id).values_list('id', flat=True)
+        # Get users in the same tier (including current user to show community projects)
+        same_tier_users = User.objects.filter(tier=user.tier).values_list('id', flat=True)
 
         # Get recent published projects from same-tier users
         projects = (
             Project.objects.filter(
                 user_id__in=same_tier_users,
                 is_archived=False,
+                is_private=False,
             )
             .select_related('user')
-            .order_by('-published_date')[:limit]
+            .order_by('-created_at')[:limit]
         )
 
         return Response(ProjectSerializer(projects, many=True).data)
@@ -909,14 +911,15 @@ class CircleViewSet(viewsets.ViewSet):
         """
         Get activity feed for the user's current circle.
 
-        Shows recent kudos and project activity from circle members.
+        Shows recent activities (projects, quests, etc.) and kudos from circle members.
 
         Query params:
             - limit: Number of items to return (default: 20, max: 50)
 
         Returns:
             {
-                "kudos": [...],  # Recent kudos in the circle
+                "activities": [...],  # Combined activity feed
+                "kudos": [...],  # Recent kudos in the circle (for backward compat)
                 "has_circle": true
             }
         """
@@ -930,6 +933,11 @@ class CircleViewSet(viewsets.ViewSet):
 
         limit = safe_int_param(request.query_params.get('limit'), default=20, min_val=1, max_val=50)
 
+        # Get circle member user IDs
+        member_ids = list(
+            CircleMembership.objects.filter(circle=circle, is_active=True).values_list('user_id', flat=True)
+        )
+
         # Get recent kudos in this circle
         kudos = (
             Kudos.objects.filter(circle=circle)
@@ -937,8 +945,98 @@ class CircleViewSet(viewsets.ViewSet):
             .order_by('-created_at')[:limit]
         )
 
+        # Get recent point activities from circle members (this week only)
+        # Convert date to timezone-aware datetime for proper comparison
+        from datetime import datetime, time
+
+        from django.utils import timezone as tz
+
+        week_start_dt = tz.make_aware(datetime.combine(circle.week_start, time.min))
+
+        activities = (
+            PointActivity.objects.filter(
+                user_id__in=member_ids,
+                created_at__gte=week_start_dt,
+            )
+            .select_related('user')
+            .order_by('-created_at')[:limit]
+        )
+
+        # Map activity types to frontend types
+        activity_type_map = {
+            'project_create': 'project',
+            'project_update': 'project',
+            'quiz_complete': 'quiz',
+            'streak_bonus': 'streak',
+            'comment': 'comment',
+            'help': 'kudos',  # Help activities map to kudos style
+            'daily_login': 'joined',
+            'side_quest': 'quiz',
+            'weekly_goal': 'level_up',
+            'reaction': 'kudos',  # Likes/reactions shown as kudos style
+            'prompt_battle': 'project',  # Battles shown as project style
+        }
+
+        # Build combined activities list
+        activity_items = []
+
+        # Add point activities
+        for act in activities:
+            activity_type = activity_type_map.get(act.activity_type, 'project')
+            message = act.description or act.get_activity_type_display()
+
+            # Create friendlier messages
+            if act.activity_type == 'project_create':
+                message = 'created a new project'
+            elif act.activity_type == 'project_update':
+                message = 'updated a project'
+            elif act.activity_type == 'quiz_complete':
+                message = 'completed a quiz'
+            elif act.activity_type == 'side_quest':
+                message = 'completed a side quest'
+            elif act.activity_type == 'streak_bonus':
+                message = f'maintained a {act.description}' if act.description else 'kept their streak going'
+            elif act.activity_type == 'daily_login':
+                message = 'logged in today'
+            elif act.activity_type == 'weekly_goal':
+                message = 'completed a weekly goal'
+            elif act.activity_type == 'comment':
+                message = 'left feedback on a project'
+            elif act.activity_type == 'reaction':
+                message = 'liked a project'
+            elif act.activity_type == 'prompt_battle':
+                message = 'competed in a Prompt Battle'
+
+            activity_items.append(
+                {
+                    'id': str(act.id),
+                    'type': activity_type,
+                    'username': act.user.username,
+                    'message': message,
+                    'timestamp': act.created_at.isoformat(),
+                    'points': act.amount,
+                }
+            )
+
+        # Add kudos as activities
+        for k in kudos:
+            activity_items.append(
+                {
+                    'id': str(k.id),
+                    'type': 'kudos',
+                    'username': k.from_user.username,
+                    'message': f'gave {k.get_kudos_type_display()} to {k.to_user.username}',
+                    'timestamp': k.created_at.isoformat(),
+                    'target_username': k.to_user.username,
+                }
+            )
+
+        # Sort by timestamp descending
+        activity_items.sort(key=lambda x: x['timestamp'], reverse=True)
+
         return Response(
             {
+                'activities': activity_items[:limit],
                 'kudos': KudosSerializer(kudos, many=True).data,
                 'circle_name': circle.name,
                 'has_circle': True,
@@ -1117,3 +1215,472 @@ class CircleViewSet(viewsets.ViewSet):
         )
 
         return Response(KudosSerializer(kudos, many=True).data)
+
+
+class AdminCircleViewSet(viewsets.ViewSet):
+    """
+    Admin ViewSet for managing Thrive Circles.
+
+    Endpoints:
+    - GET /api/admin/circles/ - List all circles with filters
+    - GET /api/admin/circles/users/ - Search users and their circle memberships
+    - POST /api/admin/circles/assign/ - Assign a user to a circle
+    - POST /api/admin/circles/remove/ - Remove a user from a circle
+    - POST /api/admin/circles/move/ - Move a user to a different circle
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _is_admin(self, user):
+        """Check if user is admin."""
+        return user.role == 'admin'
+
+    def list(self, request):
+        """
+        List all circles with optional filters.
+
+        Query params:
+            - tier: Filter by tier (seedling, sprout, blossom, bloom, evergreen)
+            - week_start: Filter by week start date (YYYY-MM-DD)
+            - is_active: Filter by active status (true/false)
+            - search: Search circle name
+            - limit: Number of items (default: 50, max: 100)
+
+        Returns:
+            {
+                "circles": [...],
+                "total": 123
+            }
+        """
+        if not self._is_admin(request.user):
+            raise PermissionDenied('Admin access required.')
+
+        from .serializers import CircleSerializer
+
+        queryset = Circle.objects.all().order_by('-week_start', 'tier', 'name')
+
+        # Apply filters
+        tier = request.query_params.get('tier')
+        if tier:
+            queryset = queryset.filter(tier=tier)
+
+        week_start = request.query_params.get('week_start')
+        if week_start:
+            queryset = queryset.filter(week_start=week_start)
+
+        is_active = request.query_params.get('is_active')
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+
+        total = queryset.count()
+        limit = safe_int_param(request.query_params.get('limit'), default=50, min_val=1, max_val=100)
+        circles = queryset[:limit]
+
+        return Response(
+            {
+                'circles': CircleSerializer(circles, many=True).data,
+                'total': total,
+            }
+        )
+
+    @action(detail=False, methods=['get'])
+    def users(self, request):
+        """
+        Search users and their current circle memberships.
+
+        Query params:
+            - search: Search by username, email, or name
+            - tier: Filter by user tier
+            - has_circle: Filter by whether user has a circle this week (true/false)
+            - limit: Number of items (default: 50, max: 100)
+
+        Returns:
+            {
+                "users": [
+                    {
+                        "id": "...",
+                        "username": "...",
+                        "email": "...",
+                        "first_name": "...",
+                        "last_name": "...",
+                        "avatar_url": "...",
+                        "tier": "seedling",
+                        "tier_display": "Seedling",
+                        "total_points": 150,
+                        "current_circle": {...} or null,
+                        "current_membership": {...} or null
+                    },
+                    ...
+                ],
+                "total": 123
+            }
+        """
+        if not self._is_admin(request.user):
+            raise PermissionDenied('Admin access required.')
+
+        from .utils import get_week_start
+
+        week_start = get_week_start()
+
+        queryset = User.objects.filter(is_active=True).exclude(role='admin')
+
+        # Apply filters
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                models.Q(username__icontains=search)
+                | models.Q(email__icontains=search)
+                | models.Q(first_name__icontains=search)
+                | models.Q(last_name__icontains=search)
+            )
+
+        tier = request.query_params.get('tier')
+        if tier:
+            queryset = queryset.filter(tier=tier)
+
+        has_circle = request.query_params.get('has_circle')
+        if has_circle is not None:
+            users_with_circle = CircleMembership.objects.filter(
+                circle__week_start=week_start,
+                circle__is_active=True,
+                is_active=True,
+            ).values_list('user_id', flat=True)
+
+            if has_circle.lower() == 'true':
+                queryset = queryset.filter(id__in=users_with_circle)
+            else:
+                queryset = queryset.exclude(id__in=users_with_circle)
+
+        total = queryset.count()
+        limit = safe_int_param(request.query_params.get('limit'), default=50, min_val=1, max_val=100)
+        users = queryset.order_by('username')[:limit]
+
+        # Build response with circle info
+        result = []
+        for user in users:
+            # Get current circle membership
+            try:
+                membership = CircleMembership.objects.select_related('circle').get(
+                    user=user,
+                    circle__week_start=week_start,
+                    circle__is_active=True,
+                    is_active=True,
+                )
+                circle_data = {
+                    'id': str(membership.circle.id),
+                    'name': membership.circle.name,
+                    'tier': membership.circle.tier,
+                    'tier_display': membership.circle.get_tier_display(),
+                    'member_count': membership.circle.member_count,
+                }
+                membership_data = {
+                    'id': str(membership.id),
+                    'joined_at': membership.joined_at.isoformat(),
+                    'points_earned_in_circle': membership.points_earned_in_circle,
+                    'was_active': membership.was_active,
+                }
+            except CircleMembership.DoesNotExist:
+                circle_data = None
+                membership_data = None
+
+            result.append(
+                {
+                    'id': str(user.id),
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'avatar_url': user.avatar_url,
+                    'tier': user.tier,
+                    'tier_display': user.tier_display,
+                    'total_points': user.total_points,
+                    'current_circle': circle_data,
+                    'current_membership': membership_data,
+                }
+            )
+
+        return Response(
+            {
+                'users': result,
+                'total': total,
+            }
+        )
+
+    @action(detail=False, methods=['post'])
+    def assign(self, request):
+        """
+        Assign a user to a circle.
+
+        Request body:
+            {
+                "user_id": "uuid",
+                "circle_id": "uuid"
+            }
+
+        Returns:
+            {
+                "success": true,
+                "membership": {...}
+            }
+        """
+        if not self._is_admin(request.user):
+            raise PermissionDenied('Admin access required.')
+
+        user_id = request.data.get('user_id')
+        circle_id = request.data.get('circle_id')
+
+        if not user_id or not circle_id:
+            return Response(
+                {'detail': 'Both user_id and circle_id are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            target_user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'User not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            circle = Circle.objects.get(id=circle_id)
+        except Circle.DoesNotExist:
+            return Response(
+                {'detail': 'Circle not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check if user already has a membership in this circle's week
+        existing = CircleMembership.objects.filter(
+            user=target_user,
+            circle__week_start=circle.week_start,
+            is_active=True,
+        ).first()
+
+        if existing:
+            return Response(
+                {
+                    'detail': (
+                        f'User already has an active membership in a circle ' f'for this week ({existing.circle.name}).'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create membership
+        membership = CircleMembership.objects.create(
+            user=target_user,
+            circle=circle,
+            is_active=True,
+        )
+
+        # Update circle member count
+        circle.update_member_counts()
+
+        logger.info(
+            f'Admin assigned user to circle: {target_user.username} → {circle.name}',
+            extra={
+                'admin_id': str(request.user.id),
+                'admin_username': request.user.username,
+                'user_id': str(target_user.id),
+                'circle_id': str(circle.id),
+            },
+        )
+
+        from .serializers import CircleMembershipSerializer
+
+        return Response(
+            {
+                'success': True,
+                'membership': CircleMembershipSerializer(membership).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=['post'])
+    def remove(self, request):
+        """
+        Remove a user from their current circle.
+
+        Request body:
+            {
+                "user_id": "uuid"
+            }
+
+        Returns:
+            {
+                "success": true,
+                "message": "..."
+            }
+        """
+        if not self._is_admin(request.user):
+            raise PermissionDenied('Admin access required.')
+
+        from .utils import get_week_start
+
+        user_id = request.data.get('user_id')
+
+        if not user_id:
+            return Response(
+                {'detail': 'user_id is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            target_user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'User not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        week_start = get_week_start()
+
+        try:
+            membership = CircleMembership.objects.select_related('circle').get(
+                user=target_user,
+                circle__week_start=week_start,
+                is_active=True,
+            )
+        except CircleMembership.DoesNotExist:
+            return Response(
+                {'detail': 'User does not have an active circle membership this week.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        circle = membership.circle
+        membership.is_active = False
+        membership.save(update_fields=['is_active'])
+
+        # Update circle member count
+        circle.update_member_counts()
+
+        logger.info(
+            f'Admin removed user from circle: {target_user.username} from {circle.name}',
+            extra={
+                'admin_id': str(request.user.id),
+                'admin_username': request.user.username,
+                'user_id': str(target_user.id),
+                'circle_id': str(circle.id),
+            },
+        )
+
+        return Response(
+            {
+                'success': True,
+                'message': f'Removed {target_user.username} from {circle.name}',
+            }
+        )
+
+    @action(detail=False, methods=['post'])
+    def move(self, request):
+        """
+        Move a user to a different circle.
+
+        Request body:
+            {
+                "user_id": "uuid",
+                "target_circle_id": "uuid"
+            }
+
+        Returns:
+            {
+                "success": true,
+                "old_circle": {...},
+                "new_circle": {...},
+                "membership": {...}
+            }
+        """
+        if not self._is_admin(request.user):
+            raise PermissionDenied('Admin access required.')
+
+        from .utils import get_week_start
+
+        user_id = request.data.get('user_id')
+        target_circle_id = request.data.get('target_circle_id')
+
+        if not user_id or not target_circle_id:
+            return Response(
+                {'detail': 'Both user_id and target_circle_id are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            target_user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'User not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            new_circle = Circle.objects.get(id=target_circle_id)
+        except Circle.DoesNotExist:
+            return Response(
+                {'detail': 'Target circle not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        week_start = get_week_start()
+
+        # Get current membership if exists
+        old_membership = None
+        old_circle = None
+        try:
+            old_membership = CircleMembership.objects.select_related('circle').get(
+                user=target_user,
+                circle__week_start=week_start,
+                is_active=True,
+            )
+            old_circle = old_membership.circle
+
+            if old_circle.id == new_circle.id:
+                return Response(
+                    {'detail': 'User is already in the target circle.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Deactivate old membership
+            old_membership.is_active = False
+            old_membership.save(update_fields=['is_active'])
+            old_circle.update_member_counts()
+        except CircleMembership.DoesNotExist:
+            pass  # User doesn't have a current circle, that's ok
+
+        # Create new membership
+        new_membership = CircleMembership.objects.create(
+            user=target_user,
+            circle=new_circle,
+            is_active=True,
+        )
+
+        # Update new circle member count
+        new_circle.update_member_counts()
+
+        old_circle_name = old_circle.name if old_circle else 'none'
+        logger.info(
+            f'Admin moved user between circles: {target_user.username} ' f'from {old_circle_name} → {new_circle.name}',
+            extra={
+                'admin_id': str(request.user.id),
+                'admin_username': request.user.username,
+                'user_id': str(target_user.id),
+                'old_circle_id': str(old_circle.id) if old_circle else None,
+                'new_circle_id': str(new_circle.id),
+            },
+        )
+
+        from .serializers import CircleMembershipSerializer, CircleSerializer
+
+        return Response(
+            {
+                'success': True,
+                'old_circle': CircleSerializer(old_circle).data if old_circle else None,
+                'new_circle': CircleSerializer(new_circle).data,
+                'membership': CircleMembershipSerializer(new_membership).data,
+            }
+        )

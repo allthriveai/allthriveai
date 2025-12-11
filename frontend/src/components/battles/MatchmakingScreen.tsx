@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BoltIcon,
@@ -23,7 +24,7 @@ import {
   ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/solid';
 
-const PIP_AVATAR_URL = '/chatbot-chat.webp';
+const PIP_AVATAR_URL = '/chatbot-chat.png';
 import { api } from '@/services/api';
 
 interface QueueStatus {
@@ -49,16 +50,18 @@ export function MatchmakingScreen({
   onFindRandomMatch,
   onLeaveQueue,
 }: MatchmakingScreenProps) {
+  const navigate = useNavigate();
   const [selectedMode, setSelectedMode] = useState<'ai' | 'random' | null>(null);
   const [showHumanModal, setShowHumanModal] = useState(false);
   const [modalView, setModalView] = useState<'options' | 'sms' | 'link'>('options');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [friendName, setFriendName] = useState('');
   const [isSendingSms, setIsSendingSms] = useState(false);
-  const [smsSuccess, setSmsSuccess] = useState<{ inviteUrl: string } | null>(null);
+  const [smsSuccess, setSmsSuccess] = useState<{ inviteUrl: string; battleId?: number } | null>(null);
   const [smsError, setSmsError] = useState<string | null>(null);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [pendingBattleId, setPendingBattleId] = useState<number | null>(null);
   const [challengeType, setChallengeType] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -97,6 +100,30 @@ export function MatchmakingScreen({
     }
   }, [showHumanModal, handleKeyDown]);
 
+  // Poll for invitation acceptance when we have a pending battle
+  // This is a fallback for when WebSocket notifications are missed (e.g., mobile disconnection)
+  useEffect(() => {
+    if (!pendingBattleId) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await api.get(`/battles/${pendingBattleId}/`);
+        // Check if battle has an opponent (invitation was accepted)
+        if (response.data.opponent) {
+          console.log('[MatchmakingScreen] Battle accepted! Navigating to battle:', pendingBattleId);
+          clearInterval(pollInterval);
+          setPendingBattleId(null);
+          navigate(`/battles/${pendingBattleId}`);
+        }
+      } catch (error) {
+        // Battle might not exist anymore or other error - stop polling
+        console.warn('[MatchmakingScreen] Error polling battle status:', error);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [pendingBattleId, navigate]);
+
   const handleBattlePip = () => {
     setSelectedMode('ai');
     onMatchWithPip();
@@ -123,7 +150,12 @@ export function MatchmakingScreen({
         recipient_name: friendName,
       });
 
-      setSmsSuccess({ inviteUrl: response.data.invite_url });
+      // Store battle ID for polling
+      const battleId = response.data.invitation?.battle_id || response.data.invitation?.battle?.id;
+      if (battleId) {
+        setPendingBattleId(battleId);
+      }
+      setSmsSuccess({ inviteUrl: response.data.invite_url, battleId });
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
       setSmsError(err.response?.data?.error || 'Failed to send SMS invitation');
@@ -139,6 +171,11 @@ export function MatchmakingScreen({
     try {
       const response = await api.post('/battles/invitations/generate-link/');
       setGeneratedLink(response.data.inviteUrl || response.data.invite_url);
+      // Store battle ID for polling
+      const battleId = response.data.invitation?.battle_id || response.data.invitation?.battle?.id;
+      if (battleId) {
+        setPendingBattleId(battleId);
+      }
       // Get challenge type from the response
       const battleData = response.data.invitation?.battle_data;
       if (battleData?.challenge_type_name) {
@@ -206,6 +243,7 @@ export function MatchmakingScreen({
     setSmsSuccess(null);
     setSmsError(null);
     setGeneratedLink(null);
+    setPendingBattleId(null);
     setChallengeType(null);
     setLinkError(null);
     setLinkCopied(false);
@@ -357,7 +395,7 @@ export function MatchmakingScreen({
                 disabled={isConnecting}
                 className="glass-card p-8 text-center group cursor-pointer hover:border-violet-500/50 transition-colors disabled:opacity-50"
               >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 overflow-hidden mb-5 group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-shadow mx-auto">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-violet-500/20 to-purple-500/20 overflow-hidden mb-5 group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-shadow mx-auto">
                   <img src={PIP_AVATAR_URL} alt="Pip" className="w-full h-full object-cover" />
                 </div>
 
@@ -383,8 +421,8 @@ export function MatchmakingScreen({
                 disabled={isConnecting}
                 className="glass-card p-8 text-center group cursor-pointer hover:border-cyan-500/50 transition-colors disabled:opacity-50"
               >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center mb-5 group-hover:shadow-[0_0_30px_rgba(34,211,238,0.3)] transition-shadow mx-auto">
-                  <UserGroupIcon className="w-8 h-8 text-cyan-400" />
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center mb-5 group-hover:shadow-[0_0_30px_rgba(34,211,238,0.3)] transition-shadow mx-auto">
+                  <UserGroupIcon className="w-10 h-10 sm:w-12 sm:h-12 text-cyan-400" />
                 </div>
 
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
@@ -650,30 +688,38 @@ export function MatchmakingScreen({
                           Copy the message below and send it to challenge a friend
                         </p>
 
-                        {/* Shareable message box */}
-                        <div className="bg-gray-100 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-lg p-4 mb-4 text-left">
-                          <p className="text-gray-800 dark:text-slate-200 text-sm whitespace-pre-wrap">
+                        {/* Shareable message box - Tappable to copy */}
+                        <motion.button
+                          onClick={handleCopyMessage}
+                          whileTap={{ scale: 0.98 }}
+                          className={`w-full text-left bg-gray-100 dark:bg-slate-800/50 border-2 rounded-xl p-4 mb-4 transition-all cursor-pointer group ${
+                            messageCopied
+                              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                              : 'border-gray-200 dark:border-slate-700 hover:border-pink-500/50 active:border-pink-500'
+                          }`}
+                        >
+                          {/* Tap to copy hint */}
+                          <div className={`flex items-center justify-center gap-1.5 mb-2 text-xs font-medium transition-colors ${
+                            messageCopied
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-gray-500 dark:text-slate-500 group-hover:text-pink-500'
+                          }`}>
+                            {messageCopied ? (
+                              <>
+                                <ClipboardDocumentCheckIcon className="w-4 h-4" />
+                                Copied to clipboard!
+                              </>
+                            ) : (
+                              <>
+                                <ClipboardDocumentIcon className="w-4 h-4" />
+                                Tap to copy message
+                              </>
+                            )}
+                          </div>
+                          <p className="text-gray-800 dark:text-slate-200 text-sm whitespace-pre-wrap break-all">
                             {getShareMessage()}
                           </p>
-                        </div>
-
-                        {/* Copy Message button - Primary */}
-                        <button
-                          onClick={handleCopyMessage}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-pink-500 to-violet-500 text-white font-medium hover:from-pink-600 hover:to-violet-600 transition-all mb-3"
-                        >
-                          {messageCopied ? (
-                            <>
-                              <ClipboardDocumentCheckIcon className="w-5 h-5" />
-                              Copied!
-                            </>
-                          ) : (
-                            <>
-                              <ClipboardDocumentIcon className="w-5 h-5" />
-                              Copy Message to Share
-                            </>
-                          )}
-                        </button>
+                        </motion.button>
 
                         {/* Copy just the link - Secondary */}
                         <button

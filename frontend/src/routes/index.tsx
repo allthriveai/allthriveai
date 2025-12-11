@@ -44,6 +44,7 @@ import VendorDashboardPage from '@/pages/VendorDashboardPage';
 import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
 import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
 import AdminImpersonatePage from '@/pages/admin/ImpersonatePage';
+import AdminCircleManagementPage from '@/pages/admin/CircleManagementPage';
 import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
 import ExtensionPage from '@/pages/ExtensionPage';
 import PitchDeckPage from '@/pages/PitchDeckPage';
@@ -272,6 +273,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <AdminImpersonatePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/circles"
+        element={
+          <ProtectedRoute>
+            <AdminCircleManagementPage />
           </ProtectedRoute>
         }
       />

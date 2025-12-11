@@ -358,18 +358,10 @@ class UserSideQuestSerializer(serializers.ModelSerializer):
 class CircleMemberSerializer(serializers.ModelSerializer):
     """Simplified user serializer for circle member lists."""
 
-    avatar_url = serializers.SerializerMethodField()
-
     class Meta:
         model = User
         fields = ['id', 'username', 'avatar_url', 'tier', 'level', 'total_points']
         read_only_fields = fields
-
-    def get_avatar_url(self, obj):
-        """Get user's avatar URL."""
-        if hasattr(obj, 'avatar') and obj.avatar:
-            return obj.avatar.url
-        return None
 
 
 class CircleMembershipSerializer(serializers.ModelSerializer):
@@ -444,9 +436,21 @@ class CircleDetailSerializer(CircleSerializer):
     members = serializers.SerializerMethodField()
     active_challenge = serializers.SerializerMethodField()
     my_membership = serializers.SerializerMethodField()
+    match_reason = serializers.SerializerMethodField()
 
     class Meta(CircleSerializer.Meta):
-        fields = CircleSerializer.Meta.fields + ['members', 'active_challenge', 'my_membership']
+        fields = CircleSerializer.Meta.fields + ['members', 'active_challenge', 'my_membership', 'match_reason']
+
+    def get_match_reason(self, obj):
+        """Generate a dynamic reason for why the user is in this circle."""
+        tier_display = obj.get_tier_display()
+        member_count = obj.member_count
+        other_count = member_count - 1
+
+        return (
+            f'You and {other_count} other creators are all at the {tier_display} level. '
+            f'We put you together so you can learn from each other, share wins, and grow at a similar pace.'
+        )
 
     def get_members(self, obj):
         """Get all active members of the circle."""

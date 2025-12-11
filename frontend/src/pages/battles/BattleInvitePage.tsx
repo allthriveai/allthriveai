@@ -73,10 +73,19 @@ export function BattleInvitePage() {
     try {
       const response = await api.post(`/battles/invite/${token}/accept/`);
       // Navigate to the battle
-      navigate(`/battles/${response.data.id}`);
+      const battleId = response.data?.id;
+      if (battleId) {
+        navigate(`/battles/${battleId}`);
+      } else {
+        console.error('No battle ID in response:', response.data);
+        setError('Failed to join battle - please try again');
+        setIsAccepting(false);
+      }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Failed to accept invitation');
+      console.error('Accept invitation error:', err);
+      const error = err as { response?: { data?: { error?: string; detail?: string }; status?: number } };
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to accept invitation';
+      setError(errorMessage);
       setIsAccepting(false);
     }
   };
@@ -92,20 +101,35 @@ export function BattleInvitePage() {
       // Refresh auth context to pick up the new guest user from cookies
       await refreshUser();
 
-      // Navigate to the battle
-      navigate(`/battles/${response.data.id}`);
+      // Navigate to the battle - the response contains the serialized battle
+      const battleId = response.data?.id;
+      if (battleId) {
+        navigate(`/battles/${battleId}`);
+      } else {
+        console.error('No battle ID in response:', response.data);
+        setError('Failed to join battle - please try again');
+        setIsAcceptingAsGuest(false);
+      }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Failed to accept invitation');
+      console.error('Accept invitation error:', err);
+      const error = err as { response?: { data?: { error?: string; detail?: string }; status?: number } };
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to accept invitation';
+      setError(errorMessage);
       setIsAcceptingAsGuest(false);
     }
   };
 
-  const timeUntilExpiry = invitation
-    ? Math.max(0, new Date(invitation.expires_at).getTime() - Date.now())
-    : 0;
+  // Calculate time until expiry with guards for invalid dates
+  const getTimeUntilExpiry = () => {
+    if (!invitation?.expires_at) return 0;
+    const expiryTime = new Date(invitation.expires_at).getTime();
+    if (isNaN(expiryTime)) return 0;
+    return Math.max(0, expiryTime - Date.now());
+  };
+  const timeUntilExpiry = getTimeUntilExpiry();
   const hoursLeft = Math.floor(timeUntilExpiry / (1000 * 60 * 60));
   const minutesLeft = Math.floor((timeUntilExpiry % (1000 * 60 * 60)) / (1000 * 60));
+  const hasValidExpiry = invitation?.expires_at && !isNaN(new Date(invitation.expires_at).getTime());
 
   if (isLoading || authLoading) {
     return (
@@ -282,7 +306,7 @@ export function BattleInvitePage() {
                 <span className="text-slate-400">Expires In</span>
                 <span className="text-amber-400 font-medium flex items-center gap-1">
                   <ClockIcon className="w-4 h-4" />
-                  {hoursLeft}h {minutesLeft}m
+                  {hasValidExpiry ? `${hoursLeft}h ${minutesLeft}m` : '< 24h'}
                 </span>
               </div>
             </div>
@@ -290,27 +314,18 @@ export function BattleInvitePage() {
             {/* Actions */}
             {!isAuthenticated ? (
               <div className="space-y-4">
-                {/* Play as Guest - Primary action */}
+                {/* Question prompt */}
+                <p className="text-center text-slate-300 font-medium">
+                  Do you have an account?
+                </p>
+
+                {/* Sign in option - Primary for existing users */}
                 <button
-                  onClick={handleAcceptAsGuest}
-                  disabled={isAcceptingAsGuest}
-                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+                  onClick={() => navigate(`/auth?redirect=/battle/invite/${token}`)}
+                  className="btn-primary w-full flex items-center justify-center gap-2"
                 >
-                  {isAcceptingAsGuest ? (
-                    <>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                        className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
-                      />
-                      Joining Battle...
-                    </>
-                  ) : (
-                    <>
-                      <BoltIcon className="w-5 h-5" />
-                      Play Now
-                    </>
-                  )}
+                  <UserPlusIcon className="w-5 h-5" />
+                  Sign In
                 </button>
 
                 <div className="relative">
@@ -322,17 +337,31 @@ export function BattleInvitePage() {
                   </div>
                 </div>
 
-                {/* Sign in option */}
+                {/* Play as Guest option */}
                 <button
-                  onClick={() => navigate(`/auth?redirect=/battle/invite/${token}`)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700/50 transition-colors"
+                  onClick={handleAcceptAsGuest}
+                  disabled={isAcceptingAsGuest}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700/50 transition-colors disabled:opacity-50"
                 >
-                  <UserPlusIcon className="w-5 h-5" />
-                  Sign In with Account
+                  {isAcceptingAsGuest ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        className="w-5 h-5 border-2 border-slate-400/30 border-t-slate-400 rounded-full"
+                      />
+                      Joining Battle...
+                    </>
+                  ) : (
+                    <>
+                      <BoltIcon className="w-5 h-5" />
+                      Continue as Guest
+                    </>
+                  )}
                 </button>
 
                 <p className="text-center text-slate-500 text-xs">
-                  Play now as a guest - you can create an account after the battle
+                  You can create an account after the battle to save your progress
                 </p>
               </div>
             ) : (

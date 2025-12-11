@@ -646,6 +646,35 @@ aws-validate:
 		echo "      If both go through CloudFront, WebSocket may fail (HTTP/2 issue)"; \
 	fi; \
 	echo ""; \
+	echo "=== Seed Data Status ==="; \
+	echo ""; \
+	echo "Checking if seed data exists in production..."; \
+	echo "(Running quick count queries via ECS task)"; \
+	echo ""; \
+	SEED_CHECK_CMD="python -c \"import django; django.setup(); from core.taxonomy.models import Topic, Category; from core.tools.models import Tool; from core.billing.models import SubscriptionTier; from core.battles.models import ChallengeType; from core.accounts.models import User; print('Topics:', Topic.objects.count()); print('Categories:', Category.objects.count()); print('Tools:', Tool.objects.count()); print('SubscriptionTiers:', SubscriptionTier.objects.count()); print('ChallengeTypes:', ChallengeType.objects.count()); print('Pip bot:', 'exists' if User.objects.filter(username='pip').exists() else 'MISSING')\""; \
+	SEED_TASK_ARN=$$(aws ecs run-task \
+		--cluster $$ENVIRONMENT-allthrive-cluster \
+		--task-definition $$TASK_DEF \
+		--launch-type FARGATE \
+		--network-configuration "awsvpcConfiguration={subnets=$$(aws ecs describe-services --cluster $$ENVIRONMENT-allthrive-cluster --services $$ENVIRONMENT-allthrive-web --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets' --output text --region $$AWS_REGION | tr '\t' ','),securityGroups=$$(aws ecs describe-services --cluster $$ENVIRONMENT-allthrive-cluster --services $$ENVIRONMENT-allthrive-web --query 'services[0].networkConfiguration.awsvpcConfiguration.securityGroups' --output text --region $$AWS_REGION | tr '\t' ','),assignPublicIp=ENABLED}" \
+		--overrides "{\"containerOverrides\":[{\"name\":\"web\",\"command\":[\"sh\",\"-c\",\"$$SEED_CHECK_CMD\"]}]}" \
+		--query 'tasks[0].taskArn' \
+		--output text --region $$AWS_REGION 2>/dev/null); \
+	if [ -n "$$SEED_TASK_ARN" ] && [ "$$SEED_TASK_ARN" != "None" ]; then \
+		echo "   Waiting for seed check task..."; \
+		aws ecs wait tasks-stopped --cluster $$ENVIRONMENT-allthrive-cluster --tasks $$SEED_TASK_ARN --region $$AWS_REGION 2>/dev/null; \
+		SEED_EXIT=$$(aws ecs describe-tasks --cluster $$ENVIRONMENT-allthrive-cluster --tasks $$SEED_TASK_ARN \
+			--query 'tasks[0].containers[?name==`web`].exitCode' --output text --region $$AWS_REGION 2>/dev/null); \
+		if [ "$$SEED_EXIT" = "0" ]; then \
+			echo "   ✅ Seed check completed - view CloudWatch logs for counts"; \
+			echo "   Log group: /ecs/$$ENVIRONMENT-allthrive-web"; \
+		else \
+			echo "   ⚠️  Seed check task had issues (exit: $$SEED_EXIT)"; \
+		fi; \
+	else \
+		echo "   ⚠️  Could not run seed check task"; \
+	fi; \
+	echo ""; \
 	echo "=== Validation Complete ==="
 
 cloudfront-clear-cache:

@@ -365,3 +365,38 @@ export async function toggleProjectInShowcase(projectId: number): Promise<{
     projectIds: response.data.projectIds,
   };
 }
+
+/**
+ * Visual styles available for image regeneration
+ */
+export const VISUAL_STYLES = [
+  { id: 'cyberpunk', name: 'Cyberpunk', description: 'Neon colors, digital aesthetics' },
+  { id: 'dark_academia', name: 'Dark Academia', description: 'Moody, scholarly aesthetic' },
+  { id: 'minimalist', name: 'Minimalist', description: 'Clean, simple design' },
+  { id: 'retro_tech', name: 'Retro Tech', description: '80s/90s technology vibes' },
+  { id: 'nature_tech', name: 'Nature Tech', description: 'Organic meets digital' },
+] as const;
+
+export type VisualStyle = typeof VISUAL_STYLES[number]['id'];
+
+/**
+ * Admin edit project content and regenerate images (admin only)
+ * Used for curated articles and other content types
+ */
+export async function adminEditProject(
+  projectId: number,
+  updates: {
+    title?: string;
+    description?: string;
+    regenerateImage?: boolean;
+    visualStyle?: VisualStyle;
+  }
+): Promise<Project> {
+  const response = await api.patch<ProjectApiResponse>(`/me/projects/${projectId}/admin-edit/`, {
+    title: updates.title,
+    description: updates.description,
+    regenerate_image: updates.regenerateImage,
+    visual_style: updates.visualStyle,
+  });
+  return transformProject(response.data);
+}

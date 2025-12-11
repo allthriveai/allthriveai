@@ -356,6 +356,193 @@ class ProjectViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(project)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['patch'], url_path='admin-edit')
+    def admin_edit(self, request, pk=None):
+        """Admin-only endpoint to edit project content and regenerate images.
+
+        Also allows users who are being impersonated by an admin (the impersonation
+        cookie indicates an admin is behind the current session).
+
+        Payload:
+        {
+            "title": "New title",  # Optional - update title
+            "description": "New description",  # Optional - update description/expert review
+            "regenerate_image": true,  # Optional - regenerate featured image with Gemini
+            "visual_style": "cyberpunk"  # Optional - visual style for image generation
+        }
+        """
+        from core.auth.impersonation import IMPERSONATION_COOKIE
+        from core.users.models import ImpersonationLog, UserRole
+
+        # Valid visual styles
+        VALID_VISUAL_STYLES = {'cyberpunk', 'dark_academia', 'minimalist', 'retro_tech', 'nature_tech'}
+
+        # Check if user is admin
+        is_admin = request.user.role == UserRole.ADMIN
+
+        # Check if an admin is impersonating (validate the session is real and active)
+        is_impersonating = False
+        original_admin_username = None
+        impersonation_value = request.COOKIES.get(IMPERSONATION_COOKIE)
+        if impersonation_value:
+            try:
+                admin_id, session_id = impersonation_value.split(':')
+                impersonation_session = (
+                    ImpersonationLog.objects.filter(
+                        id=session_id,
+                        admin_user_id=admin_id,
+                        target_user=request.user,
+                        ended_at__isnull=True,  # Session is still active
+                    )
+                    .select_related('admin_user')
+                    .first()
+                )
+                if impersonation_session:
+                    is_impersonating = True
+                    original_admin_username = impersonation_session.admin_user.username
+            except (ValueError, TypeError):
+                pass
+
+        if not is_admin and not is_impersonating:
+            return Response(
+                {'error': 'Only admins can edit project content'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        project = self.get_object()
+        updated = False
+
+        # Determine who is actually making the edit for logging
+        editor_username = original_admin_username if is_impersonating else request.user.username
+
+        # Update title
+        if 'title' in request.data:
+            new_title = request.data['title']
+            if new_title and isinstance(new_title, str):
+                project.title = new_title.strip()[:255]
+                updated = True
+
+        # Update description (expert review for curated articles)
+        if 'description' in request.data:
+            new_description = request.data['description']
+            if isinstance(new_description, str):
+                project.description = new_description.strip()
+                updated = True
+
+        # Regenerate featured image
+        if request.data.get('regenerate_image'):
+            visual_style = request.data.get('visual_style', 'cyberpunk')
+            # Validate visual style
+            if visual_style not in VALID_VISUAL_STYLES:
+                visual_style = 'cyberpunk'
+            new_image_url = self._regenerate_project_image(project, visual_style)
+            if new_image_url:
+                project.featured_image_url = new_image_url
+                updated = True
+                logger.info(
+                    f'Admin {editor_username} regenerated image for project {project.id} '
+                    f'(style: {visual_style})'
+                    f'{" (impersonating " + request.user.username + ")" if is_impersonating else ""}'
+                )
+
+        if updated:
+            project.save()
+            # Invalidate cache
+            self._invalidate_user_cache(project.user)
+            logger.info(
+                f'Admin {editor_username} edited project {project.id} '
+                f'({project.user.username}/{project.slug})'
+                f'{" (impersonating " + request.user.username + ")" if is_impersonating else ""}'
+            )
+
+        # Return updated project
+        serializer = self.get_serializer(project)
+        return Response(serializer.data)
+
+    def _regenerate_project_image(self, project, visual_style: str = 'cyberpunk') -> str | None:
+        """Regenerate featured image for a project using Gemini.
+
+        Args:
+            project: The project to regenerate image for
+            visual_style: Visual style for the image (e.g., 'cyberpunk', 'dark_academia')
+
+        Returns:
+            New image URL or None if generation fails
+        """
+        from services.ai.provider import AIProvider
+        from services.integrations.rss.sync import VISUAL_STYLE_PROMPTS
+        from services.storage import get_storage_service
+
+        try:
+            ai = AIProvider(provider='gemini')
+
+            # Get style prompt
+            style_prompt = VISUAL_STYLE_PROMPTS.get(visual_style, VISUAL_STYLE_PROMPTS['cyberpunk'])
+
+            # Build prompt based on project content
+            title = project.title or ''
+            description = (project.description or '')[:500]
+            topics = project.topics or []
+
+            prompt = (
+                f"""Create a hero image for this AI/tech article. """
+                f"""The image MUST visually represent the article's topic.
+
+ARTICLE: "{title}"
+{f'CONTEXT: {description}' if description else ''}
+{f'TOPICS: {", ".join(topics[:5])}' if topics else ''}
+
+STEP 1 - UNDERSTAND THE TOPIC:
+First, identify what this article is actually about """
+                f"""(AI alignment, machine learning, coding, security, etc.) """
+                f"""and create imagery that represents THAT topic.
+
+STEP 2 - APPLY VISUAL STYLE:
+Render the topic-relevant imagery using this aesthetic:
+{style_prompt}
+
+CRITICAL REQUIREMENTS:
+1. The image MUST relate to the article's subject matter
+2. Apply the visual style as an artistic treatment on the topic imagery
+3. FORMAT: VERTICAL 9:16 aspect ratio (portrait mode)
+4. AVOID: No text overlays, no human faces, no company logos"""
+            )
+
+            # Generate image
+            image_bytes, mime_type, _text = ai.generate_image(prompt=prompt, timeout=120)
+
+            if not image_bytes:
+                logger.warning(f'No image generated for project: {project.id}')
+                return None
+
+            # Determine file extension
+            ext_map = {
+                'image/png': 'png',
+                'image/jpeg': 'jpg',
+                'image/webp': 'webp',
+            }
+            extension = ext_map.get(mime_type, 'png')
+
+            # Upload to S3
+            storage = get_storage_service()
+            url, error = storage.upload_file(
+                file_data=image_bytes,
+                filename=f'hero-regenerated.{extension}',
+                content_type=mime_type or 'image/png',
+                folder='article-heroes',
+                is_public=True,
+            )
+
+            if error:
+                logger.error(f'Failed to upload regenerated image: {error}')
+                return None
+
+            return url
+
+        except Exception as e:
+            logger.error(f'Error regenerating image for project {project.id}: {e}')
+            return None
+
     @action(detail=False, methods=['post'], url_path='bulk-delete')
     def bulk_delete(self, request):
         """Bulk delete projects.

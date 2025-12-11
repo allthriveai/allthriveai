@@ -54,3 +54,7 @@ dump.rdb
 # Test artifacts
 playwright-report/
 test-results/
+
+# Large files
+*.pdf
+frontend/public/chatbot-chat.png

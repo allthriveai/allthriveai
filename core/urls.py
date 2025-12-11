@@ -80,7 +80,13 @@ from .social.views import (
 )
 from .social.views import oauth_callback as social_oauth_callback
 from .taxonomy.views import TaxonomyViewSet, UserTagViewSet, track_interaction, user_personalization_overview
-from .thrive_circle.views import PointActivityViewSet, QuestCategoryViewSet, SideQuestViewSet, ThriveCircleViewSet
+from .thrive_circle.views import (
+    CircleViewSet,
+    PointActivityViewSet,
+    QuestCategoryViewSet,
+    SideQuestViewSet,
+    ThriveCircleViewSet,
+)
 from .tools.views import (
     ToolBookmarkViewSet,
     ToolComparisonViewSet,
@@ -136,6 +142,7 @@ me_router.register(r'point-activities', PointActivityViewSet, basename='me-point
 me_router.register(r'side-quests', SideQuestViewSet, basename='me-side-quests')
 me_router.register(r'quest-categories', QuestCategoryViewSet, basename='me-quest-categories')
 me_router.register(r'achievements', AchievementViewSet, basename='me-achievements')
+me_router.register(r'circles', CircleViewSet, basename='me-circles')
 
 # Taxonomy router (public but auth-required)
 taxonomy_router = DefaultRouter()

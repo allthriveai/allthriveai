@@ -13,27 +13,14 @@ import {
   faBolt,
   faClock,
 } from '@fortawesome/free-solid-svg-icons';
-import type { Kudos } from '@/types/models';
-
-// Activity types for the feed
-type ActivityType = 'project' | 'streak' | 'kudos' | 'comment' | 'quiz' | 'joined' | 'level_up';
-
-interface ActivityItem {
-  id: string;
-  type: ActivityType;
-  username: string;
-  message: string;
-  timestamp: string;
-  targetUsername?: string;
-}
+import type { CircleActivityFeed as CircleActivityFeedType, CircleActivityItem, CircleActivityType } from '@/types/models';
 
 interface CircleActivityFeedProps {
-  activities?: ActivityItem[];
-  kudos?: Kudos[] | { results?: Kudos[] } | null;
+  activityFeed?: CircleActivityFeedType | null;
   isLoading?: boolean;
 }
 
-const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof faRocket; color: string; bgColor: string }> = {
+const ACTIVITY_CONFIG: Record<CircleActivityType, { icon: typeof faRocket; color: string; bgColor: string }> = {
   project: { icon: faRocket, color: 'text-purple-400', bgColor: 'bg-purple-500/20 border-purple-500/30' },
   streak: { icon: faFire, color: 'text-orange-400', bgColor: 'bg-orange-500/20 border-orange-500/30' },
   kudos: { icon: faStar, color: 'text-yellow-400', bgColor: 'bg-yellow-500/20 border-yellow-500/30' },
@@ -42,35 +29,6 @@ const ACTIVITY_CONFIG: Record<ActivityType, { icon: typeof faRocket; color: stri
   joined: { icon: faUserPlus, color: 'text-pink-400', bgColor: 'bg-pink-500/20 border-pink-500/30' },
   level_up: { icon: faBolt, color: 'text-cyan-bright', bgColor: 'bg-cyan-500/20 border-cyan-500/30' },
 };
-
-// Generate activities from kudos
-function generateActivitiesFromKudos(kudos: Kudos[] | { results?: Kudos[] } | null | undefined): ActivityItem[] {
-  // Handle various input formats defensively
-  let kudosArray: Kudos[];
-
-  if (!kudos) {
-    return [];
-  }
-
-  // Handle paginated response format { results: [...] }
-  if ('results' in kudos && Array.isArray(kudos.results)) {
-    kudosArray = kudos.results;
-  } else if (Array.isArray(kudos)) {
-    kudosArray = kudos;
-  } else {
-    console.warn('[CircleActivityFeed] Unexpected kudos format:', kudos);
-    return [];
-  }
-
-  return kudosArray.map((k) => ({
-    id: k.id,
-    type: 'kudos' as ActivityType,
-    username: k.fromUser.username,
-    message: `gave kudos to ${k.toUser.username}`,
-    timestamp: k.createdAt,
-    targetUsername: k.toUser.username,
-  }));
-}
 
 function formatTimeAgo(timestamp: string): string {
   const now = new Date();
@@ -83,12 +41,9 @@ function formatTimeAgo(timestamp: string): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-export function CircleActivityFeed({ activities, kudos, isLoading }: CircleActivityFeedProps) {
-  // Combine provided activities with kudos-based activities
-  const allActivities: ActivityItem[] = [
-    ...(activities || []),
-    ...(kudos ? generateActivitiesFromKudos(kudos) : []),
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+export function CircleActivityFeed({ activityFeed, isLoading }: CircleActivityFeedProps) {
+  // Get activities from the feed
+  const allActivities: CircleActivityItem[] = activityFeed?.activities || [];
 
   if (isLoading) {
     return (

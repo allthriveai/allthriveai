@@ -89,8 +89,12 @@ export function CircleMembersGrid({
             <h3 className="text-lg font-bold text-white">Circle Members</h3>
             <p className="text-xs text-slate-500">
               <span className="text-cyan-bright">{members.length}</span> members
-              <span className="text-slate-600 mx-1">•</span>
-              <span className="text-emerald-400">{activeCount}</span> active
+              {activeCount > 0 && (
+                <>
+                  <span className="text-slate-600 mx-1">•</span>
+                  <span className="text-emerald-400">{activeCount}</span> active
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -103,7 +107,7 @@ export function CircleMembersGrid({
       </div>
 
       {/* Members Grid */}
-      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-4 justify-items-center">
+      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-4 sm:gap-6 justify-items-center">
         {sortedMembers.map((membership) => (
           <CircleMemberCard
             key={membership.id}

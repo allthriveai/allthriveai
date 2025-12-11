@@ -652,6 +652,8 @@ export interface Circle {
   activeMemberCount: number;
   isActive: boolean;
   createdAt: string;
+  // Dynamic match reason explaining why user is in this circle
+  matchReason?: string;
   // Detailed fields (from CircleDetailSerializer)
   members?: CircleMembership[];
   activeChallenge?: CircleChallenge | null;
@@ -679,7 +681,21 @@ export interface CreateKudosRequest {
   projectId?: string;
 }
 
+// Activity item in the circle activity feed
+export type CircleActivityType = 'project' | 'streak' | 'kudos' | 'comment' | 'quiz' | 'joined' | 'level_up';
+
+export interface CircleActivityItem {
+  id: string;
+  type: CircleActivityType;
+  username: string;
+  message: string;
+  timestamp: string;
+  targetUsername?: string;
+  points?: number;
+}
+
 export interface CircleActivityFeed {
+  activities: CircleActivityItem[];
   kudos: Kudos[];
   circleName: string;
   hasCircle: boolean;

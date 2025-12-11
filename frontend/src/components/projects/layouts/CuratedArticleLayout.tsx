@@ -8,17 +8,21 @@
  * - "Read Full Article" call-to-action button
  * - Category-themed accent colors throughout
  * - Full light/dark mode support
+ * - Admin edit panel for title, description, and image regeneration
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowTopRightOnSquareIcon, ClockIcon, UserIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon, ClockIcon, UserIcon, PencilIcon, ArrowPathIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { useProjectContext } from '@/context/ProjectContext';
+import { useAuth } from '@/hooks/useAuth';
 import { getCategoryColors } from '@/utils/categoryColors';
 import { ProjectActions } from '../shared/ProjectActions';
 import { ShareModal } from '../shared/ShareModal';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
+import { adminEditProject, VISUAL_STYLES, type VisualStyle } from '@/services/projects';
+import { getImpersonationStatus } from '@/services/impersonation';
 
 /**
  * Format the expert review into structured HTML with headers and sections
@@ -93,11 +97,91 @@ export function CuratedArticleLayout() {
     openCommentTray,
     closeCommentTray,
     isAuthenticated,
+    setProject,
   } = useProjectContext();
+
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
+  // Check if user is impersonating (admin acting as another user)
+  // Only check if authenticated and NOT already an admin (admins don't need impersonation check)
+  const [isImpersonating, setIsImpersonating] = useState(false);
+
+  useEffect(() => {
+    async function checkImpersonation() {
+      // Skip check if not authenticated or already admin
+      if (!isAuthenticated || isAdmin) {
+        setIsImpersonating(false);
+        return;
+      }
+      try {
+        const status = await getImpersonationStatus();
+        setIsImpersonating(status.isImpersonating);
+      } catch {
+        setIsImpersonating(false);
+      }
+    }
+    checkImpersonation();
+  }, [isAuthenticated, isAdmin]);
+
+  // Can edit if admin OR if impersonating (impersonation means an admin is acting as this user)
+  const canEdit = isAdmin || isImpersonating;
 
   // Tool tray state
   const [isToolTrayOpen, setIsToolTrayOpen] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
+
+  // Admin edit state
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState(project.title);
+  const [editDescription, setEditDescription] = useState(project.description || '');
+  const [selectedVisualStyle, setSelectedVisualStyle] = useState<VisualStyle>('cyberpunk');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
+
+  // Handle saving text changes
+  const handleSaveTextChanges = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    setAdminError(null);
+
+    try {
+      const updatedProject = await adminEditProject(project.id, {
+        title: editTitle !== project.title ? editTitle : undefined,
+        description: editDescription !== project.description ? editDescription : undefined,
+      });
+      setProject(updatedProject);
+      setIsAdminPanelOpen(false);
+    } catch (error: any) {
+      // Use generic error message to avoid exposing internal details
+      console.error('Admin edit error:', error);
+      setAdminError('Failed to save changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle regenerating image
+  const handleRegenerateImage = async () => {
+    if (isRegenerating) return;
+    setIsRegenerating(true);
+    setAdminError(null);
+
+    try {
+      const updatedProject = await adminEditProject(project.id, {
+        regenerateImage: true,
+        visualStyle: selectedVisualStyle,
+      });
+      setProject(updatedProject);
+    } catch (error: any) {
+      // Use generic error message to avoid exposing internal details
+      console.error('Admin regenerate image error:', error);
+      setAdminError('Failed to regenerate image. Please try again.');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   const handleToolClick = (toolSlug: string) => {
     setSelectedToolSlug(toolSlug);
@@ -373,6 +457,173 @@ export function CuratedArticleLayout() {
           isOpen={isToolTrayOpen}
           onClose={() => setIsToolTrayOpen(false)}
           toolSlug={selectedToolSlug}
+        />
+      )}
+
+      {/* Admin Edit Button - Fixed position */}
+      {canEdit && !isAdminPanelOpen && (
+        <button
+          onClick={() => {
+            setEditTitle(project.title);
+            setEditDescription(project.description || '');
+            setIsAdminPanelOpen(true);
+          }}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg transition-all hover:scale-105"
+          title="Admin Edit"
+        >
+          <PencilIcon className="w-5 h-5" />
+          <span className="text-sm font-medium">Admin Edit</span>
+        </button>
+      )}
+
+      {/* Admin Edit Panel - Slide-in from right */}
+      {canEdit && isAdminPanelOpen && (
+        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[450px] bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col">
+          {/* Panel Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2">
+              <PencilIcon className="w-5 h-5 text-amber-500" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Admin Edit</h3>
+            </div>
+            <button
+              onClick={() => setIsAdminPanelOpen(false)}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <XMarkIcon className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+
+          {/* Panel Content */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {/* Error Display */}
+            {adminError && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-600 dark:text-red-400">{adminError}</p>
+              </div>
+            )}
+
+            {/* Title Edit */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Title
+              </label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Description/Expert Review Edit */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Expert Review
+              </label>
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={10}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+                placeholder="Use ## headers for sections..."
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Tip: Use ## Header to create sections
+              </p>
+            </div>
+
+            {/* Save Text Changes Button */}
+            <button
+              onClick={handleSaveTextChanges}
+              disabled={isSaving || (editTitle === project.title && editDescription === project.description)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
+            >
+              {isSaving ? (
+                <>
+                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <CheckIcon className="w-4 h-4" />
+                  Save Text Changes
+                </>
+              )}
+            </button>
+
+            {/* Divider */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <ArrowPathIcon className="w-4 h-4" />
+                Regenerate Hero Image
+              </h4>
+
+              {/* Current Image Preview */}
+              {project.featuredImageUrl && (
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Current Image:</p>
+                  <img
+                    src={project.featuredImageUrl}
+                    alt="Current hero"
+                    className="w-full h-32 object-cover rounded-lg"
+                  />
+                </div>
+              )}
+
+              {/* Visual Style Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Visual Style
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {VISUAL_STYLES.map((style) => (
+                    <button
+                      key={style.id}
+                      onClick={() => setSelectedVisualStyle(style.id)}
+                      className={`p-3 text-left rounded-lg border-2 transition-all ${
+                        selectedVisualStyle === style.id
+                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{style.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{style.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Regenerate Button */}
+              <button
+                onClick={handleRegenerateImage}
+                disabled={isRegenerating}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-lg transition-all disabled:cursor-not-allowed"
+              >
+                {isRegenerating ? (
+                  <>
+                    <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                    Generating with Gemini...
+                  </>
+                ) : (
+                  <>
+                    <ArrowPathIcon className="w-5 h-5" />
+                    Regenerate Image
+                  </>
+                )}
+              </button>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+                Uses Gemini AI to generate a new hero image based on the article content
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Backdrop for admin panel */}
+      {canEdit && isAdminPanelOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/20"
+          onClick={() => setIsAdminPanelOpen(false)}
         />
       )}
     </>

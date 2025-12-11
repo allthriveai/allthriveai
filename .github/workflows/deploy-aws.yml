@@ -160,9 +160,198 @@ jobs:
           echo "📋 Migration status:"
           python manage.py showmigrations
 
+  # Deploy CloudFormation infrastructure changes (if any)
+  deploy-infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit to check for changes
+
+      - name: Check for infrastructure changes
+        id: check_changes
+        run: |
+          # Check if any CloudFormation files changed
+          if git diff --name-only HEAD~1 HEAD | grep -q "infrastructure/cloudformation/"; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "📋 Infrastructure files changed:"
+            git diff --name-only HEAD~1 HEAD | grep "infrastructure/cloudformation/" || true
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "✅ No infrastructure changes detected"
+          fi
+
+      - name: Configure AWS credentials
+        if: steps.check_changes.outputs.has_changes == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ vars.ENVIRONMENT || 'production' }}-allthrive-github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get stack parameters
+        if: steps.check_changes.outputs.has_changes == 'true'
+        id: params
+        run: |
+          ENVIRONMENT="${{ vars.ENVIRONMENT || 'production' }}"
+          ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
+
+          # Get existing parameters from CloudFormation stacks
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
+
+      - name: Deploy ECS stack (if changed)
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          ENVIRONMENT="${{ steps.params.outputs.environment }}"
+          STACK_NAME="${ENVIRONMENT}-allthrive-ecs"
+
+          # Check if ECS template changed
+          if git diff --name-only HEAD~1 HEAD | grep -q "10-ecs.yaml"; then
+            echo "🚀 Deploying ECS stack updates..."
+
+            # Get current parameters from the existing stack
+            CURRENT_PARAMS=$(aws cloudformation describe-stacks \
+              --stack-name $STACK_NAME \
+              --query 'Stacks[0].Parameters' \
+              --output json 2>/dev/null || echo "[]")
+
+            # Build parameter overrides to use existing values
+            PARAM_OVERRIDES=""
+            for key in $(echo $CURRENT_PARAMS | jq -r '.[].ParameterKey'); do
+              PARAM_OVERRIDES="$PARAM_OVERRIDES ParameterKey=$key,UsePreviousValue=true"
+            done
+
+            aws cloudformation update-stack \
+              --stack-name $STACK_NAME \
+              --template-body file://infrastructure/cloudformation/10-ecs.yaml \
+              --parameters $PARAM_OVERRIDES \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --region ${{ env.AWS_REGION }} || {
+                EXIT_CODE=$?
+                if aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text | grep -q "UPDATE_IN_PROGRESS\|CREATE_IN_PROGRESS"; then
+                  echo "Stack update already in progress"
+                elif [ $EXIT_CODE -eq 255 ]; then
+                  echo "✅ No updates needed for ECS stack"
+                else
+                  exit $EXIT_CODE
+                fi
+              }
+
+            echo "⏳ Waiting for ECS stack update..."
+            aws cloudformation wait stack-update-complete --stack-name $STACK_NAME --region ${{ env.AWS_REGION }} || true
+
+            STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text)
+            if [[ "$STATUS" == *"COMPLETE"* ]] && [[ "$STATUS" != *"ROLLBACK"* ]]; then
+              echo "✅ ECS stack updated successfully"
+            else
+              echo "⚠️ ECS stack status: $STATUS"
+            fi
+          else
+            echo "✅ No ECS stack changes"
+          fi
+
+      - name: Deploy CloudFront stack (if changed)
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          ENVIRONMENT="${{ steps.params.outputs.environment }}"
+          STACK_NAME="${ENVIRONMENT}-allthrive-cloudfront"
+
+          # Check if CloudFront template changed
+          if git diff --name-only HEAD~1 HEAD | grep -q "11-cloudfront.yaml"; then
+            echo "🚀 Deploying CloudFront stack updates..."
+
+            # Get current parameters from the existing stack
+            CURRENT_PARAMS=$(aws cloudformation describe-stacks \
+              --stack-name $STACK_NAME \
+              --query 'Stacks[0].Parameters' \
+              --output json 2>/dev/null || echo "[]")
+
+            # Build parameter overrides to use existing values
+            PARAM_OVERRIDES=""
+            for key in $(echo $CURRENT_PARAMS | jq -r '.[].ParameterKey'); do
+              PARAM_OVERRIDES="$PARAM_OVERRIDES ParameterKey=$key,UsePreviousValue=true"
+            done
+
+            aws cloudformation update-stack \
+              --stack-name $STACK_NAME \
+              --template-body file://infrastructure/cloudformation/11-cloudfront.yaml \
+              --parameters $PARAM_OVERRIDES \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --region ${{ env.AWS_REGION }} || {
+                EXIT_CODE=$?
+                if [ $EXIT_CODE -eq 255 ]; then
+                  echo "✅ No updates needed for CloudFront stack"
+                else
+                  exit $EXIT_CODE
+                fi
+              }
+
+            echo "⏳ Waiting for CloudFront stack update (this can take several minutes)..."
+            aws cloudformation wait stack-update-complete --stack-name $STACK_NAME --region ${{ env.AWS_REGION }} || true
+
+            STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text)
+            if [[ "$STATUS" == *"COMPLETE"* ]] && [[ "$STATUS" != *"ROLLBACK"* ]]; then
+              echo "✅ CloudFront stack updated successfully"
+            else
+              echo "⚠️ CloudFront stack status: $STATUS"
+            fi
+          else
+            echo "✅ No CloudFront stack changes"
+          fi
+
+      - name: Deploy ALB stack (if changed)
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          ENVIRONMENT="${{ steps.params.outputs.environment }}"
+          STACK_NAME="${ENVIRONMENT}-allthrive-alb"
+
+          # Check if ALB template changed
+          if git diff --name-only HEAD~1 HEAD | grep -q "09-alb.yaml"; then
+            echo "🚀 Deploying ALB stack updates..."
+
+            # Get current parameters from the existing stack
+            CURRENT_PARAMS=$(aws cloudformation describe-stacks \
+              --stack-name $STACK_NAME \
+              --query 'Stacks[0].Parameters' \
+              --output json 2>/dev/null || echo "[]")
+
+            # Build parameter overrides to use existing values
+            PARAM_OVERRIDES=""
+            for key in $(echo $CURRENT_PARAMS | jq -r '.[].ParameterKey'); do
+              PARAM_OVERRIDES="$PARAM_OVERRIDES ParameterKey=$key,UsePreviousValue=true"
+            done
+
+            aws cloudformation update-stack \
+              --stack-name $STACK_NAME \
+              --template-body file://infrastructure/cloudformation/09-alb.yaml \
+              --parameters $PARAM_OVERRIDES \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --region ${{ env.AWS_REGION }} || {
+                EXIT_CODE=$?
+                if [ $EXIT_CODE -eq 255 ]; then
+                  echo "✅ No updates needed for ALB stack"
+                else
+                  exit $EXIT_CODE
+                fi
+              }
+
+            echo "⏳ Waiting for ALB stack update..."
+            aws cloudformation wait stack-update-complete --stack-name $STACK_NAME --region ${{ env.AWS_REGION }} || true
+
+            STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text)
+            if [[ "$STATUS" == *"COMPLETE"* ]] && [[ "$STATUS" != *"ROLLBACK"* ]]; then
+              echo "✅ ALB stack updated successfully"
+            else
+              echo "⚠️ ALB stack status: $STATUS"
+            fi
+          else
+            echo "✅ No ALB stack changes"
+          fi
+
   # Build and push backend Docker image
   build-backend:
-    needs: [validate-architecture, validate-migrations]
+    needs: [validate-architecture, validate-migrations, deploy-infrastructure]
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.meta.outputs.tags }}
@@ -440,6 +629,41 @@ jobs:
             echo "✅ Post-deploy commands completed"
           else
             echo "⚠️ Post-deploy commands had issues (exit code: $EXIT_CODE) - continuing anyway"
+          fi
+
+      - name: Seed data (idempotent - creates only if not exists)
+        run: |
+          echo "🌱 Running seed commands (idempotent - will update or create)..."
+
+          # Run seed commands as a one-off task
+          # These use update_or_create so they're safe to run on every deploy
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition ${{ steps.network.outputs.task_definition }} \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.network.outputs.subnets }}],securityGroups=[${{ steps.network.outputs.security_groups }}],assignPublicIp=${{ steps.network.outputs.assign_public_ip }}}" \
+            --overrides '{"containerOverrides":[{"name":"web","command":["sh","-c","python manage.py seed_topics && python manage.py seed_taxonomies && python manage.py seed_categories && python manage.py seed_tools && python manage.py seed_challenge_types && python manage.py seed_billing && python manage.py create_pip"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "📦 Started seed task: $TASK_ARN"
+
+          # Wait for completion
+          aws ecs wait tasks-stopped \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].containers[?name==`web`].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo "✅ Seed commands completed successfully"
+          else
+            echo "⚠️ Seed commands had issues (exit code: $EXIT_CODE) - continuing anyway"
+            # Don't fail the deploy for seed issues - data may already exist
           fi
 
   # Notify on completion

@@ -4,10 +4,9 @@
  * Includes real-time activity notifications
  */
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
-import { useCircleActivityMock } from '@/hooks/useCircleWebSocket';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { CircleMembersGrid } from '@/components/thrive-circle/CircleMembersGrid';
 import { CircleChallengeCard } from '@/components/thrive-circle/CircleChallengeCard';
@@ -15,11 +14,6 @@ import { CircleActivityFeed } from '@/components/thrive-circle/CircleActivityFee
 import { CircleProjectsFeed } from '@/components/thrive-circle/CircleProjectsFeed';
 import { KudosWall } from '@/components/thrive-circle/KudosWall';
 import { GiveKudosModal } from '@/components/thrive-circle/GiveKudosModal';
-import {
-  CircleActivityToast,
-  useCircleActivityToasts,
-  type CircleActivityEvent,
-} from '@/components/thrive-circle/CircleActivityToast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCalendarWeek,
@@ -72,6 +66,7 @@ export default function ThriveCirclePage() {
     isLoading,
     isLoadingCircle,
     isLoadingKudos,
+    isLoadingCircleActivity,
     circleProjects,
     isLoadingCircleProjects,
     giveKudos,
@@ -79,18 +74,6 @@ export default function ThriveCirclePage() {
   } = useThriveCircle();
 
   const [selectedMember, setSelectedMember] = useState<CircleMembership | null>(null);
-
-  // Real-time activity toasts
-  const { events: activityEvents, addEvent, dismissEvent } = useCircleActivityToasts();
-
-  // Handle real-time activity events (using mock for demo, switch to useCircleWebSocket for production)
-  const handleActivityEvent = useCallback((event: CircleActivityEvent) => {
-    addEvent(event);
-  }, [addEvent]);
-
-  // Enable mock activity events for demo (shows a new activity every 8 seconds)
-  // In production, replace this with: useCircleWebSocket({ circleId: myCircle?.id, onActivity: handleActivityEvent })
-  useCircleActivityMock(handleActivityEvent, isAuthenticated && !!myCircle, 8000);
 
   const handleGiveKudos = (kudosType: KudosType, message: string) => {
     if (!selectedMember) return;
@@ -149,7 +132,7 @@ export default function ThriveCirclePage() {
             <div className="fixed inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
             <div className="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
 
-            <div className="relative z-10 h-full flex items-center justify-center">
+            <div className="relative z-10 min-h-[60vh] flex items-center justify-center">
               <div className="text-center">
                 <div className="w-16 h-16 rounded-full bg-cyan-500/20 flex items-center justify-center mx-auto mb-4 shadow-neon">
                   <FontAwesomeIcon icon={faSpinner} spin className="text-2xl text-cyan-bright" />
@@ -223,11 +206,16 @@ export default function ThriveCirclePage() {
                     )}
                   </span>
                 </h1>
-                <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl">
-                  {myCircle?.tier
-                    ? TIER_CONFIG[myCircle.tier]?.description
-                    : 'A weekly community of ~25 learners at your level. Complete challenges together, give kudos to celebrate wins, and grow as a supportive community.'}
-                </p>
+                <div className="max-w-6xl space-y-2">
+                  <p className="text-lg text-gray-700 dark:text-gray-300">
+                    Thrive Circles are small groups of creators matched weekly based on where you are in your journey.
+                  </p>
+                  {myCircle && (
+                    <p className="text-lg text-gray-700 dark:text-gray-300">
+                      {myCircle.matchReason || `You and ${myCircle.memberCount - 1} other creators are all at the ${myCircle.tierDisplay || myCircle.tier} level. We put you together so you can learn from each other, share wins, and grow at a similar pace.`}
+                    </p>
+                  )}
+                </div>
               </div>
             </header>
 
@@ -265,8 +253,8 @@ export default function ThriveCirclePage() {
 
                 {/* Activity Feed */}
                 <CircleActivityFeed
-                  kudos={circleActivity?.kudos || kudosReceived}
-                  isLoading={isLoadingKudos}
+                  activityFeed={circleActivity}
+                  isLoading={isLoadingCircleActivity}
                 />
               </div>
 
@@ -282,11 +270,6 @@ export default function ThriveCirclePage() {
                 projects={circleProjects}
                 isLoading={isLoadingCircleProjects}
               />
-
-              {/* Quick Challenge Card (if exists) */}
-              {myCircle?.activeChallenge && (
-                <CircleChallengeCard challenge={myCircle.activeChallenge} variant="card" />
-              )}
             </div>
 
             {/* Give Kudos Modal */}
@@ -299,13 +282,6 @@ export default function ThriveCirclePage() {
               />
             )}
 
-            {/* Real-time Activity Toasts */}
-            <CircleActivityToast
-              events={activityEvents}
-              onDismiss={dismissEvent}
-              maxVisible={3}
-              autoHideDuration={5000}
-            />
           </div>
         </div>
       )}

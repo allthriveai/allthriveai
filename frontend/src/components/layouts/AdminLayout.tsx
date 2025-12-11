@@ -6,6 +6,7 @@ import {
   ChartBarIcon,
   EnvelopeIcon,
   UserGroupIcon,
+  UsersIcon,
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarItem {
@@ -51,6 +52,11 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
       label: 'Impersonate',
       path: '/admin/impersonate',
       icon: UserGroupIcon,
+    },
+    {
+      label: 'Circles',
+      path: '/admin/circles',
+      icon: UsersIcon,
     },
     // Future admin sections can be added here:
     // {

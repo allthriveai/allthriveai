@@ -170,4 +170,33 @@ app.conf.beat_schedule = {
             'expires': 7200,  # Expires after 2 hours
         },
     },
+    # Thrive Circle weekly tasks
+    'thrive-circle-create-weekly-goals': {
+        'task': 'core.thrive_circle.tasks.create_weekly_goals',
+        'schedule': crontab(hour=0, minute=0, day_of_week=1),  # Monday at 00:00
+        'options': {
+            'expires': 3600,  # Expires after 1 hour
+        },
+    },
+    'thrive-circle-form-weekly-circles': {
+        'task': 'core.thrive_circle.tasks.form_weekly_circles',
+        'schedule': crontab(hour=0, minute=5, day_of_week=1),  # Monday at 00:05 (after goals)
+        'options': {
+            'expires': 3600,  # Expires after 1 hour
+        },
+    },
+    'thrive-circle-update-activity-stats': {
+        'task': 'core.thrive_circle.tasks.update_circle_activity_stats',
+        'schedule': crontab(hour='*/6'),  # Every 6 hours
+        'options': {
+            'expires': 3600,  # Expires after 1 hour
+        },
+    },
+    'thrive-circle-check-challenge-completion': {
+        'task': 'core.thrive_circle.tasks.check_circle_challenge_completion',
+        'schedule': crontab(minute=0),  # Every hour at minute 0
+        'options': {
+            'expires': 3600,  # Expires after 1 hour
+        },
+    },
 }

@@ -29,9 +29,9 @@ export function CircleProjectsFeed({ projects, isLoading }: CircleProjectsFeedPr
             <p className="text-xs text-slate-500">Loading...</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="columns-2 sm:columns-3 lg:columns-4 gap-3 space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-xl bg-white/5 border border-white/10 aspect-[4/3]" />
+            <div key={i} className="break-inside-avoid animate-pulse rounded-xl bg-white/5 border border-white/10 aspect-[4/3]" />
           ))}
         </div>
       </div>
@@ -57,20 +57,21 @@ export function CircleProjectsFeed({ projects, isLoading }: CircleProjectsFeedPr
         </div>
       </div>
 
-      {/* Projects Grid - 2 columns on desktop */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {projects.slice(0, 6).map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            variant="masonry"
-            userAvatarUrl={project.userAvatarUrl}
-          />
+      {/* Projects Masonry Grid */}
+      <div className="columns-2 sm:columns-3 lg:columns-4 gap-3 space-y-3">
+        {projects.slice(0, 8).map((project) => (
+          <div key={project.id} className="break-inside-avoid">
+            <ProjectCard
+              project={project}
+              variant="masonry"
+              userAvatarUrl={project.userAvatarUrl}
+            />
+          </div>
         ))}
       </div>
 
       {/* Show more link if there are more projects */}
-      {projects.length > 6 && (
+      {projects.length > 8 && (
         <div className="mt-4 text-center">
           <a
             href="/explore"

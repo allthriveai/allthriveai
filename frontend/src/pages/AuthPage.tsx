@@ -358,7 +358,7 @@ export default function AuthPage() {
               className="text-lg text-slate-200 mb-3"
               variants={motionVariants}
             >
-              A community for AI creators to share projects, compete in prompt battles, and grow together.
+              The gamified AI portfolio platform for creators. Build your AI portfolio, compete in Prompt Battles, earn achievements, and level up your skills.
             </motion.p>
             <motion.p
               className="text-slate-400 text-sm"
@@ -407,7 +407,7 @@ export default function AuthPage() {
 
           {/* OAuth Buttons */}
           <motion.div
-            className="flex gap-3 mb-6"
+            className="flex flex-col sm:flex-row gap-3 mb-6"
             variants={motionVariants}
             role="group"
             aria-label="Sign in options"
