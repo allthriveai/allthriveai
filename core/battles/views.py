@@ -576,9 +576,17 @@ def generate_battle_link(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_invitation_by_token(request, token):
-    """Get invitation details by token (for SMS invitation links)."""
+    """Get invitation details by token (for SMS invitation links).
+
+    Returns consistent response structure for all states:
+    - pending: Full invitation details
+    - already_accepted: Includes battle_id for redirect + already_accepted flag
+    - expired/cancelled: Error response
+    """
     try:
-        invitation = BattleInvitation.objects.select_related('sender', 'battle').get(invite_token=token)
+        invitation = BattleInvitation.objects.select_related('sender', 'battle', 'battle__challenge_type').get(
+            invite_token=token
+        )
     except BattleInvitation.DoesNotExist:
         return Response({'error': 'Invitation not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -606,15 +614,20 @@ def get_invitation_by_token(request, token):
     if invitation.battle.status == BattleStatus.EXPIRED:
         return Response({'error': 'This battle has expired.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Build sender info safely
+    sender_data = None
+    if invitation.sender:
+        sender_data = {
+            'id': invitation.sender.id,
+            'username': invitation.sender.username,
+            'display_name': invitation.sender.first_name or invitation.sender.username,
+            'avatar_url': invitation.sender.avatar_url if hasattr(invitation.sender, 'avatar_url') else None,
+        }
+
     return Response(
         {
             'invitation_id': invitation.id,
-            'sender': {
-                'id': invitation.sender.id,
-                'username': invitation.sender.username,
-                'display_name': invitation.sender.first_name or invitation.sender.username,
-                'avatar_url': getattr(invitation.sender, 'avatar_url', None),
-            },
+            'sender': sender_data,
             'battle': {
                 'id': invitation.battle.id,
                 'challenge_text': invitation.battle.challenge_text,

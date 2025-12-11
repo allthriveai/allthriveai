@@ -507,7 +507,7 @@ export default function ProfilePage() {
 
       // Check if it's a File object (from ProfileHeader) or already a URL
       if (fileOrUrl instanceof File) {
-        // Upload the file first
+        // Upload the file directly
         const formData = new FormData();
         formData.append('file', fileOrUrl);
         formData.append('folder', 'avatars');
@@ -518,26 +518,8 @@ export default function ProfilePage() {
           },
         });
         avatarUrl = uploadResponse.data.url;
-      } else if (fileOrUrl.startsWith('blob:')) {
-        // It's a blob URL from the file input - we need to fetch and upload
-        const response = await fetch(fileOrUrl);
-        const blob = await response.blob();
-        const file = new File([blob], 'avatar.jpg', { type: blob.type });
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('folder', 'avatars');
-
-        const uploadResponse = await api.post('/upload/image/', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-        avatarUrl = uploadResponse.data.url;
-
-        // Revoke the blob URL to free memory
-        URL.revokeObjectURL(fileOrUrl);
       } else {
+        // It's already a URL string
         avatarUrl = fileOrUrl;
       }
 

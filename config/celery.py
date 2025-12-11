@@ -138,6 +138,13 @@ app.conf.beat_schedule = {
             'expires': 7200,  # Expires after 2 hours
         },
     },
+    'cleanup-orphaned-invitation-battles': {
+        'task': 'core.battles.tasks.cleanup_orphaned_invitation_battles',
+        'schedule': crontab(minute=0),  # Every hour at minute 0
+        'options': {
+            'expires': 3600,  # Expires after 1 hour
+        },
+    },
     # Billing tasks
     # DISABLED: Low balance notifications need more thought before enabling
     # TODO: Add cooldown period, better targeting, and user preferences

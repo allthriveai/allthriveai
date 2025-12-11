@@ -706,3 +706,78 @@ def cleanup_expired_guest_accounts(days_old: int = 7) -> dict[str, Any]:
     except Exception as e:
         logger.error(f'Error cleaning up guest accounts: {e}', exc_info=True)
         return {'status': 'error', 'reason': str(e)}
+
+
+@shared_task(
+    time_limit=120,
+    soft_time_limit=90,
+)
+def cleanup_orphaned_invitation_battles() -> dict[str, Any]:
+    """
+    Clean up orphaned battles created for invitations that were never accepted.
+
+    Handles battles where:
+    - The battle was created via invitation (match_source=INVITATION)
+    - The invitation expired (24+ hours) and was never accepted
+    - No opponent joined the battle
+
+    Should be run periodically (e.g., every hour) via Celery Beat.
+
+    Returns:
+        Dict with cleanup results
+    """
+    from datetime import timedelta
+
+    from core.battles.models import BattleInvitation, InvitationStatus, MatchSource
+
+    now = timezone.now()
+    expiry_threshold = now - timedelta(hours=24)
+
+    results = {
+        'cancelled_battles': 0,
+        'expired_invitations': 0,
+    }
+
+    # Find expired pending invitations
+    expired_invitations = BattleInvitation.objects.filter(
+        status=InvitationStatus.PENDING,
+        expires_at__lt=now,
+    ).select_related('battle')
+
+    for invitation in expired_invitations:
+        # Mark invitation as expired
+        invitation.status = InvitationStatus.EXPIRED
+        invitation.save(update_fields=['status'])
+        results['expired_invitations'] += 1
+
+        # Cancel the associated battle if it has no opponent
+        battle = invitation.battle
+        if battle and battle.opponent is None and battle.status == BattleStatus.PENDING:
+            battle.status = BattleStatus.CANCELLED
+            battle.phase = BattlePhase.COMPLETE
+            battle.phase_changed_at = now
+            battle.save(update_fields=['status', 'phase', 'phase_changed_at'])
+            results['cancelled_battles'] += 1
+            logger.info(f'Cancelled orphaned invitation battle {battle.id}')
+
+    # Also cancel any invitation battles that are stuck in PENDING status
+    # without an opponent for more than 24 hours (safety net)
+    orphaned_battles = PromptBattle.objects.filter(
+        match_source=MatchSource.INVITATION,
+        status=BattleStatus.PENDING,
+        opponent__isnull=True,
+        created_at__lt=expiry_threshold,
+    )
+
+    orphaned_count = orphaned_battles.update(
+        status=BattleStatus.CANCELLED,
+        phase=BattlePhase.COMPLETE,
+        phase_changed_at=now,
+    )
+    results['cancelled_battles'] += orphaned_count
+
+    total_cleaned = results['cancelled_battles'] + results['expired_invitations']
+    if total_cleaned > 0:
+        logger.info(f'Cleaned up orphaned invitation battles: {results}')
+
+    return {'status': 'success', **results}

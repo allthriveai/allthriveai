@@ -27,6 +27,54 @@ import {
 const PIP_AVATAR_URL = '/prompt-battle.png';
 import { api } from '@/services/api';
 
+// LocalStorage key for pending battle
+const PENDING_BATTLE_KEY = 'pending_battle_invite';
+
+interface PendingBattleData {
+  battleId: number;
+  link: string;
+  challengeType: string | null;
+  createdAt: number;
+}
+
+// Helper to get stored pending battle
+function getStoredPendingBattle(): PendingBattleData | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const data = localStorage.getItem(PENDING_BATTLE_KEY);
+    if (!data) return null;
+    const parsed = JSON.parse(data) as PendingBattleData;
+    // Check if expired (24 hours)
+    if (Date.now() - parsed.createdAt > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(PENDING_BATTLE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+// Helper to store pending battle
+function storePendingBattle(data: PendingBattleData): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(PENDING_BATTLE_KEY, JSON.stringify(data));
+  } catch {
+    // localStorage not available
+  }
+}
+
+// Helper to clear pending battle
+function clearStoredPendingBattle(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(PENDING_BATTLE_KEY);
+  } catch {
+    // localStorage not available
+  }
+}
+
 interface QueueStatus {
   inQueue: boolean;
   position: number;
@@ -65,6 +113,7 @@ export function MatchmakingScreen({
   const [challengeType, setChallengeType] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [messageCopied, setMessageCopied] = useState(false);
+  const [existingPendingBattle, setExistingPendingBattle] = useState<PendingBattleData | null>(null);
 
   // Accessibility: refs and state for focus management
   const modalRef = useRef<HTMLDivElement>(null);
@@ -99,20 +148,68 @@ export function MatchmakingScreen({
     }
   }, [showHumanModal, handleKeyDown]);
 
+  // Check for existing pending battle on mount
+  useEffect(() => {
+    const checkPendingBattle = async () => {
+      const stored = getStoredPendingBattle();
+      if (!stored) {
+        return;
+      }
+
+      try {
+        // Validate that the battle is still pending (no opponent yet)
+        const response = await api.get(`/battles/${stored.battleId}/`);
+        if (response.data.opponent) {
+          // Battle already has opponent - either accepted or cancelled
+          clearStoredPendingBattle();
+          setExistingPendingBattle(null);
+          // Navigate to the battle since it was accepted
+          navigate(`/battles/${stored.battleId}`);
+        } else if (response.data.status === 'cancelled' || response.data.status === 'expired') {
+          // Battle was cancelled or expired
+          clearStoredPendingBattle();
+          setExistingPendingBattle(null);
+        } else {
+          // Battle is still pending
+          setExistingPendingBattle(stored);
+        }
+      } catch (error: unknown) {
+        // Only clear storage if battle doesn't exist (404)
+        // Keep storage for network errors so user doesn't lose their battle reference
+        const err = error as { response?: { status?: number } };
+        if (err.response?.status === 404) {
+          clearStoredPendingBattle();
+          setExistingPendingBattle(null);
+        } else {
+          // Network error or other issue - still show the pending battle
+          // User can click "View Link" to see it or cancel manually
+          console.warn('[MatchmakingScreen] Error checking pending battle (keeping reference):', error);
+          setExistingPendingBattle(stored);
+        }
+      }
+    };
+
+    checkPendingBattle();
+  }, [navigate]);
+
   // Poll for invitation acceptance when we have a pending battle
   // This is a fallback for when WebSocket notifications are missed (e.g., mobile disconnection)
   useEffect(() => {
-    if (!pendingBattleId) return;
+    // Poll for either the current session's pending battle or an existing one from localStorage
+    const battleIdToPoll = pendingBattleId || existingPendingBattle?.battleId;
+    if (!battleIdToPoll) return;
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await api.get(`/battles/${pendingBattleId}/`);
+        const response = await api.get(`/battles/${battleIdToPoll}/`);
         // Check if battle has an opponent (invitation was accepted)
         if (response.data.opponent) {
-          console.log('[MatchmakingScreen] Battle accepted! Navigating to battle:', pendingBattleId);
+          console.log('[MatchmakingScreen] Battle accepted! Navigating to battle:', battleIdToPoll);
           clearInterval(pollInterval);
+          clearStoredPendingBattle();
+          setExistingPendingBattle(null);
           setPendingBattleId(null);
-          navigate(`/battles/${pendingBattleId}`);
+          navigate(`/battles/${battleIdToPoll}`);
         }
       } catch (error) {
         // Battle might not exist anymore or other error - stop polling
@@ -121,7 +218,7 @@ export function MatchmakingScreen({
     }, 3000); // Poll every 3 seconds
 
     return () => clearInterval(pollInterval);
-  }, [pendingBattleId, navigate]);
+  }, [pendingBattleId, existingPendingBattle, navigate]);
 
   const handleBattlePip = () => {
     setSelectedMode('ai');
@@ -158,21 +255,44 @@ export function MatchmakingScreen({
   };
 
   const handleGenerateLink = async () => {
+    // If there's already a pending battle, use it instead of creating a new one
+    if (existingPendingBattle) {
+      setGeneratedLink(existingPendingBattle.link);
+      setChallengeType(existingPendingBattle.challengeType);
+      setPendingBattleId(existingPendingBattle.battleId);
+      return;
+    }
+
     setIsGeneratingLink(true);
     setLinkError(null);
 
     try {
       const response = await api.post('/battles/invitations/generate-link/');
-      setGeneratedLink(response.data.inviteUrl || response.data.invite_url);
+      const link = response.data.inviteUrl || response.data.invite_url;
+      setGeneratedLink(link);
       // Store battle ID for polling
       const battleId = response.data.invitation?.battle_id || response.data.invitation?.battle?.id;
-      if (battleId) {
-        setPendingBattleId(battleId);
-      }
       // Get challenge type from the response
       const battleData = response.data.invitation?.battle_data;
-      if (battleData?.challenge_type_name) {
-        setChallengeType(battleData.challenge_type_name);
+      const challengeTypeName = battleData?.challenge_type_name || null;
+      if (challengeTypeName) {
+        setChallengeType(challengeTypeName);
+      }
+      if (battleId) {
+        setPendingBattleId(battleId);
+        // Store in localStorage so user can return to it after closing modal
+        storePendingBattle({
+          battleId,
+          link,
+          challengeType: challengeTypeName,
+          createdAt: Date.now(),
+        });
+        setExistingPendingBattle({
+          battleId,
+          link,
+          challengeType: challengeTypeName,
+          createdAt: Date.now(),
+        });
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
@@ -216,10 +336,31 @@ export function MatchmakingScreen({
     setSmsSuccess(null);
     setSmsError(null);
     setGeneratedLink(null);
+    // Don't clear pendingBattleId or existingPendingBattle - keep them for "Continue" functionality
+    // Only clear the current session's pending ID (not localStorage)
     setPendingBattleId(null);
     setChallengeType(null);
     setLinkError(null);
     setMessageCopied(false);
+  };
+
+  // Cancel and clear the pending battle completely
+  const cancelPendingBattle = () => {
+    clearStoredPendingBattle();
+    setExistingPendingBattle(null);
+    setPendingBattleId(null);
+    setGeneratedLink(null);
+    setChallengeType(null);
+  };
+
+  // Resume a pending battle - opens modal with the existing link
+  const resumePendingBattle = () => {
+    if (!existingPendingBattle) return;
+    setGeneratedLink(existingPendingBattle.link);
+    setChallengeType(existingPendingBattle.challengeType);
+    setPendingBattleId(existingPendingBattle.battleId);
+    setModalView('link');
+    setShowHumanModal(true);
   };
 
   return (
@@ -245,6 +386,48 @@ export function MatchmakingScreen({
       </div>
 
       <div className="relative z-10 w-full max-w-xl">
+        {/* Pending Battle Banner */}
+        {existingPendingBattle && !showHumanModal && !isSearching && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 rounded-xl bg-pink-500/10 border border-pink-500/30"
+          >
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center shrink-0">
+                  <LinkIcon className="w-5 h-5 text-pink-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    You have a pending battle challenge
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                    {existingPendingBattle.challengeType
+                      ? `Challenge: "${existingPendingBattle.challengeType}"`
+                      : 'Waiting for opponent to accept'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={resumePendingBattle}
+                  className="flex-1 sm:flex-initial px-4 py-2 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium transition-colors"
+                >
+                  View Link
+                </button>
+                <button
+                  onClick={cancelPendingBattle}
+                  className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 text-sm font-medium transition-colors"
+                  title="Cancel pending battle"
+                >
+                  <XMarkIcon className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

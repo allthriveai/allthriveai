@@ -51,7 +51,7 @@ interface ProfileHeaderProps {
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
   currentTemplate?: ProfileTemplate;
   onTemplateChange?: (template: ProfileTemplate) => void;
-  onAvatarChange?: (url: string) => void;
+  onAvatarChange?: (fileOrUrl: string | File) => void;
   isAvatarUploading?: boolean;
 }
 
@@ -115,9 +115,8 @@ export function ProfileHeader({
       return;
     }
 
-    // Create a preview URL immediately for better UX
-    const previewUrl = URL.createObjectURL(file);
-    onAvatarChange(previewUrl);
+    // Pass the File object directly to avoid CSP issues with blob: URLs
+    onAvatarChange(file);
 
     // Reset the input
     if (fileInputRef.current) {

@@ -24,15 +24,15 @@ import { setGuestBattleId } from '@/routes/ProtectedRoute';
 
 interface InvitationData {
   invitation_id: number;
-  sender: {
+  sender?: {
     id: number;
     username: string;
-    display_name: string;
-    avatar_url: string;
+    display_name?: string;
+    avatar_url?: string;
   };
   battle: {
     id: number;
-    topic: string;
+    challenge_text: string;
     challenge_type: string | null;
   };
   expires_at: string;
@@ -284,25 +284,29 @@ export function BattleInvitePage() {
             </div>
 
             {/* Challenger info */}
-            <div className="bg-slate-800/50 rounded-xl p-4 mb-6">
-              <div className="flex items-center gap-4">
-                {invitation.sender.avatar_url ? (
-                  <img
-                    src={invitation.sender.avatar_url}
-                    alt={invitation.sender.username}
-                    className="w-14 h-14 rounded-full object-cover"
-                  />
-                ) : (
-                  <UserCircleIcon className="w-14 h-14 text-slate-600" />
-                )}
-                <div>
-                  <p className="text-white font-semibold">
-                    {invitation.sender.display_name || invitation.sender.username}
-                  </p>
-                  <p className="text-slate-400 text-sm">@{invitation.sender.username}</p>
+            {invitation.sender && (
+              <div className="bg-slate-800/50 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-4">
+                  {invitation.sender.avatar_url ? (
+                    <img
+                      src={invitation.sender.avatar_url}
+                      alt={invitation.sender.username || 'Challenger'}
+                      className="w-14 h-14 rounded-full object-cover"
+                    />
+                  ) : (
+                    <UserCircleIcon className="w-14 h-14 text-slate-600" />
+                  )}
+                  <div>
+                    <p className="text-white font-semibold">
+                      {invitation.sender.display_name || invitation.sender.username || 'A challenger'}
+                    </p>
+                    {invitation.sender.username && (
+                      <p className="text-slate-400 text-sm">@{invitation.sender.username}</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Battle details */}
             <div className="space-y-3 mb-6">
@@ -362,7 +366,7 @@ export function BattleInvitePage() {
 
                 {/* Sign in option - Secondary for existing users */}
                 <button
-                  onClick={() => navigate(`/auth?redirect=/battle/invite/${token}`)}
+                  onClick={() => navigate('/auth', { state: { returnUrl: `/battle/invite/${token}` } })}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700/50 transition-colors"
                 >
                   <UserPlusIcon className="w-5 h-5" />
