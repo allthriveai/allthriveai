@@ -279,6 +279,20 @@ def username_profile_view(request, username):
 
     try:
         user = User.objects.get(username=username.lower())
+
+        # Hide guest user profiles from public access
+        # Guest users can only view their own profile when authenticated
+        if user.is_guest:
+            # Allow guest users to view their own profile
+            if not (request.user.is_authenticated and request.user.id == user.id):
+                response_data = {'success': False, 'error': 'User not found', 'data': None}
+                status_code = 404
+                # Ensure minimum response time to prevent timing attacks
+                elapsed = time.time() - start_time
+                if elapsed < 0.05:
+                    time.sleep(0.05 - elapsed)
+                return Response(response_data, status=status_code)
+
         serializer = UserSerializer(user, context={'request': request})
         response_data = {'success': True, 'data': serializer.data}
         status_code = 200
@@ -291,10 +305,13 @@ def username_profile_view(request, username):
             except Exception as e:
                 logger.warning(f'Failed to track profile view: {e}')
 
-        # Cache successful responses
-        cache.set(
-            cache_key, {'response': response_data, 'status': status_code}, settings.CACHE_TTL.get('PUBLIC_PROFILE', 300)
-        )
+        # Cache successful responses (but not for guest users viewing their own profile)
+        if not user.is_guest:
+            cache.set(
+                cache_key,
+                {'response': response_data, 'status': status_code},
+                settings.CACHE_TTL.get('PUBLIC_PROFILE', 300),
+            )
     except User.DoesNotExist:
         # Return 404 but maintain consistent response time to prevent timing attacks
         response_data = {'success': False, 'error': 'User not found', 'data': None}

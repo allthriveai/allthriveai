@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
 import type { User, Project } from '@/types/models';
@@ -23,8 +23,10 @@ import { MasonryGrid } from '@/components/common/MasonryGrid';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileTemplatePicker } from '@/components/profile/ProfileTemplatePicker';
+import { ProfileCompleteness } from '@/components/profile/ProfileCompleteness';
 import { logError, parseApiError } from '@/utils/errorHandler';
 import { ProfileSections, type ProfileUser } from '@/components/profile/sections';
+import type { SocialLinksUpdate } from '@/components/profile/sections/LinksSection';
 import type { ProfileSection, ProfileSectionType, ProfileSectionContent, ProfileTemplate } from '@/types/profileSections';
 import { generateProfileSectionId, createDefaultProfileSectionContent, selectTemplateForUser, getDefaultSectionsForTemplate } from '@/types/profileSections';
 import { api } from '@/services/api';
@@ -77,6 +79,7 @@ const TAB_BUTTON_INACTIVE = 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
+  const navigate = useNavigate();
   const { user, isAuthenticated, refreshUser } = useAuth();
   const { tierStatus, isLoading: isTierLoading } = useThriveCircle();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -545,6 +548,41 @@ export default function ProfilePage() {
     }
   }, [user, isActualOwner, refreshUser]);
 
+  // Social links update handler for inline editing
+  const handleSocialLinksUpdate = useCallback(async (links: SocialLinksUpdate) => {
+    if (!user) return;
+
+    setSaveStatus('saving');
+
+    try {
+      // Update the user's profile with the new social links
+      await api.patch('/me/profile/', links);
+
+      // Refresh the user data in auth context so it syncs everywhere
+      await refreshUser();
+
+      // Update local state to reflect the change
+      if (isActualOwner) {
+        setProfileUser(prev => prev ? {
+          ...prev,
+          websiteUrl: links.websiteUrl ?? prev.websiteUrl,
+          githubUrl: links.githubUrl ?? prev.githubUrl,
+          linkedinUrl: links.linkedinUrl ?? prev.linkedinUrl,
+          twitterUrl: links.twitterUrl ?? prev.twitterUrl,
+          youtubeUrl: links.youtubeUrl ?? prev.youtubeUrl,
+          instagramUrl: links.instagramUrl ?? prev.instagramUrl,
+        } : prev);
+      }
+
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (error) {
+      console.error('Failed to update social links:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  }, [user, isActualOwner, refreshUser]);
+
   // Recommended template for the user
   const recommendedTemplate = displayUser
     ? selectTemplateForUser({
@@ -880,6 +918,17 @@ export default function ProfilePage() {
 
             {/* Full-width Showcase Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {/* Profile Completeness Indicator - only show for own profile when not editing */}
+              {isOwnProfile && !isEditingShowcase && displayUser && (
+                <div className="mb-6">
+                  <ProfileCompleteness
+                    user={displayUser}
+                    onNavigateToSettings={() => navigate('/settings')}
+                    onNavigateToField={(fieldId) => navigate(`/settings#${fieldId}`)}
+                  />
+                </div>
+              )}
+
               {/* Edit Controls */}
               {isOwnProfile && (
                 <div className="flex items-center justify-between mb-6">
@@ -920,6 +969,7 @@ export default function ProfilePage() {
                   onDeleteSection={handleDeleteSection}
                   onToggleVisibility={handleToggleSectionVisibility}
                   onReorderSections={handleReorderSections}
+                  onSocialLinksUpdate={handleSocialLinksUpdate}
                 />
               ) : (
                 <div className="py-20 text-center">

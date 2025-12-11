@@ -317,7 +317,7 @@ class GuestBattleInvitationAcceptanceTestCase(TestCase):
         self.assertIn('expired', response.data['error'])
 
     def test_accept_already_accepted_invitation_fails(self):
-        """Test accepting an already accepted invitation fails."""
+        """Test accepting an already accepted invitation fails for different user."""
         self.invitation.status = InvitationStatus.ACCEPTED
         self.invitation.save(update_fields=['status'])
 
@@ -325,7 +325,7 @@ class GuestBattleInvitationAcceptanceTestCase(TestCase):
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('already been responded', response.data['error'])
+        self.assertIn('already been accepted', response.data['error'])
 
     def test_accept_invalid_token_fails(self):
         """Test accepting with invalid token returns 404."""
@@ -701,8 +701,29 @@ class LinkInvitationE2ETestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('expired', response.data['error'])
 
-    def test_link_invitation_can_only_be_accepted_once(self):
-        """Test that a link invitation can only be accepted once."""
+    def test_link_invitation_idempotent_for_same_user(self):
+        """Test that accepting invitation again returns battle for same user (idempotency)."""
+        self.client.force_authenticate(user=self.challenger)
+        generate_url = reverse('generate_battle_link')
+
+        response = self.client.post(generate_url)
+        invite_token = response.data['invite_token']
+
+        # First acceptance (as guest)
+        self.client.logout()
+        accept_url = reverse('accept_invitation_by_token', kwargs={'token': invite_token})
+        response = self.client.post(accept_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        first_battle_id = response.data['id']
+
+        # Second acceptance attempt by same user (authenticated via cookies from first request)
+        # Should return the same battle (idempotency feature)
+        response = self.client.post(accept_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], first_battle_id)
+
+    def test_link_invitation_rejected_for_different_user(self):
+        """Test that a different user cannot accept an already-accepted invitation."""
         self.client.force_authenticate(user=self.challenger)
         generate_url = reverse('generate_battle_link')
 
@@ -715,10 +736,18 @@ class LinkInvitationE2ETestCase(TestCase):
         response = self.client.post(accept_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Second acceptance attempt
+        # Create and authenticate a different user
+        other_user = User.objects.create_user(
+            username='other_user',
+            email='other@example.com',
+            password='testpassword123',
+        )
+        self.client.force_authenticate(user=other_user)
+
+        # Second acceptance attempt by different user should fail
         response = self.client.post(accept_url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('already been responded', response.data['error'])
+        self.assertIn('already been accepted', response.data['error'])
 
     def test_invalid_link_token_returns_404(self):
         """Test that invalid token returns 404."""

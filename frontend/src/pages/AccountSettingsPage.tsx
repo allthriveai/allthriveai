@@ -1,10 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { ImageUpload } from '@/components/forms/ImageUpload';
 import { api } from '@/services/api';
 import axios from 'axios';
+
+// Map hash values to input field IDs for focus
+const HASH_TO_FIELD_ID: Record<string, string> = {
+  avatar: 'avatar-section',
+  name: 'firstName',
+  tagline: 'tagline',
+  bio: 'bio',
+  socialLinks: 'linkedinUrl',
+};
 
 interface ProfileFormData {
   username: string;
@@ -26,6 +36,7 @@ interface ProfileFormData {
 
 export default function AccountSettingsPage() {
   const { user, refreshUser } = useAuth();
+  const location = useLocation();
   const [formData, setFormData] = useState<ProfileFormData>({
     username: '',
     firstName: '',
@@ -82,11 +93,48 @@ export default function AccountSettingsPage() {
     };
   }, []);
 
+  // Handle URL hash to scroll and focus on specific section
+  const [highlightedField, setHighlightedField] = useState<string | null>(null);
+
+  useEffect(() => {
+    const hash = location.hash.replace('#', '');
+    if (!hash) return;
+
+    const fieldId = HASH_TO_FIELD_ID[hash];
+    if (!fieldId) return;
+
+    // Wait for form data to be loaded before scrolling
+    const timeoutId = setTimeout(() => {
+      const element = document.getElementById(fieldId);
+      if (element) {
+        // Scroll the element into view
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Focus the element if it's an input/textarea
+        if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+          element.focus();
+        }
+        // Set highlight state (will be removed after 2 seconds)
+        setHighlightedField(fieldId);
+      }
+    }, 150);
+
+    return () => clearTimeout(timeoutId);
+  }, [location.hash]);
+
+  // Clear highlight after 2 seconds
+  useEffect(() => {
+    if (!highlightedField) return;
+    const timeoutId = setTimeout(() => setHighlightedField(null), 2000);
+    return () => clearTimeout(timeoutId);
+  }, [highlightedField]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    // Auto-lowercase username to prevent validation errors
+    const processedValue = name === 'username' ? value.toLowerCase() : value;
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: processedValue,
     }));
     // Reset save status when user makes changes
     if (saveStatus !== 'idle') {
@@ -179,7 +227,12 @@ export default function AccountSettingsPage() {
           {/* Profile Form */}
           <form onSubmit={handleSubmit} className="space-y-8" aria-label="Edit profile form">
             {/* Profile Photo Section */}
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 p-4 md:p-6 glass-strong rounded-xl border border-white/20">
+            <div
+              id="avatar-section"
+              className={`flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 p-4 md:p-6 glass-strong rounded-xl border border-white/20 transition-all ${
+                highlightedField === 'avatar-section' ? 'ring-2 ring-primary-500 ring-offset-2' : ''
+              }`}
+            >
               <div className="flex-shrink-0">
                 <ImageUpload
                   currentImage={formData.avatarUrl}
@@ -189,6 +242,8 @@ export default function AccountSettingsPage() {
                   onImageRemoved={() => {
                     setFormData(prev => ({ ...prev, avatarUrl: '' }));
                   }}
+                  showPresets={true}
+                  username={formData.username}
                 />
               </div>
               <div className="flex-1 text-center md:text-left">

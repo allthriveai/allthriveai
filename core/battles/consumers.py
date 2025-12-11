@@ -1335,17 +1335,27 @@ class BattleNotificationConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _process_invitation_response(self, invitation_id: int, response: str) -> dict:
-        """Process invitation accept/decline in database."""
+        """Process invitation accept/decline in database.
+
+        Uses the model's accept()/decline() methods to ensure consistent
+        state machine transitions and proper atomic transaction handling.
+        """
+        from django.core.exceptions import ValidationError
+
         from core.battles.models import BattleInvitation, InvitationStatus
 
         try:
+            # Fetch invitation (locking happens inside accept/decline methods)
             invitation = BattleInvitation.objects.select_related('battle', 'sender').get(
                 id=invitation_id,
                 recipient=self.user,
-                status=InvitationStatus.PENDING,
             )
         except BattleInvitation.DoesNotExist:
-            return {'error': 'Invitation not found or already responded to.'}
+            return {'error': 'Invitation not found.'}
+
+        # Check status before attempting operation (accept/decline will re-verify with lock)
+        if invitation.status != InvitationStatus.PENDING:
+            return {'error': 'Invitation has already been responded to.'}
 
         if invitation.is_expired:
             return {'error': 'Invitation has expired.'}
@@ -1353,35 +1363,29 @@ class BattleNotificationConsumer(AsyncWebsocketConsumer):
         battle = invitation.battle
 
         if response == 'accept':
-            invitation.status = InvitationStatus.ACCEPTED
-            invitation.responded_at = timezone.now()
-            invitation.save(update_fields=['status', 'responded_at'])
+            try:
+                # Use model's accept() method for consistent state machine and atomic transaction
+                # For platform invitations, the recipient is already set, so pass self.user
+                invitation.accept(accepting_user=self.user)
+                battle.refresh_from_db()
 
-            # Start the battle
-            battle.opponent = self.user
-            battle.status = BattleStatus.ACTIVE
-            battle.phase = BattlePhase.COUNTDOWN
-            battle.started_at = timezone.now()
-            battle.save(update_fields=['opponent', 'status', 'phase', 'started_at'])
-
-            return {
-                'battle_id': battle.id,
-                'challenger_id': invitation.sender.id,
-            }
+                return {
+                    'battle_id': battle.id,
+                    'challenger_id': invitation.sender.id,
+                }
+            except ValidationError as e:
+                return {'error': str(e.message if hasattr(e, 'message') else e)}
         else:
-            invitation.status = InvitationStatus.DECLINED
-            invitation.responded_at = timezone.now()
-            invitation.save(update_fields=['status', 'responded_at'])
+            try:
+                # Use model's decline() method for consistent state machine
+                invitation.decline()
 
-            # Cancel the battle
-            battle.status = BattleStatus.CANCELLED
-            battle.save(update_fields=['status'])
-
-            # Notify challenger of decline
-            return {
-                'declined': True,
-                'challenger_id': invitation.sender.id,
-            }
+                return {
+                    'declined': True,
+                    'challenger_id': invitation.sender.id,
+                }
+            except ValidationError as e:
+                return {'error': str(e.message if hasattr(e, 'message') else e)}
 
     async def _send_error(self, message: str):
         """Send error message to client."""

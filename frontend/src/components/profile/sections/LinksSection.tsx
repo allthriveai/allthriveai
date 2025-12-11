@@ -1,9 +1,13 @@
 /**
  * LinksSection - Social and external links display
+ *
+ * Displays user's social links and custom links. In edit mode,
+ * allows editing both the user's core social links (synced to profile)
+ * and adding custom links (stored in section content).
  */
 
 import { useState } from 'react';
-import { PlusIcon, XMarkIcon, LinkIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, XMarkIcon, LinkIcon, GlobeAltIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGithub,
@@ -22,11 +26,22 @@ import {
 import type { LinksSectionContent, LinkItem } from '@/types/profileSections';
 import type { ProfileUser } from './ProfileSectionRenderer';
 
+// Social link fields that can be edited inline
+export interface SocialLinksUpdate {
+  websiteUrl?: string;
+  githubUrl?: string;
+  linkedinUrl?: string;
+  twitterUrl?: string;
+  youtubeUrl?: string;
+  instagramUrl?: string;
+}
+
 interface LinksSectionProps {
   content: LinksSectionContent;
   user: ProfileUser;
   isEditing?: boolean;
   onUpdate?: (content: LinksSectionContent) => void;
+  onSocialLinksUpdate?: (links: SocialLinksUpdate) => Promise<void>;
 }
 
 // Icon mapping for known platforms
@@ -56,11 +71,32 @@ function detectPlatform(url: string): string | null {
   return null;
 }
 
-export function LinksSection({ content, user, isEditing, onUpdate }: LinksSectionProps) {
+// Core social link definitions for inline editing
+const SOCIAL_LINK_FIELDS = [
+  { key: 'website_url', fieldKey: 'websiteUrl', label: 'Website', icon: 'website', placeholder: 'https://yourwebsite.com' },
+  { key: 'github_url', fieldKey: 'githubUrl', label: 'GitHub', icon: 'github', placeholder: 'https://github.com/username' },
+  { key: 'linkedin_url', fieldKey: 'linkedinUrl', label: 'LinkedIn', icon: 'linkedin', placeholder: 'https://linkedin.com/in/username' },
+  { key: 'twitter_url', fieldKey: 'twitterUrl', label: 'Twitter', icon: 'twitter', placeholder: 'https://twitter.com/username' },
+  { key: 'youtube_url', fieldKey: 'youtubeUrl', label: 'YouTube', icon: 'youtube', placeholder: 'https://youtube.com/@username' },
+  { key: 'instagram_url', fieldKey: 'instagramUrl', label: 'Instagram', icon: 'instagram', placeholder: 'https://instagram.com/username' },
+] as const;
+
+export function LinksSection({ content, user, isEditing, onUpdate, onSocialLinksUpdate }: LinksSectionProps) {
   const [newLabel, setNewLabel] = useState('');
   const [newUrl, setNewUrl] = useState('');
+  const [isSavingSocial, setIsSavingSocial] = useState(false);
 
-  // Combine user's social links with custom links
+  // Local state for editing social links
+  const [socialLinkEdits, setSocialLinkEdits] = useState<SocialLinksUpdate>({
+    websiteUrl: user.website_url || '',
+    githubUrl: user.github_url || '',
+    linkedinUrl: user.linkedin_url || '',
+    twitterUrl: user.twitter_url || '',
+    youtubeUrl: user.youtube_url || '',
+    instagramUrl: user.instagram_url || '',
+  });
+
+  // Combine user's social links with custom links (for display in non-edit mode)
   const userLinks: LinkItem[] = [];
 
   // Add user's social links if they exist
@@ -75,6 +111,23 @@ export function LinksSection({ content, user, isEditing, onUpdate }: LinksSectio
   const customLinks = content?.links || [];
   const allLinks = [...userLinks, ...customLinks];
   const layout = content?.layout || 'grid';
+
+  // Handle social link field change
+  const handleSocialLinkChange = (fieldKey: string, value: string) => {
+    setSocialLinkEdits(prev => ({ ...prev, [fieldKey]: value }));
+  };
+
+  // Save social links to user profile
+  const handleSaveSocialLinks = async () => {
+    if (!onSocialLinksUpdate) return;
+
+    setIsSavingSocial(true);
+    try {
+      await onSocialLinksUpdate(socialLinkEdits);
+    } finally {
+      setIsSavingSocial(false);
+    }
+  };
 
   const handleAddLink = () => {
     if (!newLabel.trim() || !newUrl.trim() || !onUpdate) return;
@@ -119,8 +172,64 @@ export function LinksSection({ content, user, isEditing, onUpdate }: LinksSectio
         Links
       </h2>
 
+      {/* Social Links Editor (editing mode) */}
+      {isEditing && onSocialLinksUpdate && (
+        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Social Links
+            </h3>
+            <button
+              onClick={handleSaveSocialLinks}
+              disabled={isSavingSocial}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              {isSavingSocial ? (
+                <>
+                  <span className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <CheckIcon className="w-3.5 h-3.5" />
+                  Save Links
+                </>
+              )}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {SOCIAL_LINK_FIELDS.map((field) => {
+              const icon = field.icon === 'website' ? null : PLATFORM_ICONS[field.icon];
+              return (
+                <div key={field.key} className="relative">
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    {field.label}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      {icon ? (
+                        <FontAwesomeIcon icon={icon} className="w-4 h-4" />
+                      ) : (
+                        <GlobeAltIcon className="w-4 h-4" />
+                      )}
+                    </div>
+                    <input
+                      type="url"
+                      value={socialLinkEdits[field.fieldKey as keyof SocialLinksUpdate] || ''}
+                      onChange={(e) => handleSocialLinkChange(field.fieldKey, e.target.value)}
+                      placeholder={field.placeholder}
+                      className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Links display */}
-      {allLinks.length > 0 && (
+      {allLinks.length > 0 && !isEditing && (
         <div
           className={
             layout === 'list'
@@ -241,44 +350,85 @@ export function LinksSection({ content, user, isEditing, onUpdate }: LinksSectio
         </div>
       )}
 
-      {/* Add Link Input (editing) */}
+      {/* Custom Links Editor (editing mode) */}
       {isEditing && (
-        <div className="mt-4 flex gap-2">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-              placeholder="Label (e.g., Portfolio)"
-              className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-          </div>
-          <div className="relative flex-1">
-            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="url"
-              value={newUrl}
-              onChange={(e) => setNewUrl(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="https://..."
-              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-          </div>
-          <button
-            onClick={handleAddLink}
-            disabled={!newLabel.trim() || !newUrl.trim()}
-            className="px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-          >
-            <PlusIcon className="w-5 h-5" />
-          </button>
-        </div>
-      )}
+        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Custom Links
+          </h3>
 
-      {/* Empty state */}
-      {allLinks.length === 0 && isEditing && (
-        <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-          Add links to your social profiles and portfolio
-        </p>
+          {/* Existing custom links */}
+          {customLinks.length > 0 && (
+            <div className="space-y-2 mb-4">
+              {customLinks.map((link, index) => {
+                const platform = link.icon || detectPlatform(link.url);
+                const icon = platform && PLATFORM_ICONS[platform];
+                return (
+                  <div
+                    key={`custom-${index}`}
+                    className="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                      {icon ? (
+                        <FontAwesomeIcon icon={icon} className="w-4 h-4" />
+                      ) : (
+                        <GlobeAltIcon className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {link.label}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {link.url.replace(/^https?:\/\//, '')}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveLink(index)}
+                      className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add new custom link */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                placeholder="Label (e.g., Portfolio)"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+            <div className="relative flex-1">
+              <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="url"
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="https://..."
+                className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+            <button
+              onClick={handleAddLink}
+              disabled={!newLabel.trim() || !newUrl.trim()}
+              className="px-3 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              <PlusIcon className="w-5 h-5" />
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Add links to other platforms, portfolios, or resources
+          </p>
+        </div>
       )}
     </div>
   );

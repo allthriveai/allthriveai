@@ -25,12 +25,14 @@ def platform_stats(request):
     # Count active creators:
     # - Users who have logged in at least once, OR
     # - Curation agents with profiles (have bio or tagline)
+    # - Exclude guest users (temporary accounts for battle invitations)
     active_creators = (
         User.objects.filter(
             Q(last_login__isnull=False)
             | Q(role=UserRole.AGENT, bio__isnull=False)
             | Q(role=UserRole.AGENT, tagline__isnull=False)
         )
+        .exclude(is_guest=True)
         .distinct()
         .count()
     )
@@ -38,8 +40,8 @@ def platform_stats(request):
     # Count total published projects (not private and not archived)
     projects_shared = Project.objects.filter(is_private=False, is_archived=False).count()
 
-    # Calculate total points from all users
-    collective_points = User.objects.aggregate(total=models.Sum('total_points'))['total'] or 0
+    # Calculate total points from all users (excluding guests)
+    collective_points = User.objects.exclude(is_guest=True).aggregate(total=models.Sum('total_points'))['total'] or 0
 
     return Response(
         {

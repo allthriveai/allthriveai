@@ -3,6 +3,7 @@
 import bleach
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils import timezone
 from django_ratelimit.decorators import ratelimit
@@ -655,6 +656,17 @@ def accept_invitation_by_token(request, token):
     if invitation.is_expired:
         return Response({'error': 'Invitation has expired.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Idempotency: If invitation already accepted, check if current user is the one who accepted
+    # and return the battle instead of an error (allows retry on network failures)
+    if invitation.status == InvitationStatus.ACCEPTED:
+        battle = invitation.battle
+        # If the current user is authenticated and is the opponent, return the battle
+        if request.user and request.user.is_authenticated and battle.opponent_id == request.user.id:
+            battle_serializer = PromptBattleSerializer(battle, context={'request': request})
+            return Response(battle_serializer.data)
+        # Otherwise, return already accepted (different user or not logged in)
+        return Response({'error': 'Invitation has already been accepted.'}, status=status.HTTP_400_BAD_REQUEST)
+
     if invitation.status != InvitationStatus.PENDING:
         return Response({'error': 'Invitation has already been responded to.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -770,6 +782,18 @@ def accept_invitation_by_token(request, token):
 
         return response
 
+    except ValidationError as e:
+        # Handle validation errors with user-friendly messages
+        error_message = str(e.message if hasattr(e, 'message') else e)
+        StructuredLogger.log_warning(
+            message='Battle invitation acceptance validation failed',
+            extra={
+                'invitation_id': invitation.id,
+                'error': error_message,
+                'is_guest_flow': is_guest_flow,
+            },
+        )
+        return Response({'error': error_message}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         StructuredLogger.log_error(
             message='Failed to accept battle invitation',

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import type { DragEvent, ChangeEvent } from 'react';
 import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { api } from '@/services/api';
@@ -76,6 +76,26 @@ async function validateFileSignature(file: File, acceptedFormats: string[]): Pro
   });
 }
 
+// Default avatar presets using DiceBear API - generates actual SVG URLs
+const AVATAR_PRESETS = [
+  { id: 'preset-cyan', seed: 'cyan-default', label: 'Cyan', bgColor: '06b6d4' },
+  { id: 'preset-purple', seed: 'purple-default', label: 'Purple', bgColor: 'a855f7' },
+  { id: 'preset-pink', seed: 'pink-default', label: 'Pink', bgColor: 'ec4899' },
+  { id: 'preset-orange', seed: 'orange-default', label: 'Orange', bgColor: 'f97316' },
+  { id: 'preset-green', seed: 'green-default', label: 'Green', bgColor: '22c55e' },
+  { id: 'preset-blue', seed: 'blue-default', label: 'Blue', bgColor: '3b82f6' },
+];
+
+// Generate preset avatar URL using DiceBear with specific background
+function generatePresetUrl(seed: string, bgColor: string): string {
+  return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${bgColor}`;
+}
+
+// Generate a DiceBear avatar URL for a given seed and style
+function generateAvatarUrl(seed: string, style: 'initials' | 'shapes' | 'thumbs' = 'initials'): string {
+  return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=0891b2,a855f7,ec4899,f97316,22c55e,3b82f6`;
+}
+
 interface ImageUploadProps {
   currentImage?: string;
   onImageUploaded: (url: string) => void;
@@ -83,6 +103,8 @@ interface ImageUploadProps {
   className?: string;
   maxSizeMB?: number;
   acceptedFormats?: string[];
+  showPresets?: boolean;
+  username?: string; // Used for generating personalized presets
 }
 
 export function ImageUpload({
@@ -92,12 +114,33 @@ export function ImageUpload({
   className = '',
   maxSizeMB = 10,
   acceptedFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+  showPresets = false,
+  username = '',
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(currentImage || null);
+  const [showPresetPicker, setShowPresetPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Generate personalized avatar options based on username (memoized to avoid recalculation)
+  const personalizedAvatars = useMemo(() => {
+    if (!username) return [];
+    return [
+      generateAvatarUrl(username, 'initials'),
+      generateAvatarUrl(username + '1', 'shapes'),
+      generateAvatarUrl(username + '2', 'thumbs'),
+    ];
+  }, [username]);
+
+  // Pre-generate preset URLs (memoized to avoid recalculation in render loop)
+  const presetUrls = useMemo(() => {
+    return AVATAR_PRESETS.map(preset => ({
+      ...preset,
+      url: generatePresetUrl(preset.seed, preset.bgColor),
+    }));
+  }, []);
 
   // Update preview when currentImage prop changes
   useEffect(() => {
@@ -214,6 +257,13 @@ export function ImageUpload({
     fileInputRef.current?.click();
   };
 
+  const handleSelectPreset = (avatarUrl: string) => {
+    setPreview(avatarUrl);
+    onImageUploaded(avatarUrl);
+    setShowPresetPicker(false);
+    setError(null);
+  };
+
   return (
     <div className={`${className} flex flex-col items-center`}>
       <input
@@ -306,6 +356,61 @@ export function ImageUpload({
       <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
         Max {maxSizeMB}MB • {acceptedFormats.map(f => f.split('/')[1].toUpperCase()).join(', ')}
       </p>
+
+      {/* Preset avatars section */}
+      {showPresets && (
+        <div className="mt-4 w-full">
+          <button
+            type="button"
+            onClick={() => setShowPresetPicker(!showPresetPicker)}
+            className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+          >
+            {showPresetPicker ? 'Hide default avatars' : 'Or choose a default avatar'}
+          </button>
+
+          {showPresetPicker && (
+            <div className="mt-3 space-y-3">
+              {/* Personalized DiceBear avatars */}
+              {personalizedAvatars.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Personalized for you</p>
+                  <div className="flex justify-center gap-2">
+                    {personalizedAvatars.map((url, index) => (
+                      <button
+                        key={`personalized-${index}`}
+                        type="button"
+                        onClick={() => handleSelectPreset(url)}
+                        className="w-12 h-12 rounded-full overflow-hidden border-2 border-transparent hover:border-primary-500 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                        aria-label={`Select personalized avatar ${index + 1}`}
+                      >
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Color presets */}
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Color avatars</p>
+                <div className="flex justify-center gap-2 flex-wrap">
+                  {presetUrls.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => handleSelectPreset(preset.url)}
+                      className="w-12 h-12 rounded-full overflow-hidden border-2 border-transparent hover:border-primary-500 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 bg-slate-200 dark:bg-slate-700"
+                      aria-label={`Select ${preset.label} avatar`}
+                    >
+                      <img src={preset.url} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

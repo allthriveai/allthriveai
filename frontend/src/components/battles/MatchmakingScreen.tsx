@@ -158,7 +158,7 @@ export function MatchmakingScreen({
 
       try {
         // Validate that the battle is still pending (no opponent yet)
-        const response = await api.get(`/battles/${stored.battleId}/`);
+        const response = await api.get(`/me/battles/${stored.battleId}/`);
         if (response.data.opponent) {
           // Battle already has opponent - either accepted or cancelled
           clearStoredPendingBattle();
@@ -201,7 +201,7 @@ export function MatchmakingScreen({
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await api.get(`/battles/${battleIdToPoll}/`);
+        const response = await api.get(`/me/battles/${battleIdToPoll}/`);
         // Check if battle has an opponent (invitation was accepted)
         if (response.data.opponent) {
           console.log('[MatchmakingScreen] Battle accepted! Navigating to battle:', battleIdToPoll);
@@ -311,21 +311,38 @@ export function MatchmakingScreen({
   const handleCopyMessage = async () => {
     if (!generatedLink) return;
 
+    const message = getShareMessage();
+
+    // Try modern clipboard API first
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(message);
+        setMessageCopied(true);
+        setTimeout(() => setMessageCopied(false), 2000);
+        return;
+      } catch {
+        // Fall through to fallback
+      }
+    }
+
+    // Fallback for older browsers or non-secure contexts
+    const textArea = document.createElement('textarea');
+    textArea.value = message;
+    // Position off-screen to avoid visual flicker
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
     try {
-      await navigator.clipboard.writeText(getShareMessage());
+      document.execCommand('copy');
       setMessageCopied(true);
       setTimeout(() => setMessageCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = getShareMessage();
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setMessageCopied(true);
-      setTimeout(() => setMessageCopied(false), 2000);
+      console.error('Failed to copy to clipboard');
     }
+    document.body.removeChild(textArea);
   };
 
   const resetModal = () => {
@@ -871,7 +888,7 @@ export function MatchmakingScreen({
                             ) : (
                               <>
                                 <ClipboardDocumentIcon className="w-4 h-4" />
-                                Tap to copy message
+                                Click to copy message
                               </>
                             )}
                           </div>

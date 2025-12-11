@@ -15,7 +15,7 @@ import {
   CheckIcon,
   XMarkIcon,
   EyeIcon,
-  CameraIcon,
+  PhotoIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -163,40 +163,79 @@ export function ProfileHeader({
                 className="hidden"
                 aria-label="Upload profile picture"
               />
-              <div
-                className={`relative w-28 h-28 sm:w-36 sm:h-36 rounded-xl ring-4 ring-white dark:ring-gray-900 shadow-xl overflow-hidden bg-gray-100 dark:bg-gray-800 ${
-                  isEditing && onAvatarChange ? 'cursor-pointer group' : ''
-                }`}
-                onClick={handleAvatarClick}
-                role={isEditing && onAvatarChange ? 'button' : undefined}
-                tabIndex={isEditing && onAvatarChange ? 0 : undefined}
-                onKeyDown={(e) => {
-                  if (isEditing && onAvatarChange && (e.key === 'Enter' || e.key === ' ')) {
-                    e.preventDefault();
-                    handleAvatarClick();
-                  }
-                }}
-                aria-label={isEditing && onAvatarChange ? 'Click to change profile picture' : undefined}
-              >
-                <img
-                  src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || 'User'}&background=random&size=150`}
-                  alt={user?.fullName || user?.username || 'Profile'}
-                  className="w-full h-full object-cover"
-                />
-                {/* Edit overlay - shown when editing */}
-                {isEditing && onAvatarChange && (
-                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    {isAvatarUploading ? (
-                      <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-white animate-spin" />
+              {/* Avatar display - different styles for editing vs viewing */}
+              {isEditing && onAvatarChange ? (
+                // Edit mode: Match ImageUpload component style (dashed border circle)
+                <div
+                  onClick={handleAvatarClick}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload image - click or drag and drop"
+                  aria-disabled={isAvatarUploading}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      handleAvatarClick();
+                    }
+                  }}
+                  className={`
+                    relative w-32 h-32 rounded-full border-4 border-dashed
+                    flex flex-col items-center justify-center cursor-pointer
+                    transition-all duration-200
+                    focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+                    ${user?.avatarUrl
+                      ? 'border-transparent overflow-hidden group'
+                      : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500 bg-slate-50 dark:bg-slate-800/50'
+                    }
+                    ${isAvatarUploading ? 'opacity-50 cursor-not-allowed' : ''}
+                  `}
+                >
+                  {user?.avatarUrl ? (
+                    // Has avatar - show image with hover overlay
+                    <>
+                      <img
+                        src={user.avatarUrl}
+                        alt={user?.fullName || user?.username || 'Profile'}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                        {isAvatarUploading ? (
+                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white" />
+                        ) : (
+                          <>
+                            <PhotoIcon className="w-10 h-10 text-white mb-1" />
+                            <span className="text-xs text-white text-center px-2">Click to change</span>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    // No avatar - show upload prompt (matches ImageUpload style)
+                    isAvatarUploading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500" />
+                        <span className="sr-only">Uploading...</span>
+                      </>
                     ) : (
                       <>
-                        <CameraIcon className="w-8 h-8 text-white mb-1" />
-                        <span className="text-white text-xs font-medium">Change Photo</span>
+                        <PhotoIcon className="w-10 h-10 text-slate-400 dark:text-slate-500 mb-1" />
+                        <span className="text-xs text-slate-500 dark:text-slate-400 text-center px-2">
+                          Click or drag
+                        </span>
                       </>
-                    )}
-                  </div>
-                )}
-              </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                // View mode: Standard avatar display
+                <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-xl ring-4 ring-white dark:ring-gray-900 shadow-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                  <img
+                    src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || 'User'}&background=random&size=150`}
+                    alt={user?.fullName || user?.username || 'Profile'}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Info */}

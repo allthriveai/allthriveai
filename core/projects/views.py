@@ -1515,8 +1515,9 @@ def semantic_search(request):
             try:
                 # Users always use text search (no Weaviate collection for user search)
                 # Use annotate to get project count in single query (avoid N+1)
+                # Exclude guest users from search results (they have temporary accounts)
                 users = list(
-                    User.objects.filter(is_active=True, is_profile_public=True)
+                    User.objects.filter(is_active=True, is_profile_public=True, is_guest=False)
                     .filter(
                         Q(username__icontains=query)
                         | Q(first_name__icontains=query)

@@ -567,47 +567,93 @@ class BattleInvitation(models.Model):
     def accept(self, accepting_user: 'User' = None):
         """Accept the invitation and start the battle.
 
+        This method uses database-level locking to prevent race conditions
+        when multiple users try to accept the same invitation simultaneously.
+
         Args:
             accepting_user: For SMS/LINK invitations, the user accepting via the link.
                            For platform invitations, must match self.recipient.
+
+        Raises:
+            ValidationError: If invitation is not pending, expired, or user is invalid.
         """
-        if self.status != InvitationStatus.PENDING:
-            raise ValidationError('Can only accept pending invitations.')
+        from django.db import transaction
 
-        if self.is_expired:
-            raise ValidationError('Invitation has expired.')
+        # Use atomic transaction to ensure all-or-nothing updates
+        with transaction.atomic():
+            # Re-fetch with lock to prevent race conditions
+            # The select_for_update() locks the row until transaction completes
+            locked_invitation = (
+                BattleInvitation.objects.select_for_update().select_related('battle', 'sender').get(pk=self.pk)
+            )
 
-        # Handle SMS and LINK invitations - set the recipient to the accepting user
-        if self.invitation_type in (InvitationType.SMS, InvitationType.LINK):
-            if not accepting_user:
-                raise ValidationError('Accepting user required for SMS/link invitations.')
-            if accepting_user == self.sender:
-                raise ValidationError('Cannot accept your own invitation.')
-            # Set the recipient now that we know who accepted
-            self.recipient = accepting_user
+            if locked_invitation.status != InvitationStatus.PENDING:
+                raise ValidationError('Can only accept pending invitations.')
 
-        self.status = InvitationStatus.ACCEPTED
-        self.responded_at = timezone.now()
-        self.save(update_fields=['status', 'responded_at', 'recipient'])
+            if locked_invitation.is_expired:
+                raise ValidationError('Invitation has expired.')
 
-        # Start the battle - for SMS/LINK invitations, add the accepting user as opponent
-        if self.invitation_type in (InvitationType.SMS, InvitationType.LINK) and accepting_user:
-            self.battle.opponent = accepting_user
-            self.battle.save(update_fields=['opponent'])
+            # Handle SMS and LINK invitations - set the recipient to the accepting user
+            if locked_invitation.invitation_type in (InvitationType.SMS, InvitationType.LINK):
+                if not accepting_user:
+                    raise ValidationError('Accepting user required for SMS/link invitations.')
+                if accepting_user == locked_invitation.sender:
+                    raise ValidationError('Cannot accept your own invitation.')
+                # Set the recipient now that we know who accepted
+                locked_invitation.recipient = accepting_user
 
-        self.battle.start_battle()
+            locked_invitation.status = InvitationStatus.ACCEPTED
+            locked_invitation.responded_at = timezone.now()
+            locked_invitation.save(update_fields=['status', 'responded_at', 'recipient'])
+
+            # Update battle with opponent and start it - all within same transaction
+            battle = locked_invitation.battle
+            if locked_invitation.invitation_type in (InvitationType.SMS, InvitationType.LINK) and accepting_user:
+                battle.opponent = accepting_user
+
+            # Start the battle with proper state machine transition
+            if battle.status != BattleStatus.PENDING:
+                raise ValidationError('Battle is no longer pending.')
+
+            battle.status = BattleStatus.ACTIVE
+            battle.phase = BattlePhase.COUNTDOWN  # Set phase explicitly for consistency
+            battle.started_at = timezone.now()
+            battle.expires_at = battle.started_at + timezone.timedelta(minutes=battle.duration_minutes)
+            battle.phase_changed_at = battle.started_at
+            battle.save(update_fields=['opponent', 'status', 'phase', 'started_at', 'expires_at', 'phase_changed_at'])
+
+            # Update self to reflect the locked invitation's state
+            self.status = locked_invitation.status
+            self.responded_at = locked_invitation.responded_at
+            self.recipient = locked_invitation.recipient
 
     def decline(self):
-        """Decline the invitation."""
-        if self.status != InvitationStatus.PENDING:
-            raise ValidationError('Can only decline pending invitations.')
+        """Decline the invitation.
 
-        self.status = InvitationStatus.DECLINED
-        self.responded_at = timezone.now()
-        self.save(update_fields=['status', 'responded_at'])
+        Uses database-level locking to prevent race conditions.
+        """
+        from django.db import transaction
 
-        # Cancel the battle
-        self.battle.cancel_battle()
+        with transaction.atomic():
+            # Re-fetch with lock to prevent race conditions
+            locked_invitation = BattleInvitation.objects.select_for_update().select_related('battle').get(pk=self.pk)
+
+            if locked_invitation.status != InvitationStatus.PENDING:
+                raise ValidationError('Can only decline pending invitations.')
+
+            locked_invitation.status = InvitationStatus.DECLINED
+            locked_invitation.responded_at = timezone.now()
+            locked_invitation.save(update_fields=['status', 'responded_at'])
+
+            # Cancel the battle
+            battle = locked_invitation.battle
+            if battle.status in [BattleStatus.PENDING, BattleStatus.ACTIVE]:
+                battle.status = BattleStatus.CANCELLED
+                battle.save(update_fields=['status'])
+
+            # Update self to reflect the locked invitation's state
+            self.status = locked_invitation.status
+            self.responded_at = locked_invitation.responded_at
 
     @property
     def is_expired(self):

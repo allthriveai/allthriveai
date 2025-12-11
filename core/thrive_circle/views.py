@@ -1326,7 +1326,7 @@ class AdminCircleViewSet(viewsets.ViewSet):
 
         week_start = get_week_start()
 
-        queryset = User.objects.filter(is_active=True).exclude(role='admin')
+        queryset = User.objects.filter(is_active=True, is_guest=False).exclude(role='admin')
 
         # Apply filters
         search = request.query_params.get('search')

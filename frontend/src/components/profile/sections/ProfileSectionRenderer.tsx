@@ -35,6 +35,7 @@ import { SkillsSection } from './SkillsSection';
 import { CustomSection } from './CustomSection';
 import { AboutSection } from './AboutSection';
 import { LinksSection } from './LinksSection';
+import type { SocialLinksUpdate } from './LinksSection';
 import { LearningGoalsSection } from './LearningGoalsSection';
 import { StorefrontSection } from './StorefrontSection';
 import { FeaturedContentSection } from './FeaturedContentSection';
@@ -73,6 +74,7 @@ interface ProfileSectionRendererProps {
   user: ProfileUser;
   isEditing?: boolean;
   onUpdate?: (content: ProfileSectionContent) => void;
+  onSocialLinksUpdate?: (links: SocialLinksUpdate) => Promise<void>;
 }
 
 export function ProfileSectionRenderer({
@@ -80,6 +82,7 @@ export function ProfileSectionRenderer({
   user,
   isEditing,
   onUpdate,
+  onSocialLinksUpdate,
 }: ProfileSectionRendererProps) {
   if (!section.visible && !isEditing) {
     return null;
@@ -91,7 +94,7 @@ export function ProfileSectionRenderer({
     case 'about':
       return <AboutSection content={section.content as any} {...commonProps} />;
     case 'links':
-      return <LinksSection content={section.content as any} {...commonProps} />;
+      return <LinksSection content={section.content as any} {...commonProps} onSocialLinksUpdate={onSocialLinksUpdate} />;
     case 'skills':
       return <SkillsSection content={section.content as any} {...commonProps} />;
     case 'learning_goals':
@@ -125,6 +128,7 @@ interface ProfileSectionsProps {
   onDeleteSection?: (sectionId: string) => void;
   onToggleVisibility?: (sectionId: string) => void;
   onReorderSections?: (reorderedSections: ProfileSection[]) => void;
+  onSocialLinksUpdate?: (links: SocialLinksUpdate) => Promise<void>;
 }
 
 export function ProfileSections({
@@ -136,6 +140,7 @@ export function ProfileSections({
   onDeleteSection,
   onToggleVisibility,
   onReorderSections,
+  onSocialLinksUpdate,
 }: ProfileSectionsProps) {
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [insertAfterSectionId, setInsertAfterSectionId] = useState<string | undefined>(undefined);
@@ -255,6 +260,7 @@ export function ProfileSections({
           onToggleVisibility={onToggleVisibility}
           onAddClick={handleAddClick}
           onAddSection={onAddSection}
+          onSocialLinksUpdate={onSocialLinksUpdate}
         />
       ))}
     </div>
@@ -325,6 +331,7 @@ interface SortableProfileSectionProps {
   onToggleVisibility?: (sectionId: string) => void;
   onAddClick: (afterSectionId?: string) => void;
   onAddSection?: (type: ProfileSectionType, afterSectionId?: string) => void;
+  onSocialLinksUpdate?: (links: SocialLinksUpdate) => Promise<void>;
 }
 
 function SortableProfileSection({
@@ -338,6 +345,7 @@ function SortableProfileSection({
   onToggleVisibility,
   onAddClick,
   onAddSection,
+  onSocialLinksUpdate,
 }: SortableProfileSectionProps) {
   const {
     attributes,
@@ -415,6 +423,7 @@ function SortableProfileSection({
         user={user}
         isEditing={isEditing}
         onUpdate={onSectionUpdate ? (content) => onSectionUpdate(section.id, content) : undefined}
+        onSocialLinksUpdate={onSocialLinksUpdate}
       />
 
       {/* Add Section Button after each section (editing mode) */}
