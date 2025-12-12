@@ -263,10 +263,8 @@ export default function IntegrationsSettingsPage() {
 
     if (integrationId === 'linkedin') {
       try {
-        console.log('[IntegrationsSettingsPage] Starting LinkedIn OAuth request...');
         // Use 'li' alias to avoid ad-blocker blocking "linkedin" URLs
         const response = await api.get('/social/connect/li/');
-        console.log('[IntegrationsSettingsPage] LinkedIn OAuth response:', response);
 
         if (response.data.success && response.data.data?.authUrl) {
           const authUrl = response.data.data.authUrl;
@@ -763,66 +761,64 @@ export default function IntegrationsSettingsPage() {
               </div>
             )}
 
-            {/* Loading State */}
-            {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-              </div>
-            ) : (
-              /* Integrations Accordion List */
-              <div className="space-y-2">
-              {integrations.map((integration) => {
-                const isExpanded = expandedIntegration === integration.id;
-                return (
-                <div
-                  key={integration.id}
-                  className="glass-strong rounded-lg border border-white/20 overflow-hidden"
+            {/* Integrations Accordion List */}
+            <div className="space-y-2">
+            {integrations.map((integration) => {
+              const isExpanded = expandedIntegration === integration.id;
+              return (
+              <div
+                key={integration.id}
+                className="glass-strong rounded-lg border border-white/20 overflow-hidden"
+              >
+                {/* Accordion Header */}
+                <button
+                  onClick={() => setExpandedIntegration(isExpanded ? null : integration.id)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
                 >
-                  {/* Accordion Header */}
-                  <button
-                    onClick={() => setExpandedIntegration(isExpanded ? null : integration.id)}
-                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      {/* Icon */}
-                      <div className="w-10 h-10 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
-                        <FontAwesomeIcon icon={integration.icon} className="text-xl text-slate-700 dark:text-slate-300" />
-                      </div>
-
-                      {/* Name and status */}
-                      <div className="text-left">
-                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          {integration.name}
-                        </h3>
-                        {integration.isConnected && integration.username && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            @{integration.username}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Badges */}
-                      <div className="flex items-center gap-2">
-                        {integration.isConnected && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
-                            <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
-                            Connected
-                          </span>
-                        )}
-                        {!integration.isAvailable && (
-                          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-500/10 text-slate-600 dark:text-slate-400">
-                            Coming Soon
-                          </span>
-                        )}
-                      </div>
+                  <div className="flex items-center gap-3">
+                    {/* Icon */}
+                    <div className="w-10 h-10 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
+                      <FontAwesomeIcon icon={integration.icon} className="text-xl text-slate-700 dark:text-slate-300" />
                     </div>
 
-                    {/* Chevron */}
-                    <FontAwesomeIcon
-                      icon={isExpanded ? faChevronUp : faChevronDown}
-                      className="text-slate-400 transition-transform"
-                    />
-                  </button>
+                    {/* Name and status */}
+                    <div className="text-left">
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {integration.name}
+                      </h3>
+                      {integration.isConnected && integration.username && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          @{integration.username}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Badges */}
+                    <div className="flex items-center gap-2">
+                      {loading ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-slate-500/10 text-slate-500 dark:text-slate-400">
+                          <FontAwesomeIcon icon={faSpinner} className="text-[10px] animate-spin" />
+                        </span>
+                      ) : integration.isConnected ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
+                          <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
+                          Connected
+                        </span>
+                      ) : null}
+                      {!integration.isAvailable && (
+                        <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-500/10 text-slate-600 dark:text-slate-400">
+                          Coming Soon
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Chevron */}
+                  <FontAwesomeIcon
+                    icon={isExpanded ? faChevronUp : faChevronDown}
+                    className="text-slate-400 transition-transform"
+                  />
+                </button>
 
                   {/* Accordion Content */}
                   {isExpanded && (
@@ -956,8 +952,7 @@ export default function IntegrationsSettingsPage() {
                 </div>
                 );
               })}
-              </div>
-            )}
+            </div>
           </div>
         </div>
 

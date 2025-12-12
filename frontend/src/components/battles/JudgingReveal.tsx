@@ -88,6 +88,100 @@ export function JudgingReveal({
   const [showConfetti, setShowConfetti] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
+  // Generate helpful feedback for the loser explaining WHY they lost
+  const getLossFeedback = (): { mainReason: string; tip: string } => {
+    if (!mySubmission?.criteriaScores || !opponentSubmission?.criteriaScores) {
+      return {
+        mainReason: "Your opponent's execution edged you out this time.",
+        tip: "Try adding more descriptive details to your prompts next time!",
+      };
+    }
+
+    // Find the criteria where user lost the most points
+    const criteriaComparison = Object.entries(mySubmission.criteriaScores).map(([criterion, myScore]) => {
+      const theirScore = opponentSubmission.criteriaScores?.[criterion] ?? 0;
+      return { criterion, myScore, theirScore, diff: theirScore - myScore };
+    });
+
+    // Sort by biggest difference (where opponent did better)
+    const gaps = criteriaComparison
+      .filter(c => c.diff > 0)
+      .sort((a, b) => b.diff - a.diff);
+
+    const biggestGap = gaps[0];
+
+    if (!biggestGap || biggestGap.diff < 0.5) {
+      return {
+        mainReason: "It was incredibly close! The scores were nearly identical.",
+        tip: "Keep experimenting - you're doing great!",
+      };
+    }
+
+    // Generate specific feedback based on the criteria they struggled with
+    // Normalize criterion name for lookup (handles case variations)
+    const normalizeCriterion = (name: string): string => name.toLowerCase().replace(/[_\s]+/g, '_');
+
+    const feedbackTemplates: Record<string, { reason: string; tip: string }> = {
+      'creativity': {
+        reason: `Your opponent scored ${biggestGap.diff.toFixed(1)} points higher on creativity.`,
+        tip: "Try combining unexpected elements or adding unique twists to stand out!",
+      },
+      'visual_impact': {
+        reason: `Your opponent's image had stronger visual impact (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Use bold colors, dramatic lighting, or striking composition to make your image pop!",
+      },
+      'relevance': {
+        reason: `Your opponent matched the challenge theme more closely (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Make sure to explicitly include all key elements from the challenge in your prompt.",
+      },
+      'cohesion': {
+        reason: `Your opponent's image had better cohesion (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Focus on making all elements work together harmoniously - consistent style, mood, and color palette.",
+      },
+      'adherence': {
+        reason: `Your opponent matched the challenge theme more closely (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Make sure to explicitly include all key elements from the challenge in your prompt.",
+      },
+      'theme_adherence': {
+        reason: `Your opponent matched the challenge theme more closely (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Make sure to explicitly include all key elements from the challenge in your prompt.",
+      },
+      'quality': {
+        reason: `Your opponent achieved higher visual quality (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Add details about lighting, style, resolution, and composition to boost quality.",
+      },
+      'visual_quality': {
+        reason: `Your opponent achieved higher visual quality (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Add details about lighting, style, resolution, and composition to boost quality.",
+      },
+      'composition': {
+        reason: `Your opponent had stronger composition (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Try specifying layout, perspective, focal points, or rule of thirds in your prompt.",
+      },
+      'originality': {
+        reason: `Your opponent's concept was more original (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Push for unique angles or unexpected interpretations of the theme!",
+      },
+      'technical': {
+        reason: `Your opponent had better technical execution (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Be more specific about artistic techniques, styles, and technical details.",
+      },
+    };
+
+    const normalizedKey = normalizeCriterion(biggestGap.criterion);
+    const feedback = feedbackTemplates[normalizedKey];
+
+    if (feedback) {
+      return { mainReason: feedback.reason, tip: feedback.tip };
+    }
+
+    // Fallback for unknown criteria
+    return {
+      mainReason: `Your opponent scored higher on ${biggestGap.criterion.toLowerCase()} (+${biggestGap.diff.toFixed(1)} pts).`,
+      tip: `Focus on improving ${biggestGap.criterion.toLowerCase()} in your next prompt!`,
+    };
+  };
+
   // Scroll to top when entering reveal phase
   useEffect(() => {
     if (phase === 'reveal-left' || phase === 'scoring') {
@@ -723,12 +817,30 @@ export function JudgingReveal({
                   <span className="text-sm md:text-base text-slate-400">+50 XP earned</span>
                 </motion.div>
               ) : (
-                <div className="inline-flex flex-col items-center gap-2 md:gap-3 px-6 py-4 md:px-8 md:py-6 rounded-2xl bg-slate-800/50 border border-slate-600">
-                  <span className="text-xl md:text-2xl font-bold text-slate-300">
-                    {opponent.username} Wins!
-                  </span>
-                  <span className="text-sm md:text-base text-slate-400">Better luck next time! +10 XP for participating</span>
-                </div>
+                (() => {
+                  const lossFeedback = getLossFeedback();
+                  return (
+                    <div className="inline-flex flex-col items-center gap-3 md:gap-4 px-6 py-5 md:px-10 md:py-8 rounded-2xl bg-slate-800/50 border border-slate-600 max-w-md">
+                      <span className="text-xl md:text-2xl font-bold text-slate-300">
+                        {opponent.username} Wins!
+                      </span>
+
+                      {/* Why you lost */}
+                      <div className="text-center space-y-2">
+                        <p className="text-sm md:text-base text-slate-400">
+                          {lossFeedback.mainReason}
+                        </p>
+                        <div className="px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                          <p className="text-xs md:text-sm text-cyan-300">
+                            💡 <span className="font-medium">Tip:</span> {lossFeedback.tip}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="text-sm text-slate-500">+10 XP for participating</span>
+                    </div>
+                  );
+                })()
               )}
             </motion.div>
           )}

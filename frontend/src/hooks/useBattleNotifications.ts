@@ -305,9 +305,7 @@ export function useBattleNotifications({
 
               case 'invitation_accepted':
                 // Challenger receives this when opponent accepts
-                console.log('[BattleNotifications] Received invitation_accepted event:', data);
                 if (data.battle_id && data.opponent) {
-                  console.log('[BattleNotifications] Calling onInvitationAccepted callback');
                   onInvitationAcceptedRef.current?.(data.battle_id, data.opponent);
                 } else {
                   console.warn('[BattleNotifications] invitation_accepted missing battle_id or opponent:', data);
@@ -377,7 +375,6 @@ export function useBattleNotifications({
       if (document.visibilityState === 'visible') {
         // User returned to the page - check if we need to reconnect
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-          console.log('[BattleNotifications] Page visible, reconnecting WebSocket...');
           // Reset reconnect attempts for fresh start
           setReconnectAttempts(0);
           connectFnRef.current?.();

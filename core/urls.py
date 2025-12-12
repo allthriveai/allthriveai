@@ -27,6 +27,7 @@ from .auth.views import (
     logout_view,
     oauth_callback,
     oauth_urls,
+    prepare_guest_oauth_conversion,
     signup,
     user_activity,
     user_activity_insights,
@@ -303,6 +304,7 @@ urlpatterns = [
     path('me/account/deactivate/', deactivate_account, name='deactivate_account'),
     path('me/account/delete/', delete_account, name='delete_account'),
     path('me/account/convert-guest/', convert_guest_account, name='convert_guest_account'),
+    path('me/account/prepare-guest-oauth/', prepare_guest_oauth_conversion, name='prepare_guest_oauth_conversion'),
     path('me/', include(me_router.urls)),
     # Learning paths endpoints
     path('', include('core.learning_paths.urls')),

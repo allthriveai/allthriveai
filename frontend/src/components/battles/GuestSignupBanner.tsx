@@ -2,34 +2,25 @@
  * GuestSignupBanner
  *
  * Small, non-intrusive banner that prompts guest users to create an account
- * after a battle. Clicking anywhere on the banner navigates to the auth page.
+ * after a battle. Clicking anywhere on the banner opens the signup modal.
  */
 
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  XMarkIcon,
-  SparklesIcon,
-  ArrowRightIcon,
-} from '@heroicons/react/24/solid';
+import { XMarkIcon, SparklesIcon, ArrowRightIcon } from '@heroicons/react/24/solid';
 
 interface GuestSignupBannerProps {
   isVisible: boolean;
   onDismiss: () => void;
+  onSignupClick: () => void;
   battleResult?: 'win' | 'loss' | 'tie';
 }
 
 export function GuestSignupBanner({
   isVisible,
   onDismiss,
+  onSignupClick,
 }: GuestSignupBannerProps) {
-  const navigate = useNavigate();
-
   if (!isVisible) return null;
-
-  const handleSignup = () => {
-    navigate('/auth');
-  };
 
   return (
     <AnimatePresence>
@@ -44,7 +35,7 @@ export function GuestSignupBanner({
         >
           <div className="max-w-lg mx-auto">
             <button
-              onClick={handleSignup}
+              onClick={onSignupClick}
               className="relative w-full flex items-center gap-3 p-3 sm:p-4 rounded-xl
                         bg-gradient-to-r from-cyan-500/10 to-green-500/10
                         border border-cyan-500/30 backdrop-blur-md

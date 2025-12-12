@@ -46,7 +46,12 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         exists, we attach this social account to that user so that one person
         can log in via email/password, Google, or GitHub and still end up with
         a single `User` record.
+
+        Also handles guest-to-full-account conversion when session contains
+        guest_conversion_token from prepare_guest_oauth_conversion endpoint.
         """
+        from services.auth import GuestUserService
+
         # If this social account is already linked to a user, nothing to do.
         if sociallogin.is_existing:
             return
@@ -55,10 +60,71 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         # provider. We rely on email as the canonical identity anchor.
         email = (sociallogin.user.email or '').strip().lower()
         if not email:
-            # Some providers may not return email; in that case fall back to
-            # default behaviour and let allauth handle it.
+            # No providers may not return email - store error for redirect
+            request.session['guest_oauth_error'] = 'no_email'
             return
 
+        # Check if this is a guest conversion attempt
+        guest_token = request.session.get('guest_conversion_token')
+        if guest_token:
+            try:
+                guest_user = GuestUserService.get_guest_by_token(guest_token)
+                if guest_user and guest_user.is_guest:
+                    # Check if email is already taken by another non-guest user
+                    existing_user_with_email = (
+                        User.objects.filter(email__iexact=email).exclude(pk=guest_user.pk).first()
+                    )
+
+                    if existing_user_with_email:
+                        # Email already exists - store error for redirect
+                        logger.warning(
+                            "Guest conversion failed: email '%s' already exists for user '%s'",
+                            email,
+                            existing_user_with_email.username,
+                        )
+                        request.session['guest_oauth_error'] = 'email_exists'
+                        # Clear conversion session data
+                        request.session.pop('guest_conversion_token', None)
+                        request.session.pop('guest_conversion_user_id', None)
+                        return
+
+                    # Convert the guest account
+                    first_name = sociallogin.user.first_name or ''
+                    last_name = sociallogin.user.last_name or ''
+
+                    converted_user = GuestUserService.convert_via_oauth(
+                        guest_user=guest_user,
+                        email=email,
+                        first_name=first_name,
+                        last_name=last_name,
+                    )
+
+                    logger.info(
+                        "Converting guest user '%s' to full account via OAuth provider '%s'",
+                        converted_user.username,
+                        getattr(sociallogin.account, 'provider', 'unknown'),
+                    )
+
+                    # Mark session for successful conversion
+                    request.session['guest_conversion_success'] = True
+
+                    # Link the social account to the converted guest user
+                    sociallogin.connect(request, converted_user)
+                    return
+
+            except Exception as e:
+                logger.error(
+                    'Error during guest OAuth conversion: %s',
+                    str(e),
+                    exc_info=True,
+                )
+                request.session['guest_oauth_error'] = 'conversion_failed'
+                # Clear conversion session data
+                request.session.pop('guest_conversion_token', None)
+                request.session.pop('guest_conversion_user_id', None)
+                return
+
+        # Standard flow: check if email already exists
         try:
             existing_user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:

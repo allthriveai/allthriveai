@@ -103,6 +103,68 @@ class GuestUserService:
 
     @classmethod
     @transaction.atomic
+    def convert_via_oauth(
+        cls,
+        guest_user: User,
+        email: str,
+        first_name: str | None = None,
+        last_name: str | None = None,
+    ) -> User:
+        """Convert a guest user to a full account via OAuth (no password needed).
+
+        Args:
+            guest_user: The guest user to convert.
+            email: Email address from OAuth provider.
+            first_name: First name from OAuth provider.
+            last_name: Last name from OAuth provider.
+
+        Returns:
+            Updated User instance.
+
+        Raises:
+            ValueError: If user is not a guest or email already exists.
+        """
+        if not guest_user.is_guest:
+            raise ValueError('User is not a guest account.')
+
+        # Check if email is already taken by a different user
+        if User.objects.filter(email=email).exclude(pk=guest_user.pk).exists():
+            raise ValueError('Email address is already in use.')
+
+        # Generate username from email
+        base_username = email.split('@')[0].lower()
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exclude(pk=guest_user.pk).exists():
+            username = f'{base_username}{counter}'
+            counter += 1
+
+        # Update user
+        guest_user.email = email
+        guest_user.username = username
+        guest_user.is_guest = False
+        guest_user.guest_token = ''  # Clear guest token
+        guest_user.set_unusable_password()  # OAuth handles auth, no password needed
+
+        # Update name if provided
+        if first_name:
+            guest_user.first_name = first_name
+        if last_name:
+            guest_user.last_name = last_name
+
+        guest_user.save(
+            update_fields=['email', 'username', 'password', 'is_guest', 'guest_token', 'first_name', 'last_name']
+        )
+
+        logger.info(
+            f'Converted guest user to full account via OAuth: {username}',
+            extra={'user_id': guest_user.id, 'new_username': username},
+        )
+
+        return guest_user
+
+    @classmethod
+    @transaction.atomic
     def convert_to_full_account(
         cls,
         guest_user: User,

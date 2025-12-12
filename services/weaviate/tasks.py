@@ -107,6 +107,7 @@ def sync_project_to_weaviate(self, project_id: int):
             'category_names': list(project.categories.values_list('name', flat=True)),
             'topics': project.topics or [],
             'owner_id': project.user_id,
+            'owner_username': project.user.username,  # For username-based search
             'engagement_velocity': 0.0,  # Will be updated by engagement task
             'like_count': project.likes.count(),
             'view_count': 0,  # TODO: Add view tracking
@@ -649,6 +650,7 @@ def reindex_projects_chunk(self, offset: int, limit: int):
                     'category_names': list(project.categories.values_list('name', flat=True)),
                     'topics': project.topics or [],
                     'owner_id': project.user_id,
+                    'owner_username': project.user.username,  # For username-based search
                     'engagement_velocity': project.engagement_velocity or 0.0,
                     'like_count': project.likes.count(),
                     'view_count': project.view_count or 0,

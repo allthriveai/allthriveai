@@ -6,7 +6,6 @@ from .nodes import (
     ProjectState,
     create_project_node,
     process_description_node,
-    process_showcase_node,
     process_title_node,
     process_type_node,
     welcome_node,
@@ -33,7 +32,6 @@ workflow.add_node('welcome', welcome_node)
 workflow.add_node('process_title', process_title_node)
 workflow.add_node('process_description', process_description_node)
 workflow.add_node('process_type', process_type_node)
-workflow.add_node('process_showcase', process_showcase_node)
 workflow.add_node('create_project', create_project_node)
 
 # Set entry point
@@ -43,8 +41,7 @@ workflow.set_entry_point('welcome')
 workflow.add_edge('welcome', END)  # After welcome, wait for user input
 workflow.add_edge('process_title', END)  # After processing title, wait for description
 workflow.add_edge('process_description', END)  # After description, wait for type
-workflow.add_edge('process_type', END)  # After type, wait for showcase
-workflow.add_edge('process_showcase', END)  # After showcase, wait for confirmation
+workflow.add_edge('process_type', END)  # After type, wait for confirmation
 workflow.add_conditional_edges(
     'create_project',
     lambda state: 'done' if state.get('step') == 'done' else 'error',

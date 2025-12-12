@@ -161,7 +161,6 @@ export function MatchmakingScreen({
         const response = await api.get(`/me/battles/${battleIdToPoll}/`);
         // Check if battle has an opponent (invitation was accepted)
         if (response.data.opponent) {
-          console.log('[MatchmakingScreen] Battle accepted! Navigating to battle:', battleIdToPoll);
           clearInterval(pollInterval);
           clearStoredPendingBattle();
           setExistingPendingBattle(null);
@@ -1009,6 +1008,15 @@ export function MatchmakingScreen({
                         <p className="text-red-400 text-sm">{smsError}</p>
                       </div>
                     )}
+
+                    {/* SMS Opt-in Compliance Notice */}
+                    <div className="mb-4 p-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <p className="text-xs text-gray-600 dark:text-slate-400 leading-relaxed">
+                        By clicking "Send Challenge", you confirm you have consent to send this person a one-time SMS battle invitation from AllThrive.
+                        They will receive a single message with a link to accept.
+                        Reply STOP to opt out. Message & data rates may apply.
+                      </p>
+                    </div>
 
                     <button
                       onClick={handleSendSms}

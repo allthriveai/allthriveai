@@ -996,7 +996,14 @@ def explore_projects(request):
     search_similarity_applied = False
     if search_query:
         # First try exact/contains match for best performance on exact queries
-        exact_match = queryset.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
+        # Search title, description, and user info (username, first_name, last_name)
+        exact_match = queryset.filter(
+            Q(title__icontains=search_query)
+            | Q(description__icontains=search_query)
+            | Q(user__username__icontains=search_query)
+            | Q(user__first_name__icontains=search_query)
+            | Q(user__last_name__icontains=search_query)
+        )
 
         if exact_match.exists():
             # Use exact match if found
@@ -1408,7 +1415,7 @@ def semantic_search(request):
                     project_map = {p.id: p for p in projects}
                     ordered_projects = [project_map[pid] for pid in project_ids if pid in project_map]
                 else:
-                    # Text fallback - search title, description, tools, and categories
+                    # Text fallback - search title, description, tools, categories, and username
                     ordered_projects = list(
                         Project.objects.filter(is_private=False, is_archived=False)
                         .filter(
@@ -1416,6 +1423,9 @@ def semantic_search(request):
                             | Q(description__icontains=query)
                             | Q(tools__name__icontains=query)
                             | Q(categories__name__icontains=query)
+                            | Q(user__username__icontains=query)
+                            | Q(user__first_name__icontains=query)
+                            | Q(user__last_name__icontains=query)
                         )
                         .select_related('user')
                         .prefetch_related('tools', 'categories', 'likes')

@@ -4,7 +4,6 @@ from typing import Literal, TypedDict
 
 from .prompts import (
     ASK_DESCRIPTION,
-    ASK_SHOWCASE,
     ASK_TYPE,
     CONFIRM_PROJECT,
     ERROR_MESSAGE,
@@ -17,11 +16,10 @@ class ProjectState(TypedDict):
     """State for project creation conversation."""
 
     messages: list[dict]
-    step: Literal['welcome', 'title', 'description', 'type', 'showcase', 'confirm', 'create', 'done', 'error']
+    step: Literal['welcome', 'title', 'description', 'type', 'confirm', 'create', 'done', 'error']
     title: str | None
     description: str | None
     project_type: str | None
-    is_showcase: bool
     user_id: int | None
     username: str | None
     error: str | None
@@ -64,7 +62,7 @@ def process_description_node(state: ProjectState) -> ProjectState:
 
 
 def process_type_node(state: ProjectState) -> ProjectState:
-    """Process project type and ask about showcase."""
+    """Process project type and show confirmation."""
     last_msg = next((m for m in reversed(state['messages']) if m['role'] == 'user'), None)
     if last_msg:
         content = last_msg['content'].strip().lower()
@@ -93,18 +91,6 @@ def process_type_node(state: ProjectState) -> ProjectState:
 
         state['project_type'] = type_mapping.get(content, 'other')
 
-    state['step'] = 'showcase'
-    state['messages'].append({'role': 'assistant', 'content': ASK_SHOWCASE})
-    return state
-
-
-def process_showcase_node(state: ProjectState) -> ProjectState:
-    """Process showcase preference and show confirmation."""
-    last_msg = next((m for m in reversed(state['messages']) if m['role'] == 'user'), None)
-    if last_msg:
-        content = last_msg['content'].strip().lower()
-        state['is_showcase'] = content in ['yes', 'y', 'yeah', 'sure', 'yep', 'true', '1']
-
     # Build confirmation message
     type_labels = {
         'github_repo': 'GitHub Repository',
@@ -117,7 +103,6 @@ def process_showcase_node(state: ProjectState) -> ProjectState:
         title=state.get('title', 'Untitled'),
         description=state.get('description') or '(No description)',
         type_label=type_labels.get(state.get('project_type', 'other'), 'Other'),
-        showcase='Yes' if state.get('is_showcase') else 'No',
     )
 
     state['step'] = 'confirm'
@@ -144,7 +129,6 @@ def create_project_node(state: ProjectState) -> ProjectState:
             title=state.get('title', 'Untitled Project'),
             description=state.get('description', ''),
             type=state.get('project_type', 'other'),
-            is_showcase=state.get('is_showcase', False),
         )
 
         state['project_id'] = project.id
@@ -156,7 +140,6 @@ def create_project_node(state: ProjectState) -> ProjectState:
             title=project.title,
             username=user.username,
             slug=project.slug,
-            tab='Showcase' if project.is_showcase else 'Playground',
         )
 
         state['messages'].append({'role': 'assistant', 'content': success_msg})

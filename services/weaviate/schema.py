@@ -88,6 +88,13 @@ class WeaviateSchema:
                     'indexSearchable': False,
                 },
                 {
+                    'name': 'owner_username',
+                    'dataType': ['text'],
+                    'description': 'Username of project owner (for search)',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
                     'name': 'engagement_velocity',
                     'dataType': ['number'],
                     'description': 'Rate of engagement acceleration for trending',

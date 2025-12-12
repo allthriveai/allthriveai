@@ -113,11 +113,6 @@ export const getMenuSections = (
         path: username ? `/${username}?tab=playground` : '#',
         icon: faIdCard,
       },
-      {
-        label: 'Activity & Points',
-        path: username ? `/${username}?tab=activity` : '#',
-        icon: faTrophy,
-      },
       { label: 'Account Settings', path: '/account/settings', icon: faCog },
       { label: 'Onboarding', path: '/onboarding', icon: faWandSparkles },
     ],
@@ -137,8 +132,6 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
   'Onboarding': (path) => path === '/onboarding',
   'My Profile': (path, search, username) =>
     username ? path === `/${username}` && (search.includes('tab=playground') || !search.includes('tab=')) : false,
-  'Activity & Points': (path, search, username) =>
-    username ? path === `/${username}` && search.includes('tab=activity') : false,
   'Your Thrive Circle': (path) => path === '/thrive-circle',
   'Perks': (path) => path === '/perks',
   'Marketplace': (path) => path === '/marketplace',

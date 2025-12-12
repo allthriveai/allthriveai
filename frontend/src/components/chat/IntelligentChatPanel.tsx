@@ -202,9 +202,24 @@ export function IntelligentChatPanel({
             : `[File: ${f.name}](${f.url})`
         ).join('\n');
 
-        const messageWithAttachments = content
-          ? `${content}\n\n${fileDescriptions}`
-          : fileDescriptions;
+        // If user uploaded files without any message, add a helpful prompt
+        // so the AI knows to ask what they want to do with the file
+        let messageWithAttachments: string;
+        if (content) {
+          messageWithAttachments = `${content}\n\n${fileDescriptions}`;
+        } else {
+          // Determine file type for the prompt
+          const hasImage = uploadedFiles.some(f => f.type === 'image');
+          const hasVideo = uploadedFiles.some(f => f.type === 'video' || f.name.match(/\.(mp4|mov|avi|webm)$/i));
+          const hasAudio = uploadedFiles.some(f => f.type === 'audio' || f.name.match(/\.(mp3|wav|m4a|ogg)$/i));
+
+          let fileType = 'file';
+          if (hasVideo) fileType = 'video';
+          else if (hasAudio) fileType = 'audio';
+          else if (hasImage) fileType = 'image';
+
+          messageWithAttachments = `I uploaded this ${fileType}. What would you like me to do with it? Should I make it into a project on my profile?\n\n${fileDescriptions}`;
+        }
 
         sendMessage(messageWithAttachments);
       } catch (uploadError: any) {
@@ -904,51 +919,47 @@ export function IntelligentChatPanel({
             </p>
           </div>
 
-          {loadingIntegrationStatus ? (
-            <div className="flex justify-center py-8">
-              <FontAwesomeIcon icon={faSpinner} className="w-6 h-6 text-primary-500 animate-spin" />
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                {integrations.map((integration) => {
-                  const isConnected = integrationStatus[integration.id];
-                  return (
-                    <button
-                      key={integration.id}
-                      onClick={() => handlePickerIntegrationSelect(integration.id)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700 group"
-                    >
-                      <div className={`w-10 h-10 rounded-lg ${integration.bgColor} flex items-center justify-center flex-shrink-0`}>
-                        <FontAwesomeIcon icon={integration.icon} className={`w-5 h-5 ${integration.color}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-900 dark:text-slate-100">
-                            {integration.name}
-                          </span>
-                          {isConnected && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                              <FontAwesomeIcon icon={faCheck} className="w-2.5 h-2.5" />
-                              Connected
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 truncate">
-                          {integration.description}
-                        </p>
-                      </div>
-                      <div className="text-slate-400 group-hover:text-primary-500 transition-colors">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
+          <div className="space-y-2">
+            {integrations.map((integration) => {
+              const isConnected = integrationStatus[integration.id];
+              return (
+                <button
+                  key={integration.id}
+                  onClick={() => handlePickerIntegrationSelect(integration.id)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700 group"
+                >
+                  <div className={`w-10 h-10 rounded-lg ${integration.bgColor} flex items-center justify-center flex-shrink-0`}>
+                    <FontAwesomeIcon icon={integration.icon} className={`w-5 h-5 ${integration.color}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-slate-900 dark:text-slate-100">
+                        {integration.name}
+                      </span>
+                      {loadingIntegrationStatus ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                          <FontAwesomeIcon icon={faSpinner} className="w-2.5 h-2.5 animate-spin" />
+                        </span>
+                      ) : isConnected ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                          <FontAwesomeIcon icon={faCheck} className="w-2.5 h-2.5" />
+                          Connected
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 truncate">
+                      {integration.description}
+                    </p>
+                  </div>
+                  <div className="text-slate-400 group-hover:text-primary-500 transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
 
           <button
             onClick={() => setShowIntegrationPicker(false)}

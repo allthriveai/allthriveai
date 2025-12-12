@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectContext } from '@/context/ProjectContext';
+import { useTopicTray } from '@/context/TopicTrayContext';
 import { useAuth } from '@/hooks/useAuth';
 import { ProjectActions } from '../shared/ProjectActions';
 import { ShareModal } from '../shared/ShareModal';
@@ -60,6 +61,7 @@ export function VideoProjectLayout() {
 
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const { openTopicTray } = useTopicTray();
 
   const [showMenu, setShowMenu] = useState(false);
 
@@ -401,18 +403,19 @@ export function VideoProjectLayout() {
           </div>
         )}
 
-        {/* Topics Pills */}
+        {/* Topics Pills - Clickable to open topic tray */}
         {project.topics && project.topics.length > 0 && (
           <div className="space-y-3">
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Topics</p>
             <div className="flex flex-wrap gap-2">
               {project.topics.map((topic, index) => (
-                <span
+                <button
                   key={index}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full border border-gray-200 dark:border-gray-700"
+                  onClick={() => openTopicTray(topic)}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors cursor-pointer"
                 >
-                  {topic}
-                </span>
+                  #{topic}
+                </button>
               ))}
             </div>
           </div>

@@ -61,13 +61,22 @@ def explore_users(request):
     )
 
     # Base queryset - active users, exclude system accounts
+    # Also exclude Reddit agents that have no synced posts yet
     queryset = (
         User.objects.filter(
             is_active=True,
             is_profile_public=True,
         )
         .exclude(
-            username__in=['system', 'pip']  # Exclude system accounts
+            username__in=[
+                'system',
+                'pip',
+                # Reddit agents hidden until sync is working
+                'claudeai-reddit-agent',
+                'midjourney-reddit-agent',
+                'claude-code-reddit-agent',
+                'nano-banana-reddit-agent',
+            ]
         )
         .exclude(
             role=UserRole.ADMIN  # Don't show admins in explore

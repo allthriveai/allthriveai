@@ -366,22 +366,55 @@ def oauth_callback(request):
     """
     Handle OAuth callback and close popup after setting authentication cookies.
     This is called after successful OAuth authentication.
+
+    Also handles guest conversion redirects with appropriate success/error params.
     """
     from services.auth import set_auth_cookies
+
+    # Check for guest OAuth errors first (set in adapter.pre_social_login)
+    guest_oauth_error = request.session.pop('guest_oauth_error', None)
+    battle_id = request.session.pop('guest_conversion_battle_id', None)
+
+    if guest_oauth_error:
+        # Guest conversion failed - redirect back to battle with error
+        if battle_id:
+            redirect_url = f'{settings.FRONTEND_URL}/battles/{battle_id}?error={guest_oauth_error}'
+        else:
+            redirect_url = f'{settings.FRONTEND_URL}/auth?error={guest_oauth_error}'
+        return redirect(redirect_url)
 
     if request.user.is_authenticated:
         # Track login for quest progress and auto-start daily quests
         track_user_login(request.user)
 
-        # Redirect to user profile with cookies set
-        username = request.user.username
-        redirect_url = f'{settings.FRONTEND_URL}/{username}'
+        # Check if this was a successful guest conversion
+        conversion_success = request.session.pop('guest_conversion_success', False)
+
+        # Clear remaining conversion session data
+        request.session.pop('guest_conversion_token', None)
+        request.session.pop('guest_conversion_user_id', None)
+
+        # Determine redirect URL
+        if conversion_success and battle_id:
+            # Redirect back to battle with conversion success flag
+            redirect_url = f'{settings.FRONTEND_URL}/battles/{battle_id}?converted=true'
+            logger.info(
+                'Guest conversion successful, redirecting to battle',
+                extra={'user_id': request.user.id, 'battle_id': battle_id},
+            )
+        else:
+            # Standard OAuth login - redirect to user profile
+            username = request.user.username
+            redirect_url = f'{settings.FRONTEND_URL}/{username}'
+
         response = redirect(redirect_url)
 
         # Set JWT tokens using centralized service
         return set_auth_cookies(response, request.user)
     else:
         # OAuth failed, redirect to login with error
+        if battle_id:
+            return redirect(f'{settings.FRONTEND_URL}/battles/{battle_id}?error=oauth_failed')
         return redirect(f'{settings.FRONTEND_URL}/login?error=oauth_failed')
 
 
@@ -759,3 +792,53 @@ def convert_guest_account(request):
             {'success': False, 'error': 'An unexpected error occurred. Please try again.'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@ratelimit(key='ip', rate='20/h', method='POST', block=True)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def prepare_guest_oauth_conversion(request):
+    """
+    Prepare session for guest-to-full-account conversion via OAuth.
+
+    This endpoint stores the guest token and battle ID in the Django session
+    so that when the OAuth callback fires, we can convert the guest account
+    instead of creating a new user.
+
+    Required POST data:
+        battle_id: Optional battle ID to redirect back to after conversion
+
+    Returns:
+        200: Session prepared successfully
+        400: User is not a guest
+    """
+    user = request.user
+
+    # Verify user is a guest
+    if not user.is_guest:
+        return Response(
+            {'success': False, 'error': 'This account is already a full account.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Store guest conversion data in session
+    request.session['guest_conversion_token'] = user.guest_token
+    request.session['guest_conversion_user_id'] = user.id
+    request.session['guest_conversion_battle_id'] = request.data.get('battle_id')
+    request.session.modified = True
+
+    logger.info(
+        'Prepared guest OAuth conversion session',
+        extra={
+            'user_id': user.id,
+            'battle_id': request.data.get('battle_id'),
+        },
+    )
+
+    return Response(
+        {
+            'success': True,
+            'message': 'Session prepared for OAuth conversion.',
+        },
+        status=status.HTTP_200_OK,
+    )

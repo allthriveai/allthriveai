@@ -264,9 +264,9 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
       </motion.div>
 
       {/* Flexible content area - responsive height */}
-      <div className="min-h-[280px] sm:min-h-[340px] max-h-[50vh] sm:max-h-[380px] flex flex-col">
+      <div className="min-h-[280px] sm:min-h-[340px] max-h-[50vh] sm:max-h-none flex flex-col">
         {/* Problem statements - chat bubbles */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1">
           <p className="text-slate-500 text-xs uppercase tracking-wider mb-2 sm:mb-3">Sound familiar?</p>
 
           <div className="space-y-1.5 sm:space-y-2">

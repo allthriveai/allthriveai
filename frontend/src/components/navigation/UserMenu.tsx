@@ -56,13 +56,6 @@ export function UserMenu({ user }: UserMenuProps) {
       },
     },
     {
-      label: 'Activity & Points',
-      onClick: () => {
-        navigate(`/${user.username}?tab=activity`);
-        setIsOpen(false);
-      },
-    },
-    {
       label: 'Account Settings',
       onClick: () => {
         navigate('/account/settings');

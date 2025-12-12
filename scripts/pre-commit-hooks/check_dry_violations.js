@@ -247,7 +247,9 @@ function formatFindings(filepath, findings) {
  * Main entry point
  */
 function main() {
-  const files = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const verbose = args.includes('--verbose');
+  const files = args.filter(arg => arg !== '--verbose');
 
   if (files.length === 0) {
     console.log('No files to check');
@@ -256,6 +258,7 @@ function main() {
 
   let totalIssues = 0;
   let fileCount = 0;
+  const fileFindings = [];
 
   files.forEach(file => {
     // Only check TS/TSX/JS/JSX files
@@ -265,12 +268,20 @@ function main() {
     if (findings.length > 0) {
       fileCount++;
       totalIssues += findings.length;
+      fileFindings.push({ file, findings });
     }
   });
 
   if (totalIssues > 0) {
-    // Concise summary - just file count and total issues
-    console.log(`DRY: ${totalIssues} potential issue(s) in ${fileCount} file(s). Run with --verbose for details.`);
+    if (verbose) {
+      // Show detailed findings
+      fileFindings.forEach(({ file, findings }) => {
+        console.log(formatFindings(file, findings));
+      });
+    } else {
+      // Concise summary - just file count and total issues
+      console.log(`DRY: ${totalIssues} potential issue(s) in ${fileCount} file(s). Run with --verbose for details.`);
+    }
   }
 
   // Always return 0 (warning only)

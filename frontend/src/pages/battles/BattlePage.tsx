@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { api } from '@/services/api';
@@ -21,6 +21,7 @@ import {
   BattleCountdown,
   GeneratingPhase,
   GuestSignupBanner,
+  GuestSignupModal,
   JudgingReveal,
   WaitingForOpponent,
   type PlayerStatus,
@@ -29,7 +30,8 @@ import {
 export function BattlePage() {
   const { battleId } = useParams<{ battleId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user, refreshUser } = useAuth();
   const [restBattleState, setRestBattleState] = useState<BattleState | null>(null);
   const [restLoading, setRestLoading] = useState(false);
   const [restError, setRestError] = useState<string | null>(null);
@@ -37,10 +39,68 @@ export function BattlePage() {
   const [isRefreshingChallenge, setIsRefreshingChallenge] = useState(false);
   const [localChallengeText, setLocalChallengeText] = useState<string | null>(null);
   const [localTimeRemaining, setLocalTimeRemaining] = useState<number | null>(null);
+  const [showGuestSignupBanner, setShowGuestSignupBanner] = useState(false);
   const [showGuestSignupModal, setShowGuestSignupModal] = useState(false);
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   // Check if user is a guest
   const isGuestUser = user?.isGuest ?? false;
+
+  // Auto-hide notification after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  // Handle conversion success/error from OAuth redirect
+  useEffect(() => {
+    const converted = searchParams.get('converted');
+    const error = searchParams.get('error');
+
+    if (converted === 'true') {
+      // Clear the URL param
+      searchParams.delete('converted');
+      setSearchParams(searchParams, { replace: true });
+
+      // Clear localStorage backup
+      localStorage.removeItem('guest_conversion_battle_id');
+
+      // Refresh user to get updated data
+      refreshUser();
+
+      // Show success notification
+      setNotification({
+        type: 'success',
+        message: 'Account created! Your battle data has been saved.',
+      });
+    }
+
+    if (error) {
+      // Clear the URL param
+      searchParams.delete('error');
+      setSearchParams(searchParams, { replace: true });
+
+      // Clear localStorage backup
+      localStorage.removeItem('guest_conversion_battle_id');
+
+      // Show error notification based on error type
+      const errorMessages: Record<string, string> = {
+        email_exists: 'That email is already registered. Try signing in instead.',
+        no_email: 'Could not get email from provider. Try email/password signup.',
+        oauth_failed: 'Sign in failed. Please try again.',
+        conversion_failed: 'Account creation failed. Please try again.',
+      };
+      setNotification({
+        type: 'error',
+        message: errorMessages[error] || 'Something went wrong. Please try again.',
+      });
+    }
+  }, [searchParams, setSearchParams, refreshUser]);
 
 
   const handleError = useCallback((error: string) => {
@@ -170,11 +230,11 @@ export function BattlePage() {
       // If just completed via WebSocket, delay to let reveal animation finish
       if (restBattleState) {
         // Returning guest - show banner immediately
-        setShowGuestSignupModal(true);
+        setShowGuestSignupBanner(true);
       } else {
         // Battle just completed - delay to let user see results
         const timer = setTimeout(() => {
-          setShowGuestSignupModal(true);
+          setShowGuestSignupBanner(true);
         }, 5000);
         return () => clearTimeout(timer);
       }
@@ -480,13 +540,60 @@ export function BattlePage() {
 
   return (
     <DashboardLayout>
+      {/* Notification banner for conversion success/error */}
+      {notification && (
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          className={`fixed top-0 left-0 right-0 z-50 p-4 ${
+            notification.type === 'success'
+              ? 'bg-emerald-500/20 border-b border-emerald-500/30'
+              : 'bg-rose-500/20 border-b border-rose-500/30'
+          }`}
+        >
+          <div className="max-w-lg mx-auto flex items-center justify-between">
+            <p
+              className={`text-sm font-medium ${
+                notification.type === 'success' ? 'text-emerald-400' : 'text-rose-400'
+              }`}
+            >
+              {notification.message}
+            </p>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-4 text-slate-400 hover:text-white"
+            >
+              <span className="sr-only">Dismiss</span>
+              &times;
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       <div className="min-h-screen bg-background">{renderPhaseContent()}</div>
 
       {/* Guest signup banner - shown after battle completes for guest users */}
       <GuestSignupBanner
-        isVisible={showGuestSignupModal}
-        onDismiss={() => setShowGuestSignupModal(false)}
+        isVisible={showGuestSignupBanner}
+        onDismiss={() => setShowGuestSignupBanner(false)}
+        onSignupClick={() => {
+          setShowGuestSignupBanner(false);
+          setShowGuestSignupModal(true);
+        }}
         battleResult={battleResult}
+      />
+
+      {/* Guest signup modal - opened when user clicks banner */}
+      <GuestSignupModal
+        isOpen={showGuestSignupModal}
+        onClose={() => setShowGuestSignupModal(false)}
+        onSuccess={() => {
+          // Modal handles refreshUser internally
+          setShowGuestSignupModal(false);
+        }}
+        battleResult={battleResult}
+        battleId={battleId}
       />
     </DashboardLayout>
   );

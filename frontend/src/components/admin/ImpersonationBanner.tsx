@@ -40,15 +40,12 @@ export function ImpersonationBanner() {
     async function checkStatus() {
       // Only check if authenticated
       if (!isAuthenticated) {
-        console.log('[ImpersonationBanner] Not authenticated, skipping status check');
         setSession(null);
         return;
       }
 
       try {
-        console.log('[ImpersonationBanner] Checking impersonation status...');
         const status = await getImpersonationStatus();
-        console.log('[ImpersonationBanner] Status response:', status);
         if (status.isImpersonating) {
           setSession(status);
         } else {

@@ -64,13 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!referralAppliedRef.current && hasPendingReferralCode()) {
         referralAppliedRef.current = true;
         try {
-          const result = await applyStoredReferralCode();
-          if (result.success) {
-            console.log('Referral code applied successfully:', result.message);
-          } else if (result.error) {
-            // Log but don't show error to user (might be existing user, invalid code, etc.)
-            console.log('Referral code not applied:', result.error);
-          }
+          await applyStoredReferralCode();
         } catch (error) {
           console.warn('Failed to apply referral code:', error);
         }

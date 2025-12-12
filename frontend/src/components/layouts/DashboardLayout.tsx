@@ -11,6 +11,7 @@ import { Footer } from '@/components/landing/Footer';
 import { EmberAdventureBanner, useEmberOnboardingContextSafe } from '@/components/onboarding';
 import { PendingBattleBanner } from '@/components/battles';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
+import { TopicTrayProvider } from '@/context/TopicTrayContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveQuest } from '@/hooks/useActiveQuest';
 import type { Project, UserSideQuest } from '@/types/models';
@@ -216,6 +217,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   };
 
   return (
+    <TopicTrayProvider>
     <div className="relative h-screen w-full overflow-hidden">
       {/* Background is now handled by CSS in index.css - uses CSS gradients instead of images */}
 
@@ -320,5 +322,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         )}
       </div>
     </div>
+    </TopicTrayProvider>
   );
 }

@@ -1027,26 +1027,22 @@ export default function ProfilePage() {
 
               {/* Edit Controls */}
               {isOwnProfile && (
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    {isEditingShowcase && (
-                      <button
-                        onClick={() => setShowTemplatePicker(true)}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                      >
-                        Change Template
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  {isEditingShowcase && (
                     <button
-                      onClick={handleGenerateProfile}
-                      className="px-4 py-2 text-sm font-medium text-purple-600 dark:text-purple-400 border border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors flex items-center gap-2"
+                      onClick={() => setShowTemplatePicker(true)}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     >
-                      <FontAwesomeIcon icon={faWandMagicSparkles} className="w-4 h-4" />
-                      Generate with AI
+                      Change Template
                     </button>
-                  </div>
+                  )}
+                  <button
+                    onClick={handleGenerateProfile}
+                    className="px-4 py-2 text-sm font-medium text-purple-600 dark:text-purple-400 border border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <FontAwesomeIcon icon={faWandMagicSparkles} className="w-4 h-4" />
+                    Generate with AI
+                  </button>
                 </div>
               )}
 

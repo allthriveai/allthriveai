@@ -280,6 +280,7 @@ class EmbeddingService:
 
         Combines:
         - Title (weighted high - repeated)
+        - Creator/author info (username, full name)
         - Description
         - Topics
         - Tool names
@@ -298,6 +299,14 @@ class EmbeddingService:
         if project.title:
             parts.append(project.title)
             parts.append(project.title)  # Repeat for weight
+
+        # Creator/author info - important for searching by username
+        if project.user:
+            if project.user.username:
+                parts.append(f'By: {project.user.username}')
+            full_name = project.user.get_full_name()
+            if full_name and full_name != project.user.username:
+                parts.append(f'Creator: {full_name}')
 
         # Description
         if project.description:

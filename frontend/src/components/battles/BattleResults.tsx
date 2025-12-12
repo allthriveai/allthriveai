@@ -66,10 +66,13 @@ export function BattleResults({
   const isWinner = winnerId === myPlayer.id;
   const isTie = winnerId === null && mySubmission?.score === opponentSubmission?.score;
 
-  // Generate friendly feedback for the loser based on criteria comparison
-  const getLossFeedback = (): string => {
+  // Generate helpful feedback for the loser explaining WHY they lost
+  const getLossFeedback = (): { mainReason: string; tip: string } => {
     if (!mySubmission?.criteriaScores || !opponentSubmission?.criteriaScores) {
-      return "Your prompt was creative, but your opponent's execution edged you out this time.";
+      return {
+        mainReason: "Your opponent's execution edged you out this time.",
+        tip: "Try adding more descriptive details to your prompts next time!",
+      };
     }
 
     // Find the criteria where user lost the most points
@@ -79,36 +82,96 @@ export function BattleResults({
     });
 
     // Sort by biggest difference (where opponent did better)
-    const biggestGap = criteriaComparison
+    const gaps = criteriaComparison
       .filter(c => c.diff > 0)
-      .sort((a, b) => b.diff - a.diff)[0];
+      .sort((a, b) => b.diff - a.diff);
 
-    if (!biggestGap) {
-      return "It was incredibly close! Keep experimenting with your prompts.";
+    const biggestGap = gaps[0];
+
+    if (!biggestGap || biggestGap.diff < 0.5) {
+      return {
+        mainReason: "It was incredibly close! The scores were nearly identical.",
+        tip: "Keep experimenting - you're doing great!",
+      };
     }
 
-    // Generate friendly, encouraging feedback based on the criteria they struggled with
-    const feedbackMap: Record<string, string> = {
-      'creativity': "Try thinking outside the box with more unexpected elements or unique combinations in your prompts.",
-      'Creativity': "Try thinking outside the box with more unexpected elements or unique combinations in your prompts.",
-      'adherence': "Focus on including all the key elements from the challenge theme more explicitly in your prompt.",
-      'Adherence': "Focus on including all the key elements from the challenge theme more explicitly in your prompt.",
-      'theme_adherence': "Focus on including all the key elements from the challenge theme more explicitly in your prompt.",
-      'Theme Adherence': "Focus on including all the key elements from the challenge theme more explicitly in your prompt.",
-      'quality': "Adding more descriptive details about lighting, style, and composition can help improve visual quality.",
-      'Quality': "Adding more descriptive details about lighting, style, and composition can help improve visual quality.",
-      'visual_quality': "Adding more descriptive details about lighting, style, and composition can help improve visual quality.",
-      'Visual Quality': "Adding more descriptive details about lighting, style, and composition can help improve visual quality.",
-      'composition': "Consider the arrangement and balance of elements - try specifying layout, perspective, or focal points.",
-      'Composition': "Consider the arrangement and balance of elements - try specifying layout, perspective, or focal points.",
-      'originality': "Push for more unique angles or unexpected interpretations of the theme next time.",
-      'Originality': "Push for more unique angles or unexpected interpretations of the theme next time.",
-      'technical': "Be more specific about technical aspects like resolution, style, and artistic techniques.",
-      'Technical': "Be more specific about technical aspects like resolution, style, and artistic techniques.",
+    // Generate specific feedback based on the criteria they struggled with
+    const feedbackMap: Record<string, { reason: string; tip: string }> = {
+      'creativity': {
+        reason: `Your opponent scored ${biggestGap.diff.toFixed(1)} points higher on creativity.`,
+        tip: "Try combining unexpected elements or adding unique twists to stand out!",
+      },
+      'Creativity': {
+        reason: `Your opponent scored ${biggestGap.diff.toFixed(1)} points higher on creativity.`,
+        tip: "Try combining unexpected elements or adding unique twists to stand out!",
+      },
+      'adherence': {
+        reason: `Your opponent matched the challenge theme more closely (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Make sure to explicitly include all key elements from the challenge in your prompt.",
+      },
+      'Adherence': {
+        reason: `Your opponent matched the challenge theme more closely (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Make sure to explicitly include all key elements from the challenge in your prompt.",
+      },
+      'theme_adherence': {
+        reason: `Your opponent matched the challenge theme more closely (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Make sure to explicitly include all key elements from the challenge in your prompt.",
+      },
+      'Theme Adherence': {
+        reason: `Your opponent matched the challenge theme more closely (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Make sure to explicitly include all key elements from the challenge in your prompt.",
+      },
+      'quality': {
+        reason: `Your opponent achieved higher visual quality (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Add details about lighting, style, resolution, and composition to boost quality.",
+      },
+      'Quality': {
+        reason: `Your opponent achieved higher visual quality (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Add details about lighting, style, resolution, and composition to boost quality.",
+      },
+      'visual_quality': {
+        reason: `Your opponent achieved higher visual quality (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Add details about lighting, style, resolution, and composition to boost quality.",
+      },
+      'Visual Quality': {
+        reason: `Your opponent achieved higher visual quality (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Add details about lighting, style, resolution, and composition to boost quality.",
+      },
+      'composition': {
+        reason: `Your opponent had stronger composition (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Try specifying layout, perspective, focal points, or rule of thirds in your prompt.",
+      },
+      'Composition': {
+        reason: `Your opponent had stronger composition (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Try specifying layout, perspective, focal points, or rule of thirds in your prompt.",
+      },
+      'originality': {
+        reason: `Your opponent's concept was more original (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Push for unique angles or unexpected interpretations of the theme!",
+      },
+      'Originality': {
+        reason: `Your opponent's concept was more original (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Push for unique angles or unexpected interpretations of the theme!",
+      },
+      'technical': {
+        reason: `Your opponent had better technical execution (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Be more specific about artistic techniques, styles, and technical details.",
+      },
+      'Technical': {
+        reason: `Your opponent had better technical execution (+${biggestGap.diff.toFixed(1)} pts).`,
+        tip: "Be more specific about artistic techniques, styles, and technical details.",
+      },
     };
 
-    return feedbackMap[biggestGap.criterion] ||
-      `Your opponent scored higher on ${biggestGap.criterion.toLowerCase()}. Try focusing on that aspect next time!`;
+    const feedback = feedbackMap[biggestGap.criterion];
+    if (feedback) {
+      return { mainReason: feedback.reason, tip: feedback.tip };
+    }
+
+    return {
+      mainReason: `Your opponent scored higher on ${biggestGap.criterion.toLowerCase()} (+${biggestGap.diff.toFixed(1)} pts).`,
+      tip: `Focus on improving ${biggestGap.criterion.toLowerCase()} in your next prompt!`,
+    };
   };
 
   const handleSaveToProfile = async () => {
@@ -333,15 +396,30 @@ export function BattleResults({
                 </span>
               </motion.div>
             ) : (
-              <div className="inline-flex flex-col items-center gap-4 px-8 py-6 rounded-2xl bg-slate-800/50 border border-slate-600 max-w-lg">
-                <span className="text-2xl font-bold text-slate-300">
-                  {opponent.username} Wins!
-                </span>
-                <p className="text-slate-400 text-center leading-relaxed">
-                  {getLossFeedback()}
-                </p>
-                <span className="text-sm text-cyan-400">+10 points for participating</span>
-              </div>
+              (() => {
+                const lossFeedback = getLossFeedback();
+                return (
+                  <div className="inline-flex flex-col items-center gap-4 px-8 py-6 rounded-2xl bg-slate-800/50 border border-slate-600 max-w-lg">
+                    <span className="text-2xl font-bold text-slate-300">
+                      {opponent.username} Wins!
+                    </span>
+
+                    {/* Why you lost */}
+                    <div className="text-center space-y-2">
+                      <p className="text-slate-400 leading-relaxed">
+                        {lossFeedback.mainReason}
+                      </p>
+                      <div className="px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                        <p className="text-sm text-cyan-300">
+                          💡 <span className="font-medium">Tip:</span> {lossFeedback.tip}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="text-sm text-slate-500">+10 points for participating</span>
+                  </div>
+                );
+              })()
             )}
           </motion.div>
         )}

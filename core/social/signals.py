@@ -41,11 +41,20 @@ def sync_social_account_to_connection(sender, request, sociallogin, **kwargs):
         return
 
     # Extract user info from extra_data
+    # Different providers use different field names for the same data
     extra_data = social_account.extra_data or {}
+
+    # Username: GitHub uses 'login', others use 'username'
     provider_username = extra_data.get('login') or extra_data.get('username', '')
+
+    # Email
     provider_email = extra_data.get('email')
+
+    # Profile URL: GitHub uses 'html_url'
     profile_url = extra_data.get('html_url') or extra_data.get('profile_url', '')
-    avatar_url = extra_data.get('avatar_url', '')
+
+    # Avatar: GitHub uses 'avatar_url', Google uses 'picture'
+    avatar_url = extra_data.get('avatar_url') or extra_data.get('picture', '')
 
     # Get or create SocialConnection
     connection, created = SocialConnection.objects.get_or_create(
@@ -98,6 +107,49 @@ def sync_social_account_to_connection(sender, request, sociallogin, **kwargs):
         user.avatar_url = avatar_url
         fields_to_update.append('avatar_url')
         logger.info(f'Pre-filled avatar_url for user {user.username} from OAuth data')
+
+    # Pre-fill first_name and last_name from OAuth data if not already set
+    # Different providers use different field names:
+    # - Google: 'given_name', 'family_name'
+    # - LinkedIn: 'localizedFirstName', 'localizedLastName'
+    # - GitHub/GitLab: 'name' (full name, needs parsing)
+    first_name = (
+        extra_data.get('given_name') or extra_data.get('localizedFirstName') or extra_data.get('first_name', '')
+    )
+    last_name = extra_data.get('family_name') or extra_data.get('localizedLastName') or extra_data.get('last_name', '')
+
+    # If we have a 'name' field but no first/last, try to parse it
+    # This handles GitHub which only provides a full 'name' field
+    if not first_name and not last_name and extra_data.get('name'):
+        name_parts = extra_data['name'].split()
+        if name_parts:
+            first_name = name_parts[0]
+            if len(name_parts) > 1:
+                last_name = ' '.join(name_parts[1:])
+
+    if first_name and not user.first_name:
+        user.first_name = first_name
+        fields_to_update.append('first_name')
+        logger.info(f'Pre-filled first_name for user {user.username} from {provider} OAuth data')
+
+    if last_name and not user.last_name:
+        user.last_name = last_name
+        fields_to_update.append('last_name')
+        logger.info(f'Pre-filled last_name for user {user.username} from {provider} OAuth data')
+
+    # Pre-fill bio from GitHub if not already set
+    github_bio = extra_data.get('bio')
+    if provider == 'github' and github_bio and not user.bio:
+        user.bio = github_bio
+        fields_to_update.append('bio')
+        logger.info(f'Pre-filled bio for user {user.username} from GitHub OAuth data')
+
+    # Pre-fill location from GitHub/GitLab if not already set
+    oauth_location = extra_data.get('location')
+    if oauth_location and not user.location:
+        user.location = oauth_location
+        fields_to_update.append('location')
+        logger.info(f'Pre-filled location for user {user.username} from {provider} OAuth data')
 
     if fields_to_update:
         user.save(update_fields=fields_to_update)
