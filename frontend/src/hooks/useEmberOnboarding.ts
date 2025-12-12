@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
 export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personalize';
@@ -53,8 +54,13 @@ function saveState(userId: number | string, state: EmberOnboardingState): void {
 
 export function useEmberOnboarding() {
   const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
   const [state, setState] = useState<EmberOnboardingState>(defaultState);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Check if user is on a battle invite page - skip onboarding for these users
+  // so they can accept the battle challenge without interruption
+  const isOnBattleInvitePage = location.pathname.startsWith('/battle/invite/');
 
   // Load state when user changes
   useEffect(() => {
@@ -75,20 +81,27 @@ export function useEmberOnboarding() {
     }
   }, [user?.id, state, isLoaded]);
 
-  // Should show the initial modal (first time user, but NOT for guest users)
+  // Should show the initial modal (first time user, but NOT for guest users or battle invite pages)
   // Guest users are temporary accounts created for battle invitations - they shouldn't see onboarding
+  // Battle invite pages should go straight to accepting the challenge without interruption
   const shouldShowModal =
-    isAuthenticated && isLoaded && !state.hasSeenModal && !state.isDismissed && !user?.isGuest;
+    isAuthenticated &&
+    isLoaded &&
+    !state.hasSeenModal &&
+    !state.isDismissed &&
+    !user?.isGuest &&
+    !isOnBattleInvitePage;
 
   // Should show the banner (has seen modal, hasn't dismissed, hasn't completed all)
-  // Also skip for guest users
+  // Also skip for guest users and battle invite pages
   const shouldShowBanner =
     isAuthenticated &&
     isLoaded &&
     state.hasSeenModal &&
     !state.isDismissed &&
     state.completedAdventures.length < 3 &&
-    !user?.isGuest;
+    !user?.isGuest &&
+    !isOnBattleInvitePage;
 
   // All adventures completed
   const allAdventuresComplete = state.completedAdventures.length === 3;

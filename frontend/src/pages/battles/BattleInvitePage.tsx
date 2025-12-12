@@ -283,7 +283,7 @@ export function BattleInvitePage() {
                 </div>
               </motion.div>
 
-              <h1 className="text-2xl font-bold text-white mb-2">Battle Challenge!</h1>
+              <h1 className="text-2xl font-bold text-white mb-2">How Are Your Prompt Engineering Skills?</h1>
               <p className="text-slate-400">You've been challenged to a prompt battle</p>
             </div>
 
