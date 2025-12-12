@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db
 
 help:
 	@echo "Available commands:"
@@ -56,6 +56,7 @@ help:
 	@echo "  make test-websocket-e2e - Run WebSocket end-to-end test"
 	@echo "  make test-proxy      - Test Docker proxy connectivity (run this first!)"
 	@echo "  make test-coverage   - Run backend tests with coverage report"
+	@echo "  make setup-test-login - Set password for test user (for Chrome DevTools MCP)"
 	@echo "  make reset-onboarding - Print JS to reset Ember onboarding (run in browser console)"
 	@echo "  make stop-impersonation - Print JS to stop admin impersonation (run in browser console)"
 	@echo "  make end-all-impersonations - End all active impersonation sessions in database"
@@ -89,6 +90,7 @@ help:
 	@echo "  make aws-run-command CMD=\"...\" - Run a Django management command on AWS ECS"
 	@echo "  make aws-seed-test-users - Create test users on AWS for impersonation"
 	@echo "  make aws-seed-all    - Seed all initial data on AWS"
+	@echo "  make pull-prod-db    - Pull production database to local (ENVIRONMENT=production|staging)"
 	@echo ""
 	@echo "Django:"
 	@echo "  make collectstatic   - Collect static files"
@@ -371,6 +373,20 @@ clean-all: down clean
 	@echo "✓ Complete cleanup done!"
 
 # Testing Utilities
+setup-test-login:
+	@echo "Setting up test user login for Chrome DevTools MCP testing..."
+	@docker-compose exec -T web python manage.py shell -c "from core.users.models import User; u = User.objects.filter(username='alliejones42').first(); exec('u.set_password(\"testpass123\"); u.save(); print(\"✅ Password set for alliejones42\")') if u else print('❌ User alliejones42 not found')"
+	@echo ""
+	@echo "To log in via Chrome DevTools MCP, run this JavaScript in the browser:"
+	@echo ""
+	@echo "fetch('/api/v1/auth/test-login/', {"
+	@echo "  method: 'POST',"
+	@echo "  headers: { 'Content-Type': 'application/json' },"
+	@echo "  body: JSON.stringify({ username: 'alliejones42', password: 'testpass123' }),"
+	@echo "  credentials: 'include'"
+	@echo "}).then(r => r.json()).then(console.log);"
+	@echo ""
+
 reset-onboarding:
 	@echo ""
 	@echo "🐉 To reset Ember onboarding, run this in your browser console:"
@@ -730,3 +746,9 @@ aws-seed-all:
 	@make aws-run-command CMD="create_pip"
 	@make aws-run-command CMD="create_test_users --count=10"
 	@echo "✓ All data seeded on AWS!"
+
+# Pull production database to local
+pull-prod-db:
+	@echo "⚠️  WARNING: This will REPLACE your local database with production data!"
+	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || (echo "Cancelled." && exit 1)
+	@ENVIRONMENT=$${ENVIRONMENT:-production} ./scripts/pull-prod-db.sh

@@ -22,9 +22,8 @@ class ImageModerator:
     """
 
     def __init__(self):
-        # Image moderation uses GPT-4 Vision (chat completions) which works with both OpenAI and Azure
+        # Image moderation uses GPT-4 Vision (chat completions)
         # Try to get client from AIProvider, but handle case where API key is missing
-
         try:
             self.ai_provider = AIProvider()  # Uses default provider from settings
             self.client = self.ai_provider.client
@@ -44,9 +43,7 @@ class ImageModerator:
 
         provider = self.ai_provider.current_provider
 
-        if provider == 'azure':
-            return getattr(settings, 'AZURE_OPENAI_VISION_DEPLOYMENT', 'gpt-4o')
-        elif provider == 'openai':
+        if provider == 'openai':
             return 'gpt-4o'
         elif provider == 'anthropic':
             return 'claude-3-5-sonnet-20241022'

@@ -17,6 +17,8 @@ export interface User {
   role: UserRole;
   roleDisplay: string;
   avatarUrl?: string;
+  avatarFocalX?: number;  // 0-1, default 0.5 (center)
+  avatarFocalY?: number;  // 0-1, default 0.5 (center)
   bio?: string;
   tagline?: string;
   location?: string;

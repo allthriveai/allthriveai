@@ -106,7 +106,7 @@ export function BattleNotificationProvider({ children }: BattleNotificationProvi
   return (
     <BattleNotificationContext.Provider value={contextValue}>
       {children}
-      {/* Global toast container for battle invitations */}
+      {/* Global toast container for incoming battle invitations from others */}
       <BattleInviteToastContainer
         invitations={pendingInvitations}
         onAccept={acceptInvitation}

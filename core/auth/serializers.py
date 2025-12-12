@@ -6,6 +6,8 @@ from core.users.models import User, UserRole
 # Profile fields shared across serializers
 PROFILE_FIELDS = [
     'avatar_url',
+    'avatar_focal_x',
+    'avatar_focal_y',
     'bio',
     'tagline',
     'location',

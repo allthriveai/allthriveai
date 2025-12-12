@@ -13,7 +13,7 @@ class TopicExtractionService:
     """Extract and match topics from text using AI and existing taxonomy."""
 
     def __init__(self):
-        self.ai = AIProvider()  # Use default provider (azure or configured)
+        self.ai = AIProvider()  # Use default provider from settings
 
     def extract_topics_from_reddit_post(
         self,

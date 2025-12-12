@@ -5,7 +5,7 @@ import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { api } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGithub, faGitlab, faFigma, faInstagram, faTiktok, faYoutube } from '@fortawesome/free-brands-svg-icons';
+import { faGithub, faGitlab, faFigma, faInstagram, faTiktok, faYoutube, faLinkedin } from '@fortawesome/free-brands-svg-icons';
 import { faChevronDown, faChevronUp, faCheck, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { VideoPickerModal } from '@/components/integrations/VideoPickerModal';
 import { YouTubeImportProgressModal } from '@/components/integrations/YouTubeImportProgressModal';
@@ -27,6 +27,14 @@ export default function IntegrationsSettingsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [integrations, setIntegrations] = useState<Integration[]>([
+    {
+      id: 'linkedin',
+      name: 'LinkedIn',
+      description: 'Connect your LinkedIn profile to showcase your professional identity',
+      icon: faLinkedin,
+      isConnected: false,
+      isAvailable: true,
+    },
     {
       id: 'github',
       name: 'GitHub',
@@ -99,6 +107,25 @@ export default function IntegrationsSettingsPage() {
 
     async function fetchConnectionStatus() {
       try {
+        // Check LinkedIn status
+        const linkedinResponse = await api.get('/social/status/linkedin/');
+        const linkedinData = linkedinResponse.data.data || linkedinResponse.data;
+
+        if (linkedinData.connected && isMounted) {
+          setIntegrations(prev =>
+            prev.map(integration =>
+              integration.id === 'linkedin'
+                ? {
+                    ...integration,
+                    isConnected: true,
+                    username: linkedinData.providerUsername || 'LinkedIn User',
+                    connectedAt: linkedinData.connectedAt,
+                  }
+                : integration
+            )
+          );
+        }
+
         // Check GitHub status
         const githubResponse = await api.get('/social/status/github/');
         const githubData = githubResponse.data.data || githubResponse.data;
@@ -234,7 +261,27 @@ export default function IntegrationsSettingsPage() {
     setErrorMessage(null);
     setSuccessMessage('');
 
-    if (integrationId === 'github') {
+    if (integrationId === 'linkedin') {
+      try {
+        const response = await api.get('/social/connect/linkedin/');
+
+        if (response.data.success && response.data.data?.authUrl) {
+          const authUrl = response.data.data.authUrl;
+          window.location.href = authUrl;
+        } else {
+          console.error('[IntegrationsSettingsPage] No authUrl in response');
+          setErrorMessage({
+            title: 'Connection Error',
+            message: 'Failed to get LinkedIn OAuth URL. Please try again later.',
+            variant: 'error',
+          });
+        }
+      } catch (error: any) {
+        console.error('[IntegrationsSettingsPage] Failed to initiate LinkedIn OAuth:', error);
+        const friendlyError = getUserFriendlyError(error as ErrorResponse, 'linkedin');
+        setErrorMessage(friendlyError);
+      }
+    } else if (integrationId === 'github') {
       try {
         const response = await api.get('/auth/urls/');
         const githubUrl = response.data.github;
@@ -319,7 +366,30 @@ export default function IntegrationsSettingsPage() {
     setErrorMessage(null);
     setSuccessMessage('');
 
-    if (integrationId === 'github') {
+    if (integrationId === 'linkedin') {
+      try {
+        await api.post('/social/disconnect/linkedin/');
+
+        setIntegrations(prev =>
+          prev.map(integration =>
+            integration.id === 'linkedin'
+              ? {
+                  ...integration,
+                  isConnected: false,
+                  username: undefined,
+                  connectedAt: undefined,
+                }
+              : integration
+          )
+        );
+
+        setSuccessMessage(`${integrationName} disconnected successfully`);
+      } catch (error) {
+        console.error('Failed to disconnect LinkedIn:', error);
+        const friendlyError = getUserFriendlyError(error as ErrorResponse, 'linkedin');
+        setErrorMessage(friendlyError);
+      }
+    } else if (integrationId === 'github') {
       try {
         await api.post('/social/disconnect/github/');
 
@@ -912,7 +982,7 @@ export default function IntegrationsSettingsPage() {
                 <div className="text-3xl">⚠️</div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                    Disconnect {showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : showDisconnectModal === 'figma' ? 'Figma' : 'Integration'}?
+                    Disconnect {showDisconnectModal === 'linkedin' ? 'LinkedIn' : showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : showDisconnectModal === 'figma' ? 'Figma' : 'Integration'}?
                   </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     {showDisconnectModal === 'youtube'
@@ -932,7 +1002,7 @@ export default function IntegrationsSettingsPage() {
                 </button>
                 <button
                   onClick={() => {
-                    const integrationName = showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : showDisconnectModal === 'figma' ? 'Figma' : 'Integration';
+                    const integrationName = showDisconnectModal === 'linkedin' ? 'LinkedIn' : showDisconnectModal === 'youtube' ? 'YouTube' : showDisconnectModal === 'github' ? 'GitHub' : showDisconnectModal === 'gitlab' ? 'GitLab' : showDisconnectModal === 'figma' ? 'Figma' : 'Integration';
                     handleDisconnect(showDisconnectModal, integrationName);
                   }}
                   className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium text-sm"

@@ -189,9 +189,53 @@ export function getGitHubErrorMessage(error: ErrorResponse): UserFriendlyError {
 }
 
 /**
+ * Translate backend errors into user-friendly messages for LinkedIn integration
+ */
+export function getLinkedInErrorMessage(error: ErrorResponse): UserFriendlyError {
+  const errorData = error?.response?.data || error;
+  const statusCode = error?.response?.status || error?.statusCode;
+  const errorMessage = errorData?.message || error?.message || '';
+
+  // Authentication errors
+  if (statusCode === 401) {
+    return {
+      title: 'LinkedIn Not Connected',
+      message: 'Please connect your LinkedIn account to import content.',
+      actionText: 'Connect LinkedIn',
+      actionHref: '/account/settings/integrations',
+      variant: 'info',
+    };
+  }
+
+  // Rate limiting
+  if (statusCode === 429 || errorMessage.toLowerCase().includes('rate limit')) {
+    return {
+      title: 'LinkedIn Rate Limit Reached',
+      message: 'You\'ve made too many requests to LinkedIn. Please wait a few minutes before trying again.',
+      variant: 'warning',
+    };
+  }
+
+  // Profile not found
+  if (statusCode === 404) {
+    return {
+      title: 'Profile Not Found',
+      message: 'We couldn\'t access your LinkedIn profile. Please check your connection and try again.',
+      variant: 'error',
+    };
+  }
+
+  return {
+    title: 'LinkedIn Connection Error',
+    message: 'We encountered an error connecting to LinkedIn. Please try again.',
+    variant: 'error',
+  };
+}
+
+/**
  * Generic error translator - automatically detects integration type
  */
-export function getUserFriendlyError(error: ErrorResponse, integration?: 'youtube' | 'github'): UserFriendlyError {
+export function getUserFriendlyError(error: ErrorResponse, integration?: 'youtube' | 'github' | 'linkedin'): UserFriendlyError {
   // Auto-detect integration from error context
   const errorData = error?.response?.data || error;
   const errorMessage = errorData?.message || error?.message || '';
@@ -201,6 +245,8 @@ export function getUserFriendlyError(error: ErrorResponse, integration?: 'youtub
       integration = 'youtube';
     } else if (errorMessage.toLowerCase().includes('github')) {
       integration = 'github';
+    } else if (errorMessage.toLowerCase().includes('linkedin')) {
+      integration = 'linkedin';
     }
   }
 
@@ -210,6 +256,8 @@ export function getUserFriendlyError(error: ErrorResponse, integration?: 'youtub
       return getYouTubeErrorMessage(error);
     case 'github':
       return getGitHubErrorMessage(error);
+    case 'linkedin':
+      return getLinkedInErrorMessage(error);
     default:
       return getYouTubeErrorMessage(error); // Default to YouTube for now
   }

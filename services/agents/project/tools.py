@@ -644,7 +644,10 @@ def scrape_webpage_for_project(
             'organization': extracted.organization,
             'source_url': url,
             'image_url': extracted.image_url,
+            'images': extracted.images or [],  # All images from page for gallery
+            'videos': extracted.videos or [],  # Embedded videos (YouTube, Vimeo, etc.)
             'links': extracted.links or {},
+            'published_date': extracted.published_date,
         }
 
         # Run template analysis for structured sections

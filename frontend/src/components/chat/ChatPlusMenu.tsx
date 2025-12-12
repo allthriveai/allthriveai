@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFigma, faGithub, faGitlab, faYoutube } from '@fortawesome/free-brands-svg-icons';
+import { faFigma, faGithub, faGitlab, faLinkedin, faYoutube } from '@fortawesome/free-brands-svg-icons';
 import { faBagShopping, faCircleQuestion, faCommentDots, faEllipsis, faLink } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '@/hooks/useAuth';
 
-export type IntegrationType = 'github' | 'gitlab' | 'figma' | 'youtube' | 'create-visual' | 'ask-help' | 'describe' | 'create-product' | 'import-url';
+export type IntegrationType = 'github' | 'gitlab' | 'figma' | 'youtube' | 'linkedin' | 'create-visual' | 'ask-help' | 'describe' | 'create-product' | 'import-url';
 
 interface ChatPlusMenuProps {
   onIntegrationSelect: (type: IntegrationType) => void;
@@ -81,6 +81,14 @@ const integrationOptions: IntegrationOption[] = [
     label: 'Add from YouTube',
     icon: faYoutube,
     description: 'Import a video',
+    available: true,
+    isPrimary: false,
+  },
+  {
+    type: 'linkedin',
+    label: 'Add from LinkedIn',
+    icon: faLinkedin,
+    description: 'Import from your profile',
     available: true,
     isPrimary: false,
   },

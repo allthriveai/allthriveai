@@ -197,6 +197,9 @@ export function ProfileHeader({
                         src={user.avatarUrl}
                         alt={user?.fullName || user?.username || 'Profile'}
                         className="w-full h-full object-cover"
+                        style={{
+                          objectPosition: `${(user?.avatarFocalX ?? 0.5) * 100}% ${(user?.avatarFocalY ?? 0.5) * 100}%`,
+                        }}
                       />
                       <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
                         {isAvatarUploading ? (
@@ -233,6 +236,9 @@ export function ProfileHeader({
                     src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || 'User'}&background=random&size=150`}
                     alt={user?.fullName || user?.username || 'Profile'}
                     className="w-full h-full object-cover"
+                    style={{
+                      objectPosition: `${(user?.avatarFocalX ?? 0.5) * 100}% ${(user?.avatarFocalY ?? 0.5) * 100}%`,
+                    }}
                   />
                 </div>
               )}

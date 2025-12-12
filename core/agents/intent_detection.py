@@ -2,7 +2,7 @@
 Intent Detection Service using LLM-based reasoning
 
 Replaces keyword-based intent detection with intelligent LLM analysis.
-Uses the configured AI provider (OpenAI/Azure/Anthropic) to determine user intent.
+Uses the configured AI provider (OpenAI/Anthropic/Gemini) to determine user intent.
 
 Supported intents:
 - support: Help, questions, troubleshooting

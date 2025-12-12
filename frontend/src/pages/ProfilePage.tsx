@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
 import type { User, Project } from '@/types/models';
 import { getUserByUsername } from '@/services/auth';
-import { getUserProjects, bulkDeleteProjects } from '@/services/projects';
+import { getUserProjects, bulkDeleteProjects, getClippedProjects } from '@/services/projects';
 import { followService } from '@/services/followService';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
@@ -23,6 +23,7 @@ import { MasonryGrid } from '@/components/common/MasonryGrid';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileTemplatePicker } from '@/components/profile/ProfileTemplatePicker';
+import { AvatarFocalPointEditor } from '@/components/profile/AvatarFocalPointEditor';
 import { ProfileCompleteness } from '@/components/profile/ProfileCompleteness';
 import { logError, parseApiError } from '@/utils/errorHandler';
 import { ProfileSections, type ProfileUser } from '@/components/profile/sections';
@@ -88,6 +89,8 @@ export default function ProfilePage() {
     showcase: [],
     playground: [],
   });
+  const [clippedProjects, setClippedProjects] = useState<Project[]>([]);
+  const [isClippedLoading, setIsClippedLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [userNotFound, setUserNotFound] = useState(false);
@@ -139,6 +142,8 @@ export default function ProfilePage() {
 
   // Avatar upload state
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const [showFocalPointEditor, setShowFocalPointEditor] = useState(false);
+  const [pendingAvatarUrl, setPendingAvatarUrl] = useState<string | null>(null);
 
   // Check for public preview mode (owner viewing as visitor)
   const isPreviewMode = searchParams.get('preview') === 'public';
@@ -526,27 +531,95 @@ export default function ProfilePage() {
         avatarUrl = fileOrUrl;
       }
 
-      // Update the user's profile with the new avatar URL
-      await api.patch('/me/profile/', { avatarUrl });
+      // Store the uploaded URL and show the focal point editor
+      setPendingAvatarUrl(avatarUrl);
+      setShowFocalPointEditor(true);
+      setSaveStatus('idle');
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } finally {
+      setIsAvatarUploading(false);
+    }
+  }, [user]);
+
+  // Handle focal point save - saves both avatar URL and focal point
+  const handleFocalPointSave = useCallback(async (focalX: number, focalY: number) => {
+    if (!pendingAvatarUrl) return;
+
+    setSaveStatus('saving');
+
+    try {
+      // Update the user's profile with avatar URL and focal point
+      await api.patch('/me/profile/', {
+        avatarUrl: pendingAvatarUrl,
+        avatarFocalX: focalX,
+        avatarFocalY: focalY,
+      });
 
       // Refresh the user data in auth context so it syncs everywhere
       await refreshUser();
 
       // Update local state to reflect the change
       if (isActualOwner) {
-        setProfileUser(prev => prev ? { ...prev, avatarUrl } : prev);
+        setProfileUser(prev => prev ? {
+          ...prev,
+          avatarUrl: pendingAvatarUrl,
+          avatarFocalX: focalX,
+          avatarFocalY: focalY,
+        } : prev);
       }
 
+      setShowFocalPointEditor(false);
+      setPendingAvatarUrl(null);
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
       console.error('Failed to update avatar:', error);
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
-    } finally {
-      setIsAvatarUploading(false);
     }
-  }, [user, isActualOwner, refreshUser]);
+  }, [pendingAvatarUrl, isActualOwner, refreshUser]);
+
+  // Handle focal point cancel - still save the avatar but with default focal point
+  const handleFocalPointCancel = useCallback(async () => {
+    if (!pendingAvatarUrl) {
+      setShowFocalPointEditor(false);
+      return;
+    }
+
+    setSaveStatus('saving');
+
+    try {
+      // Save avatar with default focal point (center)
+      await api.patch('/me/profile/', {
+        avatarUrl: pendingAvatarUrl,
+        avatarFocalX: 0.5,
+        avatarFocalY: 0.5,
+      });
+
+      await refreshUser();
+
+      if (isActualOwner) {
+        setProfileUser(prev => prev ? {
+          ...prev,
+          avatarUrl: pendingAvatarUrl,
+          avatarFocalX: 0.5,
+          avatarFocalY: 0.5,
+        } : prev);
+      }
+
+      setShowFocalPointEditor(false);
+      setPendingAvatarUrl(null);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (error) {
+      console.error('Failed to update avatar:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  }, [pendingAvatarUrl, isActualOwner, refreshUser]);
 
   // Social links update handler for inline editing
   const handleSocialLinksUpdate = useCallback(async (links: SocialLinksUpdate) => {
@@ -690,6 +763,28 @@ export default function ProfilePage() {
     loadProjects();
   }, [username, user?.username, userNotFound]);
 
+  // Fetch clipped projects
+  useEffect(() => {
+    async function loadClippedProjects() {
+      if (!username && !user?.username) return;
+      if (userNotFound) {
+        setIsClippedLoading(false);
+        return;
+      }
+      setIsClippedLoading(true);
+      try {
+        const data = await getClippedProjects(username || user?.username || '');
+        setClippedProjects(data);
+      } catch (error) {
+        console.error('Failed to load clipped projects:', error);
+        setClippedProjects([]);
+      } finally {
+        setIsClippedLoading(false);
+      }
+    }
+    loadClippedProjects();
+  }, [username, user?.username, userNotFound]);
+
   // Social links data
   const socialLinks = [
     { icon: faGlobe, url: displayUser?.websiteUrl, label: 'Website' },
@@ -726,6 +821,9 @@ export default function ProfilePage() {
         showcase: prev.showcase.filter(p => !selectedProjectIds.has(p.id)),
         playground: prev.playground.filter(p => !selectedProjectIds.has(p.id)),
       }));
+
+      // Also remove from clipped projects
+      setClippedProjects(prev => prev.filter(p => !selectedProjectIds.has(p.id)));
 
       // Exit selection mode and close modal
       exitSelectionMode();
@@ -996,6 +1094,9 @@ export default function ProfilePage() {
                   <img
                     src={displayUser?.avatarUrl || `https://ui-avatars.com/api/?name=${displayUser?.fullName || 'User'}&background=random`}
                     className="w-full h-full object-cover"
+                    style={{
+                      objectPosition: `${(displayUser?.avatarFocalX ?? 0.5) * 100}% ${(displayUser?.avatarFocalY ?? 0.5) * 100}%`,
+                    }}
                     alt="Profile"
                   />
                 </div>
@@ -1035,6 +1136,9 @@ export default function ProfilePage() {
                     <img
                       src={displayUser?.avatarUrl || `https://ui-avatars.com/api/?name=${displayUser?.fullName || 'User'}&background=random`}
                       className="w-full h-full object-cover"
+                      style={{
+                        objectPosition: `${(displayUser?.avatarFocalX ?? 0.5) * 100}% ${(displayUser?.avatarFocalY ?? 0.5) * 100}%`,
+                      }}
                       alt="Profile"
                     />
                   </div>
@@ -1087,6 +1191,9 @@ export default function ProfilePage() {
                           <img
                             src={displayUser?.avatarUrl || `https://ui-avatars.com/api/?name=${displayUser?.fullName || 'User'}&background=random`}
                             className="w-full h-full object-cover"
+                            style={{
+                              objectPosition: `${(displayUser?.avatarFocalX ?? 0.5) * 100}% ${(displayUser?.avatarFocalY ?? 0.5) * 100}%`,
+                            }}
                             alt="Profile"
                           />
                         </div>
@@ -1332,6 +1439,9 @@ export default function ProfilePage() {
                         <img
                           src={displayUser?.avatarUrl || `https://ui-avatars.com/api/?name=${displayUser?.fullName || 'User'}&background=random`}
                           className="w-full h-full object-cover"
+                          style={{
+                            objectPosition: `${(displayUser?.avatarFocalX ?? 0.5) * 100}% ${(displayUser?.avatarFocalY ?? 0.5) * 100}%`,
+                          }}
                           alt=""
                         />
                       </button>
@@ -1471,11 +1581,12 @@ export default function ProfilePage() {
                     );
                   })}
 
-                  {/* Action Buttons - Select (Playground only) and Edit Profile */}
+                  {/* Action Buttons - Select (Playground/Clipped) and Edit Profile */}
                   <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-                    {/* Select/Delete Buttons - For profile owner or admin on Playground tab only */}
+                    {/* Select/Delete Buttons - For profile owner or admin on Playground/Clipped tabs */}
                     {canManagePosts &&
-                     activeTab === 'playground' && projects.playground.length > 0 && (
+                     ((activeTab === 'playground' && projects.playground.length > 0) ||
+                      (activeTab === 'clipped' && clippedProjects.length > 0)) && (
                       <>
                         {selectionMode && selectedProjectIds.size > 0 && (
                           <button
@@ -1602,6 +1713,11 @@ export default function ProfilePage() {
                   <ClippedTab
                     username={username || user?.username || ''}
                     isOwnProfile={isOwnProfile}
+                    projects={clippedProjects}
+                    isLoading={isClippedLoading}
+                    selectionMode={selectionMode}
+                    selectedProjectIds={selectedProjectIds}
+                    onSelect={toggleSelection}
                   />
                 </div>
               )}
@@ -1741,6 +1857,17 @@ export default function ProfilePage() {
           currentTemplate={currentTemplate}
           recommendedTemplate={recommendedTemplate}
         />
+
+        {/* Avatar Focal Point Editor Modal */}
+        {showFocalPointEditor && pendingAvatarUrl && (
+          <AvatarFocalPointEditor
+            imageUrl={pendingAvatarUrl}
+            initialFocalX={displayUser?.avatarFocalX ?? 0.5}
+            initialFocalY={displayUser?.avatarFocalY ?? 0.5}
+            onSave={handleFocalPointSave}
+            onCancel={handleFocalPointCancel}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

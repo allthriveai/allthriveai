@@ -443,9 +443,12 @@ class ExtractedProjectData:
     title: str
     description: str
     tagline: str | None = None
-    image_url: str | None = None
+    image_url: str | None = None  # Primary hero image (og:image)
+    images: list[dict] | None = None  # Additional images from page [{url, alt}]
+    videos: list[dict] | None = None  # Embedded videos [{url, platform, video_id}]
     creator: str | None = None
     organization: str | None = None
+    published_date: str | None = None  # Article publication date
     topics: list[str] | None = None
     features: list[str] | None = None
     links: dict[str, str] | None = None  # e.g., {"github": "...", "docs": "..."}
@@ -950,7 +953,333 @@ def extract_metadata(soup: BeautifulSoup, url: str) -> dict:
     if og_site_name and og_site_name.get('content'):
         metadata['organization'] = og_site_name['content'].strip()
 
+    # Published date: try article:published_time, then datePublished schema
+    published_time = soup.find('meta', property='article:published_time')
+    if published_time and published_time.get('content'):
+        metadata['published_date'] = published_time['content'].strip()
+    else:
+        # Try schema.org datePublished
+        time_tag = soup.find('time', attrs={'datetime': True})
+        if time_tag:
+            metadata['published_date'] = time_tag['datetime']
+
     return metadata
+
+
+def _check_youtube_embeddable(video_id: str) -> bool:
+    """Check if a YouTube video allows embedding elsewhere.
+
+    Uses YouTube's oEmbed endpoint which returns an error if embedding is disabled.
+
+    Args:
+        video_id: YouTube video ID
+
+    Returns:
+        True if video can be embedded, False otherwise
+    """
+    oembed_url = f'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json'
+    try:
+        response = requests.get(oembed_url, timeout=5)
+        # 200 means embeddable, 401/403 means not embeddable
+        return response.status_code == 200
+    except Exception:
+        # If we can't check, assume it's not embeddable to be safe
+        return False
+
+
+def extract_videos(soup: BeautifulSoup, url: str) -> list[dict]:
+    """Extract embedded videos from a webpage.
+
+    Finds YouTube, Vimeo, and other video embeds.
+    Only includes videos that allow embedding elsewhere.
+
+    Args:
+        soup: BeautifulSoup parsed HTML
+        url: Original URL for resolving relative URLs
+
+    Returns:
+        List of dicts with 'url', 'platform', 'video_id', and 'thumbnail' keys
+    """
+    videos = []
+    seen_ids = set()
+
+    # YouTube patterns
+    youtube_patterns = [
+        # Standard embed iframe
+        r'youtube\.com/embed/([a-zA-Z0-9_-]{11})',
+        # youtube-nocookie.com embed
+        r'youtube-nocookie\.com/embed/([a-zA-Z0-9_-]{11})',
+        # Watch URLs (in links or data attributes)
+        r'youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})',
+        # Short URLs
+        r'youtu\.be/([a-zA-Z0-9_-]{11})',
+    ]
+
+    # Vimeo patterns
+    vimeo_patterns = [
+        r'player\.vimeo\.com/video/(\d+)',
+        r'vimeo\.com/(\d+)',
+    ]
+
+    # Check iframes for video embeds
+    for iframe in soup.find_all('iframe'):
+        src = iframe.get('src') or iframe.get('data-src') or ''
+
+        # YouTube
+        for pattern in youtube_patterns:
+            match = re.search(pattern, src)
+            if match:
+                video_id = match.group(1)
+                if video_id not in seen_ids:
+                    seen_ids.add(video_id)
+                    # Check if video allows embedding elsewhere
+                    if _check_youtube_embeddable(video_id):
+                        videos.append(
+                            {
+                                'url': f'https://www.youtube.com/watch?v={video_id}',
+                                'embed_url': f'https://www.youtube.com/embed/{video_id}',
+                                'platform': 'youtube',
+                                'video_id': video_id,
+                                'thumbnail': f'https://img.youtube.com/vi/{video_id}/maxresdefault.jpg',
+                            }
+                        )
+                    else:
+                        logger.debug(f'Skipping YouTube video {video_id}: embedding disabled')
+                break
+
+        # Vimeo
+        for pattern in vimeo_patterns:
+            match = re.search(pattern, src)
+            if match:
+                video_id = match.group(1)
+                if video_id not in seen_ids:
+                    seen_ids.add(video_id)
+                    videos.append(
+                        {
+                            'url': f'https://vimeo.com/{video_id}',
+                            'embed_url': f'https://player.vimeo.com/video/{video_id}',
+                            'platform': 'vimeo',
+                            'video_id': video_id,
+                            'thumbnail': None,  # Vimeo thumbnails require API call
+                        }
+                    )
+                break
+
+    # Also check for YouTube links in the page (not just embeds)
+    # This catches cases where video is linked but not embedded
+    for a_tag in soup.find_all('a', href=True):
+        href = a_tag['href']
+        for pattern in youtube_patterns:
+            match = re.search(pattern, href)
+            if match:
+                video_id = match.group(1)
+                if video_id not in seen_ids:
+                    seen_ids.add(video_id)
+                    # Check if video allows embedding elsewhere
+                    if _check_youtube_embeddable(video_id):
+                        videos.append(
+                            {
+                                'url': f'https://www.youtube.com/watch?v={video_id}',
+                                'embed_url': f'https://www.youtube.com/embed/{video_id}',
+                                'platform': 'youtube',
+                                'video_id': video_id,
+                                'thumbnail': f'https://img.youtube.com/vi/{video_id}/maxresdefault.jpg',
+                            }
+                        )
+                    else:
+                        logger.debug(f'Skipping YouTube video {video_id}: embedding disabled')
+                break
+
+    # Check for lite-youtube custom elements (common lazy-load pattern)
+    for lite_yt in soup.find_all(['lite-youtube', 'youtube-video']):
+        video_id = lite_yt.get('videoid') or lite_yt.get('video-id') or lite_yt.get('data-videoid')
+        if video_id and video_id not in seen_ids:
+            seen_ids.add(video_id)
+            # Check if video allows embedding elsewhere
+            if _check_youtube_embeddable(video_id):
+                videos.append(
+                    {
+                        'url': f'https://www.youtube.com/watch?v={video_id}',
+                        'embed_url': f'https://www.youtube.com/embed/{video_id}',
+                        'platform': 'youtube',
+                        'video_id': video_id,
+                        'thumbnail': f'https://img.youtube.com/vi/{video_id}/maxresdefault.jpg',
+                    }
+                )
+            else:
+                logger.debug(f'Skipping YouTube video {video_id}: embedding disabled')
+
+    return videos
+
+
+def extract_images(soup: BeautifulSoup, url: str, max_images: int = 12) -> list[dict]:
+    """Extract meaningful images from a webpage.
+
+    Filters out icons, tracking pixels, avatars, and other noise.
+    Returns images likely to be content (screenshots, diagrams, photos).
+
+    Args:
+        soup: BeautifulSoup parsed HTML
+        url: Original URL for resolving relative URLs
+        max_images: Maximum number of images to extract
+
+    Returns:
+        List of dicts with 'url' and 'alt' keys
+    """
+    images = []
+    seen_urls = set()
+
+    # Patterns that indicate non-content images
+    skip_patterns = [
+        # Generic UI elements
+        'avatar',
+        'icon',
+        'logo',
+        'favicon',
+        'emoji',
+        'pixel',
+        'tracking',
+        'badge',
+        'button',
+        '1x1',
+        'spacer',
+        'blank',
+        'transparent',
+        'sprite',
+        'loader',
+        'spinner',
+        'arrow',
+        'chevron',
+        'caret',
+        'close',
+        'menu',
+        'hamburger',
+        'search',
+        'social',
+        'share',
+        # User profile images (we don't want contributor lists)
+        'gravatar',
+        'profile-pic',
+        'user-image',
+        'author-image',
+        'profile_image',
+        'profile-image',
+        'profilepic',
+        'userpic',
+        'contributor',
+        'collaborator',
+        'member',
+        'team-member',
+        # Platform-specific avatar domains/paths
+        'avatars.githubusercontent.com',  # GitHub user avatars
+        'githubusercontent.com/u/',  # GitHub user avatar path
+        'secure.gravatar.com',
+        'pbs.twimg.com/profile_images',  # Twitter profile pics
+        'platform-lookaside.fbsbx.com',  # Facebook
+        'media.licdn.com/dms/image',  # LinkedIn profile
+        # Social media icons (but not content shared from them)
+        '/icons/',
+        '/icon/',
+        '/_icons/',
+    ]
+
+    # Regex patterns for avatar URLs that need more specific matching
+    # GitHub serves user avatars at github.com/username.png
+    github_avatar_pattern = re.compile(r'github\.com/[a-zA-Z0-9_-]+\.png$', re.IGNORECASE)
+
+    # File extensions that are typically icons/vectors (skip small ones)
+    icon_extensions = ['.svg', '.ico', '.gif']
+
+    for img in soup.find_all('img'):
+        # Get image source (check multiple attributes for lazy loading)
+        src = img.get('src') or img.get('data-src') or img.get('data-lazy-src') or img.get('data-original')
+        if not src:
+            continue
+
+        # Skip data URIs (usually tiny placeholders)
+        if src.startswith('data:'):
+            continue
+
+        # Resolve relative URLs
+        img_url = urljoin(url, src)
+
+        # Skip duplicates
+        if img_url in seen_urls:
+            continue
+        seen_urls.add(img_url)
+
+        # Skip obvious noise based on URL patterns
+        img_url_lower = img_url.lower()
+        if any(pattern in img_url_lower for pattern in skip_patterns):
+            continue
+
+        # Skip GitHub user avatar URLs (github.com/username.png format)
+        if github_avatar_pattern.search(img_url):
+            continue
+
+        # Get dimensions if available
+        width = img.get('width', '')
+        height = img.get('height', '')
+
+        # Try to parse dimensions
+        try:
+            w = int(str(width).replace('px', ''))
+        except (ValueError, TypeError):
+            w = None
+
+        try:
+            h = int(str(height).replace('px', ''))
+        except (ValueError, TypeError):
+            h = None
+
+        # Skip tiny images (likely icons)
+        if w is not None and w < 100:
+            continue
+        if h is not None and h < 100:
+            continue
+
+        # Skip small SVGs/GIFs (larger ones might be diagrams)
+        if any(img_url_lower.endswith(ext) for ext in icon_extensions):
+            if w is not None and w < 200:
+                continue
+
+        # Get alt text for context
+        alt = img.get('alt', '') or img.get('title', '')
+
+        # Skip images with alt text suggesting they're decorative or user profiles
+        alt_lower = alt.lower()
+        skip_alt_patterns = [
+            'icon',
+            'logo',
+            'avatar',
+            'decoration',
+            'profile',
+            'contributor',
+            'author',
+            "'s avatar",
+            "'s profile",
+            "'s photo",
+            "'s picture",
+            'profile picture',
+            'profile photo',
+            'profile image',
+            'headshot',
+            'portrait',
+        ]
+        if any(pattern in alt_lower for pattern in skip_alt_patterns):
+            continue
+
+        images.append(
+            {
+                'url': img_url,
+                'alt': alt.strip() if alt else '',
+            }
+        )
+
+        if len(images) >= max_images:
+            break
+
+    return images
 
 
 def html_to_text(html_content: str) -> str:
@@ -1064,8 +1393,11 @@ Extract structured project data as JSON:"""
             description=extracted.get('description') or metadata.get('description', ''),
             tagline=extracted.get('tagline'),
             image_url=metadata.get('image_url'),  # Use metadata image (og:image is usually best)
+            images=metadata.get('images'),  # Additional images from page
+            videos=metadata.get('videos'),  # Embedded videos (YouTube, Vimeo, etc.)
             creator=extracted.get('creator') or metadata.get('creator'),
             organization=extracted.get('organization') or metadata.get('organization'),
+            published_date=metadata.get('published_date'),
             topics=extracted.get('topics', []),
             features=extracted.get('features', []),
             links=extracted.get('links', {}),
@@ -1080,8 +1412,11 @@ Extract structured project data as JSON:"""
             title=metadata.get('title', 'Untitled Project'),
             description=metadata.get('description', ''),
             image_url=metadata.get('image_url'),
+            images=metadata.get('images'),
+            videos=metadata.get('videos'),
             creator=metadata.get('creator'),
             organization=metadata.get('organization'),
+            published_date=metadata.get('published_date'),
             source_url=url,
         )
     except Exception as e:
@@ -1247,6 +1582,18 @@ def scrape_url_for_project(url: str, force_javascript: bool = False) -> Extracte
 
     # Extract metadata from tags
     metadata = extract_metadata(soup, url)
+
+    # Extract images from page (for gallery)
+    images = extract_images(soup, url)
+    if images:
+        metadata['images'] = images
+        logger.info(f'Extracted {len(images)} images from page')
+
+    # Extract embedded videos (YouTube, Vimeo, etc.)
+    videos = extract_videos(soup, url)
+    if videos:
+        metadata['videos'] = videos
+        logger.info(f'Extracted {len(videos)} videos from page: {[v["platform"] for v in videos]}')
 
     # Convert to text for AI
     text_content = html_to_text(html_content)

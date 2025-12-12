@@ -227,6 +227,19 @@ companies:
     headquarters: Cambridge, MA
     twitter_handle: saboratuno_ai_
 
+  - name: Block
+    tagline: Building tools that empower economic participation
+    description: >
+      Block, Inc. (formerly Square) is a financial services and digital payments company.
+      Beyond payments, Block builds open-source developer tools including the Goose
+      AI coding agent and contributes to decentralized technologies.
+    website_url: https://block.xyz
+    logo_url: https://block.xyz/favicon.ico
+    founded_year: 2009
+    headquarters: San Francisco, CA
+    twitter_handle: blocks
+    github_url: https://github.com/block
+
   - name: Udio
     tagline: Create music with AI
     description: >
@@ -2063,6 +2076,51 @@ tools:
       - date: '2025-11-01'
         title: Gartner Magic Quadrant Leader
         description: Named Leader in AI Code Assistants for second consecutive year.
+
+  - name: Goose
+    company: Block
+    tagline: Open-source AI agent that automates engineering tasks
+    description: >
+      Goose is an open-source AI agent from Block that runs on your machine and automates
+      engineering tasks. It can write and modify code, run shell commands, manage files,
+      and interact with external services. Goose works with any LLM provider (OpenAI,
+      Anthropic, local models) and supports extensible toolkits for custom integrations.
+      Runs locally for privacy and works across any codebase. Free and open-source.
+    category: code
+    tool_type: ai_tool
+    website_url: https://block.github.io/goose/
+    logo_url: https://block.github.io/goose/assets/goose-logo.svg
+    pricing_model: free
+    has_free_tier: true
+    tags:
+      - Code
+      - AI Agent
+      - Open Source
+      - Automation
+      - CLI
+    key_features:
+      - title: Autonomous Agent
+        description: Executes multi-step engineering tasks with shell access and file editing
+      - title: Any LLM Provider
+        description: Works with OpenAI, Anthropic, Ollama, or any OpenAI-compatible API
+      - title: Extensible Toolkits
+        description: Add custom tools and integrations through a plugin system
+      - title: Local & Private
+        description: Runs entirely on your machine with no data sent to third parties
+      - title: Language Agnostic
+        description: Works with any programming language or codebase
+    usage_tips:
+      - Start with clear, specific task descriptions
+      - Use for repetitive engineering tasks like migrations
+      - Configure your preferred LLM provider in settings
+      - Add custom toolkits for project-specific needs
+      - Review changes before committing
+    best_practices:
+      - Run in a sandboxed environment for untrusted tasks
+      - Use version control to track AI-generated changes
+      - Combine with code review for production changes
+      - Start with small tasks to understand capabilities
+      - Leverage toolkits for common workflows
 
   # === PRODUCTIVITY & WRITING ===
   - name: Notion AI

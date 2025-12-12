@@ -1,6 +1,6 @@
 """
 AI Provider Service
-Supports Azure OpenAI, OpenAI, and Anthropic with easy switching between providers.
+Supports OpenAI, Anthropic, and Gemini with easy switching between providers.
 Includes LangSmith tracing and cost tracking.
 """
 
@@ -29,7 +29,6 @@ Never just describe what you would create - always include an actual generated i
 class AIProviderType(Enum):
     """Supported AI provider types."""
 
-    AZURE = 'azure'
     OPENAI = 'openai'
     ANTHROPIC = 'anthropic'
     GEMINI = 'gemini'
@@ -43,7 +42,7 @@ def get_model_for_purpose(provider: str, purpose: str = 'default') -> str:
     """Get the configured model for a given provider and purpose.
 
     Args:
-        provider: Provider type (openai, anthropic, gemini, azure)
+        provider: Provider type (openai, anthropic, gemini)
         purpose: Purpose type (default, reasoning, image, vision)
 
     Returns:
@@ -66,7 +65,6 @@ def get_model_for_purpose(provider: str, purpose: str = 'default') -> str:
             'openai': 'gpt-4o-mini',
             'anthropic': 'claude-3-5-haiku-20241022',
             'gemini': 'gemini-2.0-flash',
-            'azure': 'gpt-4',
         }
         model = fallbacks.get(provider, 'gpt-4o-mini')
         logger.warning(f'No model configured for {provider}/{purpose}, using fallback: {model}')
@@ -149,7 +147,7 @@ def _fetch_s3_image(url: str) -> tuple[bytes, str]:
 
 class AIProvider:
     """
-    Global AI provider class that can switch between Azure OpenAI, OpenAI, and Anthropic.
+    Global AI provider class that can switch between OpenAI, Anthropic, and Gemini.
 
     Usage:
         # Use default provider from settings
@@ -170,7 +168,7 @@ class AIProvider:
         Initialize AI provider.
 
         Args:
-            provider: Provider type (azure, openai, anthropic).
+            provider: Provider type (openai, anthropic, gemini).
                      Defaults to DEFAULT_AI_PROVIDER from settings.
             user_id: User ID for cost tracking and attribution
             **kwargs: Additional configuration options for the provider.
@@ -191,7 +189,7 @@ class AIProvider:
         Switch to a different AI provider.
 
         Args:
-            provider: Provider type (azure, openai, anthropic)
+            provider: Provider type (openai, anthropic, gemini)
         """
         try:
             provider_enum = AIProviderType(provider.lower())
@@ -205,37 +203,12 @@ class AIProvider:
 
     def _initialize_client(self):
         """Initialize the appropriate client based on the current provider."""
-        if self._provider == AIProviderType.AZURE:
-            return self._initialize_azure_client()
-        elif self._provider == AIProviderType.OPENAI:
+        if self._provider == AIProviderType.OPENAI:
             return self._initialize_openai_client()
         elif self._provider == AIProviderType.ANTHROPIC:
             return self._initialize_anthropic_client()
         elif self._provider == AIProviderType.GEMINI:
             return self._initialize_gemini_client()
-
-    def _initialize_azure_client(self):
-        """Initialize Azure OpenAI client."""
-        try:
-            from openai import AzureOpenAI
-        except ImportError as e:
-            raise ImportError('OpenAI library not installed. Install with: pip install openai') from e
-
-        api_key = getattr(settings, 'AZURE_OPENAI_API_KEY', None)
-        endpoint = getattr(settings, 'AZURE_OPENAI_ENDPOINT', None)
-        api_version = getattr(settings, 'AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
-
-        if not api_key or not endpoint:
-            raise ValueError(
-                'Azure OpenAI credentials not configured. '
-                'Set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT in settings.'
-            )
-
-        return AzureOpenAI(
-            api_key=api_key,
-            azure_endpoint=endpoint,
-            api_version=api_version,
-        )
 
     def _initialize_openai_client(self):
         """Initialize OpenAI client.
@@ -347,9 +320,7 @@ class AIProvider:
         )
 
         try:
-            if self._provider == AIProviderType.AZURE:
-                result = self._complete_azure(prompt, model, temperature, max_tokens, system_message, timeout, **kwargs)
-            elif self._provider == AIProviderType.OPENAI:
+            if self._provider == AIProviderType.OPENAI:
                 result = self._complete_openai(
                     prompt, model, temperature, max_tokens, system_message, timeout, **kwargs
                 )
@@ -424,44 +395,6 @@ class AIProvider:
                 logger_instance=logger,
             )
             raise
-
-    def _complete_azure(
-        self,
-        prompt: str,
-        model: str | None,
-        temperature: float,
-        max_tokens: int | None,
-        system_message: str | None,
-        timeout: int,
-        **kwargs,
-    ) -> str:
-        """Azure OpenAI completion with timeout."""
-        # Model is resolved in complete() before being passed here
-        deployment_name = model
-
-        messages = []
-        if system_message:
-            messages.append({'role': 'system', 'content': system_message})
-        messages.append({'role': 'user', 'content': prompt})
-
-        response = self._client.chat.completions.create(
-            model=deployment_name,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            timeout=timeout,
-            **kwargs,
-        )
-
-        # Store token usage for tracking
-        if hasattr(response, 'usage'):
-            self.last_usage = {
-                'prompt_tokens': response.usage.prompt_tokens,
-                'completion_tokens': response.usage.completion_tokens,
-                'total_tokens': response.usage.total_tokens,
-            }
-
-        return response.choices[0].message.content
 
     def _complete_openai(
         self,
@@ -647,9 +580,7 @@ class AIProvider:
         total_chars = 0
 
         try:
-            if self._provider == AIProviderType.AZURE:
-                stream = self._stream_azure(prompt, model, temperature, max_tokens, system_message, **kwargs)
-            elif self._provider == AIProviderType.OPENAI:
+            if self._provider == AIProviderType.OPENAI:
                 stream = self._stream_openai(prompt, model, temperature, max_tokens, system_message, **kwargs)
             elif self._provider == AIProviderType.ANTHROPIC:
                 stream = self._stream_anthropic(prompt, model, temperature, max_tokens, system_message, **kwargs)
@@ -697,37 +628,6 @@ class AIProvider:
                 logger_instance=logger,
             )
             raise
-
-    def _stream_azure(
-        self,
-        prompt: str,
-        model: str | None,
-        temperature: float,
-        max_tokens: int | None,
-        system_message: str | None,
-        **kwargs,
-    ):
-        """Azure OpenAI streaming completion."""
-        deployment_name = model or getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4')
-
-        messages = []
-        if system_message:
-            messages.append({'role': 'system', 'content': system_message})
-        messages.append({'role': 'user', 'content': prompt})
-
-        stream = self._client.chat.completions.create(
-            model=deployment_name,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=True,
-            **kwargs,
-        )
-
-        for chunk in stream:
-            if chunk.choices and len(chunk.choices) > 0:
-                if hasattr(chunk.choices[0].delta, 'content') and chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
 
     def _stream_openai(
         self,
@@ -858,22 +758,9 @@ class AIProvider:
             **kwargs: Additional LLM configuration options
 
         Returns:
-            LangChain BaseChatModel instance (AzureChatOpenAI, ChatOpenAI, or ChatAnthropic)
+            LangChain BaseChatModel instance (ChatOpenAI, ChatAnthropic, or ChatGoogleGenerativeAI)
         """
-        if self._provider == AIProviderType.AZURE:
-            from langchain_openai import AzureChatOpenAI
-
-            return AzureChatOpenAI(
-                azure_deployment=getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4'),
-                azure_endpoint=getattr(settings, 'AZURE_OPENAI_ENDPOINT', ''),
-                api_key=getattr(settings, 'AZURE_OPENAI_API_KEY', ''),
-                api_version=getattr(settings, 'AZURE_OPENAI_API_VERSION', '2024-02-15-preview'),
-                temperature=temperature,
-                streaming=True,  # Enable streaming for astream_events
-                **kwargs,
-            )
-
-        elif self._provider == AIProviderType.OPENAI:
+        if self._provider == AIProviderType.OPENAI:
             from langchain_openai import ChatOpenAI
 
             # Support AI gateway via OPENAI_BASE_URL
@@ -1182,10 +1069,6 @@ class AIProvider:
                 result = self._complete_with_image_openai(
                     prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
                 )
-            elif self._provider == AIProviderType.AZURE:
-                result = self._complete_with_image_azure(
-                    prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
-                )
             elif self._provider == AIProviderType.ANTHROPIC:
                 result = self._complete_with_image_anthropic(
                     prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
@@ -1346,55 +1229,6 @@ class AIProvider:
 
         response = self._client.chat.completions.create(
             model=model_name,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            timeout=timeout,
-        )
-
-        if hasattr(response, 'usage'):
-            self.last_usage = {
-                'prompt_tokens': response.usage.prompt_tokens,
-                'completion_tokens': response.usage.completion_tokens,
-                'total_tokens': response.usage.total_tokens,
-            }
-
-        return response.choices[0].message.content
-
-    def _complete_with_image_azure(
-        self,
-        prompt: str,
-        image_url: str | None,
-        image_bytes: bytes | None,
-        model: str | None,
-        temperature: float,
-        max_tokens: int | None,
-        timeout: int,
-    ) -> str:
-        """Azure OpenAI vision completion."""
-        import base64
-
-        deployment_name = model or getattr(settings, 'AZURE_OPENAI_VISION_DEPLOYMENT', 'gpt-4o')
-
-        # Build image content
-        if image_bytes:
-            base64_image = base64.b64encode(image_bytes).decode('utf-8')
-            image_content = {'type': 'image_url', 'image_url': {'url': f'data:image/png;base64,{base64_image}'}}
-        else:
-            image_content = {'type': 'image_url', 'image_url': {'url': image_url}}
-
-        messages = [
-            {
-                'role': 'user',
-                'content': [
-                    image_content,
-                    {'type': 'text', 'text': prompt},
-                ],
-            }
-        ]
-
-        response = self._client.chat.completions.create(
-            model=deployment_name,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,

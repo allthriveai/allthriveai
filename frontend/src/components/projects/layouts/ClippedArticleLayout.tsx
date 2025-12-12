@@ -1,41 +1,39 @@
 /**
- * ClippedArticleLayout - Beautiful layout for user-clipped web content
+ * ClippedArticleLayout - Clean "mini landing page" for clipped web content
  *
- * Features:
- * - Hero section with category-colored gradient background
- * - Prominent "Saved by" user information with avatar
- * - Editable "My Notes" section for user's personal thoughts
- * - "Visit Source" call-to-action button
- * - Category-themed accent colors throughout
- * - Full light/dark mode support
- * - Full editing capabilities for owners
+ * Design philosophy: "Look at this cool thing I found"
+ * The focus is on the SOURCE content, not user commentary.
+ *
+ * Layout:
+ * 1. Hero image (big, beautiful)
+ * 2. Title + source attribution
+ * 3. Overview/description
+ * 4. Key features (if extracted)
+ * 5. Gallery (images from the page)
+ * 6. Topics/tags
+ * 7. Footer with clipper info + social actions
  */
 
-import { useState, useCallback } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowTopRightOnSquareIcon,
-  ClockIcon,
-  UserIcon,
-  EllipsisVerticalIcon,
-  TrashIcon,
-  EyeIcon,
-  EyeSlashIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperclip } from '@fortawesome/free-solid-svg-icons';
 import { useProjectContext } from '@/context/ProjectContext';
 import { getCategoryColors } from '@/utils/categoryColors';
-import { updateProject } from '@/services/projects';
 import { ProjectActions } from '../shared/ProjectActions';
 import { ShareModal } from '../shared/ShareModal';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
-import {
-  InlineEditableTitle,
-  InlineEditableText,
-  EditModeIndicator,
-} from '../shared/InlineEditable';
+import { OverviewSection } from '../sections/OverviewSection';
+import { FeaturesSection } from '../sections/FeaturesSection';
+import { GallerySection } from '../sections/GallerySection';
+import { VideoSection } from '../sections/VideoSection';
+import { LinksSection } from '../sections/LinksSection';
+import type { ProjectSection, OverviewSectionContent, FeaturesSectionContent, GallerySectionContent, VideoSectionContent, LinksSectionContent } from '@/types/sections';
 
 /**
  * Extract domain from URL for display
@@ -49,11 +47,21 @@ function getDomainFromUrl(url: string): string {
   }
 }
 
+/**
+ * Get favicon URL for a domain
+ */
+function getFaviconUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=32`;
+  } catch {
+    return '';
+  }
+}
+
 export function ClippedArticleLayout() {
   const {
     project,
-    setProject,
-    isOwner,
     isLiked,
     heartCount,
     isLiking,
@@ -69,54 +77,8 @@ export function ClippedArticleLayout() {
     selectedToolSlug,
     openToolTray,
     closeToolTray,
-    handleDelete,
-    handleToggleShowcase,
     isAuthenticated,
   } = useProjectContext();
-
-  const [showMenu, setShowMenu] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Toggle between edit and published view
-  const toggleEditMode = useCallback(() => {
-    setIsEditMode((prev) => !prev);
-  }, []);
-
-  // Computed editing state - must be owner AND in edit mode
-  const isEditing = isOwner && isEditMode;
-
-  // Handle inline title change
-  const handleTitleChange = useCallback(
-    async (newTitle: string) => {
-      setIsSaving(true);
-      try {
-        const updated = await updateProject(project.id, { title: newTitle });
-        setProject(updated);
-      } catch (error) {
-        console.error('Failed to update title:', error);
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [project.id, setProject]
-  );
-
-  // Handle inline description change
-  const handleDescriptionChange = useCallback(
-    async (newDescription: string) => {
-      setIsSaving(true);
-      try {
-        const updated = await updateProject(project.id, { description: newDescription });
-        setProject(updated);
-      } catch (error) {
-        console.error('Failed to update description:', error);
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [project.id, setProject]
-  );
 
   // Get category colors
   const primaryCategory = project.categoriesDetails?.[0];
@@ -128,120 +90,62 @@ export function ClippedArticleLayout() {
   // Get source URL and domain
   const sourceUrl = project.externalUrl;
   const sourceDomain = sourceUrl ? getDomainFromUrl(sourceUrl) : null;
+  const faviconUrl = sourceUrl ? getFaviconUrl(sourceUrl) : '';
 
-  // Get user's notes (description)
-  const userNotes = project.description || '';
+  // Parse sections from content (template v2)
+  const sections = useMemo(() => {
+    const content = project.content as { sections?: ProjectSection[] } | undefined;
+    return content?.sections || [];
+  }, [project.content]);
+
+  // Find specific sections
+  const overviewSection = sections.find(s => s.type === 'overview' && s.enabled);
+  const featuresSection = sections.find(s => s.type === 'features' && s.enabled);
+  const videoSection = sections.find(s => s.type === 'video' && s.enabled);
+  const gallerySection = sections.find(s => s.type === 'gallery' && s.enabled);
+  const linksSection = sections.find(s => s.type === 'links' && s.enabled);
+
+  // Get hero image
+  const heroImage = project.featuredImageUrl || project.bannerUrl;
 
   // Format date
   const savedDate = new Date(project.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',
-    month: 'long',
+    month: 'short',
     day: 'numeric',
   });
 
   return (
     <>
-      {/* Edit Mode Toggle for Owners */}
-      <EditModeIndicator
-        isOwner={isOwner}
-        isEditMode={isEditMode}
-        onToggle={toggleEditMode}
-        isSaving={isSaving}
-      />
+      {/* Hero Section */}
+      <div className="relative w-full bg-white dark:bg-gray-950">
+        {/* Hero Image - Full Width */}
+        {heroImage && (
+          <div className="relative w-full aspect-[21/9] max-h-[500px] overflow-hidden">
+            <img
+              src={heroImage}
+              alt={project.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-gray-950 via-transparent to-transparent" />
+          </div>
+        )}
 
-      {/* Hero Section - Full viewport height with category gradient */}
-      <div className="relative min-h-screen w-full flex items-center overflow-hidden bg-white dark:bg-gray-950">
-        {/* Background - Category-colored gradient orbs */}
-        <div className="absolute inset-0 z-0">
-          {project.featuredImageUrl ? (
-            <>
-              <img
-                src={project.featuredImageUrl}
-                alt=""
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-              {/* Light mode: white overlay, Dark mode: dark overlay */}
-              <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/90 to-white dark:from-gray-950/70 dark:via-gray-950/85 dark:to-gray-950" />
-            </>
-          ) : (
-            <>
-              {/* Light mode: light gradient, Dark mode: dark gradient */}
-              <div className="w-full h-full bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950" />
-              {/* Category-colored gradient orbs - more subtle in light mode */}
-              <div
-                className="absolute top-0 left-0 w-[60%] h-[60%] rounded-full blur-[120px] opacity-20 dark:opacity-30 animate-pulse"
-                style={{ background: categoryFromColor }}
-              />
-              <div
-                className="absolute bottom-0 right-0 w-[50%] h-[50%] rounded-full blur-[100px] opacity-15 dark:opacity-20"
-                style={{ background: categoryToColor }}
-              />
-            </>
-          )}
+        {/* Content Container */}
+        <div className="relative max-w-4xl mx-auto px-6 sm:px-8">
+          {/* If no hero, add some top padding */}
+          {!heroImage && <div className="pt-16" />}
 
-          {/* Top accent line */}
-          <div
-            className="absolute top-0 left-0 right-0 h-px"
-            style={{
-              background: `linear-gradient(to right, transparent, ${categoryFromColor}50, transparent)`,
-            }}
-          />
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 w-full max-w-4xl mx-auto px-6 sm:px-8 py-16 md:py-24">
-          {/* Owner Menu */}
-          {isOwner && (
-            <div className="absolute top-4 right-4 z-30">
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-2 rounded-full text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors backdrop-blur-md"
-                >
-                  <EllipsisVerticalIcon className="w-6 h-6" />
-                </button>
-                {showMenu && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
-                    <button
-                      onClick={() => {
-                        handleToggleShowcase();
-                        setShowMenu(false);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50 flex items-center gap-3 transition-colors"
-                    >
-                      {project.isShowcased ? (
-                        <>
-                          <EyeSlashIcon className="w-4 h-4" />
-                          Remove from Showcase
-                        </>
-                      ) : (
-                        <>
-                          <EyeIcon className="w-4 h-4" />
-                          Add to Showcase
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      className="w-full px-4 py-3 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3 border-t border-gray-200 dark:border-gray-700 transition-colors"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Category Badge & Clipped Badge */}
-          <div className="flex items-center gap-3 mb-8 flex-wrap">
+          {/* Title & Source - Positioned to overlap hero slightly */}
+          <div className={heroImage ? '-mt-24 relative z-10' : ''}>
+            {/* Category Badge */}
             {primaryCategory && (
               <span
-                className="px-4 py-1.5 text-sm font-semibold rounded-full border backdrop-blur-xl shadow-lg"
+                className="inline-block px-4 py-1.5 text-sm font-semibold rounded-full border backdrop-blur-xl shadow-lg mb-4"
                 style={{
                   backgroundColor: `${categoryFromColor}20`,
                   borderColor: `${categoryFromColor}40`,
@@ -251,109 +155,95 @@ export function ClippedArticleLayout() {
                 {primaryCategory.name}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-300 text-sm font-medium rounded-full border border-pink-500/20 dark:border-pink-500/30 backdrop-blur-sm">
-              <FontAwesomeIcon icon={faPaperclip} className="w-3.5 h-3.5" />
-              Saved
-            </span>
-            {sourceDomain && (
-              <span className="text-gray-500 dark:text-gray-400 text-sm">
-                from {sourceDomain}
-              </span>
-            )}
-          </div>
 
-          {/* Title - Editable */}
-          <div className="mb-8">
-            <InlineEditableTitle
-              value={project.title}
-              isEditable={isEditing}
-              onChange={handleTitleChange}
-              placeholder="Enter a title..."
-              className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white leading-tight"
-              as="h1"
-            />
-          </div>
+            {/* Title */}
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight mb-6">
+              {project.title}
+            </h1>
 
-          {/* User Info Card */}
-          <div className="flex items-center gap-4 mb-10 p-4 bg-gray-100/80 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10">
-            {/* Avatar with gradient ring */}
-            <div
-              className="relative w-14 h-14 rounded-full p-[2px] flex-shrink-0"
-              style={{
-                background: `linear-gradient(135deg, ${categoryFromColor}, ${categoryToColor})`,
-              }}
-            >
-              {project.userAvatarUrl ? (
-                <img
-                  src={project.userAvatarUrl}
-                  alt={project.username}
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
-                  <UserIcon className="w-6 h-6 text-gray-500 dark:text-white/60" />
+            {/* Source Attribution Bar */}
+            {sourceUrl && (
+              <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 mb-8">
+                {/* Favicon + Domain */}
+                <div className="flex items-center gap-3 flex-1">
+                  {faviconUrl && (
+                    <img
+                      src={faviconUrl}
+                      alt=""
+                      className="w-6 h-6 rounded"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  )}
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <GlobeAltIcon className="w-4 h-4" />
+                    <span className="font-medium">{sourceDomain}</span>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            <div className="flex-1 min-w-0">
-              <p className="text-gray-500 dark:text-white/60 text-sm">Saved by</p>
-              <Link
-                to={`/${project.username}`}
-                className="text-gray-900 dark:text-white font-semibold hover:underline truncate block"
-              >
-                @{project.username}
-              </Link>
-            </div>
-
-            {/* Saved Date */}
-            <div className="flex items-center gap-1.5 text-gray-500 dark:text-white/50 text-sm flex-shrink-0">
-              <ClockIcon className="w-4 h-4" />
-              <span>{savedDate}</span>
-            </div>
-          </div>
-
-          {/* My Notes Section - Editable */}
-          <div className="mb-10">
-            <h2
-              className="text-lg font-semibold mb-4 uppercase tracking-wider"
-              style={{ color: categoryFromColor }}
-            >
-              {isOwner ? 'My Notes' : 'Notes'}
-            </h2>
-
-            {isEditing ? (
-              <div className="bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-200 dark:border-white/10 p-6">
-                <InlineEditableText
-                  value={userNotes}
-                  isEditable={isEditing}
-                  onChange={handleDescriptionChange}
-                  placeholder="Add your thoughts about why you saved this..."
-                  className="prose prose-lg dark:prose-invert max-w-none prose-p:text-gray-700 dark:prose-p:text-white/90 prose-p:leading-relaxed"
-                  multiline
-                  rows={4}
-                />
+                {/* Visit Source Button */}
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
+                  style={{
+                    background: `linear-gradient(135deg, ${categoryFromColor}, ${categoryToColor})`,
+                  }}
+                >
+                  <span>Visit Site</span>
+                  <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                </a>
               </div>
-            ) : userNotes ? (
-              <div className="prose prose-lg dark:prose-invert max-w-none prose-p:text-gray-700 dark:prose-p:text-white/90 prose-p:leading-relaxed">
-                <p className="text-xl leading-relaxed">{userNotes}</p>
-              </div>
-            ) : isOwner ? (
-              <button
-                onClick={toggleEditMode}
-                className="text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/60 transition-colors"
-              >
-                Click "Edit" to add your notes about this saved item...
-              </button>
-            ) : (
-              <p className="text-gray-400 dark:text-white/40 italic">No notes added yet.</p>
             )}
           </div>
 
-          {/* Tools Mentioned - show AI tools from taxonomy */}
+          {/* Overview/Description */}
+          {overviewSection ? (
+            <div className="mb-12">
+              <OverviewSection content={overviewSection.content as OverviewSectionContent} />
+            </div>
+          ) : project.description && (
+            <div className="mb-12">
+              <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
+                {project.description}
+              </p>
+            </div>
+          )}
+
+          {/* Features Section */}
+          {featuresSection && (
+            <div className="mb-12">
+              <FeaturesSection content={featuresSection.content as FeaturesSectionContent} />
+            </div>
+          )}
+
+          {/* Video Section */}
+          {videoSection && (
+            <div className="mb-12">
+              <VideoSection content={videoSection.content as VideoSectionContent} />
+            </div>
+          )}
+
+          {/* Gallery Section */}
+          {gallerySection && (
+            <div className="mb-12">
+              <GallerySection content={gallerySection.content as GallerySectionContent} />
+            </div>
+          )}
+
+          {/* Links Section */}
+          {linksSection && (
+            <div className="mb-12">
+              <LinksSection content={linksSection.content as LinksSectionContent} />
+            </div>
+          )}
+
+          {/* Tools Mentioned */}
           {project.toolsDetails && project.toolsDetails.length > 0 && (
-            <div className="mb-10">
-              <h3 className="text-sm font-semibold mb-3 uppercase tracking-wider text-gray-500 dark:text-white/50">
+            <div className="mb-12">
+              <h3 className="text-sm font-semibold mb-4 uppercase tracking-wider text-gray-500 dark:text-white/50">
                 Tools Mentioned
               </h3>
               <div className="flex flex-wrap gap-3">
@@ -361,7 +251,7 @@ export function ClippedArticleLayout() {
                   <button
                     key={tool.id}
                     onClick={() => openToolTray(tool.slug)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                   >
                     {tool.logoUrl && (
                       <img
@@ -370,7 +260,9 @@ export function ClippedArticleLayout() {
                         className="w-5 h-5 rounded object-cover"
                       />
                     )}
-                    <span className="text-sm text-gray-700 dark:text-white/80">{tool.name}</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {tool.name}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -379,15 +271,15 @@ export function ClippedArticleLayout() {
 
           {/* Topics */}
           {project.topics && project.topics.length > 0 && (
-            <div className="mb-10">
-              <h3 className="text-sm font-semibold mb-3 uppercase tracking-wider text-gray-500 dark:text-white/50">
+            <div className="mb-12">
+              <h3 className="text-sm font-semibold mb-4 uppercase tracking-wider text-gray-500 dark:text-white/50">
                 Topics
               </h3>
               <div className="flex flex-wrap gap-2">
-                {project.topics.slice(0, 6).map((topic: string, index: number) => (
+                {project.topics.slice(0, 8).map((topic: string, index: number) => (
                   <span
                     key={index}
-                    className="px-3 py-1.5 text-sm rounded-full bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-white/70 border border-gray-200 dark:border-white/10"
+                    className="px-3 py-1.5 text-sm rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
                   >
                     {topic}
                   </span>
@@ -396,40 +288,51 @@ export function ClippedArticleLayout() {
             </div>
           )}
 
-          {/* Call to Action - Visit Source */}
-          {sourceUrl && (
-            <div className="mb-10">
-              <a
-                href={sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 px-8 py-4 text-lg font-semibold text-white rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-xl group"
-                style={{
-                  background: `linear-gradient(135deg, ${categoryFromColor}, ${categoryToColor})`,
-                  boxShadow: `0 4px 20px ${categoryFromColor}40`,
-                }}
-              >
-                <span>Visit Source</span>
-                <ArrowTopRightOnSquareIcon className="w-5 h-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
-              </a>
-              <p className="mt-3 text-gray-400 dark:text-white/40 text-sm">{sourceDomain}</p>
-            </div>
-          )}
+          {/* Footer - Clipper Info + Actions */}
+          <div className="py-8 border-t border-gray-200 dark:border-gray-800">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              {/* Clipped By */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                  <FontAwesomeIcon icon={faPaperclip} className="w-4 h-4" />
+                  <span className="text-sm">Clipped by</span>
+                </div>
+                <Link
+                  to={`/${project.username}`}
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                >
+                  {project.userAvatarUrl ? (
+                    <img
+                      src={project.userAvatarUrl}
+                      alt={project.username}
+                      className="w-6 h-6 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700" />
+                  )}
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    @{project.username}
+                  </span>
+                </Link>
+                <span className="text-gray-400 dark:text-gray-500 text-sm">
+                  · {savedDate}
+                </span>
+              </div>
 
-          {/* Action Buttons */}
-          <div className="pt-6 border-t border-gray-200 dark:border-white/10">
-            <ProjectActions
-              isLiked={isLiked}
-              heartCount={heartCount}
-              isLiking={isLiking}
-              isAuthenticated={isAuthenticated}
-              onLikeClick={toggleLike}
-              likeRewardId={likeRewardId}
-              onCommentClick={openCommentTray}
-              onShareClick={openShareModal}
-              externalUrl={project.externalUrl}
-              variant="hero"
-            />
+              {/* Action Buttons */}
+              <ProjectActions
+                isLiked={isLiked}
+                heartCount={heartCount}
+                isLiking={isLiking}
+                isAuthenticated={isAuthenticated}
+                onLikeClick={toggleLike}
+                likeRewardId={likeRewardId}
+                onCommentClick={openCommentTray}
+                onShareClick={openShareModal}
+                externalUrl={project.externalUrl}
+                variant="compact"
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -152,11 +152,11 @@ api.interceptors.response.use(
 
       if (error.response.status === 401 && !skipRedirect && !isRedirectingToAuth && !isRefreshEndpoint) {
         const currentPath = window.location.pathname;
-        // Public paths: /auth, /explore, and user profiles (/:username)
+        // Public paths: /, /auth, /explore, /pricing, /privacy, /terms, /pitch, /perks, /marketplace, and user profiles (/:username)
         const knownRoutes = ['/auth', '/about', '/about-us', '/styleguide', '/learn', '/quizzes', '/tools', '/play', '/thrive-circle', '/account', '/dashboard'];
         const isKnownRoute = knownRoutes.some(route => currentPath === route || currentPath.startsWith(route + '/') || currentPath.startsWith(route + '?'));
         const isUserProfile = /^\/[a-zA-Z0-9_-]+$/.test(currentPath) && !isKnownRoute;
-        const isPublicPath = currentPath === '/auth' || currentPath.startsWith('/explore') || isUserProfile;
+        const isPublicPath = currentPath === '/' || currentPath === '/auth' || currentPath.startsWith('/about') || currentPath.startsWith('/explore') || currentPath === '/pricing' || currentPath === '/privacy' || currentPath === '/terms' || currentPath === '/pitch' || currentPath === '/perks' || currentPath === '/marketplace' || currentPath.startsWith('/battle/invite/') || isUserProfile;
 
         if (!isPublicPath) {
           // Attempt silent token refresh before redirecting

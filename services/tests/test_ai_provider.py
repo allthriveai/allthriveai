@@ -15,10 +15,10 @@ class AIProviderTestCase(TestCase):
 
     def test_provider_initialization_default(self):
         """Test default provider initialization."""
-        with patch.object(settings, 'DEFAULT_AI_PROVIDER', 'azure'):
+        with patch.object(settings, 'DEFAULT_AI_PROVIDER', 'openai'):
             with patch('services.ai.provider.AIProvider._initialize_client'):
                 ai = AIProvider()
-                self.assertEqual(ai.current_provider, 'azure')
+                self.assertEqual(ai.current_provider, 'openai')
 
     def test_provider_initialization_specified(self):
         """Test provider initialization with specified provider."""
@@ -29,10 +29,7 @@ class AIProviderTestCase(TestCase):
     def test_set_provider(self):
         """Test switching between providers."""
         with patch('services.ai.provider.AIProvider._initialize_client'):
-            ai = AIProvider(provider='azure')
-            self.assertEqual(ai.current_provider, 'azure')
-
-            ai.set_provider('openai')
+            ai = AIProvider(provider='openai')
             self.assertEqual(ai.current_provider, 'openai')
 
             ai.set_provider('anthropic')
@@ -44,21 +41,12 @@ class AIProviderTestCase(TestCase):
     def test_invalid_provider(self):
         """Test that invalid provider raises ValueError."""
         with patch('services.ai.provider.AIProvider._initialize_client'):
-            ai = AIProvider(provider='azure')
+            ai = AIProvider(provider='openai')
 
             with self.assertRaises(ValueError) as context:
                 ai.set_provider('invalid_provider')
 
             self.assertIn('Invalid provider', str(context.exception))
-
-    def test_azure_initialization_missing_credentials(self):
-        """Test Azure initialization fails without credentials."""
-        with patch.object(settings, 'AZURE_OPENAI_API_KEY', None):
-            with patch.object(settings, 'AZURE_OPENAI_ENDPOINT', None):
-                with self.assertRaises(ValueError) as context:
-                    AIProvider(provider='azure')
-
-                self.assertIn('Azure OpenAI credentials not configured', str(context.exception))
 
     def test_openai_initialization_missing_credentials(self):
         """Test OpenAI initialization fails without credentials."""
@@ -83,26 +71,6 @@ class AIProviderTestCase(TestCase):
                 AIProvider(provider='gemini')
 
             self.assertIn('Google API key not configured', str(context.exception))
-
-    @patch('openai.AzureOpenAI')
-    def test_azure_complete(self, mock_azure_client):
-        """Test Azure OpenAI completion."""
-        # Mock response
-        mock_response = Mock()
-        mock_response.choices = [Mock()]
-        mock_response.choices[0].message.content = 'Test response'
-
-        mock_client_instance = Mock()
-        mock_client_instance.chat.completions.create.return_value = mock_response
-        mock_azure_client.return_value = mock_client_instance
-
-        with patch.object(settings, 'AZURE_OPENAI_API_KEY', 'test-key'):
-            with patch.object(settings, 'AZURE_OPENAI_ENDPOINT', 'https://test.openai.azure.com/'):
-                ai = AIProvider(provider='azure')
-                response = ai.complete('Test prompt')
-
-                self.assertEqual(response, 'Test response')
-                mock_client_instance.chat.completions.create.assert_called_once()
 
     @patch('openai.OpenAI')
     def test_openai_complete(self, mock_openai_client):
@@ -173,8 +141,8 @@ class AIProviderTestCase(TestCase):
             # Check usage tracking
             self.assertEqual(ai.last_usage['total_tokens'], 30)
 
-    @patch('openai.AzureOpenAI')
-    def test_complete_with_system_message(self, mock_azure_client):
+    @patch('openai.OpenAI')
+    def test_complete_with_system_message(self, mock_openai_client):
         """Test completion with system message."""
         mock_response = Mock()
         mock_response.choices = [Mock()]
@@ -182,19 +150,18 @@ class AIProviderTestCase(TestCase):
 
         mock_client_instance = Mock()
         mock_client_instance.chat.completions.create.return_value = mock_response
-        mock_azure_client.return_value = mock_client_instance
+        mock_openai_client.return_value = mock_client_instance
 
-        with patch.object(settings, 'AZURE_OPENAI_API_KEY', 'test-key'):
-            with patch.object(settings, 'AZURE_OPENAI_ENDPOINT', 'https://test.openai.azure.com/'):
-                ai = AIProvider(provider='azure')
-                ai.complete('Test prompt', system_message='You are a helpful AI.')
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-key'):
+            ai = AIProvider(provider='openai')
+            ai.complete('Test prompt', system_message='You are a helpful AI.')
 
-                # Verify system message was included
-                call_args = mock_client_instance.chat.completions.create.call_args
-                messages = call_args.kwargs['messages']
-                self.assertEqual(len(messages), 2)
-                self.assertEqual(messages[0]['role'], 'system')
-                self.assertEqual(messages[0]['content'], 'You are a helpful AI.')
+            # Verify system message was included
+            call_args = mock_client_instance.chat.completions.create.call_args
+            messages = call_args.kwargs['messages']
+            self.assertEqual(len(messages), 2)
+            self.assertEqual(messages[0]['role'], 'system')
+            self.assertEqual(messages[0]['content'], 'You are a helpful AI.')
 
 
 class PurposeBasedModelSelectionTestCase(TestCase):

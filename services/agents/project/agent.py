@@ -2,7 +2,7 @@
 LLM-powered project creation agent using LangGraph.
 
 Uses the centralized AIProvider for LLM access, ensuring consistent
-configuration across Azure OpenAI, OpenAI, and Anthropic.
+configuration across OpenAI, Anthropic, and Gemini.
 """
 
 import asyncio

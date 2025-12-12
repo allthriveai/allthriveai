@@ -14,6 +14,7 @@ export type SectionType =
   | 'features'
   | 'tech_stack'
   | 'gallery'
+  | 'video'
   | 'architecture'
   | 'demo'
   | 'challenges'
@@ -89,6 +90,19 @@ export interface GallerySectionContent {
   images: GalleryImage[];
   layout: GalleryLayout;
   title?: string;
+}
+
+// ============================================================================
+// VIDEO SECTION
+// ============================================================================
+
+export interface VideoSectionContent {
+  url: string;               // Watch URL (e.g., youtube.com/watch?v=...)
+  embed_url?: string;        // Embed URL (e.g., youtube.com/embed/...)
+  platform: 'youtube' | 'vimeo' | 'loom' | 'other';
+  video_id: string;          // Platform-specific video ID
+  thumbnail?: string;        // Video thumbnail URL
+  title?: string;            // Optional section title
 }
 
 // ============================================================================
@@ -193,6 +207,7 @@ export type SectionContent =
   | FeaturesSectionContent
   | TechStackSectionContent
   | GallerySectionContent
+  | VideoSectionContent
   | ArchitectureSectionContent
   | DemoSectionContent
   | ChallengesSectionContent
@@ -227,6 +242,10 @@ export function isTechStackSection(section: ProjectSection): section is ProjectS
 
 export function isGallerySection(section: ProjectSection): section is ProjectSection<GallerySectionContent> {
   return section.type === 'gallery';
+}
+
+export function isVideoSection(section: ProjectSection): section is ProjectSection<VideoSectionContent> {
+  return section.type === 'video';
 }
 
 export function isArchitectureSection(section: ProjectSection): section is ProjectSection<ArchitectureSectionContent> {
@@ -346,6 +365,13 @@ export const SECTION_METADATA: Record<SectionType, SectionMetadata> = {
     icon: 'PhotoIcon',
     defaultEnabled: true,
   },
+  video: {
+    type: 'video',
+    title: 'Video',
+    description: 'Embedded video from YouTube, Vimeo, or Loom',
+    icon: 'VideoCameraIcon',
+    defaultEnabled: true,
+  },
   architecture: {
     type: 'architecture',
     title: 'Architecture',
@@ -420,6 +446,12 @@ export function createDefaultSectionContent(type: SectionType): SectionContent {
         images: [],
         layout: 'grid',
       } as GallerySectionContent;
+    case 'video':
+      return {
+        url: '',
+        platform: 'youtube',
+        video_id: '',
+      } as VideoSectionContent;
     case 'architecture':
       return {
         diagram: '',

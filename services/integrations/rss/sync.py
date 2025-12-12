@@ -72,13 +72,17 @@ STYLE: Abstract geometric art (flat vector style)
 - Think: Bauhaus meets punk rock zine
 """,
     'dark_academia': """
-STYLE: Moody fine art photography or oil painting aesthetic
-- Rich warm tones: deep brown, burgundy, gold, amber
-- Dramatic chiaroscuro lighting (like Rembrandt or Caravaggio)
-- Either photorealistic or painterly - nothing in between
-- Atmospheric, cinematic quality
-- Shot on medium format film aesthetic
-- Think: museum-quality still life or architectural photography
+STYLE: Steampunk mechanical art with Victorian engineering aesthetic
+- Color palette: aged brass, copper patina, mahogany wood, leather brown, iron gray, amber glass
+- Dramatic warm lighting from gas lamps or glowing vacuum tubes
+- AVOID: books, libraries, desks, candles, coffee, spectacles - these are cliché
+- PREFER: Intricate clockwork mechanisms, brass gears and cogs, pressure gauges,
+  Victorian-era scientific instruments, mechanical computing engines, steam pipes
+- Texture: polished brass, riveted metal plates, worn leather, etched glass dials
+- Atmosphere: warm steam, soft lens flares from amber light sources
+- Composition: complex layered machinery, depth through overlapping mechanical elements
+- Think: Jules Verne meets Victorian patent drawings meets Myst game aesthetics
+- Objects: brass telescopes, mechanical calculators, vacuum tubes, pressure valves, gyroscopes
 """,
     'cyberpunk': """
 STYLE: Hyper-realistic night photography or abstract data visualization
@@ -1009,8 +1013,9 @@ Description: {description[:800] if description else 'No description available'}"
     def _add_tools_to_project(cls, project: Project, item_data: dict):
         """Extract and add AI tools mentioned in the article.
 
-        Searches the article title and description for known tool names
-        from our taxonomy and links them to the project.
+        Uses a multi-step approach:
+        1. Search for exact tool name matches in title/description
+        2. If no matches found, use AI to infer relevant tools from taxonomy
         """
         import re
 
@@ -1026,6 +1031,7 @@ Description: {description[:800] if description else 'No description available'}"
         tools = Tool.objects.filter(is_active=True)
         matched_tools = []
 
+        # Step 1: Try exact name matching
         for tool in tools:
             tool_name_lower = tool.name.lower()
 
@@ -1036,11 +1042,102 @@ Description: {description[:800] if description else 'No description available'}"
                 matched_tools.append(tool)
                 logger.debug(f'Found tool "{tool.name}" in article "{project.title[:40]}..."')
 
+        # Step 2: If no exact matches, use AI to infer relevant tools
+        if not matched_tools:
+            ai_tools = cls._extract_tools_with_ai(item_data, tools)
+            if ai_tools:
+                matched_tools = ai_tools
+
         if matched_tools:
             project.tools.add(*matched_tools)
             logger.info(
                 f'Added {len(matched_tools)} tools to project "{project.title}": ' f'{[t.name for t in matched_tools]}'
             )
+
+    @classmethod
+    def _extract_tools_with_ai(cls, item_data: dict, available_tools) -> list:
+        """Use AI to extract relevant tools from article content.
+
+        Analyzes the article and suggests tools from the taxonomy that are
+        most relevant to the content, even if not explicitly mentioned.
+
+        Args:
+            item_data: Article data including title and description
+            available_tools: QuerySet of active Tool objects
+
+        Returns:
+            List of Tool objects that are relevant to the article
+        """
+        try:
+            from core.tools.models import Tool
+
+            ai = AIProvider(provider='openai')
+
+            # Build tool list with descriptions for better matching
+            tool_info = []
+            for tool in available_tools[:50]:  # Limit to avoid token overflow
+                desc = tool.description[:100] if tool.description else ''
+                tool_info.append(f'- {tool.name}: {desc}')
+
+            tool_list = '\n'.join(tool_info)
+
+            system_message = f"""You are an AI content analyzer for a tech/AI learning platform.
+Analyze the article and identify which AI tools from our taxonomy are MOST RELEVANT to the content.
+
+Available tools:
+{tool_list}
+
+Rules:
+1. Select 1-3 tools that are DIRECTLY relevant to the article's topic
+2. Only select tools that someone reading this article would likely use or learn about
+3. If the article is about a specific AI model/service (like Claude, GPT, etc), include it
+4. If the article discusses concepts that relate to specific tool categories, include those tools
+5. If NO tools are clearly relevant, respond with "NONE"
+6. Be conservative - only select tools with clear relevance
+
+Respond with ONLY the tool names (exactly as written above), separated by commas.
+Example: "Claude, ChatGPT" or "Midjourney" or "NONE"
+"""
+
+            combined_text = f"""Title: {item_data.get('title', '')}
+
+Description: {item_data.get('description', '')[:800] if item_data.get('description') else 'No description available'}"""
+
+            response = ai.complete(
+                prompt=combined_text,
+                system_message=system_message,
+                temperature=0.3,
+                max_tokens=100,
+            )
+
+            result = response.strip()
+
+            if result.upper() == 'NONE' or not result:
+                logger.info(f'AI found no relevant tools for: {item_data.get("title", "")[:50]}...')
+                return []
+
+            # Parse the comma-separated tool names
+            tool_names = [name.strip() for name in result.split(',')]
+            matched_tools = []
+
+            for name in tool_names:
+                # Try exact match first
+                tool = Tool.objects.filter(is_active=True, name__iexact=name).first()
+                if tool:
+                    matched_tools.append(tool)
+                    logger.debug(f'AI matched tool "{tool.name}"')
+
+            if matched_tools:
+                logger.info(
+                    f'AI extracted tools for "{item_data.get("title", "")[:50]}...": '
+                    f'{[t.name for t in matched_tools]}'
+                )
+
+            return matched_tools
+
+        except Exception as e:
+            logger.error(f'Error extracting tools with AI: {e}', exc_info=True)
+            return []
 
     @classmethod
     def _detect_difficulty_level(cls, item_data: dict) -> str:

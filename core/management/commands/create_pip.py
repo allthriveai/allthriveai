@@ -33,7 +33,7 @@ class Command(BaseCommand):
                 return
 
         # Create Pip user with comprehensive test data
-        avatar_url = f'{settings.FRONTEND_URL}/chatbot-chat.webp'
+        avatar_url = f'{settings.FRONTEND_URL}/prompt-battle.png'
 
         pip = User.objects.create_user(
             username=username,

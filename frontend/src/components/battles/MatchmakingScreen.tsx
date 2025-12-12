@@ -21,59 +21,16 @@ import {
   GlobeAltIcon,
   LinkIcon,
   ClipboardDocumentIcon,
-  ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/solid';
 
 const PIP_AVATAR_URL = '/prompt-battle.png';
 import { api } from '@/services/api';
-
-// LocalStorage key for pending battle
-const PENDING_BATTLE_KEY = 'pending_battle_invite';
-
-interface PendingBattleData {
-  battleId: number;
-  link: string;
-  challengeType: string | null;
-  createdAt: number;
-}
-
-// Helper to get stored pending battle
-function getStoredPendingBattle(): PendingBattleData | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const data = localStorage.getItem(PENDING_BATTLE_KEY);
-    if (!data) return null;
-    const parsed = JSON.parse(data) as PendingBattleData;
-    // Check if expired (24 hours)
-    if (Date.now() - parsed.createdAt > 24 * 60 * 60 * 1000) {
-      localStorage.removeItem(PENDING_BATTLE_KEY);
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-// Helper to store pending battle
-function storePendingBattle(data: PendingBattleData): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(PENDING_BATTLE_KEY, JSON.stringify(data));
-  } catch {
-    // localStorage not available
-  }
-}
-
-// Helper to clear pending battle
-function clearStoredPendingBattle(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.removeItem(PENDING_BATTLE_KEY);
-  } catch {
-    // localStorage not available
-  }
-}
+import {
+  getStoredPendingBattle,
+  setStoredPendingBattle,
+  clearStoredPendingBattle,
+  type PendingBattleData,
+} from '@/utils/battleStorage';
 
 interface QueueStatus {
   inQueue: boolean;
@@ -270,8 +227,11 @@ export function MatchmakingScreen({
       const response = await api.post('/battles/invitations/generate-link/');
       const link = response.data.inviteUrl || response.data.invite_url;
       setGeneratedLink(link);
-      // Store battle ID for polling
-      const battleId = response.data.invitation?.battle_id || response.data.invitation?.battle?.id;
+      // Store battle ID for polling - the serializer returns 'battle' (the ID) not 'battle_id'
+      const battleId = response.data.invitation?.battle  // Primary: invitation.battle is the ID
+        || response.data.invitation?.battle_data?.id     // Fallback: nested battle object
+        || response.data.battle_id
+        || response.data.battle?.id;
       // Get challenge type from the response
       const battleData = response.data.invitation?.battle_data;
       const challengeTypeName = battleData?.challenge_type_name || null;
@@ -281,18 +241,14 @@ export function MatchmakingScreen({
       if (battleId) {
         setPendingBattleId(battleId);
         // Store in localStorage so user can return to it after closing modal
-        storePendingBattle({
+        const pendingData = {
           battleId,
           link,
           challengeType: challengeTypeName,
           createdAt: Date.now(),
-        });
-        setExistingPendingBattle({
-          battleId,
-          link,
-          challengeType: challengeTypeName,
-          createdAt: Date.now(),
-        });
+        };
+        setStoredPendingBattle(pendingData);
+        setExistingPendingBattle(pendingData);
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
@@ -309,40 +265,56 @@ export function MatchmakingScreen({
   };
 
   const handleCopyMessage = async () => {
-    if (!generatedLink) return;
+    if (!generatedLink) {
+      console.warn('[MatchmakingScreen] handleCopyMessage: No generated link');
+      return;
+    }
 
     const message = getShareMessage();
+    let copied = false;
 
-    // Try modern clipboard API first
-    if (navigator.clipboard && window.isSecureContext) {
+    // Try modern clipboard API first (localhost is considered secure context)
+    if (navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(message);
-        setMessageCopied(true);
-        setTimeout(() => setMessageCopied(false), 2000);
-        return;
-      } catch {
-        // Fall through to fallback
+        copied = true;
+      } catch (err) {
+        console.warn('[MatchmakingScreen] Clipboard API failed, using fallback:', err);
       }
     }
 
-    // Fallback for older browsers or non-secure contexts
-    const textArea = document.createElement('textarea');
-    textArea.value = message;
-    // Position off-screen to avoid visual flicker
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-9999px';
-    textArea.style.top = '0';
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      setMessageCopied(true);
-      setTimeout(() => setMessageCopied(false), 2000);
-    } catch {
-      console.error('Failed to copy to clipboard');
+    // Fallback for older browsers or when clipboard API fails
+    if (!copied) {
+      const textArea = document.createElement('textarea');
+      textArea.value = message;
+      // Position off-screen to avoid visual flicker
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '0';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        copied = document.execCommand('copy');
+      } catch (err) {
+        console.error('[MatchmakingScreen] Failed to copy to clipboard:', err);
+      }
+      document.body.removeChild(textArea);
     }
-    document.body.removeChild(textArea);
+
+    if (copied) {
+      setMessageCopied(true);
+      // Close modal after brief delay to show "Copied!" feedback, revealing the Waiting screen
+      setTimeout(() => {
+        setShowHumanModal(false);
+        setModalView('options');
+        setGeneratedLink(null);
+        setPendingBattleId(null);
+        setChallengeType(null);
+        setMessageCopied(false);
+      }, 800);
+    }
   };
 
   const resetModal = () => {
@@ -370,16 +342,6 @@ export function MatchmakingScreen({
     setChallengeType(null);
   };
 
-  // Resume a pending battle - opens modal with the existing link
-  const resumePendingBattle = () => {
-    if (!existingPendingBattle) return;
-    setGeneratedLink(existingPendingBattle.link);
-    setChallengeType(existingPendingBattle.challengeType);
-    setPendingBattleId(existingPendingBattle.battleId);
-    setModalView('link');
-    setShowHumanModal(true);
-  };
-
   return (
     <div className="min-h-[calc(100vh-200px)] flex items-center justify-center p-4 pb-16">
       {/* Background effects */}
@@ -403,48 +365,6 @@ export function MatchmakingScreen({
       </div>
 
       <div className="relative z-10 w-full max-w-xl">
-        {/* Pending Battle Banner */}
-        {existingPendingBattle && !showHumanModal && !isSearching && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 rounded-xl bg-pink-500/10 border border-pink-500/30"
-          >
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <div className="flex items-center gap-3 flex-1">
-                <div className="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center shrink-0">
-                  <LinkIcon className="w-5 h-5 text-pink-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    You have a pending battle challenge
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-slate-400">
-                    {existingPendingBattle.challengeType
-                      ? `Challenge: "${existingPendingBattle.challengeType}"`
-                      : 'Waiting for opponent to accept'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button
-                  onClick={resumePendingBattle}
-                  className="flex-1 sm:flex-initial px-4 py-2 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium transition-colors"
-                >
-                  View Link
-                </button>
-                <button
-                  onClick={cancelPendingBattle}
-                  className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 text-sm font-medium transition-colors"
-                  title="Cancel pending battle"
-                >
-                  <XMarkIcon className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -479,7 +399,7 @@ export function MatchmakingScreen({
             </span>
           </h1>
           <p className="text-gray-600 dark:text-slate-400 text-lg">
-            Challenge others to an AI image generation duel!
+            Battle to become a better prompt engineer
           </p>
         </motion.div>
 
@@ -548,6 +468,123 @@ export function MatchmakingScreen({
               >
                 <XMarkIcon className="w-4 h-4" />
                 Cancel
+              </button>
+            </motion.div>
+          ) : existingPendingBattle && !showHumanModal ? (
+            /* Waiting for opponent to accept invitation */
+            <motion.div
+              key="waiting-for-opponent"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="glass-card p-8 text-center"
+              role="status"
+              aria-live="polite"
+              aria-label="Waiting for opponent to accept"
+            >
+              {/* Animated waiting indicator */}
+              <div className="relative w-32 h-32 mx-auto mb-6">
+                {/* Pulsing rings */}
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-pink-500/30"
+                  animate={{ scale: [1, 1.3], opacity: [0.6, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-purple-500/30"
+                  animate={{ scale: [1, 1.3], opacity: [0.6, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, delay: 0.7 }}
+                />
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-pink-500/30"
+                  animate={{ scale: [1, 1.3], opacity: [0.6, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, delay: 1.4 }}
+                />
+
+                {/* Center icon */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <motion.div
+                    className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center"
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <UserGroupIcon className="w-10 h-10 text-pink-400" />
+                  </motion.div>
+                </div>
+              </div>
+
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Waiting for Opponent
+              </h2>
+
+              {existingPendingBattle.challengeType && (
+                <p className="text-gray-600 dark:text-slate-400 mb-2">
+                  Challenge: <span className="text-pink-500 font-semibold">"{existingPendingBattle.challengeType}"</span>
+                </p>
+              )}
+
+              <p className="text-gray-500 dark:text-slate-500 text-sm mb-6">
+                Share your challenge link and wait for your opponent to accept!
+              </p>
+
+              {/* Share link box */}
+              <div className="bg-gray-100 dark:bg-slate-800/50 rounded-xl p-4 mb-6">
+                <p className="text-xs text-gray-500 dark:text-slate-500 mb-2">Your challenge link:</p>
+                <p className="text-sm text-pink-600 dark:text-pink-400 break-all mb-3 font-mono">
+                  {existingPendingBattle.link}
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(existingPendingBattle.link);
+                      setMessageCopied(true);
+                      setTimeout(() => setMessageCopied(false), 3000);
+                    } catch {
+                      // Fallback
+                      const textArea = document.createElement('textarea');
+                      textArea.value = existingPendingBattle.link;
+                      textArea.style.position = 'fixed';
+                      textArea.style.left = '-9999px';
+                      document.body.appendChild(textArea);
+                      textArea.select();
+                      document.execCommand('copy');
+                      document.body.removeChild(textArea);
+                      setMessageCopied(true);
+                      setTimeout(() => setMessageCopied(false), 3000);
+                    }
+                  }}
+                  className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    messageCopied
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-pink-500 hover:bg-pink-600 text-white'
+                  }`}
+                >
+                  {messageCopied ? (
+                    <>
+                      <CheckCircleIcon className="w-4 h-4" />
+                      Link Copied!
+                    </>
+                  ) : (
+                    <>
+                      <ClipboardDocumentIcon className="w-4 h-4" />
+                      Copy Link
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-500 dark:text-slate-500 mb-4">
+                <span className="text-amber-500">Link expires in 24 hours</span>
+              </p>
+
+              <button
+                type="button"
+                onClick={cancelPendingBattle}
+                className="btn-secondary flex items-center gap-2 mx-auto"
+              >
+                <XMarkIcon className="w-4 h-4" />
+                Cancel Challenge
               </button>
             </motion.div>
           ) : (
@@ -882,8 +919,8 @@ export function MatchmakingScreen({
                           }`}>
                             {messageCopied ? (
                               <>
-                                <ClipboardDocumentCheckIcon className="w-4 h-4" />
-                                Copied to clipboard!
+                                <CheckCircleIcon className="w-4 h-4" />
+                                Prompt Battle Activated!
                               </>
                             ) : (
                               <>

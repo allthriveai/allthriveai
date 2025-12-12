@@ -38,6 +38,14 @@ class User(AbstractUser):
     )
 
     avatar_url = models.URLField(blank=True, null=True)
+    avatar_focal_x = models.FloatField(
+        default=0.5,
+        help_text='Horizontal focal point for avatar crop (0-1, 0.5=center)',
+    )
+    avatar_focal_y = models.FloatField(
+        default=0.5,
+        help_text='Vertical focal point for avatar crop (0-1, 0.5=center)',
+    )
     bio = models.TextField(blank=True)
     tagline = models.CharField(max_length=150, blank=True, help_text='Short headline or professional title')
     location = models.CharField(max_length=100, blank=True, help_text='City, state/country or "Remote"')

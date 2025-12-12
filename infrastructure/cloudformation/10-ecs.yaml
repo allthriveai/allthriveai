@@ -283,9 +283,14 @@ Resources:
                 - '${SecretArn}:GOOGLE_API_KEY::'
                 - SecretArn: !ImportValue
                     Fn::Sub: ${EnvironmentName}-AIApiKeysArn
-            - Name: AZURE_OPENAI_API_KEY
+            - Name: DEFAULT_AI_PROVIDER
               ValueFrom: !Sub
-                - '${SecretArn}:AZURE_OPENAI_API_KEY::'
+                - '${SecretArn}:DEFAULT_AI_PROVIDER::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-AIApiKeysArn
+            - Name: FALLBACK_AI_PROVIDER
+              ValueFrom: !Sub
+                - '${SecretArn}:FALLBACK_AI_PROVIDER::'
                 - SecretArn: !ImportValue
                     Fn::Sub: ${EnvironmentName}-AIApiKeysArn
             - Name: STRIPE_SECRET_KEY
@@ -492,6 +497,16 @@ Resources:
             - Name: GOOGLE_API_KEY
               ValueFrom: !Sub
                 - '${SecretArn}:GOOGLE_API_KEY::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-AIApiKeysArn
+            - Name: DEFAULT_AI_PROVIDER
+              ValueFrom: !Sub
+                - '${SecretArn}:DEFAULT_AI_PROVIDER::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-AIApiKeysArn
+            - Name: FALLBACK_AI_PROVIDER
+              ValueFrom: !Sub
+                - '${SecretArn}:FALLBACK_AI_PROVIDER::'
                 - SecretArn: !ImportValue
                     Fn::Sub: ${EnvironmentName}-AIApiKeysArn
             - Name: STRIPE_SECRET_KEY

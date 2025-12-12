@@ -664,7 +664,8 @@ def public_user_projects(request, username):
     # Include version in cache key to prevent stale data after schema changes
     # v2: playground now includes all projects, not just non-showcase ones
     # v3: playground is now public by default for non-authenticated users
-    cache_key = f'projects:v3:{username.lower()}:{"own" if is_own_profile else "public"}'
+    # v4: exclude clipped projects from playground (they appear in Clipped tab)
+    cache_key = f'projects:v4:{username.lower()}:{"own" if is_own_profile else "public"}'
 
     cached_data = cache.get(cache_key)
     if cached_data:
@@ -721,6 +722,7 @@ def public_user_projects(request, username):
                 playground_projects = (
                     Project.objects.select_related('user')
                     .filter(user=user, is_archived=False)
+                    .exclude(type=Project.ProjectType.CLIPPED)
                     .annotate(
                         sort_date=Coalesce(
                             'youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at'
@@ -730,7 +732,10 @@ def public_user_projects(request, username):
                 )
             else:
                 playground_projects = (
-                    Project.objects.select_related('user').filter(user=user, is_archived=False).order_by('-created_at')
+                    Project.objects.select_related('user')
+                    .filter(user=user, is_archived=False)
+                    .exclude(type=Project.ProjectType.CLIPPED)
+                    .order_by('-created_at')
                 )
 
             response_data = {
@@ -752,6 +757,7 @@ def public_user_projects(request, username):
                     playground_projects = (
                         Project.objects.select_related('user')
                         .filter(user=user, is_archived=False)
+                        .exclude(type=Project.ProjectType.CLIPPED)
                         .annotate(
                             sort_date=Coalesce(
                                 'youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at'
@@ -763,6 +769,7 @@ def public_user_projects(request, username):
                     playground_projects = (
                         Project.objects.select_related('user')
                         .filter(user=user, is_archived=False)
+                        .exclude(type=Project.ProjectType.CLIPPED)
                         .order_by('-created_at')
                     )
                 response_data = {

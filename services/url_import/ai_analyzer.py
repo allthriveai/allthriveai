@@ -98,6 +98,8 @@ def analyze_webpage_for_template(
     organization = extracted_data.get('organization', '')
     url = extracted_data.get('source_url', '')
     image_url = extracted_data.get('image_url', '')
+    images = extracted_data.get('images', [])  # Additional images for gallery
+    videos = extracted_data.get('videos', [])  # Embedded videos (YouTube, Vimeo)
     links = extracted_data.get('links', {})
 
     # Build prompt
@@ -211,6 +213,47 @@ def analyze_webpage_for_template(
         )
         section_order += 1
 
+        # Video section (if we have embedded videos from the page)
+        if videos and len(videos) > 0:
+            # Use the first video as the primary video
+            primary_video = videos[0]
+            sections.append(
+                {
+                    'id': f'section-video-{hash(url) % 10000}',
+                    'type': 'video',
+                    'enabled': True,
+                    'order': section_order,
+                    'content': {
+                        'url': primary_video.get('url', ''),
+                        'embed_url': primary_video.get('embed_url', ''),
+                        'platform': primary_video.get('platform', 'youtube'),
+                        'video_id': primary_video.get('video_id', ''),
+                        'thumbnail': primary_video.get('thumbnail', ''),
+                    },
+                }
+            )
+            section_order += 1
+
+        # Gallery section (if we have images from the page)
+        if images and len(images) > 0:
+            gallery_images = [
+                {'url': img.get('url', ''), 'alt': img.get('alt', '')} for img in images if img.get('url')
+            ]
+            if gallery_images:
+                sections.append(
+                    {
+                        'id': f'section-gallery-{hash(url) % 10000}',
+                        'type': 'gallery',
+                        'enabled': True,
+                        'order': section_order,
+                        'content': {
+                            'images': gallery_images,
+                            'layout': 'masonry',
+                        },
+                    }
+                )
+                section_order += 1
+
         # Tech stack section
         if result.get('tech_stack', {}).get('categories'):
             sections.append(
@@ -296,13 +339,14 @@ def analyze_webpage_for_template(
 
     # Fallback: Generate basic sections from extracted data
     logger.info(f'📦 Using fallback template generation for {url}')
-    return _generate_fallback_template(extracted_data, url, image_url)
+    return _generate_fallback_template(extracted_data, url, image_url, images)
 
 
 def _generate_fallback_template(
     extracted_data: dict,
     url: str,
     image_url: str,
+    images: list | None = None,
 ) -> dict:
     """Generate fallback template sections when AI fails."""
     title = extracted_data.get('title', 'Imported Project')
@@ -310,6 +354,7 @@ def _generate_fallback_template(
     topics = extracted_data.get('topics', [])
     features = extracted_data.get('features', [])
     links = extracted_data.get('links', {})
+    images = images or []
 
     sections = []
     section_order = 0
@@ -360,6 +405,24 @@ def _generate_fallback_template(
         }
     )
     section_order += 1
+
+    # Gallery section (if we have images)
+    if images and len(images) > 0:
+        gallery_images = [{'url': img.get('url', ''), 'alt': img.get('alt', '')} for img in images if img.get('url')]
+        if gallery_images:
+            sections.append(
+                {
+                    'id': f'section-gallery-{hash(url) % 10000}',
+                    'type': 'gallery',
+                    'enabled': True,
+                    'order': section_order,
+                    'content': {
+                        'images': gallery_images,
+                        'layout': 'masonry',
+                    },
+                }
+            )
+            section_order += 1
 
     # Links section
     if links:

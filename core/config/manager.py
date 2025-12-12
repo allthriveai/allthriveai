@@ -82,18 +82,12 @@ class WeaviateSettings:
 
 @dataclass(frozen=True)
 class AIProviderSettings:
-    """AI provider configuration (OpenAI, Anthropic, Azure, etc.)."""
+    """AI provider configuration (OpenAI, Anthropic, Gemini)."""
 
     # API Keys
     openai_api_key: str
     anthropic_api_key: str
     google_api_key: str
-
-    # Azure OpenAI
-    azure_openai_api_key: str
-    azure_openai_endpoint: str
-    azure_openai_api_version: str
-    azure_openai_deployment_name: str
 
     # Default provider
     default_provider: str
@@ -117,9 +111,9 @@ class AIProviderSettings:
         return bool(self.anthropic_api_key)
 
     @property
-    def has_azure(self) -> bool:
-        """Check if Azure OpenAI is configured."""
-        return bool(self.azure_openai_api_key and self.azure_openai_endpoint)
+    def has_gemini(self) -> bool:
+        """Check if Gemini is configured."""
+        return bool(self.google_api_key)
 
     @classmethod
     def from_django_settings(cls) -> 'AIProviderSettings':
@@ -128,10 +122,6 @@ class AIProviderSettings:
             openai_api_key=getattr(django_settings, 'OPENAI_API_KEY', ''),
             anthropic_api_key=getattr(django_settings, 'ANTHROPIC_API_KEY', ''),
             google_api_key=getattr(django_settings, 'GOOGLE_API_KEY', ''),
-            azure_openai_api_key=getattr(django_settings, 'AZURE_OPENAI_API_KEY', ''),
-            azure_openai_endpoint=getattr(django_settings, 'AZURE_OPENAI_ENDPOINT', ''),
-            azure_openai_api_version=getattr(django_settings, 'AZURE_OPENAI_API_VERSION', '2024-02-15-preview'),
-            azure_openai_deployment_name=getattr(django_settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4'),
             default_provider=getattr(
                 django_settings,
                 'DEFAULT_AI_PROVIDER',
@@ -521,7 +511,7 @@ class AppSettings:
             warnings.append('Weaviate URL not configured - vector search disabled')
 
         # Validate AI providers
-        if not self.ai.has_openai and not self.ai.has_azure and not self.ai.has_anthropic:
+        if not self.ai.has_openai and not self.ai.has_anthropic and not self.ai.has_gemini:
             warnings.append('No AI provider configured - AI features will be disabled')
 
         # Validate storage

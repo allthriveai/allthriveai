@@ -16,6 +16,7 @@ export { GuestSignupBanner } from './GuestSignupBanner';
 export { GuestSignupModal } from './GuestSignupModal';
 export { JudgingReveal } from './JudgingReveal';
 export { MatchmakingScreen } from './MatchmakingScreen';
+export { PendingBattleBanner } from './PendingBattleBanner';
 export { PlayerCard, type PlayerStatus } from './PlayerCard';
 export { PromptEditor } from './PromptEditor';
 export { WaitingForOpponent } from './WaitingForOpponent';

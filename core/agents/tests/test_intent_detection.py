@@ -29,7 +29,7 @@ class TestIntentDetectionService:
         # Mock AIProvider to return 'support'
         mock_provider = Mock()
         mock_provider.complete.return_value = 'support'
-        mock_provider.current_provider = 'azure'
+        mock_provider.current_provider = 'openai'
         mock_provider.current_model = 'gpt-4'
         mock_provider.last_usage = {'prompt_tokens': 10, 'completion_tokens': 5, 'total_tokens': 15}
         mock_provider_class.return_value = mock_provider
@@ -49,7 +49,7 @@ class TestIntentDetectionService:
 
         mock_provider = Mock()
         mock_provider.complete.return_value = 'project-creation'
-        mock_provider.current_provider = 'azure'
+        mock_provider.current_provider = 'openai'
         mock_provider.current_model = 'gpt-4'
         mock_provider.last_usage = {'prompt_tokens': 10, 'completion_tokens': 5, 'total_tokens': 15}
         mock_provider_class.return_value = mock_provider
@@ -69,7 +69,7 @@ class TestIntentDetectionService:
 
         mock_provider = Mock()
         mock_provider.complete.return_value = 'discovery'
-        mock_provider.current_provider = 'azure'
+        mock_provider.current_provider = 'openai'
         mock_provider.current_model = 'gpt-4'
         mock_provider.last_usage = {'prompt_tokens': 10, 'completion_tokens': 5, 'total_tokens': 15}
         mock_provider_class.return_value = mock_provider
@@ -95,7 +95,7 @@ class TestIntentDetectionService:
 
         mock_provider = Mock()
         mock_provider.complete.return_value = 'invalid-intent'
-        mock_provider.current_provider = 'azure'
+        mock_provider.current_provider = 'openai'
         mock_provider.current_model = 'gpt-4'
         mock_provider.last_usage = None
         mock_provider_class.return_value = mock_provider
@@ -114,7 +114,7 @@ class TestIntentDetectionService:
 
         mock_provider = Mock()
         mock_provider.complete.side_effect = Exception('API Error')
-        mock_provider.current_provider = 'azure'
+        mock_provider.current_provider = 'openai'
         mock_provider.current_model = 'gpt-4'
         mock_provider.last_usage = None
         mock_provider_class.return_value = mock_provider

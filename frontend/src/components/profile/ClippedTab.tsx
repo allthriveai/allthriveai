@@ -17,35 +17,56 @@ import type { Project } from '@/types/models';
 interface ClippedTabProps {
   username: string;
   isOwnProfile: boolean;
+  projects?: Project[];
+  isLoading?: boolean;
+  selectionMode?: boolean;
+  selectedProjectIds?: Set<number>;
+  onSelect?: (projectId: number) => void;
+  onRefresh?: () => void;
 }
 
-export function ClippedTab({ username, isOwnProfile }: ClippedTabProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function ClippedTab({
+  username,
+  isOwnProfile,
+  projects: controlledProjects,
+  isLoading: controlledLoading,
+  selectionMode = false,
+  selectedProjectIds = new Set(),
+  onSelect,
+}: ClippedTabProps) {
+  // Use controlled state if provided, otherwise manage internally
+  const [internalProjects, setInternalProjects] = useState<Project[]>([]);
+  const [internalLoading, setInternalLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showComingSoon, setShowComingSoon] = useState(false);
 
+  const projects = controlledProjects ?? internalProjects;
+  const isLoading = controlledLoading ?? internalLoading;
+
   useEffect(() => {
+    // Skip internal fetch if controlled externally
+    if (controlledProjects !== undefined) return;
+
     async function fetchClippedProjects() {
       if (!username) return;
 
-      setIsLoading(true);
+      setInternalLoading(true);
       setError(null);
 
       try {
         // Get all clipped content (hearted projects + external clipped projects)
         const clippedProjects = await getClippedProjects(username);
-        setProjects(clippedProjects);
+        setInternalProjects(clippedProjects);
       } catch (err) {
         console.error('Failed to load clipped projects:', err);
         setError('Failed to load clipped items');
       } finally {
-        setIsLoading(false);
+        setInternalLoading(false);
       }
     }
 
     fetchClippedProjects();
-  }, [username]);
+  }, [username, controlledProjects]);
 
   // Auto-hide coming soon toast
   useEffect(() => {
@@ -167,15 +188,7 @@ export function ClippedTab({ username, isOwnProfile }: ClippedTabProps) {
   }
 
   return (
-    <div className="space-y-6 pb-20">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <FontAwesomeIcon icon={faPaperclip} className="w-5 h-5 text-pink-500" />
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {projects.length} Clipped
-        </h2>
-      </div>
-
+    <div className="pb-20">
       {/* Projects Grid */}
       <div className="columns-1 md:columns-2 xl:columns-3 gap-6 space-y-6">
         {projects.map((project) => (
@@ -183,8 +196,11 @@ export function ClippedTab({ username, isOwnProfile }: ClippedTabProps) {
             <ProjectCard
               project={project}
               onDelete={async () => {}}
-              isOwner={false}
+              isOwner={isOwnProfile}
               variant="masonry"
+              selectionMode={selectionMode}
+              isSelected={selectedProjectIds.has(project.id)}
+              onSelect={onSelect}
             />
           </div>
         ))}

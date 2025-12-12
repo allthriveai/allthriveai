@@ -385,17 +385,10 @@ HUGGINGFACE_OAUTH_CLIENT_SECRET = config('HUGGINGFACE_OAUTH_CLIENT_SECRET', defa
 MIDJOURNEY_OAUTH_CLIENT_ID = config('MIDJOURNEY_OAUTH_CLIENT_ID', default='')
 MIDJOURNEY_OAUTH_CLIENT_SECRET = config('MIDJOURNEY_OAUTH_CLIENT_SECRET', default='')
 
-# Azure OpenAI Configuration
-AZURE_OPENAI_API_KEY = config('AZURE_OPENAI_API_KEY', default='')
-AZURE_OPENAI_ENDPOINT = config('AZURE_OPENAI_ENDPOINT', default='')
-AZURE_OPENAI_API_VERSION = config('AZURE_OPENAI_API_VERSION', default='2024-02-15-preview')
-AZURE_OPENAI_DEPLOYMENT_NAME = config('AZURE_OPENAI_DEPLOYMENT_NAME', default='gpt-4')
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT = config('AZURE_OPENAI_EMBEDDING_DEPLOYMENT', default='text-embedding-3-small')
-
 # Fallback AI Provider (used when DEFAULT_AI_PROVIDER is not set)
-FALLBACK_AI_PROVIDER = config('FALLBACK_AI_PROVIDER', default='azure')
+FALLBACK_AI_PROVIDER = config('FALLBACK_AI_PROVIDER', default='openai')
 
-# Default AI Provider (options: azure, openai, anthropic, gemini)
+# Default AI Provider (options: openai, anthropic, gemini)
 # If not explicitly set, falls back to FALLBACK_AI_PROVIDER.
 DEFAULT_AI_PROVIDER = config('DEFAULT_AI_PROVIDER', default=FALLBACK_AI_PROVIDER)
 
@@ -417,9 +410,6 @@ AI_MODELS = {
         'default': config('GEMINI_MODEL_DEFAULT', default='gemini-2.0-flash'),
         'image': config('GEMINI_IMAGE_MODEL', default='gemini-3-pro-image-preview'),
         'vision': config('GEMINI_MODEL_VISION', default='gemini-2.0-flash'),
-    },
-    'azure': {
-        'default': config('AZURE_MODEL_DEFAULT', default='gpt-4'),
     },
 }
 
@@ -791,7 +781,7 @@ SOCIALACCOUNT_ADAPTER = 'core.auth.adapter.CustomSocialAccountAdapter'
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Optional for OAuth (they verify with provider)
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'  # Always use HTTPS for OAuth callbacks
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http' if DEBUG else 'https'  # HTTP for local dev, HTTPS for production
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_LOGIN_ON_GET = True  # Skip intermediate page and go directly to provider

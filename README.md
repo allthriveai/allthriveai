@@ -125,10 +125,14 @@ Run `make help` to see all available commands. Here are the most commonly used:
 ### AWS Deployment
 - `make aws-validate` - Validate AWS infrastructure (RDS, Redis, S3, Secrets, ECS, env vars)
 - `make cloudfront-clear-cache` - Invalidate CloudFront cache
+- `make pull-prod-db` - Pull production database to local Docker
+- `make aws-run-command CMD="..."` - Run a Django management command on AWS ECS
+- `make aws-seed-all` - Seed all initial data on AWS
 
 AWS commands default to `ENVIRONMENT=production`. Use `ENVIRONMENT=staging` for staging:
 ```bash
 make aws-validate ENVIRONMENT=staging
+make pull-prod-db ENVIRONMENT=staging
 ```
 
 **See [Makefile Reference](docs/MAKEFILE_REFERENCE.md) for complete command list.**

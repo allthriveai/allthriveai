@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFigma, faGithub, faGitlab, faYoutube } from '@fortawesome/free-brands-svg-icons';
+import { faFigma, faGithub, faGitlab, faLinkedin, faYoutube } from '@fortawesome/free-brands-svg-icons';
 import { faStar, faCodeBranch, faSpinner, faFolderPlus, faLightbulb, faMagnifyingGlass, faCheck, faPlug, faPencil } from '@fortawesome/free-solid-svg-icons';
 import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './ChatInterface';
@@ -84,7 +84,8 @@ export function IntelligentChatPanel({
     gitlab: boolean;
     figma: boolean;
     youtube: boolean;
-  }>({ github: false, gitlab: false, figma: false, youtube: false });
+    linkedin: boolean;
+  }>({ github: false, gitlab: false, figma: false, youtube: false, linkedin: false });
   const [loadingIntegrationStatus, setLoadingIntegrationStatus] = useState(false);
 
   // URL search params for OAuth callbacks
@@ -446,11 +447,22 @@ export function IntelligentChatPanel({
         youtubeConnected = false;
       }
 
+      // Check LinkedIn status
+      let linkedinConnected = false;
+      try {
+        const { api } = await import('@/services/api');
+        const response = await api.get('/social/status/linkedin/');
+        linkedinConnected = response.data?.data?.connected || response.data?.connected || false;
+      } catch {
+        linkedinConnected = false;
+      }
+
       setIntegrationStatus({
         github: githubConnected,
         gitlab: gitlabConnected,
         figma: figmaConnected,
         youtube: youtubeConnected,
+        linkedin: linkedinConnected,
       });
     } catch (error) {
       console.error('Failed to fetch integration statuses:', error);
@@ -467,7 +479,7 @@ export function IntelligentChatPanel({
   }, [fetchIntegrationStatuses]);
 
   // Handle integration selection from picker
-  const handlePickerIntegrationSelect = useCallback((integration: 'github' | 'gitlab' | 'figma' | 'youtube') => {
+  const handlePickerIntegrationSelect = useCallback((integration: 'github' | 'gitlab' | 'figma' | 'youtube' | 'linkedin') => {
     setShowIntegrationPicker(false);
     switch (integration) {
       case 'github':
@@ -481,6 +493,9 @@ export function IntelligentChatPanel({
         break;
       case 'youtube':
         sendMessage('I want to import a YouTube video as a project');
+        break;
+      case 'linkedin':
+        sendMessage('I want to import content from my LinkedIn profile');
         break;
     }
   }, [handleGitHubImport, handleGitLabImport, handleFigmaImport, sendMessage]);
@@ -506,6 +521,9 @@ export function IntelligentChatPanel({
         break;
       case 'youtube':
         sendMessage('I want to add a YouTube video to my project');
+        break;
+      case 'linkedin':
+        sendMessage('I want to import content from my LinkedIn profile');
         break;
       case 'create-visual':
         // Set image generation mode and show Nano Banana welcome
@@ -846,6 +864,15 @@ export function IntelligentChatPanel({
         icon: faYoutube,
         color: 'text-red-600',
         bgColor: 'bg-red-100 dark:bg-red-900/30',
+        type: 'integration' as const,
+      },
+      {
+        id: 'linkedin' as const,
+        name: 'LinkedIn',
+        description: 'Import from your profile',
+        icon: faLinkedin,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-100 dark:bg-blue-900/30',
         type: 'integration' as const,
       },
     ];
