@@ -722,17 +722,49 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
           </div>
         )}
 
-        {/* CURATED ARTICLE WITH IMAGE: Title overlay - visible by default, hidden on hover (footer shows title) */}
+        {/* CURATED ARTICLE WITH IMAGE: Title + Description + Category overlay */}
         {/* Uses glassmorphism effect for a premium feel - only shown when card has an actual image */}
-        {project.type === 'rss_article' && heroElement.type === 'image' && (
-          <div className="absolute bottom-4 left-4 right-4 z-20 opacity-100 group-hover:opacity-0 transition-opacity duration-300 pointer-events-none">
-            <div className="backdrop-blur-xl bg-black/30 rounded p-4 shadow-lg">
-              <h3 className="text-lg font-bold line-clamp-2 leading-snug text-white drop-shadow-sm">
-                {project.title}
-              </h3>
+        {project.type === 'rss_article' && heroElement.type === 'image' && (() => {
+          // Extract short description from overview section content
+          const overviewSection = project.content?.sections?.find((s: any) => s.type === 'overview');
+          const fullDescription = overviewSection?.content?.description || '';
+          // Get first sentence or first 120 chars for card preview
+          const firstSentence = fullDescription.split(/[.!?]\s/)[0];
+          const shortDesc = firstSentence.length > 120
+            ? firstSentence.substring(0, 120).trim() + '...'
+            : firstSentence + (fullDescription.length > firstSentence.length ? '...' : '');
+          // Clean markdown headers from description
+          const cleanDesc = shortDesc.replace(/^#+\s*/gm, '').replace(/\*\*/g, '').trim();
+          const primaryCategory = project.categoriesDetails?.[0];
+
+          return (
+            <div className="absolute bottom-4 left-4 right-4 z-20 opacity-100 group-hover:opacity-0 transition-opacity duration-300 pointer-events-none">
+              <div className="backdrop-blur-xl bg-black/30 rounded-lg p-4 shadow-lg">
+                {/* Category badge */}
+                {primaryCategory && (
+                  <div className="mb-2">
+                    <span
+                      className="inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full text-white/90"
+                      style={{ backgroundColor: primaryCategory.color ? `${primaryCategory.color}99` : 'rgba(34, 211, 238, 0.6)' }}
+                    >
+                      {primaryCategory.name}
+                    </span>
+                  </div>
+                )}
+                {/* Title */}
+                <h3 className="text-lg font-bold line-clamp-2 leading-snug text-white drop-shadow-sm mb-1.5">
+                  {project.title}
+                </h3>
+                {/* Short description */}
+                {cleanDesc && (
+                  <p className="text-sm text-white/80 line-clamp-2 leading-relaxed">
+                    {cleanDesc}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* GRADIENT OVERLAY & FOOTER - Shows on hover for all cards */}
         {/* For curated articles WITH images: appears on hover (replacing the static title) */}
