@@ -105,6 +105,10 @@ export function ClippedArticleLayout() {
   const gallerySection = sections.find(s => s.type === 'gallery' && s.enabled);
   const linksSection = sections.find(s => s.type === 'links' && s.enabled);
 
+  // Debug logging
+  console.log('ClippedArticleLayout sections:', sections.map(s => ({ type: s.type, enabled: s.enabled })));
+  console.log('Video section found:', videoSection);
+
   // Get hero image
   const heroImage = project.featuredImageUrl || project.bannerUrl;
 

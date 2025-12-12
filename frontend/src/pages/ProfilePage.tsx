@@ -1640,9 +1640,9 @@ export default function ProfilePage() {
                   aria-labelledby="tab-showcase"
                   className="pb-20"
                 >
-                  <MasonryGrid>
-                    {projects.showcase.length > 0 ? (
-                      projects.showcase.map((project) => (
+                  {projects.showcase.length > 0 ? (
+                    <MasonryGrid>
+                      {projects.showcase.map((project) => (
                         <div key={project.id} className="break-inside-avoid mb-6">
                           <ProjectCard
                             project={project}
@@ -1657,13 +1657,13 @@ export default function ProfilePage() {
                             onShowcaseToggle={handleShowcaseToggle}
                           />
                         </div>
-                      ))
-                    ) : (
-                      <div className="py-20 text-center">
-                        <p className="text-gray-500 dark:text-gray-400">No posts yet.</p>
-                      </div>
-                    )}
-                  </MasonryGrid>
+                      ))}
+                    </MasonryGrid>
+                  ) : (
+                    <div className="py-20 text-center">
+                      <p className="text-gray-500 dark:text-gray-400">No posts yet.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1675,9 +1675,9 @@ export default function ProfilePage() {
                   aria-labelledby="tab-playground"
                   className="pb-20"
                 >
-                  <MasonryGrid>
-                    {projects.playground.length > 0 ? (
-                      projects.playground.map((project) => (
+                  {projects.playground.length > 0 ? (
+                    <MasonryGrid>
+                      {projects.playground.map((project) => (
                         <div key={project.id} className="break-inside-avoid mb-6">
                           <ProjectCard
                             project={project}
@@ -1692,13 +1692,13 @@ export default function ProfilePage() {
                             onShowcaseToggle={handleShowcaseToggle}
                           />
                         </div>
-                      ))
-                    ) : (
-                      <div className="py-20 text-center">
-                        <p className="text-gray-500 dark:text-gray-400">No playground projects yet.</p>
-                      </div>
-                    )}
-                  </MasonryGrid>
+                      ))}
+                    </MasonryGrid>
+                  ) : (
+                    <div className="py-20 text-center">
+                      <p className="text-gray-500 dark:text-gray-400">No playground projects yet.</p>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -12,19 +12,24 @@ interface VideoSectionProps {
 }
 
 export function VideoSection({ content }: VideoSectionProps) {
-  const { url, embed_url, platform, video_id, title } = content;
+  // Support both camelCase (from API) and snake_case (from types)
+  const url = content.url;
+  const embedUrl = (content as any).embedUrl || content.embed_url;
+  const platform = content.platform;
+  const videoId = (content as any).videoId || content.video_id;
+  const title = content.title;
 
-  if (!video_id && !embed_url && !url) {
+  if (!videoId && !embedUrl && !url) {
     return null;
   }
 
   // Build embed URL based on platform
-  let embedSrc = embed_url;
+  let embedSrc = embedUrl;
   if (!embedSrc) {
-    if (platform === 'youtube' && video_id) {
-      embedSrc = `https://www.youtube.com/embed/${video_id}?rel=0`;
-    } else if (platform === 'vimeo' && video_id) {
-      embedSrc = `https://player.vimeo.com/video/${video_id}`;
+    if (platform === 'youtube' && videoId) {
+      embedSrc = `https://www.youtube.com/embed/${videoId}?rel=0`;
+    } else if (platform === 'vimeo' && videoId) {
+      embedSrc = `https://player.vimeo.com/video/${videoId}`;
     }
   }
 
