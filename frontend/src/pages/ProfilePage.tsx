@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
 import type { User, Project } from '@/types/models';
@@ -24,7 +24,6 @@ import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileTemplatePicker } from '@/components/profile/ProfileTemplatePicker';
 import { AvatarFocalPointEditor } from '@/components/profile/AvatarFocalPointEditor';
-import { ProfileCompleteness } from '@/components/profile/ProfileCompleteness';
 import { logError, parseApiError } from '@/utils/errorHandler';
 import { ProfileSections, type ProfileUser } from '@/components/profile/sections';
 import type { SocialLinksUpdate } from '@/components/profile/sections/LinksSection';
@@ -80,7 +79,6 @@ const TAB_BUTTON_INACTIVE = 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
-  const navigate = useNavigate();
   const { user, isAuthenticated, refreshUser } = useAuth();
   const { tierStatus, isLoading: isTierLoading } = useThriveCircle();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1016,8 +1014,8 @@ export default function ProfilePage() {
 
             {/* Full-width Showcase Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              {/* Profile Completeness Indicator - only show for own profile when not editing */}
-              {isOwnProfile && !isEditingShowcase && displayUser && (
+              {/* Profile Completeness Indicator - hidden for now, needs rethinking */}
+              {/* {isOwnProfile && !isEditingShowcase && displayUser && (
                 <div className="mb-6">
                   <ProfileCompleteness
                     user={displayUser}
@@ -1025,7 +1023,7 @@ export default function ProfilePage() {
                     onNavigateToField={(fieldId) => navigate(`/settings#${fieldId}`)}
                   />
                 </div>
-              )}
+              )} */}
 
               {/* Edit Controls */}
               {isOwnProfile && (

@@ -107,8 +107,8 @@ export default function IntegrationsSettingsPage() {
 
     async function fetchConnectionStatus() {
       try {
-        // Check LinkedIn status
-        const linkedinResponse = await api.get('/social/status/linkedin/');
+        // Check LinkedIn status (use 'li' alias to avoid ad-blocker blocking)
+        const linkedinResponse = await api.get('/social/status/li/');
         const linkedinData = linkedinResponse.data.data || linkedinResponse.data;
 
         if (linkedinData.connected && isMounted) {
@@ -263,7 +263,10 @@ export default function IntegrationsSettingsPage() {
 
     if (integrationId === 'linkedin') {
       try {
-        const response = await api.get('/social/connect/linkedin/');
+        console.log('[IntegrationsSettingsPage] Starting LinkedIn OAuth request...');
+        // Use 'li' alias to avoid ad-blocker blocking "linkedin" URLs
+        const response = await api.get('/social/connect/li/');
+        console.log('[IntegrationsSettingsPage] LinkedIn OAuth response:', response);
 
         if (response.data.success && response.data.data?.authUrl) {
           const authUrl = response.data.data.authUrl;
@@ -368,7 +371,8 @@ export default function IntegrationsSettingsPage() {
 
     if (integrationId === 'linkedin') {
       try {
-        await api.post('/social/disconnect/linkedin/');
+        // Use 'li' alias to avoid ad-blocker blocking "linkedin" URLs
+        await api.post('/social/disconnect/li/');
 
         setIntegrations(prev =>
           prev.map(integration =>

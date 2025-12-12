@@ -73,10 +73,13 @@ from .quizzes.views import QuizAttemptViewSet, QuizViewSet
 from .referrals.views import ReferralCodeViewSet, ReferralViewSet, validate_referral_code
 from .social.views import (
     available_providers,
+    connect_li,
     connect_provider,
     connection_status,
+    disconnect_li,
     disconnect_provider,
     list_connections,
+    status_li,
 )
 from .social.views import oauth_callback as social_oauth_callback
 from .taxonomy.views import TaxonomyViewSet, UserTagViewSet, track_interaction, user_personalization_overview
@@ -314,6 +317,11 @@ urlpatterns = [
     # Social connection endpoints
     path('social/connections/', list_connections, name='social_connections'),
     path('social/providers/', available_providers, name='social_providers'),
+    # LinkedIn alias (to avoid ad-blocker blocking "linkedin" URLs) - must come BEFORE generic routes
+    path('social/connect/li/', connect_li, name='social_connect_li'),
+    path('social/disconnect/li/', disconnect_li, name='social_disconnect_li'),
+    path('social/status/li/', status_li, name='social_status_li'),
+    # Generic social connection routes
     path('social/connect/<str:provider>/', connect_provider, name='social_connect'),
     path('social/callback/<str:provider>/', social_oauth_callback, name='social_callback'),
     path('social/disconnect/<str:provider>/', disconnect_provider, name='social_disconnect'),

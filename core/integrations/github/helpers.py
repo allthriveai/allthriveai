@@ -269,7 +269,6 @@ def match_or_create_technology(name: str) -> 'Tool | None':
         'vuejs': 'Vue.js',
         'expressjs': 'Express.js',
         'gcp': 'Google Cloud',
-        'redis': 'RedisVL',  # Redis projects likely use RedisVL for AI/vector features
     }
     if normalized_name.lower() in aliases:
         tool = Tool.objects.filter(name__iexact=aliases[normalized_name.lower()]).first()

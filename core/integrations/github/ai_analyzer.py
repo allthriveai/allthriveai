@@ -63,8 +63,8 @@ Generate structured sections for a visually appealing project portfolio. Return 
     ]
   }},
   "architecture": {{
-    "diagram": "graph TD\\n    A[Component] --> B[Component]",
-    "description": "Brief explanation of how the system works"
+    "diagram": "graph TD\\n    A[Client] --> B[API Server]\\n    B --> C[Database]\\n    B --> D[Cache]",
+    "description": "Brief explanation of how the system components interact"
   }},
   "challenges": [
     {{
@@ -100,12 +100,13 @@ IMPORTANT:
   FaBrain (AI/ML), FaSearch (search), FaSync (sync/realtime), FaGlobe (global),
   FaClock (time/scheduling), FaFileAlt (documents), FaCheck (validation),
   FaLayerGroup (modular), FaTools (utilities), FaPalette (customization)
-- For architecture: CRITICAL - Base the Mermaid diagram on the ACTUAL directory structure above!
-  * Identify real components from folder names (api/, models/, services/, handlers/, etc.)
-  * Show how these actual components connect
-  * Use graph TD format with 4-8 nodes
-  * Label nodes based on actual folder/file names
-  * DO NOT use generic "Input -> Processing -> Output" patterns
+- For architecture: Create a LOGICAL system architecture diagram showing how the application works:
+  * Show actual system components (API, Database, Cache, Queue, Frontend, etc.)
+  * Use descriptive names like "FastAPI Server", "Redis Cache", "PostgreSQL DB", not folder paths
+  * Show data flow between components (User -> Frontend -> API -> Database)
+  * Use graph TD or graph LR format with 4-8 nodes
+  * Include external services if mentioned (AWS, Redis, etc.)
+  * DO NOT use file paths like "backend/src" or "frontend/public" as node labels
 - For tech_stack: Group by Frontend, Backend, Database, Infrastructure, AI/ML as appropriate
 - For challenges: Only include if README mentions specific problems solved
 - For links: Extract any documentation/demo URLs from README

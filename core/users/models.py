@@ -288,9 +288,37 @@ class User(AbstractUser):
                 raise ValidationError(f'Invalid avatar URL: {str(e)}') from e
 
     def save(self, *args, **kwargs):
-        """Normalize username to lowercase for case-insensitivity."""
+        """Normalize username to lowercase and track username changes for redirects."""
         if self.username:
             self.username = self.username.lower()
+
+        # Track username changes for redirect support (only for existing users)
+        if self.pk:
+            try:
+                old_instance = User.objects.get(pk=self.pk)
+                if old_instance.username and old_instance.username != self.username:
+                    # Username is changing - record the old one for redirects
+                    # Import here to avoid circular import
+                    from core.users.models import UsernameHistory
+
+                    # Save the model first so the FK relationship works
+                    super().save(*args, **kwargs)
+
+                    # Create history record
+                    UsernameHistory.objects.create(user=self, old_username=old_instance.username)
+
+                    logger.info(
+                        f'Username changed from {old_instance.username} to {self.username}',
+                        extra={
+                            'user_id': self.pk,
+                            'old_username': old_instance.username,
+                            'new_username': self.username,
+                        },
+                    )
+                    return  # Already saved above
+            except User.DoesNotExist:
+                pass  # New user, no history to track
+
         # Run validation before saving
         super().save(*args, **kwargs)
 
@@ -742,6 +770,59 @@ class PersonalizationSettings(models.Model):
         self.allow_time_tracking = True
         self.allow_scroll_tracking = True
         self.save()
+
+
+class UsernameHistory(models.Model):
+    """Track username changes for redirect support.
+
+    When a user changes their username, we store the old username here
+    so that old profile/project URLs can redirect to the new username.
+    This preserves SEO value and prevents broken links.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='username_history',
+        help_text='The user who changed their username',
+    )
+    old_username = models.CharField(
+        max_length=150,
+        db_index=True,
+        help_text='The previous username before the change',
+    )
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-changed_at']
+        indexes = [
+            models.Index(fields=['old_username'], name='username_history_old_idx'),
+        ]
+        verbose_name = 'Username History'
+        verbose_name_plural = 'Username Histories'
+
+    def __str__(self):
+        return f'{self.old_username} -> {self.user.username} (changed {self.changed_at})'
+
+    @classmethod
+    def get_current_username(cls, old_username):
+        """
+        Look up the current username for a given old username.
+
+        Handles chains of username changes (A -> B -> C returns C for A).
+
+        Returns:
+            str: The current username, or None if not found
+        """
+        old_username_lower = old_username.lower()
+
+        # Find the user who had this old username
+        history = cls.objects.filter(old_username__iexact=old_username_lower).order_by('-changed_at').first()
+
+        if history:
+            return history.user.username
+
+        return None
 
 
 class ImpersonationLog(models.Model):

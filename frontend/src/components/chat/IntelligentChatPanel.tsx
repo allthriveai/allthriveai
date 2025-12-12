@@ -447,11 +447,11 @@ export function IntelligentChatPanel({
         youtubeConnected = false;
       }
 
-      // Check LinkedIn status
+      // Check LinkedIn status (use 'li' alias to avoid ad-blocker blocking)
       let linkedinConnected = false;
       try {
         const { api } = await import('@/services/api');
-        const response = await api.get('/social/status/linkedin/');
+        const response = await api.get('/social/status/li/');
         linkedinConnected = response.data?.data?.connected || response.data?.connected || false;
       } catch {
         linkedinConnected = false;

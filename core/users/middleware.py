@@ -1,13 +1,15 @@
 """
-User activity tracking middleware.
+User middleware for activity tracking and username redirects.
 
-Updates User.last_seen_at on authenticated API requests to enable
-real-time features like battle matchmaking with active users.
+- UserActivityMiddleware: Updates User.last_seen_at on authenticated API requests
+- UsernameRedirectMiddleware: Redirects old usernames to new ones after username changes
 """
 
 import logging
+import re
 
 from django.core.cache import cache
+from django.http import HttpResponsePermanentRedirect
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -104,3 +106,102 @@ class UserActivityMiddleware:
         User.objects.filter(id=user.id).update(last_seen_at=timezone.now())
 
         logger.debug(f'Updated last_seen_at for user {user.id}')
+
+
+class UsernameRedirectMiddleware:
+    """
+    Redirect old usernames to new usernames after username changes.
+
+    When a user changes their username, old URLs like /{old_username} or
+    /{old_username}/{project-slug} should 301 redirect to the new username.
+
+    This preserves:
+    - SEO value (link equity passes through 301 redirects)
+    - External links and bookmarks
+    - Shared URLs on social media
+
+    Performance optimizations:
+    - Uses Redis cache to avoid repeated DB lookups for same old username
+    - Only checks paths that look like usernames (not /api/, /admin/, etc.)
+    - Negative caching: remembers when a username is NOT in history
+    """
+
+    # Cache TTL for username lookups (1 hour)
+    CACHE_TTL = 3600
+
+    # Paths to exclude from username redirect checking
+    EXCLUDE_PREFIXES = (
+        '/api/',
+        '/admin/',
+        '/accounts/',
+        '/auth/',
+        '/static/',
+        '/media/',
+        '/health',
+        '/metrics',
+        '/_/',  # Internal paths
+        '/ws/',  # WebSocket
+    )
+
+    # Regex to match potential username paths: /{username} or /{username}/{anything}
+    # Username: 3-30 chars, alphanumeric, underscore, hyphen
+    USERNAME_PATH_PATTERN = re.compile(r'^/([a-zA-Z0-9_-]{3,30})(?:/(.*))?$')
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Quick exclusion check first
+        if any(request.path.startswith(prefix) for prefix in self.EXCLUDE_PREFIXES):
+            return self.get_response(request)
+
+        # Check if path looks like a username path
+        match = self.USERNAME_PATH_PATTERN.match(request.path)
+        if not match:
+            return self.get_response(request)
+
+        potential_username = match.group(1).lower()
+        rest_of_path = match.group(2) or ''
+
+        # Check cache first
+        cache_key = f'username_redirect:{potential_username}'
+        cached_result = cache.get(cache_key)
+
+        if cached_result is not None:
+            if cached_result == '':
+                # Negative cache hit - this is not an old username
+                return self.get_response(request)
+            else:
+                # Positive cache hit - redirect to new username
+                return self._build_redirect(cached_result, rest_of_path, request)
+
+        # Check database for username history
+        from core.users.models import UsernameHistory
+
+        new_username = UsernameHistory.get_current_username(potential_username)
+
+        if new_username:
+            # Found! Cache the mapping and redirect
+            cache.set(cache_key, new_username, self.CACHE_TTL)
+            logger.info(
+                f'Username redirect: {potential_username} -> {new_username}',
+                extra={'old_username': potential_username, 'new_username': new_username, 'path': request.path},
+            )
+            return self._build_redirect(new_username, rest_of_path, request)
+        else:
+            # Not found - negative cache to avoid repeated DB lookups
+            cache.set(cache_key, '', self.CACHE_TTL)
+            return self.get_response(request)
+
+    def _build_redirect(self, new_username, rest_of_path, request):
+        """Build the redirect URL preserving the rest of the path and query string."""
+        if rest_of_path:
+            new_path = f'/{new_username}/{rest_of_path}'
+        else:
+            new_path = f'/{new_username}'
+
+        # Preserve query string if present
+        if request.META.get('QUERY_STRING'):
+            new_path = f'{new_path}?{request.META["QUERY_STRING"]}'
+
+        return HttpResponsePermanentRedirect(new_path)

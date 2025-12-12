@@ -78,6 +78,27 @@ def available_providers(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def connect_li(request):
+    """LinkedIn connect alias (to avoid ad-blocker blocking 'linkedin' URLs)."""
+    return connect_provider(request, 'linkedin')
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def disconnect_li(request):
+    """LinkedIn disconnect alias (to avoid ad-blocker blocking 'linkedin' URLs)."""
+    return disconnect_provider(request, 'linkedin')
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def status_li(request):
+    """LinkedIn status alias (to avoid ad-blocker blocking 'linkedin' URLs)."""
+    return connection_status(request, 'linkedin')
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def connect_provider(request, provider):
     """Initiate OAuth flow to connect a provider."""
     logger.info(f'OAuth connection initiated for {provider} by user {request.user.username} (id={request.user.id})')

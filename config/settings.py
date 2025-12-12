@@ -101,6 +101,7 @@ MIDDLEWARE = [
     'csp.middleware.CSPMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'core.users.middleware.UsernameRedirectMiddleware',  # Redirect old usernames to new ones (301)
     'core.middleware.CookieJWTAuthenticationMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -903,6 +904,16 @@ CONTENT_SECURITY_POLICY = {
             )
         ),
         'font-src': ("'self'", 'data:'),
+        'frame-src': (
+            "'self'",
+            'https://www.youtube.com',
+            'https://www.youtube-nocookie.com',
+            'https://player.vimeo.com',
+            'https://www.redditmedia.com',
+            'https://embed.reddit.com',
+            'https://js.stripe.com',
+            'https://www.google.com',  # reCAPTCHA
+        ),
         'frame-ancestors': ("'none'",),
         'report-uri': '/api/v1/csp-report/',  # CSP violation reporting
     }
