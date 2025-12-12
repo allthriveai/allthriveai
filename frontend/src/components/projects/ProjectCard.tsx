@@ -55,6 +55,7 @@ interface ProjectCardProps {
   isInShowcase?: boolean;  // Is this project in the user's profile showcase section
   onShowcaseToggle?: (projectId: number, added: boolean) => void;  // Callback when showcase status changes
   showShowcaseButton?: boolean;  // Show the add/remove from showcase button
+  priority?: boolean;  // Load image eagerly (for above-the-fold content)
 }
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -71,7 +72,7 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const typeLabels = PROJECT_TYPE_LABELS;
 
-export const ProjectCard = memo(function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick, isInShowcase = false, onShowcaseToggle, showShowcaseButton = false }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick, isInShowcase = false, onShowcaseToggle, showShowcaseButton = false, priority = false }: ProjectCardProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
@@ -287,8 +288,28 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
       };
     }
 
+    // For video projects, check for direct video URL in content.video or featuredImageUrl
+    if (project.type === 'video') {
+      const videoContent = typeof project.content?.video === 'object' ? project.content.video : {};
+      const sectionContent = project.content?.sections?.[0]?.content || {};
+      const directVideoUrl = videoContent.url || (typeof sectionContent === 'object' && 'url' in sectionContent ? sectionContent.url : '');
+
+      if (directVideoUrl) {
+        return { type: 'video' as const, url: directVideoUrl };
+      }
+
+      // Also check if featuredImageUrl is actually a video file (for explore page where content is null)
+      if (project.featuredImageUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(project.featuredImageUrl)) {
+        return { type: 'video' as const, url: project.featuredImageUrl };
+      }
+    }
+
     // Fallback: use featuredImageUrl > bannerUrl > gradient (as last resort)
+    // Also check if featuredImageUrl is a video file (regardless of project type)
     if (project.featuredImageUrl) {
+      if (/\.(mp4|webm|mov|ogg)(\?|$)/i.test(project.featuredImageUrl)) {
+        return { type: 'video' as const, url: project.featuredImageUrl };
+      }
       return { type: 'image' as const, url: project.featuredImageUrl };
     }
     const cover = (project.content as Record<string, unknown>)?.coverImage || (project.content as Record<string, unknown>)?.cover;
@@ -428,8 +449,9 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                         sizes="(max-width: 640px) 280px, 400px"
                         alt={project.title}
                         className={`w-full h-full object-cover rounded-lg transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
-                        loading="lazy"
-                        decoding="async"
+                        loading={priority ? 'eager' : 'lazy'}
+                        decoding={priority ? 'sync' : 'async'}
+                        fetchPriority={priority ? 'high' : 'auto'}
                         onLoad={() => {
                           setTimeout(() => setImageLoaded(true), 50);
                         }}
@@ -451,8 +473,9 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                     sizes={generateSizes(400, 600, 800)}
                     alt={project.title}
                     className={`w-full h-auto object-cover ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
-                    loading="lazy"
-                    decoding="async"
+                    loading={priority ? 'eager' : 'lazy'}
+                    decoding={priority ? 'sync' : 'async'}
+                    fetchPriority={priority ? 'high' : 'auto'}
                     onLoad={(e) => {
                       const img = e.currentTarget;
                       setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
@@ -568,8 +591,9 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                   sizes={generateSizes(400, 600, 800)}
                   alt={project.title}
                   className={`w-full h-auto block ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
-                  loading="lazy"
-                  decoding="async"
+                  loading={priority ? 'eager' : 'lazy'}
+                  decoding={priority ? 'sync' : 'async'}
+                  fetchPriority={priority ? 'high' : 'auto'}
                   onLoad={(e) => {
                     const img = e.currentTarget;
                     setImageIsPortrait(img.naturalHeight > img.naturalWidth * 1.2);
@@ -595,8 +619,9 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                           sizes="(max-width: 640px) 280px, 400px"
                           alt="Battle submission"
                           className="w-full h-full object-cover"
-                          loading="lazy"
-                          decoding="async"
+                          loading={priority ? 'eager' : 'lazy'}
+                          decoding={priority ? 'sync' : 'async'}
+                          fetchPriority={priority ? 'high' : 'auto'}
                         />
                       ) : (
                         <div className="w-full h-full bg-slate-800 flex items-center justify-center">
@@ -623,8 +648,9 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                           sizes="(max-width: 640px) 280px, 400px"
                           alt="Battle submission"
                           className="w-full h-full object-cover"
-                          loading="lazy"
-                          decoding="async"
+                          loading={priority ? 'eager' : 'lazy'}
+                          decoding={priority ? 'sync' : 'async'}
+                          fetchPriority={priority ? 'high' : 'auto'}
                         />
                       ) : (
                         <div className="w-full h-full bg-slate-800 flex items-center justify-center">

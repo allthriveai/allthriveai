@@ -6,7 +6,7 @@
  * Includes admin edit panel for tools, tags, and content editing.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectContext } from '@/context/ProjectContext';
 import { useTopicTray } from '@/context/TopicTrayContext';
@@ -16,8 +16,13 @@ import { ShareModal } from '../shared/ShareModal';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { Linkify } from '@/components/common/Linkify';
-import { adminEditProject, updateProjectTags, getTools, getTaxonomies } from '@/services/projects';
+import { updateProject, updateProjectTags, getTools, getTaxonomies } from '@/services/projects';
 import { getImpersonationStatus } from '@/services/impersonation';
+import {
+  InlineEditableTitle,
+  InlineEditableText,
+  EditModeIndicator,
+} from '../shared/InlineEditable';
 import type { Tool, Taxonomy } from '@/types/models';
 import {
   CodeBracketIcon,
@@ -25,13 +30,6 @@ import {
   TrashIcon,
   EyeIcon,
   EyeSlashIcon,
-  PencilIcon,
-  XMarkIcon,
-  CheckIcon,
-  ArrowPathIcon,
-  PlusIcon,
-  TagIcon,
-  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 
 export function VideoProjectLayout() {
@@ -84,24 +82,59 @@ export function VideoProjectLayout() {
     checkImpersonation();
   }, [isAuthenticated, isAdmin]);
 
-  const canEdit = isAdmin || isImpersonating;
+  const canEdit = isOwner || isAdmin || isImpersonating;
 
-  // Admin edit state
-  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
-  const [editTitle, setEditTitle] = useState(project.title);
-  const [editDescription, setEditDescription] = useState(project.description || '');
+  // Edit mode state (toggle between view and edit modes)
+  const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [adminError, setAdminError] = useState<string | null>(null);
+
+  // Toggle between edit and published view
+  const toggleEditMode = useCallback(() => {
+    setIsEditMode(prev => !prev);
+  }, []);
+
+  // Computed editing state - must be able to edit AND in edit mode
+  const isEditing = canEdit && isEditMode;
+
+  // Handle inline title change
+  const handleTitleChange = useCallback(async (newTitle: string) => {
+    setIsSaving(true);
+    try {
+      const updated = await updateProject(project.id, { title: newTitle });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update title:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [project.id, setProject]);
+
+  // Handle inline description change
+  const handleDescriptionChange = useCallback(async (newDescription: string) => {
+    setIsSaving(true);
+    try {
+      const updated = await updateProject(project.id, { description: newDescription });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update description:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [project.id, setProject]);
+
+  // Admin panel state (for tools/tags editing - keep this for advanced editing)
+  const [isAdminPanelOpen] = useState(false);
+  const [_adminError] = useState<string | null>(null);
 
   // Tools and tags editing state
   const [availableTools, setAvailableTools] = useState<Tool[]>([]);
-  const [availableCategories, setAvailableCategories] = useState<Taxonomy[]>([]);
+  const [_availableCategories] = useState<Taxonomy[]>([]);
   const [selectedToolIds, setSelectedToolIds] = useState<number[]>(project.tools || []);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>(project.categories || []);
   const [editTopics, setEditTopics] = useState<string[]>(project.topics || []);
   const [newTopic, setNewTopic] = useState('');
   const [isSavingTags, setIsSavingTags] = useState(false);
-  const [toolSearchQuery, setToolSearchQuery] = useState('');
+  const [toolSearchQuery] = useState('');
 
   // Fetch available tools and categories when admin panel opens
   useEffect(() => {
@@ -124,32 +157,10 @@ export function VideoProjectLayout() {
     }
   }, [isAdminPanelOpen, canEdit, project.tools, project.categories, project.topics]);
 
-  // Handle saving text changes
-  const handleSaveTextChanges = async () => {
-    if (isSaving) return;
-    setIsSaving(true);
-    setAdminError(null);
-
-    try {
-      const updatedProject = await adminEditProject(project.id, {
-        title: editTitle !== project.title ? editTitle : undefined,
-        description: editDescription !== project.description ? editDescription : undefined,
-      });
-      setProject(updatedProject);
-      setIsAdminPanelOpen(false);
-    } catch (error: unknown) {
-      console.error('Admin edit error:', error);
-      setAdminError('Failed to save changes. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   // Handle saving tools, categories, and topics
-  const handleSaveTags = async () => {
+  const _handleSaveTags = async () => {
     if (isSavingTags) return;
     setIsSavingTags(true);
-    setAdminError(null);
 
     try {
       const updatedProject = await updateProjectTags(project.id, {
@@ -160,13 +171,12 @@ export function VideoProjectLayout() {
       setProject(updatedProject);
     } catch (error: unknown) {
       console.error('Admin save tags error:', error);
-      setAdminError('Failed to save tags. Please try again.');
     } finally {
       setIsSavingTags(false);
     }
   };
 
-  const handleAddTopic = () => {
+  const _handleAddTopic = () => {
     const trimmedTopic = newTopic.trim();
     if (trimmedTopic && !editTopics.includes(trimmedTopic)) {
       setEditTopics([...editTopics, trimmedTopic]);
@@ -174,11 +184,11 @@ export function VideoProjectLayout() {
     }
   };
 
-  const handleRemoveTopic = (topicToRemove: string) => {
+  const _handleRemoveTopic = (topicToRemove: string) => {
     setEditTopics(editTopics.filter(t => t !== topicToRemove));
   };
 
-  const handleToggleTool = (toolId: number) => {
+  const _handleToggleTool = (toolId: number) => {
     setSelectedToolIds(prev =>
       prev.includes(toolId)
         ? prev.filter(id => id !== toolId)
@@ -186,7 +196,7 @@ export function VideoProjectLayout() {
     );
   };
 
-  const handleToggleCategory = (categoryId: number) => {
+  const _handleToggleCategory = (categoryId: number) => {
     setSelectedCategoryIds(prev =>
       prev.includes(categoryId)
         ? prev.filter(id => id !== categoryId)
@@ -194,7 +204,7 @@ export function VideoProjectLayout() {
     );
   };
 
-  const filteredTools = availableTools.filter(tool =>
+  const _filteredTools = availableTools.filter(tool =>
     tool.name.toLowerCase().includes(toolSearchQuery.toLowerCase())
   );
 
@@ -236,6 +246,9 @@ export function VideoProjectLayout() {
 
   return (
     <>
+      {/* Edit Mode Toggle for Owners/Editors */}
+      <EditModeIndicator isOwner={canEdit} isEditMode={isEditMode} onToggle={toggleEditMode} isSaving={isSaving} />
+
       {/* Video Section - Full Width */}
       <div className="w-full bg-black">
         {/* Owner Menu */}
@@ -300,6 +313,9 @@ export function VideoProjectLayout() {
                 src={directVideoUrl}
                 title={project.title}
                 controls
+                autoPlay
+                muted
+                loop
                 playsInline
                 preload="metadata"
                 className={`w-full h-full ${isShort ? 'rounded-xl object-cover' : ''}`}
@@ -361,9 +377,15 @@ export function VideoProjectLayout() {
         {/* Title and Actions Row */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              {project.title}
-            </h1>
+            {/* Title - Inline Editable */}
+            <InlineEditableTitle
+              value={project.title}
+              isEditable={isEditing}
+              onChange={handleTitleChange}
+              placeholder="Enter project title..."
+              className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2"
+              as="h1"
+            />
 
             {/* Channel/Author and Date Info */}
             <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
@@ -416,12 +438,24 @@ export function VideoProjectLayout() {
           </div>
         </div>
 
-        {/* Description */}
-        {project.description && (
+        {/* Description - Inline Editable */}
+        {(project.description || isEditing) && (
           <div className="mb-6">
-            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-              <Linkify>{project.description}</Linkify>
-            </p>
+            {isEditing ? (
+              <InlineEditableText
+                value={project.description || ''}
+                isEditable={isEditing}
+                onChange={handleDescriptionChange}
+                placeholder="Add a description for your project..."
+                className="text-gray-700 dark:text-gray-300"
+                multiline
+                rows={4}
+              />
+            ) : (
+              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                <Linkify>{project.description}</Linkify>
+              </p>
+            )}
           </div>
         )}
 
@@ -494,261 +528,6 @@ export function VideoProjectLayout() {
         />
       )}
 
-      {/* Admin Edit Button - Fixed position */}
-      {canEdit && !isAdminPanelOpen && (
-        <button
-          onClick={() => {
-            setEditTitle(project.title);
-            setEditDescription(project.description || '');
-            setIsAdminPanelOpen(true);
-          }}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg transition-all hover:scale-105"
-          title="Admin Edit"
-        >
-          <PencilIcon className="w-5 h-5" />
-          <span className="text-sm font-medium">Admin Edit</span>
-        </button>
-      )}
-
-      {/* Admin Edit Panel - Slide-in from right */}
-      {canEdit && isAdminPanelOpen && (
-        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[450px] bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col">
-          {/* Panel Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2">
-              <PencilIcon className="w-5 h-5 text-amber-500" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Admin Edit</h3>
-            </div>
-            <button
-              onClick={() => setIsAdminPanelOpen(false)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            >
-              <XMarkIcon className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-
-          {/* Panel Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {/* Error Display */}
-            {adminError && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-sm text-red-600 dark:text-red-400">{adminError}</p>
-              </div>
-            )}
-
-            {/* Title Edit */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Title
-              </label>
-              <input
-                type="text"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Description Edit */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Description
-              </label>
-              <textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                rows={6}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
-                placeholder="Enter description..."
-              />
-            </div>
-
-            {/* Save Text Changes Button */}
-            <button
-              onClick={handleSaveTextChanges}
-              disabled={isSaving || (editTitle === project.title && editDescription === project.description)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
-            >
-              {isSaving ? (
-                <>
-                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <CheckIcon className="w-4 h-4" />
-                  Save Text Changes
-                </>
-              )}
-            </button>
-
-            {/* Tools, Categories, and Topics Section */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <WrenchScrewdriverIcon className="w-4 h-4" />
-                Tools & Tags
-              </h4>
-
-              {/* Tools Selection */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Tools Mentioned
-                </label>
-                <input
-                  type="text"
-                  value={toolSearchQuery}
-                  onChange={(e) => setToolSearchQuery(e.target.value)}
-                  placeholder="Search tools..."
-                  className="w-full px-3 py-2 mb-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                />
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {selectedToolIds.map(toolId => {
-                    const tool = availableTools.find(t => t.id === toolId);
-                    if (!tool) return null;
-                    return (
-                      <span
-                        key={toolId}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-700"
-                      >
-                        {tool.logoUrl && (
-                          <img src={tool.logoUrl} alt="" className="w-3 h-3 rounded" />
-                        )}
-                        {tool.name}
-                        <button
-                          onClick={() => handleToggleTool(toolId)}
-                          className="ml-1 hover:text-red-500"
-                        >
-                          <XMarkIcon className="w-3 h-3" />
-                        </button>
-                      </span>
-                    );
-                  })}
-                </div>
-                <div className="max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                  {filteredTools.length === 0 ? (
-                    <p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No tools found</p>
-                  ) : (
-                    filteredTools.slice(0, 20).map(tool => (
-                      <button
-                        key={tool.id}
-                        onClick={() => handleToggleTool(tool.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
-                          selectedToolIds.includes(tool.id)
-                            ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
-                            : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                        }`}
-                      >
-                        {tool.logoUrl && (
-                          <img src={tool.logoUrl} alt="" className="w-4 h-4 rounded" />
-                        )}
-                        <span>{tool.name}</span>
-                        {selectedToolIds.includes(tool.id) && (
-                          <CheckIcon className="w-4 h-4 ml-auto" />
-                        )}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Categories Selection */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Categories
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {availableCategories.map(category => (
-                    <button
-                      key={category.id}
-                      onClick={() => handleToggleCategory(category.id)}
-                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
-                        selectedCategoryIds.includes(category.id)
-                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
-                      }`}
-                    >
-                      {category.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Topics */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Topics
-                </label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {editTopics.map((topic, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
-                    >
-                      <TagIcon className="w-3 h-3" />
-                      {topic}
-                      <button
-                        onClick={() => handleRemoveTopic(topic)}
-                        className="ml-1 hover:text-red-500"
-                      >
-                        <XMarkIcon className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newTopic}
-                    onChange={(e) => setNewTopic(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddTopic();
-                      }
-                    }}
-                    placeholder="Add a topic..."
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  />
-                  <button
-                    onClick={handleAddTopic}
-                    disabled={!newTopic.trim()}
-                    className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
-                  >
-                    <PlusIcon className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Save Tags Button */}
-              <button
-                onClick={handleSaveTags}
-                disabled={isSavingTags}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
-              >
-                {isSavingTags ? (
-                  <>
-                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                    Saving Tags...
-                  </>
-                ) : (
-                  <>
-                    <CheckIcon className="w-4 h-4" />
-                    Save Tools & Tags
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Backdrop for admin panel */}
-      {canEdit && isAdminPanelOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/20"
-          onClick={() => setIsAdminPanelOpen(false)}
-        />
-      )}
     </>
   );
 }

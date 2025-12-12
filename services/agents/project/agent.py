@@ -26,7 +26,13 @@ from .tools import PROJECT_TOOLS
 logger = logging.getLogger(__name__)
 
 # Build a lookup for tools that need state injection
-TOOLS_NEEDING_STATE = {'create_project', 'import_github_project', 'scrape_webpage_for_project'}
+TOOLS_NEEDING_STATE = {
+    'create_project',
+    'create_product',
+    'import_github_project',
+    'import_video_project',
+    'scrape_webpage_for_project',
+}
 TOOLS_BY_NAME = {tool.name: tool for tool in PROJECT_TOOLS}
 
 

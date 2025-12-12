@@ -40,14 +40,18 @@ export function ProjectsGrid({
     );
   }
 
+  // First 8 images load eagerly (above the fold), rest use lazy loading
+  const EAGER_LOAD_COUNT = 8;
+
   return (
     <div className="columns-1 sm:columns-2 lg:columns-4 gap-4" style={{ columnFill: 'auto' }}>
-      {projects.map((project) => (
+      {projects.map((project, index) => (
         <div key={project.id} className="break-inside-avoid mb-4 inline-block w-full">
           <ProjectCard
             project={project}
             variant="masonry"
             userAvatarUrl={project.userAvatarUrl}
+            priority={index < EAGER_LOAD_COUNT}
           />
         </div>
       ))}

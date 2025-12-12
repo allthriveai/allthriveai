@@ -385,7 +385,8 @@ export const VISUAL_STYLES = [
 export type VisualStyle = typeof VISUAL_STYLES[number]['id'];
 
 /**
- * Admin edit project content and regenerate images (admin only)
+ * Edit project content and regenerate images
+ * Allowed for: project owner, admins, or impersonating admins
  * Used for curated articles and other content types
  */
 export async function adminEditProject(

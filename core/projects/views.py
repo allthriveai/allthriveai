@@ -362,10 +362,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch'], url_path='admin-edit')
     def admin_edit(self, request, pk=None):
-        """Admin-only endpoint to edit project content and regenerate images.
+        """Endpoint to edit project content and regenerate images.
 
-        Also allows users who are being impersonated by an admin (the impersonation
-        cookie indicates an admin is behind the current session).
+        Allows:
+        - Project owner (editing their own project)
+        - Admins
+        - Users being impersonated by an admin
 
         Payload:
         {
@@ -380,6 +382,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         # Valid visual styles
         VALID_VISUAL_STYLES = {'cyberpunk', 'dark_academia', 'minimalist', 'retro_tech', 'nature_tech'}
+
+        # Get project first to check ownership
+        project = self.get_object()
+
+        # Check if user is the project owner
+        is_owner = project.user_id == request.user.id
 
         # Check if user is admin
         is_admin = request.user.role == UserRole.ADMIN
@@ -407,13 +415,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
             except (ValueError, TypeError):
                 pass
 
-        if not is_admin and not is_impersonating:
+        if not is_owner and not is_admin and not is_impersonating:
             return Response(
-                {'error': 'Only admins can edit project content'},
+                {'error': 'You do not have permission to edit this project'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        project = self.get_object()
         updated = False
 
         # Determine who is actually making the edit for logging
@@ -443,8 +450,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
             if new_image_url:
                 project.featured_image_url = new_image_url
                 updated = True
+                edit_type = 'Owner' if is_owner and not is_admin else 'Admin'
                 logger.info(
-                    f'Admin {editor_username} regenerated image for project {project.id} '
+                    f'{edit_type} {editor_username} regenerated image for project {project.id} '
                     f'(style: {visual_style})'
                     f'{" (impersonating " + request.user.username + ")" if is_impersonating else ""}'
                 )
@@ -453,8 +461,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
             project.save()
             # Invalidate cache
             self._invalidate_user_cache(project.user)
+            edit_type = 'Owner' if is_owner and not is_admin else 'Admin'
             logger.info(
-                f'Admin {editor_username} edited project {project.id} '
+                f'{edit_type} {editor_username} edited project {project.id} '
                 f'({project.user.username}/{project.slug})'
                 f'{" (impersonating " + request.user.username + ")" if is_impersonating else ""}'
             )
