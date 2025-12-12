@@ -15,7 +15,7 @@
  * Configuration:
  * - VITE_WS_URL: Full WebSocket URL (e.g., "ws://localhost:8000")
  *   - Development default: ws://localhost:8000
- *   - Production: wss://api.allthrive.ai (or your production domain)
+ *   - Production: wss://ws.allthrive.ai (dedicated WebSocket subdomain)
  *
  * The /api proxy in vite.config.ts is still used for REST API calls,
  * but WebSocket connections go directly to the backend.
@@ -49,9 +49,9 @@ export function getWebSocketBaseUrl(): string {
   // This ensures WebSockets work even if env vars are missing from build
   if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Use api subdomain for WebSocket connections (matches our architecture)
+    // Use ws subdomain for WebSocket connections (dedicated WebSocket endpoint)
     const host = window.location.hostname.replace(/^www\./, '');
-    return `${wsProtocol}//api.${host}`;
+    return `${wsProtocol}//ws.${host}`;
   }
 
   // 4. Default for local development only
