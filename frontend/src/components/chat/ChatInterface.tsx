@@ -246,7 +246,7 @@ export function ChatInterface({
     <>
       {/* Sliding Panel */}
       <div
-        className={`fixed right-0 top-0 md:top-16 w-full md:w-[480px] h-[100dvh] md:h-[calc(100vh-4rem)] border-l border-gray-200 dark:border-gray-700 flex flex-col shadow-2xl transition-all duration-300 z-40 bg-white dark:bg-gray-900 md:bg-white/95 md:dark:bg-gray-900/95 ${
+        className={`fixed right-0 top-0 md:top-16 w-full md:w-[480px] h-[100dvh] md:h-[calc(100vh-4rem)] border-l border-gray-200 dark:border-gray-700 flex flex-col shadow-2xl transition-all duration-300 z-[60] md:z-40 bg-white dark:bg-gray-900 md:bg-white/95 md:dark:bg-gray-900/95 ${
           isOpen ? 'translate-x-0 opacity-100 visible' : 'translate-x-full opacity-0 invisible pointer-events-none'
         }`}
         style={{
@@ -454,7 +454,7 @@ export function ChatInterface({
       {/* Mobile Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/20 z-30 md:hidden"
+          className="fixed inset-0 bg-black/20 z-[55] md:hidden"
           onClick={onClose}
         />
       )}
