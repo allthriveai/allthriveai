@@ -1401,14 +1401,20 @@ def semantic_search(request):
         'users': [],
     }
     search_type = 'text_fallback'
+    weaviate_available = False
+    query_vector = None
 
     try:
         from services.weaviate import get_embedding_service, get_weaviate_client
         from services.weaviate.schema import WeaviateSchema
 
-        client = get_weaviate_client()
-        weaviate_available = client.is_available()
-        query_vector = None
+        try:
+            client = get_weaviate_client()
+            weaviate_available = client.is_available()
+        except (ValueError, Exception) as weaviate_init_error:
+            # Weaviate not configured or unavailable - fall back to text search
+            logger.info(f'Weaviate not available, using text fallback: {weaviate_init_error}')
+            weaviate_available = False
 
         if weaviate_available:
             # Try to generate query embedding
@@ -1605,7 +1611,7 @@ def semantic_search(request):
                 'results': results,
                 'meta': {
                     'total_results': total_results,
-                    'weaviate_available': weaviate_available if 'weaviate_available' in dir() else False,
+                    'weaviate_available': weaviate_available,
                     'alpha': alpha,
                 },
             }
