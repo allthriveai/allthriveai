@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db
 
 help:
 	@echo "Available commands:"
@@ -56,6 +56,12 @@ help:
 	@echo "  make test-websocket-e2e - Run WebSocket end-to-end test"
 	@echo "  make test-proxy      - Test Docker proxy connectivity (run this first!)"
 	@echo "  make test-coverage   - Run backend tests with coverage report"
+	@echo "  make test-e2e        - Run all Playwright E2E tests"
+	@echo "  make test-e2e-chat   - Run Intelligent Chat E2E tests"
+	@echo "  make test-e2e-chat-ai - Run AI workflow tests (requires API keys)"
+	@echo "  make test-e2e-chat-edge - Run Chat edge case tests"
+	@echo "  make test-e2e-ui     - Run E2E tests with browser UI (headed)"
+	@echo "  make test-e2e-debug  - Run E2E tests in debug mode"
 	@echo "  make setup-test-login - Set password for test user (for Chrome DevTools MCP)"
 	@echo "  make reset-onboarding - Print JS to reset Ember onboarding (run in browser console)"
 	@echo "  make stop-impersonation - Print JS to stop admin impersonation (run in browser console)"
@@ -274,6 +280,36 @@ test-coverage:
 	docker-compose exec web coverage report
 	docker-compose exec web coverage html
 	@echo "Coverage report generated in htmlcov/index.html"
+
+test-e2e:
+	@echo "Running all E2E tests..."
+	@echo "Note: Make sure backend is running (make up)"
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test
+
+test-e2e-chat:
+	@echo "Running Intelligent Chat E2E tests..."
+	@echo "Note: Make sure backend is running (make up)"
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test e2e/intelligent-chat.spec.ts
+
+test-e2e-chat-ai:
+	@echo "Running AI workflow E2E tests (requires API keys)..."
+	@echo "Note: Make sure backend is running (make up) and AI API keys are configured"
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test e2e/intelligent-chat.spec.ts --grep "Real User Workflows"
+
+test-e2e-chat-edge:
+	@echo "Running Chat Edge Case E2E tests..."
+	@echo "Note: Make sure backend is running (make up)"
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test e2e/intelligent-chat.spec.ts --grep "Edge Cases"
+
+test-e2e-ui:
+	@echo "Running E2E tests with UI (headed mode)..."
+	@echo "Note: Make sure backend is running (make up)"
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test --headed
+
+test-e2e-debug:
+	@echo "Running E2E tests in debug mode..."
+	@echo "Note: Make sure backend is running (make up)"
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test --debug
 
 # Docker sync commands (for when automatic volume sync isn't working)
 sync-backend:

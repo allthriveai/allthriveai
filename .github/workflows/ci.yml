@@ -347,15 +347,17 @@ jobs:
           python manage.py seed_quests
           echo "✅ Quests seeded for E2E tests"
 
-      - name: Start Django backend
+      - name: Start Django backend with WebSocket support
         run: |
-          python manage.py runserver 127.0.0.1:8000 > /tmp/django.log 2>&1 &
+          # Use uvicorn for WebSocket support (ASGI server)
+          # This matches production and allows chat E2E tests to work
+          uvicorn config.asgi:application --host 127.0.0.1 --port 8000 > /tmp/django.log 2>&1 &
           echo $! > /tmp/django.pid
 
           # Wait for backend to be ready
           for i in {1..30}; do
             if curl -sSf http://127.0.0.1:8000/api/v1/db/health/ > /dev/null 2>&1; then
-              echo "✅ Django backend ready"
+              echo "✅ Django backend ready (uvicorn with WebSocket support)"
               break
             fi
             echo "Waiting for Django... ($i/30)"

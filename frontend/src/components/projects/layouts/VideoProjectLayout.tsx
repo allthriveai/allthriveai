@@ -208,7 +208,21 @@ export function VideoProjectLayout() {
 
   // Detect if this is a YouTube Short or vertical video
   // Check both video metadata and section content for isShort and isVertical flags
-  const isShort = videoContent.isShort || videoContent.isVertical || (typeof sectionContent === 'object' && ('isShort' in sectionContent ? sectionContent.isShort : false)) || (typeof sectionContent === 'object' && ('isVertical' in sectionContent ? sectionContent.isVertical : false)) || false;
+  const hasVerticalFlag = videoContent.isShort || videoContent.isVertical || (typeof sectionContent === 'object' && ('isShort' in sectionContent ? sectionContent.isShort : false)) || (typeof sectionContent === 'object' && ('isVertical' in sectionContent ? sectionContent.isVertical : false)) || false;
+  // Also auto-detect from URL pattern (youtube.com/shorts/) - check heroVideoUrl or section content
+  const videoUrl = project.content?.heroVideoUrl || (typeof sectionContent === 'object' && 'url' in sectionContent ? sectionContent.url : '') || '';
+  const urlIsShort = typeof videoUrl === 'string' && (videoUrl.includes('/shorts/') || videoUrl.includes('youtube.com/shorts'));
+  const isShort = hasVerticalFlag || urlIsShort;
+
+  // DEBUG: Log detection values
+  console.log('[VideoProjectLayout] isShort detection:', {
+    videoContent,
+    'videoContent.isShort': videoContent.isShort,
+    hasVerticalFlag,
+    videoUrl,
+    urlIsShort,
+    isShort
+  });
 
   // Build YouTube embed URL - disable autoplay for desktop/tablet
   const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&autoplay=0` : null;

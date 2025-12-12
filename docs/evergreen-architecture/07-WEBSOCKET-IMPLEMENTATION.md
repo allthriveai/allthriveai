@@ -1,7 +1,31 @@
 # WebSocket Implementation Guide
 
-**Last Updated**: 2025-11-30  
+**Last Updated**: 2025-12-12  
 **Status**: Production-ready ✅
+
+## ⚠️ CRITICAL CONFIGURATION REQUIREMENT
+
+**SECURE_PROXY_SSL_HEADER MUST use HTTP_X_FORWARDED_PROTO**
+
+In `config/settings.py`, this setting MUST be:
+```python
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+```
+
+**DO NOT use:**
+- `HTTP_CLOUDFRONT_FORWARDED_PROTO` ❌ (CloudFront doesn't send this header)
+- Any other custom header that ALB/CloudFront doesn't set ❌
+
+**Why this matters:**
+- ALB sets `X-Forwarded-Proto` for ALL requests including WebSocket upgrades
+- If Django can't detect the request is HTTPS, it issues a 301 redirect
+- 301 redirects break WebSocket upgrade handshakes
+- Result: All WebSocket connections fail with "closed before connection established"
+
+**Prevention:**
+- Pre-commit hook validates this setting
+- Integration tests verify WebSocket connections work
+- See incident: 2025-12-12 (commit eb56ef1a)
 
 ## Overview
 

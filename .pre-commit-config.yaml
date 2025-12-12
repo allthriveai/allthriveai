@@ -94,7 +94,8 @@ repos:
             .*/fixtures/.*|\
             .*/migrations/.*|\
             scripts/pre-commit-hooks/.*|\
-            config/settings\.py$\
+            config/settings\.py$|\
+            tests/integration/.*\
           )$
 
       # Check for missing permission classes
@@ -185,3 +186,11 @@ repos:
             .*/constants\.(ts|js)$\
           )$
         verbose: true
+
+      # WebSocket configuration validation
+      - id: check-websocket-settings
+        name: Check WebSocket Settings (SECURE_PROXY_SSL_HEADER)
+        entry: python scripts/pre-commit-hooks/check_websocket_settings.py
+        language: python
+        files: settings.*\.py$
+        pass_filenames: true

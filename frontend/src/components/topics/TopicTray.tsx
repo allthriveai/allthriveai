@@ -6,6 +6,7 @@ import { ProjectCard } from '@/components/projects/ProjectCard';
 import { XMarkIcon, HashtagIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFolderOpen, faBook } from '@fortawesome/free-solid-svg-icons';
+import { useTheme } from '@/hooks/useTheme';
 
 interface TopicTrayProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface TopicTrayProps {
 }
 
 export function TopicTray({ isOpen, onClose, topicSlug }: TopicTrayProps) {
+  const { theme } = useTheme();
   const [topic, setTopic] = useState<TopicDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +66,6 @@ export function TopicTray({ isOpen, onClose, topicSlug }: TopicTrayProps) {
       const topicData = await getTopicDetail(normalizedSlug, 6);
       setTopic(topicData);
     } catch (err: unknown) {
-      console.error('Failed to load topic:', err);
       const errorMessage = err instanceof Error ? err.message : 'Topic not found';
       setError(errorMessage);
     } finally {
@@ -259,11 +260,11 @@ export function TopicTray({ isOpen, onClose, topicSlug }: TopicTrayProps) {
 
       {/* Right Sidebar Drawer - Smooth slide animation */}
       <aside
-        className={`fixed right-0 top-0 h-full w-full md:w-96 lg:w-[28rem] border-l border-white/20 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 h-full w-full md:w-96 lg:w-[28rem] border-l border-gray-200 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ease-in-out ${
           visuallyOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         }}

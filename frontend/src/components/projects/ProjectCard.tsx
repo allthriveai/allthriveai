@@ -408,7 +408,12 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
               // Check if this is a YouTube Short or vertical video - show thumbnail with vertical aspect
               const videoContent = typeof project.content?.video === 'object' ? project.content.video : {};
               const sectionContent = project.content?.sections?.[0]?.content || {};
-              const isYouTubeShort = videoContent.isShort || videoContent.isVertical || (typeof sectionContent === 'object' && ('isShort' in sectionContent ? sectionContent.isShort : false)) || (typeof sectionContent === 'object' && ('isVertical' in sectionContent ? sectionContent.isVertical : false)) || false;
+              // Check content flags first
+              const hasVerticalFlag = videoContent.isShort || videoContent.isVertical || (typeof sectionContent === 'object' && ('isShort' in sectionContent ? sectionContent.isShort : false)) || (typeof sectionContent === 'object' && ('isVertical' in sectionContent ? sectionContent.isVertical : false)) || false;
+              // Also auto-detect from URL pattern (youtube.com/shorts/) - check heroVideoUrl or section content
+              const videoUrl = project.content?.heroVideoUrl || (typeof sectionContent === 'object' && 'url' in sectionContent ? sectionContent.url : '') || '';
+              const urlIsShort = typeof videoUrl === 'string' && (videoUrl.includes('/shorts/') || videoUrl.includes('youtube.com/shorts'));
+              const isYouTubeShort = hasVerticalFlag || urlIsShort;
 
               if (isYouTubeShort) {
                 return (
@@ -473,7 +478,11 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
               // Check if this is a YouTube Short or vertical video
               const videoContent = typeof project.content?.video === 'object' ? project.content.video : {};
               const sectionContent = project.content?.sections?.[0]?.content || {};
-              const isYouTubeShort = videoContent.isShort || videoContent.isVertical || (typeof sectionContent === 'object' && ('isShort' in sectionContent ? sectionContent.isShort : false)) || (typeof sectionContent === 'object' && ('isVertical' in sectionContent ? sectionContent.isVertical : false)) || false;
+              // Check content flags first
+              const hasVerticalFlag = videoContent.isShort || videoContent.isVertical || (typeof sectionContent === 'object' && ('isShort' in sectionContent ? sectionContent.isShort : false)) || (typeof sectionContent === 'object' && ('isVertical' in sectionContent ? sectionContent.isVertical : false)) || false;
+              // Also auto-detect from URL pattern (youtube.com/shorts/)
+              const urlIsShort = heroElement.url?.includes('/shorts/') || heroElement.url?.includes('youtube.com/shorts');
+              const isYouTubeShort = hasVerticalFlag || urlIsShort;
 
               // Parse video URL to get embed URL
               const parseVideoUrl = (url: string) => {
