@@ -23,29 +23,29 @@ const CATEGORY_COLORS = {
   streaks: 'topaz',      // Images & Video
 } as const;
 
-// Rarity configurations
+// Rarity configurations - subtle glow effects
 const RARITY_STYLES = {
   common: {
-    glow: 'shadow-[0_0_15px_rgba(148,163,184,0.3)]',
-    border: 'border-slate-400/30',
+    glow: 'shadow-[0_0_8px_rgba(148,163,184,0.15)]',
+    border: 'border-slate-400/20',
     text: 'text-slate-300',
     particles: 1,
   },
   rare: {
-    glow: 'shadow-[0_0_20px_rgba(59,130,246,0.4)]',
-    border: 'border-blue-400/40',
+    glow: 'shadow-[0_0_10px_rgba(59,130,246,0.2)]',
+    border: 'border-blue-400/25',
     text: 'text-blue-300',
     particles: 2,
   },
   epic: {
-    glow: 'shadow-[0_0_25px_rgba(168,85,247,0.5)]',
-    border: 'border-purple-400/50',
+    glow: 'shadow-[0_0_12px_rgba(168,85,247,0.25)]',
+    border: 'border-purple-400/30',
     text: 'text-purple-300',
     particles: 3,
   },
   legendary: {
-    glow: 'shadow-[0_0_30px_rgba(251,191,36,0.6)]',
-    border: 'border-amber-400/60',
+    glow: 'shadow-[0_0_15px_rgba(251,191,36,0.3)]',
+    border: 'border-amber-400/35',
     text: 'text-amber-300',
     particles: 4,
   },
@@ -153,10 +153,10 @@ export function AchievementBadge({
         />
       )}
 
-      {/* Rarity glow effect */}
+      {/* Rarity glow effect - subtle */}
       {isUnlocked && (
         <div
-          className={`absolute inset-0 rounded blur-xl opacity-20 ${rarityStyle.border}`}
+          className={`absolute inset-0 rounded blur-lg opacity-10 ${rarityStyle.border}`}
           style={{
             background: `linear-gradient(135deg, ${colors.from}, ${colors.to})`,
           }}
@@ -183,7 +183,7 @@ export function AchievementBadge({
             className={`${sizeClasses.icon} transition-all duration-300`}
             style={{
               color: isUnlocked ? colors.from : 'var(--text-muted)',
-              filter: isUnlocked && isHovered ? 'drop-shadow(0 0 8px currentColor)' : 'none',
+              filter: isUnlocked && isHovered ? 'drop-shadow(0 0 4px currentColor)' : 'none',
             }}
           />
 
@@ -274,7 +274,7 @@ export function AchievementBadge({
                 animationDelay: sparkle.delay,
                 animationDuration: '1.5s',
                 color: colors.from,
-                filter: 'drop-shadow(0 0 4px currentColor)',
+                filter: 'drop-shadow(0 0 2px currentColor)',
               }}
             />
           ))}
