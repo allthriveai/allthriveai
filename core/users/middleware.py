@@ -130,7 +130,9 @@ class UsernameRedirectMiddleware:
     CACHE_TTL = 3600
 
     # Paths to exclude from username redirect checking
+    # These are known routes that are NOT usernames
     EXCLUDE_PREFIXES = (
+        # API and system paths
         '/api/',
         '/admin/',
         '/accounts/',
@@ -141,6 +143,26 @@ class UsernameRedirectMiddleware:
         '/metrics',
         '/_/',  # Internal paths
         '/ws/',  # WebSocket
+        # Known frontend routes (not usernames)
+        '/explore',
+        '/marketplace',
+        '/about',
+        '/pricing',
+        '/privacy',
+        '/terms',
+        '/pitch',
+        '/perks',
+        '/battle',
+        '/battles',
+        '/tools',
+        '/topics',
+        '/events',
+        '/leaderboard',
+        '/settings',
+        '/onboarding',
+        '/quizzes',
+        '/styleguide',
+        '/learning',
     )
 
     # Regex to match potential username paths: /{username} or /{username}/{anything}

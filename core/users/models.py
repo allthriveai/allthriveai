@@ -292,34 +292,45 @@ class User(AbstractUser):
         if self.username:
             self.username = self.username.lower()
 
-        # Track username changes for redirect support (only for existing users)
-        if self.pk:
-            try:
-                old_instance = User.objects.get(pk=self.pk)
-                if old_instance.username and old_instance.username != self.username:
-                    # Username is changing - record the old one for redirects
-                    # Import here to avoid circular import
-                    from core.users.models import UsernameHistory
+        # Only check for username changes if:
+        # 1. This is an existing user (has pk)
+        # 2. We're updating the username field (no update_fields, or username in update_fields)
+        update_fields = kwargs.get('update_fields')
+        should_check_username = self.pk and (update_fields is None or 'username' in update_fields)
 
+        if should_check_username:
+            # Use a single query to get just the old username, not the full object
+            old_username = User.objects.filter(pk=self.pk).values_list('username', flat=True).first()
+
+            if old_username and old_username != self.username:
+                # Username is changing - record the old one for redirects
+                from django.core.cache import cache
+                from django.db import transaction
+
+                with transaction.atomic():
                     # Save the model first so the FK relationship works
                     super().save(*args, **kwargs)
 
-                    # Create history record
-                    UsernameHistory.objects.create(user=self, old_username=old_instance.username)
+                    # Create history record (import here to avoid circular import at module load)
+                    from core.users.models import UsernameHistory
 
-                    logger.info(
-                        f'Username changed from {old_instance.username} to {self.username}',
-                        extra={
-                            'user_id': self.pk,
-                            'old_username': old_instance.username,
-                            'new_username': self.username,
-                        },
-                    )
-                    return  # Already saved above
-            except User.DoesNotExist:
-                pass  # New user, no history to track
+                    UsernameHistory.objects.create(user=self, old_username=old_username)
 
-        # Run validation before saving
+                # Invalidate the redirect cache for the old username
+                cache.delete(f'username_redirect:{old_username}')
+
+                logger.info(
+                    'Username changed from %s to %s',
+                    old_username,
+                    self.username,
+                    extra={
+                        'user_id': self.pk,
+                        'old_username': old_username,
+                        'new_username': self.username,
+                    },
+                )
+                return  # Already saved above
+
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -788,16 +799,13 @@ class UsernameHistory(models.Model):
     )
     old_username = models.CharField(
         max_length=150,
-        db_index=True,
+        db_index=True,  # Index for fast lookups by old username
         help_text='The previous username before the change',
     )
     changed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-changed_at']
-        indexes = [
-            models.Index(fields=['old_username'], name='username_history_old_idx'),
-        ]
         verbose_name = 'Username History'
         verbose_name_plural = 'Username Histories'
 
@@ -809,7 +817,9 @@ class UsernameHistory(models.Model):
         """
         Look up the current username for a given old username.
 
-        Handles chains of username changes (A -> B -> C returns C for A).
+        Returns the user's current username by following the FK to User.
+        This handles username change chains automatically since we always
+        return the user's current username, not the "next" username in history.
 
         Returns:
             str: The current username, or None if not found
@@ -817,7 +827,13 @@ class UsernameHistory(models.Model):
         old_username_lower = old_username.lower()
 
         # Find the user who had this old username
-        history = cls.objects.filter(old_username__iexact=old_username_lower).order_by('-changed_at').first()
+        # select_related avoids an extra query when accessing history.user.username
+        history = (
+            cls.objects.filter(old_username__iexact=old_username_lower)
+            .select_related('user')
+            .order_by('-changed_at')
+            .first()
+        )
 
         if history:
             return history.user.username
