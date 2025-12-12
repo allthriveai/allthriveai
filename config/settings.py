@@ -914,6 +914,12 @@ CONTENT_SECURITY_POLICY = {
             'https://js.stripe.com',
             'https://www.google.com',  # reCAPTCHA
         ),
+        'media-src': (
+            "'self'",
+            'https://v.redd.it',
+            'https://*.redd.it',
+            'blob:',
+        ),
         'frame-ancestors': ("'none'",),
         'report-uri': '/api/v1/csp-report/',  # CSP violation reporting
     }

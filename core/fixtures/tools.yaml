@@ -2089,7 +2089,7 @@ tools:
     category: code
     tool_type: ai_tool
     website_url: https://block.github.io/goose/
-    logo_url: https://block.github.io/goose/assets/goose-logo.svg
+    logo_url: https://block.github.io/goose/assets/goose-logo.png
     pricing_model: free
     has_free_tier: true
     tags:

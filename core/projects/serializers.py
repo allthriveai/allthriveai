@@ -3,7 +3,7 @@
 from rest_framework import serializers
 
 from core.taxonomy.serializers import TaxonomySerializer
-from core.tools.serializers import ToolListSerializer
+from core.tools.serializers import ToolIconSerializer, ToolListSerializer
 
 from .constants import DEFAULT_BANNER_IMAGE, MAX_CONTENT_SIZE, MAX_PROJECT_TAGS, MAX_TAG_LENGTH
 from .models import Project
@@ -342,7 +342,6 @@ class ProjectCardSerializer(serializers.ModelSerializer):
 
     Optimized for mobile performance by:
     - Excluding heavy 'content' field (can be up to 100KB per project)
-    - Excluding nested tool/category details (just IDs)
     - Using annotated is_liked_by_user from view (no N+1 queries)
     - Minimal fields needed for card rendering
 
@@ -356,6 +355,8 @@ class ProjectCardSerializer(serializers.ModelSerializer):
     is_liked_by_user = serializers.SerializerMethodField()
     # Lightweight content field - only populated for battle projects
     content = serializers.SerializerMethodField()
+    # Minimal tool details needed for displaying tool icons on cards
+    tools_details = ToolIconSerializer(source='tools', many=True, read_only=True)
 
     class Meta:
         model = Project
@@ -371,8 +372,9 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'banner_url',
             'featured_image_url',
             'external_url',
-            'tools',  # Just IDs for filtering
-            'categories',  # Just IDs for filtering
+            'tools',  # IDs for filtering
+            'tools_details',  # Full tool objects for displaying icons
+            'categories',  # IDs for filtering
             'topics',
             'heart_count',
             'is_liked_by_user',

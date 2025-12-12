@@ -80,6 +80,25 @@ const mockProject: Project = {
   updatedAt: '2025-01-01T00:00:00Z',
 };
 
+const mockProjectWithTools: Project = {
+  ...mockProject,
+  id: 2,
+  toolsDetails: [
+    {
+      id: 1,
+      name: 'ChatGPT',
+      slug: 'chatgpt',
+      logoUrl: 'https://example.com/chatgpt-logo.png',
+    },
+    {
+      id: 2,
+      name: 'Midjourney',
+      slug: 'midjourney',
+      logoUrl: 'https://example.com/midjourney-logo.png',
+    },
+  ],
+};
+
 describe('ProjectCard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -231,6 +250,99 @@ describe('ProjectCard', () => {
 
       expect(screen.getByText('#test')).toBeInTheDocument();
       expect(screen.getByText('#demo')).toBeInTheDocument();
+    });
+  });
+
+  describe('Tool Icon Display', () => {
+    /**
+     * REGRESSION TEST: Tool icon circle on project cards
+     *
+     * This test ensures the tool icon is displayed on project cards when
+     * toolsDetails contains tools with logoUrl. This was broken when
+     * ProjectCardSerializer was "optimized" to exclude tools_details.
+     *
+     * The frontend requires:
+     * - project.toolsDetails to be an array (not undefined)
+     * - project.toolsDetails[0].logoUrl to display the tool logo
+     * - project.toolsDetails[0].name for the button title/alt text
+     *
+     * If this test fails, check that the backend ProjectCardSerializer
+     * includes tools_details with at least: id, name, slug, logo_url
+     */
+    it('should display tool icon when toolsDetails has logoUrl', () => {
+      render(
+        <BrowserRouter>
+          <ProjectCard
+            project={mockProjectWithTools}
+            userAvatarUrl="https://example.com/avatar.jpg"
+            variant="masonry"
+          />
+        </BrowserRouter>
+      );
+
+      // Find the tool button by its title (the tool name)
+      const toolButton = screen.getByTitle('ChatGPT');
+      expect(toolButton).toBeInTheDocument();
+
+      // Verify the tool logo image is rendered
+      const toolLogo = toolButton.querySelector('img');
+      expect(toolLogo).toBeInTheDocument();
+      expect(toolLogo).toHaveAttribute('src', 'https://example.com/chatgpt-logo.png');
+      expect(toolLogo).toHaveAttribute('alt', 'ChatGPT');
+    });
+
+    it('should not display tool icon when toolsDetails is empty', () => {
+      renderProjectCard({ variant: 'masonry' });
+
+      // With empty toolsDetails, there should be no tool button
+      // The mockProject has toolsDetails: [] so no tool icon should render
+      const toolButtons = screen.queryAllByRole('button').filter(
+        btn => btn.title && !btn.title.includes('profile')
+      );
+
+      // Filter out avatar button, like button, comment button - look for tool-specific button
+      const toolButton = toolButtons.find(btn =>
+        btn.querySelector('img[alt="ChatGPT"]') ||
+        btn.querySelector('img[alt="Midjourney"]')
+      );
+
+      expect(toolButton).toBeUndefined();
+    });
+
+    it('should display fallback icon when tool has no logoUrl', () => {
+      const projectWithToolNoLogo: Project = {
+        ...mockProject,
+        toolsDetails: [
+          {
+            id: 1,
+            name: 'Custom Tool',
+            slug: 'custom-tool',
+            // No logoUrl - should show fallback CodeBracketIcon
+          },
+        ],
+      };
+
+      render(
+        <BrowserRouter>
+          <ProjectCard
+            project={projectWithToolNoLogo}
+            userAvatarUrl="https://example.com/avatar.jpg"
+            variant="masonry"
+          />
+        </BrowserRouter>
+      );
+
+      // Find the tool button
+      const toolButton = screen.getByTitle('Custom Tool');
+      expect(toolButton).toBeInTheDocument();
+
+      // Should NOT have an img (no logo)
+      const toolLogo = toolButton.querySelector('img');
+      expect(toolLogo).not.toBeInTheDocument();
+
+      // Should have the fallback SVG icon (CodeBracketIcon)
+      const fallbackIcon = toolButton.querySelector('svg');
+      expect(fallbackIcon).toBeInTheDocument();
     });
   });
 });

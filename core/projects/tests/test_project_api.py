@@ -11,6 +11,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from core.projects.models import Project, ProjectLike
+from core.tools.models import Tool
 from core.users.models import User, UserRole
 
 
@@ -523,6 +524,56 @@ class TestExploreProjects:
         # Verify pagination structure exists
         assert 'results' in response.data
         assert len(response.data['results']) > 0
+
+    def test_explore_includes_tools_details_for_project_cards(self, api_client, user):
+        """Explore endpoint includes tools_details with logo_url for displaying tool icons.
+
+        This is a regression test - tools_details was accidentally removed from
+        ProjectCardSerializer which broke tool icon display on project cards.
+        The frontend requires toolsDetails[].logoUrl to render the tool icon circle.
+        """
+        # Create a tool with a logo
+        tool = Tool.objects.create(
+            name='Test Tool',
+            slug='test-tool',
+            logo_url='https://example.com/logo.png',
+            tagline='A test tool',
+        )
+
+        # Create a project with the tool
+        project = Project.objects.create(
+            user=user,
+            title='Project With Tool',
+            slug='project-with-tool',
+            is_showcased=True,
+        )
+        project.tools.add(tool)
+
+        response = api_client.get('/api/v1/projects/explore/')
+
+        assert response.status_code == status.HTTP_200_OK
+
+        # Find our project in results
+        project_data = next(
+            (p for p in response.data['results'] if p['id'] == project.id),
+            None,
+        )
+        assert project_data is not None, 'Project not found in explore results'
+
+        # Verify tools_details is present and contains required fields for icon display
+        assert 'tools_details' in project_data, (
+            'tools_details missing from explore response - ' 'this breaks tool icon display on project cards!'
+        )
+        assert len(project_data['tools_details']) == 1
+
+        tool_detail = project_data['tools_details'][0]
+        assert tool_detail['id'] == tool.id
+        assert tool_detail['name'] == 'Test Tool'
+        assert tool_detail['slug'] == 'test-tool'
+        assert 'logo_url' in tool_detail, (
+            'logo_url missing from tools_details - ' 'frontend needs this for tool icon display!'
+        )
+        assert tool_detail['logo_url'] == 'https://example.com/logo.png'
 
 
 @pytest.mark.django_db

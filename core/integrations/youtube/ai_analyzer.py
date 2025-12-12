@@ -58,14 +58,19 @@ def analyze_youtube_video(video_data: dict[str, Any], user) -> dict[str, Any]:
 
 
 def _prepare_analysis_context(video_data: dict[str, Any]) -> str:
-    """Prepare text context for AI analysis."""
+    """Prepare text context for AI analysis.
+
+    Note: YouTube tags are intentionally excluded as they are often generic SEO tags
+    that don't reflect the actual video content (e.g., channels add tags like
+    "MidJourney", "Stable Diffusion" to all videos for discoverability).
+    """
     context_parts = [
         f'Title: {video_data["title"]}',
-        f'Description: {video_data["description"][:500]}',  # First 500 chars
+        f'Description: {video_data["description"][:1000]}',  # First 1000 chars for better context
     ]
 
-    if video_data.get('tags'):
-        context_parts.append(f'Tags: {", ".join(video_data["tags"][:10])}')
+    # YouTube tags are excluded - they're often SEO spam, not content-specific
+    # The AI should extract tools/topics from the actual title and description
 
     return '\n'.join(context_parts)
 
@@ -85,9 +90,14 @@ def _call_ai_analyzer(context: str, user=None) -> dict[str, list[str]]:
     system_prompt = """You are an expert at analyzing technical content and extracting metadata.
 
 From the video information provided, extract:
-1. **Tools/Technologies**: Specific tools, frameworks, libraries, or technologies mentioned or demonstrated
-   - Examples: React, Python, Figma, Blender, VS Code, Docker, AWS
-   - Be specific (e.g., "React" not just "JavaScript framework")
+1. **Tools/Technologies**: Specific tools, frameworks, libraries, AI models, or
+   technologies that are THE MAIN SUBJECT of the video
+   - ONLY include tools that are explicitly discussed, demonstrated, or are central to the video's topic
+   - Examples: Claude, ChatGPT, React, Python, Figma, Blender, VS Code, Docker, AWS
+- For AI news videos, extract the AI tools/companies being discussed (e.g.,
+     "Claude" for Anthropic videos, "ChatGPT" for OpenAI videos)
+   - DO NOT include generic tools that might be tangentially mentioned
+   - Be specific (e.g., "Claude" not just "AI assistant", "MCP" if Model Context Protocol is discussed)
 
 2. **Categories**: High-level categories that best describe the content
    - Choose from: Web Development, Mobile Development, Data Science, AI/ML, Design, DevOps,
@@ -98,6 +108,9 @@ From the video information provided, extract:
    - Examples: authentication, responsive design, data visualization, animation, deployment
    - Keep topics specific and actionable
    - Limit to 5-8 most relevant topics
+
+IMPORTANT: Only extract tools that are actually the subject of the video based on title and description.
+Do NOT extract tools just because they are popular or commonly associated with the channel.
 
 Respond in this exact JSON format:
 {

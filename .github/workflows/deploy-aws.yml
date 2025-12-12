@@ -642,7 +642,7 @@ jobs:
             --task-definition ${{ steps.network.outputs.task_definition }} \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[${{ steps.network.outputs.subnets }}],securityGroups=[${{ steps.network.outputs.security_groups }}],assignPublicIp=${{ steps.network.outputs.assign_public_ip }}}" \
-            --overrides '{"containerOverrides":[{"name":"web","command":["sh","-c","python manage.py seed_topics && python manage.py seed_taxonomies && python manage.py seed_categories && python manage.py seed_tools && python manage.py seed_challenge_types && python manage.py seed_billing && python manage.py seed_achievements && python manage.py create_pip"]}]}' \
+            --overrides '{"containerOverrides":[{"name":"web","command":["sh","-c","python manage.py seed_topics && python manage.py seed_taxonomies && python manage.py seed_categories && python manage.py seed_tools && python manage.py seed_challenge_types && python manage.py seed_billing && python manage.py seed_achievements && python manage.py create_pip && python manage.py seed_ai_daily_brief_agent"]}]}' \
             --query 'tasks[0].taskArn' \
             --output text)
 

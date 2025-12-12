@@ -109,6 +109,10 @@ export function BattleInvitePage() {
       // Refresh auth context to pick up the new guest user from cookies
       await refreshUser();
 
+      // Small delay to ensure React state propagates before navigation
+      // This prevents race condition where BattlePage mounts before auth state updates
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Navigate to the battle - the response contains the serialized battle
       const battleId = response.data?.id;
       if (battleId) {

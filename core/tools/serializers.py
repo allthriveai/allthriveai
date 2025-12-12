@@ -3,6 +3,17 @@ from rest_framework import serializers
 from .models import Company, Tool, ToolBookmark, ToolComparison, ToolReview
 
 
+class ToolIconSerializer(serializers.ModelSerializer):
+    """Minimal serializer for displaying tool icons on project cards.
+
+    Only includes fields needed for icon display to minimize payload size.
+    """
+
+    class Meta:
+        model = Tool
+        fields = ['id', 'name', 'slug', 'logo_url']
+
+
 class CompanyListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for company in tool listings."""
 
