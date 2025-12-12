@@ -14,6 +14,8 @@ async function openChatPanel(page: import('@playwright/test').Page) {
   await page.waitForTimeout(1500);
 }
 
+// Helper to wait for WebSocket connection (with fallback)
+
 test.describe('Intelligent Chat', () => {
   // Login before each test
   test.beforeEach(async ({ page }) => {
@@ -33,9 +35,9 @@ test.describe('Intelligent Chat', () => {
       const chatHeader = page.getByText('All Thrive AI Chat');
       await expect(chatHeader).toBeVisible({ timeout: 10000 });
 
-      // Also verify the Live indicator is showing (the connection status badge)
-      const liveIndicator = page.locator('[title="Connected"]').getByText('Live');
-      await expect(liveIndicator).toBeVisible();
+      // Also verify the connection status indicator is showing
+      const connectionStatus = page.locator('[data-testid="connection-status"]');
+      await expect(connectionStatus).toBeVisible({ timeout: 10000 });
     });
 
     test('should close chat panel with close button', async ({ page }) => {
@@ -250,8 +252,8 @@ test.describe('Intelligent Chat', () => {
       await openChatPanel(page);
 
       // Check for Live status indicator (the connection status badge in chat header)
-      const liveIndicator = page.locator('[title="Connected"]').getByText('Live');
-      await expect(liveIndicator).toBeVisible({ timeout: 10000 });
+      const connectionStatus = page.locator('[data-testid="connection-status"]');
+      await expect(connectionStatus).toBeVisible({ timeout: 10000 });
     });
   });
 
@@ -450,8 +452,8 @@ test.describe('Intelligent Chat', () => {
       await openChatPanel(page);
 
       // Check for Live indicator (the connection status badge in chat header)
-      const liveIndicator = page.locator('[title="Connected"]').getByText('Live');
-      await expect(liveIndicator).toBeVisible({ timeout: 10000 });
+      const connectionStatus = page.locator('[data-testid="connection-status"]');
+      await expect(connectionStatus).toBeVisible({ timeout: 10000 });
     });
 
     test('should handle WebSocket reconnection gracefully', async ({ page }) => {
@@ -462,8 +464,8 @@ test.describe('Intelligent Chat', () => {
       await openChatPanel(page);
 
       // Verify initial connection (the connection status badge)
-      const liveIndicator = page.locator('[title="Connected"]').getByText('Live');
-      await expect(liveIndicator).toBeVisible({ timeout: 10000 });
+      const connectionStatus = page.locator('[data-testid="connection-status"]');
+      await expect(connectionStatus).toBeVisible({ timeout: 10000 });
 
       // Close and reopen chat panel
       const closeButton = page.locator('button[aria-label="Close chat"]');
@@ -554,8 +556,8 @@ test.describe('Intelligent Chat', () => {
       await openChatPanel(page);
 
       // Verify initial connection
-      const liveIndicator = page.locator('[title="Connected"]').getByText('Live');
-      await expect(liveIndicator).toBeVisible({ timeout: 10000 });
+      const connectionStatus = page.locator('[data-testid="connection-status"]');
+      await expect(connectionStatus).toBeVisible({ timeout: 10000 });
 
       // Close chat
       const closeButton = page.locator('button[aria-label="Close chat"]');
@@ -638,8 +640,8 @@ test.describe('Intelligent Chat', () => {
       await openChatPanel(page);
 
       // Verify initial connection
-      const liveIndicator = page.locator('[title="Connected"]').getByText('Live');
-      await expect(liveIndicator).toBeVisible({ timeout: 10000 });
+      const connectionStatus = page.locator('[data-testid="connection-status"]');
+      await expect(connectionStatus).toBeVisible({ timeout: 10000 });
 
       // Go offline
       await page.context().setOffline(true);

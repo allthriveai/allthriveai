@@ -1392,6 +1392,8 @@ export function IntelligentChatPanel({
 
             {/* Connection status indicator */}
             <div
+              data-testid="connection-status"
+              data-status={isConnected ? 'connected' : isConnecting ? 'connecting' : 'disconnected'}
               className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                 isConnected
                   ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400'

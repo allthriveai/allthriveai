@@ -44,6 +44,7 @@ export default defineConfig({
     timeout: 120 * 1000,
     env: {
       VITE_API_PROXY_TARGET: 'http://127.0.0.1:8000',
+      VITE_WS_URL: 'ws://127.0.0.1:8000',
     },
   },
 });
