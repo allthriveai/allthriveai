@@ -206,21 +206,24 @@ export function VideoProjectLayout() {
   const channelName = videoContent.channelName || '';
   const channelId = videoContent.channelId || '';
 
+  // Check for direct video upload (S3/MinIO URL)
+  const directVideoUrl = videoContent.url || (typeof sectionContent === 'object' && 'url' in sectionContent ? sectionContent.url : '') || '';
+  const isDirectUpload = directVideoUrl && !directVideoUrl.includes('youtube.com') && !directVideoUrl.includes('youtu.be');
+
   // Detect if this is a YouTube Short or vertical video
   // Check both video metadata and section content for isShort and isVertical flags
   const hasVerticalFlag = videoContent.isShort || videoContent.isVertical || (typeof sectionContent === 'object' && ('isShort' in sectionContent ? sectionContent.isShort : false)) || (typeof sectionContent === 'object' && ('isVertical' in sectionContent ? sectionContent.isVertical : false)) || false;
   // Also auto-detect from URL pattern (youtube.com/shorts/) - check heroVideoUrl or section content
-  const videoUrl = project.content?.heroVideoUrl || (typeof sectionContent === 'object' && 'url' in sectionContent ? sectionContent.url : '') || '';
+  const videoUrl = project.content?.heroVideoUrl || directVideoUrl || '';
   const urlIsShort = typeof videoUrl === 'string' && (videoUrl.includes('/shorts/') || videoUrl.includes('youtube.com/shorts'));
   const isShort = hasVerticalFlag || urlIsShort;
 
   // DEBUG: Log detection values
-  console.log('[VideoProjectLayout] isShort detection:', {
+  console.log('[VideoProjectLayout] video detection:', {
     videoContent,
-    'videoContent.isShort': videoContent.isShort,
-    hasVerticalFlag,
-    videoUrl,
-    urlIsShort,
+    isDirectUpload,
+    directVideoUrl,
+    videoId,
     isShort
   });
 
@@ -279,8 +282,34 @@ export function VideoProjectLayout() {
           </div>
         )}
 
-        {/* Video Player - Responsive layout for Shorts (9:16) vs Regular (16:9) */}
-        {isShort ? (
+        {/* Video Player - Supports both YouTube embeds and direct uploads */}
+        {/* Handles 9:16 vertical (shorts) and 16:9 horizontal aspect ratios */}
+        {isDirectUpload ? (
+          // Direct video upload - HTML5 native video player
+          <div className={`flex justify-center ${isShort ? 'py-4' : ''}`}>
+            <div
+              className={`relative w-full ${isShort ? 'rounded-xl' : ''}`}
+              style={isShort ? {
+                maxWidth: '360px',
+                aspectRatio: '9 / 16',
+              } : {
+                maxWidth: '1152px', // 6xl
+              }}
+            >
+              <video
+                src={directVideoUrl}
+                title={project.title}
+                controls
+                playsInline
+                preload="metadata"
+                className={`w-full h-full ${isShort ? 'rounded-xl object-cover' : ''}`}
+                style={!isShort ? { aspectRatio: '16 / 9' } : undefined}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          </div>
+        ) : isShort ? (
           // YouTube Shorts - Vertical 9:16 aspect ratio, centered with max height
           <div className="flex justify-center py-4">
             <div
@@ -306,7 +335,7 @@ export function VideoProjectLayout() {
             </div>
           </div>
         ) : (
-          // Regular video - 16:9 aspect ratio, full width
+          // Regular YouTube video - 16:9 aspect ratio, full width
           <div className="w-full max-w-6xl mx-auto">
             <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
               {embedUrl ? (
@@ -336,19 +365,22 @@ export function VideoProjectLayout() {
               {project.title}
             </h1>
 
-            {/* Channel and Date Info */}
+            {/* Channel/Author and Date Info */}
             <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-              {channelName && channelUrl && (
-                <a
-                  href={channelUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-primary-600 dark:text-primary-400 hover:underline"
-                >
-                  {channelName}
-                </a>
-              )}
-              <span>•</span>
+              {/* Show YouTube channel for YouTube videos, or "By @username" for uploads */}
+              {!isDirectUpload && channelName && channelUrl ? (
+                <>
+                  <a
+                    href={channelUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                  >
+                    {channelName}
+                  </a>
+                  <span>•</span>
+                </>
+              ) : null}
               <span>
                 {new Date(project.createdAt).toLocaleDateString('en-US', {
                   year: 'numeric',
@@ -357,7 +389,7 @@ export function VideoProjectLayout() {
                 })}
               </span>
               <span>•</span>
-              <span>Curated by</span>
+              <span>{isDirectUpload ? 'By' : 'Curated by'}</span>
               <Link
                 to={`/${project.username}`}
                 className="font-medium text-primary-600 dark:text-primary-400 hover:underline"
@@ -378,7 +410,7 @@ export function VideoProjectLayout() {
               likeRewardId={likeRewardId}
               onCommentClick={openCommentTray}
               onShareClick={openShareModal}
-              externalUrl={youtubeUrl}
+              externalUrl={isDirectUpload ? undefined : youtubeUrl}
               variant="compact"
             />
           </div>

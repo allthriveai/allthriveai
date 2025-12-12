@@ -423,6 +423,45 @@ jobs:
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_RECAPTCHA_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
 
+      - name: Verify frontend build configuration
+        working-directory: frontend
+        run: |
+          echo "🔍 Verifying frontend build doesn't contain localhost URLs..."
+
+          # Find the main JS bundle
+          BUNDLE=$(find dist/assets -name 'index-*.js' | head -1)
+
+          if [ -z "$BUNDLE" ]; then
+            echo "❌ Could not find index JS bundle"
+            exit 1
+          fi
+
+          echo "📦 Checking bundle: $BUNDLE"
+
+          # Check for localhost in production builds (excluding source maps)
+          if grep -q 'ws://localhost' "$BUNDLE"; then
+            echo "❌ ERROR: Found 'ws://localhost' in production bundle!"
+            echo "   This indicates VITE_WS_URL was not set correctly during build."
+            grep -o 'ws://localhost[^"]*' "$BUNDLE" | head -3
+            exit 1
+          fi
+
+          if grep -q 'http://localhost' "$BUNDLE"; then
+            echo "⚠️  WARNING: Found 'http://localhost' in production bundle"
+            echo "   This may indicate VITE_API_URL was not set correctly."
+            grep -o 'http://localhost[^"]*' "$BUNDLE" | head -3
+          fi
+
+          # Verify WebSocket URL is configured correctly
+          WS_URL=$(grep -o 'wss://[^"]*allthrive[^"]*' "$BUNDLE" | head -1 || echo "not found")
+          echo "✅ WebSocket URL in bundle: $WS_URL"
+
+          # Verify API URL is configured correctly
+          API_URL=$(grep -o 'https://api\.allthrive\.ai' "$BUNDLE" | head -1 || echo "not found")
+          echo "✅ API URL in bundle: $API_URL"
+
+          echo "✅ Frontend build verification passed"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -509,6 +548,37 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id ${{ steps.cloudfront.outputs.distribution_id }} \
             --paths "/*"
+
+      - name: Wait for CloudFront invalidation
+        run: |
+          echo "⏳ Waiting 30s for CloudFront cache invalidation to propagate..."
+          sleep 30
+
+      - name: Verify deployed frontend
+        run: |
+          echo "🔍 Verifying deployed frontend configuration..."
+
+          # Get the deployed bundle name from index.html
+          BUNDLE_NAME=$(curl -s "https://allthrive.ai/" | grep -o 'index-[^"]*\.js' | head -1)
+
+          if [ -z "$BUNDLE_NAME" ]; then
+            echo "❌ Could not find bundle name in deployed index.html"
+            exit 1
+          fi
+
+          echo "📦 Deployed bundle: $BUNDLE_NAME"
+
+          # Check WebSocket URL in deployed bundle
+          WS_URL=$(curl -s "https://allthrive.ai/assets/$BUNDLE_NAME" | grep -o 'wss://[^"]*allthrive[^"]*' | head -1 || echo "not found")
+          echo "🔌 WebSocket URL: $WS_URL"
+
+          # Fail if localhost is in production
+          if curl -s "https://allthrive.ai/assets/$BUNDLE_NAME" | grep -q 'ws://localhost'; then
+            echo "❌ ERROR: Deployed bundle contains ws://localhost!"
+            exit 1
+          fi
+
+          echo "✅ Deployed frontend verification passed"
 
   # Run database migrations using a one-off ECS task (more reliable than execute-command)
   migrate:

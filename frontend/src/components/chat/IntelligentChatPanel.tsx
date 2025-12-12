@@ -202,24 +202,10 @@ export function IntelligentChatPanel({
             : `[File: ${f.name}](${f.url})`
         ).join('\n');
 
-        // If user uploaded files without any message, add a helpful prompt
-        // so the AI knows to ask what they want to do with the file
-        let messageWithAttachments: string;
-        if (content) {
-          messageWithAttachments = `${content}\n\n${fileDescriptions}`;
-        } else {
-          // Determine file type for the prompt
-          const hasImage = uploadedFiles.some(f => f.type === 'image');
-          const hasVideo = uploadedFiles.some(f => f.type === 'video' || f.name.match(/\.(mp4|mov|avi|webm)$/i));
-          const hasAudio = uploadedFiles.some(f => f.type === 'audio' || f.name.match(/\.(mp3|wav|m4a|ogg)$/i));
-
-          let fileType = 'file';
-          if (hasVideo) fileType = 'video';
-          else if (hasAudio) fileType = 'audio';
-          else if (hasImage) fileType = 'image';
-
-          messageWithAttachments = `I uploaded this ${fileType}. What would you like me to do with it? Should I make it into a project on my profile?\n\n${fileDescriptions}`;
-        }
+        // Send user's message with file descriptions appended
+        const messageWithAttachments = content
+          ? `${content}\n\n${fileDescriptions}`
+          : fileDescriptions;
 
         sendMessage(messageWithAttachments);
       } catch (uploadError: any) {

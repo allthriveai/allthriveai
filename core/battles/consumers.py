@@ -1201,28 +1201,63 @@ class BattleNotificationConsumer(AsyncWebsocketConsumer):
         self.user = self.scope.get('user')
         self.user_group = None
 
+        # Extract connection info for debugging
+        headers = dict(self.scope.get('headers', []))
+        origin = headers.get(b'origin', b'').decode()
+        host = headers.get(b'host', b'').decode()
+        user_agent = headers.get(b'user-agent', b'').decode()[:100]  # Truncate UA
+
+        logger.info(
+            f'[BattleNotifications] Connect attempt: '
+            f'origin={origin!r}, host={host!r}, '
+            f'user={getattr(self.user, "id", "anonymous")}, '
+            f'is_authenticated={getattr(self.user, "is_authenticated", False)}, '
+            f'user_agent={user_agent!r}'
+        )
+
+        # Validate origin to prevent CSRF attacks
+        from django.conf import settings
+
+        allowed_origins = getattr(settings, 'CORS_ALLOWED_ORIGINS', [])
+        logger.info(f'[BattleNotifications] CORS check: allowed_origins={allowed_origins}')
+
+        if origin and origin not in allowed_origins:
+            logger.warning(
+                f'[BattleNotifications] REJECTED - unauthorized origin: '
+                f'origin={origin!r}, allowed={allowed_origins}'
+            )
+            await self.close(code=4003)
+            return
+
         # Reject unauthenticated users
         if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
-            logger.warning('Unauthenticated battle notification WebSocket attempt')
+            logger.warning(
+                f'[BattleNotifications] REJECTED - unauthenticated: '
+                f'user_type={type(self.user).__name__}, origin={origin!r}'
+            )
             await self.close(code=4001)
             return
 
         # Check if user is available for battles
         is_available = await self._is_user_available()
-        if not is_available:
-            logger.info(f'User {self.user.id} connected but not available for battles')
+        logger.info(f'[BattleNotifications] User {self.user.id} availability check: {is_available}')
 
         # Create user-specific group for receiving notifications
         self.user_group = f'battle_notifications_{self.user.id}'
         await self.channel_layer.group_add(self.user_group, self.channel_name)
+        logger.info(f'[BattleNotifications] Added to group: {self.user_group}')
 
         # Also add to general "available users" group if they opted in
         if is_available:
             await self.channel_layer.group_add('battle_available_users', self.channel_name)
+            logger.info('[BattleNotifications] Added to battle_available_users group')
 
         await self.accept()
 
-        logger.info(f'Battle notification WebSocket connected: user={self.user.id}, available={is_available}')
+        logger.info(
+            f'[BattleNotifications] CONNECTED: user={self.user.id}, '
+            f'available={is_available}, channel={self.channel_name}'
+        )
 
         # Send connection confirmation
         await self.send(
@@ -1237,15 +1272,47 @@ class BattleNotificationConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         """Handle WebSocket disconnection."""
+        logger.info(
+            f'[BattleNotifications] DISCONNECTING: '
+            f'user={getattr(self.user, "id", "unknown")}, '
+            f'code={close_code}, '
+            f'code_description={self._get_close_code_description(close_code)}'
+        )
+
         if self.user_group:
             await self.channel_layer.group_discard(self.user_group, self.channel_name)
+            logger.info(f'[BattleNotifications] Removed from group: {self.user_group}')
 
         # Remove from available users group
         await self.channel_layer.group_discard('battle_available_users', self.channel_name)
 
         logger.info(
-            f'Battle notification WebSocket disconnected: user={getattr(self.user, "id", "unknown")}, code={close_code}'
+            f'[BattleNotifications] DISCONNECTED: user={getattr(self.user, "id", "unknown")}, code={close_code}'
         )
+
+    def _get_close_code_description(self, code: int) -> str:
+        """Get human-readable description for WebSocket close codes."""
+        descriptions = {
+            1000: 'Normal closure',
+            1001: 'Going away',
+            1002: 'Protocol error',
+            1003: 'Unsupported data',
+            1005: 'No status received',
+            1006: 'Abnormal closure',
+            1007: 'Invalid frame payload',
+            1008: 'Policy violation',
+            1009: 'Message too big',
+            1010: 'Missing extension',
+            1011: 'Internal error',
+            1012: 'Service restart',
+            1013: 'Try again later',
+            1014: 'Bad gateway',
+            1015: 'TLS handshake failure',
+            4001: 'Authentication required',
+            4003: 'Origin not allowed',
+            4004: 'Resource not found',
+        }
+        return descriptions.get(code, f'Unknown code {code}')
 
     async def receive(self, text_data: str):
         """Handle incoming WebSocket messages."""
@@ -1253,24 +1320,51 @@ class BattleNotificationConsumer(AsyncWebsocketConsumer):
             data = json.loads(text_data)
             message_type = data.get('type')
 
+            logger.debug(
+                f'[BattleNotifications] Received message: '
+                f'type={message_type}, user={getattr(self.user, "id", "unknown")}'
+            )
+
             if message_type == 'ping':
                 await self.send(text_data=json.dumps({'event': 'pong', 'timestamp': self._get_timestamp()}))
 
             elif message_type == 'update_availability':
                 # User toggled their availability
                 is_available = data.get('is_available', False)
+                logger.info(
+                    f'[BattleNotifications] Availability update request: '
+                    f'user={self.user.id}, is_available={is_available}'
+                )
                 await self._handle_availability_update(is_available)
 
             elif message_type == 'respond_to_invitation':
                 # User responding to a battle invitation
                 invitation_id = data.get('invitation_id')
                 response = data.get('response')  # 'accept' or 'decline'
+                logger.info(
+                    f'[BattleNotifications] Invitation response: '
+                    f'user={self.user.id}, invitation_id={invitation_id}, response={response}'
+                )
                 await self._handle_invitation_response(invitation_id, response)
 
-        except json.JSONDecodeError:
+            else:
+                logger.warning(
+                    f'[BattleNotifications] Unknown message type: '
+                    f'type={message_type}, user={getattr(self.user, "id", "unknown")}'
+                )
+
+        except json.JSONDecodeError as e:
+            logger.warning(
+                f'[BattleNotifications] Invalid JSON: '
+                f'user={getattr(self.user, "id", "unknown")}, error={e}, data={text_data[:100]}'
+            )
             await self._send_error('Invalid JSON format')
         except Exception as e:
-            logger.error(f'Error processing battle notification message: {e}', exc_info=True)
+            logger.error(
+                f'[BattleNotifications] Error processing message: '
+                f'user={getattr(self.user, "id", "unknown")}, error={e}',
+                exc_info=True,
+            )
             await self._send_error('Failed to process message')
 
     async def battle_notification(self, event: dict[str, Any]):

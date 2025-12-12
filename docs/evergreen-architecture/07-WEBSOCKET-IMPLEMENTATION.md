@@ -1,11 +1,13 @@
 # WebSocket Implementation Guide
 
-**Last Updated**: 2025-12-12  
+**Last Updated**: 2025-12-12
 **Status**: Production-ready ✅
 
-## ⚠️ CRITICAL CONFIGURATION REQUIREMENT
+---
 
-**SECURE_PROXY_SSL_HEADER MUST use HTTP_X_FORWARDED_PROTO**
+## ⚠️ CRITICAL PRODUCTION CONFIGURATION
+
+### 1. SECURE_PROXY_SSL_HEADER (Django Setting)
 
 In `config/settings.py`, this setting MUST be:
 ```python
@@ -26,6 +28,98 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 - Pre-commit hook validates this setting
 - Integration tests verify WebSocket connections work
 - See incident: 2025-12-12 (commit eb56ef1a)
+
+---
+
+### 2. VITE_WS_URL Must Match Infrastructure (Frontend Build)
+
+**CRITICAL**: The frontend WebSocket URL is **baked into the JavaScript bundle at build time**.
+
+In `.github/workflows/deploy-aws.yml`:
+```yaml
+env:
+  VITE_WS_URL: ${{ vars.WS_URL || 'wss://ws.allthrive.ai' }}  # Must match DNS!
+```
+
+**Infrastructure routing:**
+```
+ws.allthrive.ai  → ALB (direct, for WebSocket)
+api.allthrive.ai → CloudFront → ALB (for REST API)
+```
+
+**Common mistake:** Setting `VITE_WS_URL=wss://api.allthrive.ai` when DNS routes WebSocket traffic through `ws.allthrive.ai`.
+
+**Verification:**
+```bash
+# Check what URL is in the deployed bundle
+curl -s "https://allthrive.ai/assets/index-*.js" | grep -o 'wss://[^"]*allthrive[^"]*'
+
+# Should output: wss://ws.allthrive.ai (or your WebSocket subdomain)
+```
+
+**CI/CD Protection:** The deploy workflow now includes:
+1. **Pre-upload verification** - Fails build if `ws://localhost` found in bundle
+2. **Post-deploy verification** - Fails deploy if production bundle has localhost URLs
+
+**See incident:** 2025-12-12 - WebSockets broken because `VITE_WS_URL` defaulted to wrong subdomain
+
+---
+
+### 3. AWS Timeout Configuration
+
+WebSocket connections require longer timeouts than typical HTTP requests.
+
+**CloudFront Origin Settings** (`11-cloudfront.yaml`):
+```yaml
+CustomOriginConfig:
+  OriginReadTimeout: 300      # 5 minutes (not 60!)
+  OriginKeepaliveTimeout: 300 # 5 minutes
+```
+
+**ALB Settings** (`09-alb.yaml`):
+```yaml
+LoadBalancerAttributes:
+  - Key: idle_timeout.timeout_seconds
+    Value: '300'  # 5 minutes (not 120!)
+```
+
+**Daphne Server Settings** (`10-ecs.yaml`):
+```yaml
+Command:
+  - daphne
+  - '--http-timeout'
+  - '120'
+  - '--websocket-timeout'
+  - '86400'      # 24 hours for long-lived connections
+  - '--ping-interval'
+  - '30'         # Keep connections alive
+  - '--ping-timeout'
+  - '30'
+  - config.asgi:application
+```
+
+**Why this matters:**
+- AI responses can take >60s to generate first chunk
+- Users may be idle for minutes while thinking
+- Without server-side pings, ALB drops "idle" WebSocket connections
+
+---
+
+### 4. Quick Validation Checklist
+
+Run `make aws-validate` and verify:
+```
+[ ] WebSocket DNS (ws.allthrive.ai):
+   ✅ ws.allthrive.ai -> production-allthrive-alb-*.elb.amazonaws.com (ALB direct)
+
+[ ] ALB WebSocket Target Group:
+   ✅ WebSocket target group: 2/2 healthy
+
+[ ] CloudFront WebSocket Bypass:
+   ✅ api.allthrive.ai and ws.allthrive.ai resolve to different endpoints
+```
+
+---
 
 ## Overview
 
@@ -1116,7 +1210,52 @@ if DEBUG:
 
 ---
 
-### Issue 6: Connection Drops After Token Refresh
+### Issue 6: WebSocket URL Points to Wrong Subdomain (PRODUCTION)
+
+**Symptoms:**
+- Browser console shows: `WebSocket connection to 'wss://api.allthrive.ai/ws/...' failed`
+- WebSocket closes immediately
+- Works locally but not in production
+
+**Cause**: `VITE_WS_URL` in GitHub Actions set to wrong subdomain (e.g., `api.allthrive.ai` instead of `ws.allthrive.ai`)
+
+**Diagnosis:**
+```bash
+# Check what URL is baked into the deployed bundle
+curl -s "https://allthrive.ai/assets/index-*.js" | grep -o 'wss://[^"]*allthrive[^"]*'
+
+# Check DNS routing
+dig ws.allthrive.ai   # Should point to ALB
+dig api.allthrive.ai  # Should point to CloudFront
+```
+
+**Solution:**
+1. Update `.github/workflows/deploy-aws.yml`:
+```yaml
+VITE_WS_URL: ${{ vars.WS_URL || 'wss://ws.allthrive.ai' }}
+```
+
+2. **IMPORTANT**: Push a second commit to trigger redeploy
+   - GitHub Actions uses the workflow from the triggering commit
+   - If you change the workflow itself, the first deploy still uses the OLD workflow
+   - The fix only applies to deploys AFTER the commit with the fix
+
+3. Verify after deploy:
+```bash
+# Bundle should show ws.allthrive.ai (not api.allthrive.ai)
+curl -s "https://allthrive.ai/assets/index-*.js" | grep -o 'wss://[^"]*'
+```
+
+**Prevention:**
+- CI/CD now validates bundle doesn't contain `ws://localhost`
+- Frontend fallback chain derives URL from domain if env var missing
+- See: `frontend/src/utils/websocket.ts:getWebSocketBaseUrl()`
+
+**See incident:** 2025-12-12 - Wrong subdomain in VITE_WS_URL caused 100% WebSocket failure
+
+---
+
+### Issue 7: Connection Drops After Token Refresh
 
 **Symptoms:**
 - WebSocket disconnects after ~15 minutes (JWT expiration)
@@ -1283,11 +1422,16 @@ If WebSocket issues arise in production:
 
 | Date       | Change                                      | Author |
 |------------|---------------------------------------------|--------|
+| 2025-12-12 | Added CI/CD verification for WebSocket URLs | Claude |
+| 2025-12-12 | Fixed VITE_WS_URL: api → ws subdomain       | Claude |
+| 2025-12-12 | Added AWS timeout configuration docs        | Claude |
+| 2025-12-12 | Added Issue #6: Wrong subdomain troubleshooting | Claude |
+| 2025-12-12 | Fixed SECURE_PROXY_SSL_HEADER issue         | Team   |
 | 2025-11-30 | Initial comprehensive documentation         | Warp AI|
 | 2025-11-29 | Fixed P0 issues (race condition, heartbeat) | Team   |
 
 ---
 
-**Maintainer**: Backend Team  
-**Last Review**: 2025-11-30  
-**Next Review**: 2026-02-28 (or when WebSocket issues arise)
+**Maintainer**: Backend Team
+**Last Review**: 2025-12-12
+**Next Review**: 2026-03-12 (or when WebSocket issues arise)

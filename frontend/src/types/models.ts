@@ -164,6 +164,7 @@ export interface VideoContent {
   isShort?: boolean;
   isVertical?: boolean;  // True if video has portrait/vertical orientation
   duration?: string;
+  url?: string;  // Direct video URL (S3/MinIO upload)
 }
 
 // Reddit content structure (for reddit thread projects)

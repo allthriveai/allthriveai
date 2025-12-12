@@ -81,6 +81,16 @@ class ScrapeWebpageInput(BaseModel):
     )
 
 
+class ImportVideoProjectInput(BaseModel):
+    """Input for import_video_project tool."""
+
+    video_url: str = Field(description='The S3/MinIO URL of the uploaded video file')
+    filename: str = Field(description='Original filename of the video (e.g., "my-tutorial.mp4")')
+    title: str = Field(default='', description='Optional title for the project (auto-generated if not provided)')
+    is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
+
+
 # Tools
 @tool(args_schema=CreateProjectInput)
 def create_project(
@@ -734,7 +744,130 @@ def scrape_webpage_for_project(
         return {'success': False, 'error': f'Failed to create project: {str(e)}'}
 
 
+@tool(args_schema=ImportVideoProjectInput)
+def import_video_project(
+    video_url: str,
+    filename: str,
+    title: str = '',
+    is_showcase: bool = True,
+    is_private: bool = False,
+    state: dict | None = None,
+) -> dict:
+    """
+    Import an uploaded video file as a beautifully designed project with full AI analysis.
+
+    This tool creates a video project with:
+    1. AI-generated title, description, and metadata (from filename/context)
+    2. Auto-detected categories, topics, and tools
+    3. Structured content sections for beautiful display
+    4. The video embedded as the hero element
+
+    Use this tool when the user uploads a video file directly (S3/MinIO URL detected).
+    DO NOT use for YouTube URLs - those should use scrape_webpage_for_project.
+
+    Returns:
+        Dictionary with success status, project_id, slug, URL, and generated metadata
+    """
+    from django.contrib.auth import get_user_model
+
+    from core.integrations.github.helpers import apply_ai_metadata
+    from core.integrations.video.ai_analyzer import analyze_video_for_template
+    from core.projects.models import Project
+
+    User = get_user_model()
+
+    # Validate state / user context
+    if not state or 'user_id' not in state:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    user_id = state['user_id']
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'success': False, 'error': 'User not found'}
+
+    logger.info(f'Starting video import for {filename} by user {user.username}')
+
+    # Determine file type from filename
+    file_extension = filename.lower().split('.')[-1] if '.' in filename else 'mp4'
+    file_type_map = {
+        'mp4': 'video/mp4',
+        'mov': 'video/quicktime',
+        'webm': 'video/webm',
+        'avi': 'video/x-msvideo',
+        'mkv': 'video/x-matroska',
+        'm4v': 'video/x-m4v',
+    }
+    file_type = file_type_map.get(file_extension, 'video/mp4')
+
+    # Run AI analysis to generate metadata
+    logger.info(f'Running AI analysis for video: {filename}')
+    analysis = analyze_video_for_template(
+        video_url=video_url,
+        filename=filename,
+        file_type=file_type,
+        user_context=title,  # Use provided title as context hint
+        user=user,
+    )
+
+    # Use provided title or AI-generated title
+    project_title = title if title else analysis.get('title', filename)
+
+    # Build content with template v2 sections + video data
+    content = {
+        'templateVersion': 2,
+        'sections': analysis.get('sections', []),
+        'video': {
+            'url': video_url,
+            'filename': filename,
+            'fileType': file_type,
+        },
+    }
+
+    # Create project with full metadata
+    project = Project.objects.create(
+        user=user,
+        title=project_title,
+        description=analysis.get('description', ''),
+        type=Project.ProjectType.VIDEO,
+        # Use video URL as featured image (browsers will show video poster/thumbnail)
+        featured_image_url=video_url,
+        content=content,
+        is_showcased=is_showcase,
+        is_private=is_private,
+    )
+
+    # Apply AI-suggested categories, topics, and tools
+    apply_ai_metadata(project, analysis, content=content)
+
+    logger.info(f'Successfully created video project {project.id} with {len(content.get("sections", []))} sections')
+
+    return {
+        'success': True,
+        'project_id': project.id,
+        'slug': project.slug,
+        'title': project.title,
+        'url': f'/{user.username}/{project.slug}',
+        'message': f"Video project '{project.title}' created successfully!",
+        'metadata': {
+            'description': analysis.get('description', '')[:200],
+            'categories': analysis.get('category_ids', []),
+            'topics': analysis.get('topics', []),
+            'tools': analysis.get('tool_names', []),
+            'sections_count': len(content.get('sections', [])),
+        },
+    }
+
+
 # Tool list for agent
 # Note: fetch_github_metadata is kept for potential future use but not exposed to agent
 # GitHub imports require OAuth via import_github_project for ownership verification
-PROJECT_TOOLS = [create_project, extract_url_info, import_github_project, scrape_webpage_for_project, create_product]
+PROJECT_TOOLS = [
+    create_project,
+    extract_url_info,
+    import_github_project,
+    import_video_project,
+    scrape_webpage_for_project,
+    create_product,
+]
