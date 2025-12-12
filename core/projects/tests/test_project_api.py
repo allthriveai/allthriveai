@@ -467,6 +467,39 @@ class TestToggleLike:
         assert isinstance(response.data['heart_count'], int)
         assert response.data['heart_count'] >= 0
 
+    def test_heart_count_accurate_after_like(self, api_client, user, project):
+        """Heart count is accurate immediately after liking (no stale cache)."""
+        # Clear any existing likes
+        ProjectLike.objects.filter(project=project).delete()
+        api_client.force_authenticate(user=user)
+
+        # Like the project
+        response = api_client.post(f'/api/v1/me/projects/{project.id}/toggle-like/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['liked'] is True
+        # The count returned should match the actual database count
+        actual_count = ProjectLike.objects.filter(project=project).count()
+        assert response.data['heart_count'] == actual_count
+        assert response.data['heart_count'] == 1  # Should be exactly 1 after liking
+
+    def test_heart_count_accurate_after_unlike(self, api_client, user, project):
+        """Heart count is accurate immediately after unliking (no stale cache)."""
+        # Clear any existing likes and add one
+        ProjectLike.objects.filter(project=project).delete()
+        ProjectLike.objects.create(user=user, project=project)
+        api_client.force_authenticate(user=user)
+
+        # Unlike the project
+        response = api_client.post(f'/api/v1/me/projects/{project.id}/toggle-like/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['liked'] is False
+        # The count returned should match the actual database count
+        actual_count = ProjectLike.objects.filter(project=project).count()
+        assert response.data['heart_count'] == actual_count
+        assert response.data['heart_count'] == 0  # Should be exactly 0 after unliking
+
 
 @pytest.mark.django_db
 class TestExploreProjects:

@@ -190,9 +190,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 },
             )
 
+        # Get fresh count from database (not cached prefetch)
+        # The project.heart_count property uses self.likes.count() which may be cached
+        fresh_heart_count = ProjectLike.objects.filter(project=project).count()
+
         response_data = {
             'liked': liked,
-            'heart_count': project.heart_count,
+            'heart_count': fresh_heart_count,
         }
 
         # Check for completed quests only when liking (not unliking)

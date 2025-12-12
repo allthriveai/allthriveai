@@ -1,17 +1,17 @@
 {% extends "crawler/base.html" %}
 
-{% block title %}{{ project.title }} by @{{ project.user.username }} - AllThrive AI{% endblock %}
+{% block title %}{{ project.title }} by {% if project.user.first_name %}{{ project.user.first_name }}{% if project.user.last_name %} {{ project.user.last_name }}{% endif %}{% else %}@{{ project.user.username }}{% endif %} - AllThrive AI{% endblock %}
 
-{% block description %}{{ project.description|default:"AI project by "|add:project.user.username|add:" on AllThrive AI"|truncatewords:30 }}{% endblock %}
+{% block description %}{% if project.description %}{{ project.description|truncatewords:30 }}{% else %}AI project by {% if project.user.first_name %}{{ project.user.first_name }}{% else %}@{{ project.user.username }}{% endif %} on AllThrive AI{% endif %}{% endblock %}
 
 {% block og_type %}article{% endblock %}
-{% block og_title %}{{ project.title }} by @{{ project.user.username }}{% endblock %}
-{% block og_description %}{{ project.description|truncatewords:30 }}{% endblock %}
-{% if project.featured_image_url %}
-{% block og_image %}{{ project.featured_image_url }}{% endblock %}
-{% elif project.banner_url %}
-{% block og_image %}{{ project.banner_url }}{% endblock %}
-{% endif %}
+{% block og_title %}{{ project.title }} - {% if project.user.first_name %}{{ project.user.first_name }}{% if project.user.last_name %} {{ project.user.last_name }}{% endif %}{% else %}@{{ project.user.username }}{% endif %}{% endblock %}
+{% block og_description %}{% if project.description %}{{ project.description|truncatewords:30 }}{% else %}AI project by {% if project.user.first_name %}{{ project.user.first_name }}{% else %}@{{ project.user.username }}{% endif %} on AllThrive AI{% endif %}{% endblock %}
+{% block og_image %}{% if project.featured_image_url %}{{ project.featured_image_url }}{% elif project.banner_url %}{{ project.banner_url }}{% elif project.user.avatar_url %}{{ project.user.avatar_url }}{% endif %}{% endblock %}
+
+{% block twitter_title %}{{ project.title }} - {% if project.user.first_name %}{{ project.user.first_name }}{% if project.user.last_name %} {{ project.user.last_name }}{% endif %}{% else %}@{{ project.user.username }}{% endif %}{% endblock %}
+{% block twitter_description %}{% if project.description %}{{ project.description|truncatewords:30 }}{% else %}AI project by {% if project.user.first_name %}{{ project.user.first_name }}{% else %}@{{ project.user.username }}{% endif %} on AllThrive AI{% endif %}{% endblock %}
+{% block twitter_image %}{% if project.featured_image_url %}{{ project.featured_image_url }}{% elif project.banner_url %}{{ project.banner_url }}{% elif project.user.avatar_url %}{{ project.user.avatar_url }}{% endif %}{% endblock %}
 
 {% block extra_styles %}
 .project-header {
@@ -159,10 +159,14 @@
 <section style="margin-top: 40px; padding: 20px; background: #f9fafb; border-radius: 6px;">
     <h2>About the Creator</h2>
     <p>
-        <strong><a href="/@{{ project.user.username }}">@{{ project.user.username }}</a></strong>
+        <strong><a href="/@{{ project.user.username }}">{% if project.user.first_name %}{{ project.user.first_name }}{% if project.user.last_name %} {{ project.user.last_name }}{% endif %}{% else %}@{{ project.user.username }}{% endif %}</a></strong>
+        {% if project.user.first_name %}<span style="color: #666;"> (@{{ project.user.username }})</span>{% endif %}
     </p>
+    {% if project.user.tagline %}
+    <p style="color: #555;">{{ project.user.tagline }}</p>
+    {% endif %}
     <p>
-        <a href="/@{{ project.user.username }}">View all projects by @{{ project.user.username }} →</a>
+        <a href="/@{{ project.user.username }}">View all projects by {% if project.user.first_name %}{{ project.user.first_name }}{% else %}@{{ project.user.username }}{% endif %} →</a>
     </p>
 </section>
 

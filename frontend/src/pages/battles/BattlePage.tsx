@@ -42,6 +42,7 @@ export function BattlePage() {
   // Check if user is a guest
   const isGuestUser = user?.isGuest ?? false;
 
+
   const handleError = useCallback((error: string) => {
     logError('Battle error', new Error(error), {
       component: 'BattlePage',

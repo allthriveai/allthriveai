@@ -37,7 +37,27 @@ export function BattleCountdown({ value, onComplete }: BattleCountdownProps) {
     }
   }, [value, onComplete]);
 
-  if (displayValue === null) return null;
+  // If no countdown value, show a "Starting..." state instead of nothing
+  if (displayValue === null) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md"
+        role="alertdialog"
+        aria-modal="true"
+      >
+        <div className="text-center">
+          <div className="w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full bg-gradient-to-br from-slate-900/90 to-slate-800/90 border-2 border-cyan-400/50 shadow-[0_0_40px_rgba(34,211,238,0.5)] flex items-center justify-center">
+            <span className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-cyan-400 to-teal-400">
+              ...
+            </span>
+          </div>
+          <p className="mt-8 text-base md:text-xl text-slate-400 font-medium tracking-wider">
+            STARTING...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

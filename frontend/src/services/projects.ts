@@ -269,18 +269,23 @@ export async function updateProjectTags(
 
 /**
  * Get all available tools
+ * Uses page_size=200 to fetch all tools in a single request
  */
 export async function getTools(): Promise<Tool[]> {
-  const response = await api.get<{ results: Tool[] }>("/tools/");
+  const response = await api.get<{ results: Tool[] }>("/tools/?page_size=200");
   return response.data.results;
 }
 
 /**
  * Get all taxonomies (categories, tags, etc.)
+ * Uses page_size=200 to fetch all taxonomies in a single request
  */
 export async function getTaxonomies(type?: 'category' | 'tag'): Promise<Taxonomy[]> {
-  const params = type ? `?taxonomy_type=${type}` : '';
-  const response = await api.get<{ results: Taxonomy[] }>(`/taxonomy/${params}`);
+  const params = new URLSearchParams({ page_size: '200' });
+  if (type) {
+    params.set('taxonomy_type', type);
+  }
+  const response = await api.get<{ results: Taxonomy[] }>(`/taxonomies/?${params.toString()}`);
   return response.data.results;
 }
 

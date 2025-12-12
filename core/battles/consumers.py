@@ -291,9 +291,30 @@ class BattleConsumer(AsyncWebsocketConsumer):
         if not battle:
             return
 
-        if battle.phase == BattlePhase.WAITING and battle.challenger_connected and battle.opponent_connected:
+        # Check if both users are connected
+        if not (battle.challenger_connected and battle.opponent_connected):
+            return
+
+        if battle.phase == BattlePhase.WAITING:
             # Both connected! Transition to countdown
             await self._transition_phase(BattlePhase.COUNTDOWN)
+
+            # Broadcast countdown start
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    'type': 'battle_event',
+                    'event': 'countdown_start',
+                    'duration': COUNTDOWN_SECONDS,
+                },
+            )
+
+            # Run countdown with ticks
+            asyncio.create_task(self._run_countdown())
+
+        elif battle.phase == BattlePhase.COUNTDOWN:
+            # Battle is stuck in countdown (previous countdown task was interrupted)
+            # Restart the countdown
 
             # Broadcast countdown start
             await self.channel_layer.group_send(
