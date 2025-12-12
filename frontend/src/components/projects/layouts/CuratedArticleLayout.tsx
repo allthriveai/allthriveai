@@ -15,6 +15,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowTopRightOnSquareIcon, ClockIcon, UserIcon, PencilIcon, ArrowPathIcon, XMarkIcon, CheckIcon, PlusIcon, TagIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
 import { useProjectContext } from '@/context/ProjectContext';
+import { useTopicTray } from '@/context/TopicTrayContext';
 import { useAuth } from '@/hooks/useAuth';
 import { getCategoryColors } from '@/utils/categoryColors';
 import { ProjectActions } from '../shared/ProjectActions';
@@ -103,6 +104,7 @@ export function CuratedArticleLayout() {
 
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const { openTopicTray } = useTopicTray();
 
   // Check if user is impersonating (admin acting as another user)
   // Only check if authenticated and NOT already an admin (admins don't need impersonation check)
@@ -304,7 +306,10 @@ export function CuratedArticleLayout() {
   const originalAuthor = metrics.find((m: any) => m.label === 'Author')?.value;
 
   // Get expert review (description)
-  const expertReview = project.description || overview?.content?.description || '';
+  // Prefer overview.content.description (the full AI-generated expert review) over project.description
+  // which may just be a short category/tag name for curated articles
+  const overviewDescription = overview?.content?.description || '';
+  const expertReview = overviewDescription || project.description || '';
 
   return (
     <>
@@ -461,7 +466,7 @@ export function CuratedArticleLayout() {
             </div>
           )}
 
-          {/* Topics Covered */}
+          {/* Topics Covered - Clickable to open topic tray */}
           {project.topics && project.topics.length > 0 && (
             <div className="mb-10">
               <h3 className="text-sm font-semibold mb-3 uppercase tracking-wider text-gray-500 dark:text-white/50">
@@ -469,12 +474,13 @@ export function CuratedArticleLayout() {
               </h3>
               <div className="flex flex-wrap gap-2">
                 {project.topics.slice(0, 6).map((topic: string, index: number) => (
-                  <span
+                  <button
                     key={index}
-                    className="px-3 py-1.5 text-sm rounded-full bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-white/70 border border-gray-200 dark:border-white/10"
+                    onClick={() => openTopicTray(topic)}
+                    className="px-3 py-1.5 text-sm rounded-full bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-white/70 border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/20 transition-colors cursor-pointer"
                   >
-                    {topic}
-                  </span>
+                    #{topic}
+                  </button>
                 ))}
               </div>
             </div>
