@@ -150,18 +150,31 @@ export function Personalization() {
       const data = await exportPersonalizationData();
 
       // Create and download JSON file
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
+      const filename = `personalization-data-${new Date().toISOString().split('T')[0]}.json`;
+
+      // Create and configure download link
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
-      a.download = `personalization-data-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = filename;
       document.body.appendChild(a);
+
+      // Trigger download
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
+
+      // Clean up after a short delay to ensure download starts
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (err: unknown) {
+      const error = err as { message?: string; response?: { data?: { detail?: string } } };
       console.error('Failed to export data:', err);
-      setDataError('Failed to export your data. Please try again.');
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to export your data. Please try again.';
+      setDataError(errorMessage);
     } finally {
       setIsExporting(false);
     }

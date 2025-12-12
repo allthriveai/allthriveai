@@ -252,6 +252,7 @@ class YouTubeService:
             'channel_id': snippet['channelId'],
             'channel_name': snippet['channelTitle'],
             'thumbnail_url': self._get_best_thumbnail(snippet['thumbnails']),
+            'is_vertical': self._is_vertical_video(snippet['thumbnails']),
             'duration': content_details['duration'],
             'published_at': snippet['publishedAt'],
             'view_count': int(statistics.get('viewCount', 0)),
@@ -309,6 +310,24 @@ class YouTubeService:
             if size in thumbnails:
                 return thumbnails[size]['url']
         return '/static/images/default-video-thumbnail.jpg'
+
+    def _is_vertical_video(self, thumbnails: dict) -> bool:
+        """
+        Detect if video is vertical (portrait) based on thumbnail dimensions.
+
+        YouTube Shorts and vertical videos have portrait thumbnails with height > width.
+        Standard videos have landscape thumbnails (16:9 aspect ratio).
+        """
+        # Check maxres first as it has actual video dimensions
+        for size in ['maxres', 'high', 'medium', 'default']:
+            if size in thumbnails:
+                thumb = thumbnails[size]
+                width = thumb.get('width', 0)
+                height = thumb.get('height', 0)
+                if width > 0 and height > 0:
+                    # Vertical if height > width (portrait orientation)
+                    return height > width
+        return False
 
     def get_channel_videos(
         self, channel_id: str, max_results: int = 50, published_after: str | None = None, etag: str | None = None

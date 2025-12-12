@@ -162,6 +162,7 @@ export interface VideoContent {
   channelName?: string;
   channelId?: string;
   isShort?: boolean;
+  isVertical?: boolean;  // True if video has portrait/vertical orientation
   duration?: string;
 }
 

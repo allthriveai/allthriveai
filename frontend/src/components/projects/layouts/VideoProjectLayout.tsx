@@ -204,9 +204,9 @@ export function VideoProjectLayout() {
   const channelName = videoContent.channelName || '';
   const channelId = videoContent.channelId || '';
 
-  // Detect if this is a YouTube Short (vertical video)
-  // Check both video metadata and section content for isShort flag
-  const isShort = videoContent.isShort || (typeof sectionContent === 'object' && 'isShort' in sectionContent ? sectionContent.isShort : false) || false;
+  // Detect if this is a YouTube Short or vertical video
+  // Check both video metadata and section content for isShort and isVertical flags
+  const isShort = videoContent.isShort || videoContent.isVertical || (typeof sectionContent === 'object' && ('isShort' in sectionContent ? sectionContent.isShort : false)) || (typeof sectionContent === 'object' && ('isVertical' in sectionContent ? sectionContent.isVertical : false)) || false;
 
   // Build YouTube embed URL - disable autoplay for desktop/tablet
   const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&autoplay=0` : null;

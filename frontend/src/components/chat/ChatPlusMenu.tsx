@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFigma, faGithub, faGitlab, faLinkedin, faYoutube } from '@fortawesome/free-brands-svg-icons';
-import { faBagShopping, faCircleQuestion, faCommentDots, faEllipsis, faLink } from '@fortawesome/free-solid-svg-icons';
+import { faBagShopping, faCircleQuestion, faCommentDots, faEllipsis, faLink, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '@/hooks/useAuth';
 
-export type IntegrationType = 'github' | 'gitlab' | 'figma' | 'youtube' | 'linkedin' | 'create-visual' | 'ask-help' | 'describe' | 'create-product' | 'import-url';
+export type IntegrationType = 'github' | 'gitlab' | 'figma' | 'youtube' | 'linkedin' | 'create-visual' | 'ask-help' | 'describe' | 'create-product' | 'import-url' | 'clear-conversation';
 
 interface ChatPlusMenuProps {
   onIntegrationSelect: (type: IntegrationType) => void;
@@ -48,6 +48,14 @@ const integrationOptions: IntegrationOption[] = [
     label: 'Ask for Help',
     icon: faCircleQuestion,
     description: 'Browse common questions & get help',
+    available: true,
+    isPrimary: true,
+  },
+  {
+    type: 'clear-conversation',
+    label: 'Clear Conversation',
+    icon: faTrashCan,
+    description: 'Start fresh (you can also use /clear)',
     available: true,
     isPrimary: true,
   },

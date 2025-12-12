@@ -905,43 +905,91 @@ class PipBattleAI:
         Returns:
             Pip's creative prompt text
         """
+        import secrets
+
         from services.ai.provider import AIProvider
+
+        # Random style direction to ensure variety
+        styles = [
+            'photorealistic with dramatic lighting',
+            'watercolor with soft edges and flowing colors',
+            'digital art with bold geometric shapes',
+            'oil painting with rich textures and brushstrokes',
+            'minimalist with clean lines and negative space',
+            'surrealist with dreamlike distortions',
+            'anime/manga style with expressive features',
+            'vintage poster art with retro typography',
+            'concept art with cinematic composition',
+            'impressionist with visible brushwork and light play',
+            'pixel art with nostalgic 8-bit aesthetic',
+            'art nouveau with organic flowing curves',
+            'cyberpunk with neon colors and tech elements',
+            'fantasy illustration with magical elements',
+            'street art/graffiti style with urban energy',
+        ]
+
+        color_palettes = [
+            'warm sunset tones (oranges, pinks, golds)',
+            'cool ocean colors (teals, blues, seafoam)',
+            'monochromatic with dramatic contrast',
+            'vibrant neon colors against dark backgrounds',
+            'earthy natural tones (greens, browns, amber)',
+            'pastel and dreamy soft colors',
+            'high contrast black and white with one accent color',
+            'jewel tones (emerald, sapphire, ruby)',
+            'autumn palette (burnt orange, deep red, golden yellow)',
+            'ethereal whites and silvers with hints of blue',
+        ]
+
+        chosen_style = secrets.choice(styles)
+        chosen_palette = secrets.choice(color_palettes)
 
         ai = AIProvider(provider='anthropic')
 
-        prompt = f"""
-You are Pip, a friendly and creative AI participating in an image generation battle.
-You're competing to create the best visual interpretation of a challenge.
+        prompt = f"""You are Pip, a creative AI competing in an image generation battle.
 
 Challenge: {battle.challenge_text}
 
-Write your creative direction (100-300 words) describing your vision for this image.
+Your assigned artistic approach for this battle:
+- Style: {chosen_style}
+- Color palette: {chosen_palette}
 
-Guidelines:
-- Be imaginative and specific about visual elements
-- Describe colors, mood, composition, and key details
-- Show personality - you're playful but thoughtful
-- Don't be overly complex - clarity helps image generation
-- Think about what would make a visually striking result
+Write a creative prompt (50-150 words) for an AI image generator. Be specific and vivid.
 
-Write your creative direction now:
-"""
+Requirements:
+1. Embrace the assigned style and colors fully
+2. Include specific visual details (composition, lighting, mood)
+3. Describe the main subject clearly
+4. Add one unexpected or creative twist
+5. Keep it concise - every word should paint the picture
+
+Write your prompt now (no preamble, just the prompt):"""
 
         try:
             response = ai.complete(
                 prompt=prompt,
-                temperature=0.9,
-                max_tokens=500,
+                temperature=1.0,  # Higher temperature for more variety
+                max_tokens=300,
             )
             return response.strip()
         except Exception as e:
             logger.error(f'Failed to generate Pip submission: {e}', exc_info=True)
-            # Fallback generic response
-            return (
-                f'For this {battle.challenge_text}, I envision a vibrant and dreamlike scene '
-                'with rich colors and dynamic composition. The focal point draws the eye '
-                'with a blend of surreal and familiar elements.'
-            )
+            # Varied fallback responses
+            fallbacks = [
+                f'{battle.challenge_text} rendered in {chosen_style}. '
+                f'Using a {chosen_palette} color scheme. '
+                'Dramatic composition with strong focal point and atmospheric depth.',
+                f'A striking interpretation of {battle.challenge_text}. '
+                f'{chosen_style.capitalize()} approach with {chosen_palette}. '
+                'Dynamic angles and expressive details create visual impact.',
+                f'{chosen_style.capitalize()} vision of {battle.challenge_text}. '
+                f'Color palette: {chosen_palette}. '
+                'Balanced composition with intentional negative space and bold subject placement.',
+                f'Creative take on {battle.challenge_text} using {chosen_style}. '
+                f'Featuring {chosen_palette} for emotional resonance. '
+                'Layered details reward closer inspection.',
+            ]
+            return secrets.choice(fallbacks)
 
     def create_pip_submission(self, battle: PromptBattle) -> BattleSubmission | None:
         """

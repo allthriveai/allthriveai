@@ -1,5 +1,37 @@
 from django.conf import settings
 from django.db import models
+from django.utils.text import slugify
+
+
+class TopicDefinition(models.Model):
+    """Cached AI-generated topic definitions.
+
+    When users click on a topic tag, we display a dictionary-style definition.
+    Definitions are generated once via AI and then cached permanently.
+    Similar topics (e.g., "ai-agents", "agents", "AI Agents") can map to the
+    same canonical definition via the aliases field.
+    """
+
+    slug = models.SlugField(max_length=100, unique=True, db_index=True)
+    display_name = models.CharField(max_length=100, help_text='Canonical display name (properly capitalized)')
+    description = models.TextField(help_text='AI-generated dictionary-style definition (2-3 sentences)')
+    aliases = models.JSONField(default=list, blank=True, help_text='Alternative slugs that map to this definition')
+    project_count = models.PositiveIntegerField(default=0, help_text='Cached count of projects with this topic')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['display_name']
+        verbose_name = 'Topic Definition'
+        verbose_name_plural = 'Topic Definitions'
+
+    def __str__(self):
+        return f'{self.display_name} ({self.slug})'
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.display_name)
+        super().save(*args, **kwargs)
 
 
 class Taxonomy(models.Model):
@@ -49,8 +81,6 @@ class Taxonomy(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            from django.utils.text import slugify
-
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 

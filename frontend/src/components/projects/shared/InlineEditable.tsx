@@ -101,6 +101,17 @@ export function InlineEditableTitle({
 
   // Edit mode
   if (isEditing) {
+    // Filter out gradient text classes that make text invisible in inputs
+    const editClassName = className
+      .replace(/text-transparent/g, '')
+      .replace(/bg-clip-text/g, '')
+      .replace(/bg-gradient-[\w-]+/g, '')
+      .replace(/from-[\w-/]+/g, '')
+      .replace(/via-[\w-/]+/g, '')
+      .replace(/to-[\w-/]+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
     return (
       <div className="relative">
         <input
@@ -111,7 +122,7 @@ export function InlineEditableTitle({
           onBlur={() => save()}
           onKeyDown={handleKeyDown}
           disabled={isSaving}
-          className={`w-full bg-transparent border-b-2 border-primary-500 focus:outline-none disabled:opacity-50 text-gray-900 dark:text-white ${className}`}
+          className={`w-full bg-transparent border-b-2 border-primary-500 focus:outline-none disabled:opacity-50 text-white ${editClassName}`}
           placeholder={placeholder}
           autoFocus
         />
@@ -206,6 +217,17 @@ export function InlineEditableText({
 
   // Edit mode
   if (isEditing) {
+    // Filter out gradient text classes that make text invisible in inputs
+    const editClassName = className
+      .replace(/text-transparent/g, '')
+      .replace(/bg-clip-text/g, '')
+      .replace(/bg-gradient-[\w-]+/g, '')
+      .replace(/from-[\w-/]+/g, '')
+      .replace(/via-[\w-/]+/g, '')
+      .replace(/to-[\w-/]+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
     if (multiline) {
       return (
         <div className="relative">
@@ -216,7 +238,7 @@ export function InlineEditableText({
             onBlur={() => save()}
             onKeyDown={handleKeyDown}
             disabled={isSaving}
-            className={`w-full bg-transparent border-2 border-primary-500 rounded-lg p-2 focus:outline-none resize-none disabled:opacity-50 text-gray-900 dark:text-white ${className}`}
+            className={`w-full bg-transparent border-2 border-primary-500 rounded-lg p-2 focus:outline-none resize-none disabled:opacity-50 text-white ${editClassName}`}
             placeholder={placeholder}
             rows={rows}
             autoFocus
@@ -236,7 +258,7 @@ export function InlineEditableText({
           onBlur={() => save()}
           onKeyDown={handleKeyDown}
           disabled={isSaving}
-          className={`w-full bg-transparent border-b-2 border-primary-500 focus:outline-none disabled:opacity-50 text-gray-900 dark:text-white ${className}`}
+          className={`w-full bg-transparent border-b-2 border-primary-500 focus:outline-none disabled:opacity-50 text-white ${editClassName}`}
           placeholder={placeholder}
           autoFocus
         />

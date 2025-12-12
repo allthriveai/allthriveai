@@ -1,6 +1,21 @@
 from rest_framework import serializers
 
-from .models import Taxonomy, UserInteraction, UserTag
+from .models import Taxonomy, TopicDefinition, UserInteraction, UserTag
+
+
+class TopicDefinitionSerializer(serializers.ModelSerializer):
+    """Serializer for AI-generated topic definitions."""
+
+    class Meta:
+        model = TopicDefinition
+        fields = [
+            'slug',
+            'display_name',
+            'description',
+            'project_count',
+            'created_at',
+        ]
+        read_only_fields = fields
 
 
 class TaxonomySerializer(serializers.ModelSerializer):

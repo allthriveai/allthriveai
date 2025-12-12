@@ -30,7 +30,7 @@ interface InvitationData {
     display_name?: string;
     avatar_url?: string;
   };
-  battle: {
+  battle?: {
     id: number;
     challenge_text: string;
     challenge_type: string | null;
@@ -314,7 +314,7 @@ export function BattleInvitePage() {
 
             {/* Battle details */}
             <div className="space-y-3 mb-6">
-              {invitation.battle.challenge_type && (
+              {invitation.battle?.challenge_type && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">Challenge Type</span>
                   <span className="text-white font-medium">{invitation.battle.challenge_type}</span>

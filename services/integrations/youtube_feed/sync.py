@@ -331,10 +331,15 @@ class YouTubeFeedSyncService:
         duration_iso = video_info.get('duration', '')
         duration_seconds = parse_iso_duration_to_seconds(duration_iso)
 
+        # Check if video is vertical (portrait orientation) based on thumbnail dimensions
+        # This is more reliable than duration-based heuristics
+        is_vertical = video_info.get('is_vertical', False)
+
         # Detect YouTube Shorts using heuristics:
         # - Under 90 seconds: definitely a Short
         # - 90-180 seconds with no/minimal description: likely a Short
-        is_short = False
+        # - Vertical video: treat as Short for display purposes
+        is_short = is_vertical  # Vertical videos should display like Shorts
         if duration_seconds <= 90:
             is_short = True
         elif duration_seconds <= 180:
@@ -356,6 +361,7 @@ class YouTubeFeedSyncService:
                 else f'https://www.youtube.com/watch?v={video_id}',
                 'embedUrl': f'https://www.youtube.com/embed/{video_id}',
                 'isShort': is_short,
+                'isVertical': is_vertical,  # True if video has portrait orientation
                 'duration': duration_seconds,
             },
         }
@@ -369,6 +375,7 @@ class YouTubeFeedSyncService:
                 'channelId': video_info['channel_id'],
                 'channelName': video_info['channel_name'],
                 'isShort': is_short,
+                'isVertical': is_vertical,  # True if video has portrait orientation
                 'duration': duration_seconds,
             },
             'heroDisplayMode': 'video',

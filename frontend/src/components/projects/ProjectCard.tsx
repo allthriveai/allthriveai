@@ -405,10 +405,10 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
         {/* BACKGROUND LAYER */}
         <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''}`}>
             {heroElement.type === 'image' && (() => {
-              // Check if this is a YouTube Short (vertical video) - show thumbnail with vertical aspect
+              // Check if this is a YouTube Short or vertical video - show thumbnail with vertical aspect
               const videoContent = typeof project.content?.video === 'object' ? project.content.video : {};
               const sectionContent = project.content?.sections?.[0]?.content || {};
-              const isYouTubeShort = videoContent.isShort || (typeof sectionContent === 'object' && 'isShort' in sectionContent ? sectionContent.isShort : false) || false;
+              const isYouTubeShort = videoContent.isShort || videoContent.isVertical || (typeof sectionContent === 'object' && ('isShort' in sectionContent ? sectionContent.isShort : false)) || (typeof sectionContent === 'object' && ('isVertical' in sectionContent ? sectionContent.isVertical : false)) || false;
 
               if (isYouTubeShort) {
                 return (
@@ -470,10 +470,10 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
             )}
 
             {heroElement.type === 'video' && (() => {
-              // Check if this is a YouTube Short (vertical video)
+              // Check if this is a YouTube Short or vertical video
               const videoContent = typeof project.content?.video === 'object' ? project.content.video : {};
               const sectionContent = project.content?.sections?.[0]?.content || {};
-              const isYouTubeShort = videoContent.isShort || (typeof sectionContent === 'object' && 'isShort' in sectionContent ? sectionContent.isShort : false) || false;
+              const isYouTubeShort = videoContent.isShort || videoContent.isVertical || (typeof sectionContent === 'object' && ('isShort' in sectionContent ? sectionContent.isShort : false)) || (typeof sectionContent === 'object' && ('isVertical' in sectionContent ? sectionContent.isVertical : false)) || false;
 
               // Parse video URL to get embed URL
               const parseVideoUrl = (url: string) => {

@@ -233,3 +233,62 @@ def track_interaction(request):
 
     serializer = UserInteractionSerializer(interaction)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def topic_detail(request, slug):
+    """Get topic definition and related projects.
+
+    This endpoint returns a dictionary-style definition of the topic
+    along with projects that are tagged with it. If the topic hasn't
+    been seen before, an AI-generated definition is created and cached.
+
+    Path Parameters:
+        slug: Topic slug (e.g., "ai-agents", "machine-learning")
+
+    Query Parameters:
+        limit: Number of related projects to return (default: 10, max: 20)
+
+    Returns:
+        {
+            "slug": "ai-agents",
+            "displayName": "AI Agents",
+            "description": "AI agents are autonomous software programs that...",
+            "projects": [...],  // Related projects
+            "projectCount": 42,
+            "exploreUrl": "/explore?topics=ai-agents"
+        }
+    """
+    from core.projects.serializers import ProjectCardSerializer
+
+    from .topic_service import get_or_create_topic_definition, get_related_projects, normalize_topic_slug
+
+    # Normalize the slug
+    normalized_slug = normalize_topic_slug(slug)
+    if not normalized_slug:
+        return Response({'error': 'Invalid topic slug'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get or create the topic definition
+    definition = get_or_create_topic_definition(normalized_slug, generate_if_missing=True)
+
+    if not definition:
+        return Response({'error': 'Topic not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Get related projects
+    limit = min(int(request.query_params.get('limit', 10)), 20)
+    projects = get_related_projects(normalized_slug, limit=limit)
+
+    # Serialize the response
+    project_serializer = ProjectCardSerializer(projects, many=True, context={'request': request})
+
+    return Response(
+        {
+            'slug': definition.slug,
+            'displayName': definition.display_name,
+            'description': definition.description,
+            'projects': project_serializer.data,
+            'projectCount': definition.project_count,
+            'exploreUrl': f'/explore?topics={definition.slug}',
+        }
+    )

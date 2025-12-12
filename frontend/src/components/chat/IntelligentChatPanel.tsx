@@ -536,6 +536,18 @@ export function IntelligentChatPanel({
         setHasInteracted(true);
         sendMessage('I need help with something');
         break;
+      case 'clear-conversation':
+        // Clear the conversation - same as /clear command
+        clearMessages();
+        setHasInteracted(false);
+        setError(undefined);
+        setQuotaExceeded(null);
+        // Reset any integration states
+        setGithubStep('idle');
+        setGitlabStep('idle');
+        setFigmaStep('idle');
+        setShowIntegrationPicker(false);
+        break;
       case 'describe':
         sendMessage("I'd like to describe something to you");
         break;

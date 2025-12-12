@@ -82,7 +82,13 @@ from .social.views import (
     status_li,
 )
 from .social.views import oauth_callback as social_oauth_callback
-from .taxonomy.views import TaxonomyViewSet, UserTagViewSet, track_interaction, user_personalization_overview
+from .taxonomy.views import (
+    TaxonomyViewSet,
+    UserTagViewSet,
+    topic_detail,
+    track_interaction,
+    user_personalization_overview,
+)
 from .thrive_circle.views import (
     AdminCircleViewSet,
     CircleViewSet,
@@ -302,6 +308,8 @@ urlpatterns = [
     path('', include('core.learning_paths.urls')),
     # Taxonomy endpoints
     path('', include(taxonomy_router.urls)),
+    # Topic detail endpoint (AI-generated definitions for topic tray)
+    path('topics/<slug:slug>/', topic_detail, name='topic_detail'),
     # Tool endpoints
     path('', include(tool_router.urls)),
     # Tool recommendation quiz endpoints (public)

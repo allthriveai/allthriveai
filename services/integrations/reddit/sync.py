@@ -848,6 +848,7 @@ class RedditSyncService:
         metadata = cls._prepare_reddit_metadata(post_data, metrics)
 
         # Create Reddit thread metadata with fetched metrics and moderation data
+        # Note: score can be None if API failed, but database requires integer
         RedditThread.objects.create(
             project=project,
             agent=agent,
@@ -855,8 +856,8 @@ class RedditSyncService:
             subreddit=post_data['subreddit'] or agent.subreddit,
             author=post_data['author'],
             permalink=post_data['permalink'],
-            score=metrics['score'],
-            num_comments=metrics['num_comments'],
+            score=metrics['score'] if metrics['score'] is not None else 0,
+            num_comments=metrics['num_comments'] or 0,
             thumbnail_url=image_url,
             created_utc=post_data['published_utc'] or timezone.now(),
             reddit_metadata=metadata,
@@ -915,9 +916,10 @@ class RedditSyncService:
         metadata = cls._prepare_reddit_metadata(post_data, metrics)
 
         # Update thread metadata with refreshed metrics
+        # Note: score can be None if API failed, but database requires integer
         thread.thumbnail_url = image_url
-        thread.score = metrics['score']
-        thread.num_comments = metrics['num_comments']
+        thread.score = metrics['score'] if metrics['score'] is not None else thread.score
+        thread.num_comments = metrics['num_comments'] or thread.num_comments
         thread.reddit_metadata = metadata
         thread.save(update_fields=['thumbnail_url', 'score', 'num_comments', 'reddit_metadata', 'last_synced_at'])
 

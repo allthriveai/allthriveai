@@ -149,6 +149,19 @@ STYLE: Abstract light photography or minimal neon art
 - Simple, elegant, not busy
 - Think: James Turrell light installations or minimal neon signage
 """,
+    'research_scientific': """
+STYLE: Clean scientific visualization with abstract AI/neural concepts
+- Color palette: Anthropic coral/terracotta accent, soft grays, warm whites, subtle gradients
+- Abstract neural network patterns, flowing data streams, geometric node connections
+- Clean diagram-like compositions reminiscent of research paper figures
+- Minimalist tech aesthetic - think Anthropic website or research papers
+- Soft, diffused lighting with subtle depth
+- Abstract representations of AI concepts: embeddings, attention patterns, gradient flows
+- Elegant negative space, uncluttered compositions
+- NO: literal robots, humanoid faces, cliché brain imagery, circuit boards
+- YES: abstract topology, mathematical surfaces, flowing particle systems, clean vector graphics
+- Think: Nature journal cover art meets Silicon Valley minimalism
+""",
 }
 
 
