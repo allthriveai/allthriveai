@@ -310,10 +310,11 @@ export function AppRoutes() {
 
       {/* Auth routes */}
       {/* Main auth route - chat onboarding */}
+      {/* allowGuest lets guest users convert to full accounts */}
       <Route
         path="/auth"
         element={
-          <ProtectedRoute redirectIfAuthenticated>
+          <ProtectedRoute redirectIfAuthenticated allowGuest>
             <AuthPage />
           </ProtectedRoute>
         }

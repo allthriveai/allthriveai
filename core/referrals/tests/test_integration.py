@@ -1,6 +1,6 @@
 """Integration tests for complete referral workflows."""
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from core.referrals.models import Referral, ReferralCode, ReferralStatus
@@ -91,6 +91,7 @@ class CompleteReferralFlowTestCase(TestCase):
         self.assertEqual(response.data['rewarded_referrals'], 1)
 
 
+@override_settings(REST_FRAMEWORK={'DEFAULT_THROTTLE_CLASSES': [], 'DEFAULT_THROTTLE_RATES': {}})
 class MultipleReferralsTestCase(TestCase):
     """Test scenarios with multiple referrals."""
 
