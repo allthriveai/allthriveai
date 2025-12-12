@@ -964,6 +964,14 @@ def explore_projects(request):
         .prefetch_related('tools', 'categories')
     )
 
+    # Exclude opponent's battle projects to avoid duplicates in explore feed
+    # Only the challenger's battle project should appear (is_challenger=True)
+    # Both participants still see the battle on their own profiles
+    queryset = queryset.exclude(
+        type='battle',
+        content__battleResult__is_challenger=False,
+    )
+
     # Annotate is_liked_by_user to avoid N+1 queries in serializer
     # This adds a single subquery instead of 1 query per project
     if request.user.is_authenticated:
@@ -1005,18 +1013,27 @@ def explore_projects(request):
     search_similarity_applied = False
     if search_query:
         # First try exact/contains match for best performance on exact queries
-        # Search title, description, and user info (username, first_name, last_name)
+        # Search title, description, user info, categories, tools, and topics
         exact_match = queryset.filter(
             Q(title__icontains=search_query)
             | Q(description__icontains=search_query)
             | Q(user__username__icontains=search_query)
             | Q(user__first_name__icontains=search_query)
             | Q(user__last_name__icontains=search_query)
-        )
+            | Q(categories__name__icontains=search_query)
+            | Q(tools__name__icontains=search_query)
+        ).distinct()
 
-        if exact_match.exists():
+        # Also check topics (stored as ArrayField of strings)
+        # Use case-insensitive contains on array elements
+        topics_match = queryset.filter(topics__icontains=search_query.lower())
+
+        # Combine both querysets
+        combined_match = (exact_match | topics_match).distinct()
+
+        if combined_match.exists():
             # Use exact match if found
-            queryset = exact_match
+            queryset = combined_match
         else:
             # Fall back to trigram word similarity for fuzzy matching
             # TrigramWordSimilarity finds similar words within text fields

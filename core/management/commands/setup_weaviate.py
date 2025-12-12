@@ -2,9 +2,12 @@
 Management command to set up Weaviate vector database schema.
 
 Usage:
-    python manage.py setup_weaviate           # Create all collections
-    python manage.py setup_weaviate --reset   # Delete and recreate collections
-    python manage.py setup_weaviate --check   # Check connection status only
+    python manage.py setup_weaviate                  # Create all collections
+    python manage.py setup_weaviate --reset          # Delete and recreate collections
+    python manage.py setup_weaviate --check          # Check connection status only
+    python manage.py setup_weaviate --reindex        # Trigger full reindex of all projects
+    python manage.py setup_weaviate --reindex-users  # Trigger full reindex of user profiles
+    python manage.py setup_weaviate --reindex-all    # Reindex projects, users, and quizzes
 """
 
 from django.core.management.base import BaseCommand
@@ -25,6 +28,21 @@ class Command(BaseCommand):
             '--check',
             action='store_true',
             help='Only check connection status',
+        )
+        parser.add_argument(
+            '--reindex',
+            action='store_true',
+            help='Trigger full reindex of all projects to Weaviate',
+        )
+        parser.add_argument(
+            '--reindex-users',
+            action='store_true',
+            help='Trigger full reindex of user profiles to Weaviate',
+        )
+        parser.add_argument(
+            '--reindex-all',
+            action='store_true',
+            help='Trigger full reindex of projects, users, and quizzes',
         )
 
     def handle(self, *args, **options):
@@ -48,6 +66,11 @@ class Command(BaseCommand):
             # Just check connection and exit
             return
 
+        # Handle reindex options
+        if options['reindex'] or options['reindex_users'] or options['reindex_all']:
+            self._handle_reindex(options)
+            return
+
         if options['reset']:
             self.stdout.write('Deleting existing collections...')
             results = WeaviateSchema.delete_all_collections(client.client)
@@ -68,3 +91,41 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f'  Failed: {name}'))
 
         self.stdout.write(self.style.SUCCESS('Weaviate setup complete!'))
+
+    def _handle_reindex(self, options):
+        """Handle reindex operations."""
+        from services.weaviate.tasks import (
+            full_reindex_projects,
+            full_reindex_quizzes,
+            full_reindex_users,
+        )
+
+        if options['reindex_all']:
+            # Reindex everything
+            self.stdout.write('Triggering full reindex of projects...')
+            result = full_reindex_projects.delay()
+            self.stdout.write(self.style.SUCCESS(f'  Projects reindex queued: task_id={result.id}'))
+
+            self.stdout.write('Triggering full reindex of users...')
+            result = full_reindex_users.delay()
+            self.stdout.write(self.style.SUCCESS(f'  Users reindex queued: task_id={result.id}'))
+
+            self.stdout.write('Triggering full reindex of quizzes...')
+            result = full_reindex_quizzes.delay()
+            self.stdout.write(self.style.SUCCESS(f'  Quizzes reindex queued: task_id={result.id}'))
+
+            self.stdout.write(self.style.SUCCESS('\nAll reindex tasks queued! Monitor Celery logs for progress.'))
+        elif options['reindex']:
+            self.stdout.write('Triggering full reindex of projects...')
+            result = full_reindex_projects.delay()
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'Projects reindex queued: task_id={result.id}\n' 'Monitor Celery logs for progress.'
+                )
+            )
+        elif options['reindex_users']:
+            self.stdout.write('Triggering full reindex of user profiles...')
+            result = full_reindex_users.delay()
+            self.stdout.write(
+                self.style.SUCCESS(f'Users reindex queued: task_id={result.id}\n' 'Monitor Celery logs for progress.')
+            )

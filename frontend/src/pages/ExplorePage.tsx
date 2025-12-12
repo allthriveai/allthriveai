@@ -217,7 +217,12 @@ export function ExplorePage() {
   }, [profilesData]);
 
   const displayProjects = useMemo(() => {
-    return searchQuery && semanticResults ? semanticResults : allProjects;
+    // Use semantic results only if they have actual results
+    // Fall back to explore API results (which also support search) when semantic returns empty
+    if (searchQuery && semanticResults && semanticResults.length > 0) {
+      return semanticResults;
+    }
+    return allProjects;
   }, [searchQuery, semanticResults, allProjects]);
 
   // Don't show quizzes in profiles tab

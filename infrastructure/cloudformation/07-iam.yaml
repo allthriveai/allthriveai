@@ -229,6 +229,9 @@ Resources:
                   - ecs:ListTasks
                   - ecs:DescribeTasks
                   - ecs:RunTask
+                  - ecs:TagResource
+                  - ecs:CreateService
+                  - ecs:DeleteService
                 Resource: '*'
               - Effect: Allow
                 Action:
@@ -286,6 +289,32 @@ Resources:
                   - cloudformation:ValidateTemplate
                 Resource:
                   - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${EnvironmentName}-allthrive-*
+        - PolicyName: ServiceDiscoveryAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - servicediscovery:CreateService
+                  - servicediscovery:DeleteService
+                  - servicediscovery:GetService
+                  - servicediscovery:ListServices
+                  - servicediscovery:CreatePrivateDnsNamespace
+                  - servicediscovery:GetNamespace
+                  - servicediscovery:ListNamespaces
+                  - servicediscovery:TagResource
+                Resource: '*'
+        - PolicyName: LogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:DescribeLogGroups
+                  - logs:TagResource
+                Resource: '*'
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName}-allthrive-github-actions-role
