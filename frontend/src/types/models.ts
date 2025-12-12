@@ -139,7 +139,7 @@ export interface Project {
   featuredImageUrl?: string;
   externalUrl?: string;
   tools: number[]; // Tool IDs
-  toolsDetails?: Tool[]; // Full tool objects with details
+  toolsDetails?: ToolSummary[]; // Minimal tool info for display
   categories?: number[]; // Category taxonomy IDs (predefined)
   categoriesDetails?: Taxonomy[]; // Full category taxonomy objects
   hideCategories?: boolean; // If true, categories are hidden from public display
@@ -393,6 +393,14 @@ export interface UserInteraction {
 // Tool types
 export type ToolCategory = 'chat' | 'code' | 'image' | 'video' | 'audio' | 'writing' | 'research' | 'productivity' | 'data' | 'design' | 'other';
 export type PricingModel = 'free' | 'freemium' | 'subscription' | 'pay_per_use' | 'enterprise' | 'open_source';
+
+// Minimal tool info used in project toolsDetails
+export interface ToolSummary {
+  id: number;
+  name: string;
+  slug: string;
+  logoUrl?: string;
+}
 
 export interface ToolFeature {
   title: string;
