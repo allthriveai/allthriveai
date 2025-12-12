@@ -381,7 +381,7 @@ class CreateProjectFromImageView(APIView):
             )
 
             # Add tools - try to find "Nano Banana" or create AI image generation tools
-            from core.taxonomy.models import Category
+            from core.taxonomy.models import Taxonomy
             from core.tools.models import Tool
 
             # Try to add Nano Banana tool
@@ -393,8 +393,8 @@ class CreateProjectFromImageView(APIView):
                 project.tools.add(nano_banana_tool)
 
             # Add relevant categories silently (not displayed but helps with organization)
-            ai_art_category = Category.objects.filter(
-                slug__in=['ai-art', 'ai-generated', 'generative-ai', 'art']
+            ai_art_category = Taxonomy.objects.filter(
+                taxonomy_type='category', slug__in=['ai-art', 'ai-generated', 'generative-ai', 'art']
             ).first()
             if ai_art_category:
                 project.categories.add(ai_art_category)
