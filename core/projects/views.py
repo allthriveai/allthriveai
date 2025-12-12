@@ -475,7 +475,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """
         from services.ai.provider import AIProvider
         from services.integrations.rss.sync import VISUAL_STYLE_PROMPTS
-        from services.storage import get_storage_service
+        from services.integrations.storage.storage_service import get_storage_service
 
         try:
             ai = AIProvider(provider='gemini')
