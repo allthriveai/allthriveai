@@ -1,14 +1,17 @@
 {% extends "crawler/base.html" %}
 
-{% block title %}@{{ user.username }} - AllThrive AI{% endblock %}
+{% block title %}{% if user.first_name %}{{ user.first_name }}{% if user.last_name %} {{ user.last_name }}{% endif %}{% else %}@{{ user.username }}{% endif %} - AllThrive AI{% endblock %}
 
-{% block description %}@{{ user.username }}'s profile on AllThrive AI. AI builder showcasing projects and skills.{% endblock %}
+{% block description %}{% if user.tagline %}{{ user.tagline }}{% elif user.bio %}{{ user.bio|truncatewords:30 }}{% else %}@{{ user.username }}'s profile on AllThrive AI. AI builder showcasing projects and skills.{% endif %}{% endblock %}
 
-{% block og_title %}@{{ user.username }} - AllThrive AI{% endblock %}
-{% block og_description %}@{{ user.username }}'s profile on AllThrive AI. AI builder showcasing projects and skills.{% endblock %}
-{% if user.avatar_url %}
-{% block og_image %}{{ user.avatar_url }}{% endblock %}
-{% endif %}
+{% block og_type %}profile{% endblock %}
+{% block og_title %}{% if user.first_name %}{{ user.first_name }}{% if user.last_name %} {{ user.last_name }}{% endif %} (@{{ user.username }}){% else %}@{{ user.username }}{% endif %} - AllThrive AI{% endblock %}
+{% block og_description %}{% if user.tagline %}{{ user.tagline }}{% elif user.bio %}{{ user.bio|truncatewords:30 }}{% else %}@{{ user.username }}'s profile on AllThrive AI. AI builder showcasing projects and skills.{% endif %}{% endblock %}
+{% if user.avatar_url %}{% block og_image %}{{ user.avatar_url }}{% endblock %}{% endif %}
+
+{% block twitter_title %}{% if user.first_name %}{{ user.first_name }}{% if user.last_name %} {{ user.last_name }}{% endif %} (@{{ user.username }}){% else %}@{{ user.username }}{% endif %} - AllThrive AI{% endblock %}
+{% block twitter_description %}{% if user.tagline %}{{ user.tagline }}{% elif user.bio %}{{ user.bio|truncatewords:30 }}{% else %}@{{ user.username }}'s profile on AllThrive AI. AI builder showcasing projects and skills.{% endif %}{% endblock %}
+{% if user.avatar_url %}{% block twitter_image %}{{ user.avatar_url }}{% endblock %}{% endif %}
 
 {% block extra_styles %}
 .profile-header {
@@ -69,14 +72,21 @@
 {% block content %}
 <article class="profile-header">
     {% if user.avatar_url %}
-    <img src="{{ user.avatar_url }}" alt="@{{ user.username }}" class="profile-avatar">
+    <img src="{{ user.avatar_url }}" alt="{% if user.first_name %}{{ user.first_name }}{% else %}@{{ user.username }}{% endif %}" class="profile-avatar">
     {% endif %}
 
-    <h1>@{{ user.username }}</h1>
+    <h1>{% if user.first_name %}{{ user.first_name }}{% if user.last_name %} {{ user.last_name }}{% endif %}{% else %}@{{ user.username }}{% endif %}</h1>
+    {% if user.first_name %}<p style="color: #666; margin-top: 5px;">@{{ user.username }}</p>{% endif %}
 
-    <p style="font-size: 1.1em; margin: 20px 0;">
-        AI builder on AllThrive AI
-    </p>
+    {% if user.tagline %}
+    <p style="font-size: 1.2em; margin: 15px 0; color: #333;">{{ user.tagline }}</p>
+    {% endif %}
+
+    {% if user.bio %}
+    <p style="font-size: 1.1em; margin: 20px 0;">{{ user.bio|truncatewords:50 }}</p>
+    {% else %}
+    <p style="font-size: 1.1em; margin: 20px 0;">AI builder on AllThrive AI</p>
+    {% endif %}
 
     <div class="profile-stats">
         <div class="stat-item">

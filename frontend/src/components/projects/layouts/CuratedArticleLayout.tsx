@@ -21,8 +21,9 @@ import { ProjectActions } from '../shared/ProjectActions';
 import { ShareModal } from '../shared/ShareModal';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
-import { adminEditProject, VISUAL_STYLES, type VisualStyle } from '@/services/projects';
+import { adminEditProject, VISUAL_STYLES, type VisualStyle, updateProjectTags, getTools, getTaxonomies } from '@/services/projects';
 import { getImpersonationStatus } from '@/services/impersonation';
+import type { Tool, Taxonomy } from '@/types/models';
 
 /**
  * Format the expert review into structured HTML with headers and sections
@@ -140,6 +141,40 @@ export function CuratedArticleLayout() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
 
+  // Tools and tags editing state
+  const [availableTools, setAvailableTools] = useState<Tool[]>([]);
+  const [_availableCategories, setAvailableCategories] = useState<Taxonomy[]>([]);
+  const [selectedToolIds, setSelectedToolIds] = useState<number[]>(project.tools || []);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>(project.categories || []);
+  const [editTopics, setEditTopics] = useState<string[]>(project.topics || []);
+  const [newTopic, setNewTopic] = useState('');
+  const [isSavingTags, setIsSavingTags] = useState(false);
+  const [toolSearchQuery, _setToolSearchQuery] = useState('');
+
+  // Fetch available tools and categories when admin panel opens
+  useEffect(() => {
+    if (isAdminPanelOpen && canEdit) {
+      // Fetch tools
+      getTools().then(tools => {
+        setAvailableTools(tools);
+      }).catch(err => {
+        console.error('Failed to fetch tools:', err);
+      });
+
+      // Fetch categories
+      getTaxonomies('category').then(categories => {
+        setAvailableCategories(categories);
+      }).catch(err => {
+        console.error('Failed to fetch categories:', err);
+      });
+
+      // Reset selections to current project values
+      setSelectedToolIds(project.tools || []);
+      setSelectedCategoryIds(project.categories || []);
+      setEditTopics(project.topics || []);
+    }
+  }, [isAdminPanelOpen, canEdit, project.tools, project.categories, project.topics]);
+
   // Handle saving text changes
   const handleSaveTextChanges = async () => {
     if (isSaving) return;
@@ -182,6 +217,64 @@ export function CuratedArticleLayout() {
       setIsRegenerating(false);
     }
   };
+
+  // Handle saving tools, categories, and topics
+  const _handleSaveTags = async () => {
+    if (isSavingTags) return;
+    setIsSavingTags(true);
+    setAdminError(null);
+
+    try {
+      const updatedProject = await updateProjectTags(project.id, {
+        tools: selectedToolIds,
+        categories: selectedCategoryIds,
+        topics: editTopics,
+      });
+      setProject(updatedProject);
+    } catch (error: any) {
+      console.error('Admin save tags error:', error);
+      setAdminError('Failed to save tags. Please try again.');
+    } finally {
+      setIsSavingTags(false);
+    }
+  };
+
+  // Handle adding a new topic
+  const _handleAddTopic = () => {
+    const trimmedTopic = newTopic.trim();
+    if (trimmedTopic && !editTopics.includes(trimmedTopic)) {
+      setEditTopics([...editTopics, trimmedTopic]);
+      setNewTopic('');
+    }
+  };
+
+  // Handle removing a topic
+  const _handleRemoveTopic = (topicToRemove: string) => {
+    setEditTopics(editTopics.filter(t => t !== topicToRemove));
+  };
+
+  // Toggle tool selection
+  const _handleToggleTool = (toolId: number) => {
+    setSelectedToolIds(prev =>
+      prev.includes(toolId)
+        ? prev.filter(id => id !== toolId)
+        : [...prev, toolId]
+    );
+  };
+
+  // Toggle category selection
+  const _handleToggleCategory = (categoryId: number) => {
+    setSelectedCategoryIds(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  // Filter tools by search query
+  const _filteredTools = availableTools.filter(tool =>
+    tool.name.toLowerCase().includes(toolSearchQuery.toLowerCase())
+  );
 
   const handleToolClick = (toolSlug: string) => {
     setSelectedToolSlug(toolSlug);
