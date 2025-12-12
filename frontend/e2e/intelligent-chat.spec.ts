@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, TEST_USER } from './helpers';
 
-// Helper to open the chat panel
+// Helper to open the chat panel via Support menu
 async function openChatPanel(page: import('@playwright/test').Page) {
   // Open the Support dropdown in the navigation
   const supportNav = page.locator('button:has-text("Support")').first();
@@ -11,6 +11,14 @@ async function openChatPanel(page: import('@playwright/test').Page) {
   // Click the Chat option in the dropdown
   const chatOption = page.getByText('Chat').first();
   await chatOption.click();
+  await page.waitForTimeout(1500);
+}
+
+// Helper to open the chat panel via +Add Project button (real user workflow)
+async function openChatViaAddProject(page: import('@playwright/test').Page) {
+  // Click the +Add Project button in the top navigation
+  const addProjectButton = page.locator('[data-testid="add-project-button"]');
+  await addProjectButton.click();
   await page.waitForTimeout(1500);
 }
 
@@ -684,6 +692,7 @@ test.describe('Intelligent Chat', () => {
 
   test.describe('Real User Workflows', () => {
     // These tests verify the AI responds appropriately to common user actions
+    // Users open intelligent chat via the +Add Project button on /explore
     // Skip in CI - requires AI API keys (OpenAI/Anthropic) which aren't configured in CI
     test.skip(!!process.env.CI, 'Skipping AI workflow tests in CI - requires API keys');
     test.setTimeout(180000); // 3 minutes for AI responses
@@ -693,7 +702,12 @@ test.describe('Intelligent Chat', () => {
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(2000);
 
-      await openChatPanel(page);
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
 
       // User pastes a YouTube link
       const chatInput = page.getByPlaceholder('Ask me anything...');
@@ -719,7 +733,6 @@ test.describe('Intelligent Chat', () => {
       }
 
       // Chat should remain functional
-      const chatHeader = page.getByText('All Thrive AI Chat');
       await expect(chatHeader).toBeVisible();
     });
 
@@ -728,7 +741,12 @@ test.describe('Intelligent Chat', () => {
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(2000);
 
-      await openChatPanel(page);
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
 
       // User pastes a GitHub repo link
       const chatInput = page.getByPlaceholder('Ask me anything...');
@@ -742,7 +760,6 @@ test.describe('Intelligent Chat', () => {
 
       // AI should recognize it's a GitHub repo
       // The response should mention something about the repo, code, or project
-      const chatHeader = page.getByText('All Thrive AI Chat');
       await expect(chatHeader).toBeVisible();
 
       // Should not crash - connection status should be visible
@@ -755,7 +772,12 @@ test.describe('Intelligent Chat', () => {
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(2000);
 
-      await openChatPanel(page);
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
 
       // User asks a question about AI tools
       const chatInput = page.getByPlaceholder('Ask me anything...');
@@ -769,7 +791,6 @@ test.describe('Intelligent Chat', () => {
 
       // Should get a substantive response mentioning image generation tools
       // At minimum, chat should still be working
-      const chatHeader = page.getByText('All Thrive AI Chat');
       await expect(chatHeader).toBeVisible();
 
       // User message should be visible
@@ -781,7 +802,12 @@ test.describe('Intelligent Chat', () => {
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(2000);
 
-      await openChatPanel(page);
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
 
       // User describes a project they want to create
       const chatInput = page.getByPlaceholder('Ask me anything...');
@@ -797,7 +823,6 @@ test.describe('Intelligent Chat', () => {
 
       // AI should offer to help create a project
       // Could ask for the image or offer guidance
-      const chatHeader = page.getByText('All Thrive AI Chat');
       await expect(chatHeader).toBeVisible();
 
       // Should not show errors
@@ -811,7 +836,12 @@ test.describe('Intelligent Chat', () => {
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(2000);
 
-      await openChatPanel(page);
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
 
       // User pastes a tweet link
       const chatInput = page.getByPlaceholder('Ask me anything...');
@@ -824,7 +854,6 @@ test.describe('Intelligent Chat', () => {
       await page.waitForTimeout(30000);
 
       // Should handle gracefully (may not be able to access, but shouldn't crash)
-      const chatHeader = page.getByText('All Thrive AI Chat');
       await expect(chatHeader).toBeVisible();
     });
 
@@ -833,7 +862,12 @@ test.describe('Intelligent Chat', () => {
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(2000);
 
-      await openChatPanel(page);
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
 
       // Open plus menu and click Figma integration
       const plusButton = page.locator('button[aria-label="Add integration"]');
@@ -854,7 +888,6 @@ test.describe('Intelligent Chat', () => {
 
       // Should prompt user or show some UI for Figma import
       // Chat should remain functional
-      const chatHeader = page.getByText('All Thrive AI Chat');
       await expect(chatHeader).toBeVisible();
     });
 
@@ -863,7 +896,12 @@ test.describe('Intelligent Chat', () => {
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(2000);
 
-      await openChatPanel(page);
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
 
       // Open plus menu and click Create Image option
       const plusButton = page.locator('button[aria-label="Add integration"]');
@@ -877,7 +915,6 @@ test.describe('Intelligent Chat', () => {
       await page.waitForTimeout(1000);
 
       // Should show some prompt or the AI should respond about image creation
-      const chatHeader = page.getByText('All Thrive AI Chat');
       await expect(chatHeader).toBeVisible();
 
       // Now type an image generation request
@@ -899,7 +936,12 @@ test.describe('Intelligent Chat', () => {
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(2000);
 
-      await openChatPanel(page);
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
 
       // User asks about their profile
       const chatInput = page.getByPlaceholder('Ask me anything...');
@@ -912,7 +954,6 @@ test.describe('Intelligent Chat', () => {
       await page.waitForTimeout(30000);
 
       // Should provide helpful advice
-      const chatHeader = page.getByText('All Thrive AI Chat');
       await expect(chatHeader).toBeVisible();
 
       // User message should be there
@@ -924,7 +965,12 @@ test.describe('Intelligent Chat', () => {
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(2000);
 
-      await openChatPanel(page);
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
 
       // User pastes a LinkedIn profile URL
       const chatInput = page.getByPlaceholder('Ask me anything...');
@@ -937,7 +983,6 @@ test.describe('Intelligent Chat', () => {
       await page.waitForTimeout(30000);
 
       // Should handle gracefully - LinkedIn may require auth
-      const chatHeader = page.getByText('All Thrive AI Chat');
       await expect(chatHeader).toBeVisible();
 
       // Should not show technical errors

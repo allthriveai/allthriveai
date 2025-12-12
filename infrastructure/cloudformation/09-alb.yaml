@@ -37,8 +37,10 @@ Resources:
         - !ImportValue
           Fn::Sub: ${EnvironmentName}-PublicSubnet2Id
       LoadBalancerAttributes:
+        # Increased timeout for WebSocket connections and AI streaming
+        # WebSockets may be idle during user thinking or AI processing
         - Key: idle_timeout.timeout_seconds
-          Value: '120'
+          Value: '300'
         - Key: routing.http2.enabled
           Value: 'true'
         - Key: deletion_protection.enabled

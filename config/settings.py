@@ -498,9 +498,18 @@ ASGI_APPLICATION = 'config.asgi.application'
 # For AWS ElastiCache with TLS, use rediss:// URL with ssl_cert_reqs as a kwarg
 # The kwarg must be lowercase 'none' (not 'CERT_NONE' or ssl.CERT_NONE)
 # because channels_redis passes it to aioredis.ConnectionPool.from_url()
+#
+# NOTE on ssl_cert_reqs:
+# - AWS ElastiCache uses Amazon's internal CA which isn't in the default certificate store
+# - Using 'none' skips certificate verification (works but less secure)
+# - For production, consider installing Amazon Root CA and using 'required'
+# - See: https://github.com/andymccurdy/redis-py/issues/1080
 if REDIS_USE_TLS and REDIS_HOST:
     # Build rediss:// URL for TLS connection
     _channels_redis_url = f'rediss://:{REDIS_AUTH_TOKEN}@{REDIS_HOST}:{REDIS_PORT}/3'
+
+    # Allow override via environment variable for stricter security
+    _redis_ssl_cert_reqs = config('REDIS_SSL_CERT_REQS', default='none')
 
     CHANNEL_LAYERS = {
         'default': {
@@ -509,11 +518,11 @@ if REDIS_USE_TLS and REDIS_HOST:
                 'hosts': [
                     {
                         'address': _channels_redis_url,
-                        'ssl_cert_reqs': 'none',  # lowercase string for redis-py compatibility
+                        'ssl_cert_reqs': _redis_ssl_cert_reqs,  # 'none' for ElastiCache compatibility
                     }
                 ],
-                'capacity': 1500,  # Max messages to store per channel
-                'expiry': 10,  # Message expiry in seconds
+                'capacity': 3000,  # Max messages to store per channel (increased for production load)
+                'expiry': 15,  # Message expiry in seconds (slight increase for reliability)
             },
         },
     }
@@ -525,8 +534,8 @@ else:
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
                 'hosts': [_channels_redis_url],
-                'capacity': 1500,  # Max messages to store per channel
-                'expiry': 10,  # Message expiry in seconds
+                'capacity': 3000,  # Max messages to store per channel
+                'expiry': 15,  # Message expiry in seconds
             },
         },
     }
@@ -896,7 +905,7 @@ CONTENT_SECURITY_POLICY = {
         'script-src': _CSP_SCRIPT_SRC,
         'style-src': _CSP_STYLE_SRC,
         'img-src': ("'self'", 'data:', 'https:'),
-        'connect-src': ("'self'",)
+        'connect-src': ("'self'", 'wss:', 'ws:')
         + tuple(
             config(
                 'CORS_ALLOWED_ORIGINS',

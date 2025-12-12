@@ -28,6 +28,7 @@ class CreateProjectInput(BaseModel):
     description: str = Field(default='', description='Description of the project (optional)')
     is_showcase: bool = Field(default=True, description='Whether to add to showcase (default: True)')
     external_url: str = Field(default='', description='External URL for the project (e.g., GitHub repo URL)')
+    featured_image_url: str = Field(default='', description='URL of the hero/featured image or video for the project')
     language: str = Field(default='', description='Primary programming language (for GitHub repos)')
     topics: list[str] = Field(default_factory=list, description='Topics/tags for the project')
     stars: int = Field(default=0, description='GitHub star count (for display)')
@@ -88,6 +89,7 @@ def create_project(
     description: str = '',
     is_showcase: bool = True,  # Default to showcased
     external_url: str = '',
+    featured_image_url: str = '',
     language: str = '',
     topics: list[str] | None = None,
     stars: int = 0,
@@ -106,6 +108,9 @@ def create_project(
     - topics: Repository topics/tags
     - stars: Star count
     - forks: Fork count
+
+    For file uploads (images, videos), pass:
+    - featured_image_url: The S3/MinIO URL of the uploaded file
 
     Returns:
         Dictionary with project details or error message
@@ -133,7 +138,8 @@ def create_project(
     # Create project via service
     logger.info(
         f'Calling ProjectService.create_project: user_id={user_id}, title={title}, '
-        f'project_type={project_type}, is_showcase={is_showcase}, external_url={external_url}'
+        f'project_type={project_type}, is_showcase={is_showcase}, external_url={external_url}, '
+        f'featured_image_url={featured_image_url}'
     )
     project, error = ProjectService.create_project(
         user_id=user_id,
@@ -141,6 +147,7 @@ def create_project(
         project_type=project_type,
         description=description,
         is_showcase=is_showcase,
+        featured_image_url=featured_image_url,
         external_url=external_url,
         content=content,
     )

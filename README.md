@@ -117,6 +117,17 @@ Run `make help` to see all available commands. Here are the most commonly used:
 - `make security-check` - Run security checks
 - `make pre-commit` - Run pre-commit hooks
 
+### Testing
+- `make test` - Run all tests (backend + frontend)
+- `make test-backend` - Run backend Django tests
+- `make test-frontend` - Run frontend unit tests
+- `make test-e2e` - Run all Playwright E2E tests
+- `make test-e2e-chat` - Run Intelligent Chat E2E tests
+- `make test-e2e-chat-ai` - Run AI workflow tests (requires API keys)
+- `make test-e2e-chat-edge` - Run Chat edge case tests
+- `make test-e2e-ui` - Run E2E tests with browser UI
+- `make test-e2e-debug` - Run E2E tests in debug mode
+
 ### Cleanup
 - `make clean` - Clean cache and build files
 - `make clean-cache` - Clean cache only

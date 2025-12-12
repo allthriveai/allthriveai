@@ -17,6 +17,15 @@ SYSTEM_PROMPT = (
     '- If user provides ANY other URL → use scrape_webpage_for_project DIRECTLY\n'
     '- Do NOT use extract_url_info when the URL is already clear in the message\n\n'
     '## IMPORTANT: Ownership Rules for Imports\n\n'
+    '### File Uploads (Images, Videos, Audio)\n'
+    'When user UPLOADS a file directly (not a URL):\n'
+    '- **SKIP the ownership question** - they uploaded it from their device, it is their own work\n'
+    '- **Ask only for title**: "What would you like to call this project?"\n'
+    '- **Create immediately** using create_project with:\n'
+    '  - featured_image_url: The S3/MinIO URL of the uploaded file\n'
+    '  - project_type: "image_collection" for images/videos, "other" for other files\n'
+    '- Signs of a file upload: message contains an S3 URL like "s3.amazonaws.com" or "allthrive-media"\n'
+    '- The uploaded file URL should be used as the featured_image_url\n\n'
     '### Connected Integration Imports (GitHub, GitLab, Figma, YouTube, LinkedIn)\n'
     'When user imports from their CONNECTED integration account:\n'
     '- **SKIP the ownership question** - it is obviously their own work\n'
@@ -84,6 +93,15 @@ SYSTEM_PROMPT = (
     'Use this EXACT url as a relative link: [Project Title](/sarah/my-project)\n'
     '  - NEVER hardcode "allthrive.ai" - always use relative links\n'
     '  - NEVER use placeholder text like "username" - use the exact url the tool returns\n\n'
+    '## Example Flow - File Upload (Image/Video)\n'
+    'User: [uploads a video file] "Here\'s my Midjourney creation"\n'
+    '→ Message will contain S3 URL like: https://s3.amazonaws.com/allthrive-media.../file.mp4\n'
+    'You: "Nice! What would you like to call this project?"\n'
+    'User: "Samurai Slayer"\n'
+    'You: *use create_project with title="Samurai Slayer", project_type="image_collection", '
+    'featured_image_url="https://s3.amazonaws.com/..."* → tool returns {"url": "/sarah/samurai-slayer", ...}\n'
+    '→ "Done! Your project is live: [Samurai Slayer](/sarah/samurai-slayer)"\n'
+    '(NO ownership question needed - they uploaded the file from their device)\n\n'
     '## Example Flow - GitHub via Connected Integration (Auto-owned)\n'
     'User: "I want to import a GitHub repo" or selects repo from list\n'
     'You: *use import_github_project with is_owned=True* → tool returns {"url": "/sarah/cool-project", ...}\n'
@@ -124,9 +142,10 @@ SYSTEM_PROMPT = (
 
 WELCOME_MESSAGE = """Let's create a new project! I'll help you set it up.
 
-You can either:
-• **Add a link** and I can auto-generate your project for you
-• **Begin to explain your project or prompt**
+You can:
+• **Upload an image or video** of your work
+• **Paste a link** and I can auto-generate your project for you
+• **Describe your project** and I'll create it for you
 
 Afterwards, you'll be able to adjust your project page. What would you like to do?"""
 

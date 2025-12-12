@@ -26,18 +26,35 @@
  *
  * Priority:
  * 1. VITE_WS_URL environment variable (explicit configuration)
- * 2. Default: ws://localhost:8000 for development
+ * 2. Derive from VITE_API_URL (convert https:// to wss://)
+ * 3. Derive from current page domain (for production fallback)
+ * 4. Default: ws://localhost:8000 for local development only
  *
  * @returns The WebSocket base URL without trailing slash
  */
 export function getWebSocketBaseUrl(): string {
-  // Explicit WebSocket URL takes priority
+  // 1. Explicit WebSocket URL takes highest priority
   if (import.meta.env.VITE_WS_URL) {
     return import.meta.env.VITE_WS_URL.replace(/\/$/, '');
   }
 
-  // Default for local development: direct connection to backend
-  // In production, VITE_WS_URL should be set to the production WebSocket URL
+  // 2. Derive from API URL if available (convert http(s) to ws(s))
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (apiUrl) {
+    const wsProtocol = apiUrl.startsWith('https') ? 'wss:' : 'ws:';
+    return apiUrl.replace(/^https?:/, wsProtocol).replace(/\/$/, '');
+  }
+
+  // 3. In production (non-localhost), derive from current page domain
+  // This ensures WebSockets work even if env vars are missing from build
+  if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Use api subdomain for WebSocket connections (matches our architecture)
+    const host = window.location.hostname.replace(/^www\./, '');
+    return `${wsProtocol}//api.${host}`;
+  }
+
+  // 4. Default for local development only
   return 'ws://localhost:8000';
 }
 

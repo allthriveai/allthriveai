@@ -83,6 +83,8 @@ Resources:
               OriginAccessIdentity: ''
 
           # ALB Backend Origin
+          # NOTE: Increased timeouts for WebSocket connections and AI streaming responses
+          # WebSockets and AI chat can take longer than 60s for initial response
           - Id: ALBBackendOrigin
             DomainName: !ImportValue
               Fn::Sub: ${EnvironmentName}-ALBDNSName
@@ -92,8 +94,8 @@ Resources:
               OriginProtocolPolicy: https-only
               OriginSSLProtocols:
                 - TLSv1.2
-              OriginReadTimeout: 60
-              OriginKeepaliveTimeout: 60
+              OriginReadTimeout: 300  # 5 minutes - allows for long AI responses
+              OriginKeepaliveTimeout: 300  # 5 minutes - keeps WebSocket connections alive
 
           # Media S3 Origin
           - Id: S3MediaOrigin
@@ -627,7 +629,7 @@ Resources:
         Comment: Security headers for AllThrive AI
         SecurityHeadersConfig:
           ContentSecurityPolicy:
-            ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.google.com https://www.gstatic.com blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; media-src 'self' https://v.redd.it https://*.redd.it blob:; connect-src 'self' https://*.stripe.com https://*.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://cdn.jsdelivr.net https://raw.githubusercontent.com https://*.amazonaws.com wss://*; frame-src https://js.stripe.com https://www.google.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.redditmedia.com https://embed.reddit.com; worker-src 'self' blob:;"
+            ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.google.com https://www.gstatic.com https://*.posthog.com https://us-assets.i.posthog.com https://us.i.posthog.com blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; media-src 'self' https://v.redd.it https://*.redd.it blob:; connect-src 'self' https://*.stripe.com https://*.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://cdn.jsdelivr.net https://raw.githubusercontent.com https://*.amazonaws.com wss://*; frame-src https://js.stripe.com https://www.google.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.redditmedia.com https://embed.reddit.com; worker-src 'self' blob:;"
             Override: true
           ContentTypeOptions:
             Override: true

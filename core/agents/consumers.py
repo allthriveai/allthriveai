@@ -45,13 +45,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Validate origin to prevent CSRF attacks
         headers = dict(self.scope.get('headers', []))
         origin = headers.get(b'origin', b'').decode()
+        host = headers.get(b'host', b'').decode()
 
         # Check if origin is allowed (for development, allow localhost)
         from django.conf import settings
 
         allowed_origins = getattr(settings, 'CORS_ALLOWED_ORIGINS', [])
+
+        # Debug logging for production troubleshooting
+        logger.info(
+            f'WebSocket connect attempt: origin={origin!r}, host={host!r}, '
+            f'allowed_origins={allowed_origins}, user={getattr(self.user, "id", "anonymous")}'
+        )
+
         if origin and origin not in allowed_origins:
-            logger.warning(f'WebSocket connection from unauthorized origin: {origin}')
+            logger.warning(
+                f'WebSocket rejected - unauthorized origin: origin={origin!r}, '
+                f'allowed={allowed_origins}, host={host!r}'
+            )
             await self.close(code=4003)
             return
 

@@ -353,10 +353,12 @@ class ProjectCardSerializer(serializers.ModelSerializer):
     heart_count = serializers.ReadOnlyField()
     # Use annotated value from queryset if available, otherwise compute
     is_liked_by_user = serializers.SerializerMethodField()
-    # Lightweight content field - only populated for battle projects
+    # Lightweight content field - populated for battle and rss_article projects
     content = serializers.SerializerMethodField()
     # Minimal tool details needed for displaying tool icons on cards
     tools_details = ToolIconSerializer(source='tools', many=True, read_only=True)
+    # Categories details for displaying category badges (needed for rss_article cards)
+    categories_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -375,12 +377,13 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'tools',  # IDs for filtering
             'tools_details',  # Full tool objects for displaying icons
             'categories',  # IDs for filtering
+            'categories_details',  # Full category objects for displaying badges
             'topics',
             'heart_count',
             'is_liked_by_user',
             'published_date',
             'created_at',
-            'content',  # Only populated for battle projects
+            'content',  # Populated for battle and rss_article projects
         ]
 
     def get_is_liked_by_user(self, obj):
@@ -402,39 +405,60 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             return obj.likes.filter(user=request.user).exists()
         return False
 
+    def get_categories_details(self, obj):
+        """Get categories ordered by name for displaying category badges."""
+        categories = obj.categories.order_by('name')
+        return TaxonomySerializer(categories, many=True).data
+
     def get_content(self, obj):
         """Return minimal content for card rendering.
 
         Only returns data needed for specific card types:
         - Battle projects: battleResult with image URLs for VS layout
+        - RSS Article projects: sections with overview description for card preview
         - Other projects: None (full content available on detail page)
         """
-        if obj.type != 'battle' or not obj.content:
+        if not obj.content:
             return None
 
-        battle_result = obj.content.get('battleResult')
-        if not battle_result:
-            return None
+        # Battle projects - return battle result for VS layout
+        if obj.type == 'battle':
+            battle_result = obj.content.get('battleResult')
+            if not battle_result:
+                return None
 
-        # Return only the fields needed for card rendering
-        # Camel case keys to match frontend expectations
-        return {
-            'battleResult': {
-                'won': battle_result.get('won'),
-                'isTie': battle_result.get('is_tie'),
-                'challengeText': battle_result.get('challenge_text'),
-                'mySubmission': {
-                    'imageUrl': battle_result.get('my_submission', {}).get('image_url'),
+            # Return only the fields needed for card rendering
+            # Camel case keys to match frontend expectations
+            return {
+                'battleResult': {
+                    'won': battle_result.get('won'),
+                    'isTie': battle_result.get('is_tie'),
+                    'challengeText': battle_result.get('challenge_text'),
+                    'mySubmission': {
+                        'imageUrl': battle_result.get('my_submission', {}).get('image_url'),
+                    }
+                    if battle_result.get('my_submission')
+                    else None,
+                    'opponentSubmission': {
+                        'imageUrl': battle_result.get('opponent_submission', {}).get('image_url'),
+                    }
+                    if battle_result.get('opponent_submission')
+                    else None,
                 }
-                if battle_result.get('my_submission')
-                else None,
-                'opponentSubmission': {
-                    'imageUrl': battle_result.get('opponent_submission', {}).get('image_url'),
-                }
-                if battle_result.get('opponent_submission')
-                else None,
             }
-        }
+
+        # RSS Article projects - return sections for card preview (category/title/description overlay)
+        if obj.type == 'rss_article':
+            sections = obj.content.get('sections', [])
+            if not sections:
+                return None
+
+            # Return minimal sections data needed for card overlay
+            return {
+                'sections': sections,
+            }
+
+        return None
 
     def to_representation(self, instance):
         """Convert snake_case to camelCase for frontend compatibility."""
@@ -446,6 +470,8 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'banner_url': 'bannerUrl',
             'featured_image_url': 'featuredImageUrl',
             'external_url': 'externalUrl',
+            'tools_details': 'toolsDetails',
+            'categories_details': 'categoriesDetails',
             'heart_count': 'heartCount',
             'is_liked_by_user': 'isLikedByUser',
             'published_date': 'publishedDate',

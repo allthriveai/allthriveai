@@ -181,6 +181,7 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
               {isAuthenticated && user?.username && onAddProject && (
                 <button
                   onClick={onAddProject}
+                  data-testid="add-project-button"
                   className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 text-sm font-medium border border-white/20 text-slate-900"
                   style={{
                     background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
