@@ -19,7 +19,9 @@ import {
   FireIcon,
   ArrowPathIcon,
   HomeIcon,
+  ShareIcon,
 } from '@heroicons/react/24/solid';
+import { BattleShareModal } from './BattleShareModal';
 
 interface Submission {
   id: number;
@@ -57,6 +59,8 @@ interface JudgingRevealProps {
   isJudging?: boolean;
   /** The original battle challenge prompt */
   challengeText?: string;
+  /** Battle ID for sharing */
+  battleId?: number;
 }
 
 // Judging messages that rotate during analysis
@@ -82,10 +86,12 @@ export function JudgingReveal({
   onGoHome,
   isJudging = false,
   challengeText,
+  battleId,
 }: JudgingRevealProps) {
   const [phase, setPhase] = useState<RevealPhase>('analyzing');
   const [messageIndex, setMessageIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
   // Generate helpful feedback for the loser explaining WHY they lost
@@ -854,6 +860,15 @@ export function JudgingReveal({
             transition={{ delay: 0.5 }}
             className="flex justify-center gap-4 flex-wrap mt-8"
           >
+            {battleId && (
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="btn-primary flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400"
+              >
+                <ShareIcon className="w-5 h-5" />
+                Share Result
+              </button>
+            )}
             {onPlayAgain && (
               <button
                 onClick={onPlayAgain}
@@ -875,6 +890,15 @@ export function JudgingReveal({
           </motion.div>
         )}
       </div>
+
+      {/* Share modal */}
+      {battleId && (
+        <BattleShareModal
+          battleId={battleId}
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }

@@ -879,6 +879,97 @@ def expire_battles(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+def get_battle_public(request, battle_id):
+    """Get battle details for a completed battle (public endpoint).
+
+    This endpoint allows anyone to view completed battles without authentication.
+    In-progress battles require authentication and participation.
+
+    Args:
+        battle_id: The ID of the battle to view
+
+    Returns:
+        Full battle details for completed battles
+        403 error for in-progress battles (must be authenticated participant)
+    """
+    from django.shortcuts import get_object_or_404
+
+    battle = get_object_or_404(
+        PromptBattle.objects.select_related('challenger', 'opponent', 'winner', 'challenge_type').prefetch_related(
+            'submissions__user'
+        ),
+        id=battle_id,
+    )
+
+    # Only completed battles are publicly viewable
+    if battle.status != BattleStatus.COMPLETED:
+        return Response(
+            {'error': 'This battle is not yet complete. Please sign in if you are a participant.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Build submissions data
+    submissions = []
+    for sub in battle.submissions.all():
+        submissions.append(
+            {
+                'id': sub.id,
+                'user': sub.user.id,
+                'user_data': {
+                    'id': sub.user.id,
+                    'username': sub.user.username,
+                    'avatar_url': sub.user.avatar_url,
+                },
+                'prompt_text': sub.prompt_text,
+                'generated_output_url': sub.generated_output_url,
+                'generated_output_text': sub.generated_output_text,
+                'score': float(sub.score) if sub.score else None,
+                'criteria_scores': sub.criteria_scores,
+                'evaluation_feedback': sub.evaluation_feedback,
+                'submitted_at': sub.submitted_at.isoformat() if sub.submitted_at else None,
+            }
+        )
+
+    return Response(
+        {
+            'id': battle.id,
+            'challenger': battle.challenger.id,
+            'opponent': battle.opponent.id if battle.opponent else None,
+            'challenger_data': {
+                'id': battle.challenger.id,
+                'username': battle.challenger.username,
+                'avatar_url': battle.challenger.avatar_url,
+            },
+            'opponent_data': {
+                'id': battle.opponent.id,
+                'username': battle.opponent.username,
+                'avatar_url': battle.opponent.avatar_url,
+            }
+            if battle.opponent
+            else None,
+            'challenge_text': battle.challenge_text,
+            'challenge_type': {
+                'key': battle.challenge_type.key,
+                'name': battle.challenge_type.name,
+            }
+            if battle.challenge_type
+            else None,
+            'status': battle.status,
+            'battle_type': battle.battle_type,
+            'match_source': battle.match_source,
+            'duration_minutes': battle.duration_minutes,
+            'time_remaining': 0,  # Completed battles have no time remaining
+            'created_at': battle.created_at.isoformat() if battle.created_at else None,
+            'started_at': battle.started_at.isoformat() if battle.started_at else None,
+            'completed_at': battle.completed_at.isoformat() if battle.completed_at else None,
+            'winner': battle.winner.id if battle.winner else None,
+            'submissions': submissions,
+        }
+    )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def get_user_battles(request, username):
     """Get public battle history for a specific user by username.
 
@@ -987,6 +1078,122 @@ def get_user_battles(request, username):
                 'losses': losses,
                 'ties': ties,
                 'win_rate': round((wins / total_battles * 100) if total_battles > 0 else 0, 1),
+            },
+        }
+    )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_battle_share_data(request, battle_id):
+    """Get share data for a completed battle including OG image and platform share URLs.
+
+    Returns all the data needed for social sharing:
+    - Share URL for the battle
+    - OG image URL (pre-generated)
+    - Pre-formatted share text for each platform
+    - Platform-specific share URLs
+
+    Args:
+        battle_id: The ID of the battle to get share data for
+
+    Returns:
+        Share data for all supported platforms
+    """
+    from urllib.parse import urlencode
+
+    from django.conf import settings
+    from django.shortcuts import get_object_or_404
+
+    battle = get_object_or_404(
+        PromptBattle.objects.select_related('challenger', 'opponent', 'winner', 'challenge_type').prefetch_related(
+            'submissions__user'
+        ),
+        id=battle_id,
+    )
+
+    # Only completed battles can be shared
+    if battle.status != BattleStatus.COMPLETED:
+        return Response(
+            {'error': 'Only completed battles can be shared.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Build the share URL
+    base_url = settings.FRONTEND_URL
+    battle_url = f'{base_url}/battles/{battle.id}'
+
+    # Get winner info for share text
+    winner_username = battle.winner.username if battle.winner else None
+    is_tie = battle.winner is None
+
+    # Build share text variants
+    challenge_preview = battle.challenge_text[:50] + ('...' if len(battle.challenge_text) > 50 else '')
+
+    if is_tie:
+        result_text = "It's a tie!"
+        share_headline = 'Prompt Battle ended in a tie!'
+    else:
+        result_text = f'Winner: @{winner_username}'
+        share_headline = f'@{winner_username} won this Prompt Battle!'
+
+    # Short text for Twitter (280 char limit including URL)
+    twitter_text = f'{share_headline}\n\nChallenge: "{challenge_preview}"\n\nSee the results on AllThrive AI'
+
+    # Medium text for Facebook/LinkedIn
+    facebook_text = (
+        f'{share_headline}\n\n'
+        f'Challenge: "{battle.challenge_text}"\n\n'
+        f'Both players used AI to create amazing images from the same prompt. {result_text}\n\n'
+        f'Check out who created the better image!'
+    )
+
+    # Longer text for Reddit
+    reddit_title = f'[Prompt Battle] {share_headline}'
+    reddit_text = (
+        f'Challenge: "{battle.challenge_text}"\n\n'
+        f'Two players competed to create the best AI-generated image from the same prompt.\n\n'
+        f'{result_text}\n\n'
+        f'View the full battle and both images: {battle_url}'
+    )
+
+    # Email subject and body
+    email_subject = 'Check out this Prompt Battle on AllThrive AI'
+    email_body = (
+        f'Hey!\n\n'
+        f'Check out this Prompt Battle I found on AllThrive AI:\n\n'
+        f'Challenge: "{battle.challenge_text}"\n\n'
+        f'{share_headline}\n\n'
+        f'See the full results: {battle_url}'
+    )
+
+    # Build platform share URLs
+    platform_urls = {
+        'twitter': f"https://twitter.com/intent/tweet?{urlencode({'text': twitter_text, 'url': battle_url})}",
+        'facebook': f"https://www.facebook.com/sharer/sharer.php?{urlencode({'u': battle_url})}",
+        'linkedin': f"https://www.linkedin.com/sharing/share-offsite/?{urlencode({'url': battle_url})}",
+        'reddit': f"https://www.reddit.com/submit?{urlencode({'url': battle_url, 'title': reddit_title})}",
+        'email': f"mailto:?{urlencode({'subject': email_subject, 'body': email_body})}",
+    }
+
+    return Response(
+        {
+            'battle_id': battle.id,
+            'share_url': battle_url,
+            'og_image_url': battle.og_image_url,
+            'share_text': {
+                'headline': share_headline,
+                'twitter': twitter_text,
+                'facebook': facebook_text,
+                'reddit': reddit_text,
+                'email_subject': email_subject,
+                'email_body': email_body,
+            },
+            'platform_urls': platform_urls,
+            'meta': {
+                'title': f'Prompt Battle: {challenge_preview}',
+                'description': f'{share_headline} Challenge: "{challenge_preview}"',
+                'image': battle.og_image_url,
             },
         }
     )

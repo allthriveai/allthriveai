@@ -26,8 +26,8 @@ async def test_websocket_health_check():
     - Django accepts WebSocket connections without 301 redirects
     - No SECURE_PROXY_SSL_HEADER misconfiguration
     """
-    # Use environment variable for deployed URL, fallback to localhost
-    base_url = os.getenv('API_URL', 'http://localhost:8000').replace('http://', 'ws://').replace('https://', 'wss://')
+    # Use environment variable for deployed URL
+    base_url = os.getenv('API_URL').replace('http://', 'ws://').replace('https://', 'wss://')
     health_url = f'{base_url}/ws/health/'
 
     try:
@@ -65,7 +65,7 @@ async def test_websocket_ssl_redirect_not_triggered():
     This is a regression test for the SECURE_PROXY_SSL_HEADER misconfiguration
     that caused 301 redirects on WebSocket upgrade requests.
     """
-    base_url = os.getenv('API_URL', 'http://localhost:8000').replace('http://', 'ws://').replace('https://', 'wss://')
+    base_url = os.getenv('API_URL').replace('http://', 'ws://').replace('https://', 'wss://')
     health_url = f'{base_url}/ws/health/'
 
     try:

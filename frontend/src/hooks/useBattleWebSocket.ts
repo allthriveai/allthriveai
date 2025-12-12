@@ -65,6 +65,14 @@ export interface BattleState {
   opponentSubmission: MySubmission | null;
   winnerId: number | null;
   matchSource: string;
+  /** True when battle is viewed by unauthenticated user (public completed battle) */
+  isPublicView?: boolean;
+  /** Player data for "my" side - used in public view when no user is authenticated */
+  myPlayer?: {
+    id: number;
+    username: string;
+    avatarUrl?: string;
+  };
 }
 
 interface WebSocketMessage {

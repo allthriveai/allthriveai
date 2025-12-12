@@ -278,6 +278,14 @@ class PromptBattle(models.Model):
         help_text='How this battle match was created',
     )
 
+    # OG image for social sharing (pre-generated on battle completion)
+    og_image_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text='URL to the pre-generated OG image for social media sharing',
+    )
+
     class Meta:
         db_table = 'core_promptbattle'
         ordering = ['-created_at']

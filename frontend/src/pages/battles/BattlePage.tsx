@@ -134,29 +134,74 @@ export function BattlePage() {
   });
 
   // Fallback to REST API when WebSocket fails (for completed battles)
+  // Now uses public endpoint first, then falls back to authenticated endpoint
   useEffect(() => {
     const fetchBattleViaRest = async () => {
-      if (!battleId || wsBattleState || isConnecting || !user) return;
+      if (!battleId || wsBattleState || isConnecting) return;
 
       // Only fetch via REST if WebSocket failed and we don't have state
       setRestLoading(true);
       setRestError(null);
 
       try {
-        const response = await api.get(`/me/battles/${battleId}/`);
-        const data = response.data;
+        // Try public endpoint first (works for completed battles without auth)
+        let data;
+        let isPublicView = false;
 
-        // Determine opponent based on challenger/opponent IDs
-        const isChallenger = data.challenger === user.id;
-        const opponentData = isChallenger ? data.opponent_data : data.challenger_data;
+        try {
+          const publicResponse = await api.get(`/battles/${battleId}/public/`);
+          data = publicResponse.data;
+          isPublicView = !user; // Public view if no user logged in
+        } catch (publicError) {
+          // Public endpoint failed (battle might be in-progress)
+          const err = publicError as { response?: { status?: number } };
 
-        // Find my submission and opponent's submission from submissions array
+          // If 403, battle is in progress - need auth
+          if (err.response?.status === 403) {
+            if (!user) {
+              // Redirect to login for in-progress battles
+              navigate(`/auth?next=${encodeURIComponent(`/battles/${battleId}`)}`);
+              return;
+            }
+            // User is authenticated, try authenticated endpoint
+            const authResponse = await api.get(`/me/battles/${battleId}/`);
+            data = authResponse.data;
+          } else if (err.response?.status === 404) {
+            throw new Error('Battle not found');
+          } else {
+            throw publicError;
+          }
+        }
+
+        // For public view of completed battles, we need to pick which player to show as "my" vs "opponent"
+        // Default to challenger as the primary view, but if user is logged in, show their perspective
+        let myUserId: number;
+        let opponentUserId: number;
+
+        if (user) {
+          // Authenticated user - show their perspective
+          myUserId = user.id;
+          const isChallenger = data.challenger === user.id;
+          opponentUserId = isChallenger ? data.opponent : data.challenger;
+        } else {
+          // Public view - show challenger's perspective (first player)
+          myUserId = data.challenger;
+          opponentUserId = data.opponent;
+        }
+
+        // Get user data - handle both camelCase and snake_case from different endpoints
+        const challengerData = data.challenger_data || data.challengerData;
+        const opponentData = data.opponent_data || data.opponentData;
+        const myData = data.challenger === myUserId ? challengerData : opponentData;
+        const theirData = data.challenger === myUserId ? opponentData : challengerData;
+
+        // Find submissions from the submissions array
         const submissions = data.submissions || [];
         const mySubmissionData = submissions.find(
-          (s: { user: number }) => s.user === user.id
+          (s: { user: number }) => s.user === myUserId
         );
         const opponentSubmissionData = submissions.find(
-          (s: { user: number }) => s.user !== user.id
+          (s: { user: number }) => s.user === opponentUserId
         );
 
         // Transform REST response to match WebSocket state format
@@ -164,41 +209,54 @@ export function BattlePage() {
           id: data.id,
           phase: data.status === 'completed' ? 'complete' : data.status,
           status: data.status,
-          challengeText: data.challenge_text,
-          challengeType: data.challenge_type
-            ? { key: data.challenge_type.key, name: data.challenge_type.name }
+          challengeText: data.challenge_text || data.challengeText,
+          challengeType: data.challenge_type || data.challengeType
+            ? {
+                key: (data.challenge_type || data.challengeType).key,
+                name: (data.challenge_type || data.challengeType).name,
+              }
             : null,
-          durationMinutes: data.duration_minutes,
-          timeRemaining: data.time_remaining,
+          durationMinutes: data.duration_minutes || data.durationMinutes,
+          timeRemaining: data.time_remaining ?? data.timeRemaining ?? 0,
           myConnected: true,
           opponent: {
-            id: opponentData?.id || 0,
-            username: opponentData?.username || 'Unknown',
-            avatarUrl: opponentData?.avatar_url,
+            id: theirData?.id || opponentUserId || 0,
+            username: theirData?.username || 'Unknown',
+            avatarUrl: theirData?.avatar_url || theirData?.avatarUrl,
             connected: false,
           },
           mySubmission: mySubmissionData
             ? {
                 id: mySubmissionData.id,
-                promptText: mySubmissionData.prompt_text,
-                imageUrl: mySubmissionData.generated_output_url,
+                promptText: mySubmissionData.prompt_text || mySubmissionData.promptText,
+                imageUrl: mySubmissionData.generated_output_url || mySubmissionData.generatedOutputUrl,
                 score: mySubmissionData.score,
-                criteriaScores: mySubmissionData.criteria_scores,
-                feedback: mySubmissionData.evaluation_feedback,
+                criteriaScores: mySubmissionData.criteria_scores || mySubmissionData.criteriaScores,
+                feedback: mySubmissionData.evaluation_feedback || mySubmissionData.evaluationFeedback,
               }
             : null,
           opponentSubmission: opponentSubmissionData
             ? {
                 id: opponentSubmissionData.id,
-                promptText: opponentSubmissionData.prompt_text,
-                imageUrl: opponentSubmissionData.generated_output_url,
+                promptText: opponentSubmissionData.prompt_text || opponentSubmissionData.promptText,
+                imageUrl: opponentSubmissionData.generated_output_url || opponentSubmissionData.generatedOutputUrl,
                 score: opponentSubmissionData.score,
-                criteriaScores: opponentSubmissionData.criteria_scores,
-                feedback: opponentSubmissionData.evaluation_feedback,
+                criteriaScores: opponentSubmissionData.criteria_scores || opponentSubmissionData.criteriaScores,
+                feedback: opponentSubmissionData.evaluation_feedback || opponentSubmissionData.evaluationFeedback,
               }
             : null,
           winnerId: data.winner,
-          matchSource: data.match_source || 'unknown',
+          matchSource: data.match_source || data.matchSource || 'unknown',
+          // Track if this is a public view (for UI adjustments)
+          isPublicView,
+          // Store my player info for public views (where there's no authenticated user)
+          myPlayer: myData
+            ? {
+                id: myData.id || myUserId,
+                username: myData.username || 'Player 1',
+                avatarUrl: myData.avatar_url || myData.avatarUrl,
+              }
+            : undefined,
         };
 
         setRestBattleState(transformedState);
@@ -214,10 +272,12 @@ export function BattlePage() {
       }
     };
 
-    // Small delay to let WebSocket attempt connection first
-    const timeout = setTimeout(fetchBattleViaRest, 2000);
+    // Small delay to let WebSocket attempt connection first (only if user is authenticated)
+    // For unauthenticated users, fetch immediately via public endpoint
+    const delay = user ? 2000 : 100;
+    const timeout = setTimeout(fetchBattleViaRest, delay);
     return () => clearTimeout(timeout);
-  }, [battleId, wsBattleState, isConnecting, user]);
+  }, [battleId, wsBattleState, isConnecting, user, navigate]);
 
   // Use WebSocket state if available, otherwise fallback to REST
   const battleState = wsBattleState || restBattleState;
@@ -424,12 +484,18 @@ export function BattlePage() {
     );
   }
 
-  // Current user info
-  const currentUser = {
-    id: user?.id || 0,
-    username: user?.username || 'You',
-    avatarUrl: user?.avatarUrl,
-  };
+  // Current user info - use authenticated user if available, otherwise use battleState.myPlayer for public views
+  const currentUser = user
+    ? {
+        id: user.id,
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+      }
+    : battleState?.myPlayer || {
+        id: 0,
+        username: 'Player 1',
+        avatarUrl: undefined,
+      };
 
   // Render based on phase
   const renderPhaseContent = () => {
@@ -503,6 +569,7 @@ export function BattlePage() {
             onPlayAgain={handlePlayAgain}
             onGoHome={handleGoHome}
             challengeText={localChallengeText || battleState.challengeText}
+            battleId={battleState.id}
           />
         );
 
@@ -526,6 +593,7 @@ export function BattlePage() {
             onPlayAgain={handlePlayAgain}
             onGoHome={handleGoHome}
             challengeText={localChallengeText || battleState.challengeText}
+            battleId={battleState.id}
           />
         );
 

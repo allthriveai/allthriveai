@@ -9,6 +9,7 @@ export { BattleCountdown } from './BattleCountdown';
 export { BattleInviteToast, BattleInviteToastContainer } from './BattleInviteToast';
 export { BattleNotificationProvider, useBattleNotificationContext } from './BattleNotificationProvider';
 export { BattleResults } from './BattleResults';
+export { BattleShareModal } from './BattleShareModal';
 export { BattlesTab } from './BattlesTab';
 export { ChallengeDisplay } from './ChallengeDisplay';
 export { GeneratingPhase } from './GeneratingPhase';

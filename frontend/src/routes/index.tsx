@@ -167,14 +167,8 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/battles/:battleId"
-        element={
-          <ProtectedRoute>
-            <BattlePage />
-          </ProtectedRoute>
-        }
-      />
+      {/* Battle detail page - public for completed battles, requires auth for active */}
+      <Route path="/battles/:battleId" element={<BattlePage />} />
       {/* Battle invitation link (from SMS) - public so users can see invitation before login */}
       <Route path="/battle/invite/:token" element={<BattleInvitePage />} />
 

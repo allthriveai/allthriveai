@@ -289,6 +289,9 @@ def complete_battle_task(self, battle_id: int) -> dict[str, Any]:
             },
         )
 
+        # Generate OG image for social sharing (async, non-blocking)
+        generate_og_image_task.delay(battle_id)
+
         logger.info(f'Battle {battle_id} completed')
         return {'status': 'success', 'auto_save': save_results}
 
@@ -781,3 +784,62 @@ def cleanup_orphaned_invitation_battles() -> dict[str, Any]:
         logger.info(f'Cleaned up orphaned invitation battles: {results}')
 
     return {'status': 'success', **results}
+
+
+@shared_task(
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    time_limit=120,  # 2 minute hard limit
+    soft_time_limit=90,  # 90 second soft limit
+)
+def generate_og_image_task(self, battle_id: int) -> dict[str, Any]:
+    """
+    Generate OG image for a completed battle for social media sharing.
+
+    Creates a 1200x630px image showing both player images side-by-side
+    with scores, winner highlight, and AllThrive branding.
+
+    Called after battle completion.
+
+    Args:
+        battle_id: ID of the PromptBattle
+
+    Returns:
+        Dict with generation result
+    """
+    try:
+        battle = PromptBattle.objects.get(id=battle_id)
+    except PromptBattle.DoesNotExist:
+        logger.error(f'Battle not found for OG image generation: {battle_id}')
+        return {'status': 'error', 'reason': 'battle_not_found'}
+
+    # Skip if already has OG image
+    if battle.og_image_url:
+        logger.info(f'Battle {battle_id} already has OG image, skipping generation')
+        return {'status': 'skipped', 'reason': 'already_generated', 'og_image_url': battle.og_image_url}
+
+    # Skip if battle not completed
+    if battle.status != BattleStatus.COMPLETED:
+        logger.warning(f'Battle {battle_id} not completed, skipping OG image generation')
+        return {'status': 'skipped', 'reason': 'not_completed'}
+
+    try:
+        from core.battles.og_image_service import generate_battle_og_image
+
+        og_image_url = generate_battle_og_image(battle)
+
+        if og_image_url:
+            # Save the OG image URL to the battle
+            battle.og_image_url = og_image_url
+            battle.save(update_fields=['og_image_url'])
+
+            logger.info(f'Generated OG image for battle {battle_id}: {og_image_url}')
+            return {'status': 'success', 'og_image_url': og_image_url}
+        else:
+            logger.error(f'Failed to generate OG image for battle {battle_id}')
+            return {'status': 'error', 'reason': 'generation_failed'}
+
+    except Exception as e:
+        logger.error(f'Error generating OG image for battle {battle_id}: {e}', exc_info=True)
+        raise self.retry(exc=e) from e
