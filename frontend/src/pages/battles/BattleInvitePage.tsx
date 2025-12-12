@@ -370,7 +370,7 @@ export function BattleInvitePage() {
 
                 {/* Sign in option - Secondary for existing users */}
                 <button
-                  onClick={() => navigate('/auth', { state: { returnUrl: `/battle/invite/${token}` } })}
+                  onClick={() => navigate(`/auth?next=${encodeURIComponent(`/battle/invite/${token}`)}`)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700/50 transition-colors"
                 >
                   <UserPlusIcon className="w-5 h-5" />

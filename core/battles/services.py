@@ -660,8 +660,10 @@ Return ONLY the JSON, no other text.
         """
         Automatically save battle results as projects for all human participants.
 
-        Creates a project entry for each participant (excluding AI/Pip) so battles
-        automatically appear on the explore feed and user profiles.
+        Creates a project entry for each participant (excluding AI/Pip).
+        Only the challenger's project appears in the explore feed (is_showcase=True).
+        The opponent's project appears only on their profile (is_showcase=False).
+        This prevents duplicate battles from appearing in explore.
 
         Args:
             battle: The completed battle to save
@@ -718,12 +720,17 @@ Return ONLY the JSON, no other text.
             won = battle.winner_id == user.id if battle.winner_id else False
             is_tie = battle.winner_id is None
 
+            # Determine if this user is the challenger (who initiated the battle)
+            # Only challenger's battle project appears in explore feed to avoid duplicates
+            is_challenger = battle.challenger_id == user.id
+
             # Build project content
             battle_result = {
                 'battle_id': battle.id,
                 'challenge_text': battle.challenge_text,
                 'won': won,
                 'is_tie': is_tie,
+                'is_challenger': is_challenger,
                 'my_submission': {
                     'prompt': submission.prompt_text,
                     'image_url': submission.generated_output_url,
@@ -771,6 +778,8 @@ Return ONLY the JSON, no other text.
                 tags.append('vs AI')
 
             # Create project
+            # Only challenger's project is showcased (appears in explore feed)
+            # Both users see the battle on their profiles (showcase vs playground)
             try:
                 project, error = ProjectService.create_project(
                     user_id=user.id,
@@ -778,7 +787,7 @@ Return ONLY the JSON, no other text.
                     project_type='battle',
                     description=f'Challenge: {battle.challenge_text}\n\nMy prompt: {submission.prompt_text}',
                     featured_image_url=submission.generated_output_url or '',
-                    is_showcase=True,
+                    is_showcase=is_challenger,
                     content={'battleResult': battle_result},
                     tags=tags,
                 )

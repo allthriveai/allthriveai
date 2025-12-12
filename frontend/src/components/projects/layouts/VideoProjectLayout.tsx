@@ -16,14 +16,16 @@ import { ShareModal } from '../shared/ShareModal';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { Linkify } from '@/components/common/Linkify';
-import { updateProject, updateProjectTags, getTools, getTaxonomies } from '@/services/projects';
+import { updateProject } from '@/services/projects';
 import { getImpersonationStatus } from '@/services/impersonation';
 import {
   InlineEditableTitle,
   InlineEditableText,
   EditModeIndicator,
 } from '../shared/InlineEditable';
-import type { Tool, Taxonomy } from '@/types/models';
+import { ProjectSections } from '../sections';
+import type { ProjectSection, SectionType } from '@/types/sections';
+import { createDefaultSectionContent, generateSectionId } from '@/types/sections';
 import {
   CodeBracketIcon,
   EllipsisVerticalIcon,
@@ -122,91 +124,142 @@ export function VideoProjectLayout() {
     }
   }, [project.id, setProject]);
 
-  // Admin panel state (for tools/tags editing - keep this for advanced editing)
-  const [isAdminPanelOpen] = useState(false);
-  const [_adminError] = useState<string | null>(null);
-
-  // Tools and tags editing state
-  const [availableTools, setAvailableTools] = useState<Tool[]>([]);
-  const [_availableCategories] = useState<Taxonomy[]>([]);
-  const [selectedToolIds, setSelectedToolIds] = useState<number[]>(project.tools || []);
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>(project.categories || []);
-  const [editTopics, setEditTopics] = useState<string[]>(project.topics || []);
-  const [newTopic, setNewTopic] = useState('');
-  const [isSavingTags, setIsSavingTags] = useState(false);
-  const [toolSearchQuery] = useState('');
-
-  // Fetch available tools and categories when admin panel opens
-  useEffect(() => {
-    if (isAdminPanelOpen && canEdit) {
-      getTools().then(tools => {
-        setAvailableTools(tools);
-      }).catch(err => {
-        console.error('Failed to fetch tools:', err);
-      });
-
-      getTaxonomies('category').then(categories => {
-        setAvailableCategories(categories);
-      }).catch(err => {
-        console.error('Failed to fetch categories:', err);
-      });
-
-      setSelectedToolIds(project.tools || []);
-      setSelectedCategoryIds(project.categories || []);
-      setEditTopics(project.topics || []);
+  // Helper to filter content keys to only allowed ones
+  const filterContentKeys = useCallback((contentObj: Record<string, unknown> | undefined): Record<string, unknown> => {
+    const allowedKeys = [
+      'blocks', 'cover', 'tags', 'metadata', 'video',
+      'heroDisplayMode', 'heroQuote', 'heroVideoUrl', 'heroSlideshowImages',
+      'heroSlideUpElement1', 'heroSlideUpElement2',
+      'templateVersion', 'sections', 'github', 'figma'
+    ];
+    const filtered: Record<string, unknown> = {};
+    if (contentObj) {
+      for (const key of allowedKeys) {
+        if (key in contentObj) {
+          filtered[key] = contentObj[key];
+        }
+      }
     }
-  }, [isAdminPanelOpen, canEdit, project.tools, project.categories, project.topics]);
+    return filtered;
+  }, []);
 
-  // Handle saving tools, categories, and topics
-  const _handleSaveTags = async () => {
-    if (isSavingTags) return;
-    setIsSavingTags(true);
+  // Handle section content update (auto-save)
+  const handleSectionUpdate = useCallback(async (sectionId: string, content: ProjectSection['content']) => {
+    if (!project.content?.sections) return;
+
+    const updatedSections = project.content.sections.map((section: ProjectSection) =>
+      section.id === sectionId ? { ...section, content } : section
+    );
+
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      sections: updatedSections,
+    };
+
+    const originalProject = project;
+    setProject({ ...project, content: updatedContent });
+    setIsSaving(true);
 
     try {
-      const updatedProject = await updateProjectTags(project.id, {
-        tools: selectedToolIds,
-        categories: selectedCategoryIds,
-        topics: editTopics,
-      });
-      setProject(updatedProject);
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
     } catch (error: unknown) {
-      console.error('Admin save tags error:', error);
+      console.error('Failed to update section:', error);
+      setProject(originalProject);
     } finally {
-      setIsSavingTags(false);
+      setIsSaving(false);
     }
-  };
+  }, [project, setProject, filterContentKeys]);
 
-  const _handleAddTopic = () => {
-    const trimmedTopic = newTopic.trim();
-    if (trimmedTopic && !editTopics.includes(trimmedTopic)) {
-      setEditTopics([...editTopics, trimmedTopic]);
-      setNewTopic('');
+  // Handle adding a new section
+  const handleAddSection = useCallback(async (type: SectionType, afterSectionId?: string) => {
+    const currentSections = project.content?.sections || [];
+
+    const newSection: ProjectSection = {
+      id: generateSectionId(type),
+      type,
+      enabled: true,
+      order: 0,
+      content: createDefaultSectionContent(type),
+    };
+
+    let insertIndex = 0;
+    if (afterSectionId) {
+      const afterIndex = currentSections.findIndex(s => s.id === afterSectionId);
+      if (afterIndex !== -1) {
+        insertIndex = afterIndex + 1;
+      } else {
+        insertIndex = currentSections.length;
+      }
     }
-  };
 
-  const _handleRemoveTopic = (topicToRemove: string) => {
-    setEditTopics(editTopics.filter(t => t !== topicToRemove));
-  };
+    const newSections = [...currentSections];
+    newSections.splice(insertIndex, 0, newSection);
+    const reorderedSections = newSections.map((s, idx) => ({ ...s, order: idx }));
 
-  const _handleToggleTool = (toolId: number) => {
-    setSelectedToolIds(prev =>
-      prev.includes(toolId)
-        ? prev.filter(id => id !== toolId)
-        : [...prev, toolId]
-    );
-  };
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      templateVersion: 2 as const,
+      sections: reorderedSections,
+    };
 
-  const _handleToggleCategory = (categoryId: number) => {
-    setSelectedCategoryIds(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
-  };
+    const originalProject = project;
+    setProject({ ...project, content: updatedContent });
 
-  const _filteredTools = availableTools.filter(tool =>
-    tool.name.toLowerCase().includes(toolSearchQuery.toLowerCase())
-  );
+    try {
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
+    } catch (error: unknown) {
+      console.error('Failed to add section:', error);
+      setProject(originalProject);
+    }
+  }, [project, setProject, filterContentKeys]);
+
+  // Handle deleting a section
+  const handleDeleteSection = useCallback(async (sectionId: string) => {
+    if (!project.content?.sections) return;
+
+    const newSections = project.content.sections
+      .filter(s => s.id !== sectionId)
+      .map((s, idx) => ({ ...s, order: idx }));
+
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      sections: newSections,
+    };
+
+    setProject({ ...project, content: updatedContent });
+
+    try {
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
+    } catch (error: unknown) {
+      console.error('Failed to delete section:', error);
+    }
+  }, [project, setProject, filterContentKeys]);
+
+  // Handle reordering sections (drag-and-drop)
+  const handleReorderSections = useCallback(async (reorderedSections: ProjectSection[]) => {
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      templateVersion: 2 as const,
+      sections: reorderedSections,
+    };
+
+    const originalProject = project;
+    setProject({ ...project, content: updatedContent });
+
+    try {
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
+    } catch (error: unknown) {
+      console.error('Failed to reorder sections:', error);
+      setProject(originalProject);
+    }
+  }, [project, setProject, filterContentKeys]);
+
+  // Check for template v2 sections
+  const hasTemplateSections = project.content?.templateVersion === 2 && (project.content?.sections?.length ?? 0) > 0;
 
   // Extract video info from content
   // Handle both VideoContent object and legacy string format
@@ -501,6 +554,18 @@ export function VideoProjectLayout() {
           </div>
         )}
       </div>
+
+      {/* Project Sections - Editable content blocks */}
+      {(hasTemplateSections || isEditing) && (
+        <ProjectSections
+          sections={(project.content?.sections || []) as ProjectSection[]}
+          isEditing={isEditing}
+          onSectionUpdate={handleSectionUpdate}
+          onAddSection={handleAddSection}
+          onDeleteSection={handleDeleteSection}
+          onReorderSections={handleReorderSections}
+        />
+      )}
 
       {/* Share Modal */}
       <ShareModal

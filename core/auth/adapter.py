@@ -18,14 +18,43 @@ User = get_user_model()
 class CustomAccountAdapter(DefaultAccountAdapter):
     """Custom account adapter for handling traditional signup/login."""
 
+    def _get_next_redirect_url(self, request):
+        """Get the 'next' redirect URL if provided, with security validation.
+
+        Validates that the next URL is a relative path (starts with /)
+        to prevent open redirect vulnerabilities.
+        """
+        # Check session first (allauth stores it there)
+        next_url = request.session.get('next')
+        # Also check GET params as fallback
+        if not next_url:
+            next_url = request.GET.get('next')
+
+        if next_url:
+            # Security: Only allow relative paths to prevent open redirect
+            if next_url.startswith('/') and not next_url.startswith('//'):
+                return f'{settings.FRONTEND_URL}{next_url}'
+
+        return None
+
     def get_login_redirect_url(self, request):
         """Redirect to frontend after login."""
+        # Check for custom next URL first
+        next_url = self._get_next_redirect_url(request)
+        if next_url:
+            return next_url
+
         if request.user.is_authenticated:
             return f'{settings.FRONTEND_URL}/{request.user.username}'
         return settings.FRONTEND_URL
 
     def get_signup_redirect_url(self, request):
         """Redirect to frontend after signup (including OAuth)."""
+        # Check for custom next URL first
+        next_url = self._get_next_redirect_url(request)
+        if next_url:
+            return next_url
+
         if request.user.is_authenticated:
             return f'{settings.FRONTEND_URL}/{request.user.username}'
         return settings.FRONTEND_URL

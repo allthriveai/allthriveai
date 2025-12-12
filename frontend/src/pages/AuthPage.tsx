@@ -242,7 +242,13 @@ export default function AuthPage() {
 
   const handleOAuthLogin = (provider: 'google' | 'github' | 'linkedin_oauth2') => {
     const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    const loginUrl = `${backendUrl}/accounts/${provider}/login/?process=login`;
+    // Check for next param to redirect after OAuth
+    const nextUrl = searchParams.get('next');
+    let loginUrl = `${backendUrl}/accounts/${provider}/login/?process=login`;
+    if (nextUrl) {
+      // Pass the next URL to backend so it can redirect after OAuth completes
+      loginUrl += `&next=${encodeURIComponent(nextUrl)}`;
+    }
     window.location.href = loginUrl;
   };
 
