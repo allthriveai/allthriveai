@@ -94,6 +94,11 @@ export function initSentry() {
 
         // Third-party script errors
         'Script error',
+
+        // Non-Error promise rejections from third-party libraries (e.g., PostHog, Stripe)
+        // These are typically timeout strings from minified code like "Timeout (b)"
+        /^Timeout/,
+        /^Non-Error promise rejection captured/,
       ],
 
       // Ignore specific URLs
