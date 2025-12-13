@@ -564,7 +564,7 @@ def list_impersonatable_users(request):
                     'last_name': u.last_name,
                     'avatar_url': u.avatar_url,
                     'role': u.role,
-                    'date_joined': u.date_joined,
+                    'date_joined': u.date_joined.isoformat() if u.date_joined else None,
                     'is_guest': u.is_guest,
                 }
                 for u in users

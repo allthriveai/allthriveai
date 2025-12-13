@@ -7,6 +7,7 @@ quest progress for users who have relevant active quests.
 
 import logging
 
+from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -14,7 +15,9 @@ from core.agents.models import ImageGenerationSession
 from core.projects.models import Project, ProjectComment, ProjectLike
 from core.quizzes.models import QuizAttempt
 
+from .models import Circle, CircleMembership
 from .quest_tracker import track_quest_action
+from .utils import get_week_start
 
 logger = logging.getLogger(__name__)
 
@@ -389,3 +392,87 @@ def track_feedback_given(user, project, feedback_type: str = 'constructive'):
     _log_completion('Feedback given', user.id, completed)
 
     return completed
+
+
+def add_user_to_circle(user):
+    """
+    Add a user to an existing circle for the current week.
+
+    Called when a new user signs up to immediately include them in a circle,
+    rather than waiting until the next weekly circle formation on Monday.
+
+    Returns the circle the user was added to, or None if no suitable circle found.
+    """
+    from django.db.models import Count
+
+    # Skip curation tier (AI agents)
+    if user.tier == 'curation':
+        logger.debug(f'Skipping circle assignment for curation tier user {user.id}')
+        return None
+
+    week_start = get_week_start()
+
+    # Check if user already in a circle this week
+    existing_membership = CircleMembership.objects.filter(
+        user=user,
+        circle__week_start=week_start,
+        circle__is_active=True,
+    ).first()
+
+    if existing_membership:
+        logger.debug(f'User {user.id} already in circle {existing_membership.circle.id}')
+        return existing_membership.circle
+
+    # Find an active circle in the user's tier with room (<CIRCLE_SIZE_MAX members)
+    # Prefer circles with fewer members to balance sizes
+    circles_with_counts = (
+        Circle.objects.filter(
+            week_start=week_start,
+            is_active=True,
+            tier=user.tier,
+        )
+        .annotate(current_member_count=Count('memberships'))
+        .filter(current_member_count__lt=CIRCLE_SIZE_MAX)
+        .order_by('current_member_count')
+    )
+
+    circle = circles_with_counts.first()
+
+    if not circle:
+        # No suitable circle found - this happens if:
+        # 1. No circles exist for this week yet (before Monday formation)
+        # 2. All circles in this tier are full
+        logger.info(f'No suitable circle found for user {user.id} (tier: {user.tier})')
+        return None
+
+    # Add user to the circle
+    CircleMembership.objects.create(
+        user=user,
+        circle=circle,
+    )
+
+    logger.info(f'Added user {user.id} to circle {circle.id} ({circle.name})')
+    return circle
+
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def assign_new_user_to_circle(sender, instance, created, **kwargs):
+    """
+    Automatically add newly created users to an existing circle.
+
+    This ensures new users are immediately part of the community rather than
+    waiting until the next weekly circle formation on Monday.
+    """
+    if not created:
+        return
+
+    if not instance.is_active:
+        return
+
+    try:
+        circle = add_user_to_circle(instance)
+        if circle:
+            logger.info(f'New user {instance.id} assigned to circle {circle.id}')
+    except Exception as e:
+        # Don't let circle assignment failure prevent user creation
+        logger.error(f'Failed to assign new user {instance.id} to circle: {e}')

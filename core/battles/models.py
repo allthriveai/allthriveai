@@ -620,6 +620,12 @@ class PromptBattle(models.Model):
                 self.started_at = now
                 update_fields.append('started_at')
 
+        # Set async_deadline (3-day overall deadline) if not already set
+        # This is the deadline for the battle to be completed
+        if not self.async_deadline:
+            self.async_deadline = now + timezone.timedelta(days=3)
+            update_fields.append('async_deadline')
+
         if save:
             self.save(update_fields=update_fields)
 
