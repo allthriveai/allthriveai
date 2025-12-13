@@ -820,3 +820,51 @@ class LinkInvitationE2ETestCase(TestCase):
         # HTML tags should be stripped
         self.assertNotIn('<img', guest_user.first_name)
         self.assertNotIn('onerror', guest_user.first_name)
+
+    def test_guest_can_accept_after_challenger_starts_turn(self):
+        """Test that guest can accept invitation after challenger starts their turn (async battle).
+
+        This tests the scenario where:
+        1. Challenger creates battle with invite link
+        2. Challenger starts their turn (changes status to ACTIVE, phase to CHALLENGER_TURN)
+        3. Guest clicks invite link and should still be able to join
+        """
+        from core.battles.models import BattlePhase, BattleStatus
+
+        self.client.force_authenticate(user=self.challenger)
+        generate_url = reverse('generate_battle_link')
+
+        # Create battle with invite link
+        response = self.client.post(generate_url)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        invite_token = response.data['invite_token']
+
+        # Get the battle and simulate challenger starting their turn
+        invitation = BattleInvitation.objects.get(invite_token=invite_token)
+        battle = invitation.battle
+
+        # Challenger starts their turn (this happens when they click "Start Your Turn")
+        battle.start_turn(self.challenger)
+        battle.refresh_from_db()
+
+        # Verify battle is now ACTIVE with CHALLENGER_TURN phase
+        self.assertEqual(battle.status, BattleStatus.ACTIVE)
+        self.assertEqual(battle.phase, BattlePhase.CHALLENGER_TURN)
+
+        # Guest accepts the invitation (unauthenticated)
+        self.client.logout()
+        accept_url = reverse('accept_invitation_by_token', kwargs={'token': invite_token})
+        response = self.client.post(accept_url)
+
+        # Should succeed
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('id', response.data)
+
+        # Verify battle has opponent set
+        battle.refresh_from_db()
+        self.assertIsNotNone(battle.opponent)
+        self.assertTrue(battle.opponent.is_guest)
+
+        # Battle should still be active with challenger's turn
+        self.assertEqual(battle.status, BattleStatus.ACTIVE)
+        self.assertEqual(battle.phase, BattlePhase.CHALLENGER_TURN)

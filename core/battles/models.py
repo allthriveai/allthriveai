@@ -282,6 +282,15 @@ class PromptBattle(models.Model):
         help_text='The challenge type configuration used for this battle',
     )
 
+    # Track which users have hidden this battle from their view
+    # This allows soft-delete per user without affecting the other participant
+    hidden_by = models.ManyToManyField(
+        User,
+        related_name='hidden_battles',
+        blank=True,
+        help_text='Users who have hidden this battle from their view',
+    )
+
     # How the match was created
     match_source = models.CharField(
         max_length=20,
@@ -945,16 +954,30 @@ class BattleInvitation(models.Model):
             if locked_invitation.invitation_type in (InvitationType.SMS, InvitationType.LINK) and accepting_user:
                 battle.opponent = accepting_user
 
-            # Start the battle with proper state machine transition
-            if battle.status != BattleStatus.PENDING:
-                raise ValidationError('Battle is no longer pending.')
+            # Handle async battles where challenger already started or completed their turn
+            # Battle is ACTIVE with phase=CHALLENGER_TURN (challenger actively playing)
+            # or phase=OPPONENT_TURN (challenger submitted, waiting for opponent)
+            is_async_battle_in_progress = battle.status == BattleStatus.ACTIVE and battle.phase in (
+                BattlePhase.CHALLENGER_TURN,
+                BattlePhase.OPPONENT_TURN,
+            )
 
-            battle.status = BattleStatus.ACTIVE
-            battle.phase = BattlePhase.COUNTDOWN  # Set phase explicitly for consistency
-            battle.started_at = timezone.now()
-            battle.expires_at = battle.started_at + timezone.timedelta(minutes=battle.duration_minutes)
-            battle.phase_changed_at = battle.started_at
-            battle.save(update_fields=['opponent', 'status', 'phase', 'started_at', 'expires_at', 'phase_changed_at'])
+            if is_async_battle_in_progress:
+                # Challenger already started/submitted - just set opponent
+                # Don't reset timers or phase - preserve the async battle state
+                battle.save(update_fields=['opponent'])
+            elif battle.status == BattleStatus.PENDING:
+                # Normal flow - start the battle fresh
+                battle.status = BattleStatus.ACTIVE
+                battle.phase = BattlePhase.COUNTDOWN  # Set phase explicitly for consistency
+                battle.started_at = timezone.now()
+                battle.expires_at = battle.started_at + timezone.timedelta(minutes=battle.duration_minutes)
+                battle.phase_changed_at = battle.started_at
+                battle.save(
+                    update_fields=['opponent', 'status', 'phase', 'started_at', 'expires_at', 'phase_changed_at']
+                )
+            else:
+                raise ValidationError('Battle is no longer available.')
 
             # Update self to reflect the locked invitation's state
             self.status = locked_invitation.status

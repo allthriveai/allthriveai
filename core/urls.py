@@ -382,6 +382,9 @@ urlpatterns = [
     path('battles/<int:battle_id>/extend-deadline/', extend_battle_deadline, name='extend_deadline'),
     path('battles/<int:battle_id>/send-reminder/', send_battle_reminder, name='send_reminder'),
     path('battles/<int:battle_id>/start-turn/', start_battle_turn, name='start_turn'),
+    # Bulk battle management endpoints
+    path('battles/bulk-delete/', PromptBattleViewSet.as_view({'post': 'bulk_delete'}), name='battles_bulk_delete'),
+    path('battles/my-history/', PromptBattleViewSet.as_view({'get': 'my_history'}), name='battles_my_history'),
     # Weekly challenges endpoints
     path('', include('core.challenges.urls')),
     # Email notification endpoints

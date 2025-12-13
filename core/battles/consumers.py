@@ -211,6 +211,15 @@ class BattleConsumer(AsyncWebsocketConsumer):
             logger.error(f'Error sending battle state for battle {self.battle_id}: {e}', exc_info=True)
             await self._send_error('Failed to load battle state')
 
+    async def send_state_to_group(self, event: dict[str, Any]):
+        """
+        Handler for group broadcast to send updated state to all clients.
+
+        Called when phase changes and all connected clients need updated state.
+        Each client gets their own personalized state (e.g., is_my_turn differs).
+        """
+        await self.send_battle_state()
+
     async def _handle_submission(self, prompt_text: str):
         """Handle a user submitting their prompt."""
         from core.battles.phase_utils import can_submit_prompt
@@ -285,6 +294,30 @@ class BattleConsumer(AsyncWebsocketConsumer):
 
         generate_submission_image_task.delay(submission.id)
         logger.info(f'Started image generation immediately for submission {submission.id}')
+
+        # For async turn-based battles, transition to opponent's turn when challenger submits
+        if battle.phase == BattlePhase.CHALLENGER_TURN and self.user.id == battle.challenger_id:
+            await self._transition_phase(BattlePhase.OPPONENT_TURN)
+
+            # Broadcast phase change so opponent knows it's their turn
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    'type': 'battle_event',
+                    'event': 'phase_change',
+                    'phase': BattlePhase.OPPONENT_TURN,
+                },
+            )
+
+            # Send updated state to all connected clients
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    'type': 'send_state_to_group',
+                },
+            )
+
+            logger.info(f'Battle {battle.id}: Transitioned from CHALLENGER_TURN to OPPONENT_TURN')
 
         # For Pip battles, Pip's submission is already triggered at battle start
         # so we just need to check if both have submitted
@@ -601,6 +634,16 @@ class BattleConsumer(AsyncWebsocketConsumer):
             except BattleInvitation.DoesNotExist:
                 pass
 
+        # Determine if it's the current user's turn (for async battles)
+        is_challenger = self.user.id == battle.challenger_id
+        if battle.phase == BattlePhase.CHALLENGER_TURN:
+            is_my_turn = is_challenger
+        elif battle.phase == BattlePhase.OPPONENT_TURN:
+            is_my_turn = not is_challenger
+        else:
+            # For ACTIVE phase and other phases, both can submit
+            is_my_turn = True
+
         return {
             'id': battle.id,
             'phase': battle.phase,
@@ -621,6 +664,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
             'winner_id': battle.winner_id,
             'match_source': battle.match_source,
             'invite_url': invite_url,
+            'is_my_turn': is_my_turn,
         }
 
     async def _send_error(self, message: str):

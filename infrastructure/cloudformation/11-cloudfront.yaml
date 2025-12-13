@@ -186,24 +186,9 @@ Resources:
               - EventType: viewer-request
                 FunctionARN: !GetAtt ImageOptimizationFunction.FunctionARN
 
-          # Admin Behavior (no caching)
-          - PathPattern: '/admin/*'
-            TargetOriginId: ALBBackendOrigin
-            ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-              - PUT
-              - POST
-              - PATCH
-              - DELETE
-            CachedMethods:
-              - GET
-              - HEAD
-            # Use AWS managed CachingDisabled policy (caching disabled for API)
-            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-            OriginRequestPolicyId: !Ref APIOriginRequestPolicy
+          # NOTE: /admin/* behavior REMOVED - Django admin is at /thrive-manage/
+          # The /admin/* path is now used by the frontend React app for admin dashboard
+          # (e.g., /admin/analytics). Removing this allows those routes to hit S3/SPA.
 
           # OAuth/Accounts Behavior (django-allauth)
           # IMPORTANT: Required for Google, GitHub, LinkedIn OAuth login
@@ -375,11 +360,12 @@ Resources:
 
           // Don't rewrite if path starts with known backend/asset prefixes
           // IMPORTANT: These paths are served by Django backend, not S3
+          // NOTE: /admin/ was removed - Django admin is now at /thrive-manage/
+          // The /admin/* path is used by the frontend React app for admin dashboard
           var backendPrefixes = [
             '/api/',           // REST API
             '/ws/',            // WebSockets
             '/media/',         // User uploads
-            '/admin/',         // Django admin (legacy path)
             '/accounts/',      // OAuth (django-allauth)
             '/thrive-manage/', // Obscured Django admin
             '/db/',            // Health checks

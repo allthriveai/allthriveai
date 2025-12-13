@@ -44,16 +44,23 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Install runtime dependencies
+# Note: PostgreSQL 18 client is needed to match RDS server version for pg_dump compatibility
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     ffmpeg \
     ca-certificates \
     curl \
     openssl \
-    postgresql-client \
+    gnupg \
+    lsb-release \
     redis \
     unzip \
     && update-ca-certificates \
+    # Add PostgreSQL APT repository for PostgreSQL 18 client
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-18 \
     && curl -fsSL https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem -o /etc/ssl/certs/rds-us-east-1-bundle.pem \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir yt-dlp daphne awscli

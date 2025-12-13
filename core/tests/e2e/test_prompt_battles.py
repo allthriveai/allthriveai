@@ -916,3 +916,784 @@ class BattleShareResultsTest(TestCase):
             'mountain' in description.lower() or 'sunset' in description.lower() or 'won' in description.lower(),
             f'CRITICAL: Meta description must reference battle. Got: {description}',
         )
+
+
+@pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
+class GuestReturnToBattleTest(TestCase):
+    """
+    Test guest user returning to battle via same invite link.
+
+    SCENARIO: As a guest user who receives a prompt battle link, when I finish the battle
+              I should be able to use the same link that I have in my messages and see the battle results
+    EXPECTED: I should be able to use the same link and see the battle results
+    FAILURE: I can't see the battle results again
+    """
+
+    def setUp(self):
+        """Create test challenger and completed battle with guest."""
+        self.client = APIClient()
+
+        # Create challenger
+        self.challenger = User.objects.create_user(
+            username='challenger',
+            email='challenger@example.com',
+            password='testpass123',
+        )
+
+        # Create a challenge type
+        self.challenge_type = ChallengeType.objects.create(
+            key='test_challenge',
+            name='Test Challenge',
+            description='A test challenge',
+            templates=['Create an image of {subject}'],
+            variables={'subject': ['a sunset']},
+            is_active=True,
+        )
+
+        # Create battle and invitation
+        self.battle = PromptBattle.objects.create(
+            challenger=self.challenger,
+            opponent=None,
+            challenge_text='Create an amazing sunset image',
+            challenge_type=self.challenge_type,
+            status=BattleStatus.PENDING,
+            duration_minutes=3,
+        )
+
+        self.invitation = BattleInvitation.objects.create(
+            battle=self.battle,
+            sender=self.challenger,
+            recipient=None,
+            invitation_type=InvitationType.LINK,
+        )
+
+    def test_guest_can_view_battle_results_via_same_link(self):
+        """
+        CRITICAL: Guest MUST be able to return to completed battle via invite link.
+
+        SCENARIO: Guest finishes battle, later clicks same link from messages
+        EXPECTED: See battle results without error
+        FAILURE: Error shown or cannot access results
+        """
+        from django.utils import timezone
+
+        from core.battles.models import BattleSubmission
+
+        # Step 1: Guest accepts invitation
+        accept_response = self.client.post(
+            f'/api/v1/battles/invite/{self.invitation.invite_token}/accept/',
+            {'display_name': 'Guest Player'},
+            format='json',
+        )
+        self.assertEqual(accept_response.status_code, status.HTTP_200_OK)
+
+        battle_id = accept_response.data['id']
+        auth_data = accept_response.data.get('auth', {})
+        access_token = auth_data.get('access')
+
+        # Step 2: Complete the battle (simulate both users submitting and judging)
+        self.battle.refresh_from_db()
+        guest_user = self.battle.opponent
+
+        # Create submissions
+        BattleSubmission.objects.create(
+            battle=self.battle,
+            user=self.challenger,
+            prompt_text='Challenger prompt',
+            score=80.0,
+        )
+        BattleSubmission.objects.create(
+            battle=self.battle,
+            user=guest_user,
+            prompt_text='Guest prompt',
+            score=75.0,
+        )
+
+        # Mark battle as completed
+        self.battle.status = BattleStatus.COMPLETED
+        self.battle.phase = BattlePhase.COMPLETE
+        self.battle.winner = self.challenger
+        self.battle.completed_at = timezone.now()
+        self.battle.save()
+
+        # Step 3: Guest returns to the same invite link
+        # This should redirect to the battle or show the battle already accepted
+        view_response = self.client.get(
+            f'/api/v1/battles/invite/{self.invitation.invite_token}/',
+        )
+
+        # The invite endpoint should indicate the invitation was already accepted
+        # and provide the battle_id for redirect
+        self.assertEqual(
+            view_response.status_code,
+            status.HTTP_200_OK,
+            f'CRITICAL: Viewing accepted invite should succeed. Got: {view_response.data}',
+        )
+
+        self.assertTrue(
+            view_response.data.get('already_accepted', False),
+            'CRITICAL: Response must indicate invitation was already accepted',
+        )
+
+        self.assertEqual(
+            view_response.data.get('battle_id'),
+            battle_id,
+            'CRITICAL: Response must include battle_id for redirect',
+        )
+
+        # Step 4: Guest can view the battle results via public endpoint
+        public_response = self.client.get(
+            f'/api/v1/battles/{battle_id}/public/',
+        )
+
+        self.assertEqual(
+            public_response.status_code,
+            status.HTTP_200_OK,
+            f'CRITICAL: Guest must be able to view completed battle. Got: {public_response.data}',
+        )
+
+        # Battle should show as completed with winner
+        self.assertEqual(
+            public_response.data.get('status'),
+            BattleStatus.COMPLETED,
+            'CRITICAL: Battle status must be COMPLETED',
+        )
+
+        self.assertIn(
+            'winner',
+            public_response.data,
+            'CRITICAL: Completed battle must show winner',
+        )
+
+    def test_guest_clicking_link_again_returns_to_battle(self):
+        """
+        CRITICAL: Clicking invite link after accepting should redirect to battle.
+
+        SCENARIO: Guest accepts invite, then clicks link again from messages
+        EXPECTED: Redirected to battle page, not error
+        FAILURE: Error message shown
+        """
+        # Step 1: Accept as guest
+        accept_response = self.client.post(
+            f'/api/v1/battles/invite/{self.invitation.invite_token}/accept/',
+            {},
+            format='json',
+        )
+        self.assertEqual(accept_response.status_code, status.HTTP_200_OK)
+        battle_id = accept_response.data['id']
+
+        # Step 2: Try to accept again (simulates clicking link again)
+        # This should be idempotent - return battle info, not error
+        second_response = self.client.post(
+            f'/api/v1/battles/invite/{self.invitation.invite_token}/accept/',
+            {},
+            format='json',
+        )
+
+        # Should return the battle (idempotency)
+        self.assertEqual(
+            second_response.status_code,
+            status.HTTP_200_OK,
+            f'CRITICAL: Second click on invite link should succeed. Got: {second_response.data}',
+        )
+
+        self.assertEqual(
+            second_response.data.get('id'),
+            battle_id,
+            'CRITICAL: Should return same battle on second click',
+        )
+
+
+@pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
+class AsyncBattleAcceptanceTest(TestCase):
+    """
+    Test async battle flow where challenger starts before opponent joins.
+
+    SCENARIO: As a challenged user who receives a link to a battle who does not accept right away
+    EXPECTED: I should be able to accept the battle and play on my own time
+    FAILURE: Unable to join the battle
+    """
+
+    def setUp(self):
+        """Create test challenger with battle."""
+        self.client = APIClient()
+
+        self.challenger = User.objects.create_user(
+            username='challenger',
+            email='challenger@example.com',
+            password='testpass123',
+        )
+
+        self.challenge_type = ChallengeType.objects.create(
+            key='test_challenge',
+            name='Test Challenge',
+            description='A test challenge',
+            templates=['Create an image'],
+            is_active=True,
+        )
+
+        # Create pending battle with invitation
+        self.battle = PromptBattle.objects.create(
+            challenger=self.challenger,
+            opponent=None,
+            challenge_text='Create something amazing',
+            challenge_type=self.challenge_type,
+            status=BattleStatus.PENDING,
+            duration_minutes=3,
+        )
+
+        self.invitation = BattleInvitation.objects.create(
+            battle=self.battle,
+            sender=self.challenger,
+            recipient=None,
+            invitation_type=InvitationType.LINK,
+        )
+
+    def test_guest_can_accept_after_challenger_starts_turn(self):
+        """
+        CRITICAL: Guest MUST be able to join battle after challenger starts their turn.
+
+        SCENARIO: Challenger creates battle, starts their turn, guest clicks link later
+        EXPECTED: Guest can accept and join the active battle
+        FAILURE: Error "Battle is no longer pending" or similar
+        """
+        # Step 1: Challenger starts their turn (changes status to ACTIVE)
+        self.battle.start_turn(self.challenger)
+        self.battle.refresh_from_db()
+
+        # Verify battle is now active with challenger's turn
+        self.assertEqual(self.battle.status, BattleStatus.ACTIVE)
+        self.assertEqual(self.battle.phase, BattlePhase.CHALLENGER_TURN)
+
+        # Step 2: Guest tries to accept the invitation
+        accept_response = self.client.post(
+            f'/api/v1/battles/invite/{self.invitation.invite_token}/accept/',
+            {'display_name': 'Late Guest'},
+            format='json',
+        )
+
+        # MUST succeed - this is the bug fix scenario
+        self.assertEqual(
+            accept_response.status_code,
+            status.HTTP_200_OK,
+            f'CRITICAL: Guest must be able to join active battle. Got: {accept_response.data}',
+        )
+
+        # Verify guest is set as opponent
+        self.battle.refresh_from_db()
+        self.assertIsNotNone(
+            self.battle.opponent,
+            'CRITICAL: Guest must be set as opponent',
+        )
+
+        # Battle should still be active
+        self.assertEqual(
+            self.battle.status,
+            BattleStatus.ACTIVE,
+            'CRITICAL: Battle must remain active after guest joins',
+        )
+
+    def test_guest_can_accept_after_challenger_submits(self):
+        """
+        CRITICAL: Guest MUST be able to join even after challenger has submitted.
+
+        SCENARIO: Challenger creates battle, submits their prompt, guest clicks link hours later
+        EXPECTED: Guest can accept and take their turn
+        FAILURE: Cannot join battle
+        """
+        from core.battles.models import BattleSubmission
+
+        # Step 1: Challenger starts turn and submits
+        self.battle.start_turn(self.challenger)
+
+        # Transition to allow submission
+        self.battle.phase = BattlePhase.CHALLENGER_TURN
+        self.battle.save()
+
+        # Create challenger's submission
+        BattleSubmission.objects.create(
+            battle=self.battle,
+            user=self.challenger,
+            prompt_text='My amazing prompt',
+        )
+
+        # After submission, phase transitions to waiting for opponent
+        self.battle.phase = BattlePhase.OPPONENT_TURN
+        self.battle.current_turn_user = None
+        self.battle.save()
+
+        # Step 2: Guest accepts invitation later
+        accept_response = self.client.post(
+            f'/api/v1/battles/invite/{self.invitation.invite_token}/accept/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(
+            accept_response.status_code,
+            status.HTTP_200_OK,
+            f'CRITICAL: Guest must join after challenger submits. Got: {accept_response.data}',
+        )
+
+        # Verify guest is opponent
+        self.battle.refresh_from_db()
+        self.assertIsNotNone(self.battle.opponent)
+
+    def test_guest_can_view_invite_details_before_accepting(self):
+        """
+        CRITICAL: Guest MUST see invite details even if challenger already started.
+
+        SCENARIO: Challenger starts their turn, guest views the invite link
+        EXPECTED: Guest sees challenger info and can decide to join
+        FAILURE: Error or empty response
+        """
+        # Challenger starts turn
+        self.battle.start_turn(self.challenger)
+
+        # Guest views invitation (GET request)
+        view_response = self.client.get(
+            f'/api/v1/battles/invite/{self.invitation.invite_token}/',
+        )
+
+        self.assertEqual(
+            view_response.status_code,
+            status.HTTP_200_OK,
+            f'CRITICAL: Guest must see invite details. Got: {view_response.data}',
+        )
+
+        # Should show sender info
+        self.assertIn(
+            'sender',
+            view_response.data,
+            'CRITICAL: Invite must show sender info',
+        )
+
+        # Should show battle exists
+        self.assertIn(
+            'battle',
+            view_response.data,
+            'CRITICAL: Invite must reference battle',
+        )
+
+
+@pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
+class JoinActiveBattleTest(TestCase):
+    """
+    Test joining a battle while challenger is actively playing.
+
+    SCENARIO: As a challenged user who receives a link to a battle who does not accept right away
+              and I try to join an active battle
+    EXPECTED: I should be able to join an active battle if the challenger is already in the battle
+    FAILURE: Unable to join the battle
+    """
+
+    def setUp(self):
+        """Create challenger with active battle."""
+        self.client = APIClient()
+
+        self.challenger = User.objects.create_user(
+            username='challenger',
+            email='challenger@example.com',
+            password='testpass123',
+        )
+
+        self.challenge_type = ChallengeType.objects.create(
+            key='test_challenge',
+            name='Test Challenge',
+            description='A test challenge',
+            templates=['Create an image'],
+            is_active=True,
+        )
+
+        self.battle = PromptBattle.objects.create(
+            challenger=self.challenger,
+            opponent=None,
+            challenge_text='Create something amazing',
+            challenge_type=self.challenge_type,
+            status=BattleStatus.PENDING,
+            duration_minutes=3,
+        )
+
+        self.invitation = BattleInvitation.objects.create(
+            battle=self.battle,
+            sender=self.challenger,
+            recipient=None,
+            invitation_type=InvitationType.LINK,
+        )
+
+    def test_guest_joins_while_challenger_timer_active(self):
+        """
+        CRITICAL: Guest MUST be able to join while challenger's turn timer is running.
+
+        SCENARIO: Challenger clicks "Start Turn", timer starts. Guest clicks link during timer.
+        EXPECTED: Guest joins, sees battle is active, can wait for their turn
+        FAILURE: Error joining battle
+        """
+        from django.utils import timezone
+
+        # Challenger starts their turn - timer is now running
+        self.battle.start_turn(self.challenger)
+        self.battle.refresh_from_db()
+
+        # Verify challenger's turn is active with timer
+        self.assertIsNotNone(
+            self.battle.current_turn_expires_at,
+            'CRITICAL: Turn timer must be set',
+        )
+        self.assertTrue(
+            self.battle.current_turn_expires_at > timezone.now(),
+            'CRITICAL: Turn timer must be in the future',
+        )
+
+        # Guest accepts while timer is running
+        accept_response = self.client.post(
+            f'/api/v1/battles/invite/{self.invitation.invite_token}/accept/',
+            {'display_name': 'Joining Guest'},
+            format='json',
+        )
+
+        self.assertEqual(
+            accept_response.status_code,
+            status.HTTP_200_OK,
+            f'CRITICAL: Guest must join during active timer. Got: {accept_response.data}',
+        )
+
+        # Response should indicate battle is active
+        self.assertEqual(
+            accept_response.data.get('status'),
+            BattleStatus.ACTIVE,
+            'CRITICAL: Response must show battle is ACTIVE',
+        )
+
+        # Guest should be set as opponent
+        self.battle.refresh_from_db()
+        self.assertIsNotNone(self.battle.opponent)
+        self.assertTrue(self.battle.opponent.is_guest)
+
+        # Challenger's turn should still be active
+        self.assertEqual(
+            self.battle.phase,
+            BattlePhase.CHALLENGER_TURN,
+            'CRITICAL: Should still be challenger turn after guest joins',
+        )
+
+    def test_authenticated_user_joins_active_battle(self):
+        """
+        CRITICAL: Authenticated user MUST be able to join active battle.
+
+        SCENARIO: Challenger starts battle, sends link to friend who has account
+        EXPECTED: Friend logs in, clicks link, joins active battle
+        FAILURE: Error because battle is not PENDING
+        """
+        # Create opponent user
+        opponent = User.objects.create_user(
+            username='opponent',
+            email='opponent@example.com',
+            password='testpass123',
+        )
+
+        # Challenger starts their turn
+        self.battle.start_turn(self.challenger)
+
+        # Opponent (authenticated) accepts invitation
+        self.client.force_authenticate(user=opponent)
+        accept_response = self.client.post(
+            f'/api/v1/battles/invite/{self.invitation.invite_token}/accept/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(
+            accept_response.status_code,
+            status.HTTP_200_OK,
+            f'CRITICAL: Authenticated user must join active battle. Got: {accept_response.data}',
+        )
+
+        # Verify opponent is set
+        self.battle.refresh_from_db()
+        self.assertEqual(
+            self.battle.opponent,
+            opponent,
+            'CRITICAL: Opponent must be the authenticated user',
+        )
+
+    def test_battle_state_correct_after_guest_joins_active(self):
+        """
+        CRITICAL: Battle state MUST be correct after guest joins active battle.
+
+        SCENARIO: Guest joins during challenger's active turn
+        EXPECTED: Battle has correct phase, both participants set, timer preserved
+        FAILURE: Battle state corrupted
+        """
+
+        # Start challenger's turn
+        original_expires_at = None
+        self.battle.start_turn(self.challenger)
+        self.battle.refresh_from_db()
+        original_expires_at = self.battle.current_turn_expires_at
+        original_phase = self.battle.phase
+
+        # Guest joins
+        self.client.post(
+            f'/api/v1/battles/invite/{self.invitation.invite_token}/accept/',
+            {},
+            format='json',
+        )
+
+        self.battle.refresh_from_db()
+
+        # Phase should be unchanged (still challenger's turn)
+        self.assertEqual(
+            self.battle.phase,
+            original_phase,
+            f'CRITICAL: Phase must remain {original_phase}',
+        )
+
+        # Turn timer should be unchanged
+        self.assertEqual(
+            self.battle.current_turn_expires_at,
+            original_expires_at,
+            'CRITICAL: Turn timer must not reset when guest joins',
+        )
+
+        # Both participants should be set
+        self.assertIsNotNone(self.battle.challenger)
+        self.assertIsNotNone(self.battle.opponent)
+
+        # Status should be ACTIVE
+        self.assertEqual(
+            self.battle.status,
+            BattleStatus.ACTIVE,
+            'CRITICAL: Battle must be ACTIVE',
+        )
+
+
+@pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
+class ChallengerNotificationTest(TestCase):
+    """
+    Test challenger receives notification when async battle completes.
+
+    SCENARIO: As a challenger who sends a link to a guest who does not accept right away
+    EXPECTED: I should receive a notification when the user completes the battle
+    FAILURE: I don't know the battle has been complete
+    """
+
+    def setUp(self):
+        """Create challenger and guest with active battle."""
+        self.client = APIClient()
+
+        self.challenger = User.objects.create_user(
+            username='challenger',
+            email='challenger@example.com',
+            password='testpass123',
+        )
+
+        self.challenge_type = ChallengeType.objects.create(
+            key='test_challenge',
+            name='Test Challenge',
+            description='A test challenge',
+            templates=['Create an image'],
+            is_active=True,
+        )
+
+    def test_battle_completion_visible_to_challenger(self):
+        """
+        CRITICAL: Challenger MUST be able to see when async battle completes.
+
+        SCENARIO: Guest completes battle, challenger checks their battles
+        EXPECTED: Completed battle shows in challenger's battle list
+        FAILURE: Challenger can't see battle completed
+        """
+        from core.battles.models import BattleSubmission
+        from core.battles.services import BattleService
+
+        # Create battle with invitation
+        battle = PromptBattle.objects.create(
+            challenger=self.challenger,
+            opponent=None,
+            challenge_text='Create something amazing',
+            challenge_type=self.challenge_type,
+            status=BattleStatus.PENDING,
+            duration_minutes=3,
+        )
+
+        invitation = BattleInvitation.objects.create(
+            battle=battle,
+            sender=self.challenger,
+            recipient=None,
+            invitation_type=InvitationType.LINK,
+        )
+
+        # Guest accepts
+        accept_response = self.client.post(
+            f'/api/v1/battles/invite/{invitation.invite_token}/accept/',
+            {},
+            format='json',
+        )
+        self.assertEqual(accept_response.status_code, status.HTTP_200_OK)
+
+        battle.refresh_from_db()
+        guest = battle.opponent
+
+        # Both submit prompts
+        BattleSubmission.objects.create(
+            battle=battle,
+            user=self.challenger,
+            prompt_text='Challenger amazing prompt',
+            score=85.0,
+        )
+        BattleSubmission.objects.create(
+            battle=battle,
+            user=guest,
+            prompt_text='Guest creative prompt',
+            score=80.0,
+        )
+
+        # Complete the battle
+        service = BattleService()
+        service.complete_battle(battle)
+
+        battle.refresh_from_db()
+        self.assertEqual(battle.status, BattleStatus.COMPLETED)
+
+        # Challenger should be able to see the completed battle
+        self.client.force_authenticate(user=self.challenger)
+        response = self.client.get('/api/v1/me/battles/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Find the battle in results
+        battles = response.data.get('results', response.data)
+        completed_battle = next((b for b in battles if b['id'] == battle.id), None)
+
+        self.assertIsNotNone(
+            completed_battle,
+            'CRITICAL: Challenger must see their completed battle',
+        )
+        self.assertEqual(
+            completed_battle['status'],
+            BattleStatus.COMPLETED,
+            'CRITICAL: Battle must show as COMPLETED',
+        )
+        # Note: List endpoint may not include winner, but detail endpoint does
+        # The important thing is challenger can see the battle is completed
+
+    def test_battle_has_notification_endpoint_for_challenger(self):
+        """
+        CRITICAL: There MUST be a way for challenger to check battle status.
+
+        SCENARIO: Challenger polls for battle updates
+        EXPECTED: Can check if their sent invitation battle has completed
+        FAILURE: No way to know battle status without WebSocket
+        """
+        from django.utils import timezone
+
+        from core.battles.models import BattleSubmission
+
+        # Create and complete a battle
+        battle = PromptBattle.objects.create(
+            challenger=self.challenger,
+            opponent=None,
+            challenge_text='Create something amazing',
+            challenge_type=self.challenge_type,
+            status=BattleStatus.PENDING,
+            duration_minutes=3,
+        )
+
+        invitation = BattleInvitation.objects.create(
+            battle=battle,
+            sender=self.challenger,
+            recipient=None,
+            invitation_type=InvitationType.LINK,
+        )
+
+        # Guest accepts
+        accept_response = self.client.post(
+            f'/api/v1/battles/invite/{invitation.invite_token}/accept/',
+            {},
+            format='json',
+        )
+        battle.refresh_from_db()
+        guest = battle.opponent
+
+        # Complete battle
+        BattleSubmission.objects.create(battle=battle, user=self.challenger, prompt_text='Test', score=80)
+        BattleSubmission.objects.create(battle=battle, user=guest, prompt_text='Test', score=75)
+        battle.status = BattleStatus.COMPLETED
+        battle.phase = BattlePhase.COMPLETE
+        battle.winner = self.challenger
+        battle.completed_at = timezone.now()
+        battle.save()
+
+        # Challenger can check their battles
+        self.client.force_authenticate(user=self.challenger)
+        response = self.client.get('/api/v1/me/battles/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Should include the completed battle
+        battle_ids = [b['id'] for b in response.data.get('results', response.data)]
+        self.assertIn(
+            battle.id,
+            battle_ids,
+            'CRITICAL: Challenger must be able to see their completed battle',
+        )
+
+    def test_invitation_acceptance_updates_battle_for_challenger(self):
+        """
+        CRITICAL: Battle state MUST update for challenger when invitation is accepted.
+
+        SCENARIO: Guest clicks link and accepts invitation
+        EXPECTED: Challenger can see opponent joined their battle
+        FAILURE: Challenger can't see opponent info
+        """
+        # Create battle with invitation
+        battle = PromptBattle.objects.create(
+            challenger=self.challenger,
+            opponent=None,
+            challenge_text='Create something amazing',
+            challenge_type=self.challenge_type,
+            status=BattleStatus.PENDING,
+            duration_minutes=3,
+        )
+
+        invitation = BattleInvitation.objects.create(
+            battle=battle,
+            sender=self.challenger,
+            recipient=None,
+            invitation_type=InvitationType.LINK,
+        )
+
+        # Guest accepts
+        response = self.client.post(
+            f'/api/v1/battles/invite/{invitation.invite_token}/accept/',
+            {},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Challenger checks their battle
+        self.client.force_authenticate(user=self.challenger)
+        battle_response = self.client.get(f'/api/v1/me/battles/{battle.id}/')
+
+        self.assertEqual(battle_response.status_code, status.HTTP_200_OK)
+
+        # Battle should show opponent joined
+        self.assertIn(
+            'opponent',
+            battle_response.data,
+            'CRITICAL: Battle must show opponent info',
+        )
+
+        # Opponent should be set (not null)
+        self.assertIsNotNone(
+            battle_response.data.get('opponent'),
+            'CRITICAL: Opponent must be set after acceptance',
+        )
+
+        # Battle should be active
+        self.assertEqual(
+            battle_response.data.get('status'),
+            BattleStatus.ACTIVE,
+            'CRITICAL: Battle must be ACTIVE after acceptance',
+        )

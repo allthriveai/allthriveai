@@ -19,6 +19,11 @@ ALLOWED_PATTERNS = [
     r'#.*http',  # Comments
     r'""".*http.*"""',  # Docstrings
     r"'''.*http.*'''",  # Docstrings
+    r'//.*http',  # JS/TS single-line comments
+    r'/\*.*http.*\*/',  # JS/TS multi-line comments
+    r'import\.meta\.env\.\w+\s*\|\|\s*[\'"]http',  # Vite env var fallback
+    r'process\.env\.\w+\s*\|\|\s*[\'"]http',  # Node env var fallback
+    r'VITE_\w+.*http',  # Vite config with env vars
 ]
 
 

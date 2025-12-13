@@ -555,6 +555,7 @@ export function BattlePage() {
               challengerName={battleState.opponent.username}
               isGuestUser={isGuestUser}
               onSignupClick={() => setShowGuestSignupModal(true)}
+              isMyTurn={battleState.isMyTurn ?? true}
             />
           </>
         );

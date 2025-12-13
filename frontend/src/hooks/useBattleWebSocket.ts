@@ -71,6 +71,8 @@ export interface BattleState {
     username: string;
     avatarUrl?: string;
   };
+  /** Whether it's the current user's turn (for async battles) */
+  isMyTurn?: boolean;
 }
 
 interface WebSocketMessage {
@@ -241,6 +243,7 @@ export function useBattleWebSocket({
         winnerId: serverState.winner_id as number | null,
         matchSource: (serverState.match_source as string) ?? 'unknown',
         inviteUrl: serverState.invite_url as string | undefined,
+        isMyTurn: serverState.is_my_turn as boolean | undefined,
       };
     } catch (error) {
       console.error('[Battle WS] Failed to parse server state:', error);
@@ -251,10 +254,6 @@ export function useBattleWebSocket({
   // Connect to WebSocket
   const connect = useCallback(async () => {
     if (authLoading) return;
-    if (!isAuthenticated) {
-      onErrorRef.current?.('Please log in to join battles');
-      return;
-    }
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
     if (isConnectingRef.current) return;
 
@@ -269,6 +268,8 @@ export function useBattleWebSocket({
     setIsConnecting(true);
 
     // Fetch connection token
+    // Note: We rely on the API call to verify auth rather than React state,
+    // which fixes race conditions when navigating from guest invite acceptance
     let connectionToken: string;
     try {
       const csrfToken = getCsrfToken();
@@ -283,6 +284,14 @@ export function useBattleWebSocket({
           connection_id: `battle-${battleId}-${Date.now()}`,
         }),
       });
+
+      if (response.status === 401 || response.status === 403) {
+        // Auth failed - user not logged in
+        setIsConnecting(false);
+        isConnectingRef.current = false;
+        onErrorRef.current?.('Please log in to join battles');
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(`Failed to fetch connection token: ${response.status}`);
@@ -511,7 +520,6 @@ export function useBattleWebSocket({
     }
   }, [
     battleId,
-    isAuthenticated,
     authLoading,
     clearTimers,
     startHeartbeat,

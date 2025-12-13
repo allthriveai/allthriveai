@@ -83,6 +83,27 @@ interface RawAsyncBattle {
   inviteToken?: string;
 }
 
+// Battle history item (includes completed battles)
+export interface BattleHistoryItem {
+  id: number;
+  challenger: { id: number; username: string; avatarUrl?: string };
+  opponent: { id: number; username: string; avatarUrl?: string } | null;
+  challengeText: string;
+  challengeType: { key: string; name: string } | null;
+  status: string;
+  winner: { id: number; username: string } | null;
+  createdAt: string;
+  completedAt?: string;
+}
+
+interface BattleHistoryResponse {
+  battles: BattleHistoryItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 interface AsyncBattleContextValue {
   // State
   pendingBattles: AsyncBattle[];
@@ -97,6 +118,8 @@ interface AsyncBattleContextValue {
   sendReminder: (battleId: number) => Promise<boolean>;
   startTurn: (battleId: number) => Promise<{ success: boolean; expiresAt?: string }>;
   cancelBattle: (battleId: number) => Promise<boolean>;
+  bulkDeleteBattles: (battleIds: number[]) => Promise<{ deleted: number; failed: Array<{ id: number; reason: string }> }>;
+  fetchBattleHistory: (options?: { status?: string; page?: number; pageSize?: number }) => Promise<BattleHistoryResponse>;
 
   // For banner display
   hasUrgentBattle: boolean;
@@ -427,6 +450,53 @@ export function AsyncBattleProvider({ children }: AsyncBattleProviderProps) {
     }
   }, []);
 
+  // Action: Bulk delete battles
+  const bulkDeleteBattles = useCallback(
+    async (battleIds: number[]): Promise<{ deleted: number; failed: Array<{ id: number; reason: string }> }> => {
+      try {
+        const response = await api.post('/battles/bulk-delete/', { battle_ids: battleIds });
+        // Remove successfully deleted battles from pending state
+        const deletedIds = new Set(
+          battleIds.filter((id) => !response.data.failed?.some((f: { id: number }) => f.id === id))
+        );
+        setPendingBattles((prev) => prev.filter((battle) => !deletedIds.has(battle.id)));
+        return {
+          deleted: response.data.deleted || 0,
+          failed: response.data.failed || [],
+        };
+      } catch (err) {
+        logError('AsyncBattle.bulkDeleteBattles', err, { battleIds });
+        return { deleted: 0, failed: battleIds.map((id) => ({ id, reason: 'Request failed' })) };
+      }
+    },
+    []
+  );
+
+  // Action: Fetch battle history with pagination
+  const fetchBattleHistory = useCallback(
+    async (options?: { status?: string; page?: number; pageSize?: number }) => {
+      try {
+        const params = new URLSearchParams();
+        if (options?.status) params.append('status', options.status);
+        if (options?.page) params.append('page', options.page.toString());
+        if (options?.pageSize) params.append('page_size', options.pageSize.toString());
+
+        const response = await api.get(`/battles/my-history/?${params.toString()}`);
+        return {
+          battles: response.data.battles || [],
+          total: response.data.total || 0,
+          page: response.data.page || 1,
+          pageSize: response.data.pageSize || 20,
+          totalPages: response.data.totalPages || 1,
+        };
+      } catch (err) {
+        logError('AsyncBattle.fetchBattleHistory', err);
+        return { battles: [], total: 0, page: 1, pageSize: 20, totalPages: 0 };
+      }
+    },
+    []
+  );
+
   // Computed values
   const urgentBattles = useMemo(
     () => pendingBattles.filter((b) => {
@@ -466,6 +536,8 @@ export function AsyncBattleProvider({ children }: AsyncBattleProviderProps) {
       sendReminder,
       startTurn,
       cancelBattle,
+      bulkDeleteBattles,
+      fetchBattleHistory,
       hasUrgentBattle,
       mostUrgentBattle,
     }),
@@ -480,6 +552,8 @@ export function AsyncBattleProvider({ children }: AsyncBattleProviderProps) {
       sendReminder,
       startTurn,
       cancelBattle,
+      bulkDeleteBattles,
+      fetchBattleHistory,
       hasUrgentBattle,
       mostUrgentBattle,
     ]

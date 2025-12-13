@@ -62,6 +62,14 @@ export function useEmberOnboarding() {
   // so they can accept the battle challenge without interruption
   const isOnBattleInvitePage = location.pathname.startsWith('/battle/invite/');
 
+  // Check if user is on a public/landing page - don't show onboarding on these pages
+  // even if the user is authenticated (e.g., PWA with inherited cookies)
+  const publicPages = ['/', '/about', '/explore', '/tools', '/login', '/signup', '/privacy', '/terms'];
+  const isOnPublicPage = publicPages.includes(location.pathname) ||
+    location.pathname.startsWith('/@') || // Profile pages
+    location.pathname.startsWith('/battles/') || // Battle share pages
+    location.pathname.startsWith('/styleguide');
+
   // Load state when user changes
   useEffect(() => {
     if (user?.id) {
@@ -81,19 +89,21 @@ export function useEmberOnboarding() {
     }
   }, [user?.id, state, isLoaded]);
 
-  // Should show the initial modal (first time user, but NOT for guest users or battle invite pages)
+  // Should show the initial modal (first time user, but NOT for guest users, battle invite pages, or public pages)
   // Guest users are temporary accounts created for battle invitations - they shouldn't see onboarding
   // Battle invite pages should go straight to accepting the challenge without interruption
+  // Public pages (landing, about, etc.) shouldn't show onboarding even if user has inherited auth cookies
   const shouldShowModal =
     isAuthenticated &&
     isLoaded &&
     !state.hasSeenModal &&
     !state.isDismissed &&
     !user?.isGuest &&
-    !isOnBattleInvitePage;
+    !isOnBattleInvitePage &&
+    !isOnPublicPage;
 
   // Should show the banner (has seen modal, hasn't dismissed, hasn't completed all)
-  // Also skip for guest users and battle invite pages
+  // Also skip for guest users, battle invite pages, and public pages
   const shouldShowBanner =
     isAuthenticated &&
     isLoaded &&
@@ -101,7 +111,8 @@ export function useEmberOnboarding() {
     !state.isDismissed &&
     state.completedAdventures.length < 3 &&
     !user?.isGuest &&
-    !isOnBattleInvitePage;
+    !isOnBattleInvitePage &&
+    !isOnPublicPage;
 
   // All adventures completed
   const allAdventuresComplete = state.completedAdventures.length === 3;

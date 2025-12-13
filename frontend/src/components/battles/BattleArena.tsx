@@ -45,6 +45,8 @@ interface BattleArenaProps {
   isGuestUser?: boolean;
   /** Callback to show signup modal */
   onSignupClick?: () => void;
+  /** Whether it's currently the user's turn (for async battles) */
+  isMyTurn?: boolean;
 }
 
 export function BattleArena({
@@ -65,6 +67,7 @@ export function BattleArena({
   challengerName,
   isGuestUser = false,
   onSignupClick,
+  isMyTurn = true,
 }: BattleArenaProps) {
   // Determine the appropriate message after submission
   const getSubmittedMessage = (): React.ReactNode => {
@@ -277,6 +280,35 @@ export function BattleArena({
                   ))}
                 </div>
               )}
+            </div>
+          ) : !isMyTurn && isAsyncBattle ? (
+            // Show waiting message when it's not the user's turn in async battles
+            <div className="text-center p-8 rounded-2xl glass-card">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring' }}
+                className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-500/20 flex items-center justify-center"
+              >
+                <svg className="w-8 h-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </motion.div>
+              <h3 className="text-xl font-bold text-white mb-2">Waiting for {challengerName || opponent.username}</h3>
+              <p className="text-slate-400">
+                {challengerName || opponent.username} is currently working on their prompt.
+                You'll be able to submit once they finish their turn.
+              </p>
+              <div className="flex justify-center gap-2 mt-4">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-2 h-2 rounded-full bg-amber-400"
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                  />
+                ))}
+              </div>
             </div>
           ) : (
             <PromptEditor

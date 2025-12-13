@@ -1,11 +1,34 @@
 #!/bin/bash
 # Pull production database to local Docker
+#
+# Prerequisites:
+# 1. AWS CLI configured with appropriate credentials
+# 2. Docker running with local PostgreSQL container
+#
+# Required AWS Permissions for ECS Task Role:
+# Add this policy to allow S3 uploads:
+#   {
+#     "Effect": "Allow",
+#     "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+#     "Resource": "arn:aws:s3:::allthrive-backups-*-*/db-dumps/*"
+#   }
+#
+# Note: If RDS PostgreSQL version > pg_dump version, you may need to
+# update the Docker image to include a newer PostgreSQL client.
 
 set -e
 
 ENVIRONMENT="${ENVIRONMENT:-production}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
-S3_BUCKET="allthrive-media-${ENVIRONMENT}"
+
+# Get AWS account ID - fail explicitly if credentials are misconfigured
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null)
+if [ -z "$AWS_ACCOUNT_ID" ]; then
+    echo "Error: Could not determine AWS account ID. Check your AWS credentials."
+    exit 1
+fi
+
+S3_BUCKET="allthrive-backups-${ENVIRONMENT}-${AWS_ACCOUNT_ID}"
 DUMP_FILE="db-dump-$(date +%Y%m%d-%H%M%S).sql.gz"
 S3_KEY="db-dumps/${DUMP_FILE}"
 LOCAL_DUMP="/tmp/${DUMP_FILE}"
@@ -55,6 +78,9 @@ echo "Security Groups: ${SECURITY_GROUPS_JSON}"
 NETWORK_CONFIG_FILE=$(mktemp)
 OVERRIDES_FILE=$(mktemp)
 
+# Ensure temp files are cleaned up on exit (success or failure)
+trap 'rm -f "${NETWORK_CONFIG_FILE}" "${OVERRIDES_FILE}"' EXIT
+
 # Write network configuration
 cat > "${NETWORK_CONFIG_FILE}" << EOF
 {
@@ -66,7 +92,7 @@ cat > "${NETWORK_CONFIG_FILE}" << EOF
 }
 EOF
 
-# Write overrides - the command parses DATABASE_URL and runs pg_dump
+# Write overrides - the command uses Python to parse DATABASE_URL (handles special chars in password)
 cat > "${OVERRIDES_FILE}" << EOF
 {
   "containerOverrides": [
@@ -74,7 +100,7 @@ cat > "${OVERRIDES_FILE}" << EOF
       "name": "web",
       "command": [
         "sh", "-c",
-        "set -e && echo 'Parsing DATABASE_URL...' && export DB_HOST=\$(echo \$DATABASE_URL | sed 's|.*@\\([^:/]*\\).*|\\1|') && export DB_PORT=\$(echo \$DATABASE_URL | sed 's|.*:\\([0-9]*\\)/.*|\\1|') && export DB_USER=\$(echo \$DATABASE_URL | sed 's|.*://\\([^:]*\\):.*|\\1|') && export DB_PASS=\$(echo \$DATABASE_URL | sed 's|.*://[^:]*:\\([^@]*\\)@.*|\\1|') && export DB_NAME=\$(echo \$DATABASE_URL | sed 's|.*/\\([^?]*\\).*|\\1|') && echo \"Dumping from \$DB_HOST:\$DB_PORT/\$DB_NAME...\" && export PGPASSWORD=\$DB_PASS && pg_dump -h \$DB_HOST -p \$DB_PORT -U \$DB_USER -d \$DB_NAME --no-owner --no-acl | gzip > /tmp/dump.sql.gz && echo 'Uploading to S3...' && aws s3 cp /tmp/dump.sql.gz s3://${S3_BUCKET}/${S3_KEY} && echo 'Done!'"
+        "set -e && echo 'Parsing DATABASE_URL with Python...' && eval \$(python3 -c 'import os, shlex; from urllib.parse import urlparse, unquote; u=urlparse(os.environ[\"DATABASE_URL\"]); print(f\"DB_HOST={u.hostname}\"); print(f\"DB_PORT={u.port or 5432}\"); print(f\"DB_USER={u.username}\"); print(f\"DB_PASS={shlex.quote(unquote(u.password))}\"); print(f\"DB_NAME={u.path[1:]}\" if u.path else \"DB_NAME=\")') && echo \"Dumping from \$DB_HOST:\$DB_PORT/\$DB_NAME...\" && export PGPASSWORD=\"\$DB_PASS\" && pg_dump -h \$DB_HOST -p \$DB_PORT -U \$DB_USER -d \$DB_NAME --no-owner --no-acl | gzip > /tmp/dump.sql.gz && echo 'Uploading to S3...' && aws s3 cp /tmp/dump.sql.gz s3://${S3_BUCKET}/${S3_KEY} && echo 'Done!'"
       ]
     }
   ]
@@ -94,9 +120,6 @@ TASK_ARN=$(aws ecs run-task \
     --query 'tasks[0].taskArn' \
     --output text \
     --region ${AWS_REGION})
-
-# Clean up temp files
-rm -f "${NETWORK_CONFIG_FILE}" "${OVERRIDES_FILE}"
 
 if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "None" ]; then
     echo "Error: Failed to start ECS task"
@@ -152,6 +175,12 @@ aws s3 rm "s3://${S3_BUCKET}/${S3_KEY}" --region ${AWS_REGION}
 # Restore to local Docker
 echo "Restoring to local Docker PostgreSQL..."
 echo ""
+
+# Verify local Docker is running
+if ! docker-compose ps db 2>/dev/null | grep -q "Up"; then
+    echo "Error: Local database container is not running. Run 'make up' first."
+    exit 1
+fi
 
 # Drop and recreate the database
 docker-compose exec -T db psql -U ${POSTGRES_USER:-allthrive} -d postgres -c "DROP DATABASE IF EXISTS ${POSTGRES_DB:-allthrive_ai};"

@@ -85,6 +85,17 @@ Resources:
                     - '${BucketArn}/*'
                     - BucketArn: !ImportValue
                         Fn::Sub: ${EnvironmentName}-MediaBucketArn
+        - PolicyName: S3BackupsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub arn:aws:s3:::allthrive-backups-${EnvironmentName}-${AWS::AccountId}/db-dumps/*
         - PolicyName: SESAccess
           PolicyDocument:
             Version: '2012-10-17'

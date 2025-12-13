@@ -107,11 +107,15 @@ export function BattleInvitePage() {
       const response = await api.post(`/battles/invite/${token}/accept/`);
 
       // Refresh auth context to pick up the new guest user from cookies
-      await refreshUser();
+      // This returns the user if successful, null if failed
+      const user = await refreshUser();
 
-      // Small delay to ensure React state propagates before navigation
-      // This prevents race condition where BattlePage mounts before auth state updates
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (!user) {
+        console.error('Failed to authenticate after accepting invite');
+        setError('Authentication failed - please try again');
+        setIsAcceptingAsGuest(false);
+        return;
+      }
 
       // Navigate to the battle - the response contains the serialized battle
       const battleId = response.data?.id;

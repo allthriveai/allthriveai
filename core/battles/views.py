@@ -398,6 +398,135 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
             }
         )
 
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    def bulk_delete(self, request):
+        """Bulk delete/cancel battles.
+
+        Only allows deleting battles where:
+        - User is a participant (challenger or opponent)
+        - Battle is pending, cancelled, expired, or completed
+
+        Request body:
+            { "battle_ids": [1, 2, 3] }
+
+        Response:
+            { "deleted": 2, "failed": [{"id": 3, "reason": "..."}] }
+        """
+        battle_ids = request.data.get('battle_ids', [])
+
+        if not battle_ids:
+            return Response({'error': 'No battle IDs provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(battle_ids) > 50:
+            return Response(
+                {'error': 'Cannot delete more than 50 battles at once.'}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = request.user
+        deleted_count = 0
+        failed = []
+
+        for battle_id in battle_ids:
+            try:
+                battle = PromptBattle.objects.get(pk=battle_id)
+
+                # Check user is a participant
+                if user not in [battle.challenger, battle.opponent]:
+                    failed.append({'id': battle_id, 'reason': 'Not a participant'})
+                    continue
+
+                # For active battles, cancel instead of delete
+                if battle.status == BattleStatus.ACTIVE:
+                    # Only allow if user hasn't submitted yet
+                    has_submitted = BattleSubmission.objects.filter(battle=battle, user=user).exists()
+                    if has_submitted:
+                        failed.append({'id': battle_id, 'reason': 'Cannot delete - you already submitted'})
+                        continue
+                    battle.cancel_battle()
+                    # Also hide it from user's view
+                    battle.hidden_by.add(user)
+                    deleted_count += 1
+                elif battle.status == BattleStatus.PENDING:
+                    # Cancel pending battles
+                    battle.cancel_battle()
+                    # Also hide it from user's view
+                    battle.hidden_by.add(user)
+                    deleted_count += 1
+                elif battle.status in [BattleStatus.CANCELLED, BattleStatus.EXPIRED, BattleStatus.COMPLETED]:
+                    # For finished battles, hide them from the user's view
+                    # We don't actually delete to preserve data integrity
+                    battle.hidden_by.add(user)
+                    deleted_count += 1
+                else:
+                    failed.append({'id': battle_id, 'reason': f'Invalid status: {battle.status}'})
+
+            except PromptBattle.DoesNotExist:
+                failed.append({'id': battle_id, 'reason': 'Battle not found'})
+
+        return Response(
+            {
+                'deleted': deleted_count,
+                'failed': failed,
+            }
+        )
+
+    @action(detail=False, methods=['get'], url_path='my-history')
+    def my_history(self, request):
+        """Get full battle history for the user with pagination and filters.
+
+        Query params:
+            - status: 'all', 'completed', 'cancelled', 'expired', 'active', 'pending' (default: 'all')
+            - page: page number (default: 1)
+            - page_size: results per page (default: 20, max: 50)
+
+        Response includes battles where user is challenger or opponent.
+        """
+        user = request.user
+        status_filter = request.query_params.get('status', 'all')
+        page = int(request.query_params.get('page', 1))
+        page_size = min(int(request.query_params.get('page_size', 20)), 50)
+
+        queryset = (
+            PromptBattle.objects.filter(Q(challenger=user) | Q(opponent=user))
+            .exclude(
+                hidden_by=user  # Exclude battles hidden by this user
+            )
+            .select_related('challenger', 'opponent', 'winner', 'challenge_type')
+        )
+
+        # Apply status filter
+        if status_filter == 'completed':
+            queryset = queryset.filter(status=BattleStatus.COMPLETED)
+        elif status_filter == 'cancelled':
+            queryset = queryset.filter(status=BattleStatus.CANCELLED)
+        elif status_filter == 'expired':
+            queryset = queryset.filter(status=BattleStatus.EXPIRED)
+        elif status_filter == 'active':
+            queryset = queryset.filter(status=BattleStatus.ACTIVE)
+        elif status_filter == 'pending':
+            queryset = queryset.filter(status=BattleStatus.PENDING)
+        # 'all' returns everything
+
+        # Order by most recent first
+        queryset = queryset.order_by('-created_at')
+
+        # Paginate
+        total_count = queryset.count()
+        offset = (page - 1) * page_size
+        battles = queryset[offset : offset + page_size]
+
+        serializer = PromptBattleListSerializer(battles, many=True)
+
+        return Response(
+            {
+                'battles': serializer.data,
+                'total': total_count,
+                'page': page,
+                'page_size': page_size,
+                'total_pages': (total_count + page_size - 1) // page_size,
+            }
+        )
+
 
 class BattleInvitationViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for managing battle invitations."""
@@ -1311,12 +1440,13 @@ def pending_battles(request):
     user = request.user
     now = timezone.now()
 
-    # Get all active battles for this user
+    # Get all active battles for this user (excluding hidden ones)
     user_battles = (
         PromptBattle.objects.filter(
             Q(challenger=user) | Q(opponent=user),
             status__in=[BattleStatus.ACTIVE, BattleStatus.PENDING],
         )
+        .exclude(hidden_by=user)
         .select_related('challenger', 'opponent', 'challenge_type', 'current_turn_user', 'invitation')
         .prefetch_related('submissions')
     )

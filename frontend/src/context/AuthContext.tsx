@@ -10,7 +10,7 @@ import { applyStoredReferralCode, hasPendingReferralCode } from '@/services/refe
 interface AuthContextType extends AuthState {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<AuthState['user']>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function refreshUser() {
+  async function refreshUser(): Promise<AuthState['user']> {
     try {
       const user = await authService.getCurrentUser();
       setAuthState((prev) => ({
@@ -169,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email,
         username: user.username,
       });
+      return user;
     } catch {
       setAuthState({
         user: null,
@@ -178,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       // Clear Sentry user context
       setSentryUser(null);
+      return null;
     }
   }
 

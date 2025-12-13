@@ -69,6 +69,8 @@ help:
 	@echo "  make test-e2e-chat   - Run Intelligent Chat E2E tests"
 	@echo "  make test-e2e-chat-ai - Run AI workflow tests (requires API keys)"
 	@echo "  make test-e2e-chat-edge - Run Chat edge case tests"
+	@echo "  make test-e2e-battles - Run Prompt Battles E2E tests (quick)"
+	@echo "  make test-e2e-battles-critical - Run Prompt Battles tests with full AI judging (~90s)"
 	@echo "  make test-e2e-ui     - Run E2E tests with browser UI (headed)"
 	@echo "  make test-e2e-debug  - Run E2E tests in debug mode"
 	@echo "  make setup-test-login - Set password for test user (for Chrome DevTools MCP)"
@@ -378,6 +380,17 @@ test-e2e-chat-edge:
 	@echo "Running Chat Edge Case E2E tests..."
 	@echo "Note: Make sure backend is running (make up)"
 	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test e2e/intelligent-chat.spec.ts --grep "Edge Cases"
+
+test-e2e-battles:
+	@echo "Running Prompt Battles E2E tests (quick)..."
+	@echo "Note: Make sure backend is running (make up)"
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test e2e/prompt-battles.spec.ts
+
+test-e2e-battles-critical:
+	@echo "Running Prompt Battles CRITICAL E2E tests (with full AI judging ~90s)..."
+	@echo "Note: Make sure backend is running (make up)"
+	@echo "This test waits for AI image generation and judging to complete."
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_CRITICAL_E2E=true npx playwright test e2e/prompt-battles.spec.ts --headed
 
 test-e2e-ui:
 	@echo "Running E2E tests with UI (headed mode)..."
