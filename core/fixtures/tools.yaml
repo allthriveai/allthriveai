@@ -1077,8 +1077,20 @@ tools:
   - Test your app thoroughly before sharing publicly
   - Leverage the automatic backend for common features
   - Use for quick validation of product ideas
+  overview: Base44 is an AI-powered no-code platform that lets you build fully-functional web applications
+    by simply describing what you want in natural language. From idea to deployed app in minutes, it handles
+    the entire stack—frontend, backend, database, and authentication—so you can focus on your vision rather
+    than technical implementation.
   meta_description: AI-powered no-code platform at base44.com that transforms ideas into fully-functional
     apps in minutes. Tell Base44 your idea and watch it create complete app...
+  whats_new:
+  - date: '2024-12-01'
+    title: Multi-Page App Support
+    description: Build complex applications with multiple pages, navigation, and user flows all from natural
+      language descriptions.
+  - date: '2024-11-15'
+    title: Database Integration
+    description: Automatic database schema generation and CRUD operations based on your app requirements.
 - name: Claude Code
   company: Anthropic
   tagline: Terminal-based agentic coding assistant
