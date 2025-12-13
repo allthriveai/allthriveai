@@ -389,8 +389,8 @@ describe('AsyncBattleContext', () => {
 
       mockApiPost.mockResolvedValue({
         data: {
-          success: true,
-          expires_at: '2024-01-15T12:03:00Z',
+          status: 'success',
+          expiresAt: '2024-01-15T12:03:00Z',
         },
       });
 
