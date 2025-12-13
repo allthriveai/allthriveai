@@ -23,19 +23,19 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { setGuestBattleId } from '@/routes/ProtectedRoute';
 
 interface InvitationData {
-  invitation_id: number;
+  invitationId: number;
   sender?: {
     id: number;
     username: string;
-    display_name?: string;
-    avatar_url?: string;
+    displayName?: string;
+    avatarUrl?: string;
   };
   battle?: {
     id: number;
-    challenge_text: string;
-    challenge_type: string | null;
+    challengeText: string;
+    challengeType: string | null;
   };
-  expires_at: string;
+  expiresAt: string;
 }
 
 export function BattleInvitePage() {
@@ -135,15 +135,15 @@ export function BattleInvitePage() {
 
   // Calculate time until expiry with guards for invalid dates
   const getTimeUntilExpiry = () => {
-    if (!invitation?.expires_at) return 0;
-    const expiryTime = new Date(invitation.expires_at).getTime();
+    if (!invitation?.expiresAt) return 0;
+    const expiryTime = new Date(invitation.expiresAt).getTime();
     if (isNaN(expiryTime)) return 0;
     return Math.max(0, expiryTime - Date.now());
   };
   const timeUntilExpiry = getTimeUntilExpiry();
   const hoursLeft = Math.floor(timeUntilExpiry / (1000 * 60 * 60));
   const minutesLeft = Math.floor((timeUntilExpiry % (1000 * 60 * 60)) / (1000 * 60));
-  const hasValidExpiry = invitation?.expires_at && !isNaN(new Date(invitation.expires_at).getTime());
+  const hasValidExpiry = invitation?.expiresAt && !isNaN(new Date(invitation.expiresAt).getTime());
 
   if (isLoading || authLoading) {
     return (
@@ -243,24 +243,41 @@ export function BattleInvitePage() {
   return (
     <DashboardLayout>
       <div className="min-h-[calc(100vh-200px)] flex items-center justify-center p-4">
-        {/* Background effect */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <motion.div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+        {/* Background effect - matching Ready to Thrive section */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+          {/* Multi-color gradient glow */}
+          <div
+            className="absolute inset-0"
             style={{
-              background:
-                'radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0) 70%)',
-            }}
-            animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.3, 0.5, 0.3],
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              ease: 'easeInOut',
+              background: `
+                radial-gradient(ellipse 80% 60% at 50% 50%, rgba(34, 211, 238, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse 60% 40% at 30% 30%, rgba(74, 222, 128, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse 50% 50% at 70% 70%, rgba(168, 85, 247, 0.08) 0%, transparent 50%)
+              `,
             }}
           />
+          {/* Animated particles */}
+          <div className="absolute inset-0 overflow-hidden">
+            {[...Array(15)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 rounded-full bg-cyan-400/30"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                }}
+                animate={{
+                  y: [-20, 20, -20],
+                  opacity: [0.3, 0.8, 0.3],
+                }}
+                transition={{
+                  duration: 3 + Math.random() * 2,
+                  repeat: Infinity,
+                  delay: Math.random() * 2,
+                }}
+              />
+            ))}
+          </div>
         </div>
 
         <motion.div
@@ -283,7 +300,9 @@ export function BattleInvitePage() {
                 </div>
               </motion.div>
 
-              <h1 className="text-2xl font-bold text-white mb-2">How Are Your Prompt Engineering Skills?</h1>
+              <h1 className="text-2xl font-bold text-white mb-2">
+                How Are Your<br />Prompt Engineering Skills?
+              </h1>
               <p className="text-slate-400">You've been challenged to a prompt battle</p>
             </div>
 
@@ -291,9 +310,9 @@ export function BattleInvitePage() {
             {invitation.sender && (
               <div className="bg-slate-800/50 rounded-xl p-4 mb-6">
                 <div className="flex items-center gap-4">
-                  {invitation.sender.avatar_url ? (
+                  {invitation.sender.avatarUrl ? (
                     <img
-                      src={invitation.sender.avatar_url}
+                      src={invitation.sender.avatarUrl}
                       alt={invitation.sender.username || 'Challenger'}
                       className="w-14 h-14 rounded-full object-cover"
                     />
@@ -302,7 +321,7 @@ export function BattleInvitePage() {
                   )}
                   <div>
                     <p className="text-white font-semibold">
-                      {invitation.sender.display_name || invitation.sender.username || 'A challenger'}
+                      {invitation.sender.displayName || invitation.sender.username || 'A challenger'}
                     </p>
                     {invitation.sender.username && (
                       <p className="text-slate-400 text-sm">@{invitation.sender.username}</p>
@@ -314,10 +333,10 @@ export function BattleInvitePage() {
 
             {/* Battle details */}
             <div className="space-y-3 mb-6">
-              {invitation.battle?.challenge_type && (
+              {invitation.battle?.challengeType && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-400">Challenge Type</span>
-                  <span className="text-white font-medium">{invitation.battle.challenge_type}</span>
+                  <span className="text-white font-medium">{invitation.battle.challengeType}</span>
                 </div>
               )}
               <div className="flex items-center justify-between text-sm">
@@ -370,7 +389,7 @@ export function BattleInvitePage() {
 
                 {/* Sign in option - Secondary for existing users */}
                 <button
-                  onClick={() => navigate(`/auth?next=${encodeURIComponent(`/battle/invite/${token}`)}`)}
+                  onClick={() => navigate(`/auth?beta=THRIVE&next=${encodeURIComponent(`/battle/invite/${token}`)}`)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700/50 transition-colors"
                 >
                   <UserPlusIcon className="w-5 h-5" />

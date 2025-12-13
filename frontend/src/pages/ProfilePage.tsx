@@ -16,6 +16,8 @@ import { MarketplaceTab } from '@/components/profile/MarketplaceTab';
 import { LearningPathsTab } from '@/components/learning';
 import { AchievementBadge } from '@/components/achievements/AchievementBadge';
 import { BattlesTab } from '@/components/battles';
+import { MyBattlesTab } from '@/components/battles/MyBattlesTab';
+import { ProfileTabMenu, type ProfileTabId } from '@/components/profile/ProfileTabMenu';
 import { getUserBattles } from '@/services/battles';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ProfileGeneratorTray } from '@/components/profile/ProfileGeneratorTray';
@@ -49,8 +51,6 @@ import {
   faChartLine,
   faGraduationCap,
   faPaperclip,
-  faStore,
-  faBolt,
   faWandMagicSparkles,
   faPenToSquare,
 } from '@fortawesome/free-solid-svg-icons';
@@ -94,11 +94,11 @@ export default function ProfilePage() {
   const [userNotFound, setUserNotFound] = useState(false);
 
   // Initialize activeTab from URL or default to 'showcase' (or 'battles' for Pip)
-  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | null;
+  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | 'my-battles' | null;
   const isPipProfile = username?.toLowerCase() === 'pip';
   const defaultTab = isPipProfile ? 'battles' : 'showcase';
-  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles'>(
-    tabFromUrl && ['showcase', 'playground', 'clipped', 'learning', 'activity', 'marketplace', 'battles'].includes(tabFromUrl) ? tabFromUrl : defaultTab
+  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | 'my-battles'>(
+    tabFromUrl && ['showcase', 'playground', 'clipped', 'learning', 'activity', 'marketplace', 'battles', 'my-battles'].includes(tabFromUrl) ? tabFromUrl : defaultTab
   );
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<number>>(new Set());
@@ -158,8 +158,8 @@ export default function ProfilePage() {
 
   // Sync activeTab with URL query parameter
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | null;
-    if (tabFromUrl && ['showcase', 'playground', 'clipped', 'learning', 'activity', 'marketplace', 'battles'].includes(tabFromUrl)) {
+    const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | 'my-battles' | null;
+    if (tabFromUrl && ['showcase', 'playground', 'clipped', 'learning', 'activity', 'marketplace', 'battles', 'my-battles'].includes(tabFromUrl)) {
       // Security: only allow Activity and Learning tabs for authenticated users viewing their own profile
       if ((tabFromUrl === 'activity' || tabFromUrl === 'learning') && (!isAuthenticated || !isOwnProfile)) {
         setActiveTab('showcase');
@@ -174,6 +174,12 @@ export default function ProfilePage() {
       }
       // Battles tab is only available for Pip
       if (tabFromUrl === 'battles' && !isPip) {
+        setActiveTab('showcase');
+        setSearchParams({ tab: 'showcase' });
+        return;
+      }
+      // My Battles tab is only available for authenticated users viewing their own profile
+      if (tabFromUrl === 'my-battles' && (!isAuthenticated || !isOwnProfile)) {
         setActiveTab('showcase');
         setSearchParams({ tab: 'showcase' });
         return;
@@ -215,7 +221,7 @@ export default function ProfilePage() {
   }, [isOwnProfile]);
 
   // Update URL when tab changes
-  const handleTabChange = (tab: 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles') => {
+  const handleTabChange = (tab: 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | 'my-battles') => {
     setActiveTab(tab);
     setSearchParams({ tab });
     if (selectionMode) {
@@ -859,6 +865,7 @@ export default function ProfilePage() {
         { id: 'clipped', label: 'Clipped' },
       ];
       if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
+      baseTabs.push({ id: 'my-battles', label: 'My Battles' });
       baseTabs.push({ id: 'learning', label: 'Learning' });
       baseTabs.push({ id: 'activity', label: 'Activity' });
       return baseTabs as { id: string; label: string }[];
@@ -982,32 +989,14 @@ export default function ProfilePage() {
             {/* Tab Navigation for Showcase */}
             <div className="border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center space-x-1 overflow-x-auto py-2">
-                  {tabs.map((tab) => {
-                    const tabIcons = {
-                      showcase: faTh,
-                      playground: faFlask,
-                      clipped: faPaperclip,
-                      marketplace: faStore,
-                      learning: faGraduationCap,
-                      activity: faChartLine,
-                      battles: faBolt,
-                    };
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => handleTabChange(tab.id as any)}
-                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                          activeTab === tab.id
-                            ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
-                        }`}
-                      >
-                        <FontAwesomeIcon icon={tabIcons[tab.id as keyof typeof tabIcons]} className="w-4 h-4" />
-                        {tab.label}
-                      </button>
-                    );
-                  })}
+                <div className="flex items-center py-2">
+                  <ProfileTabMenu
+                    activeTab={activeTab as ProfileTabId}
+                    onTabChange={(tabId) => handleTabChange(tabId as typeof activeTab)}
+                    availableTabs={tabs.map((t) => t.id as ProfileTabId)}
+                    isOwnProfile={isOwnProfile}
+                    isCreator={isCreator}
+                  />
                 </div>
               </div>
             </div>
@@ -1537,43 +1526,18 @@ export default function ProfilePage() {
               {/* Top Header: Tabs & Actions */}
               <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-200 dark:border-gray-800 mb-6 md:mb-8 pt-2 gap-4">
                 <div
-                  className="flex items-baseline space-x-4 md:space-x-8 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 w-full md:w-auto"
+                  className="flex items-center -mx-4 px-4 md:mx-0 md:px-0 w-full md:w-auto"
                   role="tablist"
                   aria-label="Profile sections"
                 >
-                  {/* Tabs with Icons */}
-                  {tabs.map((tab) => {
-                    const tabIcons = {
-                      showcase: faTh,
-                      playground: faFlask,
-                      clipped: faPaperclip,
-                      marketplace: faStore,
-                      learning: faGraduationCap,
-                      activity: faChartLine,
-                      battles: faBolt,
-                    };
-
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => handleTabChange(tab.id as any)}
-                        role="tab"
-                        aria-selected={activeTab === tab.id}
-                        aria-controls={`tabpanel-${tab.id}`}
-                        id={`tab-${tab.id}`}
-                        tabIndex={activeTab === tab.id ? 0 : -1}
-                        className={`flex items-center gap-2 py-3 px-3 text-sm font-medium transition-all ${
-                          activeTab === tab.id
-                            ? 'glass-subtle text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 shadow-neon'
-                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:shadow-neon'
-                        }`}
-                        style={{ borderRadius: 'var(--radius)' }}
-                      >
-                        <FontAwesomeIcon icon={tabIcons[tab.id as keyof typeof tabIcons]} className="w-3.5 h-3.5" aria-hidden="true" />
-                        {tab.label}
-                      </button>
-                    );
-                  })}
+                  {/* Profile Tab Menu with + dropdown */}
+                  <ProfileTabMenu
+                    activeTab={activeTab as ProfileTabId}
+                    onTabChange={(tabId) => handleTabChange(tabId as typeof activeTab)}
+                    availableTabs={tabs.map((t) => t.id as ProfileTabId)}
+                    isOwnProfile={isOwnProfile}
+                    isCreator={isCreator}
+                  />
 
                   {/* Action Buttons - Select (Playground/Clipped) and Edit Profile */}
                   <div className="flex items-center gap-2 ml-auto flex-shrink-0">
@@ -1598,11 +1562,11 @@ export default function ProfilePage() {
                               : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10'
                           }`}
                           aria-pressed={selectionMode}
-                          aria-label={selectionMode ? 'Cancel selection mode' : 'Enter selection mode'}
-                          title={selectionMode ? 'Cancel selection' : 'Select projects'}
+                          aria-label={selectionMode ? 'Cancel bulk edit' : 'Bulk edit projects'}
+                          title={selectionMode ? 'Cancel bulk edit' : 'Bulk edit'}
                         >
                           <FontAwesomeIcon icon={faList} className="w-3 h-3" aria-hidden="true" />
-                          <span className="hidden sm:inline">{selectionMode ? 'Cancel' : 'Select'}</span>
+                          <span className="hidden sm:inline">{selectionMode ? 'Cancel' : 'Bulk Edit'}</span>
                         </button>
                       </>
                     )}
@@ -1769,6 +1733,18 @@ export default function ProfilePage() {
                   aria-labelledby="tab-battles"
                 >
                   <BattlesTab username={username || ''} />
+                </div>
+              )}
+
+              {/* My Battles Tab - User's pending async battles */}
+              {activeTab === 'my-battles' && isOwnProfile && (
+                <div
+                  className="pb-20"
+                  role="tabpanel"
+                  id="tabpanel-my-battles"
+                  aria-labelledby="tab-my-battles"
+                >
+                  <MyBattlesTab />
                 </div>
               )}
             </div>

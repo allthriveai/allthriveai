@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   isOpen: boolean;
@@ -6,9 +7,20 @@ interface ModalProps {
   title?: string;
   children: React.ReactNode;
   className?: string;
+  /** Make modal full-screen on mobile (default: false) */
+  fullScreenMobile?: boolean;
 }
 
-export function Modal({ isOpen, onClose, title, children, className = '' }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  className = '',
+  fullScreenMobile = false,
+}: ModalProps) {
+  const scrollPositionRef = useRef(0);
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -17,25 +29,49 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
     };
 
     if (isOpen) {
+      // Save current scroll position
+      scrollPositionRef.current = window.scrollY;
+
+      // Lock body scroll - iOS Safari compatible approach
       document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollPositionRef.current}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+
       window.addEventListener('keydown', handleEscape);
     }
 
     return () => {
-      document.body.style.overflow = 'unset';
+      // Restore scroll position and body styles
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      window.scrollTo(0, scrollPositionRef.current);
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
+      style={{ touchAction: 'none' }}
     >
       <div
-        className={`relative bg-brand-dark border border-primary-500/20 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col ${className}`}
+        className={`
+          relative bg-brand-dark border border-primary-500/20 shadow-2xl
+          w-full p-6 animate-in fade-in zoom-in-95 duration-200 flex flex-col
+          ${fullScreenMobile
+            ? 'min-h-[100dvh] sm:min-h-0 sm:max-h-[90vh] sm:max-w-md sm:mx-4 sm:rounded-2xl rounded-none'
+            : 'max-w-md mx-4 rounded-2xl max-h-[85dvh]'
+          }
+          ${className}
+        `}
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
@@ -43,10 +79,15 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
             {title}
           </h2>
         )}
-        <div className="text-gray-300 overflow-y-auto flex-1">{children}</div>
+        <div
+          className="text-gray-300 overflow-y-auto flex-1 overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {children}
+        </div>
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10 p-2 -m-2"
           aria-label="Close modal"
         >
           <svg
@@ -66,4 +107,7 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
       </div>
     </div>
   );
+
+  // Use portal to ensure modal is rendered at the top level of the DOM
+  return createPortal(modalContent, document.body);
 }

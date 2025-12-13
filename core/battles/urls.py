@@ -29,4 +29,9 @@ urlpatterns = [
     path('<int:battle_id>/public/', views.get_battle_public, name='battle-public'),
     # Share data endpoint for social sharing (OG image, share URLs)
     path('<int:battle_id>/share/', views.get_battle_share_data, name='battle-share'),
+    # Async battle management endpoints
+    path('pending/', views.pending_battles, name='pending-battles'),
+    path('<int:battle_id>/extend-deadline/', views.extend_battle_deadline, name='extend-deadline'),
+    path('<int:battle_id>/send-reminder/', views.send_battle_reminder, name='send-reminder'),
+    path('<int:battle_id>/start-turn/', views.start_battle_turn, name='start-turn'),
 ]

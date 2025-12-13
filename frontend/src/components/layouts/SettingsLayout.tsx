@@ -12,6 +12,7 @@ import {
   ShoppingBagIcon,
   RocketLaunchIcon,
   ChartBarIcon,
+  BoltIcon,
 } from '@heroicons/react/24/outline';
 
 interface SettingsSidebarItem {
@@ -35,6 +36,11 @@ const settingsNavItems: SettingsSidebarItem[] = [
     label: 'Activity',
     path: '/account/settings/activity',
     icon: ChartBarIcon,
+  },
+  {
+    label: 'Battles',
+    path: '/account/settings/battles',
+    icon: BoltIcon,
   },
   {
     label: 'Integrations',

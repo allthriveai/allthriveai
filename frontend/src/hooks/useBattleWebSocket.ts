@@ -22,6 +22,8 @@ export type BattlePhase =
   | 'waiting'
   | 'countdown'
   | 'active'
+  | 'challenger_turn'
+  | 'opponent_turn'
   | 'generating'
   | 'judging'
   | 'reveal'

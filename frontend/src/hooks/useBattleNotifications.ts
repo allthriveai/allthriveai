@@ -31,6 +31,19 @@ export interface BattleInvitation {
   timestamp: string;
 }
 
+// Async battle notification types
+export interface AsyncBattleNotification {
+  event: string;
+  battleId: number;
+  deadline?: string;
+  hoursRemaining?: string;
+  winnerId?: number;
+  reason?: string;
+  fromUserId?: number;
+  fromUsername?: string;
+  extensionsRemaining?: number;
+}
+
 interface WebSocketMessage {
   event: string;
   error?: string;
@@ -53,6 +66,19 @@ interface WebSocketMessage {
     id: number;
     username: string;
   };
+  // Async battle events
+  deadline?: string;
+  hours_remaining?: string;
+  winner_id?: number;
+  reason?: string;
+  from_user_id?: number;
+  from_username?: string;
+  extensions_remaining?: number;
+  user_id?: number;
+  expires_at?: string;
+  timed_out_user_id?: number;
+  extended_by_user_id?: number;
+  new_deadline?: string;
 }
 
 interface UseBattleNotificationsOptions {
@@ -60,6 +86,14 @@ interface UseBattleNotificationsOptions {
   onInvitationReceived?: (invitation: BattleInvitation) => void;
   onInvitationAccepted?: (battleId: number, opponent: { id: number; username: string }) => void;
   onInvitationDeclined?: (invitationId: number) => void;
+  // Async battle callbacks
+  onYourTurn?: (notification: AsyncBattleNotification) => void;
+  onDeadlineWarning?: (notification: AsyncBattleNotification) => void;
+  onBattleReminder?: (notification: AsyncBattleNotification) => void;
+  onDeadlineExtended?: (notification: AsyncBattleNotification) => void;
+  onBattleExpired?: (notification: AsyncBattleNotification) => void;
+  onBattleForfeit?: (notification: AsyncBattleNotification) => void;
+  onTurnStarted?: (notification: AsyncBattleNotification) => void;
   autoConnect?: boolean;
 }
 
@@ -68,6 +102,13 @@ export function useBattleNotifications({
   onInvitationReceived,
   onInvitationAccepted,
   onInvitationDeclined,
+  onYourTurn,
+  onDeadlineWarning,
+  onBattleReminder,
+  onDeadlineExtended,
+  onBattleExpired,
+  onBattleForfeit,
+  onTurnStarted,
   autoConnect = true,
 }: UseBattleNotificationsOptions = {}) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -91,6 +132,14 @@ export function useBattleNotifications({
   const onInvitationReceivedRef = useRef(onInvitationReceived);
   const onInvitationAcceptedRef = useRef(onInvitationAccepted);
   const onInvitationDeclinedRef = useRef(onInvitationDeclined);
+  // Async battle callback refs
+  const onYourTurnRef = useRef(onYourTurn);
+  const onDeadlineWarningRef = useRef(onDeadlineWarning);
+  const onBattleReminderRef = useRef(onBattleReminder);
+  const onDeadlineExtendedRef = useRef(onDeadlineExtended);
+  const onBattleExpiredRef = useRef(onBattleExpired);
+  const onBattleForfeitRef = useRef(onBattleForfeit);
+  const onTurnStartedRef = useRef(onTurnStarted);
 
   // Update refs when callbacks change
   useEffect(() => {
@@ -98,7 +147,27 @@ export function useBattleNotifications({
     onInvitationReceivedRef.current = onInvitationReceived;
     onInvitationAcceptedRef.current = onInvitationAccepted;
     onInvitationDeclinedRef.current = onInvitationDeclined;
-  }, [onError, onInvitationReceived, onInvitationAccepted, onInvitationDeclined]);
+    // Async battle callbacks
+    onYourTurnRef.current = onYourTurn;
+    onDeadlineWarningRef.current = onDeadlineWarning;
+    onBattleReminderRef.current = onBattleReminder;
+    onDeadlineExtendedRef.current = onDeadlineExtended;
+    onBattleExpiredRef.current = onBattleExpired;
+    onBattleForfeitRef.current = onBattleForfeit;
+    onTurnStartedRef.current = onTurnStarted;
+  }, [
+    onError,
+    onInvitationReceived,
+    onInvitationAccepted,
+    onInvitationDeclined,
+    onYourTurn,
+    onDeadlineWarning,
+    onBattleReminder,
+    onDeadlineExtended,
+    onBattleExpired,
+    onBattleForfeit,
+    onTurnStarted,
+  ]);
 
   // Clear all timers
   const clearTimers = useCallback(() => {
@@ -287,6 +356,88 @@ export function useBattleNotifications({
               case 'invitation_declined':
                 if (data.invitation_id) {
                   onInvitationDeclinedRef.current?.(data.invitation_id);
+                }
+                break;
+
+              // Async battle events
+              case 'your_turn':
+                if (data.battle_id) {
+                  const notification: AsyncBattleNotification = {
+                    event: data.event,
+                    battleId: data.battle_id,
+                    deadline: data.expires_at,
+                  };
+                  onYourTurnRef.current?.(notification);
+                }
+                break;
+
+              case 'deadline_warning':
+                if (data.battle_id) {
+                  const notification: AsyncBattleNotification = {
+                    event: data.event,
+                    battleId: data.battle_id,
+                    deadline: data.deadline,
+                    hoursRemaining: data.hours_remaining,
+                  };
+                  onDeadlineWarningRef.current?.(notification);
+                }
+                break;
+
+              case 'battle_reminder':
+                if (data.battle_id) {
+                  const notification: AsyncBattleNotification = {
+                    event: data.event,
+                    battleId: data.battle_id,
+                    fromUserId: data.from_user_id,
+                    fromUsername: data.from_username,
+                  };
+                  onBattleReminderRef.current?.(notification);
+                }
+                break;
+
+              case 'deadline_extended':
+                if (data.battle_id) {
+                  const notification: AsyncBattleNotification = {
+                    event: data.event,
+                    battleId: data.battle_id,
+                    deadline: data.new_deadline,
+                    extensionsRemaining: data.extensions_remaining,
+                  };
+                  onDeadlineExtendedRef.current?.(notification);
+                }
+                break;
+
+              case 'battle_expired':
+                if (data.battle_id) {
+                  const notification: AsyncBattleNotification = {
+                    event: data.event,
+                    battleId: data.battle_id,
+                    reason: data.reason,
+                  };
+                  onBattleExpiredRef.current?.(notification);
+                }
+                break;
+
+              case 'battle_forfeit':
+                if (data.battle_id) {
+                  const notification: AsyncBattleNotification = {
+                    event: data.event,
+                    battleId: data.battle_id,
+                    winnerId: data.winner_id,
+                    reason: data.reason,
+                  };
+                  onBattleForfeitRef.current?.(notification);
+                }
+                break;
+
+              case 'turn_started':
+                if (data.battle_id) {
+                  const notification: AsyncBattleNotification = {
+                    event: data.event,
+                    battleId: data.battle_id,
+                    deadline: data.expires_at,
+                  };
+                  onTurnStartedRef.current?.(notification);
                 }
                 break;
 

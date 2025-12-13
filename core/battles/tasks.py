@@ -14,9 +14,10 @@ from typing import Any
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
+from django.db import transaction
 from django.utils import timezone
 
-from core.battles.models import BattlePhase, BattleStatus, BattleSubmission, PromptBattle
+from core.battles.models import BattleMode, BattlePhase, BattleStatus, BattleSubmission, PromptBattle
 from core.battles.services import BattleService, PipBattleAI
 
 logger = logging.getLogger(__name__)
@@ -843,3 +844,477 @@ def generate_og_image_task(self, battle_id: int) -> dict[str, Any]:
     except Exception as e:
         logger.error(f'Error generating OG image for battle {battle_id}: {e}', exc_info=True)
         raise self.retry(exc=e) from e
+
+
+# =============================================================================
+# ASYNC BATTLE TASKS
+# =============================================================================
+
+
+@shared_task(
+    time_limit=300,  # 5 minute hard limit
+    soft_time_limit=240,  # 4 minute soft limit
+)
+def check_async_battle_deadlines() -> dict[str, Any]:
+    """
+    Check and handle expired async battle deadlines.
+
+    Handles:
+    - Cancel battles past 3-day async deadline (no winner - no forfeit)
+    - Handle 3-minute turn timeouts (forfeit to opponent)
+
+    Should be run every 15 minutes via Celery Beat.
+
+    Returns:
+        Dict with processing results
+    """
+
+    now = timezone.now()
+    results = {
+        'expired_deadlines': 0,
+        'expired_turns': 0,
+        'forfeits': 0,
+    }
+
+    # 1. Handle expired 3-day async deadlines (cancel battle - no winner)
+    expired_deadline_battles = PromptBattle.objects.filter(
+        battle_mode__in=[BattleMode.ASYNC, BattleMode.HYBRID],
+        status=BattleStatus.ACTIVE,
+        phase__in=[BattlePhase.CHALLENGER_TURN, BattlePhase.OPPONENT_TURN],
+        async_deadline__lt=now,
+    ).select_related('challenger', 'opponent')
+
+    for battle in expired_deadline_battles:
+        battle.status = BattleStatus.CANCELLED
+        battle.phase = BattlePhase.COMPLETE
+        battle.phase_changed_at = now
+        battle.end_turn(save=False)
+        battle.save(
+            update_fields=[
+                'status',
+                'phase',
+                'phase_changed_at',
+                'current_turn_user',
+                'current_turn_started_at',
+                'current_turn_expires_at',
+            ]
+        )
+
+        # Notify via WebSocket (notification channel)
+        _send_async_battle_notification(
+            battle,
+            'battle_expired',
+            {'reason': 'deadline_expired', 'message': 'Battle cancelled - opponent did not respond in time.'},
+        )
+
+        logger.info(f'Async battle {battle.id} cancelled: deadline expired')
+        results['expired_deadlines'] += 1
+
+    # 2. Handle expired 3-minute turn timeouts
+    expired_turn_battles = PromptBattle.objects.filter(
+        battle_mode__in=[BattleMode.ASYNC, BattleMode.HYBRID],
+        status=BattleStatus.ACTIVE,
+        phase__in=[BattlePhase.CHALLENGER_TURN, BattlePhase.OPPONENT_TURN],
+        current_turn_expires_at__lt=now,
+    ).select_related('challenger', 'opponent', 'current_turn_user')
+
+    for battle in expired_turn_battles:
+        timed_out_user = battle.current_turn_user
+        if not timed_out_user:
+            continue
+
+        # Determine winner (the opponent of the one who timed out)
+        winner = battle.opponent if timed_out_user == battle.challenger else battle.challenger
+
+        # Check if the non-timed-out user has already submitted
+        has_winner_submitted = battle.submissions.filter(user=winner).exists()
+
+        if has_winner_submitted:
+            # Winner submitted and opponent timed out - award forfeit win
+            battle.winner = winner
+            battle.status = BattleStatus.COMPLETED
+            battle.phase = BattlePhase.COMPLETE
+            battle.phase_changed_at = now
+            battle.completed_at = now
+            battle.end_turn(save=False)
+            battle.save(
+                update_fields=[
+                    'winner',
+                    'status',
+                    'phase',
+                    'phase_changed_at',
+                    'completed_at',
+                    'current_turn_user',
+                    'current_turn_started_at',
+                    'current_turn_expires_at',
+                ]
+            )
+
+            _send_async_battle_notification(
+                battle,
+                'battle_forfeit',
+                {'winner_id': winner.id, 'reason': 'turn_timeout'},
+            )
+
+            logger.info(f'Async battle {battle.id} forfeit: winner={winner.id} (turn timeout)')
+            results['forfeits'] += 1
+        else:
+            # Neither submitted within their turn - cancel battle
+            battle.status = BattleStatus.CANCELLED
+            battle.phase = BattlePhase.COMPLETE
+            battle.phase_changed_at = now
+            battle.end_turn(save=False)
+            battle.save(
+                update_fields=[
+                    'status',
+                    'phase',
+                    'phase_changed_at',
+                    'current_turn_user',
+                    'current_turn_started_at',
+                    'current_turn_expires_at',
+                ]
+            )
+
+            _send_async_battle_notification(
+                battle,
+                'battle_expired',
+                {'reason': 'turn_timeout_no_submission'},
+            )
+
+            logger.info(f'Async battle {battle.id} cancelled: turn timeout without submission')
+
+        results['expired_turns'] += 1
+
+    total = sum(results.values())
+    if total > 0:
+        logger.info(f'Async battle deadline check: {results}')
+
+    return {'status': 'success', **results}
+
+
+@shared_task(
+    time_limit=300,  # 5 minute hard limit
+    soft_time_limit=240,  # 4 minute soft limit
+)
+def send_async_battle_reminders() -> dict[str, Any]:
+    """
+    Send reminders for async battles approaching deadline.
+
+    Sends reminders at:
+    - 24 hours before deadline
+    - 6 hours before deadline
+
+    Should be run every 6 hours via Celery Beat.
+
+    Returns:
+        Dict with reminder results
+    """
+    from datetime import timedelta
+
+    now = timezone.now()
+    results = {
+        '24h_reminders': 0,
+        '6h_reminders': 0,
+    }
+
+    # Find battles approaching deadline where it's not the user's turn
+    # (we remind the person who needs to take their turn)
+    reminder_windows = [
+        ('24h', timedelta(hours=24), timedelta(hours=18)),  # Between 24h and 18h
+        ('6h', timedelta(hours=6), timedelta(hours=0)),  # Between 6h and 0h
+    ]
+
+    for window_name, upper_bound, lower_bound in reminder_windows:
+        deadline_upper = now + upper_bound
+        deadline_lower = now + lower_bound
+
+        battles_to_remind = PromptBattle.objects.filter(
+            battle_mode__in=[BattleMode.ASYNC, BattleMode.HYBRID],
+            status=BattleStatus.ACTIVE,
+            phase__in=[BattlePhase.CHALLENGER_TURN, BattlePhase.OPPONENT_TURN],
+            async_deadline__gte=deadline_lower,
+            async_deadline__lt=deadline_upper,
+        ).select_related('challenger', 'opponent', 'current_turn_user')
+
+        for battle in battles_to_remind:
+            # Only remind if hasn't been reminded recently (24h cooldown)
+            if not battle.can_send_reminder():
+                continue
+
+            user_to_remind = battle.current_turn_user
+            if not user_to_remind:
+                continue
+
+            # Send notification
+            _send_async_battle_notification(
+                battle,
+                'deadline_warning',
+                {
+                    'user_id': user_to_remind.id,
+                    'deadline': battle.async_deadline.isoformat() if battle.async_deadline else None,
+                    'hours_remaining': window_name,
+                },
+                target_user=user_to_remind,
+            )
+
+            # Update reminder tracking
+            battle.last_reminder_sent_at = now
+            battle.reminder_count += 1
+            battle.save(update_fields=['last_reminder_sent_at', 'reminder_count'])
+
+            logger.info(f'Sent {window_name} reminder for battle {battle.id} to user {user_to_remind.id}')
+            results[f'{window_name}_reminders'] += 1
+
+    total = sum(results.values())
+    if total > 0:
+        logger.info(f'Async battle reminders sent: {results}')
+
+    return {'status': 'success', **results}
+
+
+@shared_task(
+    bind=True,
+    max_retries=2,
+    default_retry_delay=10,
+    time_limit=60,  # 1 minute hard limit
+    soft_time_limit=45,  # 45 second soft limit
+)
+def start_async_turn_task(self, battle_id: int, user_id: int) -> dict[str, Any]:
+    """
+    Start the 3-minute turn timer for an async battle.
+
+    Called when a player opens their async battle to take their turn.
+    Schedules the turn timeout check for 3 minutes later.
+
+    Uses select_for_update to prevent race conditions when two users
+    try to start their turn simultaneously.
+
+    Args:
+        battle_id: ID of the PromptBattle
+        user_id: ID of the user starting their turn
+
+    Returns:
+        Dict with turn start result
+    """
+    from core.users.models import User
+
+    # First check user exists (outside transaction)
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        logger.error(f'User not found for async turn start: {user_id}')
+        return {'status': 'error', 'reason': 'user_not_found'}
+
+    # Use transaction with select_for_update to prevent race conditions
+    # Note: We can't use select_related('opponent') with select_for_update because
+    # opponent is nullable, and FOR UPDATE cannot be applied to nullable outer joins
+    with transaction.atomic():
+        try:
+            battle = (
+                PromptBattle.objects.select_for_update()
+                .select_related('challenger')  # Only lock non-nullable FK
+                .get(id=battle_id)
+            )
+        except PromptBattle.DoesNotExist:
+            logger.error(f'Battle not found for async turn start: {battle_id}')
+            return {'status': 'error', 'reason': 'battle_not_found'}
+
+        # Validate this is the user's turn
+        expected_phase = BattlePhase.CHALLENGER_TURN if user == battle.challenger else BattlePhase.OPPONENT_TURN
+        if battle.phase != expected_phase:
+            # Check if they can start their turn
+            is_challenger_turn = battle.phase == BattlePhase.CHALLENGER_TURN or (
+                battle.phase in [BattlePhase.WAITING, BattlePhase.COUNTDOWN] and not battle.submissions.exists()
+            )
+            is_opponent_turn = battle.phase == BattlePhase.OPPONENT_TURN or (
+                battle.phase == BattlePhase.CHALLENGER_TURN
+                and battle.submissions.filter(user=battle.challenger).exists()
+            )
+
+            if user == battle.challenger and not is_challenger_turn:
+                return {'status': 'error', 'reason': 'not_your_turn'}
+            if user == battle.opponent and not is_opponent_turn:
+                return {'status': 'error', 'reason': 'not_your_turn'}
+
+        # Check if turn already in progress
+        if battle.current_turn_user == user and battle.current_turn_expires_at:
+            # Turn already started - return current state
+            return {
+                'status': 'already_started',
+                'expires_at': battle.current_turn_expires_at.isoformat(),
+                'time_remaining': battle.turn_time_remaining,
+            }
+
+        # Start the turn (this saves to DB within the transaction)
+        battle.start_turn(user)
+
+        # Capture values for use after transaction commits
+        expires_at = battle.current_turn_expires_at.isoformat() if battle.current_turn_expires_at else None
+        time_remaining = battle.turn_time_remaining
+
+    # Schedule turn timeout check AFTER transaction commits (with a small buffer)
+    handle_async_turn_timeout_task.apply_async(
+        args=[battle_id],
+        countdown=185,  # 3 min 5 sec (5 sec buffer)
+    )
+
+    # Notify via WebSocket AFTER transaction commits
+    _send_async_battle_notification(
+        battle,
+        'turn_started',
+        {
+            'user_id': user_id,
+            'expires_at': expires_at,
+        },
+    )
+
+    logger.info(f'Started async turn for battle {battle_id}, user {user_id}')
+    return {
+        'status': 'success',
+        'expires_at': expires_at,
+        'time_remaining': time_remaining,
+    }
+
+
+@shared_task(
+    time_limit=60,  # 1 minute hard limit
+    soft_time_limit=45,  # 45 second soft limit
+)
+def handle_async_turn_timeout_task(battle_id: int) -> dict[str, Any]:
+    """
+    Handle an async battle turn timeout.
+
+    Called 3 minutes after turn starts. If user hasn't submitted,
+    they forfeit or battle is cancelled.
+
+    Args:
+        battle_id: ID of the PromptBattle
+
+    Returns:
+        Dict with timeout handling result
+    """
+    try:
+        battle = PromptBattle.objects.select_related('challenger', 'opponent', 'current_turn_user').get(id=battle_id)
+    except PromptBattle.DoesNotExist:
+        logger.error(f'Battle not found for async turn timeout: {battle_id}')
+        return {'status': 'error', 'reason': 'battle_not_found'}
+
+    # Skip if not in an async turn phase
+    if battle.phase not in [BattlePhase.CHALLENGER_TURN, BattlePhase.OPPONENT_TURN]:
+        logger.debug(f'Battle {battle_id} not in turn phase: {battle.phase}')
+        return {'status': 'skipped', 'reason': 'not_in_turn_phase'}
+
+    # Skip if turn hasn't actually expired yet (task was delayed)
+    if not battle.is_turn_expired:
+        logger.debug(f'Battle {battle_id} turn not yet expired')
+        return {'status': 'skipped', 'reason': 'turn_not_expired'}
+
+    timed_out_user = battle.current_turn_user
+    if not timed_out_user:
+        return {'status': 'skipped', 'reason': 'no_turn_user'}
+
+    # Check if user submitted during their turn
+    has_submitted = battle.submissions.filter(user=timed_out_user).exists()
+    if has_submitted:
+        logger.debug(f'User {timed_out_user.id} already submitted to battle {battle_id}')
+        return {'status': 'skipped', 'reason': 'already_submitted'}
+
+    # User timed out without submitting
+    now = timezone.now()
+    opponent = battle.opponent if timed_out_user == battle.challenger else battle.challenger
+
+    # Check if opponent has submitted
+    opponent_submitted = battle.submissions.filter(user=opponent).exists()
+
+    if opponent_submitted:
+        # Opponent submitted, timed-out user forfeits
+        battle.winner = opponent
+        battle.status = BattleStatus.COMPLETED
+        battle.phase = BattlePhase.COMPLETE
+        battle.phase_changed_at = now
+        battle.completed_at = now
+        battle.end_turn(save=False)
+        battle.save(
+            update_fields=[
+                'winner',
+                'status',
+                'phase',
+                'phase_changed_at',
+                'completed_at',
+                'current_turn_user',
+                'current_turn_started_at',
+                'current_turn_expires_at',
+            ]
+        )
+
+        _send_async_battle_notification(
+            battle,
+            'battle_forfeit',
+            {'winner_id': opponent.id, 'reason': 'turn_timeout', 'timed_out_user_id': timed_out_user.id},
+        )
+
+        logger.info(f'Battle {battle_id} forfeit to {opponent.id}: user {timed_out_user.id} turn timeout')
+        return {'status': 'forfeit', 'winner_id': opponent.id}
+    else:
+        # Neither submitted - cancel battle (no winner)
+        battle.status = BattleStatus.CANCELLED
+        battle.phase = BattlePhase.COMPLETE
+        battle.phase_changed_at = now
+        battle.end_turn(save=False)
+        battle.save(
+            update_fields=[
+                'status',
+                'phase',
+                'phase_changed_at',
+                'current_turn_user',
+                'current_turn_started_at',
+                'current_turn_expires_at',
+            ]
+        )
+
+        _send_async_battle_notification(
+            battle,
+            'battle_cancelled',
+            {'reason': 'turn_timeout_no_submissions'},
+        )
+
+        logger.info(f'Battle {battle_id} cancelled: turn timeout, no submissions')
+        return {'status': 'cancelled', 'reason': 'no_submissions'}
+
+
+def _send_async_battle_notification(
+    battle: PromptBattle,
+    event: str,
+    data: dict,
+    target_user=None,
+) -> None:
+    """
+    Send notification to battle participants via the notification channel.
+
+    Uses the per-user notification WebSocket channel (not per-battle).
+    This scales better for async battles.
+
+    Args:
+        battle: The PromptBattle instance
+        event: Event type (e.g., 'your_turn', 'deadline_warning')
+        data: Additional event data
+        target_user: Specific user to notify (if None, notifies both)
+    """
+    channel_layer = get_channel_layer()
+
+    notification_data = {
+        'type': 'battle_notification',
+        'event': event,
+        'battle_id': battle.id,
+        **data,
+    }
+
+    users_to_notify = [target_user] if target_user else [battle.challenger, battle.opponent]
+
+    for user in users_to_notify:
+        if user:
+            group_name = f'user_{user.id}_notifications'
+            try:
+                async_to_sync(channel_layer.group_send)(group_name, notification_data)
+            except Exception as e:
+                logger.warning(f'Failed to send notification to user {user.id}: {e}')

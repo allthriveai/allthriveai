@@ -1223,8 +1223,7 @@ class BattleNotificationConsumer(AsyncWebsocketConsumer):
 
         if origin and origin not in allowed_origins:
             logger.warning(
-                f'[BattleNotifications] REJECTED - unauthorized origin: '
-                f'origin={origin!r}, allowed={allowed_origins}'
+                f'[BattleNotifications] REJECTED - unauthorized origin: origin={origin!r}, allowed={allowed_origins}'
             )
             await self.close(code=4003)
             return

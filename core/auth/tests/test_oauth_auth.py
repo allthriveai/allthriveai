@@ -336,6 +336,7 @@ class SocialLoginAdapterTestCase(TestCase):
     def test_pre_social_login_links_to_existing_user_by_email(self):
         """Social login with matching email should attach to existing user, not create a new one."""
         request = self.factory.get('/accounts/google/login/')
+        request.session = {}  # Add mock session
         captured = {}
 
         class DummySocialLogin:
@@ -368,6 +369,7 @@ class SocialLoginAdapterTestCase(TestCase):
     def test_pre_social_login_no_email_does_not_link(self):
         """If provider does not supply email, adapter should not attempt to link."""
         request = self.factory.get('/accounts/github/login/')
+        request.session = {}  # Add mock session
         captured = {}
 
         class DummySocialLoginNoEmail:

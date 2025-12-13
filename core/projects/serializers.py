@@ -102,6 +102,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             # Template v2 section-based content
             'templateVersion',
             'sections',
+            # Video project metadata
+            'video',
             # Integration data (GitHub, Figma analysis)
             'github',
             'figma',
@@ -457,6 +459,28 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             return {
                 'sections': sections,
             }
+
+        # Video projects with YouTube content - return video metadata for vertical/shorts display
+        if obj.type == 'video':
+            video = obj.content.get('video', {})
+            hero_video_url = obj.content.get('heroVideoUrl', '')
+
+            # Check if this is a YouTube video (has video metadata or YouTube URL)
+            is_youtube = (
+                video.get('platform') == 'youtube'
+                or video.get('videoId')
+                or (hero_video_url and 'youtube.com' in hero_video_url)
+            )
+
+            if is_youtube:
+                return {
+                    'video': {
+                        'isShort': video.get('isShort', False),
+                        'isVertical': video.get('isVertical', False),
+                        'videoId': video.get('videoId'),
+                    },
+                    'heroVideoUrl': hero_video_url,
+                }
 
         return None
 

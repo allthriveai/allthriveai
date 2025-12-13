@@ -438,7 +438,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
 
               if (isYouTubeShort) {
                 return (
-                  <div className="relative w-full flex justify-center bg-black pb-40 md:pb-0">
+                  <div className="relative w-full flex justify-center bg-slate-900 pb-36 md:pb-0">
                     <div className="relative w-full max-w-[280px]" style={{ aspectRatio: '9 / 16' }}>
                       {!imageLoaded && (
                         <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 rounded-lg" style={{ backgroundSize: '200% 200%' }} />
@@ -472,7 +472,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                     srcSet={generateSrcSet(heroElement.url, [400, 600, 800, 1200])}
                     sizes={generateSizes(400, 600, 800)}
                     alt={project.title}
-                    className={`w-full h-auto object-cover ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
+                    className={`w-full h-auto object-cover transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'} ${!imageIsPortrait ? 'pb-36 md:pb-0' : ''}`}
                     loading={priority ? 'eager' : 'lazy'}
                     decoding={priority ? 'sync' : 'async'}
                     fetchPriority={priority ? 'high' : 'auto'}
@@ -545,7 +545,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
               // to accommodate the player while showing the vertical video properly
               if (isYouTubeShort) {
                 return (
-                  <div className="relative w-full flex justify-center bg-black pb-40 md:pb-0">
+                  <div className="relative w-full flex justify-center bg-slate-900 pb-36 md:pb-0">
                     <div className="relative w-full max-w-[360px]" style={{ aspectRatio: '9 / 16' }}>
                       <iframe
                         src={embedUrl}
@@ -559,7 +559,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
               }
 
               return isEmbedUrl ? (
-                <div className="relative w-full aspect-video bg-black pb-40 md:pb-0">
+                <div className="relative w-full aspect-video bg-slate-900 pb-36 md:pb-0">
                   <iframe
                     src={embedUrl}
                     className="absolute inset-0 w-full h-full"
@@ -570,7 +570,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
               ) : (
                 <video
                   src={heroElement.url}
-                  className="w-full h-auto block pb-40 md:pb-0"
+                  className="w-full h-auto block pb-36 md:pb-0"
                   autoPlay
                   loop
                   muted
@@ -590,7 +590,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                   srcSet={generateSrcSet(heroElement.images[0], [400, 600, 800, 1200])}
                   sizes={generateSizes(400, 600, 800)}
                   alt={project.title}
-                  className={`w-full h-auto block ${!imageIsPortrait ? 'pb-40 md:pb-0' : ''} transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'}`}
+                  className={`w-full h-auto block transition-opacity duration-300 ${!imageLoaded ? 'opacity-0' : 'opacity-100'} ${!imageIsPortrait ? 'pb-36 md:pb-0' : ''}`}
                   loading={priority ? 'eager' : 'lazy'}
                   decoding={priority ? 'sync' : 'async'}
                   fetchPriority={priority ? 'high' : 'auto'}
@@ -606,7 +606,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
 
             {/* Battle Card - Vertical 9:16 layout for mobile optimization */}
             {isBattle && heroElement.type === 'battle' && (
-              <div className="relative w-full bg-slate-900 pb-40 md:pb-0">
+              <div className="relative w-full bg-slate-900 pb-36 md:pb-0">
                 <div className="relative w-full" style={{ aspectRatio: '9 / 16' }}>
                   {/* Stacked vertical layout */}
                   <div className="absolute inset-0 flex flex-col">
@@ -809,24 +809,29 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
             ? 'opacity-0 group-hover:opacity-100'  // Curated with image: hidden by default, show on hover
             : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'  // Others: mobile default, desktop hover
         }`}>
-          {/* Gradient Background for smooth overlay fade */}
-          {/* For gradient cards, use a subtle dark gradient that lets the animations show through */}
-          <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent ${isGradient ? '-top-full' : '-top-64 md:-top-40'}`} />
-
-          <div className="relative p-5 pt-2">
-            <h3 className="text-xl font-bold mb-1 line-clamp-2 leading-tight text-white drop-shadow-md">
+          <div className="relative p-5 pt-4">
+            {/* Glassmorphism backdrop */}
+            <div className="absolute inset-0 overflow-hidden rounded-b-[var(--radius)]">
+              {/* Gradient background - forest, navy, black blend (darker) */}
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/50 via-black to-blue-950/40" />
+              {/* Frosted glass layer */}
+              <div className="absolute inset-0 backdrop-blur-md bg-white/[0.04]" />
+              {/* Subtle inner highlight */}
+              <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/[0.05]" />
+            </div>
+            <h3 className="relative z-10 text-xl font-bold mb-1 line-clamp-2 leading-tight text-white drop-shadow-md">
               {project.title}
             </h3>
 
             {project.description && (
-              <p className="text-sm mb-3 line-clamp-2 leading-relaxed font-medium text-white/90 drop-shadow-sm">
+              <p className="relative z-10 text-sm mb-3 line-clamp-2 leading-relaxed font-medium text-white/90 drop-shadow-sm">
                 {project.description}
               </p>
             )}
 
             {/* Tags */}
             {project.content?.tags && project.content.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-3">
+              <div className="relative z-10 flex flex-wrap gap-1.5 mb-3">
                 {project.content.tags.slice(0, MAX_VISIBLE_TAGS).map((tag, index) => (
                   <span
                     key={index}
@@ -838,7 +843,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-1">
+            <div className="relative z-10 flex items-center justify-between pt-1">
               {/* Left side - Avatar and Action buttons */}
               <div className="flex items-center gap-2">
                 {/* User Avatar - Special treatment for curated articles */}
@@ -1006,7 +1011,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                 project.toolsDetails && project.toolsDetails.length > 0 && (
                   <button
                     onClick={handleToolClick}
-                    className="p-2 rounded-full transition-all hover:scale-110 bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 cursor-pointer"
+                    className="p-2 rounded-full transition-all hover:scale-110 bg-white/80 backdrop-blur-md border border-white/30 hover:bg-white/90 shadow-sm cursor-pointer"
                     title={project.toolsDetails[0].name}
                   >
                     {project.toolsDetails[0].logoUrl ? (

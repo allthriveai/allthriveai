@@ -66,6 +66,11 @@ app.conf.task_routes = {
     'core.battles.tasks.complete_battle_task': {'queue': 'default'},
     'core.battles.tasks.create_pip_submission_task': {'queue': 'default'},
     'core.battles.tasks.handle_battle_timeout_task': {'queue': 'default'},
+    # Async battle tasks
+    'core.battles.tasks.check_async_battle_deadlines': {'queue': 'default'},
+    'core.battles.tasks.send_async_battle_reminders': {'queue': 'default'},
+    'core.battles.tasks.start_async_turn_task': {'queue': 'default'},
+    'core.battles.tasks.handle_async_turn_timeout_task': {'queue': 'default'},
 }
 
 # Periodic tasks schedule (Celery Beat)
@@ -141,6 +146,21 @@ app.conf.beat_schedule = {
     'cleanup-orphaned-invitation-battles': {
         'task': 'core.battles.tasks.cleanup_orphaned_invitation_battles',
         'schedule': crontab(minute=0),  # Every hour at minute 0
+        'options': {
+            'expires': 3600,  # Expires after 1 hour
+        },
+    },
+    # Async battle tasks
+    'check-async-battle-deadlines': {
+        'task': 'core.battles.tasks.check_async_battle_deadlines',
+        'schedule': crontab(minute='*/15'),  # Every 15 minutes
+        'options': {
+            'expires': 900,  # Expires after 15 minutes
+        },
+    },
+    'send-async-battle-reminders': {
+        'task': 'core.battles.tasks.send_async_battle_reminders',
+        'schedule': crontab(hour='*/6'),  # Every 6 hours
         'options': {
             'expires': 3600,  # Expires after 1 hour
         },

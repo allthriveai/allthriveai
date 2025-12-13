@@ -46,12 +46,13 @@ export default function NotFoundPage() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [finalTime, setFinalTime] = useState(0);
   const [timeBonus, setTimeBonus] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false); // Track if user has started shooting
   const containerRef = useRef<HTMLDivElement>(null);
   const laserIdRef = useRef(0);
   const particleIdRef = useRef(0);
   const scoreRef = useRef(0); // Use ref for accurate score tracking
   const processedHitsRef = useRef<Set<number>>(new Set()); // Track which hits have been processed
-  const startTimeRef = useRef<number>(Date.now());
+  const startTimeRef = useRef<number | null>(null); // Only set when game starts
 
   // Initialize the 404 digits
   useEffect(() => {
@@ -63,23 +64,25 @@ export default function NotFoundPage() {
     setDigits(initialDigits);
   }, []);
 
-  // Timer effect - count elapsed time
+  // Timer effect - count elapsed time (only starts when game starts)
   useEffect(() => {
-    if (gameWon) return;
+    if (gameWon || !gameStarted) return;
     const interval = setInterval(() => {
-      setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 100)); // Deciseconds
+      if (startTimeRef.current) {
+        setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 100)); // Deciseconds
+      }
     }, 100);
     return () => clearInterval(interval);
-  }, [gameWon]);
+  }, [gameWon, gameStarted]);
 
   // Check if all digits are destroyed
   useEffect(() => {
-    if (digits.length > 0 && digits.every(d => d.destroyed)) {
-      const endTime = Math.floor((Date.now() - startTimeRef.current) / 100);
-      const remainingTime = Math.max(0, GAME_TIME_LIMIT - endTime);
-      setFinalTime(remainingTime);
-      // Calculate time bonus: more time remaining = higher bonus (up to 500 points)
-      const bonus = Math.floor(remainingTime * 500 / GAME_TIME_LIMIT);
+    if (digits.length > 0 && digits.every(d => d.destroyed) && startTimeRef.current) {
+      const completionTime = Math.floor((Date.now() - startTimeRef.current) / 100); // How long it took in deciseconds
+      setFinalTime(completionTime);
+      // Calculate speed bonus: faster completion = higher bonus (up to 500 points)
+      // If completed instantly (0s) = 500 points, if took full 60s = 0 points
+      const bonus = Math.floor(Math.max(0, GAME_TIME_LIMIT - completionTime) * 500 / GAME_TIME_LIMIT);
       setTimeBonus(bonus);
       setGameWon(true);
     }
@@ -129,56 +132,64 @@ export default function NotFoundPage() {
   const fireLaser = useCallback(() => {
     if (gameWon) return;
 
-    // Find nearest non-destroyed digit
-    const activeDigits = digits.filter(d => !d.destroyed);
-    if (activeDigits.length === 0) return;
+    // Start the game timer on first shot
+    if (!gameStarted) {
+      setGameStarted(true);
+      startTimeRef.current = Date.now();
+    }
 
-    const nearest = activeDigits.reduce((closest, digit) => {
-      const distCurrent = Math.hypot(digit.x - shipPosition.x, digit.y - shipPosition.y);
-      const distClosest = Math.hypot(closest.x - shipPosition.x, closest.y - shipPosition.y);
-      return distCurrent < distClosest ? digit : closest;
-    });
+    // Generate unique shot ID
+    const shotId = laserIdRef.current++;
 
-    // Generate unique hit ID
-    const hitId = laserIdRef.current++;
-
+    // Laser fires straight up from ship position
     const newLaser: Laser = {
-      id: hitId,
+      id: shotId,
       x: shipPosition.x,
       y: shipPosition.y - 3,
-      targetX: nearest.x,
-      targetY: nearest.y,
+      targetX: shipPosition.x, // Fires straight up
+      targetY: 0, // To top of screen
     };
     setLasers(prev => [...prev, newLaser]);
 
-    // Hit detection after animation
+    // Hit detection after animation - check if laser path intersects any digit
     setTimeout(() => {
-      // Check if this hit was already processed (prevents double-scoring from StrictMode)
-      if (processedHitsRef.current.has(hitId)) {
-        setLasers(prev => prev.filter(l => l.id !== hitId));
+      // Check if this shot was already processed (prevents double-scoring from StrictMode)
+      if (processedHitsRef.current.has(shotId)) {
+        setLasers(prev => prev.filter(l => l.id !== shotId));
         return;
       }
-      processedHitsRef.current.add(hitId);
+      processedHitsRef.current.add(shotId);
 
-      setDigits(prev => prev.map(d => {
-        if (d.id === nearest.id && !d.destroyed) {
-          const newHealth = d.health - 25;
-          if (newHealth <= 0) {
-            spawnExplosion(d.x, d.y, 30);
-            scoreRef.current += 100;
+      // Check for collision with active digits
+      // Hit box: ship x must be within ~12% of digit x (digits are large)
+      const HIT_TOLERANCE = 12;
+      const activeDigits = digits.filter(d => !d.destroyed);
+      const hitDigit = activeDigits.find(d => Math.abs(d.x - shipPosition.x) <= HIT_TOLERANCE);
+
+      if (hitDigit) {
+        // We hit a digit!
+        setDigits(prev => prev.map(d => {
+          if (d.id === hitDigit.id && !d.destroyed) {
+            const newHealth = d.health - 25;
+            if (newHealth <= 0) {
+              spawnExplosion(d.x, d.y, 30);
+              scoreRef.current += 100;
+              setScore(scoreRef.current);
+              return { ...d, health: 0, destroyed: true };
+            }
+            spawnExplosion(d.x, d.y, 8);
+            scoreRef.current += 10;
             setScore(scoreRef.current);
-            return { ...d, health: 0, destroyed: true };
+            return { ...d, health: newHealth };
           }
-          spawnExplosion(d.x, d.y, 8);
-          scoreRef.current += 10;
-          setScore(scoreRef.current);
-          return { ...d, health: newHealth };
-        }
-        return d;
-      }));
-      setLasers(prev => prev.filter(l => l.id !== hitId));
+          return d;
+        }));
+      }
+      // If no hit, no points awarded - shot just misses
+
+      setLasers(prev => prev.filter(l => l.id !== shotId));
     }, 200);
-  }, [shipPosition, digits, gameWon, spawnExplosion]);
+  }, [shipPosition, digits, gameWon, gameStarted, spawnExplosion]);
 
   // Handle click/tap to fire
   const handleFire = useCallback(() => {
@@ -206,12 +217,6 @@ export default function NotFoundPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [fireLaser]);
 
-  // Auto-fire interval
-  useEffect(() => {
-    if (gameWon) return;
-    const interval = setInterval(fireLaser, 400);
-    return () => clearInterval(interval);
-  }, [fireLaser, gameWon]);
 
   // Update particles
   useEffect(() => {
@@ -240,12 +245,13 @@ export default function NotFoundPage() {
       { id: 3, char: '4', x: 75, y: 30, health: 100, maxHealth: 100, destroyed: false },
     ]);
     setGameWon(false);
+    setGameStarted(false);
     scoreRef.current = 0;
     setScore(0);
     setElapsedTime(0);
     setFinalTime(0);
     setTimeBonus(0);
-    startTimeRef.current = Date.now();
+    startTimeRef.current = null;
     setParticles([]);
     setLasers([]);
     processedHitsRef.current.clear();
@@ -311,41 +317,74 @@ export default function NotFoundPage() {
         onClick={handleFire}
         onTouchStart={handleTouchStart}
       >
-        {/* Logo, Score & Timer Display */}
-        <div className="absolute top-4 left-4 md:top-6 md:left-6 z-20 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-          {/* AllThrive Logo - Hidden on mobile, shown in top pill instead */}
-          <Link to="/" className="hidden sm:flex items-center gap-2 mr-2">
-            <img
-              src="/all-thrvie-logo.png"
-              alt="AllThrive"
-              className="h-8 w-auto"
-            />
-          </Link>
-          <div className="glass-subtle px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-cyan-500/20">
-            <span className="text-cyan-neon font-mono text-sm sm:text-lg">SCORE: {score}</span>
-          </div>
-          <div className="glass-subtle px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-pink-accent/20">
-            <span className="text-pink-accent font-mono text-sm sm:text-lg">
-              TIME: {(Math.max(0, GAME_TIME_LIMIT - elapsedTime) / 10).toFixed(1)}s
-            </span>
-          </div>
-        </div>
+        {/* Unified Top Banner */}
+        {!gameWon && (
+          <motion.div
+            className="absolute top-0 left-0 right-0 z-20"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="glass-subtle border-b border-cyan-500/20 px-3 py-2 sm:px-4 sm:py-3">
+              <div className="flex items-center justify-between gap-2 max-w-6xl mx-auto">
+                {/* Left: Logo + Title */}
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <Link to="/" className="flex-shrink-0">
+                    <img
+                      src="/all-thrvie-logo.png"
+                      alt="AllThrive"
+                      className="h-6 sm:h-8 w-auto"
+                    />
+                  </Link>
+                  <div className="hidden sm:block h-6 w-px bg-slate-600/50" />
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 min-w-0">
+                    <span className="text-white text-sm sm:text-base font-semibold whitespace-nowrap">Destroy the 404!</span>
+                    <span className="text-slate-400 text-xs sm:text-sm hidden sm:inline">Lost in the cosmos</span>
+                  </div>
+                </div>
 
-        {/* Instructions - hidden on mobile to avoid overlap */}
-        <motion.div
-          className="absolute top-4 right-4 md:top-6 md:right-6 z-20 text-right hidden sm:block"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <div className="glass-subtle px-3 py-2 md:px-4 rounded-xl border border-cyan-500/20">
-            <p className="text-slate-400 text-xs md:text-sm">Move mouse to aim</p>
-            <p className="text-cyan-neon text-xs md:text-sm">Click/Tap to fire faster!</p>
-          </div>
-        </motion.div>
+                {/* Center: Score & Timer */}
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                    <span className="text-cyan-neon font-mono text-xs sm:text-sm">{score}</span>
+                    <span className="text-slate-500 text-xs hidden sm:inline">pts</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 bg-pink-accent/10 rounded-lg border border-pink-accent/20">
+                    <span className="text-pink-accent font-mono text-xs sm:text-sm">
+                      {gameStarted ? `${(Math.max(0, GAME_TIME_LIMIT - elapsedTime) / 10).toFixed(1)}s` : '60.0s'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right: Instructions + Explore */}
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="hidden lg:block text-right">
+                    <p className="text-slate-400 text-xs">
+                      {gameStarted ? 'Click to fire faster!' : 'Click or tap to start shooting'}
+                    </p>
+                  </div>
+                  <Link
+                    to="/explore"
+                    className="inline-flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-neon text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap"
+                  >
+                    <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
+                    <span className="hidden sm:inline">Explore</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Mobile instruction - shown below main row on small screens */}
+              <div className="sm:hidden mt-1.5 text-center">
+                <p className="text-slate-400 text-xs">
+                  {gameStarted ? 'Drag to move • Tap to fire faster!' : 'Tap anywhere to start shooting!'}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* 404 Digits */}
-        <div className="absolute inset-0 flex items-start justify-center pt-[20%] sm:pt-[15%]">
+        <div className="absolute inset-0 flex items-start justify-center pt-[25%] sm:pt-[18%]">
           <AnimatePresence>
             {digits.map((digit) => (
               <motion.div
@@ -446,7 +485,7 @@ export default function NotFoundPage() {
                 scaleY: 0.5,
               }}
               animate={{
-                y: `${(laser.targetY - laser.y) * 3}vh`,
+                y: '-60vh', // Fire straight up
                 opacity: [1, 1, 0],
                 scaleY: [0.5, 1.5, 0.5],
               }}
@@ -579,9 +618,9 @@ export default function NotFoundPage() {
                 </motion.h2>
 
                 <div className="mb-4 sm:mb-6 space-y-0.5 sm:space-y-1">
-                  <p className="text-slate-400 text-sm sm:text-base">Time Remaining: {(finalTime / 10).toFixed(1)}s</p>
+                  <p className="text-slate-400 text-sm sm:text-base">Completed in: {(finalTime / 10).toFixed(1)}s</p>
                   <p className="text-slate-400 text-sm sm:text-base">Hit Score: {score}</p>
-                  <p className="text-slate-400 text-sm sm:text-base">Time Bonus: +{timeBonus}</p>
+                  <p className="text-slate-400 text-sm sm:text-base">Speed Bonus: +{timeBonus}</p>
                   <p className="text-2xl sm:text-3xl text-cyan-neon font-bold mt-2">
                     Final Score: {score + timeBonus}
                   </p>
@@ -610,49 +649,6 @@ export default function NotFoundPage() {
           )}
         </AnimatePresence>
 
-        {/* Page Not Found Pill - centered at top, mobile-friendly */}
-        {!gameWon && (
-          <motion.div
-            className="absolute top-14 sm:top-6 left-0 right-0 flex justify-center z-20 px-4"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <div className="glass-subtle px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-pink-accent/30 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 max-w-full">
-              {/* Mobile: Show logo inline */}
-              <Link to="/" className="flex sm:hidden items-center gap-2">
-                <img
-                  src="/all-thrvie-logo.png"
-                  alt="AllThrive"
-                  className="h-6 w-auto"
-                />
-              </Link>
-              <span className="text-white font-semibold text-sm sm:text-base text-center">Lost in the cosmos</span>
-              <span className="text-slate-400 text-xs sm:text-sm hidden sm:inline">Fight your way back &amp; destroy the 404!</span>
-              <Link
-                to="/explore"
-                className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-neon text-xs sm:text-sm font-medium rounded-lg transition-all"
-              >
-                <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
-                Explore
-              </Link>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Mobile touch hint - only visible on small screens */}
-        {!gameWon && (
-          <motion.div
-            className="absolute bottom-6 left-0 right-0 flex justify-center z-20 px-4 sm:hidden"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-          >
-            <div className="glass-subtle px-3 py-2 rounded-xl border border-cyan-500/20 text-center">
-              <p className="text-cyan-neon text-xs">Drag to move &bull; Tap to fire faster!</p>
-            </div>
-          </motion.div>
-        )}
       </div>
     </div>
   );

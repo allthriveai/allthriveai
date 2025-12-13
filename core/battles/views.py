@@ -4,6 +4,7 @@ import bleach
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from django_ratelimit.decorators import ratelimit
@@ -1169,11 +1170,11 @@ def get_battle_share_data(request, battle_id):
 
     # Build platform share URLs
     platform_urls = {
-        'twitter': f"https://twitter.com/intent/tweet?{urlencode({'text': twitter_text, 'url': battle_url})}",
-        'facebook': f"https://www.facebook.com/sharer/sharer.php?{urlencode({'u': battle_url})}",
-        'linkedin': f"https://www.linkedin.com/sharing/share-offsite/?{urlencode({'url': battle_url})}",
-        'reddit': f"https://www.reddit.com/submit?{urlencode({'url': battle_url, 'title': reddit_title})}",
-        'email': f"mailto:?{urlencode({'subject': email_subject, 'body': email_body})}",
+        'twitter': f'https://twitter.com/intent/tweet?{urlencode({"text": twitter_text, "url": battle_url})}',
+        'facebook': f'https://www.facebook.com/sharer/sharer.php?{urlencode({"u": battle_url})}',
+        'linkedin': f'https://www.linkedin.com/sharing/share-offsite/?{urlencode({"url": battle_url})}',
+        'reddit': f'https://www.reddit.com/submit?{urlencode({"url": battle_url, "title": reddit_title})}',
+        'email': f'mailto:?{urlencode({"subject": email_subject, "body": email_body})}',
     }
 
     return Response(
@@ -1197,3 +1198,376 @@ def get_battle_share_data(request, battle_id):
             },
         }
     )
+
+
+# =============================================================================
+# ASYNC BATTLE MANAGEMENT ENDPOINTS
+# =============================================================================
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def pending_battles(request):
+    """Get user's active async battles for the My Battles tab.
+
+    Returns battles grouped by status:
+    - your_turn: Battles where it's the user's turn to submit
+    - their_turn: Battles waiting for opponent
+    - judging: Battles being judged
+    - recently_completed: Completed battles from last 7 days
+
+    Returns:
+        Dict with battles grouped by status
+    """
+    from datetime import timedelta
+
+    from .models import BattlePhase
+
+    user = request.user
+    now = timezone.now()
+
+    # Get all active battles for this user
+    user_battles = (
+        PromptBattle.objects.filter(
+            Q(challenger=user) | Q(opponent=user),
+            status__in=[BattleStatus.ACTIVE, BattleStatus.PENDING],
+        )
+        .select_related('challenger', 'opponent', 'challenge_type', 'current_turn_user', 'invitation')
+        .prefetch_related('submissions')
+    )
+
+    your_turn = []
+    their_turn = []
+    judging = []
+    pending_invitations = []  # Battles waiting for opponent to accept invitation
+
+    for battle in user_battles:
+        battle_data = _serialize_async_battle(battle, user)
+
+        # Check if this is a pending invitation (no opponent yet)
+        if battle.opponent is None and battle.status == BattleStatus.PENDING:
+            battle_data['status'] = 'pending_invitation'
+            # Include invitation info if available
+            try:
+                invitation = battle.invitation
+                if invitation:
+                    battle_data['invite_url'] = invitation.invite_url
+                    battle_data['invite_token'] = invitation.invite_token
+            except BattleInvitation.DoesNotExist:
+                pass
+            pending_invitations.append(battle_data)
+            continue
+
+        # Determine status based on phase
+        if battle.phase in [BattlePhase.JUDGING, BattlePhase.GENERATING, BattlePhase.REVEAL]:
+            judging.append(battle_data)
+        elif battle.phase in [BattlePhase.CHALLENGER_TURN, BattlePhase.OPPONENT_TURN]:
+            # Check whose turn it is
+            if battle.current_turn_user == user:
+                battle_data['status'] = 'your_turn'
+                your_turn.append(battle_data)
+            else:
+                battle_data['status'] = 'their_turn'
+                their_turn.append(battle_data)
+        elif battle.phase in [BattlePhase.WAITING, BattlePhase.COUNTDOWN, BattlePhase.ACTIVE]:
+            # Check if user has submitted
+            user_submitted = battle.submissions.filter(user=user).exists()
+
+            if user_submitted:
+                # User submitted, waiting for opponent
+                battle_data['status'] = 'their_turn'
+                their_turn.append(battle_data)
+            else:
+                # User hasn't submitted yet
+                battle_data['status'] = 'your_turn'
+                your_turn.append(battle_data)
+
+    # Get recently completed battles (last 7 days)
+    seven_days_ago = now - timedelta(days=7)
+    completed_battles = (
+        PromptBattle.objects.filter(
+            Q(challenger=user) | Q(opponent=user),
+            status=BattleStatus.COMPLETED,
+            completed_at__gte=seven_days_ago,
+        )
+        .select_related('challenger', 'opponent', 'winner', 'challenge_type')
+        .order_by('-completed_at')[:10]
+    )
+
+    recently_completed = [_serialize_async_battle(b, user) for b in completed_battles]
+
+    # Sort by urgency (soonest deadline first)
+    your_turn.sort(key=lambda x: x.get('deadlines', {}).get('turn') or x.get('deadlines', {}).get('response') or '')
+    their_turn.sort(key=lambda x: x.get('deadlines', {}).get('response') or '')
+
+    return Response(
+        {
+            'your_turn': your_turn,
+            'their_turn': their_turn,
+            'judging': judging,
+            'pending_invitations': pending_invitations,
+            'recently_completed': recently_completed,
+            'counts': {
+                'your_turn': len(your_turn),
+                'their_turn': len(their_turn),
+                'judging': len(judging),
+                'pending_invitations': len(pending_invitations),
+                'total_active': len(your_turn) + len(their_turn) + len(judging) + len(pending_invitations),
+            },
+        }
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def extend_battle_deadline(request, battle_id):
+    """Extend the async deadline for a battle.
+
+    Only the user waiting for opponent can extend (max 2 times, 1 day each).
+
+    Args:
+        battle_id: The ID of the battle
+
+    Returns:
+        Updated battle data with new deadline
+    """
+
+    user = request.user
+
+    try:
+        battle = PromptBattle.objects.select_related('challenger', 'opponent').get(id=battle_id)
+    except PromptBattle.DoesNotExist:
+        return Response({'error': 'Battle not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Verify user is participant
+    if user not in [battle.challenger, battle.opponent]:
+        return Response({'error': 'You are not a participant in this battle.'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Only allow extension if it's not your turn (you're waiting for opponent)
+    if battle.current_turn_user == user:
+        return Response(
+            {'error': 'You can only extend the deadline when waiting for your opponent.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Verify battle is in async mode
+    if not battle.is_async_mode():
+        return Response(
+            {'error': 'Deadline extensions are only available for async battles.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Check extension limit
+    if battle.extension_count >= 2:
+        return Response(
+            {'error': 'Maximum deadline extensions (2) already used.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Check if battle has async deadline
+    if not battle.async_deadline:
+        return Response(
+            {'error': 'This battle does not have an async deadline.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Extend the deadline
+    days_to_extend = request.data.get('days', 1)
+    if days_to_extend not in [1, 2]:
+        days_to_extend = 1
+
+    success = battle.extend_deadline(user, days=days_to_extend)
+
+    if not success:
+        return Response({'error': 'Failed to extend deadline.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Notify opponent
+    from .tasks import _send_async_battle_notification
+
+    opponent = battle.opponent if battle.challenger == user else battle.challenger
+    _send_async_battle_notification(
+        battle,
+        'deadline_extended',
+        {
+            'extended_by_user_id': user.id,
+            'new_deadline': battle.async_deadline.isoformat() if battle.async_deadline else None,
+            'extensions_remaining': 2 - battle.extension_count,
+        },
+        target_user=opponent,
+    )
+
+    return Response(
+        {
+            'success': True,
+            'new_deadline': battle.async_deadline.isoformat() if battle.async_deadline else None,
+            'extensions_used': battle.extension_count,
+            'extensions_remaining': 2 - battle.extension_count,
+            'message': f'Deadline extended by {days_to_extend} day(s).',
+        }
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_battle_reminder(request, battle_id):
+    """Send a reminder to the opponent for an async battle.
+
+    Only allowed once per 24 hours.
+
+    Args:
+        battle_id: The ID of the battle
+
+    Returns:
+        Success/error response
+    """
+
+    user = request.user
+
+    try:
+        battle = PromptBattle.objects.select_related('challenger', 'opponent').get(id=battle_id)
+    except PromptBattle.DoesNotExist:
+        return Response({'error': 'Battle not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Verify user is participant
+    if user not in [battle.challenger, battle.opponent]:
+        return Response({'error': 'You are not a participant in this battle.'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Verify battle is in async mode
+    if not battle.is_async_mode():
+        return Response(
+            {'error': 'Reminders are only available for async battles.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Only allow reminder if it's not your turn (you're waiting for opponent)
+    opponent = battle.opponent if battle.challenger == user else battle.challenger
+    if battle.current_turn_user == user:
+        return Response(
+            {'error': 'You can only send reminders when waiting for your opponent.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Check cooldown
+    if not battle.can_send_reminder():
+        return Response(
+            {'error': 'You can only send one reminder per 24 hours.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Send notification
+    from .tasks import _send_async_battle_notification
+
+    _send_async_battle_notification(
+        battle,
+        'battle_reminder',
+        {
+            'from_user_id': user.id,
+            'from_username': user.username,
+            'deadline': battle.async_deadline.isoformat() if battle.async_deadline else None,
+        },
+        target_user=opponent,
+    )
+
+    # Update reminder tracking
+    battle.last_reminder_sent_at = timezone.now()
+    battle.reminder_count += 1
+    battle.save(update_fields=['last_reminder_sent_at', 'reminder_count'])
+
+    return Response(
+        {
+            'success': True,
+            'message': f'Reminder sent to @{opponent.username}.',
+        }
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def start_battle_turn(request, battle_id):
+    """Start the user's 3-minute turn for an async battle.
+
+    Called when user opens the battle to take their turn.
+    Starts the 3-minute countdown.
+
+    Args:
+        battle_id: The ID of the battle
+
+    Returns:
+        Turn info with expiration time
+    """
+    from .tasks import start_async_turn_task
+
+    user = request.user
+
+    try:
+        battle = PromptBattle.objects.select_related('challenger', 'opponent').get(id=battle_id)
+    except PromptBattle.DoesNotExist:
+        return Response({'error': 'Battle not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Verify user is participant (handle case where opponent is None for pending invitations)
+    is_challenger = user == battle.challenger
+    is_opponent = battle.opponent is not None and user == battle.opponent
+    if not is_challenger and not is_opponent:
+        return Response({'error': 'You are not a participant in this battle.'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Trigger the task synchronously for immediate feedback
+    result = start_async_turn_task(battle_id, user.id)
+
+    if result.get('status') == 'error':
+        return Response({'error': result.get('reason', 'Failed to start turn.')}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(
+        {
+            'status': result.get('status'),
+            'expires_at': result.get('expires_at'),
+            'time_remaining': result.get('time_remaining'),
+        }
+    )
+
+
+def _serialize_async_battle(battle: PromptBattle, user) -> dict:
+    """Serialize a battle for the async battles list."""
+    opponent = battle.opponent if battle.challenger == user else battle.challenger
+
+    # Determine user's submission status
+    user_submission = battle.submissions.filter(user=user).first()
+    opponent_submission = battle.submissions.filter(user=opponent).first() if opponent else None
+
+    # Build deadline info
+    deadlines = {}
+    if battle.async_deadline:
+        deadlines['response'] = battle.async_deadline.isoformat()
+    if battle.current_turn_expires_at:
+        deadlines['turn'] = battle.current_turn_expires_at.isoformat()
+
+    return {
+        'id': battle.id,
+        'opponent': {
+            'id': opponent.id if opponent else None,
+            'username': opponent.username if opponent else 'Waiting...',
+            'avatar_url': opponent.avatar_url if opponent else None,
+        }
+        if opponent
+        else None,
+        'challenge_text': battle.challenge_text[:100] + ('...' if len(battle.challenge_text) > 100 else ''),
+        'challenge_type': {
+            'key': battle.challenge_type.key,
+            'name': battle.challenge_type.name,
+        }
+        if battle.challenge_type
+        else None,
+        'status': 'pending',  # Will be overwritten by caller
+        'phase': battle.phase,
+        'battle_mode': battle.battle_mode,
+        'deadlines': deadlines,
+        'extensions': {
+            'used': battle.extension_count,
+            'max': 2,
+        },
+        'has_submitted': user_submission is not None,
+        'opponent_submitted': opponent_submission is not None,
+        'winner_id': battle.winner_id,
+        'is_winner': battle.winner_id == user.id if battle.winner_id else None,
+        'created_at': battle.created_at.isoformat() if battle.created_at else None,
+    }

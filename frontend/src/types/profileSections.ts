@@ -24,7 +24,8 @@ export type ProfileTemplate =
   | 'builder'     // Developers, makers - About, Featured Projects, Skills, Links
   | 'creator'     // Content creators - About, Storefront, Featured Work, Links
   | 'curation'    // AI curators - About, Featured Content, Links
-  | 'battle_bot'; // Battle bots (Pip) - About, Battle Stats, Recent Battles
+  | 'battle_bot'  // Battle bots (Pip) - About, Battle Stats, Recent Battles
+  | 'custom';     // Blank slate - user adds any blocks they want
 
 export interface ProfileTemplateConfig {
   id: ProfileTemplate;
@@ -83,6 +84,15 @@ export const PROFILE_TEMPLATES: Record<ProfileTemplate, ProfileTemplateConfig> =
     sections: ['about', 'battle_stats', 'recent_battles'],
     defaultSections: ['about', 'battle_stats', 'recent_battles'],
     forTiers: ['curation'],
+  },
+  custom: {
+    id: 'custom',
+    name: 'Custom',
+    description: 'Start with a blank slate. Add any blocks you want to build your unique profile.',
+    icon: 'PuzzlePieceIcon',
+    sections: [],
+    defaultSections: [],
+    requiresProjects: false,
   },
 };
 

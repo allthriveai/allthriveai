@@ -45,7 +45,7 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
         from django.conf import settings
 
         base_url = settings.FRONTEND_URL  # No fallback - must be configured
-        return f'{base_url}/auth?ref={obj.code}'
+        return f'{base_url}/auth?beta=THRIVE&ref={obj.code}'
 
 
 class ReferralSerializer(serializers.ModelSerializer):

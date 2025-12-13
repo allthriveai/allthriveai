@@ -131,6 +131,14 @@ export function GuestSignupModal({
               </ul>
             </div>
 
+            {/* Beta code notice */}
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-6">
+              <p className="text-sm text-purple-300">
+                <span className="font-semibold">Beta Access:</span> When you return to log in, use code{' '}
+                <code className="bg-purple-500/20 px-2 py-0.5 rounded font-mono">THRIVE</code>
+              </p>
+            </div>
+
             {/* Error message */}
             {error && (
               <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm mb-4">

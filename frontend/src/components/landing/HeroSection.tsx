@@ -12,20 +12,23 @@ export function HeroSection({ onRequestInvite, isModalOpen = false }: HeroSectio
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-20">
         <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8 lg:gap-12">
-            <div className="flex-[3] text-center lg:text-left">
-              <a href="/" className="inline-flex items-center gap-3">
-                <img
-                  src="/all-thrvie-logo.png"
-                  alt="All Thrive"
-                  className="h-10 w-auto"
-                />
-                <span className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
-                  All Thrive
-                </span>
-              </a>
-            </div>
-            <div className="flex-[2] hidden lg:block" />
+          <div className="flex items-center justify-between">
+            <a href="/" className="inline-flex items-center gap-3">
+              <img
+                src="/all-thrvie-logo.png"
+                alt="All Thrive"
+                className="h-10 w-auto"
+              />
+              <span className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
+                All Thrive
+              </span>
+            </a>
+            <a
+              href="/auth"
+              className="px-5 py-2 rounded-sm border border-white/20 text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/30 transition-all duration-300"
+            >
+              Sign In
+            </a>
           </div>
         </div>
       </div>

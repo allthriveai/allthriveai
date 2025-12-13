@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { QuestCompletionProvider } from '@/contexts/QuestCompletionContext';
 import { SubscribeModalProvider } from '@/components/billing';
 import { BattleNotificationProvider } from '@/components/battles/BattleNotificationProvider';
+import { AsyncBattleProvider } from '@/contexts/AsyncBattleContext';
 import { EmberOnboardingProvider } from '@/components/onboarding';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { AppRoutes } from '@/routes';
@@ -65,13 +66,15 @@ function App() {
                   <ScrollToTop />
                   <AuthProvider>
                     <BattleNotificationProvider>
-                      <EmberOnboardingProvider>
-                        <QuestCompletionProvider>
-                          <MainLayout>
-                            <AppRoutes />
-                          </MainLayout>
-                        </QuestCompletionProvider>
-                      </EmberOnboardingProvider>
+                      <AsyncBattleProvider>
+                        <EmberOnboardingProvider>
+                          <QuestCompletionProvider>
+                            <MainLayout>
+                              <AppRoutes />
+                            </MainLayout>
+                          </QuestCompletionProvider>
+                        </EmberOnboardingProvider>
+                      </AsyncBattleProvider>
                     </BattleNotificationProvider>
                   </AuthProvider>
                 </BrowserRouter>

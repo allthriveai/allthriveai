@@ -9,7 +9,7 @@ export default function ReferralsSettingsPage() {
 
   // Placeholder referral code - would come from user data
   const referralCode = 'ALLTHRIVE2024';
-  const referralLink = `https://allthrive.ai/auth?ref=${referralCode}`;
+  const referralLink = `https://allthrive.ai/auth?beta=THRIVE&ref=${referralCode}`;
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
