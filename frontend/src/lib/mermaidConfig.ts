@@ -58,8 +58,8 @@ export const mermaidConfig = {
 
 // Initialize Mermaid with the custom theme (call once per app)
 let initialized = false;
-export function initializeMermaid() {
-  if (!initialized) {
+export function initializeMermaid(force = false) {
+  if (!initialized || force) {
     mermaid.initialize(mermaidConfig);
     initialized = true;
   }

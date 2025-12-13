@@ -9,12 +9,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ExclamationTriangleIcon, ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/solid';
 import { api } from '@/services/api';
 import { logError } from '@/utils/errorHandler';
 
 import { useBattleWebSocket, type BattleState } from '@/hooks/useBattleWebSocket';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  BATTLE_PHASES,
+} from '@/types/battlePhases';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import {
   BattleArena,
@@ -27,6 +29,13 @@ import {
   WaitingForOpponent,
   type PlayerStatus,
 } from '@/components/battles';
+import {
+  BattlePageLoading,
+  BattlePageError,
+  InvalidBattle,
+  BattleTimeExpired,
+  BattleConnectionLost,
+} from '@/components/battles/BattlePageStates';
 
 export function BattlePage() {
   const { battleId } = useParams<{ battleId: string }>();
@@ -249,6 +258,8 @@ export function BattlePage() {
             : null,
           winnerId: data.winner,
           matchSource: data.match_source || data.matchSource || 'unknown',
+          // Include invite URL for invitation battles
+          inviteUrl: data.invite_url || data.inviteUrl,
           // Track if this is a public view (for UI adjustments)
           isPublicView,
           // Store my player info for public views (where there's no authenticated user)
@@ -286,7 +297,7 @@ export function BattlePage() {
 
   // Show guest signup banner when battle completes for guest users
   useEffect(() => {
-    if (isGuestUser && battleState?.phase === 'complete') {
+    if (isGuestUser && battleState?.phase === BATTLE_PHASES.COMPLETE) {
       // Check if this is a returning guest (battle already loaded via REST, not just completed)
       // If loaded via REST fallback, show banner immediately
       // If just completed via WebSocket, delay to let reveal animation finish
@@ -410,134 +421,50 @@ export function BattlePage() {
     }
   }, [battleId, handleError]);
 
-  // Loading state
+  // Navigation helper
+  const goToBattles = useCallback(() => navigate('/battles'), [navigate]);
+
+  // Loading state - Invalid battle ID
   if (!battleId) {
-    return (
-      <DashboardLayout>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center">
-            <ExclamationTriangleIcon className="w-12 h-12 text-rose-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">Invalid Battle</h2>
-            <p className="text-slate-400 mb-4">No battle ID provided.</p>
-            <button onClick={() => navigate('/battles')} className="btn-primary">
-              Find a Battle
-            </button>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
+    return <InvalidBattle onBack={goToBattles} />;
   }
 
+  // Loading state - Connecting or fetching
   if ((isConnecting || restLoading) && !battleState) {
     return (
-      <DashboardLayout>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center"
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-              className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-cyan-500/30 border-t-cyan-500"
-            />
-            <p className="text-slate-400">
-              {restLoading ? 'Loading battle...' : 'Connecting to battle...'}
-            </p>
-          </motion.div>
-        </div>
-      </DashboardLayout>
+      <BattlePageLoading
+        message={restLoading ? 'Loading battle...' : 'Connecting to battle...'}
+      />
     );
   }
 
-  // Show error if both WebSocket and REST failed
+  // Error state - Both WebSocket and REST failed
   if (!battleState && restError) {
     return (
-      <DashboardLayout>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center glass-card p-8 max-w-md">
-            <ExclamationTriangleIcon className="w-12 h-12 text-rose-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">Failed to Load Battle</h2>
-            <p className="text-slate-400 mb-4">{restError}</p>
-            <button onClick={() => navigate('/battles')} className="btn-primary">
-              Back to Battles
-            </button>
-          </div>
-        </div>
-      </DashboardLayout>
+      <BattlePageError
+        message={restError}
+        onBack={goToBattles}
+      />
     );
   }
 
+  // Loading state - No battle state yet
   if (!battleState) {
-    return (
-      <DashboardLayout>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center"
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-              className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-cyan-500/30 border-t-cyan-500"
-            />
-            <p className="text-slate-400">Loading battle...</p>
-          </motion.div>
-        </div>
-      </DashboardLayout>
-    );
+    return <BattlePageLoading />;
   }
 
   // Time expired state - check if battle has timed out (show before connection lost)
   const isTimeExpired = battleState.status === 'expired' ||
-    (localTimeRemaining !== null && localTimeRemaining <= 0 && battleState.phase === 'active');
+    (localTimeRemaining !== null && localTimeRemaining <= 0 && battleState.phase === BATTLE_PHASES.ACTIVE);
 
-  if (isTimeExpired && battleState.phase !== 'complete' && battleState.phase !== 'judging') {
-    return (
-      <DashboardLayout>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center glass-card p-8 max-w-md">
-            <ClockIcon className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">Time's Up!</h2>
-            <p className="text-slate-400 mb-4">
-              The battle time has expired. Your submission has been recorded.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={() => navigate('/battles')} className="btn-secondary">
-                <ArrowLeftIcon className="w-4 h-4 mr-2" />
-                Back to Battles
-              </button>
-            </div>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
+  if (isTimeExpired && battleState.phase !== BATTLE_PHASES.COMPLETE && battleState.phase !== BATTLE_PHASES.JUDGING) {
+    return <BattleTimeExpired onBack={goToBattles} />;
   }
 
   // Connection error state - only show if WebSocket is disconnected AND we don't have REST fallback data
   // For completed battles loaded via REST, we don't need a WebSocket connection
-  if (!isConnected && battleState.phase !== 'complete' && !restBattleState) {
-    return (
-      <DashboardLayout>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center glass-card p-8 max-w-md">
-            <ExclamationTriangleIcon className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">Connection Lost</h2>
-            <p className="text-slate-400 mb-4">
-              Attempting to reconnect to the battle...
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={() => navigate('/battles')} className="btn-secondary">
-                <ArrowLeftIcon className="w-4 h-4 mr-2" />
-                Leave Battle
-              </button>
-            </div>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
+  if (!isConnected && battleState.phase !== BATTLE_PHASES.COMPLETE && !restBattleState) {
+    return <BattleConnectionLost onLeave={goToBattles} />;
   }
 
   // Current user info - use authenticated user if available, otherwise use battleState.myPlayer for public views
@@ -566,8 +493,9 @@ export function BattlePage() {
         // For invitation battles where opponent hasn't joined yet,
         // show the challenge ready screen so challenger can start their turn
         if (isWaitingInvitationBattle) {
-          // Build invite URL from current battle (using invite token route)
-          const currentInviteUrl = `${window.location.origin}/battle/invite/${battleId}`;
+          // Use invite URL from battle state (includes the proper invite token)
+          // Fallback to battle ID only if invite URL is not available (shouldn't happen)
+          const currentInviteUrl = battleState.inviteUrl || `${window.location.origin}/battle/invite/${battleId}`;
           return (
             <ChallengeReadyScreen
               challengeText={battleState.challengeText}
@@ -590,10 +518,10 @@ export function BattlePage() {
       case 'countdown':
         return <BattleCountdown value={countdownValue} />;
 
-      case 'active':
-      case 'challenger_turn':
-      case 'opponent_turn':
-        // Active phase and async turn phases all show the battle arena
+      case BATTLE_PHASES.ACTIVE:
+      case BATTLE_PHASES.CHALLENGER_TURN:
+      case BATTLE_PHASES.OPPONENT_TURN:
+        // Active phase and async turn phases all show the battle arena (see isArenaPhase)
         return (
           <>
             {countdownValue !== null && <BattleCountdown value={countdownValue} />}

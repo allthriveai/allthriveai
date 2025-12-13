@@ -5,6 +5,7 @@
  * challenge prompt, and submission area.
  */
 
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BoltIcon } from '@heroicons/react/24/solid';
 import { PlayerCard } from './PlayerCard';
@@ -66,7 +67,7 @@ export function BattleArena({
   onSignupClick,
 }: BattleArenaProps) {
   // Determine the appropriate message after submission
-  const getSubmittedMessage = () => {
+  const getSubmittedMessage = (): React.ReactNode => {
     if (opponentStatus === 'submitted') {
       return 'Both players have submitted. Generating images...';
     }
@@ -75,11 +76,26 @@ export function BattleArena({
       // In async battles, opponent is the challenger who created the invite
       const name = challengerName || opponent.username;
       if (isGuestUser) {
-        return `Nice! Now it's ${name}'s turn.`;
+        // Guest in async battle - opponent may not be active
+        return (
+          <>
+            Nice! Now it's {name}'s turn. They're not currently active in the battle.
+          </>
+        );
       }
-      return `Nice! Now it's ${name}'s turn. We'll notify you when the results are ready!`;
+      return (
+        <>
+          Nice! Now it's {name}'s turn. We'll notify you when the results are ready!
+          In the meantime, check out the{' '}
+          <Link to="/explore" className="text-cyan-400 hover:text-cyan-300 underline">
+            explore feed
+          </Link>
+          .
+        </>
+      );
     }
 
+    // Sync (real-time) battle - opponent should be active
     return 'Waiting for your opponent to submit...';
   };
   return (
@@ -243,7 +259,7 @@ export function BattleArena({
                     Create Account to Get Notified
                   </button>
                   <p className="text-xs text-slate-500 mt-2">
-                    Save your battle history and get notified when results are in!
+                    We'll email you when they submit and the results are ready!
                   </p>
                 </motion.div>
               )}

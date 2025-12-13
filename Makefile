@@ -57,6 +57,11 @@ help:
 	@echo "  make test-proxy      - Test Docker proxy connectivity (run this first!)"
 	@echo "  make test-coverage   - Run backend tests with coverage report"
 	@echo "  make test-e2e        - Run all Playwright E2E tests"
+	@echo "  make test-e2e-github - Run GitHub Import E2E tests (mission critical)"
+	@echo "  make test-e2e-critical - Run ALL mission critical E2E tests"
+	@echo "  make test-ai-integration - Run GitHub AI hallucination tests (requires API keys)"
+	@echo "  make test-chat-ai-integration - Run Intelligent Chat AI tests (requires API keys)"
+	@echo "  make test-all-ai-integration - Run ALL AI integration tests"
 	@echo "  make test-e2e-chat   - Run Intelligent Chat E2E tests"
 	@echo "  make test-e2e-chat-ai - Run AI workflow tests (requires API keys)"
 	@echo "  make test-e2e-chat-edge - Run Chat edge case tests"
@@ -239,6 +244,48 @@ test: test-backend test-frontend
 test-backend:
 	@echo "Running backend tests..."
 	docker-compose exec web python manage.py test --verbosity=2 --noinput --keepdb
+
+# Mission Critical E2E Tests - These should NEVER fail
+test-e2e-github:
+	@echo "Running GitHub Import E2E tests (mission critical)..."
+	docker-compose exec -T web python manage.py test core.tests.e2e.test_github_import --verbosity=2 --noinput --keepdb
+
+test-e2e-critical:
+	@echo "Running ALL mission critical E2E tests..."
+	docker-compose exec -T web python manage.py test core.tests.e2e --verbosity=2 --noinput --keepdb
+
+test-ai-integration:
+	@echo "Running AI Integration tests (calls real AI - requires API keys)..."
+	@echo "These tests validate AI doesn't hallucinate tech stacks, categories, etc."
+	docker-compose exec -T web python manage.py test core.tests.e2e.test_github_ai_integration --verbosity=2 --noinput --keepdb
+
+test-chat-ai-integration:
+	@echo "Running Intelligent Chat AI Integration tests (calls real AI)..."
+	@echo "Tests: GitHub import, URL clipping, help questions, video upload, infographics"
+	docker-compose exec -T web python manage.py test core.tests.e2e.test_intelligent_chat --verbosity=2 --noinput --keepdb
+
+test-all-ai-integration:
+	@echo "Running ALL AI Integration tests (GitHub + Chat)..."
+	docker-compose exec -T web python manage.py test core.tests.e2e.test_github_ai_integration core.tests.e2e.test_intelligent_chat --verbosity=2 --noinput --keepdb
+
+# Clean formatted output versions (suppress noisy logs)
+test-e2e-critical-clean:
+	@echo ""
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║         MISSION CRITICAL E2E TESTS - Clean Output                ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@docker-compose exec -T -e LOG_LEVEL=WARNING web python manage.py test core.tests.e2e --verbosity=2 --noinput --keepdb 2>&1 | grep -E "^(test_|ok|FAIL|ERROR|Ran |OK|FAILED|------)" || true
+	@echo ""
+
+test-ai-integration-clean:
+	@echo ""
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║         AI INTEGRATION TESTS - Clean Output                      ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@docker-compose exec -T -e LOG_LEVEL=WARNING web python manage.py test core.tests.e2e.test_github_ai_integration core.tests.e2e.test_intelligent_chat --verbosity=2 --noinput --keepdb 2>&1 | grep -E "^(test_|ok|FAIL|ERROR|Ran |OK|FAILED|------|✅|❌)" || true
+	@echo ""
 
 test-frontend:
 	@echo "Running frontend tests..."

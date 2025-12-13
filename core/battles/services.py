@@ -191,13 +191,12 @@ class BattleService:
         Raises:
             ValueError: If submission is invalid
         """
-        # Validate user is participant
-        if user.id not in [battle.challenger_id, battle.opponent_id]:
-            raise ValueError('User is not a participant in this battle')
+        from core.battles.phase_utils import can_submit_prompt
 
-        # Validate phase
-        if battle.phase != BattlePhase.ACTIVE:
-            raise ValueError('Cannot submit - battle is not active')
+        # Use centralized submission validation
+        result = can_submit_prompt(battle, user)
+        if not result:
+            raise ValueError(result.error or 'Cannot submit')
 
         # Check for existing submission
         existing = BattleSubmission.objects.filter(battle=battle, user=user).first()
@@ -480,10 +479,12 @@ Return ONLY the JSON, no other text.
 
             try:
                 # Use vision model to evaluate the image
+                # Low temperature for consistent scoring with slight variation in feedback
                 response = ai.complete_with_image(
                     prompt=judging_prompt,
                     image_url=submission.generated_output_url,
                     model=judging_model,
+                    temperature=0.2,
                 )
 
                 # Log the raw response for debugging
@@ -608,8 +609,19 @@ Return ONLY the JSON, no other text.
                                 f'Battle {battle.id}: Tiebreaker - Random winner: {sorted_results[0]["user_id"]}'
                             )
 
+            from core.battles.state_machine import validate_transition
+
             winner_result = sorted_results[0]
             battle.winner_id = winner_result['user_id']
+
+            # Validate transition using state machine (non-strict for backward compatibility)
+            validate_transition(
+                battle.phase,
+                BattlePhase.REVEAL,
+                strict=False,
+                battle_id=battle.id,
+            )
+
             battle.phase = BattlePhase.REVEAL
             battle.phase_changed_at = timezone.now()
             battle.save(update_fields=['winner_id', 'phase', 'phase_changed_at'])
@@ -641,8 +653,18 @@ Return ONLY the JSON, no other text.
         Args:
             battle: The battle to complete
         """
+        from core.battles.state_machine import validate_transition
+
         if battle.phase == BattlePhase.COMPLETE:
             return
+
+        # Validate transition using state machine (non-strict for backward compatibility)
+        validate_transition(
+            battle.phase,
+            BattlePhase.COMPLETE,
+            strict=False,
+            battle_id=battle.id,
+        )
 
         battle.phase = BattlePhase.COMPLETE
         battle.phase_changed_at = timezone.now()

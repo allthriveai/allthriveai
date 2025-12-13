@@ -5,7 +5,14 @@ from rest_framework import serializers
 from core.tools.models import Tool
 from core.users.models import User
 
-from .models import BattleInvitation, BattleStatus, BattleSubmission, BattleType, ChallengeType, PromptBattle
+from .models import (
+    BattleInvitation,
+    BattleSubmission,
+    BattleType,
+    ChallengeType,
+    MatchSource,
+    PromptBattle,
+)
 
 
 class BattleUserSerializer(serializers.ModelSerializer):
@@ -95,6 +102,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
     is_expired = serializers.ReadOnlyField()
     user_has_submitted = serializers.SerializerMethodField()
     can_submit = serializers.SerializerMethodField()
+    invite_url = serializers.SerializerMethodField()
 
     class Meta:
         model = PromptBattle
@@ -123,6 +131,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
             'is_expired',
             'user_has_submitted',
             'can_submit',
+            'invite_url',
         ]
         read_only_fields = [
             'id',
@@ -155,21 +164,39 @@ class PromptBattleSerializer(serializers.ModelSerializer):
         return obj.submissions.filter(user=request.user).exists()
 
     def get_can_submit(self, obj):
-        """Check if the current user can submit."""
+        """Check if the current user can submit.
+
+        Uses centralized phase_utils validation which handles:
+        - Participant check
+        - Phase check (including async turn phases)
+        - Turn validation for async battles
+        - Battle status check
+        - Existing submission check
+        """
+        from core.battles.phase_utils import can_submit_prompt
+
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return False
 
-        # Must be active and not expired
-        if obj.status != BattleStatus.ACTIVE or obj.is_expired:
+        # Check if expired (model property)
+        if obj.is_expired:
             return False
 
-        # Must be a participant
-        if request.user not in [obj.challenger, obj.opponent]:
-            return False
+        # Use centralized submission validation
+        result = can_submit_prompt(obj, request.user, check_existing=True)
+        return result.allowed
 
-        # Must not have submitted yet
-        return not obj.submissions.filter(user=request.user).exists()
+    def get_invite_url(self, obj):
+        """Get the invite URL for invitation battles."""
+        if obj.match_source != MatchSource.INVITATION:
+            return None
+
+        try:
+            invitation = obj.invitation
+            return invitation.invite_url if invitation else None
+        except BattleInvitation.DoesNotExist:
+            return None
 
     def validate(self, data):
         """Validate battle creation."""

@@ -86,23 +86,19 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
         """Submit a prompt for a battle."""
+        from core.battles.phase_utils import can_submit_prompt
+
         battle = self.get_object()
 
-        # Validate user is participant
-        if request.user not in [battle.challenger, battle.opponent]:
-            return Response({'error': 'You are not a participant in this battle.'}, status=status.HTTP_403_FORBIDDEN)
+        # Use centralized submission validation (includes participant, phase, turn, and status checks)
+        result = can_submit_prompt(battle, request.user, check_existing=True)
+        if not result:
+            # Determine appropriate status code based on error
+            if 'not a participant' in (result.error or ''):
+                return Response({'error': result.error}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': result.error}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if already submitted
-        if BattleSubmission.objects.filter(battle=battle, user=request.user).exists():
-            return Response(
-                {'error': 'You have already submitted a prompt for this battle.'}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Check battle status
-        if battle.status != BattleStatus.ACTIVE:
-            return Response({'error': 'Battle is not active.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if expired
+        # Check if expired (separate check as it triggers expiration)
         if battle.is_expired:
             battle.expire_battle()
             return Response({'error': 'Battle has expired.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -111,10 +107,9 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
         battle_service = BattleService()
         try:
             submission = battle_service.submit_prompt(
-                battle_id=battle.id,
+                battle=battle,
                 user=request.user,
                 prompt_text=request.data.get('prompt_text', ''),
-                submission_type=request.data.get('submission_type', 'text'),
             )
 
             serializer = BattleSubmissionSerializer(submission)

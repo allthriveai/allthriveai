@@ -129,6 +129,7 @@ def create_project_node(state: ProjectState) -> ProjectState:
             title=state.get('title', 'Untitled Project'),
             description=state.get('description', ''),
             type=state.get('project_type', 'other'),
+            tools_order=[],  # Initialize empty tools order (required field)
         )
 
         state['project_id'] = project.id

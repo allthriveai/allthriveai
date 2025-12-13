@@ -80,6 +80,12 @@ interface ChatInterfaceProps {
   error?: string;
   /** Enable file/image attachments */
   enableAttachments?: boolean;
+  /** Callback to cancel ongoing upload */
+  onCancelUpload?: () => void;
+  /** Whether an upload is in progress (shows cancel option) */
+  isUploading?: boolean;
+  /** Callback to cancel ongoing AI processing */
+  onCancelProcessing?: () => void;
 }
 
 export function ChatInterface({
@@ -98,6 +104,9 @@ export function ChatInterface({
   customContent,
   error,
   enableAttachments = false,
+  onCancelUpload,
+  isUploading = false,
+  onCancelProcessing,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -376,6 +385,15 @@ export function ChatInterface({
                       <span className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">
                         Thinking...
                       </span>
+                      {onCancelProcessing && (
+                        <button
+                          type="button"
+                          onClick={onCancelProcessing}
+                          className="ml-2 px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -390,37 +408,85 @@ export function ChatInterface({
         <div className="border-t border-gray-200 dark:border-gray-800 p-3 sm:p-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4 flex-shrink-0 bg-white dark:bg-gray-900 overflow-visible relative">
           {/* Attachment Preview */}
           {attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {attachments.map((file, index) => (
-                <div
-                  key={`${file.name}-${index}`}
-                  className="relative group flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm"
-                >
-                  {file.type.startsWith('image/') ? (
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={file.name}
-                      className="w-8 h-8 object-cover rounded"
-                    />
-                  ) : (
-                    (() => {
-                      const FileIcon = getFileIcon(file.type);
-                      return <FileIcon className="w-5 h-5 text-gray-500" />;
-                    })()
+            <div className="mb-3">
+              {/* Uploading state with cancel option */}
+              {isUploading && (
+                <div className="flex items-center justify-between mb-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <span className="text-sm text-primary-700 dark:text-primary-300">
+                      Uploading {attachments.length} file{attachments.length > 1 ? 's' : ''}...
+                    </span>
+                  </div>
+                  {onCancelUpload && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onCancelUpload();
+                        setAttachments([]);
+                      }}
+                      className="px-3 py-1 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                    >
+                      Cancel
+                    </button>
                   )}
-                  <span className="max-w-[80px] sm:max-w-[120px] truncate text-gray-700 dark:text-gray-300">
-                    {file.name}
+                </div>
+              )}
+
+              {/* File list with clear all option */}
+              {!isUploading && (
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {attachments.length} file{attachments.length > 1 ? 's' : ''} ready to send
                   </span>
                   <button
                     type="button"
-                    onClick={() => removeAttachment(index)}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
-                    aria-label={`Remove ${file.name}`}
+                    onClick={() => setAttachments([])}
+                    className="text-xs text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
                   >
-                    <XCircleIcon className="w-5 h-5" />
+                    Clear all
                   </button>
                 </div>
-              ))}
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                {attachments.map((file, index) => (
+                  <div
+                    key={`${file.name}-${index}`}
+                    className={`relative group flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm ${isUploading ? 'opacity-75' : ''}`}
+                  >
+                    {file.type.startsWith('image/') ? (
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={file.name}
+                        className="w-8 h-8 object-cover rounded"
+                      />
+                    ) : (
+                      (() => {
+                        const FileIcon = getFileIcon(file.type);
+                        return <FileIcon className="w-5 h-5 text-gray-500" />;
+                      })()
+                    )}
+                    <span className="max-w-[80px] sm:max-w-[120px] truncate text-gray-700 dark:text-gray-300">
+                      {file.name}
+                    </span>
+                    {!isUploading && (
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(index)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <XCircleIcon className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

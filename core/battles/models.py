@@ -461,11 +461,91 @@ class PromptBattle(models.Model):
 
     @property
     def time_remaining(self):
-        """Get remaining time in seconds, or None if not active."""
-        if self.status == BattleStatus.ACTIVE and self.expires_at:
-            remaining = (self.expires_at - timezone.now()).total_seconds()
-            return max(0, remaining)
-        return None
+        """Get remaining time in seconds, or None if not active.
+
+        For async turn-based battles, returns the turn time remaining.
+        For real-time battles, returns the battle expiration time remaining.
+
+        Note: Prefer using get_time_remaining_seconds() for new code as it
+        provides more explicit control over which timer to return.
+        """
+        return self.get_time_remaining_seconds()
+
+    def get_time_remaining_seconds(self, timer_type: str = 'auto') -> float | None:
+        """Get remaining time in seconds for the specified timer type.
+
+        This is the single source of truth for time calculations.
+        Use this method instead of calculating time inline.
+
+        Args:
+            timer_type: Which timer to return:
+                - 'auto': Intelligently choose based on current phase (default)
+                - 'turn': Current 3-minute turn timer (async battles)
+                - 'battle': Battle expiration timer (sync battles)
+                - 'deadline': 3-day async deadline timer
+
+        Returns:
+            Remaining seconds as a float, or None if the timer is not applicable.
+
+        Raises:
+            ValueError: If timer_type is not one of the valid types.
+
+        Examples:
+            # Get the most relevant timer for current state
+            remaining = battle.get_time_remaining_seconds()
+
+            # Specifically get the turn timer
+            turn_remaining = battle.get_time_remaining_seconds('turn')
+        """
+        from core.battles.constants import (
+            ASYNC_TURN_PHASES,
+            TIMER_TYPE_BATTLE,
+            TIMER_TYPE_DEADLINE,
+            TIMER_TYPE_TURN,
+            VALID_TIMER_TYPES,
+        )
+
+        if timer_type not in VALID_TIMER_TYPES:
+            raise ValueError(
+                f"Invalid timer_type: '{timer_type}'. Must be one of: {', '.join(sorted(VALID_TIMER_TYPES))}"
+            )
+
+        if timer_type == TIMER_TYPE_TURN:
+            return self._get_turn_time_remaining()
+
+        if timer_type == TIMER_TYPE_BATTLE:
+            return self._get_battle_time_remaining()
+
+        if timer_type == TIMER_TYPE_DEADLINE:
+            return self._get_deadline_time_remaining()
+
+        # Auto mode: choose intelligently based on phase
+        if self.phase in ASYNC_TURN_PHASES:
+            return self._get_turn_time_remaining()
+
+        # For sync battles or other phases, use battle expiration
+        return self._get_battle_time_remaining()
+
+    def _get_turn_time_remaining(self) -> float | None:
+        """Internal: Get remaining time in current 3-minute turn."""
+        if not self.current_turn_expires_at:
+            return None
+        remaining = (self.current_turn_expires_at - timezone.now()).total_seconds()
+        return max(0, remaining)
+
+    def _get_battle_time_remaining(self) -> float | None:
+        """Internal: Get remaining time until battle expiration."""
+        if self.status != BattleStatus.ACTIVE or not self.expires_at:
+            return None
+        remaining = (self.expires_at - timezone.now()).total_seconds()
+        return max(0, remaining)
+
+    def _get_deadline_time_remaining(self) -> float | None:
+        """Internal: Get remaining time until async deadline."""
+        if not self.async_deadline:
+            return None
+        remaining = (self.async_deadline - timezone.now()).total_seconds()
+        return max(0, remaining)
 
     # Async battle helper methods
 
@@ -523,16 +603,25 @@ class PromptBattle(models.Model):
 
         self.phase_changed_at = now
 
+        # Ensure status is ACTIVE when starting turns
+        # (battles start as PENDING until someone takes a turn)
+        update_fields = [
+            'current_turn_user',
+            'current_turn_started_at',
+            'current_turn_expires_at',
+            'phase',
+            'phase_changed_at',
+        ]
+
+        if self.status != BattleStatus.ACTIVE:
+            self.status = BattleStatus.ACTIVE
+            update_fields.append('status')
+            if not self.started_at:
+                self.started_at = now
+                update_fields.append('started_at')
+
         if save:
-            self.save(
-                update_fields=[
-                    'current_turn_user',
-                    'current_turn_started_at',
-                    'current_turn_expires_at',
-                    'phase',
-                    'phase_changed_at',
-                ]
-            )
+            self.save(update_fields=update_fields)
 
     def end_turn(self, save: bool = True) -> None:
         """End the current turn (after submission or timeout)."""
