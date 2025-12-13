@@ -142,10 +142,6 @@ export function MyBattlesTab() {
     }
   };
 
-  const _clearSelection = () => {
-    setSelectedIds(new Set());
-  };
-
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
 
@@ -174,7 +170,6 @@ export function MyBattlesTab() {
 
   // Get battles list based on view mode
   const waitingBattles = pendingBattles.filter((b) => !b.isMyTurn && b.status !== 'pending_invitation');
-  const _currentBattles = viewMode === 'active' ? pendingBattles : historyBattles;
   const currentLoading = viewMode === 'active' ? isLoading : historyLoading;
 
   return (
