@@ -69,6 +69,17 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     }
   }, [isOpen]);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   // Load tool data when tray is open and toolSlug changes
   // This avoids unnecessary background requests while scrolling feeds
   useEffect(() => {
@@ -435,12 +446,11 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
   // Use portal to render tray at document body level to escape parent overflow/z-index constraints
   return createPortal(
     <>
-      {/* Backdrop overlay */}
+      {/* Backdrop overlay - pointer-events-none allows scrolling main content */}
       <div
-        className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ease-in-out ${
-          visuallyOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        className={`fixed inset-0 bg-black/20 z-40 transition-opacity duration-300 ease-in-out pointer-events-none ${
+          visuallyOpen ? 'opacity-100' : 'opacity-0'
         }`}
-        onClick={onClose}
         aria-hidden="true"
       />
 
