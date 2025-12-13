@@ -136,6 +136,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSentryUser(null);
       // Reset analytics tracking
       analytics.reset();
+      // Clear all local storage to prevent data leakage between sessions
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {
+        // Ignore storage errors in restricted contexts
+      }
     } catch (error) {
       const errorMessage = (error && typeof error === 'object' && 'error' in error)
         ? String(error.error)

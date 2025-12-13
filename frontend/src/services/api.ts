@@ -92,13 +92,9 @@ api.interceptors.request.use(
 // Flag to prevent multiple concurrent redirects to auth page
 let isRedirectingToAuth = false;
 
-// Flag to prevent multiple concurrent token refresh attempts
-let isRefreshing = false;
-// Queue to hold requests while token is being refreshed
-let refreshQueue: Array<{
-  resolve: (value: unknown) => void;
-  reject: (reason?: unknown) => void;
-}> = [];
+// Promise-based lock for token refresh to prevent race conditions
+// When refresh is in progress, all 401 requests wait on this promise
+let refreshPromise: Promise<void> | null = null;
 
 // Response interceptor - transform data to camelCase, handle retries, and handle errors
 api.interceptors.response.use(
@@ -159,35 +155,33 @@ api.interceptors.response.use(
         const isPublicPath = currentPath === '/' || currentPath === '/auth' || currentPath.startsWith('/about') || currentPath.startsWith('/explore') || currentPath === '/pricing' || currentPath === '/privacy' || currentPath === '/terms' || currentPath === '/pitch' || currentPath === '/perks' || currentPath === '/marketplace' || currentPath.startsWith('/battle/invite/') || isUserProfile;
 
         if (!isPublicPath) {
-          // Attempt silent token refresh before redirecting
-          if (!isRefreshing) {
-            isRefreshing = true;
+          // If a refresh is already in progress, wait for it then retry
+          if (refreshPromise) {
+            try {
+              await refreshPromise;
+              // Refresh succeeded, retry the original request
+              return api(error.config!);
+            } catch {
+              // Refresh failed, error will be handled below
+              return Promise.reject(apiError);
+            }
+          }
 
+          // Start token refresh with Promise-based lock
+          refreshPromise = (async () => {
             try {
               // Attempt to refresh the token
               await api.post('/auth/refresh/');
-
-              // Success! Token refreshed. Retry the original request.
-              isRefreshing = false;
-
-              // Resolve all queued requests
-              refreshQueue.forEach(({ resolve }) => resolve(api(error.config!)));
-              refreshQueue = [];
-
-              // Retry the original request
-              return api(error.config!);
+              // Success! Token refreshed.
             } catch (refreshError) {
               // Refresh failed - redirect to auth
-              isRefreshing = false;
               isRedirectingToAuth = true;
-
-              // Reject all queued requests
-              refreshQueue.forEach(({ reject }) => reject(refreshError));
-              refreshQueue = [];
 
               // Clear any stale auth state
               try {
                 sessionStorage.removeItem('auth_state');
+                // Clear all localStorage to prevent data leakage
+                localStorage.clear();
               } catch {
                 // Ignore storage errors
               }
@@ -197,12 +191,19 @@ api.interceptors.response.use(
 
               // Redirect to auth with return URL
               window.location.href = `/auth?returnUrl=${encodeURIComponent(currentPath)}`;
+              throw refreshError;
             }
-          } else {
-            // Token refresh already in progress - queue this request
-            return new Promise((resolve, reject) => {
-              refreshQueue.push({ resolve, reject });
-            });
+          })();
+
+          try {
+            await refreshPromise;
+            // Retry the original request
+            return api(error.config!);
+          } catch {
+            return Promise.reject(apiError);
+          } finally {
+            // Clear the refresh promise so future 401s can try again
+            refreshPromise = null;
           }
         }
       }

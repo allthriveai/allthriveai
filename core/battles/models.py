@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from core.tools.models import Tool
 from core.users.models import User
 
 
@@ -287,6 +288,16 @@ class PromptBattle(models.Model):
         choices=MatchSource.choices,
         default=MatchSource.DIRECT,
         help_text='How this battle match was created',
+    )
+
+    # Tool used for this battle (e.g., Nano Banana for image generation)
+    tool = models.ForeignKey(
+        Tool,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='battles',
+        help_text='The AI tool used for this battle (e.g., Nano Banana)',
     )
 
     # OG image for social sharing (pre-generated on battle completion)

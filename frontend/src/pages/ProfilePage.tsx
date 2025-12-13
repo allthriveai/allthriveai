@@ -116,6 +116,7 @@ export default function ProfilePage() {
   const [isFollowLoading, setIsFollowLoading] = useState<boolean>(false);
   const [followError, setFollowError] = useState<string | null>(null);
   const [showFollowModal, setShowFollowModal] = useState<'followers' | 'following' | null>(null);
+  const followErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track follow error timeout
 
   // Achievement state for the profile being viewed
   const [achievementsByCategory, setAchievementsByCategory] = useState<AchievementProgressData | null>(null);
@@ -135,6 +136,7 @@ export default function ProfilePage() {
   // Auto-save state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const statusResetTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track status reset timeouts
   const initialSectionsRef = useRef<string | null>(null); // Track initial state to detect changes
   const pendingSaveRef = useRef<boolean>(false); // Track if there's a pending save
 
@@ -155,6 +157,21 @@ export default function ProfilePage() {
   // Special handling for Pip's profile (AI agent with special features)
   // Note: isPipProfile is already defined earlier for default tab selection
   const isPip = isPipProfile;
+
+  // Cleanup all timeouts on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current);
+      }
+      if (followErrorTimeoutRef.current) {
+        clearTimeout(followErrorTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Sync activeTab with URL query parameter
   useEffect(() => {
@@ -214,9 +231,11 @@ export default function ProfilePage() {
       localStorage.removeItem('ember_open_profile_generator');
 
       // Short delay to let the page render first
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         setShowProfileGeneratorTray(true);
       }, 300);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [isOwnProfile]);
 
@@ -349,20 +368,31 @@ export default function ProfilePage() {
         pendingSaveRef.current = false;
         setSaveStatus('saved');
         // Reset to idle after showing "saved" for 2 seconds
-        setTimeout(() => setSaveStatus('idle'), 2000);
+        // Clear any existing status reset timeout first
+        if (statusResetTimeoutRef.current) {
+          clearTimeout(statusResetTimeoutRef.current);
+        }
+        statusResetTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
       } catch (error) {
         console.error('Failed to auto-save profile sections:', error);
         pendingSaveRef.current = false;
         setSaveStatus('error');
         // Reset to idle after showing error for 3 seconds
-        setTimeout(() => setSaveStatus('idle'), 3000);
+        // Clear any existing status reset timeout first
+        if (statusResetTimeoutRef.current) {
+          clearTimeout(statusResetTimeoutRef.current);
+        }
+        statusResetTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
       }
     }, 1000);
 
-    // Cleanup timeout on unmount - but don't clear pending flag
+    // Cleanup timeouts on unmount - but don't clear pending flag
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
+      }
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current);
       }
     };
   }, [profileSections, isEditingShowcase, username]);
@@ -391,11 +421,19 @@ export default function ProfilePage() {
       initialSectionsRef.current = currentSectionsStr;
       pendingSaveRef.current = false;
       setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2000);
+      // Clear any existing status reset timeout first
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current);
+      }
+      statusResetTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
       console.error('Failed to save profile sections:', error);
       setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      // Clear any existing status reset timeout first
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current);
+      }
+      statusResetTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     }
   }, [username, profileSections]);
 
@@ -542,7 +580,11 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Failed to upload avatar:', error);
       setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      // Clear any existing status reset timeout first
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current);
+      }
+      statusResetTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
       setIsAvatarUploading(false);
     }
@@ -578,11 +620,19 @@ export default function ProfilePage() {
       setShowFocalPointEditor(false);
       setPendingAvatarUrl(null);
       setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2000);
+      // Clear any existing status reset timeout first
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current);
+      }
+      statusResetTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
       console.error('Failed to update avatar:', error);
       setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      // Clear any existing status reset timeout first
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current);
+      }
+      statusResetTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     }
   }, [pendingAvatarUrl, isActualOwner, refreshUser]);
 
@@ -617,11 +667,19 @@ export default function ProfilePage() {
       setShowFocalPointEditor(false);
       setPendingAvatarUrl(null);
       setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2000);
+      // Clear any existing status reset timeout first
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current);
+      }
+      statusResetTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
       console.error('Failed to update avatar:', error);
       setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      // Clear any existing status reset timeout first
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current);
+      }
+      statusResetTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     }
   }, [pendingAvatarUrl, isActualOwner, refreshUser]);
 
@@ -652,11 +710,19 @@ export default function ProfilePage() {
       }
 
       setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2000);
+      // Clear any existing status reset timeout first
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current);
+      }
+      statusResetTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
       console.error('Failed to update social links:', error);
       setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      // Clear any existing status reset timeout first
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current);
+      }
+      statusResetTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     }
   }, [user, isActualOwner, refreshUser]);
 
@@ -739,7 +805,11 @@ export default function ProfilePage() {
       const errorInfo = parseApiError(error);
       setFollowError(errorInfo.message);
       // Auto-clear error after 5 seconds
-      setTimeout(() => setFollowError(null), 5000);
+      // Clear any existing timeout first
+      if (followErrorTimeoutRef.current) {
+        clearTimeout(followErrorTimeoutRef.current);
+      }
+      followErrorTimeoutRef.current = setTimeout(() => setFollowError(null), 5000);
     } finally {
       setIsFollowLoading(false);
     }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getTools } from '@/services/tools';
 import type { Tool } from '@/types/models';
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, XMarkIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 interface ToolSelectorProps {
   selectedToolIds: number[];
@@ -32,10 +32,13 @@ export function ToolSelector({ selectedToolIds, onChange, disabled }: ToolSelect
     loadTools();
   }, []);
 
-  // Update selected tools when IDs change
+  // Update selected tools when IDs change - preserve order from selectedToolIds
   useEffect(() => {
     if (tools.length > 0) {
-      const selected = tools.filter(tool => selectedToolIds.includes(tool.id));
+      // Map IDs to tools while preserving the order from selectedToolIds
+      const selected = selectedToolIds
+        .map(id => tools.find(tool => tool.id === id))
+        .filter((tool): tool is Tool => tool !== undefined);
       setSelectedTools(selected);
     }
   }, [tools, selectedToolIds]);
@@ -67,6 +70,26 @@ export function ToolSelector({ selectedToolIds, onChange, disabled }: ToolSelect
     onChange(selectedToolIds.filter(id => id !== toolId));
   };
 
+  // Move tool up in the order
+  const handleMoveUp = (toolId: number) => {
+    if (disabled) return;
+    const index = selectedToolIds.indexOf(toolId);
+    if (index <= 0) return;
+    const newOrder = [...selectedToolIds];
+    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    onChange(newOrder);
+  };
+
+  // Move tool down in the order
+  const handleMoveDown = (toolId: number) => {
+    if (disabled) return;
+    const index = selectedToolIds.indexOf(toolId);
+    if (index < 0 || index >= selectedToolIds.length - 1) return;
+    const newOrder = [...selectedToolIds];
+    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    onChange(newOrder);
+  };
+
   const filteredTools = tools.filter(tool =>
     tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     tool.tagline.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -83,36 +106,79 @@ export function ToolSelector({ selectedToolIds, onChange, disabled }: ToolSelect
 
   return (
     <div className="space-y-3">
-      {/* Selected Tools Display */}
+      {/* Selected Tools Display - with reorder buttons */}
       {selectedTools.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {selectedTools.map(tool => (
-            <div
-              key={tool.id}
-              className="flex items-center gap-2 px-3 py-1.5 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 rounded-full text-sm"
-            >
-              {tool.logoUrl && (
-                <img
-                  src={tool.logoUrl}
-                  alt={tool.name}
-                  className="w-4 h-4 rounded object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              )}
-              <span className="font-medium">{tool.name}</span>
-              {!disabled && (
-                <button
-                  onClick={() => handleRemoveTool(tool.id)}
-                  className="ml-1 hover:bg-primary-100 dark:hover:bg-primary-900/40 rounded-full p-0.5 transition-colors"
-                  type="button"
-                >
-                  <XMarkIcon className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-          ))}
+        <div className="space-y-2">
+          {selectedTools.length > 1 && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              First tool appears in project teaser. Use arrows to reorder.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {selectedTools.map((tool, index) => (
+              <div
+                key={tool.id}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${
+                  index === 0
+                    ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 ring-2 ring-amber-300 dark:ring-amber-700'
+                    : 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                }`}
+              >
+                {/* Reorder buttons */}
+                {!disabled && selectedTools.length > 1 && (
+                  <div className="flex flex-col -my-1 mr-1">
+                    <button
+                      onClick={() => handleMoveUp(tool.id)}
+                      disabled={index === 0}
+                      className={`p-0.5 rounded transition-colors ${
+                        index === 0
+                          ? 'opacity-30 cursor-not-allowed'
+                          : 'hover:bg-black/10 dark:hover:bg-white/10'
+                      }`}
+                      type="button"
+                      title="Move up"
+                    >
+                      <ChevronUpIcon className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => handleMoveDown(tool.id)}
+                      disabled={index === selectedTools.length - 1}
+                      className={`p-0.5 rounded transition-colors ${
+                        index === selectedTools.length - 1
+                          ? 'opacity-30 cursor-not-allowed'
+                          : 'hover:bg-black/10 dark:hover:bg-white/10'
+                      }`}
+                      type="button"
+                      title="Move down"
+                    >
+                      <ChevronDownIcon className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                {tool.logoUrl && (
+                  <img
+                    src={tool.logoUrl}
+                    alt={tool.name}
+                    className="w-4 h-4 rounded object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                )}
+                <span className="font-medium">{tool.name}</span>
+                {index === 0 && <span className="text-xs opacity-75">(featured)</span>}
+                {!disabled && (
+                  <button
+                    onClick={() => handleRemoveTool(tool.id)}
+                    className="ml-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-full p-0.5 transition-colors"
+                    type="button"
+                  >
+                    <XMarkIcon className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
