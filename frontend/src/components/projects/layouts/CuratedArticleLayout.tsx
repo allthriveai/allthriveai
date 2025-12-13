@@ -13,7 +13,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowTopRightOnSquareIcon, ClockIcon, UserIcon, PencilIcon, ArrowPathIcon, XMarkIcon, CheckIcon, PlusIcon, TagIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon, ClockIcon, UserIcon, PencilIcon, ArrowPathIcon, XMarkIcon, CheckIcon, PlusIcon, TagIcon, WrenchScrewdriverIcon, ChevronUpIcon, ChevronDownIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import { useProjectContext } from '@/context/ProjectContext';
 import { useTopicTray } from '@/context/TopicTrayContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -262,6 +262,28 @@ export function CuratedArticleLayout() {
         ? prev.filter(id => id !== toolId)
         : [...prev, toolId]
     );
+  };
+
+  // Move tool up in the order
+  const handleMoveToolUp = (toolId: number) => {
+    setSelectedToolIds(prev => {
+      const index = prev.indexOf(toolId);
+      if (index <= 0) return prev;
+      const newOrder = [...prev];
+      [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+      return newOrder;
+    });
+  };
+
+  // Move tool down in the order
+  const handleMoveToolDown = (toolId: number) => {
+    setSelectedToolIds(prev => {
+      const index = prev.indexOf(toolId);
+      if (index < 0 || index >= prev.length - 1) return prev;
+      const newOrder = [...prev];
+      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+      return newOrder;
+    });
   };
 
   // Toggle category selection
@@ -575,6 +597,14 @@ export function CuratedArticleLayout() {
         </button>
       )}
 
+      {/* Backdrop for admin panel - render BEFORE panel so it's behind */}
+      {canEdit && isAdminPanelOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/20"
+          onClick={() => setIsAdminPanelOpen(false)}
+        />
+      )}
+
       {/* Admin Edit Panel - Slide-in from right */}
       {canEdit && isAdminPanelOpen && (
         <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[450px] bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col">
@@ -670,27 +700,59 @@ export function CuratedArticleLayout() {
                   placeholder="Search tools..."
                   className="w-full px-3 py-2 mb-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                 />
-                {/* Selected Tools */}
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {selectedToolIds.map(toolId => {
+                {/* Selected Tools - Reorderable list */}
+                <div className="space-y-1.5 mb-2">
+                  {selectedToolIds.length > 0 && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      First tool is used for project teaser
+                    </p>
+                  )}
+                  {selectedToolIds.map((toolId, index) => {
                     const tool = availableTools.find(t => t.id === toolId);
                     if (!tool) return null;
                     return (
-                      <span
+                      <div
                         key={toolId}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-700"
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-all ${
+                          index === 0
+                            ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-600 text-amber-800 dark:text-amber-100'
+                            : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/20 text-gray-700 dark:text-white/80'
+                        }`}
                       >
+                        <Bars3Icon className="w-3 h-3 text-gray-400 dark:text-white/40 flex-shrink-0" />
                         {tool.logoUrl && (
-                          <img src={tool.logoUrl} alt="" className="w-3 h-3 rounded" />
+                          <img src={tool.logoUrl} alt="" className="w-4 h-4 rounded flex-shrink-0" />
                         )}
-                        {tool.name}
-                        <button
-                          onClick={() => handleToggleTool(toolId)}
-                          className="ml-1 hover:text-red-500"
-                        >
-                          <XMarkIcon className="w-3 h-3" />
-                        </button>
-                      </span>
+                        <span className="text-xs flex-1 truncate">
+                          {index === 0 && <span className="text-amber-600 dark:text-amber-400 mr-1">#1</span>}
+                          {tool.name}
+                        </span>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={() => handleMoveToolUp(toolId)}
+                            disabled={index === 0}
+                            className="p-0.5 hover:bg-gray-200 dark:hover:bg-white/10 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Move up"
+                          >
+                            <ChevronUpIcon className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveToolDown(toolId)}
+                            disabled={index === selectedToolIds.length - 1}
+                            className="p-0.5 hover:bg-gray-200 dark:hover:bg-white/10 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Move down"
+                          >
+                            <ChevronDownIcon className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleTool(toolId)}
+                            className="p-0.5 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-500 rounded"
+                            title="Remove"
+                          >
+                            <XMarkIcon className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -794,9 +856,10 @@ export function CuratedArticleLayout() {
 
               {/* Save Tags Button */}
               <button
+                type="button"
                 onClick={handleSaveTags}
                 disabled={isSavingTags}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-lg transition-colors disabled:cursor-not-allowed relative z-10"
               >
                 {isSavingTags ? (
                   <>
@@ -878,14 +941,6 @@ export function CuratedArticleLayout() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Backdrop for admin panel */}
-      {canEdit && isAdminPanelOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/20"
-          onClick={() => setIsAdminPanelOpen(false)}
-        />
       )}
     </>
   );

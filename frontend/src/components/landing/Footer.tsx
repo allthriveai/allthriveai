@@ -21,6 +21,7 @@ export function Footer() {
     connect: [
       { name: 'About', href: '/about' },
       { name: 'Pricing', href: '/pricing' },
+      { name: 'Sign In', href: '/auth' },
     ],
     social: [
       { name: 'Instagram', icon: faInstagram, href: 'http://instagram.com/pippromptbattlebot' },

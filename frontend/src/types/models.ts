@@ -713,6 +713,25 @@ export interface CircleActivityFeed {
   hasCircle: boolean;
 }
 
+// WebSocket activity types (used by useCircleWebSocket hook)
+export type CircleWebSocketActivityType =
+  | 'kudos_given'
+  | 'project_created'
+  | 'streak_achieved'
+  | 'challenge_progress'
+  | 'level_up'
+  | 'member_joined';
+
+export interface CircleActivityEvent {
+  id: string;
+  type: CircleWebSocketActivityType;
+  username: string;
+  targetUsername?: string;
+  kudosType?: KudosType;
+  message?: string;
+  timestamp: string;
+}
+
 // Side Quests
 export type SideQuestType =
   | 'quiz_mastery'

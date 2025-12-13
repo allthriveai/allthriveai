@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Project } from '@/types/models';
+import type { Project, Tool, Taxonomy } from '@/types/models';
 import { useAuth } from '@/hooks/useAuth';
 import { useReward } from 'react-rewards';
-import { toggleProjectLike } from '@/services/projects';
+import { toggleProjectLike, updateProjectTags, getTools, getTaxonomies } from '@/services/projects';
 import { marked } from 'marked';
 import { sanitizeHtml } from '@/utils/sanitize';
 import {
@@ -14,6 +14,16 @@ import {
   HeartIcon,
   ShareIcon,
   ArrowLeftIcon,
+  PencilIcon,
+  ArrowPathIcon,
+  XMarkIcon,
+  CheckIcon,
+  PlusIcon,
+  TagIcon,
+  WrenchScrewdriverIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  Bars3Icon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 
@@ -33,7 +43,7 @@ interface RedditThreadLayoutProps {
 }
 
 export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [localProject, setLocalProject] = useState(project);
   const [isLiking, setIsLiking] = useState(false);
@@ -41,6 +51,126 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
   const [linkCopied, setLinkCopied] = useState(false);
   const [isFeedbackSidebarOpen, setIsFeedbackSidebarOpen] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  // Admin check
+  const isAdmin = user?.role === 'admin';
+  const canEdit = isAdmin;
+
+  // Admin edit state
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [availableTools, setAvailableTools] = useState<Tool[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<Taxonomy[]>([]);
+  const [selectedToolIds, setSelectedToolIds] = useState<number[]>(project.tools || []);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>(project.categories || []);
+  const [editTopics, setEditTopics] = useState<string[]>(project.topics || []);
+  const [newTopic, setNewTopic] = useState('');
+  const [isSavingTags, setIsSavingTags] = useState(false);
+  const [toolSearchQuery, setToolSearchQuery] = useState('');
+  const [adminError, setAdminError] = useState<string | null>(null);
+
+  // Fetch available tools and categories when admin panel opens
+  useEffect(() => {
+    if (isAdminPanelOpen && canEdit) {
+      // Fetch tools
+      getTools().then(tools => {
+        setAvailableTools(tools);
+      }).catch(err => {
+        console.error('Failed to fetch tools:', err);
+      });
+
+      // Fetch categories
+      getTaxonomies('category').then(categories => {
+        setAvailableCategories(categories);
+      }).catch(err => {
+        console.error('Failed to fetch categories:', err);
+      });
+
+      // Reset selections to current project values
+      setSelectedToolIds(localProject.tools || []);
+      setSelectedCategoryIds(localProject.categories || []);
+      setEditTopics(localProject.topics || []);
+    }
+  }, [isAdminPanelOpen, canEdit, localProject.tools, localProject.categories, localProject.topics]);
+
+  // Handle saving tools, categories, and topics
+  const handleSaveTags = async () => {
+    if (isSavingTags) return;
+    setIsSavingTags(true);
+    setAdminError(null);
+
+    try {
+      const updatedProject = await updateProjectTags(localProject.id, {
+        tools: selectedToolIds,
+        categories: selectedCategoryIds,
+        topics: editTopics,
+      });
+      setLocalProject(updatedProject);
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      setAdminError(`Failed to save tags: ${errMsg}`);
+    } finally {
+      setIsSavingTags(false);
+    }
+  };
+
+  // Handle adding a new topic
+  const handleAddTopic = () => {
+    const trimmedTopic = newTopic.trim();
+    if (trimmedTopic && !editTopics.includes(trimmedTopic)) {
+      setEditTopics([...editTopics, trimmedTopic]);
+      setNewTopic('');
+    }
+  };
+
+  // Handle removing a topic
+  const handleRemoveTopic = (topicToRemove: string) => {
+    setEditTopics(editTopics.filter(t => t !== topicToRemove));
+  };
+
+  // Toggle tool selection
+  const handleToggleTool = (toolId: number) => {
+    setSelectedToolIds(prev =>
+      prev.includes(toolId)
+        ? prev.filter(id => id !== toolId)
+        : [...prev, toolId]
+    );
+  };
+
+  // Move tool up in the order
+  const handleMoveToolUp = (toolId: number) => {
+    setSelectedToolIds(prev => {
+      const index = prev.indexOf(toolId);
+      if (index <= 0) return prev;
+      const newOrder = [...prev];
+      [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+      return newOrder;
+    });
+  };
+
+  // Move tool down in the order
+  const handleMoveToolDown = (toolId: number) => {
+    setSelectedToolIds(prev => {
+      const index = prev.indexOf(toolId);
+      if (index < 0 || index >= prev.length - 1) return prev;
+      const newOrder = [...prev];
+      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+      return newOrder;
+    });
+  };
+
+  // Toggle category selection
+  const handleToggleCategory = (categoryId: number) => {
+    setSelectedCategoryIds(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  // Filter tools by search query
+  const filteredTools = availableTools.filter(tool =>
+    tool.name.toLowerCase().includes(toolSearchQuery.toLowerCase())
+  );
 
   const redditData = localProject.content?.reddit;
 
@@ -572,6 +702,248 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
               <p className="text-white/60 text-sm">
                 Comments feature coming soon for Reddit threads!
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Edit Button - Fixed position */}
+      {canEdit && !isAdminPanelOpen && (
+        <button
+          onClick={() => setIsAdminPanelOpen(true)}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg transition-all hover:scale-105"
+          title="Admin Edit"
+        >
+          <PencilIcon className="w-5 h-5" />
+          <span className="text-sm font-medium">Admin Edit</span>
+        </button>
+      )}
+
+      {/* Backdrop for admin panel - render BEFORE panel so it's behind */}
+      {canEdit && isAdminPanelOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/20"
+          onClick={() => setIsAdminPanelOpen(false)}
+        />
+      )}
+
+      {/* Admin Edit Panel - Slide-in from right */}
+      {canEdit && isAdminPanelOpen && (
+        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[450px] bg-gray-900 shadow-2xl border-l border-white/10 flex flex-col">
+          {/* Panel Header */}
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <PencilIcon className="w-5 h-5 text-amber-500" />
+              <h3 className="text-lg font-semibold text-white">Admin Edit</h3>
+            </div>
+            <button
+              onClick={() => setIsAdminPanelOpen(false)}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <XMarkIcon className="w-5 h-5 text-white/60" />
+            </button>
+          </div>
+
+          {/* Panel Content */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {/* Error Display */}
+            {adminError && (
+              <div className="p-3 bg-red-900/20 border border-red-800 rounded-lg">
+                <p className="text-sm text-red-400">{adminError}</p>
+              </div>
+            )}
+
+            {/* Tools, Categories, and Topics Section */}
+            <div>
+              <h4 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                <WrenchScrewdriverIcon className="w-4 h-4" />
+                Tools & Tags
+              </h4>
+
+              {/* Tools Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Tools Mentioned
+                </label>
+                {/* Search Input */}
+                <input
+                  type="text"
+                  value={toolSearchQuery}
+                  onChange={(e) => setToolSearchQuery(e.target.value)}
+                  placeholder="Search tools..."
+                  className="w-full px-3 py-2 mb-2 border border-white/20 rounded-lg bg-white/5 text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                />
+                {/* Selected Tools - Reorderable list */}
+                <div className="space-y-1 mb-2">
+                  {selectedToolIds.map((toolId, index) => {
+                    const tool = availableTools.find(t => t.id === toolId);
+                    if (!tool) return null;
+                    return (
+                      <div
+                        key={toolId}
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-all ${
+                          index === 0
+                            ? 'bg-amber-900/40 border-amber-600 text-amber-100'
+                            : 'bg-white/5 border-white/20 text-white/80'
+                        }`}
+                      >
+                        <Bars3Icon className="w-3 h-3 text-white/40 flex-shrink-0" />
+                        {tool.logoUrl && (
+                          <img src={tool.logoUrl} alt="" className="w-4 h-4 rounded flex-shrink-0" />
+                        )}
+                        <span className="text-xs flex-1 truncate">
+                          {index === 0 && <span className="text-amber-400 mr-1">#1</span>}
+                          {tool.name}
+                        </span>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={() => handleMoveToolUp(toolId)}
+                            disabled={index === 0}
+                            className="p-0.5 hover:bg-white/10 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Move up"
+                          >
+                            <ChevronUpIcon className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveToolDown(toolId)}
+                            disabled={index === selectedToolIds.length - 1}
+                            className="p-0.5 hover:bg-white/10 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Move down"
+                          >
+                            <ChevronDownIcon className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleTool(toolId)}
+                            className="p-0.5 hover:bg-red-500/20 hover:text-red-400 rounded"
+                            title="Remove"
+                          >
+                            <XMarkIcon className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {selectedToolIds.length > 0 && (
+                  <p className="text-xs text-white/40 mb-2">First tool shown on project cards</p>
+                )}
+                {/* Available Tools Dropdown */}
+                <div className="max-h-32 overflow-y-auto border border-white/10 rounded-lg bg-white/5">
+                  {filteredTools.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-white/40">No tools found</p>
+                  ) : (
+                    filteredTools.slice(0, 20).map(tool => (
+                      <button
+                        key={tool.id}
+                        onClick={() => handleToggleTool(tool.id)}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                          selectedToolIds.includes(tool.id)
+                            ? 'bg-amber-900/20 text-amber-300'
+                            : 'hover:bg-white/10 text-white/70'
+                        }`}
+                      >
+                        {tool.logoUrl && (
+                          <img src={tool.logoUrl} alt="" className="w-4 h-4 rounded" />
+                        )}
+                        <span>{tool.name}</span>
+                        {selectedToolIds.includes(tool.id) && (
+                          <CheckIcon className="w-4 h-4 ml-auto" />
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Categories Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Categories
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {availableCategories.map(category => (
+                    <button
+                      key={category.id}
+                      onClick={() => handleToggleCategory(category.id)}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                        selectedCategoryIds.includes(category.id)
+                          ? 'bg-blue-900/30 text-blue-200 border-blue-700'
+                          : 'bg-white/5 text-white/60 border-white/20 hover:border-white/40'
+                      }`}
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Topics (Freeform Tags) */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Topics
+                </label>
+                {/* Current Topics */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {editTopics.map((topic, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-white/10 text-white/80 border border-white/20"
+                    >
+                      <TagIcon className="w-3 h-3" />
+                      {topic}
+                      <button
+                        onClick={() => handleRemoveTopic(topic)}
+                        className="ml-1 hover:text-red-400"
+                      >
+                        <XMarkIcon className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                {/* Add New Topic */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTopic}
+                    onChange={(e) => setNewTopic(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTopic();
+                      }
+                    }}
+                    placeholder="Add a topic..."
+                    className="flex-1 px-3 py-2 border border-white/20 rounded-lg bg-white/5 text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleAddTopic}
+                    disabled={!newTopic.trim()}
+                    className="px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                  >
+                    <PlusIcon className="w-4 h-4 text-white/70" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Save Tags Button */}
+              <button
+                type="button"
+                onClick={handleSaveTags}
+                disabled={isSavingTags}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
+              >
+                {isSavingTags ? (
+                  <>
+                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                    Saving Tags...
+                  </>
+                ) : (
+                  <>
+                    <CheckIcon className="w-4 h-4" />
+                    Save Tools & Tags
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

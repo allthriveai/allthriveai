@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from core.tools.models import Tool
 from core.users.models import User
 
 from .models import BattleInvitation, BattleStatus, BattleSubmission, BattleType, ChallengeType, PromptBattle
@@ -14,6 +15,15 @@ class BattleUserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'avatar_url']
         read_only_fields = ['id', 'username', 'avatar_url']
+
+
+class BattleToolSerializer(serializers.ModelSerializer):
+    """Lightweight tool serializer for battles."""
+
+    class Meta:
+        model = Tool
+        fields = ['id', 'name', 'slug', 'logo_url', 'website_url']
+        read_only_fields = ['id', 'name', 'slug', 'logo_url', 'website_url']
 
 
 class BattleSubmissionSerializer(serializers.ModelSerializer):
@@ -79,6 +89,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
     winner_data = BattleUserSerializer(source='winner', read_only=True)
     submissions = BattleSubmissionSerializer(many=True, read_only=True)
     challenge_type = ChallengeTypeSerializer(read_only=True)
+    tool_data = BattleToolSerializer(source='tool', read_only=True)
 
     time_remaining = serializers.SerializerMethodField()
     is_expired = serializers.ReadOnlyField()
@@ -95,6 +106,8 @@ class PromptBattleSerializer(serializers.ModelSerializer):
             'opponent_data',
             'challenge_text',
             'challenge_type',
+            'tool',
+            'tool_data',
             'status',
             'battle_type',
             'match_source',
@@ -117,6 +130,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
             'opponent_data',
             'winner_data',
             'challenge_type',
+            'tool_data',
             'match_source',
             'created_at',
             'started_at',
@@ -175,6 +189,7 @@ class PromptBattleListSerializer(serializers.ModelSerializer):
     challenger_username = serializers.ReadOnlyField(source='challenger.username')
     opponent_username = serializers.ReadOnlyField(source='opponent.username')
     winner_username = serializers.ReadOnlyField(source='winner.username')
+    tool_data = BattleToolSerializer(source='tool', read_only=True)
 
     time_remaining = serializers.SerializerMethodField()
     submission_count = serializers.SerializerMethodField()
@@ -188,6 +203,7 @@ class PromptBattleListSerializer(serializers.ModelSerializer):
             'challenge_text',
             'status',
             'battle_type',
+            'tool_data',
             'duration_minutes',
             'created_at',
             'started_at',

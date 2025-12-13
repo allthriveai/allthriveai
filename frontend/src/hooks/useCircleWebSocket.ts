@@ -6,8 +6,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { buildWebSocketUrl } from '@/utils/websocket';
-import type { CircleActivityEvent, CircleActivityType } from '@/components/thrive-circle/CircleActivityToast';
-import type { KudosType } from '@/types/models';
+import type { CircleActivityEvent, CircleWebSocketActivityType, KudosType } from '@/types/models';
 
 // Constants
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -18,7 +17,7 @@ const HEARTBEAT_INTERVAL = 30000;
 interface WebSocketMessage {
   event: string;
   data?: {
-    type: CircleActivityType;
+    type: CircleWebSocketActivityType;
     username: string;
     target_username?: string;
     kudos_type?: KudosType;
@@ -194,7 +193,7 @@ export function useCircleActivityMock(
 
     const mockUsernames = ['Sarah', 'Mike', 'Alex', 'Jordan', 'Taylor', 'Casey', 'Morgan'];
     const mockKudosTypes: KudosType[] = ['great_project', 'helpful', 'inspiring', 'creative', 'supportive', 'welcome'];
-    const mockActivityTypes: CircleActivityType[] = ['kudos_given', 'project_created', 'streak_achieved', 'challenge_progress'];
+    const mockActivityTypes: CircleWebSocketActivityType[] = ['kudos_given', 'project_created', 'streak_achieved', 'challenge_progress'];
 
     const generateMockEvent = (): CircleActivityEvent => {
       const type = mockActivityTypes[Math.floor(Math.random() * mockActivityTypes.length)];

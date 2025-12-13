@@ -12,6 +12,7 @@ export { BattleResults } from './BattleResults';
 export { BattleShareModal } from './BattleShareModal';
 export { BattlesTab } from './BattlesTab';
 export { ChallengeDisplay } from './ChallengeDisplay';
+export { ChallengeReadyScreen } from './ChallengeReadyScreen';
 export { GeneratingPhase } from './GeneratingPhase';
 export { GuestSignupBanner } from './GuestSignupBanner';
 export { GuestSignupModal } from './GuestSignupModal';

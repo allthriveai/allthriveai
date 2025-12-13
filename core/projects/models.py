@@ -133,6 +133,12 @@ class Project(models.Model):
     tools = models.ManyToManyField(
         Tool, blank=True, related_name='projects', help_text='Tools/technologies used in this project'
     )
+    # Ordered list of tool IDs (first tool is used for project teaser)
+    tools_order = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Ordered list of tool IDs. First tool appears in project teaser circle.',
+    )
     # Categories for filtering and organization (predefined taxonomy)
     categories = models.ManyToManyField(
         Taxonomy,

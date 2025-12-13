@@ -29,7 +29,7 @@ export function PromptEditor({
   minLength = 10,
   maxLength = 2000,
   disabled = false,
-  placeholder = "Describe your creative vision... What colors, mood, style, and elements should appear in the image?",
+  placeholder = "Engineer your winning prompt! Be specific: describe the subject, art style (e.g. watercolor, 3D render), mood, lighting, composition, and camera angle. Detailed prompts score higher!",
   timeRemaining: initialTimeRemaining,
 }: PromptEditorProps) {
   const [prompt, setPrompt] = useState('');
@@ -237,7 +237,7 @@ export function PromptEditor({
 
       {/* Tips */}
       <p id="prompt-hint" className="mt-2 text-xs text-slate-500 hidden md:block">
-        Pro tip: Be specific about colors, mood, composition, and style.{' '}
+        Your prompt is scored! Vague prompts lose points. Add style, mood, lighting, and composition for higher scores.{' '}
         <kbd className="text-slate-600 font-mono">⌘+Enter</kbd> to submit
       </p>
     </motion.div>

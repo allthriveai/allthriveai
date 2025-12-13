@@ -27,7 +27,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     heart_count = serializers.ReadOnlyField()
     is_liked_by_user = serializers.SerializerMethodField()
     is_promoted = serializers.SerializerMethodField()  # Computed based on expiration
-    tools_details = ToolListSerializer(source='tools', many=True, read_only=True)
+    tools_details = serializers.SerializerMethodField()  # Custom ordering based on tools_order
     categories_details = serializers.SerializerMethodField()
 
     class Meta:
@@ -102,6 +102,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             # Template v2 section-based content
             'templateVersion',
             'sections',
+            # Video project metadata
+            'video',
             # Integration data (GitHub, Figma analysis)
             'github',
             'figma',
@@ -231,6 +233,19 @@ class ProjectSerializer(serializers.ModelSerializer):
             return obj.likes.filter(user=request.user).exists()
         return False
 
+    def get_tools_details(self, obj):
+        """Get tools ordered by tools_order field (first tool appears in project teaser)."""
+        tools = obj.tools.all()
+
+        # If tools_order is defined, sort tools by that order
+        if obj.tools_order:
+            # Create a map of tool_id -> position
+            order_map = {tool_id: idx for idx, tool_id in enumerate(obj.tools_order)}
+            # Sort tools by their position in tools_order, unordered tools go to end
+            tools = sorted(tools, key=lambda t: order_map.get(t.id, len(obj.tools_order)))
+
+        return ToolListSerializer(tools, many=True).data
+
     def get_categories_details(self, obj):
         """Get categories ordered by name."""
 
@@ -336,6 +351,23 @@ class ProjectSerializer(serializers.ModelSerializer):
             validated_data['banner_url'] = DEFAULT_BANNER_IMAGE
         return super().create(validated_data)
 
+    def update(self, instance, validated_data):
+        """Update project and save tools_order if tools are included."""
+        # Extract tools if present (ManyToMany needs special handling)
+        tools = validated_data.pop('tools', None)
+
+        # Update regular fields
+        instance = super().update(instance, validated_data)
+
+        # If tools were included, set them and save order
+        if tools is not None:
+            instance.tools.set(tools)
+            # Save the order as a list of IDs (first tool appears in project teaser)
+            instance.tools_order = [tool.id for tool in tools]
+            instance.save(update_fields=['tools_order'])
+
+        return instance
+
 
 class ProjectCardSerializer(serializers.ModelSerializer):
     """Lightweight serializer for explore/feed cards.
@@ -355,8 +387,8 @@ class ProjectCardSerializer(serializers.ModelSerializer):
     is_liked_by_user = serializers.SerializerMethodField()
     # Lightweight content field - populated for battle and rss_article projects
     content = serializers.SerializerMethodField()
-    # Minimal tool details needed for displaying tool icons on cards
-    tools_details = ToolIconSerializer(source='tools', many=True, read_only=True)
+    # Minimal tool details needed for displaying tool icons on cards (custom ordering)
+    tools_details = serializers.SerializerMethodField()
     # Categories details for displaying category badges (needed for rss_article cards)
     categories_details = serializers.SerializerMethodField()
 
@@ -404,6 +436,19 @@ class ProjectCardSerializer(serializers.ModelSerializer):
                 return any(like.user_id == request.user.id for like in obj.likes.all())
             return obj.likes.filter(user=request.user).exists()
         return False
+
+    def get_tools_details(self, obj):
+        """Get tools ordered by tools_order field (first tool appears in project teaser)."""
+        tools = obj.tools.all()
+
+        # If tools_order is defined, sort tools by that order
+        if obj.tools_order:
+            # Create a map of tool_id -> position
+            order_map = {tool_id: idx for idx, tool_id in enumerate(obj.tools_order)}
+            # Sort tools by their position in tools_order, unordered tools go to end
+            tools = sorted(tools, key=lambda t: order_map.get(t.id, len(obj.tools_order)))
+
+        return ToolIconSerializer(tools, many=True).data
 
     def get_categories_details(self, obj):
         """Get categories ordered by name for displaying category badges."""
@@ -457,6 +502,28 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             return {
                 'sections': sections,
             }
+
+        # Video projects with YouTube content - return video metadata for vertical/shorts display
+        if obj.type == 'video':
+            video = obj.content.get('video', {})
+            hero_video_url = obj.content.get('heroVideoUrl', '')
+
+            # Check if this is a YouTube video (has video metadata or YouTube URL)
+            is_youtube = (
+                video.get('platform') == 'youtube'
+                or video.get('videoId')
+                or (hero_video_url and 'youtube.com' in hero_video_url)
+            )
+
+            if is_youtube:
+                return {
+                    'video': {
+                        'isShort': video.get('isShort', False),
+                        'isVertical': video.get('isVertical', False),
+                        'videoId': video.get('videoId'),
+                    },
+                    'heroVideoUrl': hero_video_url,
+                }
 
         return None
 

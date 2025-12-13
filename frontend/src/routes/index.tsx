@@ -16,6 +16,7 @@ import ProfilePage from '@/pages/ProfilePage';
 import ProjectDetailPage from '@/pages/ProjectDetailPage';
 import AccountSettingsPage from '@/pages/AccountSettingsPage';
 import ActivitySettingsPage from '@/pages/ActivitySettingsPage';
+import BattlesSettingsPage from '@/pages/BattlesSettingsPage';
 import IntegrationsSettingsPage from '@/pages/settings/IntegrationsSettingsPage';
 import PersonalizationSettingsPage from '@/pages/settings/PersonalizationSettingsPage';
 import NotificationsSettingsPage from '@/pages/settings/NotificationsSettingsPage';
@@ -343,6 +344,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <ActivitySettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/settings/battles"
+        element={
+          <ProtectedRoute>
+            <BattlesSettingsPage />
           </ProtectedRoute>
         }
       />

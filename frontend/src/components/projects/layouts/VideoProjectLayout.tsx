@@ -32,7 +32,11 @@ import {
   TrashIcon,
   EyeIcon,
   EyeSlashIcon,
+  XMarkIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
+import { getTools, updateProjectTags } from '@/services/projects';
+import type { Tool } from '@/types/models';
 
 export function VideoProjectLayout() {
   const {
@@ -90,13 +94,86 @@ export function VideoProjectLayout() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Computed editing state - must be able to edit AND in edit mode
+  const isEditing = canEdit && isEditMode;
+
   // Toggle between edit and published view
   const toggleEditMode = useCallback(() => {
     setIsEditMode(prev => !prev);
   }, []);
 
-  // Computed editing state - must be able to edit AND in edit mode
-  const isEditing = canEdit && isEditMode;
+  // Inline editing state for tools and topics
+  const [availableTools, setAvailableTools] = useState<Tool[]>([]);
+  const [selectedToolIds, setSelectedToolIds] = useState<number[]>(project.tools || []);
+  const [editTopics, setEditTopics] = useState<string[]>(project.topics || []);
+  const [newTopic, setNewTopic] = useState('');
+  const [isSavingTags, setIsSavingTags] = useState(false);
+  const [toolSearchQuery, setToolSearchQuery] = useState('');
+
+  // Fetch available tools when entering edit mode
+  useEffect(() => {
+    if (isEditing) {
+      getTools().then(tools => {
+        setAvailableTools(tools);
+      }).catch(err => {
+        console.error('Failed to fetch tools:', err);
+      });
+
+      // Reset selections to current project values
+      setSelectedToolIds(project.tools || []);
+      setEditTopics(project.topics || []);
+    }
+  }, [isEditing, project.tools, project.topics]);
+
+  // Filter tools by search query
+  const filteredTools = availableTools.filter(tool =>
+    tool.name.toLowerCase().includes(toolSearchQuery.toLowerCase())
+  );
+
+  // Handle saving tools and topics (auto-save)
+  const saveTagsUpdate = useCallback(async (tools: number[], topics: string[]) => {
+    if (isSavingTags) return;
+    setIsSavingTags(true);
+
+    try {
+      const updatedProject = await updateProjectTags(project.id, {
+        tools,
+        topics,
+      });
+      setProject(updatedProject);
+    } catch (error: unknown) {
+      console.error('Failed to save tags:', error);
+    } finally {
+      setIsSavingTags(false);
+    }
+  }, [project.id, setProject, isSavingTags]);
+
+  // Handle adding a new topic (with auto-save)
+  const handleAddTopic = useCallback(() => {
+    const trimmedTopic = newTopic.trim();
+    if (trimmedTopic && !editTopics.includes(trimmedTopic)) {
+      const newTopics = [...editTopics, trimmedTopic];
+      setEditTopics(newTopics);
+      setNewTopic('');
+      saveTagsUpdate(selectedToolIds, newTopics);
+    }
+  }, [newTopic, editTopics, selectedToolIds, saveTagsUpdate]);
+
+  // Handle removing a topic (with auto-save)
+  const handleRemoveTopic = useCallback((topicToRemove: string) => {
+    const newTopics = editTopics.filter(t => t !== topicToRemove);
+    setEditTopics(newTopics);
+    saveTagsUpdate(selectedToolIds, newTopics);
+  }, [editTopics, selectedToolIds, saveTagsUpdate]);
+
+  // Toggle tool selection (with auto-save)
+  const handleToggleTool = useCallback((toolId: number) => {
+    const newToolIds = selectedToolIds.includes(toolId)
+      ? selectedToolIds.filter(id => id !== toolId)
+      : [...selectedToolIds, toolId];
+    setSelectedToolIds(newToolIds);
+    saveTagsUpdate(newToolIds, editTopics);
+  }, [selectedToolIds, editTopics, saveTagsUpdate]);
 
   // Handle inline title change
   const handleTitleChange = useCallback(async (newTitle: string) => {
@@ -512,45 +589,147 @@ export function VideoProjectLayout() {
           </div>
         )}
 
-        {/* Tools/Topics Row */}
-        {project.toolsDetails && project.toolsDetails.length > 0 && (
+        {/* Tools Section - Inline Editable */}
+        {(isEditing || (project.toolsDetails && project.toolsDetails.length > 0)) && (
           <div className="mb-6">
-            <div className="flex flex-wrap gap-2">
-              {project.toolsDetails.map((tool) => (
-                <button
-                  key={tool.id}
-                  onClick={() => openToolTray(tool.slug)}
-                  className="group flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
-                >
-                  {tool.logoUrl ? (
-                    <img src={tool.logoUrl} alt={tool.name} className="w-4 h-4 rounded object-cover" />
-                  ) : (
-                    <CodeBracketIcon className="w-4 h-4 text-gray-500" />
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Tools</p>
+            {isEditing ? (
+              <div className="space-y-3">
+                {/* Selected Tools */}
+                <div className="flex flex-wrap gap-2">
+                  {selectedToolIds.map(toolId => {
+                    const tool = availableTools.find(t => t.id === toolId) || project.toolsDetails?.find(t => t.id === toolId);
+                    if (!tool) return null;
+                    return (
+                      <span
+                        key={toolId}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 rounded-full border border-amber-200 dark:border-amber-700"
+                      >
+                        {tool.logoUrl && (
+                          <img src={tool.logoUrl} alt={tool.name} className="w-4 h-4 rounded object-cover" />
+                        )}
+                        <span className="text-sm font-medium">{tool.name}</span>
+                        <button
+                          onClick={() => handleToggleTool(toolId)}
+                          className="ml-1 hover:text-red-500"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+                {/* Tool Search & Add */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={toolSearchQuery}
+                    onChange={(e) => setToolSearchQuery(e.target.value)}
+                    placeholder="Search tools to add..."
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                  {toolSearchQuery && (
+                    <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-lg z-10">
+                      {filteredTools.filter(t => !selectedToolIds.includes(t.id)).slice(0, 10).map(tool => (
+                        <button
+                          key={tool.id}
+                          onClick={() => {
+                            handleToggleTool(tool.id);
+                            setToolSearchQuery('');
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        >
+                          {tool.logoUrl && (
+                            <img src={tool.logoUrl} alt="" className="w-4 h-4 rounded" />
+                          )}
+                          {tool.name}
+                        </button>
+                      ))}
+                      {filteredTools.filter(t => !selectedToolIds.includes(t.id)).length === 0 && (
+                        <p className="px-3 py-2 text-sm text-gray-500">No tools found</p>
+                      )}
+                    </div>
                   )}
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {tool.name}
-                  </span>
-                </button>
-              ))}
-            </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {project.toolsDetails?.map((tool) => (
+                  <button
+                    key={tool.id}
+                    onClick={() => openToolTray(tool.slug)}
+                    className="group flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+                  >
+                    {tool.logoUrl ? (
+                      <img src={tool.logoUrl} alt={tool.name} className="w-4 h-4 rounded object-cover" />
+                    ) : (
+                      <CodeBracketIcon className="w-4 h-4 text-gray-500" />
+                    )}
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {tool.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Topics Pills - Clickable to open topic tray */}
-        {project.topics && project.topics.length > 0 && (
+        {/* Topics Section - Inline Editable */}
+        {(isEditing || (project.topics && project.topics.length > 0)) && (
           <div className="space-y-3">
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Topics</p>
-            <div className="flex flex-wrap gap-2">
-              {project.topics.map((topic, index) => (
-                <button
-                  key={index}
-                  onClick={() => openTopicTray(topic)}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors cursor-pointer"
-                >
-                  #{topic}
-                </button>
-              ))}
-            </div>
+            {isEditing ? (
+              <div className="space-y-3">
+                {/* Current Topics */}
+                <div className="flex flex-wrap gap-2">
+                  {editTopics.map((topic, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full border border-gray-200 dark:border-gray-700"
+                    >
+                      #{topic}
+                      <button
+                        onClick={() => handleRemoveTopic(topic)}
+                        className="ml-1 hover:text-red-500"
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                {/* Add Topic Input */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTopic}
+                    onChange={(e) => setNewTopic(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddTopic()}
+                    placeholder="Add a topic..."
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleAddTopic}
+                    disabled={!newTopic.trim()}
+                    className="px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 rounded-lg transition-colors"
+                  >
+                    <PlusIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {project.topics?.map((topic, index) => (
+                  <button
+                    key={index}
+                    onClick={() => openTopicTray(topic)}
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors cursor-pointer"
+                  >
+                    #{topic}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -44,9 +44,9 @@ export function ProjectsGrid({
   const EAGER_LOAD_COUNT = 8;
 
   return (
-    <div className="columns-1 sm:columns-2 lg:columns-4 gap-4" style={{ columnFill: 'auto' }}>
+    <div className="columns-1 sm:columns-2 lg:columns-4 gap-8" style={{ columnFill: 'auto' }}>
       {projects.map((project, index) => (
-        <div key={project.id} className="break-inside-avoid mb-4 inline-block w-full">
+        <div key={project.id} className="break-inside-avoid mb-8 inline-block w-full">
           <ProjectCard
             project={project}
             variant="masonry"

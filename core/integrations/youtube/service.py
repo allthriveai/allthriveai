@@ -313,21 +313,101 @@ class YouTubeService:
 
     def _is_vertical_video(self, thumbnails: dict) -> bool:
         """
-        Detect if video is vertical (portrait) based on thumbnail dimensions.
+        Detect if video is vertical (portrait) by analyzing actual thumbnail pixels.
 
-        YouTube Shorts and vertical videos have portrait thumbnails with height > width.
-        Standard videos have landscape thumbnails (16:9 aspect ratio).
+        YouTube's API returns landscape dimensions (1280x720) even for vertical videos,
+        but the actual thumbnail image has pillarboxing (black bars on sides) for
+        vertical content. We detect this by checking for dark pixels at the edges.
         """
-        # Check maxres first as it has actual video dimensions
+        # Get thumbnail URL, preferring maxres for accuracy
+        thumbnail_url = None
         for size in ['maxres', 'high', 'medium', 'default']:
             if size in thumbnails:
-                thumb = thumbnails[size]
-                width = thumb.get('width', 0)
-                height = thumb.get('height', 0)
-                if width > 0 and height > 0:
-                    # Vertical if height > width (portrait orientation)
-                    return height > width
-        return False
+                thumbnail_url = thumbnails[size].get('url')
+                break
+
+        if not thumbnail_url:
+            return False
+
+        try:
+            return self._detect_pillarboxing(thumbnail_url)
+        except Exception as e:
+            logger.debug(f'Could not analyze thumbnail for vertical detection: {e}')
+            return False
+
+    def _detect_pillarboxing(self, thumbnail_url: str) -> bool:
+        """
+        Detect if a thumbnail has pillarboxing (dark bars on sides).
+
+        Vertical videos displayed in landscape thumbnails have dark bars on left/right.
+        We detect this by comparing the brightness of edges vs center - pillarboxed
+        videos have edges that are significantly darker than the center content.
+        """
+        from io import BytesIO
+
+        from PIL import Image
+
+        try:
+            client = get_http_client()
+            response = client.get(thumbnail_url, timeout=5.0)
+            response.raise_for_status()
+
+            img = Image.open(BytesIO(response.content))
+            width, height = img.size
+
+            # Skip if image is too small to analyze
+            if width < 100 or height < 100:
+                return False
+
+            # Convert to RGB if needed (handles RGBA, P mode, etc.)
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+
+            def avg_brightness_column(x_pos: int) -> float:
+                """Get average brightness for a vertical column at x position."""
+                total = 0
+                count = 0
+                for y in range(0, height, 8):  # Sample every 8th pixel for speed
+                    r, g, b = img.getpixel((x_pos, y))
+                    total += (r + g + b) / 3
+                    count += 1
+                return total / count if count > 0 else 0
+
+            # Calculate average brightness for left edge (0-10% of width)
+            left_samples = [avg_brightness_column(int(width * p / 100)) for p in range(0, 10)]
+            left_avg = sum(left_samples) / len(left_samples) if left_samples else 255
+
+            # Calculate average brightness for right edge (90-100% of width)
+            right_samples = [avg_brightness_column(int(width * p / 100)) for p in range(90, 100)]
+            right_avg = sum(right_samples) / len(right_samples) if right_samples else 255
+
+            # Calculate average brightness for center (30-70% of width)
+            center_samples = [avg_brightness_column(int(width * p / 100)) for p in range(30, 70, 5)]
+            center_avg = sum(center_samples) / len(center_samples) if center_samples else 0
+
+            # Avoid division by zero
+            if center_avg < 10:
+                return False
+
+            # Calculate edge-to-center brightness ratio
+            edge_avg = (left_avg + right_avg) / 2
+            ratio = edge_avg / center_avg
+
+            # A pillarboxed video has edges significantly darker than center
+            # Ratio < 0.5 means edges are at least 2x darker than center
+            # Also check that edges are reasonably dark (< 50 brightness)
+            is_pillarboxed = ratio < 0.5 and edge_avg < 50
+
+            logger.debug(
+                f'Pillarbox detection: left_avg={left_avg:.1f}, right_avg={right_avg:.1f}, '
+                f'center_avg={center_avg:.1f}, ratio={ratio:.2f}, result={is_pillarboxed}'
+            )
+
+            return is_pillarboxed
+
+        except Exception as e:
+            logger.debug(f'Pillarboxing detection failed: {e}')
+            return False
 
     def get_channel_videos(
         self, channel_id: str, max_results: int = 50, published_after: str | None = None, etag: str | None = None

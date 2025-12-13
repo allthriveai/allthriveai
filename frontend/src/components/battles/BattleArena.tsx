@@ -36,6 +36,14 @@ interface BattleArenaProps {
   isRefreshingChallenge?: boolean;
   /** Whether the opponent is AI (Pip) */
   isAiOpponent?: boolean;
+  /** Whether this is an async/invitation battle */
+  isAsyncBattle?: boolean;
+  /** Name of the person who invited (for async messaging) */
+  challengerName?: string;
+  /** Whether current user is a guest */
+  isGuestUser?: boolean;
+  /** Callback to show signup modal */
+  onSignupClick?: () => void;
 }
 
 export function BattleArena({
@@ -52,7 +60,28 @@ export function BattleArena({
   onRefreshChallenge,
   isRefreshingChallenge = false,
   isAiOpponent = false,
+  isAsyncBattle = false,
+  challengerName,
+  isGuestUser = false,
+  onSignupClick,
 }: BattleArenaProps) {
+  // Determine the appropriate message after submission
+  const getSubmittedMessage = () => {
+    if (opponentStatus === 'submitted') {
+      return 'Both players have submitted. Generating images...';
+    }
+
+    if (isAsyncBattle) {
+      // In async battles, opponent is the challenger who created the invite
+      const name = challengerName || opponent.username;
+      if (isGuestUser) {
+        return `Nice! Now it's ${name}'s turn.`;
+      }
+      return `Nice! Now it's ${name}'s turn. We'll notify you when the results are ready!`;
+    }
+
+    return 'Waiting for your opponent to submit...';
+  };
   return (
     <div className="min-h-screen bg-background">
       {/* Background effects */}
@@ -196,23 +225,42 @@ export function BattleArena({
                 </svg>
               </motion.div>
               <h3 className="text-xl font-bold text-white mb-2">Prompt Submitted!</h3>
-              <p className="text-slate-400">
-                {opponentStatus === 'submitted'
-                  ? 'Both players have submitted. Generating images...'
-                  : 'Waiting for your opponent to submit...'}
-              </p>
+              <p className="text-slate-400">{getSubmittedMessage()}</p>
 
-              {/* Loading dots */}
-              <div className="flex justify-center gap-2 mt-4">
-                {[0, 1, 2].map((i) => (
-                  <motion.div
-                    key={i}
-                    className="w-2 h-2 rounded-full bg-cyan-400"
-                    animate={{ opacity: [0.3, 1, 0.3] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                  />
-                ))}
-              </div>
+              {/* Guest signup CTA for async battles */}
+              {isGuestUser && isAsyncBattle && onSignupClick && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="mt-6"
+                >
+                  <button
+                    type="button"
+                    onClick={onSignupClick}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white font-medium hover:from-pink-500 hover:to-purple-500 transition-colors"
+                  >
+                    Create Account to Get Notified
+                  </button>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Save your battle history and get notified when results are in!
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Loading dots - only show if not showing signup CTA */}
+              {!(isGuestUser && isAsyncBattle && onSignupClick) && (
+                <div className="flex justify-center gap-2 mt-4">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-2 h-2 rounded-full bg-cyan-400"
+                      animate={{ opacity: [0.3, 1, 0.3] }}
+                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <PromptEditor

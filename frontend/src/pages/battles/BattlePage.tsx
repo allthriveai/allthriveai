@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
+import { ExclamationTriangleIcon, ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/solid';
 import { api } from '@/services/api';
 import { logError } from '@/utils/errorHandler';
 
@@ -19,6 +19,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import {
   BattleArena,
   BattleCountdown,
+  ChallengeReadyScreen,
   GeneratingPhase,
   GuestSignupBanner,
   GuestSignupModal,
@@ -45,6 +46,7 @@ export function BattlePage() {
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+  const [isStartingTurn, setIsStartingTurn] = useState(false);
 
   // Check if user is a guest
   const isGuestUser = user?.isGuest ?? false;
@@ -160,7 +162,7 @@ export function BattlePage() {
           if (err.response?.status === 403) {
             if (!user) {
               // Redirect to login for in-progress battles
-              navigate(`/auth?next=${encodeURIComponent(`/battles/${battleId}`)}`);
+              navigate(`/auth?beta=THRIVE&next=${encodeURIComponent(`/battles/${battleId}`)}`);
               return;
             }
             // User is authenticated, try authenticated endpoint
@@ -357,6 +359,34 @@ export function BattlePage() {
     navigate('/');
   }, [navigate]);
 
+  // Handle starting turn for invitation battles (challenger starts before opponent joins)
+  const handleStartChallengeTurn = useCallback(async () => {
+    if (!battleId) return;
+
+    setIsStartingTurn(true);
+    try {
+      const response = await api.post(`/battles/${battleId}/start-turn/`);
+      // API returns { status: 'success' | 'already_started', expires_at, time_remaining }
+      const status = response.data.status;
+      if (status === 'success' || status === 'already_started') {
+        // Set time remaining from API response (in seconds)
+        const timeRemaining = response.data.timeRemaining || response.data.time_remaining || 180;
+        setLocalTimeRemaining(timeRemaining);
+        // Reload the page to get fresh battle state with the active phase
+        // This ensures the WebSocket reconnects with the updated battle state
+        window.location.reload();
+      }
+    } catch (error) {
+      logError('Failed to start turn', error as Error, {
+        component: 'BattlePage',
+        battleId,
+      });
+      handleError('Failed to start your turn. Please try again.');
+    } finally {
+      setIsStartingTurn(false);
+    }
+  }, [battleId, handleError]);
+
   // Handle challenge refresh (Pip battles only)
   const handleRefreshChallenge = useCallback(async () => {
     if (!battleId) return;
@@ -460,6 +490,32 @@ export function BattlePage() {
     );
   }
 
+  // Time expired state - check if battle has timed out (show before connection lost)
+  const isTimeExpired = battleState.status === 'expired' ||
+    (localTimeRemaining !== null && localTimeRemaining <= 0 && battleState.phase === 'active');
+
+  if (isTimeExpired && battleState.phase !== 'complete' && battleState.phase !== 'judging') {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center glass-card p-8 max-w-md">
+            <ClockIcon className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">Time's Up!</h2>
+            <p className="text-slate-400 mb-4">
+              The battle time has expired. Your submission has been recorded.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => navigate('/battles')} className="btn-secondary">
+                <ArrowLeftIcon className="w-4 h-4 mr-2" />
+                Back to Battles
+              </button>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   // Connection error state - only show if WebSocket is disconnected AND we don't have REST fallback data
   // For completed battles loaded via REST, we don't need a WebSocket connection
   if (!isConnected && battleState.phase !== 'complete' && !restBattleState) {
@@ -497,10 +553,33 @@ export function BattlePage() {
         avatarUrl: undefined,
       };
 
+  // Check if this is an invitation battle where challenger can start early
+  const isInvitationBattle = battleState.matchSource === 'invitation';
+  const opponentHasNotJoined = battleState.opponent.id === 0;
+  const isWaitingInvitationBattle =
+    battleState.phase === 'waiting' && isInvitationBattle && opponentHasNotJoined;
+
   // Render based on phase
   const renderPhaseContent = () => {
     switch (battleState.phase) {
       case 'waiting':
+        // For invitation battles where opponent hasn't joined yet,
+        // show the challenge ready screen so challenger can start their turn
+        if (isWaitingInvitationBattle) {
+          // Build invite URL from current battle (using invite token route)
+          const currentInviteUrl = `${window.location.origin}/battle/invite/${battleId}`;
+          return (
+            <ChallengeReadyScreen
+              challengeText={battleState.challengeText}
+              challengeType={battleState.challengeType || undefined}
+              inviteUrl={currentInviteUrl}
+              hasSubmitted={!!battleState.mySubmission}
+              onStartTurn={handleStartChallengeTurn}
+              isStarting={isStartingTurn}
+            />
+          );
+        }
+        // Regular waiting for opponent (random matchmaking or accepted invitation)
         return (
           <WaitingForOpponent
             opponentUsername={battleState.opponent.username}
@@ -512,6 +591,9 @@ export function BattlePage() {
         return <BattleCountdown value={countdownValue} />;
 
       case 'active':
+      case 'challenger_turn':
+      case 'opponent_turn':
+        // Active phase and async turn phases all show the battle arena
         return (
           <>
             {countdownValue !== null && <BattleCountdown value={countdownValue} />}
@@ -534,6 +616,10 @@ export function BattlePage() {
               onRefreshChallenge={handleRefreshChallenge}
               isRefreshingChallenge={isRefreshingChallenge}
               isAiOpponent={battleState.matchSource === 'ai_opponent'}
+              isAsyncBattle={isInvitationBattle}
+              challengerName={battleState.opponent.username}
+              isGuestUser={isGuestUser}
+              onSignupClick={() => setShowGuestSignupModal(true)}
             />
           </>
         );

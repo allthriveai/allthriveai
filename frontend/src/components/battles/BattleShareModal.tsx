@@ -220,13 +220,13 @@ export function BattleShareModal({ battleId, isOpen, onClose }: BattleShareModal
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50
-                       w-full max-w-md mx-4"
+            className="fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-50
+                       w-full sm:max-w-md sm:mx-4"
             role="dialog"
             aria-modal="true"
             aria-labelledby="share-modal-title"
           >
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto">
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-slate-700/50">
                 <div className="flex items-center gap-2">

@@ -63,38 +63,47 @@ class AchievementViewSet(viewsets.ReadOnlyModelViewSet):
         # Get all active achievements
         achievements = Achievement.objects.filter(is_active=True).order_by('category', 'order')
 
+        # Prefetch all earned achievements and progress in bulk to avoid N+1 queries
+        earned_map = {
+            ua.achievement_id: ua for ua in UserAchievement.objects.filter(user=user, achievement__in=achievements)
+        }
+        progress_map = {
+            ap.achievement_id: ap for ap in AchievementProgress.objects.filter(user=user, achievement__in=achievements)
+        }
+
         # Build response with earned status and progress
         data = []
         for achievement in achievements:
-            # Check if earned
-            try:
-                earned = UserAchievement.objects.get(user=user, achievement=achievement)
+            serialized = AchievementSerializer(achievement).data
+
+            # Check if earned (using prefetched data)
+            if achievement.id in earned_map:
+                earned = earned_map[achievement.id]
                 achievement_data = {
-                    **AchievementSerializer(achievement).data,
+                    **serialized,
                     'is_earned': True,
                     'earned_at': earned.earned_at,
                     'current_value': achievement.criteria_value,
                     'progress_percentage': 100,
                 }
-            except UserAchievement.DoesNotExist:
-                # Get progress
-                try:
-                    progress = AchievementProgress.objects.get(user=user, achievement=achievement)
-                    achievement_data = {
-                        **AchievementSerializer(achievement).data,
-                        'is_earned': False,
-                        'earned_at': None,
-                        'current_value': progress.current_value,
-                        'progress_percentage': progress.percentage,
-                    }
-                except AchievementProgress.DoesNotExist:
-                    achievement_data = {
-                        **AchievementSerializer(achievement).data,
-                        'is_earned': False,
-                        'earned_at': None,
-                        'current_value': 0,
-                        'progress_percentage': 0,
-                    }
+            elif achievement.id in progress_map:
+                # Get progress (using prefetched data)
+                progress = progress_map[achievement.id]
+                achievement_data = {
+                    **serialized,
+                    'is_earned': False,
+                    'earned_at': None,
+                    'current_value': progress.current_value,
+                    'progress_percentage': progress.percentage,
+                }
+            else:
+                achievement_data = {
+                    **serialized,
+                    'is_earned': False,
+                    'earned_at': None,
+                    'current_value': 0,
+                    'progress_percentage': 0,
+                }
 
             data.append(achievement_data)
 

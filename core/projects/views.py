@@ -320,6 +320,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 )
             tools = Tool.objects.filter(id__in=tool_ids)
             project.tools.set(tools)
+            # Save the ordered list of tool IDs (first tool appears in project teaser)
+            project.tools_order = tool_ids
+            project.save(update_fields=['tools_order'])
 
         # Update categories
         if 'categories' in request.data:

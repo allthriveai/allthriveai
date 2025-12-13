@@ -106,10 +106,11 @@ export function useIntelligentChat({
   autoReconnect = true
 }: UseIntelligentChatOptions) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  // Initialize messages from localStorage
+  // Initialize messages from localStorage with limit to prevent memory issues
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    // Only load from storage on initial render
-    return loadChatMessages(conversationId);
+    // Only load from storage on initial render, with size limit
+    const loaded = loadChatMessages(conversationId);
+    return loaded.slice(-100); // Limit to last 100 messages on load
   });
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -129,6 +130,7 @@ export function useIntelligentChat({
   const connectFnRef = useRef<(() => void) | null>(null);
   const isConnectingRef = useRef(false); // Ref-based lock to prevent duplicate connections
   const seenMessageIdsRef = useRef<Set<string>>(new Set()); // Track seen message IDs for deduplication
+  const lastConversationIdRef = useRef<string>(conversationId); // Track conversation changes for cleanup
 
   // Helper to add a message with deduplication
   const addMessageWithDedup = useCallback((newMessage: ChatMessage) => {
@@ -574,6 +576,23 @@ export function useIntelligentChat({
     }
   }, [onError, addMessageWithDedup]);
 
+  // Clear dedup Set when conversation changes to prevent memory leak
+  useEffect(() => {
+    if (lastConversationIdRef.current !== conversationId) {
+      seenMessageIdsRef.current.clear();
+      lastConversationIdRef.current = conversationId;
+    }
+  }, [conversationId]);
+
+  // Limit dedup Set size to prevent unbounded growth (keep last 500 IDs)
+  useEffect(() => {
+    const MAX_SEEN_IDS = 500;
+    if (seenMessageIdsRef.current.size > MAX_SEEN_IDS) {
+      const idsArray = Array.from(seenMessageIdsRef.current);
+      seenMessageIdsRef.current = new Set(idsArray.slice(-MAX_SEEN_IDS));
+    }
+  }, [messages]);
+
   // Connect on mount, disconnect on unmount
   useEffect(() => {
     intentionalCloseRef.current = false;
@@ -587,6 +606,8 @@ export function useIntelligentChat({
         wsRef.current = null;
       }
       setIsConnected(false);
+      // Clear dedup Set on unmount to free memory
+      seenMessageIdsRef.current.clear();
     };
 
   }, []); // Only run on mount/unmount

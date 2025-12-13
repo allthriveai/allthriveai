@@ -122,12 +122,12 @@ def upload_image(request):
     safe_filename = sanitize_filename(uploaded_file.name)
 
     try:
-        # Read file data
-        file_data = uploaded_file.read()
-
-        # Validate actual file content (not just header)
+        # Validate image dimensions BEFORE loading full image into memory
+        # This prevents memory exhaustion from malicious large images
         try:
-            img = Image.open(BytesIO(file_data))
+            # PIL can read just the header to get dimensions without loading full image
+            uploaded_file.seek(0)
+            img = Image.open(uploaded_file)
 
             # Validate image format against whitelist (prevents processing malicious files)
             if img.format not in ALLOWED_IMAGE_FORMATS:
@@ -137,7 +137,7 @@ def upload_image(request):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Validate image dimensions
+            # Validate image dimensions BEFORE loading pixel data
             width, height = img.size
             if width > 5000 or height > 5000:
                 return Response(
@@ -150,6 +150,9 @@ def upload_image(request):
                 return Response(
                     {'error': 'Image resolution too high. Maximum: 25 megapixels'}, status=status.HTTP_400_BAD_REQUEST
                 )
+
+            # Now it's safe to load the full image into memory
+            img.load()
 
             # Optimize image (resize if too large, compress)
             optimized_data = _optimize_image(img, safe_filename)

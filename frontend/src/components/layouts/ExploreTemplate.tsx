@@ -241,11 +241,11 @@ export function ExploreTemplate<T>({
 
             {/* Loading State */}
             {isLoading && (
-              <div className={`columns-1 ${columnClasses[columns]} gap-4 space-y-4`}>
+              <div className={`columns-1 ${columnClasses[columns]} gap-8 space-y-8`}>
                 {[...Array(12)].map((_, i) => (
                   <div
                     key={i}
-                    className="break-inside-avoid mb-4 rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse"
+                    className="break-inside-avoid mb-8 rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 animate-pulse"
                     style={{ height: `${200 + (i % 4) * 80}px` }}
                   />
                 ))}
@@ -270,9 +270,9 @@ export function ExploreTemplate<T>({
 
             {/* Masonry Grid */}
             {!isLoading && !error && items.length > 0 && (
-              <div className={`columns-1 ${columnClasses[columns]} gap-4 space-y-4`}>
+              <div className={`columns-1 ${columnClasses[columns]} gap-8 space-y-8`}>
                 {items.map((item, index) => (
-                  <div key={getItemKey(item)} className="break-inside-avoid mb-4">
+                  <div key={getItemKey(item)} className="break-inside-avoid mb-8">
                     {renderItem(item, index)}
                   </div>
                 ))}

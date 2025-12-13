@@ -131,6 +131,19 @@ export function ActivityInsightsTab({ username, isOwnProfile }: ActivityInsights
 
   return (
     <div className="space-y-8 pb-20">
+      {/* Private Activity Notice - Only visible to the profile owner */}
+      <div className="flex items-start gap-3 p-4 bg-teal-50/50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg">
+        <FontAwesomeIcon
+          icon={faLightbulb}
+          className="w-5 h-5 text-teal-600 dark:text-teal-400 mt-0.5 flex-shrink-0"
+        />
+        <div>
+          <p className="text-sm text-teal-800 dark:text-teal-200">
+            <span className="font-semibold">Your activity is private.</span> Only you can see this tab and its insights. Use this data to track your learning progress and discover patterns in how you engage with All Thrive.
+          </p>
+        </div>
+      </div>
+
       {/* Personalized Insights Cards */}
       {insights.insights.length > 0 && (
         <InsightsCardsSection insights={insights.insights} />

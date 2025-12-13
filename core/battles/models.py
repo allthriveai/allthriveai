@@ -4,7 +4,16 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from core.tools.models import Tool
 from core.users.models import User
+
+
+class BattleMode(models.TextChoices):
+    """Mode choices for how the battle is conducted."""
+
+    SYNC = 'sync', 'Synchronous (Real-time)'
+    ASYNC = 'async', 'Asynchronous (Turn-based)'
+    HYBRID = 'hybrid', 'Hybrid (Auto-detect)'
 
 
 class BattlePhase(models.TextChoices):
@@ -17,6 +26,9 @@ class BattlePhase(models.TextChoices):
     JUDGING = 'judging', 'AI Judging'
     REVEAL = 'reveal', 'Results Reveal'
     COMPLETE = 'complete', 'Complete'
+    # Async battle phases
+    CHALLENGER_TURN = 'challenger_turn', "Challenger's Turn"
+    OPPONENT_TURN = 'opponent_turn', "Opponent's Turn"
 
 
 class MatchSource(models.TextChoices):
@@ -278,12 +290,84 @@ class PromptBattle(models.Model):
         help_text='How this battle match was created',
     )
 
+    # Tool used for this battle (e.g., Nano Banana for image generation)
+    tool = models.ForeignKey(
+        Tool,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='battles',
+        help_text='The AI tool used for this battle (e.g., Nano Banana)',
+    )
+
     # OG image for social sharing (pre-generated on battle completion)
     og_image_url = models.URLField(
         max_length=500,
         blank=True,
         null=True,
         help_text='URL to the pre-generated OG image for social media sharing',
+    )
+
+    # Async battle mode fields
+    battle_mode = models.CharField(
+        max_length=20,
+        choices=BattleMode.choices,
+        default=BattleMode.HYBRID,
+        help_text='Battle mode: sync (real-time), async (turn-based), or hybrid (auto-detect)',
+    )
+
+    async_deadline = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='Deadline for opponent to respond in async mode (3 days from invite accept)',
+    )
+
+    current_turn_user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='battles_current_turn',
+        help_text='User whose turn it is in async mode',
+    )
+
+    current_turn_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the current turn started (for 3-min timer)',
+    )
+
+    current_turn_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='When the current 3-minute turn expires',
+    )
+
+    extension_count = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='Number of deadline extensions used (max 2)',
+    )
+
+    deadline_extended_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='battles_extended',
+        help_text='User who last extended the deadline',
+    )
+
+    last_reminder_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the last reminder was sent for async battle',
+    )
+
+    reminder_count = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='Number of reminders sent for this battle',
     )
 
     class Meta:
@@ -299,6 +383,12 @@ class PromptBattle(models.Model):
             models.Index(fields=['phase', '-created_at']),
             # Winner lookups for leaderboard
             models.Index(fields=['winner', '-completed_at']),
+            # Async battle indexes
+            models.Index(fields=['battle_mode', 'status']),
+            models.Index(fields=['current_turn_user', 'phase']),
+            models.Index(fields=['async_deadline']),
+            # Turn timeout queries (frequently queried together)
+            models.Index(fields=['current_turn_expires_at', 'status']),
         ]
 
     def __str__(self):
@@ -376,6 +466,147 @@ class PromptBattle(models.Model):
             remaining = (self.expires_at - timezone.now()).total_seconds()
             return max(0, remaining)
         return None
+
+    # Async battle helper methods
+
+    def is_async_mode(self) -> bool:
+        """Check if battle is running in async mode."""
+        return self.battle_mode == BattleMode.ASYNC or (
+            self.battle_mode == BattleMode.HYBRID
+            and self.phase in [BattlePhase.CHALLENGER_TURN, BattlePhase.OPPONENT_TURN]
+        )
+
+    def both_players_online(self) -> bool:
+        """Check if both players are currently online.
+
+        Uses WebSocket connection status and last_seen_at within 5 minutes.
+        """
+        if not self.challenger or not self.opponent:
+            return False
+
+        # Check WebSocket connections
+        if self.challenger_connected and self.opponent_connected:
+            return True
+
+        # Fallback: check last_seen_at within 5 minutes
+        five_minutes_ago = timezone.now() - timezone.timedelta(minutes=5)
+        challenger_online = (
+            hasattr(self.challenger, 'last_seen_at')
+            and self.challenger.last_seen_at
+            and self.challenger.last_seen_at >= five_minutes_ago
+        )
+        opponent_online = (
+            hasattr(self.opponent, 'last_seen_at')
+            and self.opponent.last_seen_at
+            and self.opponent.last_seen_at >= five_minutes_ago
+        )
+
+        return challenger_online and opponent_online
+
+    def start_turn(self, user: User, save: bool = True) -> None:
+        """Start the 3-minute turn timer for a user.
+
+        Args:
+            user: The user whose turn is starting
+            save: Whether to save immediately
+        """
+        now = timezone.now()
+        self.current_turn_user = user
+        self.current_turn_started_at = now
+        self.current_turn_expires_at = now + timezone.timedelta(minutes=3)
+
+        # Set the appropriate phase
+        if user == self.challenger:
+            self.phase = BattlePhase.CHALLENGER_TURN
+        else:
+            self.phase = BattlePhase.OPPONENT_TURN
+
+        self.phase_changed_at = now
+
+        if save:
+            self.save(
+                update_fields=[
+                    'current_turn_user',
+                    'current_turn_started_at',
+                    'current_turn_expires_at',
+                    'phase',
+                    'phase_changed_at',
+                ]
+            )
+
+    def end_turn(self, save: bool = True) -> None:
+        """End the current turn (after submission or timeout)."""
+        self.current_turn_user = None
+        self.current_turn_started_at = None
+        self.current_turn_expires_at = None
+
+        if save:
+            self.save(
+                update_fields=[
+                    'current_turn_user',
+                    'current_turn_started_at',
+                    'current_turn_expires_at',
+                ]
+            )
+
+    def extend_deadline(self, user: User, days: int = 1) -> bool:
+        """Extend the async deadline by specified days.
+
+        Args:
+            user: The user requesting the extension
+            days: Number of days to extend (default 1)
+
+        Returns:
+            True if extension was successful, False if max extensions reached
+        """
+        if self.extension_count >= 2:
+            return False
+
+        if not self.async_deadline:
+            return False
+
+        self.async_deadline = self.async_deadline + timezone.timedelta(days=days)
+        self.extension_count += 1
+        self.deadline_extended_by = user
+        self.save(update_fields=['async_deadline', 'extension_count', 'deadline_extended_by'])
+        return True
+
+    @property
+    def async_time_remaining(self) -> float | None:
+        """Get remaining time until async deadline in seconds."""
+        if not self.async_deadline:
+            return None
+        remaining = (self.async_deadline - timezone.now()).total_seconds()
+        return max(0, remaining)
+
+    @property
+    def turn_time_remaining(self) -> float | None:
+        """Get remaining time in current 3-minute turn in seconds."""
+        if not self.current_turn_expires_at:
+            return None
+        remaining = (self.current_turn_expires_at - timezone.now()).total_seconds()
+        return max(0, remaining)
+
+    @property
+    def is_turn_expired(self) -> bool:
+        """Check if current turn has expired."""
+        if not self.current_turn_expires_at:
+            return False
+        return timezone.now() > self.current_turn_expires_at
+
+    @property
+    def is_async_deadline_expired(self) -> bool:
+        """Check if async deadline has passed."""
+        if not self.async_deadline:
+            return False
+        return timezone.now() > self.async_deadline
+
+    def can_send_reminder(self) -> bool:
+        """Check if a reminder can be sent (24h cooldown)."""
+        if not self.last_reminder_sent_at:
+            return True
+        cooldown = timezone.timedelta(hours=24)
+        return timezone.now() >= self.last_reminder_sent_at + cooldown
 
 
 class BattleSubmission(models.Model):

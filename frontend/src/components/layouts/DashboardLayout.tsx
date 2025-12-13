@@ -10,6 +10,7 @@ import { QuestTray } from '@/components/side-quests/QuestTray';
 import { Footer } from '@/components/landing/Footer';
 import { EmberAdventureBanner, useEmberOnboardingContextSafe } from '@/components/onboarding';
 import { PendingBattleBanner } from '@/components/battles';
+import { AsyncBattleBanner } from '@/components/battles/AsyncBattleBanner';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { TopicTrayProvider } from '@/context/TopicTrayContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -249,6 +250,8 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
             )}
             {/* Pending Battle Banner - shows when user has created a battle challenge */}
             <PendingBattleBanner />
+            {/* Async Battle Banner - shows when user has an async battle where it's their turn */}
+            <AsyncBattleBanner />
             {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray }) : children}
           </div>
           <Footer />

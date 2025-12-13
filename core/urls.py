@@ -41,9 +41,15 @@ from .battles.views import (
     battle_leaderboard,
     battle_stats,
     expire_battles,
+    extend_battle_deadline,
     generate_battle_link,
+    get_battle_public,
+    get_battle_share_data,
     get_invitation_by_token,
     get_user_battles,
+    pending_battles,
+    send_battle_reminder,
+    start_battle_turn,
 )
 from .events.views import EventViewSet
 from .integrations.figma.views import get_file_preview as get_figma_file_preview
@@ -369,6 +375,13 @@ urlpatterns = [
     path('battles/invitations/generate-link/', generate_battle_link, name='generate_battle_link'),
     path('battles/invite/<str:token>/', get_invitation_by_token, name='invitation_by_token'),
     path('battles/invite/<str:token>/accept/', accept_invitation_by_token, name='accept_invitation_by_token'),
+    # Async battle management endpoints
+    path('battles/pending/', pending_battles, name='pending_battles'),
+    path('battles/<int:battle_id>/public/', get_battle_public, name='battle_public'),
+    path('battles/<int:battle_id>/share/', get_battle_share_data, name='battle_share'),
+    path('battles/<int:battle_id>/extend-deadline/', extend_battle_deadline, name='extend_deadline'),
+    path('battles/<int:battle_id>/send-reminder/', send_battle_reminder, name='send_reminder'),
+    path('battles/<int:battle_id>/start-turn/', start_battle_turn, name='start_turn'),
     # Weekly challenges endpoints
     path('', include('core.challenges.urls')),
     # Email notification endpoints

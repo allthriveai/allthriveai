@@ -69,7 +69,10 @@ def serve_media_with_range(request, path):
             return response
 
     # No range header - return full file
-    response = FileResponse(open(file_path, 'rb'))
+    # Note: FileResponse handles closing the file handle automatically when iteration completes
+    # We pass the file object directly (not via open()) to ensure Django manages the lifecycle
+    file_handle = open(file_path, 'rb')
+    response = FileResponse(file_handle)
     response['Accept-Ranges'] = 'bytes'
     response['Content-Length'] = str(file_size)
 
