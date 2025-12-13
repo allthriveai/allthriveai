@@ -10,6 +10,7 @@ from core.views.core_views import ai_plugin_manifest, db_health, robots_txt
 from core.views.crawler_views import (
     about_view,
     battle_invite_view,
+    battle_share_view,
     explore_view,
     homepage_view,
     profile_view,
@@ -50,6 +51,8 @@ urlpatterns = [
     path('tools', tools_directory_view, name='tools'),
     # Battle invite links with crawler support (for link previews in iMessage, WhatsApp, etc.)
     path('battle/invite/<str:token>', battle_invite_view, name='battle_invite'),
+    # Battle share page with OG tags for social media (LinkedIn, Facebook, Twitter)
+    path('battles/<int:battle_id>/share', battle_share_view, name='battle_share'),
     # User profiles and projects with crawler support
     re_path(r'^@(?P<username>[a-zA-Z0-9_-]+)/(?P<slug>[a-zA-Z0-9_-]+)$', project_detail_view, name='project_detail'),
     re_path(r'^@(?P<username>[a-zA-Z0-9_-]+)$', profile_view, name='profile'),

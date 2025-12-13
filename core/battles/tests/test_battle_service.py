@@ -427,7 +427,7 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TransactionTestCase):
         """Test that judge_battle correctly selects winner when scores are not tied."""
 
         # Mock responses for each submission
-        def mock_complete_with_image(prompt, image_url, model):
+        def mock_complete_with_image(prompt, image_url, model, **kwargs):
             if 'user1' in prompt.lower() or 'image1' in image_url:
                 return """
                 {
@@ -475,7 +475,7 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TransactionTestCase):
         """Test that tiebreaker uses Creativity when total scores are tied."""
 
         # Mock responses with tied total scores but different Creativity
-        def mock_complete_with_image(prompt, image_url, model):
+        def mock_complete_with_image(prompt, image_url, model, **kwargs):
             if 'image1' in image_url:
                 return """
                 {
@@ -518,7 +518,7 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TransactionTestCase):
         """Test that tiebreaker uses Visual Impact when Creativity is also tied."""
 
         # Mock responses with tied total and Creativity, but different Visual Impact
-        def mock_complete_with_image(prompt, image_url, model):
+        def mock_complete_with_image(prompt, image_url, model, **kwargs):
             if 'image1' in image_url:
                 return """
                 {
@@ -562,7 +562,7 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TransactionTestCase):
         """Test that random selection is used when all tiebreakers are equal."""
 
         # Mock responses with all scores exactly equal
-        def mock_complete_with_image(prompt, image_url, model):
+        def mock_complete_with_image(prompt, image_url, model, **kwargs):
             return """
             {
                 "scores": {
@@ -669,7 +669,7 @@ class BattleServiceJudgeBattleCustomCriteriaTestCase(TransactionTestCase):
         """
 
         # Mock responses using the CUSTOM criteria names
-        def mock_complete_with_image(prompt, image_url, model):
+        def mock_complete_with_image(prompt, image_url, model, **kwargs):
             # Verify the prompt contains the custom criteria names
             assert 'Creative Vision' in prompt, 'Prompt should contain custom criterion name "Creative Vision"'
             assert 'Challenge Relevance' in prompt, 'Prompt should contain custom criterion name "Challenge Relevance"'
@@ -730,7 +730,7 @@ class BattleServiceJudgeBattleCustomCriteriaTestCase(TransactionTestCase):
         """Test that tiebreaker logic uses custom criteria names correctly."""
 
         # Mock responses with tied total scores but different "Creative Vision"
-        def mock_complete_with_image(prompt, image_url, model):
+        def mock_complete_with_image(prompt, image_url, model, **kwargs):
             if 'image1' in image_url:
                 return """
                 {

@@ -14,7 +14,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.vary import vary_on_headers
 from django_ratelimit.decorators import ratelimit
 
-from core.battles.models import BattleInvitation, InvitationStatus
+from core.battles.models import BattleInvitation, InvitationStatus, PromptBattle
 from core.projects.models import Project
 from core.tools.models import Tool
 from core.users.models import User
@@ -458,3 +458,89 @@ def battle_invite_view(request, token):
         return serve_react_or_crawler(request, 'battle_invite.html', context)
 
     return _get_cached_response(cache_key, generate_response, ttl=300)
+
+
+@vary_on_headers('User-Agent')
+@cache_control(public=True, max_age=900)  # 15 minutes cache
+@ratelimit(key='header:user-agent', rate='200/h', method=['GET'])
+def battle_share_view(request, battle_id):
+    """
+    Battle share page - serves HTML with OG meta tags for social media crawlers.
+
+    Social platforms (LinkedIn, Facebook, Twitter) don't execute JavaScript,
+    so they can't see meta tags set by React. This endpoint serves a minimal
+    HTML page with proper OG tags that redirects browsers to the SPA.
+
+    Args:
+        battle_id: The ID of the battle to share
+
+    Returns:
+        HTML page with OG meta tags for crawlers, or redirect to SPA for browsers
+    """
+    from django.utils.html import escape
+
+    try:
+        battle = get_object_or_404(
+            PromptBattle.objects.select_related('challenger', 'opponent', 'winner'),
+            id=battle_id,
+        )
+    except Http404:
+        raise
+
+    # Build URLs
+    frontend_url = settings.FRONTEND_URL
+    spa_url = f'{frontend_url}/battles/{battle.id}'
+
+    # Get battle info for meta tags
+    challenge_preview = battle.challenge_text[:100] + ('...' if len(battle.challenge_text) > 100 else '')
+
+    if battle.winner:
+        title = f'@{battle.winner.username} won this Prompt Battle!'
+        description = f'Challenge: "{challenge_preview}" - See who created the better AI image!'
+    else:
+        title = 'Prompt Battle Results'
+        description = f'Challenge: "{challenge_preview}" - Two players competed to create the best AI image!'
+
+    og_image = battle.og_image_url or f'{frontend_url}/og-image.jpg'
+
+    # Escape values for HTML
+    title = escape(title)
+    description = escape(description)
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title} | AllThrive AI</title>
+    <meta name="description" content="{description}">
+
+    <!-- Open Graph / Facebook / LinkedIn -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="{spa_url}">
+    <meta property="og:title" content="{title}">
+    <meta property="og:description" content="{description}">
+    <meta property="og:image" content="{og_image}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="AllThrive AI">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="{spa_url}">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+    <meta name="twitter:image" content="{og_image}">
+
+    <!-- Redirect browsers to SPA (crawlers don't execute JS) -->
+    <script>window.location.href = "{spa_url}";</script>
+    <noscript>
+        <meta http-equiv="refresh" content="0;url={spa_url}">
+    </noscript>
+</head>
+<body>
+    <p>Redirecting to <a href="{spa_url}">battle results</a>...</p>
+</body>
+</html>"""
+
+    return HttpResponse(html, content_type='text/html')

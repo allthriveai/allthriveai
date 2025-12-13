@@ -214,19 +214,19 @@ export function BattleShareModal({ battleId, isOpen, onClose }: BattleShareModal
             onClick={onClose}
           />
 
-          {/* Modal */}
+          {/* Slide-out tray from right */}
           <motion.div
             ref={modalRef}
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-50
-                       w-full sm:max-w-md sm:mx-4"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 sm:max-w-[90vw]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="share-modal-title"
           >
-            <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto">
+            <div className="h-full bg-slate-900 border-l border-slate-700 shadow-2xl overflow-y-auto">
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-slate-700/50">
                 <div className="flex items-center gap-2">
@@ -277,18 +277,18 @@ export function BattleShareModal({ battleId, isOpen, onClose }: BattleShareModal
                     </p>
 
                     {/* Platform buttons */}
-                    <div className="grid grid-cols-5 gap-2 mb-6" role="group" aria-label="Share platforms">
+                    <div className="grid grid-cols-2 gap-3 mb-6" role="group" aria-label="Share platforms">
                       {platforms.map((platform) => (
                         <button
                           key={platform.name}
                           onClick={() => openShareLink(platform.url)}
-                          className={`flex flex-col items-center gap-2 p-3 rounded-xl
+                          className={`flex items-center gap-3 p-4 rounded-xl
                                      bg-slate-800/50 border border-slate-700/50
                                      transition-all ${platform.color}`}
                           aria-label={`Share on ${platform.name}`}
                         >
-                          <span aria-hidden="true"><platform.icon /></span>
-                          <span className="text-xs text-slate-400 truncate w-full text-center">
+                          <span aria-hidden="true" className="text-slate-300"><platform.icon /></span>
+                          <span className="text-sm text-slate-300 font-medium">
                             {platform.name.split('/')[0]}
                           </span>
                         </button>
