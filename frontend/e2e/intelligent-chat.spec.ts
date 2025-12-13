@@ -182,8 +182,8 @@ test.describe('Intelligent Chat', () => {
       await openChatPanel(page);
 
       // The help panel might already be open in support mode
-      // Check if it's already showing the help panel
-      const helpHeader = page.getByText('How can we help you?');
+      // Check if it's already showing the help panel (text is "How can we help?" without "you")
+      const helpHeader = page.getByText('How can we help?');
       const isHelpVisible = await helpHeader.isVisible().catch(() => false);
 
       if (!isHelpVisible) {
@@ -536,11 +536,13 @@ test.describe('Intelligent Chat', () => {
       const chatInput = page.getByPlaceholder('Ask me anything...');
       const sendButton = page.locator('button[aria-label="Send message"]');
 
-      // Send 3 messages rapidly
+      // Send 3 messages - wait for input to be enabled between each
       for (let i = 0; i < 3; i++) {
+        // Wait for input to be enabled (it gets disabled while sending)
+        await expect(chatInput).toBeEnabled({ timeout: 30000 });
         await chatInput.fill(`Test message ${i}`);
         await sendButton.click();
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(500);
       }
 
       // Wait for messages to be processed
@@ -605,8 +607,8 @@ test.describe('Intelligent Chat', () => {
 
       await page.waitForTimeout(2000);
 
-      // Message should render safely - check that at least part of it is visible
-      await expect(page.getByText('Test')).toBeVisible();
+      // Message should render safely - check for the unique emoji part to avoid ambiguity
+      await expect(page.getByText('🎉')).toBeVisible();
 
       // Verify no script execution (page should not have any alerts)
       // The script tags should be escaped/sanitized
