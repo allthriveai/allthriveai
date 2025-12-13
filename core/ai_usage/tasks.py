@@ -57,16 +57,21 @@ def aggregate_platform_daily_stats(self, date_str=None):
         # USER GROWTH METRICS
         # =================================================================
 
+        # Base queryset excluding internal users:
+        # - Curation tier (AI agents, curated content creators)
+        # - Internal emails (@allthrive.ai) and test emails (@test.allthrive.ai)
+        real_users = User.objects.exclude(tier='curation').exclude(email__icontains='allthrive.ai')
+
         # Total users (cumulative up to this date)
-        total_users = User.objects.filter(date_joined__date__lte=target_date).count()
+        total_users = real_users.filter(date_joined__date__lte=target_date).count()
 
         # New users on this day
-        new_users_today = User.objects.filter(date_joined__date=target_date).count()
+        new_users_today = real_users.filter(date_joined__date=target_date).count()
 
         # Active users today (users who logged in or took any tracked action)
         # Note: Django tracks last_login, so we'll use that + users with activity
         active_users_today = (
-            User.objects.filter(
+            real_users.filter(
                 Q(last_login__date=target_date)
                 | Q(ai_usage_logs__created_at__date=target_date)
                 | Q(projects__created_at__date=target_date)
@@ -81,7 +86,7 @@ def aggregate_platform_daily_stats(self, date_str=None):
         # WAU (Weekly Active Users) - trailing 7 days including target_date
         wau_start = target_date - timedelta(days=6)
         wau = (
-            User.objects.filter(
+            real_users.filter(
                 Q(last_login__date__gte=wau_start, last_login__date__lte=target_date)
                 | Q(ai_usage_logs__created_at__date__gte=wau_start, ai_usage_logs__created_at__date__lte=target_date)
                 | Q(projects__created_at__date__gte=wau_start, projects__created_at__date__lte=target_date)
@@ -93,7 +98,7 @@ def aggregate_platform_daily_stats(self, date_str=None):
         # MAU (Monthly Active Users) - trailing 30 days including target_date
         mau_start = target_date - timedelta(days=29)
         mau = (
-            User.objects.filter(
+            real_users.filter(
                 Q(last_login__date__gte=mau_start, last_login__date__lte=target_date)
                 | Q(ai_usage_logs__created_at__date__gte=mau_start, ai_usage_logs__created_at__date__lte=target_date)
                 | Q(projects__created_at__date__gte=mau_start, projects__created_at__date__lte=target_date)
