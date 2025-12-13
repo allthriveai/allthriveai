@@ -19,13 +19,13 @@ import {
   faPlus,
   faStar as faStarSolid,
   faCheck,
-  faGripVertical,
 } from '@fortawesome/free-solid-svg-icons';
 import { faStar as faStarOutline } from '@fortawesome/free-regular-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
 const STORAGE_KEY = 'profile_pinned_tabs';
-const MAX_PINNED = 3;
+const MAX_PINNED = 4;
+const ALWAYS_PINNED: ProfileTabId[] = ['showcase', 'playground'];
 
 export type ProfileTabId =
   | 'showcase'
@@ -67,12 +67,19 @@ interface ProfileTabMenuProps {
 
 // Get default pinned tabs based on context
 function getDefaultPinnedTabs(availableTabs: ProfileTabId[], isCreator: boolean): ProfileTabId[] {
-  // Priority order for defaults
-  const priority: ProfileTabId[] = isCreator
-    ? ['showcase', 'marketplace', 'clipped', 'playground', 'my-battles']
-    : ['showcase', 'playground', 'clipped', 'my-battles'];
+  // Always start with the required pinned tabs
+  const alwaysPinned = ALWAYS_PINNED.filter((tab) => availableTabs.includes(tab));
 
-  return priority.filter((tab) => availableTabs.includes(tab)).slice(0, MAX_PINNED);
+  // Additional tabs to fill remaining slots (priority order)
+  const additionalPriority: ProfileTabId[] = isCreator
+    ? ['clipped', 'marketplace', 'my-battles', 'learning', 'activity']
+    : ['clipped', 'my-battles', 'learning', 'activity'];
+
+  const additionalTabs = additionalPriority
+    .filter((tab) => availableTabs.includes(tab) && !alwaysPinned.includes(tab))
+    .slice(0, MAX_PINNED - alwaysPinned.length);
+
+  return [...alwaysPinned, ...additionalTabs];
 }
 
 // Load pinned tabs from localStorage
@@ -110,10 +117,17 @@ export function ProfileTabMenu({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [pinnedTabs, setPinnedTabs] = useState<ProfileTabId[]>(() => {
     const stored = loadPinnedTabs();
+    // Always ensure showcase and playground are first (in that order) if available
+    const alwaysPinned = ALWAYS_PINNED.filter((tab) => availableTabs.includes(tab));
+
     if (stored) {
-      // Filter to only include available tabs
-      const valid = stored.filter((t) => availableTabs.includes(t));
-      if (valid.length > 0) return valid.slice(0, MAX_PINNED);
+      // Filter stored tabs to only include available tabs, excluding always-pinned ones
+      const customTabs = stored.filter(
+        (t) => availableTabs.includes(t) && !ALWAYS_PINNED.includes(t)
+      );
+      // Combine: always pinned first, then custom tabs
+      const combined = [...alwaysPinned, ...customTabs].slice(0, MAX_PINNED);
+      if (combined.length > 0) return combined;
     }
     return getDefaultPinnedTabs(availableTabs, isCreator);
   });
@@ -133,6 +147,9 @@ export function ProfileTabMenu({
 
   // Tabs that are not pinned (shown in dropdown)
   const unpinnedTabs = availableTabs.filter((id) => !pinnedTabs.includes(id));
+
+  // Custom pinned tabs (excluding always-pinned tabs like showcase/playground)
+  const customPinnedTabs = pinnedTabs.filter((id) => !ALWAYS_PINNED.includes(id));
 
   // Should show the "+" menu?
   // Show if user owns the profile AND (there are unpinned tabs OR there are more than 1 pinned tab to manage)
@@ -174,17 +191,23 @@ export function ProfileTabMenu({
   // Toggle pin status
   const togglePin = useCallback(
     (tabId: ProfileTabId) => {
+      // Never allow unpinning always-pinned tabs (showcase, playground)
+      if (ALWAYS_PINNED.includes(tabId)) return;
+
       setPinnedTabs((current) => {
         let newPinned: ProfileTabId[];
 
         if (current.includes(tabId)) {
-          // Unpin - but keep at least one pinned
-          if (current.length <= 1) return current;
+          // Unpin - remove from custom slots
           newPinned = current.filter((t) => t !== tabId);
         } else {
-          // Pin - replace oldest if at max
+          // Pin - replace oldest custom tab if at max
           if (current.length >= MAX_PINNED) {
-            newPinned = [...current.slice(1), tabId];
+            // Find first non-always-pinned tab to replace
+            const indexToReplace = current.findIndex((t) => !ALWAYS_PINNED.includes(t));
+            if (indexToReplace === -1) return current; // All are always-pinned (shouldn't happen)
+            newPinned = current.filter((_, i) => i !== indexToReplace);
+            newPinned.push(tabId);
           } else {
             newPinned = [...current, tabId];
           }
@@ -209,7 +232,11 @@ export function ProfileTabMenu({
   // Drag and drop handlers for reordering pinned tabs
   const handleDragStart = useCallback(
     (e: React.DragEvent<HTMLElement>, tabId: ProfileTabId) => {
-      if (!isOwnProfile) return;
+      // Don't allow dragging always-pinned tabs or if not profile owner
+      if (!isOwnProfile || ALWAYS_PINNED.includes(tabId)) {
+        e.preventDefault();
+        return;
+      }
       setDraggedTab(tabId);
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', tabId);
@@ -230,7 +257,8 @@ export function ProfileTabMenu({
   const handleDragOver = useCallback(
     (e: React.DragEvent<HTMLElement>, tabId: ProfileTabId) => {
       e.preventDefault();
-      if (draggedTab && draggedTab !== tabId) {
+      // Don't show drag-over state on always-pinned tabs
+      if (draggedTab && draggedTab !== tabId && !ALWAYS_PINNED.includes(tabId)) {
         setDragOverTab(tabId);
       }
     },
@@ -244,7 +272,8 @@ export function ProfileTabMenu({
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLElement>, targetTabId: ProfileTabId) => {
       e.preventDefault();
-      if (!draggedTab || draggedTab === targetTabId) {
+      // Don't allow dropping onto always-pinned tabs or same tab
+      if (!draggedTab || draggedTab === targetTabId || ALWAYS_PINNED.includes(targetTabId)) {
         setDraggedTab(null);
         setDragOverTab(null);
         return;
@@ -282,12 +311,14 @@ export function ProfileTabMenu({
         if (!tab) return null;
 
         const isDragOver = dragOverTab === tabId;
+        const isAlwaysPinned = ALWAYS_PINNED.includes(tabId);
+        const canDrag = isOwnProfile && !isAlwaysPinned && pinnedTabs.length > ALWAYS_PINNED.length;
 
         return (
           <button
             key={tabId}
             onClick={() => onTabChange(tabId)}
-            draggable={isOwnProfile && pinnedTabs.length > 1}
+            draggable={canDrag}
             onDragStart={(e) => handleDragStart(e, tabId)}
             onDragEnd={handleDragEnd}
             onDragOver={(e) => handleDragOver(e, tabId)}
@@ -298,11 +329,11 @@ export function ProfileTabMenu({
                 ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
             } ${isDragOver ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-slate-900' : ''} ${
-              isOwnProfile && pinnedTabs.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''
+              canDrag ? 'cursor-grab active:cursor-grabbing' : ''
             }`}
             role="tab"
             aria-selected={activeTab === tabId}
-            title={isOwnProfile && pinnedTabs.length > 1 ? `${tab.label} (drag to reorder)` : tab.label}
+            title={canDrag ? `${tab.label} (drag to reorder)` : tab.label}
           >
             <FontAwesomeIcon icon={tab.icon} className="w-4 h-4" />
             <span className="hidden sm:inline">{tab.label}</span>
@@ -316,10 +347,15 @@ export function ProfileTabMenu({
           <button
             ref={buttonRef}
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className={`flex items-center justify-center w-9 h-9 rounded-lg transition-all ${
+            className={`flex items-center justify-center w-9 h-9 ml-2 mr-4 rounded-lg transition-all duration-200
+              backdrop-blur-md
+              border
+              shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]
+              hover:scale-[1.05] active:scale-[0.95]
+              ${
               isDropdownOpen || activeTabInDropdown
-                ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                ? 'bg-primary-50/80 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 border-primary-200/60 dark:border-primary-500/30 shadow-[0_4px_12px_rgba(99,102,241,0.15),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_4px_12px_rgba(99,102,241,0.2),inset_0_1px_0_rgba(255,255,255,0.1)]'
+                : 'bg-white/70 dark:bg-white/10 text-gray-600 dark:text-gray-400 border-white/50 dark:border-white/20 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50/70 dark:hover:bg-primary-500/15 hover:border-primary-200/50 dark:hover:border-primary-500/25'
             }`}
             aria-expanded={isDropdownOpen}
             aria-haspopup="menu"
@@ -329,10 +365,6 @@ export function ProfileTabMenu({
               icon={faPlus}
               className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-45' : ''}`}
             />
-            {/* Indicator dot when active tab is in dropdown */}
-            {activeTabInDropdown && !isDropdownOpen && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-primary-500 rounded-full" />
-            )}
           </button>
 
           {/* Dropdown Menu */}
@@ -380,40 +412,25 @@ export function ProfileTabMenu({
               })}
 
               {/* Divider */}
-              {pinnedTabs.length > 0 && unpinnedTabs.length > 0 && (
+              {customPinnedTabs.length > 0 && unpinnedTabs.length > 0 && (
                 <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
               )}
 
-              {/* Pinned tabs section (for unpinning and reordering) */}
-              {pinnedTabs.length > 1 && (
+              {/* Custom pinned tabs section (for unpinning - excludes always-pinned tabs) */}
+              {customPinnedTabs.length > 0 && (
                 <>
-                  <div className="px-4 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center justify-between">
-                    <span>Pinned</span>
-                    <span className="text-[10px] normal-case tracking-normal opacity-60">drag to reorder</span>
+                  <div className="px-4 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <span>Your Pinned Tabs</span>
                   </div>
-                  {pinnedTabs.map((tabId) => {
+                  {customPinnedTabs.map((tabId) => {
                     const tab = getTab(tabId);
                     if (!tab) return null;
-
-                    const isDragOverDropdown = dragOverTab === tabId;
 
                     return (
                       <div
                         key={`pinned-${tabId}`}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, tabId)}
-                        onDragEnd={handleDragEnd}
-                        onDragOver={(e) => handleDragOver(e, tabId)}
-                        onDragLeave={handleDragLeave}
-                        onDrop={(e) => handleDrop(e, tabId)}
-                        className={`flex items-center px-2 cursor-grab active:cursor-grabbing ${
-                          isDragOverDropdown ? 'bg-primary-50 dark:bg-primary-900/20 rounded-lg' : ''
-                        }`}
+                        className="flex items-center px-2"
                       >
-                        {/* Drag handle */}
-                        <div className="p-2 text-gray-400 dark:text-gray-500">
-                          <FontAwesomeIcon icon={faGripVertical} className="w-3 h-3" />
-                        </div>
                         <button
                           onClick={() => handleDropdownTabSelect(tabId)}
                           className={`flex-1 flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors ${

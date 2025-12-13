@@ -225,9 +225,19 @@ export function ProfileSections({
             </p>
             <button
               onClick={() => handleAddClick()}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors font-medium"
+              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl font-medium transition-all duration-200
+                bg-white/70 dark:bg-white/10 backdrop-blur-md
+                text-primary-600 dark:text-primary-300
+                border border-primary-200/60 dark:border-primary-500/30
+                shadow-[0_4px_16px_rgba(99,102,241,0.1),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_4px_16px_rgba(99,102,241,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]
+                hover:bg-primary-50/80 dark:hover:bg-primary-500/20
+                hover:border-primary-300/80 dark:hover:border-primary-500/50
+                hover:shadow-[0_6px_24px_rgba(99,102,241,0.2),inset_0_1px_0_rgba(255,255,255,0.8)] dark:hover:shadow-[0_6px_24px_rgba(99,102,241,0.3),inset_0_1px_0_rgba(255,255,255,0.15)]
+                hover:scale-[1.02] active:scale-[0.98]"
             >
-              <PlusIcon className="w-5 h-5" />
+              <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-primary-100 dark:bg-primary-500/30 text-primary-500 dark:text-primary-300">
+                <PlusIcon className="w-4 h-4" />
+              </span>
               Add Your First Section
             </button>
           </div>
@@ -456,12 +466,24 @@ function AddSectionButton({ onClick, position }: AddSectionButtonProps) {
       {/* Line */}
       <div className="flex-1 h-px bg-transparent group-hover/add:bg-primary-300 dark:group-hover/add:bg-primary-700 transition-colors" />
 
-      {/* Button */}
+      {/* Glass Button */}
       <button
         onClick={onClick}
-        className="flex items-center gap-2 px-4 py-2 mx-4 text-sm font-medium text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 bg-gray-50 dark:bg-gray-900 rounded-full opacity-60 hover:opacity-100 transition-all hover:bg-primary-50 dark:hover:bg-primary-900/20 border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700"
+        className="flex items-center gap-2 px-5 py-2.5 mx-4 text-sm font-medium rounded-xl transition-all duration-200
+          bg-white/70 dark:bg-white/10 backdrop-blur-md
+          text-gray-600 dark:text-gray-300
+          border border-white/50 dark:border-white/20
+          shadow-[0_4px_16px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.1)]
+          hover:bg-primary-50/80 dark:hover:bg-primary-500/20
+          hover:text-primary-600 dark:hover:text-primary-300
+          hover:border-primary-300/60 dark:hover:border-primary-500/40
+          hover:shadow-[0_6px_20px_rgba(99,102,241,0.15),inset_0_1px_0_rgba(255,255,255,0.8)] dark:hover:shadow-[0_6px_20px_rgba(99,102,241,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]
+          hover:scale-[1.02] active:scale-[0.98]
+          cursor-pointer"
       >
-        <PlusIcon className="w-4 h-4" />
+        <span className="flex items-center justify-center w-5 h-5 rounded-md bg-primary-100 dark:bg-primary-500/30 text-primary-500 dark:text-primary-300">
+          <PlusIcon className="w-3.5 h-3.5" />
+        </span>
         Add Section
       </button>
 
