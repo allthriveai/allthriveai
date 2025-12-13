@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 import { getToolBySlug } from '@/services/tools';
 import { exploreProjects } from '@/services/explore';
 import { ProjectCard } from '@/components/projects/ProjectCard';
@@ -313,9 +314,11 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
                 <FontAwesomeIcon icon={faAlignLeft} className="w-3.5 h-3.5" />
                 Description
               </h2>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">
-                {tool.overview || tool.description}
-              </p>
+              <div className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm prose prose-sm dark:prose-invert max-w-none prose-headings:text-gray-800 dark:prose-headings:text-gray-200 prose-headings:font-semibold prose-h2:text-base prose-h2:mt-4 prose-h2:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 prose-strong:text-gray-800 dark:prose-strong:text-gray-200">
+                <ReactMarkdown>
+                  {tool.overview || tool.description}
+                </ReactMarkdown>
+              </div>
             </section>
 
             {/* Use Cases */}

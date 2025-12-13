@@ -30,6 +30,7 @@ from core.battles.models import (
 )
 from core.battles.utils import wrap_user_prompt_for_ai
 from core.billing.utils import check_and_reserve_ai_request, process_ai_request
+from core.tools.models import Tool
 from core.users.models import User
 from services.gamification.achievements import AchievementTracker
 
@@ -80,6 +81,9 @@ class BattleService:
 
         challenge_text = challenge_type.generate_challenge()
 
+        # Get the default image generation tool (Nano Banana)
+        default_tool = Tool.objects.filter(slug='nano-banana').first()
+
         battle = PromptBattle.objects.create(
             challenger=challenger,
             opponent=opponent,
@@ -89,6 +93,7 @@ class BattleService:
             duration_minutes=challenge_type.default_duration_minutes,
             status=BattleStatus.PENDING,
             phase=BattlePhase.WAITING,
+            tool=default_tool,
         )
 
         logger.info(

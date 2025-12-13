@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db
 
 help:
 	@echo "Available commands:"
@@ -45,6 +45,9 @@ help:
 	@echo "  make seed-test-users - Create test users for admin impersonation"
 	@echo "  make seed-test-users-clean - Recreate test users (delete old ones first)"
 	@echo "  make seed-all        - Seed all initial data (topics, categories, tools, quizzes, challenges, billing, pip, test users)"
+	@echo "  make add-tool        - Add a new tool (interactive, or: WEBSITE=url LOGO=filename.png)"
+	@echo "  make export-tools    - Export tools from database to YAML file"
+	@echo "  make load-tools      - Load tools from YAML file into database"
 	@echo "  make reset-db        - ⚠️  DANGER: Flush database and reseed"
 	@echo ""
 	@echo "Testing:"
@@ -225,6 +228,22 @@ seed-all:
 	docker-compose exec web python manage.py create_pip
 	docker-compose exec web python manage.py create_test_users --count=10
 	@echo "✓ All data seeded successfully!"
+
+add-tool:
+	@echo "Adding new tool to directory..."
+ifdef WEBSITE
+	docker-compose exec web python manage.py add_tool --website $(WEBSITE) --logo /logos/$(LOGO)
+else
+	docker-compose exec web python manage.py add_tool
+endif
+
+export-tools:
+	@echo "Exporting tools to YAML..."
+	docker-compose exec web python manage.py export_tools
+
+load-tools:
+	@echo "Loading tools from YAML..."
+	docker-compose exec web python manage.py seed_tools
 
 reset-db:
 	@echo "⚠️  WARNING: This will DELETE all data in the database!"

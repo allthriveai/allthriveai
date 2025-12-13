@@ -4,7 +4,7 @@
     "pk": 1001,
     "fields": {
       "name": "ChatGPT",
-      "category": "tool",
+      "taxonomy_type": "tool",
       "description": "OpenAI's conversational AI that can assist with writing, coding, analysis, and creative tasks through natural language interactions.",
       "is_active": true,
       "website_url": "https://chat.openai.com",
@@ -30,7 +30,7 @@
     "pk": 1002,
     "fields": {
       "name": "Claude",
-      "category": "tool",
+      "taxonomy_type": "tool",
       "description": "Anthropic's AI assistant known for nuanced conversations, detailed analysis, and strong capabilities in coding and long-form content.",
       "is_active": true,
       "website_url": "https://claude.ai",
@@ -56,7 +56,7 @@
     "pk": 1003,
     "fields": {
       "name": "Midjourney",
-      "category": "tool",
+      "taxonomy_type": "tool",
       "description": "AI-powered image generation tool that creates stunning, artistic visuals from text descriptions through Discord.",
       "is_active": true,
       "website_url": "https://www.midjourney.com",
@@ -82,7 +82,7 @@
     "pk": 1004,
     "fields": {
       "name": "GitHub Copilot",
-      "category": "tool",
+      "taxonomy_type": "tool",
       "description": "AI pair programmer that suggests code completions and entire functions in your IDE as you type.",
       "is_active": true,
       "website_url": "https://github.com/features/copilot",
@@ -108,7 +108,7 @@
     "pk": 1005,
     "fields": {
       "name": "Notion AI",
-      "category": "tool",
+      "taxonomy_type": "tool",
       "description": "AI features integrated into Notion to help with writing, brainstorming, and organizing information in your workspace.",
       "is_active": true,
       "website_url": "https://www.notion.so/product/ai",
@@ -134,7 +134,7 @@
     "pk": 1006,
     "fields": {
       "name": "Perplexity",
-      "category": "tool",
+      "taxonomy_type": "tool",
       "description": "AI-powered search engine that provides direct answers with sources, combining search and conversational AI.",
       "is_active": true,
       "website_url": "https://www.perplexity.ai",
@@ -160,7 +160,7 @@
     "pk": 1007,
     "fields": {
       "name": "Runway",
-      "category": "tool",
+      "taxonomy_type": "tool",
       "description": "AI-powered creative suite for video editing, generation, and effects with cutting-edge generative AI models.",
       "is_active": true,
       "website_url": "https://runwayml.com",
@@ -186,7 +186,7 @@
     "pk": 1008,
     "fields": {
       "name": "Grammarly",
-      "category": "tool",
+      "taxonomy_type": "tool",
       "description": "AI writing assistant that helps with grammar, spelling, style, and tone across all your writing.",
       "is_active": true,
       "website_url": "https://www.grammarly.com",
@@ -212,7 +212,7 @@
     "pk": 1009,
     "fields": {
       "name": "Jasper",
-      "category": "tool",
+      "taxonomy_type": "tool",
       "description": "AI content platform designed for marketing teams to create on-brand content at scale.",
       "is_active": true,
       "website_url": "https://www.jasper.ai",
@@ -238,7 +238,7 @@
     "pk": 1010,
     "fields": {
       "name": "Cursor",
-      "category": "tool",
+      "taxonomy_type": "tool",
       "description": "AI-first code editor built on VS Code, designed for AI-assisted development with deep codebase understanding.",
       "is_active": true,
       "website_url": "https://cursor.sh",
@@ -256,6 +256,58 @@
         "Refactoring and code improvements",
         "Learning new codebases quickly",
         "Pair programming with AI"
+      ]
+    }
+  },
+  {
+    "model": "core.taxonomy",
+    "pk": 1011,
+    "fields": {
+      "name": "Warp",
+      "taxonomy_type": "tool",
+      "description": "AI-powered terminal that reimagines the command line with modern features like AI command suggestions, collaborative workflows, and intelligent autocomplete.",
+      "is_active": true,
+      "website_url": "https://www.warp.dev",
+      "logo_url": "/logos/warp-logo.png",
+      "usage_tips": [
+        "Use AI command search to find commands you don't remember",
+        "Share terminal sessions with teammates for collaboration",
+        "Use blocks to organize and navigate command output",
+        "Create custom workflows for repetitive tasks",
+        "Leverage AI to explain complex command outputs"
+      ],
+      "best_for": [
+        "DevOps and system administration",
+        "Learning command-line tools",
+        "Team collaboration on terminal tasks",
+        "Complex scripting and automation",
+        "Debugging server and deployment issues"
+      ]
+    }
+  },
+  {
+    "model": "core.taxonomy",
+    "pk": 1012,
+    "fields": {
+      "name": "Trae",
+      "taxonomy_type": "tool",
+      "description": "AI-powered IDE by ByteDance that offers intelligent code completion, AI chat assistance, and seamless integration with development workflows.",
+      "is_active": true,
+      "website_url": "https://www.trae.ai",
+      "logo_url": "/logos/trae-logo.png",
+      "usage_tips": [
+        "Use AI chat to ask questions about your codebase",
+        "Leverage intelligent autocomplete for faster coding",
+        "Ask AI to explain unfamiliar code sections",
+        "Use AI-assisted refactoring for code improvements",
+        "Generate tests and documentation with AI assistance"
+      ],
+      "best_for": [
+        "AI-assisted code development",
+        "Rapid prototyping and iteration",
+        "Code understanding and exploration",
+        "Automated code generation",
+        "Developer productivity enhancement"
       ]
     }
   }
