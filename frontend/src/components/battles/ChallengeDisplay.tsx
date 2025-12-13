@@ -78,7 +78,7 @@ export function ChallengeDisplay({
         <div className="relative flex items-center justify-center gap-1 md:gap-2 mb-2 md:mb-4">
           <BoltIcon className="w-4 h-4 md:w-5 md:h-5 text-cyan-400" />
           <span className="text-xs md:text-sm font-semibold tracking-wider text-cyan-400 uppercase">
-            Today's Challenge
+            Your Challenge
           </span>
           <BoltIcon className="w-4 h-4 md:w-5 md:h-5 text-cyan-400" />
         </div>

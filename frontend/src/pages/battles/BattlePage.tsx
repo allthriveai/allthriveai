@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
+import { ExclamationTriangleIcon, ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/solid';
 import { api } from '@/services/api';
 import { logError } from '@/utils/errorHandler';
 
@@ -490,6 +490,32 @@ export function BattlePage() {
     );
   }
 
+  // Time expired state - check if battle has timed out (show before connection lost)
+  const isTimeExpired = battleState.status === 'expired' ||
+    (localTimeRemaining !== null && localTimeRemaining <= 0 && battleState.phase === 'active');
+
+  if (isTimeExpired && battleState.phase !== 'complete' && battleState.phase !== 'judging') {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center glass-card p-8 max-w-md">
+            <ClockIcon className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">Time's Up!</h2>
+            <p className="text-slate-400 mb-4">
+              The battle time has expired. Your submission has been recorded.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => navigate('/battles')} className="btn-secondary">
+                <ArrowLeftIcon className="w-4 h-4 mr-2" />
+                Back to Battles
+              </button>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   // Connection error state - only show if WebSocket is disconnected AND we don't have REST fallback data
   // For completed battles loaded via REST, we don't need a WebSocket connection
   if (!isConnected && battleState.phase !== 'complete' && !restBattleState) {
@@ -541,7 +567,7 @@ export function BattlePage() {
         // show the challenge ready screen so challenger can start their turn
         if (isWaitingInvitationBattle) {
           // Build invite URL from current battle (using invite token route)
-          const currentInviteUrl = `${window.location.origin}/battles/invite/${battleId}`;
+          const currentInviteUrl = `${window.location.origin}/battle/invite/${battleId}`;
           return (
             <ChallengeReadyScreen
               challengeText={battleState.challengeText}
