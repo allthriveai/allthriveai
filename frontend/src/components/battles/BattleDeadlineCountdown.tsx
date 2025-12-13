@@ -13,7 +13,7 @@ import clsx from 'clsx';
 type CountdownVariant = 'deadline' | 'turn';
 
 interface BattleDeadlineCountdownProps {
-  targetDate: string; // ISO date string
+  targetDate: string | null | undefined; // ISO date string (nullable for safety)
   variant?: CountdownVariant;
   onExpire?: () => void;
   className?: string;
@@ -30,9 +30,20 @@ interface TimeRemaining {
   isExpired: boolean;
 }
 
-function calculateTimeRemaining(targetDate: string): TimeRemaining {
+function calculateTimeRemaining(targetDate: string | null | undefined): TimeRemaining {
+  // Handle invalid/missing date - return expired state
+  if (!targetDate) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, total: 0, isExpired: true };
+  }
+
   const now = new Date().getTime();
   const target = new Date(targetDate).getTime();
+
+  // Handle invalid date parsing (NaN)
+  if (isNaN(target)) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, total: 0, isExpired: true };
+  }
+
   const total = target - now;
 
   if (total <= 0) {

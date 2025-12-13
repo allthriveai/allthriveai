@@ -18,6 +18,9 @@ from .quest_tracker import track_quest_action
 
 logger = logging.getLogger(__name__)
 
+# Maximum circle size before we don't add more members
+CIRCLE_SIZE_MAX = 35
+
 
 def _validate_signal_preconditions(instance, created, check_created=True):
     """Helper to validate common signal preconditions."""

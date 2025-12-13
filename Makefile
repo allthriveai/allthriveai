@@ -225,6 +225,7 @@ seed-all:
 	docker-compose exec web python manage.py seed_quizzes
 	docker-compose exec web python manage.py seed_challenge_types
 	docker-compose exec web python manage.py seed_billing
+	docker-compose exec web python manage.py seed_ai_pricing
 	docker-compose exec web python manage.py create_pip
 	docker-compose exec web python manage.py create_test_users --count=10
 	@echo "✓ All data seeded successfully!"
@@ -845,6 +846,7 @@ aws-seed-all:
 	@make aws-run-command CMD="seed_quizzes"
 	@make aws-run-command CMD="seed_challenge_types"
 	@make aws-run-command CMD="seed_billing"
+	@make aws-run-command CMD="seed_ai_pricing"
 	@make aws-run-command CMD="create_pip"
 	@make aws-run-command CMD="create_test_users --count=10"
 	@echo "✓ All data seeded on AWS!"
