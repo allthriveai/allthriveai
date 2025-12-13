@@ -9,7 +9,7 @@ const narrative = [
 ];
 
 const tension = 'But creators are overwhelmed by choice.';
-const resolution = 'They need a vendor-neutral home to bring their creations together, learn through play—not courses—and grow with a community.';
+const resolution = 'They need a vendor-neutral home to bring their creations together, learn through micro-challenges, and thrive together.';
 
 export function WhyNowSlide() {
   return (
