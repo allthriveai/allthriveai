@@ -5,7 +5,7 @@ import { CheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
 const competitors = [
   {
     name: 'Social Platforms (Twitter, Discord, Reddit)',
-    portfolio: false,
+    portfolio: true,
     learning: false,
     battles: false,
     aiNative: false,
@@ -14,7 +14,7 @@ const competitors = [
   },
   {
     name: 'Behance/Dribbble',
-    portfolio: false,
+    portfolio: true,
     learning: false,
     battles: false,
     aiNative: false,
@@ -23,7 +23,7 @@ const competitors = [
   },
   {
     name: 'Coursera/Udemy',
-    portfolio: false,
+    portfolio: true,
     learning: true,
     battles: false,
     aiNative: false,
@@ -32,7 +32,7 @@ const competitors = [
   },
   {
     name: 'Product Hunt',
-    portfolio: false,
+    portfolio: true,
     learning: false,
     battles: false,
     aiNative: false,
@@ -69,7 +69,7 @@ const competitors = [
   },
 ];
 
-const features = ['AI Automated\nPortfolio', 'Learning', 'Prompt\nBattles', 'AI-Native', 'Vendor\nNeutral', 'Creator\nMarketplace'];
+const features = ['Portfolio/\nProfile', 'Learning', 'Prompt\nBattles', 'AI-Native', 'Vendor\nNeutral', 'Creator\nMarketplace'];
 
 
 export function CompetitionSlide() {
