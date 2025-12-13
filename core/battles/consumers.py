@@ -18,6 +18,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
 from core.battles.models import (
+    BattleInvitation,
     BattleMatchmakingQueue,
     BattlePhase,
     BattleStatus,
@@ -212,13 +213,18 @@ class BattleConsumer(AsyncWebsocketConsumer):
 
     async def _handle_submission(self, prompt_text: str):
         """Handle a user submitting their prompt."""
+        from core.battles.phase_utils import can_submit_prompt
+
         battle = await self._get_battle()
         if not battle:
             await self._send_error('Battle not found')
             return
 
-        if battle.phase != BattlePhase.ACTIVE:
-            await self._send_error('Cannot submit - battle is not active')
+        # Use centralized submission validation
+        can_submit_result = await database_sync_to_async(lambda: can_submit_prompt(battle, self.user))()
+
+        if not can_submit_result:
+            await self._send_error(can_submit_result.error or 'Cannot submit')
             return
 
         # Get validation config from challenge type
@@ -464,19 +470,55 @@ class BattleConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _transition_phase(self, new_phase: str):
-        """Transition battle to a new phase with fresh DB fetch."""
+        """Transition battle to a new phase with validation and fresh DB fetch.
+
+        Uses the state machine to validate transitions. Invalid transitions
+        are logged but allowed in non-strict mode to prevent breaking existing
+        battles during the migration period.
+        """
+        from core.battles.state_machine import validate_transition
+
         try:
             battle = PromptBattle.objects.get(id=self.battle_id)
+
+            old_phase = battle.phase
+
+            # Validate transition using state machine (strict=False during migration)
+            # Warning is logged inside validate_transition if invalid
+            # TODO: Set strict=True once all code paths are validated
+            validate_transition(
+                old_phase,
+                new_phase,
+                strict=False,  # Log warning but don't block
+                battle_id=battle.id,
+            )
+
             battle.phase = new_phase
             battle.phase_changed_at = timezone.now()
-            if new_phase == BattlePhase.ACTIVE:
+
+            # Set status to ACTIVE for any "start" phase (sync or async)
+            # ACTIVE is for sync battles, CHALLENGER_TURN is for async battles
+            if new_phase in (BattlePhase.ACTIVE, BattlePhase.CHALLENGER_TURN):
                 battle.status = BattleStatus.ACTIVE
-                battle.started_at = timezone.now()
-                battle.expires_at = battle.started_at + timedelta(minutes=battle.duration_minutes)
+                if not battle.started_at:  # Don't overwrite if already set
+                    battle.started_at = timezone.now()
+                if not battle.expires_at:  # Don't overwrite if already set
+                    battle.expires_at = battle.started_at + timedelta(minutes=battle.duration_minutes)
             elif new_phase == BattlePhase.COMPLETE:
                 battle.status = BattleStatus.COMPLETED
                 battle.completed_at = timezone.now()
+
             battle.save()
+
+            logger.info(
+                f'Battle {battle.id} phase transition: {old_phase} -> {new_phase}',
+                extra={
+                    'battle_id': battle.id,
+                    'from_phase': old_phase,
+                    'to_phase': new_phase,
+                },
+            )
+
             return battle
         except PromptBattle.DoesNotExist:
             return None
@@ -526,11 +568,11 @@ class BattleConsumer(AsyncWebsocketConsumer):
             except BattleSubmission.DoesNotExist:
                 pass
 
-        # Calculate time remaining
+        # Calculate time remaining using model's centralized method
         time_remaining = None
-        if battle.status == BattleStatus.ACTIVE and battle.expires_at:
-            remaining = (battle.expires_at - timezone.now()).total_seconds()
-            time_remaining = max(0, int(remaining))
+        remaining_seconds = battle.get_time_remaining_seconds()
+        if remaining_seconds is not None:
+            time_remaining = max(0, int(remaining_seconds))
 
         # Build opponent data (handle null opponent for pending SMS invitations)
         opponent_data = None
@@ -549,6 +591,15 @@ class BattleConsumer(AsyncWebsocketConsumer):
                 'avatar_url': None,
                 'connected': False,
             }
+
+        # Get invite URL for invitation battles (so frontend can share the correct link)
+        invite_url = None
+        if battle.match_source == MatchSource.INVITATION:
+            try:
+                invitation = BattleInvitation.objects.get(battle=battle)
+                invite_url = invitation.invite_url
+            except BattleInvitation.DoesNotExist:
+                pass
 
         return {
             'id': battle.id,
@@ -569,6 +620,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
             'opponent_submission': opponent_submission,
             'winner_id': battle.winner_id,
             'match_source': battle.match_source,
+            'invite_url': invite_url,
         }
 
     async def _send_error(self, message: str):

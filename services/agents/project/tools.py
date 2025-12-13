@@ -87,6 +87,8 @@ class ImportVideoProjectInput(BaseModel):
     video_url: str = Field(description='The S3/MinIO URL of the uploaded video file')
     filename: str = Field(description='Original filename of the video (e.g., "my-tutorial.mp4")')
     title: str = Field(default='', description='Optional title for the project (auto-generated if not provided)')
+    is_owned: bool = Field(default=True, description='True if user created the video, False if clipping')
+    tool_hint: str = Field(default='', description='Tool mentioned by user (e.g., "Runway", "Midjourney", "Pika")')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
     is_private: bool = Field(default=False, description='Whether to mark the project as private')
 
@@ -368,6 +370,7 @@ def import_github_project(
     github_service = GitHubService(token)
 
     # Verify user owns or contributed to the repository
+    # If verified, auto-set is_owned=True regardless of what AI agent passed
     try:
         is_authorized = github_service.verify_repo_access_sync(owner, repo)
         if not is_authorized:
@@ -379,6 +382,9 @@ def import_github_project(
                     f'with your GitHub account.'
                 ),
             }
+        # User is owner/contributor/collaborator - this is their own work
+        is_owned = True
+        logger.info(f'Auto-detected ownership for {owner}/{repo}: is_owned=True')
     except Exception as e:
         logger.warning(f'Failed to verify repo access for {owner}/{repo}: {e}')
         # If verification fails, allow import but log warning
@@ -430,6 +436,7 @@ def import_github_project(
         content=content,
         is_showcased=is_showcase,  # Field is is_showcased, param is is_showcase
         is_private=is_private,
+        tools_order=[],  # Initialize empty tools order (required field)
     )
 
     # Apply AI-suggested categories, topics, tools, and technologies from sections
@@ -537,6 +544,7 @@ def create_product(
             is_private=True,  # Start as draft (private)
             external_url=source_url if source_url else '',
             content={},
+            tools_order=[],  # Initialize empty tools order (required field)
         )
 
         # Ensure creator account exists
@@ -711,6 +719,7 @@ def scrape_webpage_for_project(
             content=content,
             is_showcased=is_showcase,
             is_private=is_private,
+            tools_order=[],  # Initialize empty tools order (required field)
         )
 
         # Apply AI-suggested categories, topics, and tools
@@ -749,6 +758,8 @@ def import_video_project(
     video_url: str,
     filename: str,
     title: str = '',
+    is_owned: bool = True,
+    tool_hint: str = '',
     is_showcase: bool = True,
     is_private: bool = False,
     state: dict | None = None,
@@ -801,15 +812,32 @@ def import_video_project(
     }
     file_type = file_type_map.get(file_extension, 'video/mp4')
 
+    # Build user context from title and tool hint
+    context_parts = []
+    if title:
+        context_parts.append(f'Title: {title}')
+    if tool_hint:
+        context_parts.append(f'Tool used: {tool_hint}')
+    user_context = '. '.join(context_parts)
+
     # Run AI analysis to generate metadata
-    logger.info(f'Running AI analysis for video: {filename}')
+    logger.info(f'Running AI analysis for video: {filename} (tool_hint={tool_hint})')
     analysis = analyze_video_for_template(
         video_url=video_url,
         filename=filename,
         file_type=file_type,
-        user_context=title,  # Use provided title as context hint
+        user_context=user_context,
         user=user,
     )
+
+    # If user specified a tool, ensure it's included in the tool_names
+    if tool_hint:
+        tool_names = analysis.get('tool_names', [])
+        # Check if tool hint is already in the list (case-insensitive)
+        if not any(tool_hint.lower() in t.lower() or t.lower() in tool_hint.lower() for t in tool_names):
+            tool_names.insert(0, tool_hint)  # Add user's tool first
+            analysis['tool_names'] = tool_names
+            logger.info(f'Added user-specified tool "{tool_hint}" to project')
 
     # Use provided title or AI-generated title
     project_title = title if title else analysis.get('title', filename)
@@ -825,17 +853,21 @@ def import_video_project(
         },
     }
 
+    # Determine project type based on ownership
+    project_type = Project.ProjectType.VIDEO if is_owned else Project.ProjectType.CLIPPED
+
     # Create project with full metadata
     project = Project.objects.create(
         user=user,
         title=project_title,
         description=analysis.get('description', ''),
-        type=Project.ProjectType.VIDEO,
+        type=project_type,
         # Use video URL as featured image (browsers will show video poster/thumbnail)
         featured_image_url=video_url,
         content=content,
         is_showcased=is_showcase,
         is_private=is_private,
+        tools_order=[],  # Initialize empty tools order (required field)
     )
 
     # Apply AI-suggested categories, topics, and tools

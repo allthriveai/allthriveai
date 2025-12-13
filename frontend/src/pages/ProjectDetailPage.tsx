@@ -14,7 +14,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SEO } from '@/components/common/SEO';
-import { getProjectBySlug, deleteProject, updateProject } from '@/services/projects';
+import { getProjectBySlug, deleteProject, updateProject, toggleProjectInShowcase } from '@/services/projects';
 import { trackProjectView, getViewSourceFromReferrer } from '@/services/tracking';
 import type { Project } from '@/types/models';
 import { useAuth } from '@/hooks/useAuth';
@@ -150,8 +150,12 @@ export default function ProjectDetailPage() {
     if (!project) return;
 
     try {
+      // Toggle in the user's profile Featured Projects section
+      const { added } = await toggleProjectInShowcase(project.id);
+
+      // Also update the project's isShowcased flag for consistency
       const updatedProject = await updateProject(project.id, {
-        isShowcased: !project.isShowcased,
+        isShowcased: added,
       });
       setProject(updatedProject);
     } catch (error) {

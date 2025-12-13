@@ -21,7 +21,8 @@ class BaseParser:
     # Regex patterns
     HEADING_PATTERN = re.compile(r'^(#{1,6})\s+(.+)$', re.MULTILINE)
     CODE_BLOCK_PATTERN = re.compile(r'```(\w+)?\n(.*?)```', re.DOTALL)
-    MERMAID_PATTERN = re.compile(r'```mermaid\n(.*?)```', re.DOTALL)
+    # Match mermaid code blocks with various whitespace formats
+    MERMAID_PATTERN = re.compile(r'```mermaid\s*\r?\n(.*?)```', re.DOTALL)
     IMAGE_PATTERN = re.compile(r'!\[([^\]]*)\]\(([^\)]+)\)')
     LINK_PATTERN = re.compile(r'\[([^\]]+)\]\(([^\)]+)\)')
     LIST_PATTERN = re.compile(r'^[-*+]\s+(.+)$', re.MULTILINE)

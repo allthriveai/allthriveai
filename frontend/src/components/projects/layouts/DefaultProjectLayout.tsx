@@ -5,11 +5,11 @@
  * Renders the full-height hero section with project details below.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { renderContent } from '@/utils/markdown';
 import { useProjectContext } from '@/context/ProjectContext';
-import { updateProject } from '@/services/projects';
+import { updateProject, getTaxonomies } from '@/services/projects';
 import { ProjectHero } from '../hero';
 import { ProjectActions } from '../shared/ProjectActions';
 import { ShareModal } from '../shared/ShareModal';
@@ -22,6 +22,7 @@ import { EditableBlocksContainer } from '../shared/EditableBlocksContainer';
 import { ProjectSections } from '../sections';
 import type { ProjectSection, SectionType } from '@/types/sections';
 import { createDefaultSectionContent, generateSectionId } from '@/types/sections';
+import type { Taxonomy } from '@/types/models';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
 import {
@@ -30,6 +31,9 @@ import {
   TrashIcon,
   EyeIcon,
   EyeSlashIcon,
+  ChevronDownIcon,
+  CalendarIcon,
+  PencilIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperclip } from '@fortawesome/free-solid-svg-icons';
@@ -91,6 +95,17 @@ export function DefaultProjectLayout() {
   const [isEditMode, setIsEditMode] = useState(false); // Default to published view
   const [isSaving, setIsSaving] = useState(false);
 
+  // Category picker state
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [allCategories, setAllCategories] = useState<Taxonomy[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const categoryPickerRef = useRef<HTMLDivElement>(null);
+
+  // Date picker state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [editedDate, setEditedDate] = useState<string>('');
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
   // Toggle between edit and published view
   const toggleEditMode = useCallback(() => {
     setIsEditMode(prev => !prev);
@@ -98,6 +113,56 @@ export function DefaultProjectLayout() {
 
   // Computed editing state - must be owner AND in edit mode
   const isEditing = isOwner && isEditMode;
+
+  // Fetch categories when picker opens
+  useEffect(() => {
+    if (showCategoryPicker && allCategories.length === 0 && !categoriesLoading) {
+      setCategoriesLoading(true);
+      getTaxonomies('category')
+        .then(setAllCategories)
+        .catch(console.error)
+        .finally(() => setCategoriesLoading(false));
+    }
+  }, [showCategoryPicker, allCategories.length, categoriesLoading]);
+
+  // Close pickers when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryPickerRef.current && !categoryPickerRef.current.contains(event.target as Node)) {
+        setShowCategoryPicker(false);
+      }
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setShowDatePicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Handle category change
+  const handleCategoryChange = useCallback(async (categoryId: number) => {
+    try {
+      const updated = await updateProject(project.id, { categories: [categoryId] });
+      setProject(updated);
+      setShowCategoryPicker(false);
+    } catch (error) {
+      console.error('Failed to update category:', error);
+    }
+  }, [project.id, setProject]);
+
+  // Handle date change (updates publishedDate which is the editable date field)
+  const handleDateChange = useCallback(async (newDate: string) => {
+    try {
+      const updated = await updateProject(project.id, { publishedDate: newDate });
+      setProject(updated);
+      setShowDatePicker(false);
+    } catch (error) {
+      console.error('Failed to update date:', error);
+    }
+  }, [project.id, setProject]);
+
+  // Get the display date - prefer publishedDate if set, otherwise createdAt
+  const displayDate = project.publishedDate || project.createdAt;
 
   // Handle inline title change
   const handleTitleChange = useCallback(async (newTitle: string) => {
@@ -409,8 +474,54 @@ export function DefaultProjectLayout() {
               <div className="space-y-6 relative">
                 {/* Author Badge & Category */}
                 <div className="flex items-center gap-3 flex-wrap">
-                  {/* Category Badge - prominent display */}
-                  {primaryCategory && (
+                  {/* Category Badge - editable for owners */}
+                  {isEditing ? (
+                    <div className="relative" ref={categoryPickerRef}>
+                      <button
+                        onClick={() => setShowCategoryPicker(!showCategoryPicker)}
+                        className="group flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-full border backdrop-blur-xl shadow-lg transition-all hover:scale-105"
+                        style={{
+                          backgroundColor: `${categoryFromColor}20`,
+                          borderColor: `${categoryFromColor}40`,
+                          color: categoryFromColor,
+                        }}
+                      >
+                        {primaryCategory?.name || 'Select Category'}
+                        <ChevronDownIcon className="w-4 h-4 opacity-70 group-hover:opacity-100" />
+                      </button>
+                      {showCategoryPicker && (
+                        <div className="absolute top-full left-0 mt-2 w-64 max-h-72 overflow-y-auto rounded-xl bg-gray-900/95 backdrop-blur-xl border border-white/20 shadow-2xl z-50">
+                          {categoriesLoading ? (
+                            <div className="p-4 text-center text-white/60 text-sm">Loading...</div>
+                          ) : (
+                            <div className="p-2">
+                              {allCategories.map((category) => {
+                                const { from: catColor } = getCategoryColors(category.color, category.id);
+                                const isSelected = primaryCategory?.id === category.id;
+                                return (
+                                  <button
+                                    key={category.id}
+                                    onClick={() => handleCategoryChange(category.id)}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                                      isSelected
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-white/80 hover:bg-white/10 hover:text-white'
+                                    }`}
+                                  >
+                                    <span
+                                      className="w-3 h-3 rounded-full flex-shrink-0"
+                                      style={{ backgroundColor: catColor }}
+                                    />
+                                    {category.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : primaryCategory ? (
                     <span
                       className="px-4 py-1.5 text-sm font-semibold rounded-full border backdrop-blur-xl shadow-lg"
                       style={{
@@ -421,20 +532,65 @@ export function DefaultProjectLayout() {
                     >
                       {primaryCategory.name}
                     </span>
-                  )}
+                  ) : null}
                   <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xl px-4 py-2 rounded-full border border-white/20 text-white/90 text-sm shadow-lg">
                     <span className="font-light opacity-70">by</span>
                     <Link to={`/${project.username}`} className="font-semibold hover:text-primary-300 transition-colors">
                       @{project.username}
                     </Link>
                   </div>
-                  <span className="text-white/60 text-sm bg-black/20 px-3 py-1 rounded-full backdrop-blur-md border border-white/5">
-                    {new Date(project.createdAt).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </span>
+                  {/* Date - editable for owners */}
+                  {isEditing ? (
+                    <div className="relative" ref={datePickerRef}>
+                      <button
+                        onClick={() => {
+                          setEditedDate(displayDate.split('T')[0]);
+                          setShowDatePicker(!showDatePicker);
+                        }}
+                        className="group flex items-center gap-2 text-white/60 text-sm bg-black/20 px-3 py-1 rounded-full backdrop-blur-md border border-white/5 hover:bg-black/30 hover:text-white/80 transition-colors"
+                      >
+                        <CalendarIcon className="w-4 h-4" />
+                        {new Date(displayDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                        <PencilIcon className="w-3 h-3 opacity-0 group-hover:opacity-70 transition-opacity" />
+                      </button>
+                      {showDatePicker && (
+                        <div className="absolute top-full left-0 mt-2 p-3 rounded-xl bg-gray-900/95 backdrop-blur-xl border border-white/20 shadow-2xl z-50">
+                          <input
+                            type="date"
+                            value={editedDate}
+                            onChange={(e) => setEditedDate(e.target.value)}
+                            className="bg-gray-800 text-white px-3 py-2 rounded-lg border border-white/20 focus:border-primary-500 focus:outline-none text-sm"
+                          />
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => setShowDatePicker(false)}
+                              className="flex-1 px-3 py-1.5 text-sm text-white/60 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => handleDateChange(editedDate)}
+                              className="flex-1 px-3 py-1.5 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-white/60 text-sm bg-black/20 px-3 py-1 rounded-full backdrop-blur-md border border-white/5">
+                      {new Date(displayDate).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  )}
                 </div>
 
                 {/* Title - Inline Editable for Owners */}

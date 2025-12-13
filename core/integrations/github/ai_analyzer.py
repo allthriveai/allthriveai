@@ -33,10 +33,13 @@ SECTION_TEMPLATE_PROMPT = (
 
 Repository: {name}
 Description: {description}
-Language: {language}
-Topics: {topics}
+Primary Language (from GitHub API): {language}
+GitHub Topics: {topics}
 Stars: {stars}
-Tech Stack: {tech_stack}
+
+=== DETECTED TECH STACK (from actual dependency files) ===
+{tech_stack}
+=== END DETECTED TECH STACK ===
 
 Directory Structure:
 {directory_structure}
@@ -55,15 +58,9 @@ Generate structured sections for a visually appealing project portfolio. Return 
     {{"icon": "FaRocket", "title": "Feature Name", "description": "1-2 sentence description"}},
     ... (ALWAYS generate exactly 6 features based on README/repo)
   ],
-  "tech_stack": {{
-    "categories": [
-      {{"name": "Backend", "technologies": ["Python", "FastAPI"]}},
-      {{"name": "Frontend", "technologies": ["React", "TypeScript"]}},
-      {{"name": "Infrastructure", "technologies": ["Docker", "Redis"]}}
-    ]
-  }},
+  "tech_stack": "USE_DETECTED",
   "architecture": {{
-    "diagram": "graph TD\\n    A[Client] --> B[API Server]\\n    B --> C[Database]\\n    B --> D[Cache]",
+    "diagram": "graph TD\\n    A[Component1] --> B[Component2]\\n    ...",
     "description": "Brief explanation of how the system components interact"
   }},
   "challenges": [
@@ -86,32 +83,45 @@ Generate structured sections for a visually appealing project portfolio. Return 
     {{"label": "Documentation", "url": "...", "icon": "book"}},
     {{"label": "Live Demo", "url": "...", "icon": "external"}}
   ],
-  "category_ids": [9],
-  "topics": ["python", "api", "redis"],
-  "tool_names": ["ChatGPT", "GitHub Copilot"]
+  "category_ids": [],
+  "topics": [],
+  "tool_names": []
 }}
 
-IMPORTANT:
-- For features: Use FontAwesome icon names (react-icons/fa format). Choose from:
-  FaRocket (speed/launch), FaShieldAlt (security), FaBolt (performance/fast),
-  FaCode (development), FaDatabase (data/storage), FaCog (settings/config),
-  FaChartLine (analytics/growth), FaUsers (collaboration), FaLock (privacy),
-  FaMobile (mobile/responsive), FaCloud (cloud), FaPlug (integrations/api),
-  FaBrain (AI/ML), FaSearch (search), FaSync (sync/realtime), FaGlobe (global),
-  FaClock (time/scheduling), FaFileAlt (documents), FaCheck (validation),
-  FaLayerGroup (modular), FaTools (utilities), FaPalette (customization)
-- For architecture: Create a LOGICAL system architecture diagram showing how the application works:
-  * Show actual system components (API, Database, Cache, Queue, Frontend, etc.)
-  * Use descriptive names like "FastAPI Server", "Redis Cache", "PostgreSQL DB", not folder paths
-  * Show data flow between components (User -> Frontend -> API -> Database)
-  * Use graph TD or graph LR format with 4-8 nodes
-  * Include external services if mentioned (AWS, Redis, etc.)
-  * DO NOT use file paths like "backend/src" or "frontend/public" as node labels
-- For tech_stack: Group by Frontend, Backend, Database, Infrastructure, AI/ML as appropriate
-- For challenges: Only include if README mentions specific problems solved
-- For links: Extract any documentation/demo URLs from README
-- Category IDs: 1-15 (9=Developer & Coding is common for code projects)
-- Topics: lowercase, specific, 3-8 keywords
+=== CRITICAL RULES - TRUST THE DETECTED DATA ===
+
+1. **TECH STACK**: Set tech_stack to the literal string "USE_DETECTED". The system will use the
+   DETECTED TECH STACK section above.
+   - DO NOT generate or invent any technologies
+   - The detected data comes from parsing actual dependency files (package.json, etc.)
+
+2. **CATEGORY SELECTION** (category_ids):
+   - Use Primary Language to determine: Python/JavaScript/Go/etc. = 9 (Developer & Coding)
+   - If Primary Language is "null" AND no frameworks detected = likely documentation, use 10 (Podcasts & Education)
+   - Common mappings: code repos=9, tutorials/exercises=10, AI projects=13 or 14
+
+3. **TOPICS**: Extract from GitHub Topics AND README content
+   - Use GitHub Topics provided above as starting point
+   - Add 2-4 more specific keywords from README if relevant
+   - All lowercase, 3-8 total keywords
+
+4. **TOOL NAMES**: ONLY if the README explicitly mentions using AI tools
+   - Leave empty [] unless README says "built with ChatGPT", "uses Claude", "GitHub Copilot assisted", etc.
+   - DO NOT assume any AI tools were used
+
+5. **FEATURES**: Generate based on what the README ACTUALLY describes
+   - Read the README excerpt carefully
+   - Extract real features/capabilities mentioned
+   - DO NOT invent features not described in the README
+
+6. **ARCHITECTURE**: ONLY generate if there is actual code
+   - If Primary Language is "null" or empty, set architecture to null or skip
+   - For documentation repos, describe document structure instead of code architecture
+
+For features icons, use FontAwesome names (react-icons/fa format):
+  FaRocket, FaShieldAlt, FaBolt, FaCode, FaDatabase, FaCog, FaChartLine,
+  FaUsers, FaLock, FaMobile, FaCloud, FaPlug, FaBrain, FaSearch, FaSync,
+  FaGlobe, FaClock, FaFileAlt, FaCheck, FaLayerGroup, FaTools, FaPalette
 
 Return ONLY valid JSON, no markdown code blocks."""
 )
@@ -367,8 +377,35 @@ def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '', 
             )
             section_order += 1
 
-        # Tech stack section
-        if result.get('tech_stack', {}).get('categories'):
+        # Tech stack section - USE DETECTED DATA, not AI-generated
+        # Build tech_stack categories from detected data (from dependency files)
+        tech_stack_categories = []
+        if tech_stack:
+            # Languages
+            if tech_stack.get('languages'):
+                lang_techs = []
+                for lang_name, _importance in tech_stack['languages'].items():
+                    lang_techs.append({'name': lang_name})
+                if lang_techs:
+                    tech_stack_categories.append({'name': 'Languages', 'technologies': lang_techs})
+
+            # Frameworks
+            if tech_stack.get('frameworks'):
+                fw_techs = [{'name': fw} for fw in tech_stack['frameworks']]
+                if fw_techs:
+                    tech_stack_categories.append({'name': 'Frameworks', 'technologies': fw_techs})
+
+            # Tools
+            if tech_stack.get('tools'):
+                tool_techs = [{'name': tool} for tool in tech_stack['tools']]
+                if tool_techs:
+                    tech_stack_categories.append({'name': 'Tools', 'technologies': tool_techs})
+
+        # Also add primary language from GitHub API if not already in detected stack
+        if language and not tech_stack.get('languages'):
+            tech_stack_categories.insert(0, {'name': 'Languages', 'technologies': [{'name': language}]})
+
+        if tech_stack_categories:
             sections.append(
                 {
                     'id': f'section-tech-{name[:8]}',
@@ -376,11 +413,12 @@ def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '', 
                     'enabled': True,
                     'order': section_order,
                     'content': {
-                        'categories': result['tech_stack']['categories'],
+                        'categories': tech_stack_categories,
                     },
                 }
             )
             section_order += 1
+            logger.info(f'📦 Using detected tech stack for {name}: {len(tech_stack_categories)} categories')
 
         # Architecture section
         if result.get('architecture', {}).get('diagram'):
@@ -449,13 +487,33 @@ def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '', 
                 if isinstance(c, int | str) and MIN_CATEGORY_ID <= int(c) <= MAX_CATEGORY_ID
             ][:MAX_CATEGORIES_PER_PROJECT]
 
-        # Validate topics
-        if 'topics' in result and isinstance(result['topics'], list):
-            validated['topics'] = [
-                str(t).lower()[:MAX_TOPIC_LENGTH] for t in result['topics'] if t and isinstance(t, str)
-            ][:MAX_TOPICS_PER_PROJECT]
+        # Smart category fallback based on detected data
+        if not validated['category_ids']:
+            if language:
+                # Has a programming language = Developer & Coding (9)
+                validated['category_ids'] = [9]
+                logger.info(f'📂 No AI categories, defaulting to Developer & Coding (lang={language})')
+            elif tech_stack.get('languages') or tech_stack.get('frameworks'):
+                # Has detected tech stack = Developer & Coding (9)
+                validated['category_ids'] = [9]
+                logger.info('📂 No AI categories, defaulting to Developer & Coding (tech_stack detected)')
+            else:
+                # No language, no tech stack = likely documentation, use Podcasts & Education (10)
+                validated['category_ids'] = [10]
+                logger.info('📂 No AI categories, defaulting to Podcasts & Education (no code detected)')
 
-        # Validate tool_names
+        # Validate topics - start with GitHub topics, then add AI suggestions
+        if github_topics:
+            validated['topics'] = [t.lower() for t in github_topics[:4]]  # Start with GitHub topics
+
+        if 'topics' in result and isinstance(result['topics'], list):
+            ai_topics = [str(t).lower()[:MAX_TOPIC_LENGTH] for t in result['topics'] if t and isinstance(t, str)]
+            # Add AI topics that aren't already from GitHub
+            for topic in ai_topics:
+                if topic not in validated['topics'] and len(validated['topics']) < MAX_TOPICS_PER_PROJECT:
+                    validated['topics'].append(topic)
+
+        # Validate tool_names - only include if AI found explicit mention
         if 'tool_names' in result and isinstance(result['tool_names'], list):
             validated['tool_names'] = [str(t) for t in result['tool_names'] if t and isinstance(t, str)][
                 :MAX_TOOLS_PER_PROJECT
@@ -576,11 +634,19 @@ def _generate_fallback_template(
     )
     section_order += 1
 
+    # Smart category selection based on detected data
+    if language:
+        category_ids = [9]  # Developer & Coding
+    elif tech_stack.get('languages') or tech_stack.get('frameworks'):
+        category_ids = [9]  # Developer & Coding (has tech stack)
+    else:
+        category_ids = [10]  # Podcasts & Education (likely documentation)
+
     return {
         'templateVersion': 2,
         'sections': sections,
         'description': description or f'A {language} project' if language else 'A software project',
-        'category_ids': [9] if language else [],  # Default to Developer & Coding
+        'category_ids': category_ids,
         'topics': [t.lower() for t in github_topics[:8]] if github_topics else [],
         'tool_names': [],
         'hero_image': hero_image,

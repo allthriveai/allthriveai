@@ -42,18 +42,18 @@ const RedditIcon = () => (
 );
 
 interface ShareData {
-  battle_id: number;
-  share_url: string;
-  og_image_url: string | null;
-  share_text: {
+  battleId: number;
+  shareUrl: string;
+  ogImageUrl: string | null;
+  shareText: {
     headline: string;
     twitter: string;
     facebook: string;
     reddit: string;
-    email_subject: string;
-    email_body: string;
+    emailSubject: string;
+    emailBody: string;
   };
-  platform_urls: {
+  platformUrls: {
     twitter: string;
     facebook: string;
     linkedin: string;
@@ -145,7 +145,7 @@ export function BattleShareModal({ battleId, isOpen, onClose }: BattleShareModal
     if (!shareData) return;
 
     try {
-      await navigator.clipboard.writeText(shareData.share_url);
+      await navigator.clipboard.writeText(shareData.shareUrl);
       setCopied(true);
 
       // Clear any existing timeout
@@ -171,31 +171,31 @@ export function BattleShareModal({ battleId, isOpen, onClose }: BattleShareModal
         {
           name: 'Twitter/X',
           icon: TwitterIcon,
-          url: shareData.platform_urls.twitter,
+          url: shareData.platformUrls.twitter,
           color: 'hover:bg-slate-800',
         },
         {
           name: 'Facebook',
           icon: FacebookIcon,
-          url: shareData.platform_urls.facebook,
+          url: shareData.platformUrls.facebook,
           color: 'hover:bg-blue-900/30',
         },
         {
           name: 'LinkedIn',
           icon: LinkedInIcon,
-          url: shareData.platform_urls.linkedin,
+          url: shareData.platformUrls.linkedin,
           color: 'hover:bg-blue-800/30',
         },
         {
           name: 'Reddit',
           icon: RedditIcon,
-          url: shareData.platform_urls.reddit,
+          url: shareData.platformUrls.reddit,
           color: 'hover:bg-orange-900/30',
         },
         {
           name: 'Email',
           icon: EnvelopeIcon,
-          url: shareData.platform_urls.email,
+          url: shareData.platformUrls.email,
           color: 'hover:bg-slate-700',
         },
       ]
@@ -214,19 +214,19 @@ export function BattleShareModal({ battleId, isOpen, onClose }: BattleShareModal
             onClick={onClose}
           />
 
-          {/* Modal */}
+          {/* Slide-out tray from right */}
           <motion.div
             ref={modalRef}
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-50
-                       w-full sm:max-w-md sm:mx-4"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 sm:max-w-[90vw]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="share-modal-title"
           >
-            <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto">
+            <div className="h-full bg-slate-900 border-l border-slate-700 shadow-2xl overflow-y-auto">
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-slate-700/50">
                 <div className="flex items-center gap-2">
@@ -261,10 +261,10 @@ export function BattleShareModal({ battleId, isOpen, onClose }: BattleShareModal
                 ) : shareData ? (
                   <>
                     {/* OG Image Preview */}
-                    {shareData.og_image_url && (
+                    {shareData.ogImageUrl && (
                       <div className="mb-6 rounded-xl overflow-hidden border border-slate-700/50">
                         <img
-                          src={shareData.og_image_url}
+                          src={shareData.ogImageUrl}
                           alt="Share preview"
                           className="w-full h-auto"
                         />
@@ -273,22 +273,22 @@ export function BattleShareModal({ battleId, isOpen, onClose }: BattleShareModal
 
                     {/* Headline */}
                     <p className="text-center text-slate-300 mb-6">
-                      {shareData.share_text.headline}
+                      {shareData.shareText.headline}
                     </p>
 
                     {/* Platform buttons */}
-                    <div className="grid grid-cols-5 gap-2 mb-6" role="group" aria-label="Share platforms">
+                    <div className="grid grid-cols-2 gap-3 mb-6" role="group" aria-label="Share platforms">
                       {platforms.map((platform) => (
                         <button
                           key={platform.name}
                           onClick={() => openShareLink(platform.url)}
-                          className={`flex flex-col items-center gap-2 p-3 rounded-xl
+                          className={`flex items-center gap-3 p-4 rounded-xl
                                      bg-slate-800/50 border border-slate-700/50
                                      transition-all ${platform.color}`}
                           aria-label={`Share on ${platform.name}`}
                         >
-                          <span aria-hidden="true"><platform.icon /></span>
-                          <span className="text-xs text-slate-400 truncate w-full text-center">
+                          <span aria-hidden="true" className="text-slate-300"><platform.icon /></span>
+                          <span className="text-sm text-slate-300 font-medium">
                             {platform.name.split('/')[0]}
                           </span>
                         </button>
@@ -299,7 +299,7 @@ export function BattleShareModal({ battleId, isOpen, onClose }: BattleShareModal
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        value={shareData.share_url}
+                        value={shareData.shareUrl}
                         readOnly
                         aria-label="Share URL"
                         className="flex-1 px-4 py-3 bg-slate-800/50 border border-slate-700/50

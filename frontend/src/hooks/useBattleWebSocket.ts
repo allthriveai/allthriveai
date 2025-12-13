@@ -10,24 +10,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { buildWebSocketUrl, logWebSocketUrl } from '@/utils/websocket';
 import { getCsrfToken } from '@/utils/cookies';
 
+// Import unified phase types
+import type { BattlePhase } from '@/types/battlePhases';
+
+// Re-export for backward compatibility
+export type { BattlePhase } from '@/types/battlePhases';
+
 // Constants
 const MAX_RECONNECT_ATTEMPTS = 5;
 const INITIAL_RECONNECT_DELAY = 1000;
 const MAX_RECONNECT_DELAY = 30000;
 const HEARTBEAT_INTERVAL = 30000;
 const CONNECTION_TIMEOUT = 10000;
-
-// Battle phases matching backend
-export type BattlePhase =
-  | 'waiting'
-  | 'countdown'
-  | 'active'
-  | 'challenger_turn'
-  | 'opponent_turn'
-  | 'generating'
-  | 'judging'
-  | 'reveal'
-  | 'complete';
 
 export type OpponentStatus = 'connected' | 'disconnected' | 'typing' | 'submitted' | 'idle';
 
@@ -67,6 +61,8 @@ export interface BattleState {
   opponentSubmission: MySubmission | null;
   winnerId: number | null;
   matchSource: string;
+  /** Full invite URL for invitation battles (e.g., https://allthrive.ai/battle/invite/{token}) */
+  inviteUrl?: string;
   /** True when battle is viewed by unauthenticated user (public completed battle) */
   isPublicView?: boolean;
   /** Player data for "my" side - used in public view when no user is authenticated */
@@ -244,6 +240,7 @@ export function useBattleWebSocket({
           : null,
         winnerId: serverState.winner_id as number | null,
         matchSource: (serverState.match_source as string) ?? 'unknown',
+        inviteUrl: serverState.invite_url as string | undefined,
       };
     } catch (error) {
       console.error('[Battle WS] Failed to parse server state:', error);

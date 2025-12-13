@@ -131,6 +131,7 @@ export function useIntelligentChat({
   const isConnectingRef = useRef(false); // Ref-based lock to prevent duplicate connections
   const seenMessageIdsRef = useRef<Set<string>>(new Set()); // Track seen message IDs for deduplication
   const lastConversationIdRef = useRef<string>(conversationId); // Track conversation changes for cleanup
+  const isCancelledRef = useRef(false); // Track if processing was cancelled
 
   // Helper to add a message with deduplication
   const addMessageWithDedup = useCallback((newMessage: ChatMessage) => {
@@ -319,6 +320,10 @@ export function useIntelligentChat({
               break;
 
             case 'chunk':
+              // Ignore chunks if processing was cancelled
+              if (isCancelledRef.current) {
+                return;
+              }
               // Append chunk to current message
               if (data.chunk) {
                 // If no message ID exists (e.g., error from image generation), create one
@@ -535,6 +540,9 @@ export function useIntelligentChat({
 
   // Send message through WebSocket
   const sendMessage = useCallback((content: string) => {
+    // Reset cancelled flag when sending new message
+    isCancelledRef.current = false;
+
     // Validate message length
     if (content.length > MAX_MESSAGE_LENGTH) {
       onError?.(`Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`);
@@ -685,6 +693,41 @@ export function useIntelligentChat({
     clearChatMessages(conversationId);
   }, [conversationId]);
 
+  // Cancel ongoing AI processing
+  const cancelProcessing = useCallback(() => {
+    if (!isLoading) return;
+
+    // Set cancelled flag to ignore incoming chunks
+    isCancelledRef.current = true;
+
+    // Stop loading state
+    setIsLoading(false);
+
+    // Remove any partial assistant message being streamed
+    if (currentMessageIdRef.current) {
+      setMessages((prev) => prev.filter(m => m.id !== currentMessageIdRef.current));
+    }
+
+    // Remove any "generating" type messages (for image generation)
+    setMessages((prev) => prev.filter(m => m.metadata?.type !== 'generating'));
+
+    // Clear current message refs
+    currentMessageRef.current = '';
+    currentMessageIdRef.current = '';
+
+    // Add a system message indicating cancellation
+    const cancelMessageId = `cancelled-${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: cancelMessageId,
+        content: 'Processing cancelled.',
+        sender: 'assistant' as const,
+        timestamp: new Date(),
+      },
+    ]);
+  }, [isLoading]);
+
   return {
     messages,
     isConnected,
@@ -695,5 +738,6 @@ export function useIntelligentChat({
     connect,
     disconnect,
     clearMessages,
+    cancelProcessing,
   };
 }

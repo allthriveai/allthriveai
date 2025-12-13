@@ -1,0 +1,227 @@
+/**
+ * useBattleTimer Hook
+ *
+ * Provides a synchronized battle timer that:
+ * - Uses server time as the source of truth
+ * - Runs a local countdown for smooth display
+ * - Re-syncs when server time updates
+ * - Handles timer expiration and warnings
+ *
+ * This consolidates timer logic that was previously scattered across
+ * BattlePage.tsx and PromptEditor.tsx.
+ */
+
+import { useState, useEffect, useRef } from 'react';
+
+// =============================================================================
+// Types
+// =============================================================================
+
+export interface UseBattleTimerOptions {
+  /** Server-provided time remaining in seconds */
+  serverTimeRemaining: number | null | undefined;
+
+  /** Whether the timer should be running */
+  isActive?: boolean;
+
+  /** Callback when timer expires */
+  onExpire?: () => void;
+
+  /** Callback when timer enters warning zone (default: 30 seconds) */
+  onWarning?: () => void;
+
+  /** Warning threshold in seconds (default: 30) */
+  warningThreshold?: number;
+
+  /** How often to re-sync with server time (default: 10 seconds) */
+  syncInterval?: number;
+}
+
+export interface BattleTimerState {
+  /** Current time remaining in seconds (for display) */
+  timeRemaining: number | null;
+
+  /** Formatted time string (MM:SS) */
+  formattedTime: string;
+
+  /** Whether timer is in warning zone */
+  isWarning: boolean;
+
+  /** Whether timer is critical (under 10 seconds) */
+  isCritical: boolean;
+
+  /** Whether timer has expired */
+  isExpired: boolean;
+
+  /** Progress percentage (0-100, for progress bars) */
+  progress: number;
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Format seconds to MM:SS string.
+ */
+export function formatTime(seconds: number | null): string {
+  if (seconds === null || seconds < 0) return '0:00';
+
+  const totalSeconds = Math.max(0, Math.floor(seconds));
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Calculate progress percentage from time remaining and total.
+ */
+export function calculateProgress(remaining: number | null, total: number): number {
+  if (remaining === null || total <= 0) return 0;
+  return Math.max(0, Math.min(100, (remaining / total) * 100));
+}
+
+// =============================================================================
+// Hook Implementation
+// =============================================================================
+
+export function useBattleTimer({
+  serverTimeRemaining,
+  isActive = true,
+  onExpire,
+  onWarning,
+  warningThreshold = 30,
+  syncInterval = 10,
+}: UseBattleTimerOptions): BattleTimerState {
+  // Local time state for smooth countdown
+  const [localTime, setLocalTime] = useState<number | null>(null);
+
+  // Track whether we've fired the warning callback
+  const hasWarnedRef = useRef(false);
+
+  // Track whether we've fired the expire callback
+  const hasExpiredRef = useRef(false);
+
+  // Track the last server time to detect updates
+  const lastServerTimeRef = useRef<number | null>(null);
+
+  // Sync with server time when it changes
+  useEffect(() => {
+    if (serverTimeRemaining === null || serverTimeRemaining === undefined) {
+      setLocalTime(null);
+      return;
+    }
+
+    // Only sync if server time has changed significantly (more than 2 seconds drift)
+    // This prevents jarring jumps during normal countdown
+    const drift = lastServerTimeRef.current !== null
+      ? Math.abs(localTime ?? 0 - serverTimeRemaining)
+      : Infinity;
+
+    if (drift > 2 || lastServerTimeRef.current === null) {
+      setLocalTime(serverTimeRemaining);
+    }
+
+    lastServerTimeRef.current = serverTimeRemaining;
+  }, [serverTimeRemaining]);
+
+  // Periodic re-sync to prevent drift
+  useEffect(() => {
+    if (!isActive || serverTimeRemaining === null || serverTimeRemaining === undefined) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      // Force sync with server time
+      setLocalTime(serverTimeRemaining);
+    }, syncInterval * 1000);
+
+    return () => clearInterval(interval);
+  }, [serverTimeRemaining, isActive, syncInterval]);
+
+  // Local countdown timer
+  useEffect(() => {
+    if (!isActive || localTime === null || localTime <= 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setLocalTime((prev) => {
+        if (prev === null || prev <= 0) return prev;
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isActive, localTime !== null && localTime > 0]);
+
+  // Handle warning threshold
+  useEffect(() => {
+    if (
+      localTime !== null &&
+      localTime <= warningThreshold &&
+      localTime > 0 &&
+      !hasWarnedRef.current
+    ) {
+      hasWarnedRef.current = true;
+      onWarning?.();
+    }
+
+    // Reset warning flag if time goes back up (e.g., deadline extension)
+    if (localTime !== null && localTime > warningThreshold) {
+      hasWarnedRef.current = false;
+    }
+  }, [localTime, warningThreshold, onWarning]);
+
+  // Handle expiration
+  useEffect(() => {
+    if (localTime !== null && localTime <= 0 && !hasExpiredRef.current) {
+      hasExpiredRef.current = true;
+      onExpire?.();
+    }
+
+    // Reset expiration flag if time is restored
+    if (localTime !== null && localTime > 0) {
+      hasExpiredRef.current = false;
+    }
+  }, [localTime, onExpire]);
+
+  // Calculate derived state
+  const isWarning = localTime !== null && localTime <= warningThreshold && localTime > 0;
+  const isCritical = localTime !== null && localTime <= 10 && localTime > 0;
+  const isExpired = localTime !== null && localTime <= 0;
+
+  // Assuming a default total time of 3 minutes (180 seconds) for progress
+  // This could be made configurable if needed
+  const progress = calculateProgress(localTime, 180);
+
+  return {
+    timeRemaining: localTime,
+    formattedTime: formatTime(localTime),
+    isWarning,
+    isCritical,
+    isExpired,
+    progress,
+  };
+}
+
+// =============================================================================
+// Convenience Hooks
+// =============================================================================
+
+/**
+ * Simple timer display hook - just formats time and tracks warning state.
+ * Use this when you don't need the full timer management.
+ */
+export function useTimerDisplay(timeRemaining: number | null | undefined) {
+  const time = timeRemaining ?? null;
+
+  return {
+    formattedTime: formatTime(time),
+    isWarning: time !== null && time <= 30 && time > 0,
+    isCritical: time !== null && time <= 10 && time > 0,
+    isExpired: time !== null && time <= 0,
+  };
+}
+
+export default useBattleTimer;

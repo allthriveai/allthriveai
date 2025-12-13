@@ -6,6 +6,7 @@ import type { Quiz } from '@/components/quiz/types';
 import { api } from '@/services/api';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SearchBarWithFilters } from '@/components/explore/SearchBarWithFilters';
+import type { ContentTypeKey } from '@/components/explore/FilterDropdown';
 import { TabNavigation, type ExploreTab } from '@/components/explore/TabNavigation';
 import { UserProfileCard } from '@/components/explore/UserProfileCard';
 import { QuizPreviewCard } from '@/components/quiz/QuizPreviewCard';
@@ -42,6 +43,9 @@ export function ExplorePage() {
   const [selectedToolSlugs, setSelectedToolSlugs] = useState<string[]>(
     searchParams.getAll('tools').filter(Boolean)
   );
+  const [selectedContentType, setSelectedContentType] = useState<ContentTypeKey>(
+    (searchParams.get('contentType') as ContentTypeKey) || 'all'
+  );
 
   // Quiz overlay state
   const [quizOverlayOpen, setQuizOverlayOpen] = useState(false);
@@ -58,8 +62,9 @@ export function ExplorePage() {
     if (searchQuery) params.set('q', searchQuery);
     selectedCategorySlugs.forEach(slug => params.append('categories', slug));
     selectedToolSlugs.forEach(slug => params.append('tools', slug));
+    if (selectedContentType !== 'all') params.set('contentType', selectedContentType);
     setSearchParams(params, { replace: true });
-  }, [activeTab, searchQuery, selectedCategorySlugs, selectedToolSlugs, setSearchParams]);
+  }, [activeTab, searchQuery, selectedCategorySlugs, selectedToolSlugs, selectedContentType, setSearchParams]);
 
   // Fetch filter options (tools)
   const { data: filterOptions } = useQuery({
@@ -217,19 +222,49 @@ export function ExplorePage() {
   }, [profilesData]);
 
   const displayProjects = useMemo(() => {
+    // Hide projects when 'quiz' type is selected (quizzes are not projects)
+    if (selectedContentType === 'quiz') return [];
+
     // Use semantic results only if they have actual results
     // Fall back to explore API results (which also support search) when semantic returns empty
-    if (searchQuery && semanticResults && semanticResults.length > 0) {
-      return semanticResults;
-    }
-    return allProjects;
-  }, [searchQuery, semanticResults, allProjects]);
+    let projects = searchQuery && semanticResults && semanticResults.length > 0
+      ? semanticResults
+      : allProjects;
 
-  // Don't show quizzes in profiles tab
+    // Apply client-side content type filter
+    if (selectedContentType !== 'all') {
+      projects = projects.filter(project => project.type === selectedContentType);
+    }
+
+    return projects;
+  }, [searchQuery, semanticResults, allProjects, selectedContentType]);
+
+  // Filter quizzes by tab, content type, categories, and tools
   const displayQuizzes = useMemo(() => {
+    // Don't show quizzes in profiles tab
     if (activeTab === 'profiles') return [];
-    return quizzesData?.results || [];
-  }, [activeTab, quizzesData?.results]);
+
+    // Hide quizzes when a non-quiz content type is selected (except 'all')
+    if (selectedContentType !== 'all' && selectedContentType !== 'quiz') return [];
+
+    let quizzes = quizzesData?.results || [];
+
+    // Filter by selected categories (if any)
+    if (selectedCategorySlugs.length > 0) {
+      quizzes = quizzes.filter(quiz =>
+        quiz.categories?.some(cat => selectedCategorySlugs.includes(cat.slug))
+      );
+    }
+
+    // Filter by selected tools (if any)
+    if (selectedToolSlugs.length > 0) {
+      quizzes = quizzes.filter(quiz =>
+        quiz.tools?.some(tool => selectedToolSlugs.includes(tool.slug))
+      );
+    }
+
+    return quizzes;
+  }, [activeTab, quizzesData?.results, selectedContentType, selectedCategorySlugs, selectedToolSlugs]);
   const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isWaitingForFilters;
 
   // Determine if there's an error to display
@@ -304,6 +339,10 @@ export function ExplorePage() {
 
   const handleToolsChange = (slugs: string[]) => {
     setSelectedToolSlugs(slugs);
+  };
+
+  const handleContentTypeChange = (type: ContentTypeKey) => {
+    setSelectedContentType(type);
   };
 
   const handleOpenQuiz = (quizSlug: string) => {
@@ -423,8 +462,10 @@ export function ExplorePage() {
                   tools={filterOptions?.tools ?? []}
                   selectedTopics={selectedCategorySlugs}
                   selectedToolSlugs={selectedToolSlugs}
+                  selectedContentType={selectedContentType}
                   onTopicsChange={handleCategoriesChange}
                   onToolsChange={handleToolsChange}
+                  onContentTypeChange={handleContentTypeChange}
                   showFilters={showFilters}
                   openFiltersByDefault={false}
                 />

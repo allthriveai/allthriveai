@@ -152,6 +152,7 @@ export interface Project {
   isLikedByUser: boolean;
   content: ProjectContent;
   redirects?: ProjectRedirect[]; // Old slugs that redirect to this project
+  publishedDate?: string; // Original publication date (for AI-imported/RSS content, editable)
   createdAt: string;
   updatedAt: string;
 }
@@ -322,6 +323,7 @@ export interface ProjectPayload {
   categories?: number[]; // Category taxonomy IDs (predefined)
   topics?: string[]; // User-generated topics (free-form, moderated)
   content?: ProjectContent;
+  publishedDate?: string; // Allow updating the published date (for AI-imported projects)
 }
 
 // Paginated response

@@ -104,27 +104,107 @@ def detect_tech_stack_from_files(tree: list[dict], deps: dict[str, str | None]) 
         'tools': [],
     }
 
-    # Detect from dependency files
+    # File extension to language mapping
+    extension_to_language = {
+        '.py': 'Python',
+        '.js': 'JavaScript',
+        '.ts': 'TypeScript',
+        '.tsx': 'TypeScript',
+        '.jsx': 'JavaScript',
+        '.go': 'Go',
+        '.rs': 'Rust',
+        '.java': 'Java',
+        '.rb': 'Ruby',
+        '.php': 'PHP',
+        '.swift': 'Swift',
+        '.kt': 'Kotlin',
+        '.scala': 'Scala',
+        '.cs': 'C#',
+        '.cpp': 'C++',
+        '.c': 'C',
+        '.sh': 'Shell',
+        '.sql': 'SQL',
+        '.md': 'Markdown',
+        '.html': 'HTML',
+        '.css': 'CSS',
+        '.scss': 'SCSS',
+        '.yaml': 'YAML',
+        '.yml': 'YAML',
+    }
+
+    # Count file extensions to detect languages
+    extension_counts = {}
+    file_paths = [f.get('path', '') for f in tree]
+
+    for path in file_paths:
+        # Skip hidden files and common non-source files
+        if path.startswith('.') or '/.' in path:
+            continue
+
+        for ext, lang in extension_to_language.items():
+            if path.endswith(ext):
+                extension_counts[lang] = extension_counts.get(lang, 0) + 1
+                break
+
+    # Add languages detected from file extensions (with at least 2 files)
+    for lang, count in sorted(extension_counts.items(), key=lambda x: -x[1]):
+        if count >= 2 and lang not in ['Markdown', 'YAML', 'HTML', 'CSS']:  # Skip documentation-only languages
+            if lang not in tech_stack['languages']:
+                tech_stack['languages'][lang] = 'detected'
+
+    # Detect from dependency files (higher priority than file extensions)
     if deps.get('package.json'):
         tech_stack['languages']['JavaScript'] = 'primary'
         try:
             pkg_data = json.loads(deps['package.json'])
             # Extract framework names from dependencies
             dependencies = {**pkg_data.get('dependencies', {}), **pkg_data.get('devDependencies', {})}
-            for dep in ['react', 'vue', 'angular', 'svelte', 'next', 'express', 'fastify']:
-                if dep in dependencies:
-                    tech_stack['frameworks'].append(dep.title())
+
+            # Detect TypeScript
+            if 'typescript' in dependencies:
+                tech_stack['languages']['TypeScript'] = 'primary'
+
+            # Detect frameworks
+            framework_mapping = {
+                'react': 'React',
+                'vue': 'Vue.js',
+                'angular': 'Angular',
+                'svelte': 'Svelte',
+                'next': 'Next.js',
+                'express': 'Express.js',
+                'fastify': 'Fastify',
+                'nestjs': 'NestJS',
+                '@nestjs/core': 'NestJS',
+                'nuxt': 'Nuxt.js',
+                'gatsby': 'Gatsby',
+                'remix': 'Remix',
+                'tailwindcss': 'Tailwind CSS',
+            }
+            for dep, framework in framework_mapping.items():
+                if dep in dependencies and framework not in tech_stack['frameworks']:
+                    tech_stack['frameworks'].append(framework)
         except Exception as e:
             logger.warning(f'Failed to parse package.json dependencies: {e}')
 
-    if deps.get('requirements.txt') or deps.get('Pipfile'):
+    if deps.get('requirements.txt') or deps.get('Pipfile') or deps.get('pyproject.toml'):
         tech_stack['languages']['Python'] = 'primary'
-        if deps.get('requirements.txt'):
-            # Parse requirements.txt for frameworks
-            content = deps['requirements.txt']
-            for framework in ['django', 'flask', 'fastapi', 'tornado']:
-                if framework.lower() in content.lower():
-                    tech_stack['frameworks'].append(framework.title())
+
+        # Parse requirements.txt for frameworks
+        content = deps.get('requirements.txt', '') or deps.get('Pipfile', '') or ''
+        framework_mapping = {
+            'django': 'Django',
+            'flask': 'Flask',
+            'fastapi': 'FastAPI',
+            'tornado': 'Tornado',
+            'celery': 'Celery',
+            'sqlalchemy': 'SQLAlchemy',
+            'pandas': 'Pandas',
+            'numpy': 'NumPy',
+            'pytest': 'Pytest',
+        }
+        for framework_key, framework_name in framework_mapping.items():
+            if framework_key.lower() in content.lower() and framework_name not in tech_stack['frameworks']:
+                tech_stack['frameworks'].append(framework_name)
 
     if deps.get('go.mod'):
         tech_stack['languages']['Go'] = 'primary'
@@ -132,14 +212,41 @@ def detect_tech_stack_from_files(tree: list[dict], deps: dict[str, str | None]) 
     if deps.get('Cargo.toml'):
         tech_stack['languages']['Rust'] = 'primary'
 
+    if deps.get('Gemfile'):
+        tech_stack['languages']['Ruby'] = 'primary'
+        content = deps.get('Gemfile', '')
+        if 'rails' in content.lower():
+            tech_stack['frameworks'].append('Ruby on Rails')
+
+    if deps.get('composer.json'):
+        tech_stack['languages']['PHP'] = 'primary'
+        try:
+            composer_data = json.loads(deps['composer.json'])
+            require = {**composer_data.get('require', {}), **composer_data.get('require-dev', {})}
+            if any('laravel' in key for key in require.keys()):
+                tech_stack['frameworks'].append('Laravel')
+            if any('symfony' in key for key in require.keys()):
+                tech_stack['frameworks'].append('Symfony')
+        except Exception as e:
+            logger.warning(f'Failed to parse composer.json: {e}')
+
     # Detect tools from tree
-    file_paths = [f.get('path', '') for f in tree]
-    if any('docker' in p.lower() for p in file_paths):
+    if any('dockerfile' in p.lower() for p in file_paths):
         tech_stack['tools'].append('Docker')
     if any('docker-compose' in p.lower() for p in file_paths):
         tech_stack['tools'].append('Docker Compose')
     if any('.github/workflows' in p for p in file_paths):
         tech_stack['tools'].append('GitHub Actions')
+    if any('.gitlab-ci' in p.lower() for p in file_paths):
+        tech_stack['tools'].append('GitLab CI')
+    if any('jenkinsfile' in p.lower() for p in file_paths):
+        tech_stack['tools'].append('Jenkins')
+    if any('terraform' in p.lower() or p.endswith('.tf') for p in file_paths):
+        tech_stack['tools'].append('Terraform')
+    if any('kubernetes' in p.lower() or 'k8s' in p.lower() for p in file_paths):
+        tech_stack['tools'].append('Kubernetes')
+    if any('makefile' in p.lower() for p in file_paths):
+        tech_stack['tools'].append('Make')
 
     return tech_stack
 

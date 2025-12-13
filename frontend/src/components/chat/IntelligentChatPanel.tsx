@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -124,7 +124,7 @@ export function IntelligentChatPanel({
     setQuotaExceeded(info);
   }, []);
 
-  const { messages, isConnected, isConnecting, isLoading, sendMessage, clearMessages } = useIntelligentChat({
+  const { messages, isConnected, isConnecting, isLoading, sendMessage, clearMessages, cancelProcessing } = useIntelligentChat({
     conversationId,
     onError: (err) => setError(err),
     onProjectCreated: handleProjectCreated,
@@ -133,6 +133,16 @@ export function IntelligentChatPanel({
 
   // State for file upload progress
   const [isUploading, setIsUploading] = useState(false);
+  const uploadAbortControllerRef = useRef<AbortController | null>(null);
+
+  // Handle cancelling an in-progress upload
+  const handleCancelUpload = useCallback(() => {
+    if (uploadAbortControllerRef.current) {
+      uploadAbortControllerRef.current.abort();
+      uploadAbortControllerRef.current = null;
+    }
+    setIsUploading(false);
+  }, []);
 
   const handleSendMessage = async (content: string, attachments?: File[]) => {
     if (!content.trim() && (!attachments || attachments.length === 0)) return;
@@ -171,22 +181,31 @@ export function IntelligentChatPanel({
 
     // Upload attachments if present
     if (attachments && attachments.length > 0) {
+      // Create a new AbortController for this upload session
+      const abortController = new AbortController();
+      uploadAbortControllerRef.current = abortController;
+
       setIsUploading(true);
       try {
         const uploadedFiles: { name: string; url: string; type: string }[] = [];
 
         for (const file of attachments) {
+          // Check if upload was cancelled
+          if (abortController.signal.aborted) {
+            throw new Error('Upload cancelled');
+          }
+
           const isImage = file.type.startsWith('image/');
 
           if (isImage) {
-            const result = await uploadImage(file, 'chat-attachments', true);
+            const result = await uploadImage(file, 'chat-attachments', true, abortController.signal);
             uploadedFiles.push({
               name: file.name,
               url: result.url,
               type: 'image',
             });
           } else {
-            const result = await uploadFile(file, 'chat-attachments', true);
+            const result = await uploadFile(file, 'chat-attachments', true, abortController.signal);
             uploadedFiles.push({
               name: file.name,
               url: result.url,
@@ -209,6 +228,13 @@ export function IntelligentChatPanel({
 
         sendMessage(messageWithAttachments);
       } catch (uploadError: any) {
+        // Handle cancellation gracefully
+        if (uploadError?.name === 'AbortError' || uploadError?.name === 'CanceledError' || uploadError?.message === 'Upload cancelled') {
+          console.log('[IntelligentChatPanel] Upload cancelled by user');
+          // Don't show error for user-initiated cancellation
+          return;
+        }
+
         console.error('[IntelligentChatPanel] File upload failed:', uploadError);
         // Show more detailed error message to help debug
         const errorMessage = uploadError?.error || uploadError?.message || 'Unknown error';
@@ -222,6 +248,7 @@ export function IntelligentChatPanel({
         }
       } finally {
         setIsUploading(false);
+        uploadAbortControllerRef.current = null;
       }
     } else {
       sendMessage(content);
@@ -264,7 +291,11 @@ export function IntelligentChatPanel({
   }, []);
 
   const handleConnectGitHub = () => {
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const backendUrl = import.meta.env.VITE_API_URL;
+    if (!backendUrl) {
+      console.error('[IntelligentChatPanel] VITE_API_URL is not configured');
+      return;
+    }
     const frontendUrl = window.location.origin;
     const returnPath = window.location.pathname + window.location.search;
 
@@ -330,7 +361,11 @@ export function IntelligentChatPanel({
   }, []);
 
   const handleConnectGitLab = () => {
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const backendUrl = import.meta.env.VITE_API_URL;
+    if (!backendUrl) {
+      console.error('[IntelligentChatPanel] VITE_API_URL is not configured');
+      return;
+    }
     const frontendUrl = window.location.origin;
     const returnPath = window.location.pathname + window.location.search;
 
@@ -384,7 +419,11 @@ export function IntelligentChatPanel({
   }, []);
 
   const handleConnectFigma = () => {
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const backendUrl = import.meta.env.VITE_API_URL;
+    if (!backendUrl) {
+      console.error('[IntelligentChatPanel] VITE_API_URL is not configured');
+      return;
+    }
     const frontendUrl = window.location.origin;
     const returnPath = window.location.pathname + window.location.search;
 
@@ -1445,6 +1484,9 @@ export function IntelligentChatPanel({
         ) : undefined
       }
       enableAttachments={true}
+      isUploading={isUploading}
+      onCancelUpload={handleCancelUpload}
+      onCancelProcessing={cancelProcessing}
     />
   );
 }

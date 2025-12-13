@@ -301,9 +301,9 @@ export function BattleInvitePage() {
               </motion.div>
 
               <h1 className="text-2xl font-bold text-white mb-2">
-                How Are Your<br />Prompt Engineering Skills?
+                You've Been Challenged<br />to a Prompt Battle
               </h1>
-              <p className="text-slate-400">You've been challenged to a prompt battle</p>
+              <p className="text-slate-400">How are your prompt engineering skills?</p>
             </div>
 
             {/* Challenger info */}

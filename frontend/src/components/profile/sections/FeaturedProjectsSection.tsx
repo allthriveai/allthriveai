@@ -166,8 +166,8 @@ function FeaturedProjectCard({
             </span>
           )}
 
-          {/* External link indicator */}
-          {hasExternalUrl && (
+          {/* External link indicator - hide for github_repo since they link to internal pages */}
+          {hasExternalUrl && project.type !== 'github_repo' && (
             <span className="absolute top-3 right-3 p-1.5 bg-white/90 dark:bg-gray-900/90 rounded-full backdrop-blur-sm">
               <ArrowTopRightOnSquareIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </span>

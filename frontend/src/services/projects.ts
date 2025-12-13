@@ -29,6 +29,7 @@ interface ProjectApiResponse {
   heartCount?: number;
   isLikedByUser?: boolean;
   content?: ProjectContent;
+  publishedDate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -68,6 +69,7 @@ function transformProject(data: ProjectApiResponse): Project {
     heartCount: data.heartCount || 0,
     isLikedByUser: data.isLikedByUser || false,
     content: data.content || {},
+    publishedDate: data.publishedDate,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };

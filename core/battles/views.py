@@ -3,10 +3,13 @@
 import bleach
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponse
 from django.utils import timezone
+from django.utils.html import escape
 from django_ratelimit.decorators import ratelimit
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -86,23 +89,19 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
         """Submit a prompt for a battle."""
+        from core.battles.phase_utils import can_submit_prompt
+
         battle = self.get_object()
 
-        # Validate user is participant
-        if request.user not in [battle.challenger, battle.opponent]:
-            return Response({'error': 'You are not a participant in this battle.'}, status=status.HTTP_403_FORBIDDEN)
+        # Use centralized submission validation (includes participant, phase, turn, and status checks)
+        result = can_submit_prompt(battle, request.user, check_existing=True)
+        if not result:
+            # Determine appropriate status code based on error
+            if 'not a participant' in (result.error or ''):
+                return Response({'error': result.error}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': result.error}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if already submitted
-        if BattleSubmission.objects.filter(battle=battle, user=request.user).exists():
-            return Response(
-                {'error': 'You have already submitted a prompt for this battle.'}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Check battle status
-        if battle.status != BattleStatus.ACTIVE:
-            return Response({'error': 'Battle is not active.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if expired
+        # Check if expired (separate check as it triggers expiration)
         if battle.is_expired:
             battle.expire_battle()
             return Response({'error': 'Battle has expired.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -111,10 +110,9 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
         battle_service = BattleService()
         try:
             submission = battle_service.submit_prompt(
-                battle_id=battle.id,
+                battle=battle,
                 user=request.user,
                 prompt_text=request.data.get('prompt_text', ''),
-                submission_type=request.data.get('submission_type', 'text'),
             )
 
             serializer = BattleSubmissionSerializer(submission)
@@ -1120,9 +1118,12 @@ def get_battle_share_data(request, battle_id):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    # Build the share URL
+    # Build the share URLs
     base_url = settings.FRONTEND_URL
     battle_url = f'{base_url}/battles/{battle.id}'
+    # Use root-level share URL for social platforms (has OG tags for crawlers)
+    # This uses the same domain as frontend, which serves HTML with OG meta tags
+    share_page_url = f'{base_url}/battles/{battle.id}/share'
 
     # Get winner info for share text
     winner_username = battle.winner.username if battle.winner else None
@@ -1169,11 +1170,13 @@ def get_battle_share_data(request, battle_id):
     )
 
     # Build platform share URLs
+    # Use share_page_url for platforms that need OG tags (LinkedIn, Facebook)
+    # Use battle_url for platforms that work with text (Twitter, Reddit, Email)
     platform_urls = {
-        'twitter': f'https://twitter.com/intent/tweet?{urlencode({"text": twitter_text, "url": battle_url})}',
-        'facebook': f'https://www.facebook.com/sharer/sharer.php?{urlencode({"u": battle_url})}',
-        'linkedin': f'https://www.linkedin.com/sharing/share-offsite/?{urlencode({"url": battle_url})}',
-        'reddit': f'https://www.reddit.com/submit?{urlencode({"url": battle_url, "title": reddit_title})}',
+        'twitter': f'https://twitter.com/intent/tweet?{urlencode({"text": twitter_text, "url": share_page_url})}',
+        'facebook': f'https://www.facebook.com/sharer/sharer.php?{urlencode({"u": share_page_url})}',
+        'linkedin': f'https://www.linkedin.com/sharing/share-offsite/?{urlencode({"url": share_page_url})}',
+        'reddit': f'https://www.reddit.com/submit?{urlencode({"url": share_page_url, "title": reddit_title})}',
         'email': f'mailto:?{urlencode({"subject": email_subject, "body": email_body})}',
     }
 
@@ -1571,3 +1574,88 @@ def _serialize_async_battle(battle: PromptBattle, user) -> dict:
         'is_winner': battle.winner_id == user.id if battle.winner_id else None,
         'created_at': battle.created_at.isoformat() if battle.created_at else None,
     }
+
+
+# =============================================================================
+# SOCIAL SHARE PAGE (HTML with OG tags for crawlers)
+# =============================================================================
+
+
+def battle_share_page(request, battle_id):
+    """Serve HTML page with OG meta tags for social media crawlers.
+
+    Social platforms (LinkedIn, Facebook, Twitter) don't execute JavaScript,
+    so they can't see meta tags set by React. This endpoint serves a minimal
+    HTML page with proper OG tags that redirects browsers to the SPA.
+
+    Args:
+        battle_id: The ID of the battle to share
+
+    Returns:
+        HTML page with OG meta tags
+    """
+    from django.shortcuts import get_object_or_404
+
+    battle = get_object_or_404(
+        PromptBattle.objects.select_related('challenger', 'opponent', 'winner'),
+        id=battle_id,
+    )
+
+    # Build URLs
+    frontend_url = settings.FRONTEND_URL
+    spa_url = f'{frontend_url}/battles/{battle.id}'
+
+    # Get battle info for meta tags
+    challenge_preview = battle.challenge_text[:100] + ('...' if len(battle.challenge_text) > 100 else '')
+
+    if battle.winner:
+        title = f'@{battle.winner.username} won this Prompt Battle!'
+        description = f'Challenge: "{challenge_preview}" - See who created the better AI image!'
+    else:
+        title = 'Prompt Battle Results'
+        description = f'Challenge: "{challenge_preview}" - Two players competed to create the best AI image!'
+
+    og_image = battle.og_image_url or f'{frontend_url}/og-image.jpg'
+
+    # Escape values for HTML
+    title = escape(title)
+    description = escape(description)
+    challenge_preview = escape(challenge_preview)
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title} | All Thrive AI</title>
+    <meta name="description" content="{description}">
+
+    <!-- Open Graph / Facebook / LinkedIn -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="{spa_url}">
+    <meta property="og:title" content="{title}">
+    <meta property="og:description" content="{description}">
+    <meta property="og:image" content="{og_image}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="All Thrive AI">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="{spa_url}">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+    <meta name="twitter:image" content="{og_image}">
+
+    <!-- Redirect browsers to SPA (crawlers don't execute JS) -->
+    <script>window.location.href = "{spa_url}";</script>
+    <noscript>
+        <meta http-equiv="refresh" content="0;url={spa_url}">
+    </noscript>
+</head>
+<body>
+    <p>Redirecting to <a href="{spa_url}">battle results</a>...</p>
+</body>
+</html>"""
+
+    return HttpResponse(html, content_type='text/html')

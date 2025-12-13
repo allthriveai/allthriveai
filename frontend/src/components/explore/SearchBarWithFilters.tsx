@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MagnifyingGlassIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { Taxonomy } from '@/types/models';
-import { FilterDropdown, SelectedFilters } from './FilterDropdown';
+import { FilterDropdown, SelectedFilters, type ContentTypeKey } from './FilterDropdown';
 
 interface SearchBarWithFiltersProps {
   onSearch: (query: string) => void;
@@ -12,8 +12,10 @@ interface SearchBarWithFiltersProps {
   tools?: Array<{ id: number; name: string; slug: string; logoUrl?: string }>;
   selectedTopics?: string[];  // Category slugs
   selectedToolSlugs?: string[];
+  selectedContentType?: ContentTypeKey;
   onTopicsChange?: (topicSlugs: string[]) => void;  // Category slugs
   onToolsChange?: (toolSlugs: string[]) => void;
+  onContentTypeChange?: (type: ContentTypeKey) => void;
   showFilters?: boolean;
   openFiltersByDefault?: boolean;
 }
@@ -26,8 +28,10 @@ export function SearchBarWithFilters({
   tools = [],
   selectedTopics = [],
   selectedToolSlugs = [],
+  selectedContentType = 'all',
   onTopicsChange,
   onToolsChange,
+  onContentTypeChange,
   showFilters = false,
 }: SearchBarWithFiltersProps) {
   const [query, setQuery] = useState(initialValue);
@@ -52,12 +56,18 @@ export function SearchBarWithFilters({
     onToolsChange?.(selectedToolSlugs.filter((s) => s !== slug));
   };
 
+  const handleRemoveContentType = () => {
+    onContentTypeChange?.('all');
+  };
+
   const handleClearAll = () => {
     onTopicsChange?.([]);
     onToolsChange?.([]);
+    onContentTypeChange?.('all');
   };
 
-  const totalSelected = selectedTopics.length + selectedToolSlugs.length;
+  const hasContentTypeFilter = selectedContentType !== 'all';
+  const totalSelected = selectedTopics.length + selectedToolSlugs.length + (hasContentTypeFilter ? 1 : 0);
 
   return (
     <div className="space-y-3">
@@ -105,8 +115,11 @@ export function SearchBarWithFilters({
                 tools={tools}
                 selectedCategorySlugs={selectedTopics}
                 selectedToolSlugs={selectedToolSlugs}
+                selectedContentType={selectedContentType}
                 onCategoriesChange={onTopicsChange || (() => {})}
                 onToolsChange={onToolsChange || (() => {})}
+                onContentTypeChange={onContentTypeChange}
+                showContentTypes={true}
                 compact
               />
             )}
@@ -131,8 +144,10 @@ export function SearchBarWithFilters({
           tools={tools}
           selectedCategorySlugs={selectedTopics}
           selectedToolSlugs={selectedToolSlugs}
+          selectedContentType={selectedContentType}
           onRemoveCategory={handleRemoveCategory}
           onRemoveTool={handleRemoveTool}
+          onRemoveContentType={handleRemoveContentType}
           onClearAll={handleClearAll}
         />
       )}

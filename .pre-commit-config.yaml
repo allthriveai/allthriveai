@@ -87,7 +87,7 @@ repos:
         name: No Hardcoded URLs
         entry: python scripts/pre-commit-hooks/check_no_hardcoded_urls.py
         language: python
-        files: \.py$
+        files: \.(py|ts|tsx|js|jsx)$
         exclude: |
           (?x)^(\
             .*/tests/.*|\
@@ -95,7 +95,8 @@ repos:
             .*/migrations/.*|\
             scripts/pre-commit-hooks/.*|\
             config/settings\.py$|\
-            tests/integration/.*\
+            tests/integration/.*|\
+            frontend/e2e/.*\
           )$
 
       # Check for missing permission classes

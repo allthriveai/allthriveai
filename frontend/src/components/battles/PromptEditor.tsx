@@ -12,6 +12,7 @@ import {
   SparklesIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/solid';
+import { useBattleTimer } from '@/hooks/useBattleTimer';
 
 interface PromptEditorProps {
   onSubmit: (prompt: string) => void;
@@ -30,35 +31,22 @@ export function PromptEditor({
   maxLength = 2000,
   disabled = false,
   placeholder = "Engineer your winning prompt! Be specific: describe the subject, art style (e.g. watercolor, 3D render), mood, lighting, composition, and camera angle. Detailed prompts score higher!",
-  timeRemaining: initialTimeRemaining,
+  timeRemaining: serverTimeRemaining,
 }: PromptEditorProps) {
   const [prompt, setPrompt] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [localTimeRemaining, setLocalTimeRemaining] = useState<number | null>(initialTimeRemaining ?? null);
 
-  // Sync with server time and start local countdown
-  useEffect(() => {
-    if (initialTimeRemaining !== null && initialTimeRemaining !== undefined) {
-      setLocalTimeRemaining(initialTimeRemaining);
-    }
-  }, [initialTimeRemaining]);
-
-  // Local countdown timer
-  useEffect(() => {
-    if (localTimeRemaining === null || localTimeRemaining <= 0 || disabled) {
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setLocalTimeRemaining((prev) => {
-        if (prev === null || prev <= 0) return prev;
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [localTimeRemaining, disabled]);
+  // Use centralized timer hook for consistent countdown behavior
+  const {
+    timeRemaining: localTimeRemaining,
+    formattedTime,
+    isWarning,
+    isCritical,
+  } = useBattleTimer({
+    serverTimeRemaining,
+    isActive: !disabled,
+  });
 
   const charCount = prompt.length;
   const isValid = charCount >= minLength && charCount <= maxLength;
@@ -108,14 +96,6 @@ export function PromptEditor({
     }
   };
 
-  // Format time remaining
-  const formatTime = (seconds: number) => {
-    const totalSeconds = Math.floor(seconds);
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -129,24 +109,24 @@ export function PromptEditor({
           <span className="text-white font-medium text-sm sm:text-base">Your Prompt</span>
         </label>
 
-        {localTimeRemaining !== null && localTimeRemaining !== undefined && (
+        {localTimeRemaining !== null && (
           <motion.div
             className={`
               px-3 py-1.5 rounded-full font-mono text-base sm:text-sm font-bold self-start sm:self-auto
-              ${localTimeRemaining <= 30
+              ${isCritical
                 ? 'bg-rose-500/20 text-rose-400 animate-pulse'
-                : localTimeRemaining <= 60
+                : isWarning
                 ? 'bg-amber-500/20 text-amber-400'
                 : 'bg-cyan-500/20 text-cyan-400'
               }
             `}
-            animate={localTimeRemaining <= 30 ? { scale: [1, 1.05, 1] } : {}}
+            animate={isCritical ? { scale: [1, 1.05, 1] } : {}}
             transition={{ repeat: Infinity, duration: 0.5 }}
             role="timer"
-            aria-live={localTimeRemaining <= 30 ? 'assertive' : 'polite'}
-            aria-label={`Time remaining: ${formatTime(localTimeRemaining)}`}
+            aria-live={isCritical ? 'assertive' : 'polite'}
+            aria-label={`Time remaining: ${formattedTime}`}
           >
-            {formatTime(localTimeRemaining)}
+            {formattedTime}
           </motion.div>
         )}
       </div>

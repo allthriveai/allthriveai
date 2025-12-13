@@ -132,10 +132,12 @@ export function InlineEditableTitle({
   }
 
   // Display mode (editable)
+  // Note: We avoid wrapping text in a span because gradient text classes (text-transparent bg-clip-text)
+  // only work when applied to the element directly containing the text, not a parent.
   return (
     <Component
       onClick={startEditing}
-      className={`group cursor-text hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg px-2 py-1 -mx-2 transition-colors ${className}`}
+      className={`group cursor-text hover:bg-white/10 rounded-lg px-2 py-1 -mx-2 transition-colors ${className}`}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -145,12 +147,10 @@ export function InlineEditableTitle({
         }
       }}
     >
-      <span className="relative">
-        {value || <span className="text-gray-400">{placeholder}</span>}
-        {showEditIcon && (
-          <PencilIcon className="w-4 h-4 inline-block ml-2 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-        )}
-      </span>
+      {value || <span className="text-gray-400">{placeholder}</span>}
+      {showEditIcon && (
+        <PencilIcon className="w-4 h-4 inline-block ml-2 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+      )}
     </Component>
   );
 }
@@ -268,10 +268,12 @@ export function InlineEditableText({
   }
 
   // Display mode (editable)
+  // Note: We avoid wrapping text in a span because gradient text classes (text-transparent bg-clip-text)
+  // only work when applied to the element directly containing the text, not a parent.
   return (
     <p
       onClick={startEditing}
-      className={`group cursor-text hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg px-2 py-1 -mx-2 transition-colors min-h-[2em] ${className}`}
+      className={`group cursor-text hover:bg-white/10 rounded-lg px-2 py-1 -mx-2 transition-colors min-h-[2em] ${className}`}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -281,12 +283,10 @@ export function InlineEditableText({
         }
       }}
     >
-      <span className="relative">
-        {value || <span className="text-gray-400 italic">{placeholder}</span>}
-        {showEditIcon && (
-          <PencilIcon className="w-4 h-4 inline-block ml-2 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-        )}
-      </span>
+      {value || <span className="text-gray-400 italic">{placeholder}</span>}
+      {showEditIcon && (
+        <PencilIcon className="w-4 h-4 inline-block ml-2 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+      )}
     </p>
   );
 }

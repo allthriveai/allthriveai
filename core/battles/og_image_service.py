@@ -10,6 +10,7 @@ import logging
 from typing import TYPE_CHECKING
 
 import requests
+from django.conf import settings
 from PIL import Image, ImageDraw, ImageFont
 
 from services.integrations.storage import get_storage_service
@@ -18,6 +19,25 @@ if TYPE_CHECKING:
     from core.battles.models import PromptBattle
 
 logger = logging.getLogger(__name__)
+
+
+def _get_internal_url(url: str) -> str:
+    """Convert public URL to internal URL for server-side access.
+
+    In Docker, public URLs use localhost:9000 but containers need minio:9000.
+    """
+    if not url:
+        return url
+
+    public_endpoint = getattr(settings, 'MINIO_ENDPOINT_PUBLIC', None)
+    internal_endpoint = getattr(settings, 'MINIO_ENDPOINT', None)
+
+    if public_endpoint and internal_endpoint and public_endpoint != internal_endpoint:
+        # Replace public endpoint with internal endpoint
+        return url.replace(public_endpoint, internal_endpoint)
+
+    return url
+
 
 # Image dimensions (Twitter/Facebook optimal)
 OG_WIDTH = 1200
@@ -166,13 +186,15 @@ def generate_battle_og_image(battle: 'PromptBattle') -> str | None:
         total_width = img_width * 2 + gap
         start_x = (OG_WIDTH - total_width) // 2
 
-        # Download player images
+        # Download player images (convert to internal URLs for Docker access)
         img1 = None
         img2 = None
         if challenger_sub.generated_output_url:
-            img1 = _download_image(challenger_sub.generated_output_url, (img_width, img_height))
+            internal_url = _get_internal_url(challenger_sub.generated_output_url)
+            img1 = _download_image(internal_url, (img_width, img_height))
         if opponent_sub.generated_output_url:
-            img2 = _download_image(opponent_sub.generated_output_url, (img_width, img_height))
+            internal_url = _get_internal_url(opponent_sub.generated_output_url)
+            img2 = _download_image(internal_url, (img_width, img_height))
 
         # Use placeholders if images unavailable
         if img1 is None:
