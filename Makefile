@@ -48,6 +48,7 @@ help:
 	@echo "  make add-tool        - Add a new tool (interactive, or: WEBSITE=url LOGO=filename.png)"
 	@echo "  make export-tools    - Export tools from database to YAML file"
 	@echo "  make load-tools      - Load tools from YAML file into database"
+	@echo "  make refresh-tool-news - Refresh What's New for tools (TOOL=slug, LIMIT=n, DRY_RUN=1)"
 	@echo "  make reset-db        - ⚠️  DANGER: Flush database and reseed"
 	@echo ""
 	@echo "Testing:"
@@ -241,6 +242,16 @@ endif
 export-tools:
 	@echo "Exporting tools to YAML..."
 	docker-compose exec web python manage.py export_tools
+
+refresh-tool-news:
+	@echo "Refreshing tool news..."
+ifdef TOOL
+	docker-compose exec -T web python manage.py refresh_tool_news --tool $(TOOL) $(if $(DRY_RUN),--dry-run,)
+else ifdef LIMIT
+	docker-compose exec -T web python manage.py refresh_tool_news --limit $(LIMIT) $(if $(DRY_RUN),--dry-run,)
+else
+	docker-compose exec -T web python manage.py refresh_tool_news $(if $(DRY_RUN),--dry-run,)
+endif
 
 load-tools:
 	@echo "Loading tools from YAML..."
