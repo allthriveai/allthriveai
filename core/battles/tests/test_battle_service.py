@@ -83,17 +83,33 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
         self.service = BattleService()
 
     def test_refresh_challenge_success_for_pip_battle(self):
-        """Test that refresh_challenge successfully refreshes prompt for Pip battles."""
+        """Test that refresh_challenge successfully refreshes prompt and challenge type for Pip battles."""
+        # Create a second challenge type so we can verify it changes
+        second_challenge_type = ChallengeType.objects.create(
+            key='pip_second_challenge',
+            name='Pip Second Challenge',
+            description='A second challenge for pip',
+            templates=['Pip second: {color}'],
+            variables={'color': ['red', 'blue']},
+        )
+
+        original_challenge_type_id = self.pip_battle.challenge_type_id
+
         # Test when user hasn't submitted yet
         new_challenge = self.service.refresh_challenge(self.pip_battle, self.user1)
 
         self.assertIsNotNone(new_challenge)
         self.assertNotEqual(new_challenge, 'Original challenge text')
-        self.assertTrue(new_challenge.startswith('Test challenge:'))
 
         # Verify battle was updated
         self.pip_battle.refresh_from_db()
         self.assertEqual(self.pip_battle.challenge_text, new_challenge)
+
+        # Verify challenge type was changed (should pick a different one)
+        self.assertNotEqual(self.pip_battle.challenge_type_id, original_challenge_type_id)
+
+        # Clean up
+        second_challenge_type.delete()
 
     def test_refresh_challenge_returns_none_for_non_pip_battle(self):
         """Test that refresh_challenge returns None for non-Pip battles."""
@@ -179,17 +195,31 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
 
         self.assertIsNone(new_challenge)
 
-    def test_refresh_challenge_no_challenge_type(self):
-        """Test that refresh_challenge returns None if battle has no challenge_type."""
+    def test_refresh_challenge_assigns_challenge_type_if_none(self):
+        """Test that refresh_challenge assigns a random challenge type if battle has none."""
         self.pip_battle.challenge_type = None
         self.pip_battle.save()
 
         new_challenge = self.service.refresh_challenge(self.pip_battle, self.user1)
 
-        self.assertIsNone(new_challenge)
+        # Should pick a random challenge type and generate a challenge
+        self.assertIsNotNone(new_challenge)
+
+        # Verify battle now has a challenge type
+        self.pip_battle.refresh_from_db()
+        self.assertIsNotNone(self.pip_battle.challenge_type)
 
     def test_refresh_challenge_success_for_pending_invitation_battle(self):
         """Test that refresh_challenge works for invitation battles before opponent joins."""
+        # Create a second challenge type so we can verify it changes
+        second_challenge_type = ChallengeType.objects.create(
+            key='second_challenge',
+            name='Second Challenge',
+            description='A second challenge',
+            templates=['Second challenge: {mood}'],
+            variables={'mood': ['happy', 'sad']},
+        )
+
         # Create invitation battle with no opponent yet
         invitation_battle = PromptBattle.objects.create(
             challenger=self.user1,
@@ -200,15 +230,22 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
             status=BattleStatus.PENDING,
         )
 
+        original_challenge_type_id = invitation_battle.challenge_type_id
+
         new_challenge = self.service.refresh_challenge(invitation_battle, self.user1)
 
         self.assertIsNotNone(new_challenge)
         self.assertNotEqual(new_challenge, 'Original invitation challenge')
-        self.assertTrue(new_challenge.startswith('Test challenge:'))
 
         # Verify battle was updated
         invitation_battle.refresh_from_db()
         self.assertEqual(invitation_battle.challenge_text, new_challenge)
+
+        # Verify challenge type was changed (should pick the other one)
+        self.assertNotEqual(invitation_battle.challenge_type_id, original_challenge_type_id)
+
+        # Clean up
+        second_challenge_type.delete()
 
     def test_refresh_challenge_returns_none_for_non_challenger_invitation(self):
         """Test that only the challenger can refresh invitation battles."""

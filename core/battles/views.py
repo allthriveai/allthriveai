@@ -172,16 +172,23 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Refresh battle from DB to get updated timer
+        # Refresh battle from DB to get updated timer and challenge type
         battle.refresh_from_db()
 
-        return Response(
-            {
-                'challenge_text': new_challenge,
-                'time_remaining': battle.time_remaining,
-                'message': 'Challenge refreshed!',
+        response_data = {
+            'challenge_text': new_challenge,
+            'time_remaining': battle.time_remaining,
+            'message': 'Challenge refreshed!',
+        }
+
+        # Include challenge type if it was updated
+        if battle.challenge_type:
+            response_data['challenge_type'] = {
+                'key': battle.challenge_type.key,
+                'name': battle.challenge_type.name,
             }
-        )
+
+        return Response(response_data)
 
     @action(detail=True, methods=['post'], url_path='update-challenge')
     def update_challenge(self, request, pk=None):

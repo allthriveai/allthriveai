@@ -49,6 +49,7 @@ export function BattlePage() {
   const [isRefreshingChallenge, setIsRefreshingChallenge] = useState(false);
   const [localChallengeText, setLocalChallengeText] = useState<string | null>(null);
   const [localTimeRemaining, setLocalTimeRemaining] = useState<number | null>(null);
+  const [localChallengeType, setLocalChallengeType] = useState<{ key: string; name: string } | null>(null);
   const [showGuestSignupBanner, setShowGuestSignupBanner] = useState(false);
   const [showGuestSignupModal, setShowGuestSignupModal] = useState(false);
   const [notification, setNotification] = useState<{
@@ -398,7 +399,7 @@ export function BattlePage() {
     }
   }, [battleId, handleError]);
 
-  // Handle challenge refresh (Pip battles only)
+  // Handle challenge refresh (Pip battles and invitation battles)
   const handleRefreshChallenge = useCallback(async () => {
     if (!battleId) return;
 
@@ -408,8 +409,12 @@ export function BattlePage() {
       // API interceptor transforms snake_case to camelCase
       const newChallenge = response.data.challengeText;
       const newTimeRemaining = response.data.timeRemaining;
+      const newChallengeType = response.data.challengeType;
       setLocalChallengeText(newChallenge);
       setLocalTimeRemaining(newTimeRemaining);
+      if (newChallengeType) {
+        setLocalChallengeType(newChallengeType);
+      }
     } catch (error) {
       logError('Failed to refresh challenge', error as Error, {
         component: 'BattlePage',
@@ -499,7 +504,7 @@ export function BattlePage() {
           return (
             <ChallengeReadyScreen
               challengeText={localChallengeText || battleState.challengeText}
-              challengeType={battleState.challengeType || undefined}
+              challengeType={localChallengeType || battleState.challengeType || undefined}
               inviteUrl={currentInviteUrl}
               hasSubmitted={!!battleState.mySubmission}
               onStartTurn={handleStartChallengeTurn}

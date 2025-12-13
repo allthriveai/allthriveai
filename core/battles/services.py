@@ -156,17 +156,28 @@ class BattleService:
             logger.warning(f'Refresh attempted on battle {battle.id} in phase {battle.phase}')
             return None
 
-        # Generate new challenge from the same challenge type
-        if battle.challenge_type:
-            new_challenge = battle.challenge_type.generate_challenge()
-        else:
+        # Pick a new random challenge type (different from current if possible)
+        new_challenge_type = (
+            ChallengeType.objects.filter(is_active=True)
+            .exclude(id=battle.challenge_type_id if battle.challenge_type else None)
+            .order_by('?')
+            .first()
+        )
+        # Fall back to any active challenge type if exclusion left none
+        if not new_challenge_type:
+            new_challenge_type = ChallengeType.objects.filter(is_active=True).order_by('?').first()
+
+        if not new_challenge_type:
             return None
 
-        # Update battle with new challenge and reset timer
+        new_challenge = new_challenge_type.generate_challenge()
+        battle.challenge_type = new_challenge_type
+
+        # Update battle with new challenge, challenge type, and reset timer
         battle.challenge_text = new_challenge
         battle.started_at = timezone.now()
         battle.expires_at = battle.started_at + timezone.timedelta(minutes=battle.duration_minutes)
-        battle.save(update_fields=['challenge_text', 'started_at', 'expires_at'])
+        battle.save(update_fields=['challenge_text', 'challenge_type', 'started_at', 'expires_at'])
 
         logger.info(
             f'Challenge refreshed for battle {battle.id}, timer reset to {battle.duration_minutes} minutes',
