@@ -3,13 +3,13 @@ import { PitchSlide, GradientText } from '../PitchSlide';
 
 const narrative = [
   { text: 'Three years ago, there was ChatGPT.', delay: 0.3 },
-  { text: 'Then came Claude. Loveable. Runway. Gemini Veo3 and Nano Banana.', delay: 0.8 },
+  { text: 'Then came Claude. Loveable. Gemini Veo3 and Nano Banana.', delay: 0.8 },
   { text: 'Today, there are thousands of AI tools.', delay: 1.4, highlight: true },
   { text: 'Every week, another breakthrough.', delay: 2.0 },
 ];
 
-const tension = 'But creators are overwhelmed.';
-const resolution = 'They need a vendor-neutral home to learn, explore their creativity, and connect with other AI creators.';
+const tension = 'But creators are overwhelmed by choice.';
+const resolution = 'They need a vendor-neutral home to bring their creations together, learn through play—not courses—and grow with a community.';
 
 export function WhyNowSlide() {
   return (

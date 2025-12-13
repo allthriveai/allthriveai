@@ -148,17 +148,23 @@ interface BattleConnectionLostProps {
 }
 
 /**
- * Shown when WebSocket connection is lost during an active battle.
+ * Shown when WebSocket connection is temporarily disconnected during a battle.
+ * Uses friendly messaging since this often happens when users switch tabs.
  */
 export function BattleConnectionLost({ onLeave }: BattleConnectionLostProps) {
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center glass-card p-8 max-w-md">
-          <ExclamationTriangleIcon className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Connection Lost</h2>
+          {/* Reconnecting spinner instead of warning icon */}
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+            className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-cyan-500/30 border-t-cyan-500"
+          />
+          <h2 className="text-xl font-bold text-white mb-2">Reconnecting...</h2>
           <p className="text-slate-400 mb-4">
-            Attempting to reconnect to the battle...
+            Hold tight! We're getting you back into the battle.
           </p>
           <div className="flex gap-3 justify-center">
             <button onClick={onLeave} className="btn-secondary">

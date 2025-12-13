@@ -102,6 +102,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
     is_expired = serializers.ReadOnlyField()
     user_has_submitted = serializers.SerializerMethodField()
     can_submit = serializers.SerializerMethodField()
+    can_edit_challenge = serializers.SerializerMethodField()
     invite_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -131,6 +132,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
             'is_expired',
             'user_has_submitted',
             'can_submit',
+            'can_edit_challenge',
             'invite_url',
         ]
         read_only_fields = [
@@ -186,6 +188,42 @@ class PromptBattleSerializer(serializers.ModelSerializer):
         # Use centralized submission validation
         result = can_submit_prompt(obj, request.user, check_existing=True)
         return result.allowed
+
+    def get_can_edit_challenge(self, obj):
+        """Check if the current user can edit the challenge text.
+
+        Returns True if:
+        - User is the challenger
+        - Battle is still pending
+        - Opponent hasn't accepted yet (invitation still pending or no opponent)
+        """
+        from core.battles.models import BattleStatus, InvitationStatus
+
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+
+        # Must be the challenger
+        if request.user != obj.challenger:
+            return False
+
+        # Battle must be pending
+        if obj.status != BattleStatus.PENDING:
+            return False
+
+        # If opponent is already set, they've joined
+        if obj.opponent is not None:
+            return False
+
+        # Check invitation status
+        try:
+            invitation = obj.invitation
+            if invitation and invitation.status != InvitationStatus.PENDING:
+                return False
+        except BattleInvitation.DoesNotExist:
+            pass
+
+        return True
 
     def get_invite_url(self, obj):
         """Get the invite URL for invitation battles."""

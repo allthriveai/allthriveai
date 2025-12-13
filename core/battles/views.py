@@ -183,6 +183,80 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
             }
         )
 
+    @action(detail=True, methods=['post'], url_path='update-challenge')
+    def update_challenge(self, request, pk=None):
+        """Update the challenge prompt (challenger only, before opponent accepts).
+
+        Allows the challenger to modify the prompt if:
+        - They are the challenger
+        - The battle is still pending
+        - The opponent hasn't accepted the invitation yet
+        """
+        battle = self.get_object()
+
+        # Only challenger can update
+        if request.user != battle.challenger:
+            return Response(
+                {'error': 'Only the challenger can update the prompt.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Battle must still be pending
+        if battle.status != BattleStatus.PENDING:
+            return Response(
+                {'error': 'Cannot update prompt after the battle has started.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if opponent has accepted (if there's an invitation)
+        try:
+            invitation = battle.invitation
+            if invitation and invitation.status != InvitationStatus.PENDING:
+                return Response(
+                    {'error': 'Cannot update prompt after your opponent has seen the invitation.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        except BattleInvitation.DoesNotExist:
+            pass  # No invitation, check opponent directly
+
+        # If opponent is set and connected, they've seen it
+        if battle.opponent is not None:
+            return Response(
+                {'error': 'Cannot update prompt after an opponent has joined.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get and validate new challenge text
+        new_challenge = request.data.get('challenge_text', '').strip()
+        if not new_challenge:
+            return Response(
+                {'error': 'Challenge text is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new_challenge) < 10:
+            return Response(
+                {'error': 'Challenge text must be at least 10 characters.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new_challenge) > 500:
+            return Response(
+                {'error': 'Challenge text must be less than 500 characters.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Update the challenge
+        battle.challenge_text = new_challenge
+        battle.save(update_fields=['challenge_text'])
+
+        return Response(
+            {
+                'challenge_text': battle.challenge_text,
+                'message': 'Challenge prompt updated!',
+            }
+        )
+
     @action(detail=True, methods=['post'])
     def save_to_profile(self, request, pk=None):
         """Save battle result as a project on user's profile."""
