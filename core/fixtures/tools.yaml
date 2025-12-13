@@ -1251,7 +1251,7 @@ tools:
   category: code
   tool_type: ai_tool
   website_url: https://gofastmcp.com/
-  logo_url: /logos/fastmcp-logo.png
+  logo_url: /logos/fast-mcp.png
   pricing_model: open_source
   has_free_tier: true
   usage_tips:
@@ -2207,6 +2207,47 @@ tools:
     title: Performance Tracing
     description: AI agents can now record and analyze performance traces, identifying bottlenecks and
       providing optimization recommendations.
+- name: Model Context Protocol (MCP)
+  tagline: Open standard for connecting AI applications to external systems
+  description: MCP is an open-source protocol that standardizes how AI applications connect to data sources,
+    tools, and workflows. Think of it like USB-C for AI - a universal way to plug AI into external systems.
+  category: developer_tools
+  tool_type: ai_tool
+  website_url: https://modelcontextprotocol.io
+  logo_url: /logos/mcp-logo.png
+  documentation_url: https://modelcontextprotocol.io/docs/getting-started/intro
+  pricing_model: freemium
+  has_free_tier: false
+  use_cases:
+  - title: Personal AI Assistants
+    description: Build AI assistants with calendar, notes, and file access
+  - title: Enterprise Chatbots
+    description: Query multiple organizational databases from a single interface
+  - title: Web App Generation
+    description: Generate applications from design files with AI
+  overview: |-
+    MCP (Model Context Protocol) is an open-source standard that enables AI applications to connect seamlessly with external systems. Like USB-C for electronics, MCP provides a universal interface for AI integrations.
+
+    **Key Capabilities**
+    - Connect to data sources (local files, databases)
+    - Access tools (search engines, calculators, APIs)
+    - Enable workflows with specialized prompts
+    - Permission-based access to personal data
+
+    **Benefits**
+    - Reduces complexity for developers building AI integrations
+    - Creates more capable AI assistants with contextual access
+    - Standardizes connections across different AI platforms
+  meta_description: MCP is an open-source protocol that standardizes how AI applications connect to data
+    sources, tools, and workflows. Think of it like USB-C for AI - a univers...
+  whats_new:
+  - date: '2025-12-09'
+    title: Donated to Linux Foundation
+    description: Anthropic donates MCP to the new Agentic AI Foundation (AAIF), co-founded with Block
+      and OpenAI. Over 10,000 active servers across ChatGPT, Cursor, Gemini, and VS Code.
+  - date: '2025-11-01'
+    title: Official SDK Release
+    description: SDKs now available for multiple programming languages
 - name: DALL-E
   company: OpenAI
   tagline: Image generation in ChatGPT
@@ -2717,6 +2758,35 @@ tools:
     title: Drupal AI Early Adopter Program
     description: Launched program helping organizations integrate AI capabilities into their Drupal platforms
       ahead of the curve.
+- name: Devpost
+  tagline: Where hackers come to build and ship
+  description: Devpost is the home for hackathons. Participate in online and in-person hackathons, discover
+    projects, and connect with the developer community.
+  category: productivity
+  tool_type: ai_tool
+  website_url: https://devpost.com/
+  logo_url: /logos/devpost-logo.png
+  pricing_model: free
+  has_free_tier: true
+  usage_tips:
+  - Create a strong profile showcasing your skills and past projects
+  - Join hackathons that align with your interests and skill level
+  - Use project galleries to learn from winning submissions
+  - Network with other participants to find teammates
+  - Submit your projects early to avoid last-minute technical issues
+  overview: Devpost is the leading platform for hackathons, connecting developers, designers, and innovators
+    worldwide. It hosts thousands of hackathons annually, from student competitions to corporate-sponsored
+    events. Users can discover upcoming events, form teams, submit projects, and showcase their work in
+    a portfolio format.
+  meta_description: Devpost is the home for hackathons. Participate in online and in-person hackathons,
+    discover projects, and connect with the developer community.
+  whats_new:
+  - date: '2024-12-01'
+    title: AI Hackathons
+    description: New category featuring AI-focused hackathons with industry sponsors
+  - date: '2024-11-15'
+    title: Team Matching
+    description: Improved algorithm for finding compatible teammates based on skills and interests
 - name: Go1
   tagline: AI-powered learning curation platform
   description: AI-powered learning curation platform that helps L&D professionals build and deliver personalized
