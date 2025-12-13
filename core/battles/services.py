@@ -105,7 +105,11 @@ class BattleService:
 
     def refresh_challenge(self, battle: PromptBattle, user: User) -> str | None:
         """
-        Refresh the challenge prompt for a battle (Pip battles only).
+        Refresh the challenge prompt for a battle.
+
+        Allowed for:
+        - Pip battles (AI opponent) before user submits
+        - Invitation battles before opponent joins (challenger only)
 
         Args:
             battle: The battle to refresh
@@ -116,18 +120,29 @@ class BattleService:
         """
         from core.users.models import UserRole
 
-        # Only allow refresh for Pip battles
+        # Check if this is a Pip battle
         pip_user = User.objects.filter(username='pip', role=UserRole.AGENT).first()
-        if not pip_user:
+        is_pip_battle = pip_user and (battle.opponent == pip_user or battle.challenger == pip_user)
+
+        # Check if this is an invitation battle waiting for opponent
+        is_pending_invitation = (
+            battle.match_source == MatchSource.INVITATION
+            and battle.opponent is None
+            and battle.status == BattleStatus.PENDING
+        )
+
+        # Must be either a Pip battle or pending invitation battle
+        if not is_pip_battle and not is_pending_invitation:
+            logger.warning(f'Refresh attempted on ineligible battle {battle.id}')
             return None
 
-        is_pip_battle = battle.opponent == pip_user or battle.challenger == pip_user
-        if not is_pip_battle:
-            logger.warning(f'Refresh attempted on non-Pip battle {battle.id}')
+        # For invitation battles, only the challenger can refresh
+        if is_pending_invitation and user != battle.challenger:
+            logger.warning(f'Non-challenger {user.id} tried to refresh invitation battle {battle.id}')
             return None
 
-        # User must be a participant (the human player)
-        if user not in [battle.challenger, battle.opponent]:
+        # For Pip battles, user must be a participant (the human player)
+        if is_pip_battle and user not in [battle.challenger, battle.opponent]:
             logger.warning(f'Non-participant {user.id} tried to refresh battle {battle.id}')
             return None
 
@@ -136,8 +151,8 @@ class BattleService:
             logger.warning(f'User {user.id} tried to refresh after submitting')
             return None
 
-        # Can't refresh if battle is not in waiting/countdown/active phase
-        if battle.phase not in [BattlePhase.WAITING, BattlePhase.COUNTDOWN, BattlePhase.ACTIVE]:
+        # For Pip battles, can't refresh if battle is not in waiting/countdown/active phase
+        if is_pip_battle and battle.phase not in [BattlePhase.WAITING, BattlePhase.COUNTDOWN, BattlePhase.ACTIVE]:
             logger.warning(f'Refresh attempted on battle {battle.id} in phase {battle.phase}')
             return None
 

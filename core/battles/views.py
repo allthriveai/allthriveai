@@ -160,7 +160,7 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='refresh-challenge')
     def refresh_challenge(self, request, pk=None):
-        """Refresh the challenge prompt (Pip battles only, before submission)."""
+        """Refresh the challenge prompt (Pip battles or pending invitation battles)."""
         battle = self.get_object()
 
         battle_service = BattleService()
@@ -168,7 +168,7 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
 
         if new_challenge is None:
             return Response(
-                {'error': 'Cannot refresh challenge. Only available for Pip battles before you submit.'},
+                {'error': 'Cannot refresh challenge. Only available before you submit and before opponent joins.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

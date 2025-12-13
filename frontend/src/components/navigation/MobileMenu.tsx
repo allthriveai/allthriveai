@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { XMarkIcon, ChevronDownIcon, PlusIcon, BoltIcon } from '@heroicons/react/24/outline';
+import { useTheme } from '@/hooks/useTheme';
+import { useSearchStore } from '@/hooks/useGlobalSearch';
+import { XMarkIcon, ChevronDownIcon, PlusIcon, BoltIcon, MagnifyingGlassIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { MenuSection, MenuItem } from './menuData';
 
@@ -15,6 +17,8 @@ interface MobileMenuProps {
 
 export function MobileMenu({ isOpen, onClose, menuSections, onAddProject }: MobileMenuProps) {
   const { user, isAuthenticated } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const { openSearch } = useSearchStore();
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [openSubItems, setOpenSubItems] = useState<string[]>([]);
@@ -71,6 +75,34 @@ export function MobileMenu({ isOpen, onClose, menuSections, onAddProject }: Mobi
             aria-label="Close menu"
           >
             <XMarkIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
+          </button>
+        </div>
+
+        {/* Utility Row - Search & Theme */}
+        <div className="relative p-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
+          {/* Search Button */}
+          <button
+            onClick={() => {
+              openSearch();
+              onClose();
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 dark:hover:bg-white/15 border border-white/20 hover:border-white/40 rounded-xl transition-all duration-300 hover:scale-105 backdrop-blur-xl"
+          >
+            <MagnifyingGlassIcon className="w-5 h-5 text-gray-800 dark:text-gray-200" />
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Search</span>
+          </button>
+
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 dark:hover:bg-white/15 border border-white/20 hover:border-white/40 transition-all duration-300 hover:scale-105 backdrop-blur-xl"
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? (
+              <SunIcon className="w-5 h-5 text-amber-300" />
+            ) : (
+              <MoonIcon className="w-5 h-5 text-indigo-600" />
+            )}
           </button>
         </div>
 

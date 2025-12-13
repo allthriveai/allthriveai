@@ -429,7 +429,13 @@ export function AsyncBattleProvider({ children }: AsyncBattleProviderProps) {
 
   // Computed values
   const urgentBattles = useMemo(
-    () => pendingBattles.filter((b) => b.isMyTurn),
+    () => pendingBattles.filter((b) => {
+      // Must be my turn
+      if (!b.isMyTurn) return false;
+      // Exclude expired battles (deadline has passed)
+      if (b.deadline && new Date(b.deadline).getTime() < Date.now()) return false;
+      return true;
+    }),
     [pendingBattles]
   );
 

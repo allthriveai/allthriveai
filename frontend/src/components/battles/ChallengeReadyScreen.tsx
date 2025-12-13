@@ -19,6 +19,7 @@ import {
   ClipboardDocumentCheckIcon,
   ShareIcon,
   ClockIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/solid';
 
 interface ChallengeReadyScreenProps {
@@ -31,6 +32,8 @@ interface ChallengeReadyScreenProps {
   hasSubmitted: boolean;
   onStartTurn: () => void;
   isStarting?: boolean;
+  onRefreshChallenge?: () => void;
+  isRefreshingChallenge?: boolean;
 }
 
 export function ChallengeReadyScreen({
@@ -40,6 +43,8 @@ export function ChallengeReadyScreen({
   hasSubmitted,
   onStartTurn,
   isStarting = false,
+  onRefreshChallenge,
+  isRefreshingChallenge = false,
 }: ChallengeReadyScreenProps) {
   const [copied, setCopied] = useState(false);
 
@@ -215,11 +220,27 @@ export function ChallengeReadyScreen({
           transition={{ delay: 0.3 }}
           className="glass-card p-6 mb-6"
         >
-          {challengeType && (
-            <div className="inline-block px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 text-xs font-medium mb-3">
-              {challengeType.name}
-            </div>
-          )}
+          <div className="flex items-start justify-between gap-4 mb-3">
+            {challengeType && (
+              <div className="inline-block px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 text-xs font-medium">
+                {challengeType.name}
+              </div>
+            )}
+
+            {/* Refresh Challenge Button */}
+            {onRefreshChallenge && (
+              <button
+                type="button"
+                onClick={onRefreshChallenge}
+                disabled={isRefreshingChallenge}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-700/50 text-slate-400 text-xs font-medium hover:bg-slate-700 hover:text-slate-300 disabled:opacity-50 transition-colors"
+                title="Get a different challenge"
+              >
+                <ArrowPathIcon className={`w-3.5 h-3.5 ${isRefreshingChallenge ? 'animate-spin' : ''}`} />
+                {isRefreshingChallenge ? 'Getting new...' : 'New Challenge'}
+              </button>
+            )}
+          </div>
 
           <p className="text-white text-lg leading-relaxed">
             {challengeText}

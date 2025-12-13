@@ -63,10 +63,22 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
         }}
       >
         <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-16 relative">
 
-            {/* Left Side - Logo & Main Nav */}
-            <div className="flex items-center gap-8">
+            {/* Centered Mobile Logo */}
+            <button
+              onClick={() => navigate('/explore')}
+              className="sm:hidden absolute left-1/2 -translate-x-1/2 flex items-center gap-2 text-gray-900 dark:text-white transition-all duration-300 hover:scale-105"
+            >
+              <img
+                src="/all-thrvie-logo.png"
+                alt="All Thrive"
+                className="h-8 w-auto"
+              />
+            </button>
+
+            {/* Left Side - Hamburger (mobile) & Logo + Nav (desktop) */}
+            <div className="flex items-center gap-4 sm:gap-8 shrink-0">
               {/* Mobile Hamburger */}
               <button
                 onClick={() => setMobileMenuOpen(true)}
@@ -76,10 +88,10 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
                 <Bars3Icon className="w-6 h-6 text-gray-800 dark:text-gray-100" />
               </button>
 
-              {/* Logo */}
+              {/* Logo - Hidden on mobile, shown on desktop */}
               <button
                 onClick={() => navigate('/explore')}
-                className="flex items-center gap-2 text-gray-900 dark:text-white transition-all duration-300 hover:scale-105"
+                className="hidden sm:flex items-center gap-2 text-gray-900 dark:text-white transition-all duration-300 hover:scale-105"
               >
                 <img
                   src="/all-thrvie-logo.png"
@@ -118,7 +130,7 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
             </div>
 
             {/* Right Side - Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-end gap-2">
               {/* Active Quest Indicator */}
               {isAuthenticated && activeQuest && onOpenActiveQuest && (
                 <ActiveQuestIndicator
@@ -131,25 +143,10 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
                 />
               )}
 
-              {/* Mobile Add Project Button */}
-              {isAuthenticated && user?.username && onAddProject && (
-                <button
-                  onClick={onAddProject}
-                  className="sm:hidden p-2 rounded-xl transition-all duration-300 hover:scale-105 border border-white/20"
-                  style={{
-                    background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
-                    boxShadow: '0 2px 8px rgba(34, 211, 238, 0.15)',
-                  }}
-                  aria-label="Add Project"
-                >
-                  <PlusIcon className="w-5 h-5 text-slate-900" />
-                </button>
-              )}
-
-              {/* Search Button */}
+              {/* Search Button - Hidden on mobile, in hamburger menu */}
               <button
                 onClick={openSearch}
-                className="p-2 rounded-xl hover:bg-white/[0.08] border border-transparent hover:border-white/30 transition-all duration-300 hover:scale-105"
+                className="hidden sm:block p-2 rounded-xl hover:bg-white/[0.08] border border-transparent hover:border-white/30 transition-all duration-300 hover:scale-105"
                 aria-label="Search"
                 title="Search (⌘K)"
               >
@@ -199,10 +196,10 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
                 </button>
               )}
 
-              {/* Theme Toggle */}
+              {/* Theme Toggle - Hidden on mobile, in hamburger menu */}
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-xl hover:bg-white/[0.08] border border-transparent hover:border-white/30 transition-all duration-300 hover:scale-105"
+                className="hidden sm:block p-2 rounded-xl hover:bg-white/[0.08] border border-transparent hover:border-white/30 transition-all duration-300 hover:scale-105"
                 aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
               >
                 {theme === 'dark' ? (

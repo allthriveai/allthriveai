@@ -498,12 +498,14 @@ export function BattlePage() {
           const currentInviteUrl = battleState.inviteUrl || `${window.location.origin}/battle/invite/${battleId}`;
           return (
             <ChallengeReadyScreen
-              challengeText={battleState.challengeText}
+              challengeText={localChallengeText || battleState.challengeText}
               challengeType={battleState.challengeType || undefined}
               inviteUrl={currentInviteUrl}
               hasSubmitted={!!battleState.mySubmission}
               onStartTurn={handleStartChallengeTurn}
               isStarting={isStartingTurn}
+              onRefreshChallenge={handleRefreshChallenge}
+              isRefreshingChallenge={isRefreshingChallenge}
             />
           );
         }

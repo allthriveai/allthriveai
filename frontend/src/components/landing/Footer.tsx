@@ -144,7 +144,7 @@ export function Footer() {
               Terms of Service
             </Link>
           </p>
-          <p className="text-gray-500 dark:text-gray-500 text-sm">
+          <p className="text-gray-500 dark:text-gray-500 text-sm text-center">
             Create with AI anywhere. Consolidate here. Thrive together.
           </p>
         </div>

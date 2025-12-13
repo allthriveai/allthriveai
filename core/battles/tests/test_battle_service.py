@@ -188,6 +188,69 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
 
         self.assertIsNone(new_challenge)
 
+    def test_refresh_challenge_success_for_pending_invitation_battle(self):
+        """Test that refresh_challenge works for invitation battles before opponent joins."""
+        # Create invitation battle with no opponent yet
+        invitation_battle = PromptBattle.objects.create(
+            challenger=self.user1,
+            opponent=None,  # Opponent hasn't joined yet
+            challenge_text='Original invitation challenge',
+            challenge_type=self.challenge_type,
+            match_source=MatchSource.INVITATION,
+            status=BattleStatus.PENDING,
+        )
+
+        new_challenge = self.service.refresh_challenge(invitation_battle, self.user1)
+
+        self.assertIsNotNone(new_challenge)
+        self.assertNotEqual(new_challenge, 'Original invitation challenge')
+        self.assertTrue(new_challenge.startswith('Test challenge:'))
+
+        # Verify battle was updated
+        invitation_battle.refresh_from_db()
+        self.assertEqual(invitation_battle.challenge_text, new_challenge)
+
+    def test_refresh_challenge_returns_none_for_non_challenger_invitation(self):
+        """Test that only the challenger can refresh invitation battles."""
+        # Create invitation battle
+        invitation_battle = PromptBattle.objects.create(
+            challenger=self.user1,
+            opponent=None,
+            challenge_text='Original invitation challenge',
+            challenge_type=self.challenge_type,
+            match_source=MatchSource.INVITATION,
+            status=BattleStatus.PENDING,
+        )
+
+        # user2 is not the challenger
+        new_challenge = self.service.refresh_challenge(invitation_battle, self.user2)
+
+        self.assertIsNone(new_challenge)
+
+        # Verify battle was not updated
+        invitation_battle.refresh_from_db()
+        self.assertEqual(invitation_battle.challenge_text, 'Original invitation challenge')
+
+    def test_refresh_challenge_returns_none_after_opponent_joins(self):
+        """Test that refresh_challenge returns None after opponent has joined invitation."""
+        # Create invitation battle WITH opponent (they've already joined)
+        invitation_battle = PromptBattle.objects.create(
+            challenger=self.user1,
+            opponent=self.user2,  # Opponent has joined
+            challenge_text='Original invitation challenge',
+            challenge_type=self.challenge_type,
+            match_source=MatchSource.INVITATION,
+            status=BattleStatus.ACTIVE,
+        )
+
+        new_challenge = self.service.refresh_challenge(invitation_battle, self.user1)
+
+        self.assertIsNone(new_challenge)
+
+        # Verify battle was not updated
+        invitation_battle.refresh_from_db()
+        self.assertEqual(invitation_battle.challenge_text, 'Original invitation challenge')
+
 
 class BattleServiceParseJudgingResponseTestCase(TestCase):
     """Test cases for BattleService._parse_judging_response method."""

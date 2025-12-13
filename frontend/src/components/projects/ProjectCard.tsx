@@ -439,7 +439,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
               if (isYouTubeShort) {
                 return (
                   <div className="relative w-full flex justify-center bg-slate-900 pb-36 md:pb-0">
-                    <div className="relative w-full max-w-[280px]" style={{ aspectRatio: '9 / 16' }}>
+                    <div className="relative w-full" style={{ aspectRatio: '9 / 16' }}>
                       {!imageLoaded && (
                         <div className="absolute inset-0 w-full h-full bg-gray-800 animate-shimmer bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 rounded-lg" style={{ backgroundSize: '200% 200%' }} />
                       )}
