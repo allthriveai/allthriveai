@@ -21,6 +21,26 @@
         <div class="stat-value" style="font-size: 16px; font-weight: normal;">{{ reason }}</div>
     </div>
     {% endif %}
+    {% if excited_features %}
+    <div class="stat-item">
+        <div class="stat-label">Excited about</div>
+        <div class="stat-value" style="font-size: 14px; font-weight: normal;">
+            {% for feature in excited_features %}
+            <span style="display: inline-block; background: linear-gradient(135deg, #22d3ee, #4ade80); color: #0f172a; padding: 4px 12px; border-radius: 16px; font-size: 12px; margin: 2px;">{{ feature }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% if desired_integrations %}
+    <div class="stat-item">
+        <div class="stat-label">Wants to import from</div>
+        <div class="stat-value" style="font-size: 14px; font-weight: normal;">
+            {% for integration in desired_integrations %}
+            <span style="display: inline-block; background: linear-gradient(135deg, #a78bfa, #f472b6); color: #0f172a; padding: 4px 12px; border-radius: 16px; font-size: 12px; margin: 2px;">{{ integration }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
     <div class="stat-item">
         <div class="stat-label">Submitted</div>
         <div class="stat-value" style="font-size: 14px; font-weight: normal;">{{ submitted_at }}</div>

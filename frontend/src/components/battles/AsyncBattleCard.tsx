@@ -115,7 +115,7 @@ export function AsyncBattleCard({ battle }: AsyncBattleCardProps) {
 
           <div className="min-w-0">
             <p className="text-sm font-medium text-white truncate">
-              vs {battle.opponent?.username || 'Unknown'}
+              vs {battle.opponentDisplayName || battle.opponent?.username || 'Unknown'}
             </p>
             <p className="text-xs text-slate-400 truncate">
               {battle.challengeType?.name || battle.challengeText}

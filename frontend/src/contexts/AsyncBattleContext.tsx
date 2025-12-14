@@ -32,6 +32,8 @@ export interface AsyncBattle {
     username: string;
     avatarUrl?: string;
   } | null;
+  /** Display name for opponent (friend name if set by challenger, otherwise username) */
+  opponentDisplayName?: string;
   challengeText: string;
   challengeType: {
     key: string;
@@ -60,6 +62,7 @@ interface RawAsyncBattle {
     username: string;
     avatarUrl?: string;
   } | null;
+  opponentDisplayName?: string;
   challengeText: string;
   challengeType: {
     key: string;
@@ -94,6 +97,10 @@ export interface BattleHistoryItem {
   winner: { id: number; username: string } | null;
   createdAt: string;
   completedAt?: string;
+  /** Display name for opponent (friend name if set by challenger, otherwise username) */
+  opponentDisplayName?: string;
+  /** Friend name set by challenger for invitation battles */
+  friendName?: string;
 }
 
 interface BattleHistoryResponse {
@@ -161,6 +168,7 @@ export function AsyncBattleProvider({ children }: AsyncBattleProviderProps) {
       username: b.opponent.username,
       avatarUrl: b.opponent.avatarUrl,
     } : null,
+    opponentDisplayName: b.opponentDisplayName,
     challengeText: b.challengeText,
     challengeType: b.challengeType,
     isMyTurn,

@@ -607,32 +607,44 @@ class BattleConsumer(AsyncWebsocketConsumer):
         if remaining_seconds is not None:
             time_remaining = max(0, int(remaining_seconds))
 
-        # Build opponent data (handle null opponent for pending SMS invitations)
-        opponent_data = None
-        if opponent:
-            opponent_data = {
-                'id': opponent.id,
-                'username': opponent.username,
-                'avatar_url': getattr(opponent, 'avatar_url', None),
-                'connected': opponent_connected,
-            }
-        else:
-            # Placeholder for pending invitation - opponent hasn't accepted yet
-            opponent_data = {
-                'id': 0,
-                'username': 'Waiting for opponent...',
-                'avatar_url': None,
-                'connected': False,
-            }
-
-        # Get invite URL for invitation battles (so frontend can share the correct link)
+        # Get invitation data for invitation battles (friend name, invite URL)
         invite_url = None
+        friend_name = None
         if battle.match_source == MatchSource.INVITATION:
             try:
                 invitation = BattleInvitation.objects.get(battle=battle)
                 invite_url = invitation.invite_url
+                friend_name = invitation.recipient_name or None
             except BattleInvitation.DoesNotExist:
                 pass
+
+        # Build opponent data (handle null opponent for pending SMS invitations)
+        opponent_data = None
+        is_challenger = self.user.id == battle.challenger_id
+        if opponent:
+            # Use friend_name as display_name if set by challenger (and viewer is challenger)
+            display_name = opponent.username
+            if is_challenger and friend_name:
+                display_name = friend_name
+
+            opponent_data = {
+                'id': opponent.id,
+                'username': display_name,
+                'avatar_url': getattr(opponent, 'avatar_url', None),
+                'connected': opponent_connected,
+                'friend_name': friend_name if is_challenger else None,  # Only show friend_name to challenger
+            }
+        else:
+            # Placeholder for pending invitation - opponent hasn't accepted yet
+            # Use friend_name if set, otherwise generic message
+            placeholder_name = friend_name if friend_name else 'Waiting for opponent...'
+            opponent_data = {
+                'id': 0,
+                'username': placeholder_name,
+                'avatar_url': None,
+                'connected': False,
+                'friend_name': friend_name,
+            }
 
         # Determine if it's the current user's turn (for async battles)
         is_challenger = self.user.id == battle.challenger_id

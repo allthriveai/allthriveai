@@ -429,6 +429,317 @@ test.describe('Prompt Battles - Guest Invite Flow', () => {
     console.log('Full async battle flow completed successfully!');
   });
 
+  test('challenged user timer starts only when they click join, not before', async () => {
+    /**
+     * TDD TEST - Expected to fail until implementation is fixed
+     *
+     * SCENARIO: As a challenged user who receives a link to a battle who does not
+     *           accept right away and tries to join an active battle
+     *
+     * EXPECTED:
+     * 1. I should be able to join an active battle if the challenger is already in the battle
+     * 2. I should NOT have to wait for the other person to submit their turn to start
+     * 3. As the challenged user, my time should start when I click "join" (not before)
+     *
+     * CURRENT FAILURES:
+     * - Unable to join the battle
+     * - Unable to start my prompt challenge when I join
+     * - My time has already started before I get to type my prompt
+     */
+
+    // Create invite
+    const { token, url, id } = await createBattleInviteViaAPI(challengerPage);
+    inviteUrl = url;
+    inviteToken = token;
+    battleId = id;
+
+    // === STEP 1: Challenger navigates to battle and starts their turn ===
+    await challengerPage.goto(`/battles/${battleId}`);
+    await challengerPage.waitForLoadState('domcontentloaded');
+
+    // Look for "Start My Turn" button and click it
+    const startTurnButton = challengerPage.getByRole('button', { name: /start my turn/i });
+    await expect(startTurnButton).toBeVisible({ timeout: 10000 });
+    await startTurnButton.click();
+
+    // Wait for the battle arena to load with the prompt editor
+    await challengerPage.waitForTimeout(3000);
+
+    // Verify challenger is now in the battle (has a textarea to type prompt)
+    const challengerPromptArea = challengerPage.locator('textarea').first();
+    await expect(challengerPromptArea).toBeVisible({ timeout: 10000 });
+
+    console.log('Challenger has started their turn and can type their prompt');
+
+    // === STEP 2: Guest clicks invite link WHILE challenger is playing ===
+    await guestPage.goto(inviteUrl);
+    await guestPage.waitForLoadState('domcontentloaded');
+
+    // Guest should see the invite/join page (not an error)
+    const errorOnInvitePage = await guestPage.getByText(/error|failed|expired|no longer available/i)
+      .isVisible()
+      .catch(() => false);
+
+    // CRITICAL ASSERTION 1: No error when accessing invite while battle is active
+    expect(errorOnInvitePage).toBeFalsy();
+
+    // Find and verify "Continue as Guest" / "Join" button is visible
+    const joinButton = guestPage.getByRole('button', { name: /continue.*guest|join.*battle|join/i })
+      .or(guestPage.getByText('Continue as Guest'))
+      .or(guestPage.locator('[data-testid="join-battle-button"]'));
+
+    // CRITICAL ASSERTION 2: Guest CAN join an active battle
+    await expect(joinButton).toBeVisible({ timeout: 15000 });
+
+    console.log('Guest can see join button - about to click it');
+
+    // Record the time BEFORE clicking join
+    const _timeBeforeJoin = Date.now();
+
+    // === STEP 3: Guest clicks JOIN ===
+    await joinButton.click();
+
+    // Record the time AFTER clicking join
+    const _timeAfterJoin = Date.now();
+
+    // Should be redirected to the battle page
+    await guestPage.waitForURL(/\/battles\/\d+/, { timeout: 30000 });
+    await guestPage.waitForLoadState('domcontentloaded');
+
+    // Small wait for WebSocket connection and state to load
+    await guestPage.waitForTimeout(2000);
+
+    // === STEP 4: Verify guest can start their turn (not stuck in limbo) ===
+
+    // Guest should see EITHER:
+    // A) A "Start My Turn" button to begin their turn, OR
+    // B) The prompt textarea already visible to type immediately
+
+    const startMyTurnButton = guestPage.getByRole('button', { name: /start my turn/i });
+    const promptTextarea = guestPage.locator('textarea')
+      .or(guestPage.locator('[data-testid="prompt-editor"]'))
+      .or(guestPage.getByPlaceholder(/prompt|describe|create|type/i));
+
+    const hasStartButton = await startMyTurnButton.isVisible({ timeout: 5000 }).catch(() => false);
+    const hasTextarea = await promptTextarea.isVisible({ timeout: 5000 }).catch(() => false);
+
+    // Take screenshot for debugging
+    await guestPage.screenshot({ path: 'e2e-guest-battle-state.png' });
+
+    // CRITICAL ASSERTION 4: Guest must have a way to start their turn
+    // They should NOT be stuck in a "Ready" limbo state
+    if (!hasStartButton && !hasTextarea) {
+      console.error('FAIL: Guest has no way to start their turn - stuck in limbo!');
+      console.error('  - No "Start My Turn" button visible');
+      console.error('  - No prompt textarea visible');
+      console.error('  - Guest is stuck and cannot participate in the battle');
+    }
+
+    expect(hasStartButton || hasTextarea).toBeTruthy();
+
+    // If there's a Start button, click it to begin
+    if (hasStartButton) {
+      console.log('Guest sees "Start My Turn" button - clicking to start turn');
+
+      await startMyTurnButton.click();
+
+      // Wait for the arena to load
+      await guestPage.waitForTimeout(3000);
+
+      // Now should see the textarea
+      await expect(promptTextarea).toBeVisible({ timeout: 10000 });
+    }
+
+    // CRITICAL ASSERTION 5: Guest should now be able to type
+    const canTypePrompt = await promptTextarea.isVisible().catch(() => false);
+
+    if (!canTypePrompt) {
+      console.error('FAIL: Guest cannot see prompt editor - unable to type their prompt');
+      await guestPage.screenshot({ path: 'e2e-no-prompt-editor.png' });
+    }
+    expect(canTypePrompt).toBeTruthy();
+
+    // === STEP 6: Verify timer is at/near full time (not already counting down) ===
+    const guestTimer = guestPage.locator('[data-testid="battle-timer"]')
+      .or(guestPage.locator('[data-testid="timer"]'))
+      .or(guestPage.getByText(/\d+:\d+/).first());
+
+    const timerVisible = await guestTimer.isVisible({ timeout: 5000 }).catch(() => false);
+
+    if (timerVisible) {
+      const timerText = await guestTimer.textContent();
+      console.log(`Guest timer shows: ${timerText}`);
+
+      const timerMatch = timerText?.match(/(\d+):(\d+)/);
+      if (timerMatch) {
+        const minutes = parseInt(timerMatch[1], 10);
+        const seconds = parseInt(timerMatch[2], 10);
+        const totalSeconds = minutes * 60 + seconds;
+
+        // CRITICAL ASSERTION 6: Timer should be near the starting time
+        // (Battle timer is 3 minutes = 180 seconds, allow 10 seconds for load time)
+        const isNearStartingTime = totalSeconds >= 170;
+
+        if (!isNearStartingTime) {
+          console.error(`FAIL: Timer shows ${totalSeconds}s remaining - time started BEFORE user clicked start!`);
+          await guestPage.screenshot({ path: 'e2e-timer-started-early.png' });
+        }
+
+        expect(isNearStartingTime).toBeTruthy();
+        console.log(`Timer check passed: ${totalSeconds} seconds remaining (near full time)`);
+      }
+    }
+
+    // Verify we can actually type in the textarea
+    await promptTextarea.fill('Test prompt from challenged user');
+    const typedValue = await promptTextarea.inputValue();
+
+    // CRITICAL ASSERTION 7: Guest can actually type in the prompt editor
+    expect(typedValue).toBe('Test prompt from challenged user');
+
+    console.log('SUCCESS: Challenged user joined active battle, can start their turn, timer is correct');
+  });
+
+  test('challenger and challenged user can enter battle at the same time', async () => {
+    /**
+     * TDD TEST - Expected to fail until implementation is fixed
+     *
+     * SCENARIO: Challenger and challenged user can enter the prompt battle at the same time
+     *
+     * EXPECTED:
+     * 1. Both users can start playing simultaneously
+     * 2. Both users can see that they are playing together
+     * 3. Each user sees the other user's status (connected, typing, etc.)
+     *
+     * CURRENT FAILURE:
+     * - Unable to join the same battle
+     */
+
+    // Create invite
+    const { token, url, id } = await createBattleInviteViaAPI(challengerPage);
+    inviteUrl = url;
+    inviteToken = token;
+    battleId = id;
+
+    // === STEP 1: Challenger navigates to battle and starts their turn ===
+    await challengerPage.goto(`/battles/${battleId}`);
+    await challengerPage.waitForLoadState('domcontentloaded');
+
+    // Challenger clicks "Start My Turn"
+    const challengerStartButton = challengerPage.getByRole('button', { name: /start my turn/i });
+    await expect(challengerStartButton).toBeVisible({ timeout: 10000 });
+    await challengerStartButton.click();
+
+    // Wait for challenger to see the battle arena with prompt editor
+    const challengerTextarea = challengerPage.locator('textarea').first();
+    await expect(challengerTextarea).toBeVisible({ timeout: 10000 });
+
+    console.log('Challenger has started their turn and can see prompt editor');
+
+    // === STEP 2: Guest accepts invite and joins ===
+    await guestPage.goto(inviteUrl);
+    await guestPage.waitForLoadState('domcontentloaded');
+
+    const continueButton = guestPage.getByRole('button', { name: /continue.*guest/i });
+    await expect(continueButton).toBeVisible({ timeout: 15000 });
+    await continueButton.click();
+
+    // Guest redirected to battle page
+    await guestPage.waitForURL(/\/battles\/\d+/, { timeout: 30000 });
+    await guestPage.waitForLoadState('domcontentloaded');
+    await guestPage.waitForTimeout(2000);
+
+    console.log('Guest has joined the battle');
+
+    // === STEP 3: Guest starts their turn ===
+    const guestStartButton = guestPage.getByRole('button', { name: /start my turn/i });
+    const guestTextarea = guestPage.locator('textarea').first();
+
+    const hasGuestStartButton = await guestStartButton.isVisible({ timeout: 5000 }).catch(() => false);
+    const _hasGuestTextarea = await guestTextarea.isVisible({ timeout: 5000 }).catch(() => false);
+
+    // Guest should see either Start button or textarea
+    if (hasGuestStartButton) {
+      await guestStartButton.click();
+      await guestPage.waitForTimeout(3000);
+    }
+
+    // Now guest should see textarea
+    await expect(guestTextarea).toBeVisible({ timeout: 10000 });
+
+    console.log('Guest has started their turn and can see prompt editor');
+
+    // === STEP 4: Verify both users can see each other ===
+
+    // Take screenshots of both pages
+    await challengerPage.screenshot({ path: 'e2e-challenger-view.png' });
+    await guestPage.screenshot({ path: 'e2e-guest-view.png' });
+
+    // CRITICAL ASSERTION 1: Challenger should see the guest (opponent) in the battle
+    // Look for opponent card or opponent username on challenger's page
+    const _challengerOpponentCard = challengerPage.locator('[data-testid="opponent-card"]')
+      .or(challengerPage.getByText(/vs/i).locator('..').locator('..'));
+
+    // The opponent should not show "Waiting for opponent..." anymore
+    const waitingForOpponent = await challengerPage.getByText(/waiting for opponent/i)
+      .isVisible()
+      .catch(() => false);
+
+    if (waitingForOpponent) {
+      console.error('FAIL: Challenger still sees "Waiting for opponent" - guest not visible');
+    }
+    expect(waitingForOpponent).toBeFalsy();
+
+    // CRITICAL ASSERTION 2: Guest should see the challenger's username
+    // The guest page should show the challenger as their opponent
+    const guestSeesOpponent = await guestPage.getByText('e2e-test-user')
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
+
+    if (!guestSeesOpponent) {
+      console.error('FAIL: Guest cannot see challenger username');
+    }
+    expect(guestSeesOpponent).toBeTruthy();
+
+    console.log('Both users can see each other in the battle');
+
+    // === STEP 5: Verify both users can type simultaneously ===
+
+    // Challenger types a prompt
+    await challengerTextarea.fill('Challenger prompt: A beautiful sunset');
+    const challengerTyped = await challengerTextarea.inputValue();
+    expect(challengerTyped).toBe('Challenger prompt: A beautiful sunset');
+
+    // Guest types a prompt (should be able to type at the same time)
+    await guestTextarea.fill('Guest prompt: A peaceful mountain');
+    const guestTyped = await guestTextarea.inputValue();
+    expect(guestTyped).toBe('Guest prompt: A peaceful mountain');
+
+    console.log('Both users can type their prompts simultaneously');
+
+    // === STEP 6: Verify both users have their own timers ===
+
+    // Check challenger has a timer
+    const challengerTimer = challengerPage.getByText(/\d+:\d+/).first();
+    const challengerHasTimer = await challengerTimer.isVisible({ timeout: 5000 }).catch(() => false);
+
+    // Check guest has a timer
+    const guestTimer = guestPage.getByText(/\d+:\d+/).first();
+    const guestHasTimer = await guestTimer.isVisible({ timeout: 5000 }).catch(() => false);
+
+    if (!challengerHasTimer) {
+      console.error('FAIL: Challenger does not see their timer');
+    }
+    if (!guestHasTimer) {
+      console.error('FAIL: Guest does not see their timer');
+    }
+
+    expect(challengerHasTimer).toBeTruthy();
+    expect(guestHasTimer).toBeTruthy();
+
+    console.log('SUCCESS: Both challenger and guest can play together in the same battle');
+  });
+
   test('challenger can see when battle completes', async () => {
     /**
      * SCENARIO: Challenger sends link, guest accepts and completes battle
@@ -479,6 +790,250 @@ test.describe('Prompt Battles - Guest Invite Flow', () => {
     expect(hasResults || hasBattleVisible).toBeTruthy();
 
     console.log('Challenger can see completed battle');
+  });
+
+  test('guest sees expired message when invite link has expired', async () => {
+    /**
+     * TDD TEST - Tests the expired invite link flow
+     *
+     * SCENARIO: As a challenged user who receives a link, when I try to access it
+     *           after 24 hours, I should see a clear "Challenge Expired" message
+     *
+     * EXPECTED:
+     * 1. Guest navigates to expired invite link
+     * 2. Should see "Challenge Expired" heading (not generic error)
+     * 3. Should see explanation that links are valid for 24 hours
+     * 4. Should see "Start a New Battle" and "Explore All Thrive" buttons
+     * 5. Should NOT see "Continue as Guest" button (invite is expired)
+     *
+     * FAILURE:
+     * - Generic error message instead of specific expired message
+     * - No clear explanation of what happened
+     * - No actionable buttons for the user
+     */
+
+    // === STEP 1: Create a battle invite ===
+    const { token, url, id } = await createBattleInviteViaAPI(challengerPage);
+    inviteUrl = url;
+    inviteToken = token;
+    battleId = id;
+
+    console.log(`Created battle ${battleId} with invite token ${inviteToken}`);
+
+    // === STEP 2: Expire the invite via test API ===
+    await expireInviteViaAPI(battleId, challengerPage);
+    console.log(`Expired invite for battle ${battleId}`);
+
+    // === STEP 3: Guest tries to access the expired link ===
+    await guestPage.goto(inviteUrl);
+    await guestPage.waitForLoadState('domcontentloaded');
+
+    // Wait for the page to load and process the error
+    await guestPage.waitForTimeout(3000);
+
+    // Take screenshot for debugging
+    await guestPage.screenshot({ path: 'e2e-expired-invite-page.png' });
+
+    // === STEP 4: Verify the expired error message is shown ===
+
+    // CRITICAL ASSERTION 1: Should see "Challenge Expired" heading
+    const expiredHeading = guestPage.getByRole('heading', { name: /challenge expired/i })
+      .or(guestPage.getByText(/challenge expired/i));
+    const hasExpiredHeading = await expiredHeading.isVisible({ timeout: 10000 }).catch(() => false);
+
+    if (!hasExpiredHeading) {
+      console.error('FAIL: "Challenge Expired" heading not visible');
+      const pageContent = await guestPage.content();
+      console.log('Page contains:', pageContent.substring(0, 1000));
+    }
+    expect(hasExpiredHeading).toBeTruthy();
+
+    // CRITICAL ASSERTION 2: Should see explanation about 24 hours
+    const explanationText = guestPage.getByText(/24 hours/i)
+      .or(guestPage.getByText(/only valid for/i));
+    const hasExplanation = await explanationText.isVisible({ timeout: 5000 }).catch(() => false);
+
+    if (!hasExplanation) {
+      console.error('FAIL: Explanation about 24-hour validity not visible');
+    }
+    expect(hasExplanation).toBeTruthy();
+
+    // CRITICAL ASSERTION 3: Should see "Start a New Battle" button
+    const startNewBattleButton = guestPage.getByRole('button', { name: /start.*new.*battle/i })
+      .or(guestPage.getByRole('link', { name: /start.*new.*battle/i }))
+      .or(guestPage.getByText(/start.*new.*battle/i));
+    const hasStartButton = await startNewBattleButton.isVisible({ timeout: 5000 }).catch(() => false);
+
+    if (!hasStartButton) {
+      console.error('FAIL: "Start a New Battle" button not visible');
+    }
+    expect(hasStartButton).toBeTruthy();
+
+    // CRITICAL ASSERTION 4: Should NOT see "Continue as Guest" button (invite is expired!)
+    const continueAsGuestButton = guestPage.getByRole('button', { name: /continue.*guest/i });
+    const hasContinueButton = await continueAsGuestButton.isVisible({ timeout: 2000 }).catch(() => false);
+
+    if (hasContinueButton) {
+      console.error('FAIL: "Continue as Guest" button should NOT be visible for expired invites');
+    }
+    expect(hasContinueButton).toBeFalsy();
+
+    // CRITICAL ASSERTION 5: Should see helpful next steps (Explore All Thrive option)
+    const exploreOption = guestPage.getByText('Explore All Thrive')
+      .or(guestPage.getByRole('link', { name: /explore all thrive/i }))
+      .or(guestPage.getByRole('button', { name: /explore all thrive/i }));
+    const hasExploreOption = await exploreOption.isVisible({ timeout: 5000 }).catch(() => false);
+
+    if (!hasExploreOption) {
+      console.error('FAIL: "Explore All Thrive" option not visible');
+    }
+    expect(hasExploreOption).toBeTruthy();
+
+    console.log('SUCCESS: Guest sees proper expired invite message with actionable options');
+  });
+
+  test('challenger can add friends name to challenge invite', async () => {
+    /**
+     * TDD TEST - Expected to fail until implementation is complete
+     *
+     * SCENARIO: As a challenger I want to be able to add my friend's name to the copy challenge link page
+     *
+     * EXPECTED:
+     * 1. I can add my friend's name on the challenge link page
+     * 2. When I start the battle, their name shows in their circle (opponent PlayerCard)
+     * 3. When they join (right away or later), their name still shows in their circle
+     * 4. I can see their name on tab=my-battles
+     *
+     * FAILURE:
+     * - Unable to add or see the challenged user's name in 3 places
+     */
+
+    const friendName = 'Alex Thompson';
+
+    // === STEP 1: Create battle invite ===
+    const { token, url, id } = await createBattleInviteViaAPI(challengerPage);
+    inviteUrl = url;
+    inviteToken = token;
+    battleId = id;
+
+    // Navigate to the battle page (shows ChallengeReadyScreen)
+    await challengerPage.goto(`/battles/${battleId}`);
+    await challengerPage.waitForLoadState('networkidle');
+
+    // Wait for WebSocket to connect and ChallengeReadyScreen to appear
+    // The "Start My Turn" button is unique to ChallengeReadyScreen
+    const startMyTurnButton = challengerPage.getByRole('button', { name: /start my turn/i });
+    await expect(startMyTurnButton).toBeVisible({ timeout: 30000 });
+    console.log('ChallengeReadyScreen loaded');
+
+    // === STEP 2: Find and fill the friend's name input ===
+    // CRITICAL ASSERTION 1: Should see an input field for friend's name
+    const friendNameInput = challengerPage.getByPlaceholder(/friend.*name|who.*challenging|opponent.*name/i)
+      .or(challengerPage.getByLabel(/friend.*name|opponent.*name/i))
+      .or(challengerPage.locator('input[name="friendName"]'))
+      .or(challengerPage.locator('input[data-testid="friend-name-input"]'));
+
+    const hasNameInput = await friendNameInput.isVisible({ timeout: 5000 }).catch(() => false);
+
+    if (!hasNameInput) {
+      console.error('FAIL: No input field found for friend\'s name on ChallengeReadyScreen');
+      // Take screenshot for debugging
+      await challengerPage.screenshot({ path: 'e2e-friend-name-input-missing.png' });
+    }
+    expect(hasNameInput).toBeTruthy();
+
+    // Fill in the friend's name
+    await friendNameInput.fill(friendName);
+    // Blur the input to trigger save
+    await friendNameInput.blur();
+    // Wait for save to complete
+    await challengerPage.waitForTimeout(1000);
+    console.log(`Filled friend name: ${friendName}`);
+
+    // === STEP 3: Start challenger's turn ===
+    // Use the button we already waited for above
+    await startMyTurnButton.click();
+
+    // Wait for battle arena to load
+    const challengerTextarea = challengerPage.locator('textarea').first();
+    await expect(challengerTextarea).toBeVisible({ timeout: 10000 });
+
+    // === STEP 4: Verify friend's name appears in opponent circle ===
+    // CRITICAL ASSERTION 2: Should see the friend's name in opponent card/circle
+    const opponentNameInArena = challengerPage.getByText(friendName);
+    const hasNameInArena = await opponentNameInArena.isVisible({ timeout: 5000 }).catch(() => false);
+
+    if (!hasNameInArena) {
+      console.error('FAIL: Friend\'s name not visible in opponent circle during battle');
+      await challengerPage.screenshot({ path: 'e2e-friend-name-in-arena-missing.png' });
+    }
+    expect(hasNameInArena).toBeTruthy();
+
+    console.log('Friend name visible in battle arena opponent circle');
+
+    // === STEP 5: Guest joins the battle ===
+    await guestPage.goto(inviteUrl);
+    await guestPage.waitForLoadState('domcontentloaded');
+
+    const continueButton = guestPage.getByRole('button', { name: /continue.*guest/i });
+    await expect(continueButton).toBeVisible({ timeout: 15000 });
+    await continueButton.click();
+
+    await guestPage.waitForURL(/\/battles\/\d+/, { timeout: 30000 });
+    await guestPage.waitForLoadState('domcontentloaded');
+
+    // Guest clicks "Start My Turn" if needed
+    const guestStartButton = guestPage.getByRole('button', { name: /start my turn/i });
+    if (await guestStartButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await guestStartButton.click();
+      await guestPage.waitForTimeout(2000);
+    }
+
+    console.log('Guest has joined the battle');
+
+    // Give time for WebSocket updates
+    await challengerPage.waitForTimeout(2000);
+
+    // === STEP 6: Verify friend's name STILL shows after they join ===
+    // The display name should persist even after the guest creates their account
+    // (Guest username like "guest_xxx" should NOT replace the friend name "Alex Thompson")
+    const stillHasNameInArena = await opponentNameInArena.isVisible().catch(() => false);
+
+    if (!stillHasNameInArena) {
+      console.error('FAIL: Friend\'s name was replaced by guest username after they joined');
+      await challengerPage.screenshot({ path: 'e2e-friend-name-replaced.png' });
+    }
+    expect(stillHasNameInArena).toBeTruthy();
+
+    console.log('Friend name still visible after guest joined');
+
+    // === STEP 7: Verify friend's name appears in My Battles tab ===
+    // Navigate to profile page
+    await challengerPage.goto('/e2e-test-user');
+    await challengerPage.waitForLoadState('domcontentloaded');
+    await challengerPage.waitForTimeout(2000);
+
+    // Click on My Battles tab
+    const myBattlesTab = challengerPage.getByRole('button', { name: /my battles/i })
+      .or(challengerPage.locator('[id*="my-battles"]'))
+      .or(challengerPage.getByText('My Battles').first());
+    await expect(myBattlesTab).toBeVisible({ timeout: 10000 });
+    await myBattlesTab.click();
+
+    // Wait for battles list to load (API call to fetch battles)
+    await challengerPage.waitForTimeout(3000);
+
+    // CRITICAL ASSERTION 3: Should see friend's name in the battles list
+    const nameInBattlesList = challengerPage.getByText(friendName);
+    const hasNameInList = await nameInBattlesList.isVisible({ timeout: 10000 }).catch(() => false);
+
+    if (!hasNameInList) {
+      console.error('FAIL: Friend\'s name not visible in My Battles tab');
+      await challengerPage.screenshot({ path: 'e2e-friend-name-in-my-battles-missing.png' });
+    }
+    expect(hasNameInList).toBeTruthy();
+
+    console.log('SUCCESS: Friend name visible in all 3 places - input, battle arena, and My Battles tab');
   });
 });
 
@@ -545,6 +1100,38 @@ async function startChallengerTurnViaAPI(battleId: number, page: Page): Promise<
   );
 
   console.log(`Started challenger turn for battle ${battleId}`);
+}
+
+async function expireInviteViaAPI(battleId: number, page: Page): Promise<void> {
+  /**
+   * Expire a battle invitation for testing purposes.
+   * This calls a test-only API endpoint that sets the invite's expires_at to the past.
+   */
+  await page.evaluate(
+    async ({ apiBase, id }) => {
+      const csrfToken = document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+
+      const response = await fetch(`${apiBase}/api/v1/battles/${id}/test-expire-invite/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken || '',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Failed to expire invite: ${response.status} ${text}`);
+      }
+    },
+    { apiBase: API_BASE_URL, id: battleId }
+  );
+
+  console.log(`Expired invite for battle ${battleId}`);
 }
 
 async function completeBattleViaAPI(battleId: number): Promise<void> {

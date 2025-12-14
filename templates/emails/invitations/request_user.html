@@ -8,6 +8,19 @@
 
 <p>Thanks for your interest in joining AllThrive AI! We've received your invitation request and will review it shortly.</p>
 
+{% if excited_features %}
+<div class="stats-box" style="margin: 20px 0;">
+    <div class="stat-item">
+        <div class="stat-label">You're excited about</div>
+        <div class="stat-value" style="font-size: 14px; font-weight: normal;">
+            {% for feature in excited_features %}
+            <span style="display: inline-block; background: linear-gradient(135deg, #22d3ee, #4ade80); color: #0f172a; padding: 4px 12px; border-radius: 16px; font-size: 12px; margin: 2px;">{{ feature }}</span>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="alert alert-info">
     <strong>What happens next?</strong><br>
     We manually review each request to ensure our community stays awesome. You'll receive an email once your request has been reviewed.

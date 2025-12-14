@@ -133,6 +133,9 @@ def request_invitation(request):
         email: User's email address (required)
         name: User's name (required)
         reason: Why they want to join (optional)
+        excited_features: List of feature keys user is excited about (optional)
+        desired_integrations: List of integration keys for portfolio import (optional)
+        desired_integrations_other: Other integration text (optional)
 
     Returns:
         201: Request created successfully
@@ -145,6 +148,11 @@ def request_invitation(request):
     name = data.get('name', '').strip()
     reason = data.get('reason', '').strip()
     recaptcha_token = data.get('recaptcha_token', '')
+
+    # Feature interest survey fields
+    excited_features = data.get('excited_features', [])
+    desired_integrations = data.get('desired_integrations', [])
+    desired_integrations_other = data.get('desired_integrations_other', '').strip()
 
     # Verify reCAPTCHA token
     client_ip = get_client_ip(request)
@@ -178,11 +186,31 @@ def request_invitation(request):
     name = name[:100]
     reason = reason[:1000] if reason else ''
 
+    # Validate and sanitize feature interest fields
+    valid_feature_keys = {key for key, _ in InvitationRequest.FEATURE_CHOICES}
+    valid_integration_keys = {key for key, _ in InvitationRequest.INTEGRATION_CHOICES}
+
+    # Ensure excited_features is a list and filter to valid keys
+    if not isinstance(excited_features, list):
+        excited_features = []
+    excited_features = [f for f in excited_features if f in valid_feature_keys]
+
+    # Ensure desired_integrations is a list and filter to valid keys
+    if not isinstance(desired_integrations, list):
+        desired_integrations = []
+    desired_integrations = [i for i in desired_integrations if i in valid_integration_keys]
+
+    # Limit other integration text length
+    desired_integrations_other = desired_integrations_other[:200] if desired_integrations_other else ''
+
     try:
         invitation = InvitationRequest.objects.create(
             email=email,
             name=name,
             reason=reason,
+            excited_features=excited_features,
+            desired_integrations=desired_integrations,
+            desired_integrations_other=desired_integrations_other,
             ip_address=get_client_ip(request),
             user_agent=request.headers.get('user-agent', '')[:500],
         )
@@ -223,6 +251,8 @@ def _send_invitation_emails(invitation: InvitationRequest):
         'requester_name': invitation.name,
         'requester_email': invitation.email,
         'reason': invitation.reason,
+        'excited_features': invitation.get_excited_features_display(),
+        'desired_integrations': invitation.get_desired_integrations_display(),
         'submitted_at': invitation.created_at.strftime('%B %d, %Y at %I:%M %p UTC'),
         'frontend_url': frontend_url,
         'current_year': timezone.now().year,

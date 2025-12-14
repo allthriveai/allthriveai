@@ -4,6 +4,11 @@ We got your request! - AllThrive AI
 Hi {{ requester_name }},
 
 Thanks for your interest in joining AllThrive AI! We've received your invitation request and will review it shortly.
+{% if excited_features %}
+
+You're excited about:
+{% for feature in excited_features %}- {{ feature }}
+{% endfor %}{% endif %}
 
 What happens next?
 ------------------

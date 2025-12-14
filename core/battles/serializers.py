@@ -258,6 +258,8 @@ class PromptBattleListSerializer(serializers.ModelSerializer):
 
     time_remaining = serializers.SerializerMethodField()
     submission_count = serializers.SerializerMethodField()
+    friend_name = serializers.SerializerMethodField()
+    opponent_display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = PromptBattle
@@ -265,6 +267,8 @@ class PromptBattleListSerializer(serializers.ModelSerializer):
             'id',
             'challenger_username',
             'opponent_username',
+            'opponent_display_name',
+            'friend_name',
             'challenge_text',
             'status',
             'battle_type',
@@ -286,6 +290,27 @@ class PromptBattleListSerializer(serializers.ModelSerializer):
     def get_submission_count(self, obj):
         """Get number of submissions."""
         return obj.submissions.count()
+
+    def get_friend_name(self, obj):
+        """Get friend name from invitation (if any)."""
+        try:
+            invitation = obj.invitation
+            return invitation.recipient_name or None
+        except Exception:
+            return None
+
+    def get_opponent_display_name(self, obj):
+        """Get display name for opponent (friend_name or username)."""
+        # Check if viewer is the challenger - only show friend name to challenger
+        request = self.context.get('request')
+        is_challenger = request and request.user and request.user.id == obj.challenger_id
+
+        friend_name = self.get_friend_name(obj)
+        if is_challenger and friend_name:
+            return friend_name
+        if obj.opponent:
+            return obj.opponent.username
+        return None
 
 
 class BattleInvitationSerializer(serializers.ModelSerializer):

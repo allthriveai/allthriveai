@@ -31,6 +31,8 @@ export interface Opponent {
   avatarUrl?: string;
   connected: boolean;
   status?: OpponentStatus;
+  /** Friend name set by challenger for invitation battles */
+  friendName?: string;
 }
 
 export interface ChallengeType {
@@ -219,6 +221,7 @@ export function useBattleWebSocket({
           username: (opponent.username as string) ?? 'Unknown',
           avatarUrl: opponent.avatar_url as string | undefined,
           connected: (opponent.connected as boolean) ?? false,
+          friendName: opponent.friend_name as string | undefined,
         },
         mySubmission: mySubmission
           ? {

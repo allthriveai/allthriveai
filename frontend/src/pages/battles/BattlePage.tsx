@@ -57,6 +57,11 @@ export function BattlePage() {
     message: string;
   } | null>(null);
   const [isStartingTurn, setIsStartingTurn] = useState(false);
+  // Track if user has clicked "Start My Turn" - used to override isMyTurn from backend
+  // This is needed because the backend may not immediately update is_my_turn after the API call
+  const [hasStartedMyTurn, setHasStartedMyTurn] = useState(false);
+  // Friend name for invitation battles
+  const [localFriendName, setLocalFriendName] = useState<string>('');
 
   // Check if user is a guest
   const isGuestUser = user?.isGuest ?? false;
@@ -138,6 +143,7 @@ export function BattlePage() {
     countdownValue,
     sendTyping,
     submitPrompt,
+    requestState,
   } = useBattleWebSocket({
     battleId: parseInt(battleId || '0', 10),
     onError: handleError,
@@ -384,9 +390,12 @@ export function BattlePage() {
         // Set time remaining from API response (in seconds)
         const timeRemaining = response.data.timeRemaining || response.data.time_remaining || 180;
         setLocalTimeRemaining(timeRemaining);
-        // Reload the page to get fresh battle state with the active phase
-        // This ensures the WebSocket reconnects with the updated battle state
-        window.location.reload();
+        // Mark that user has started their turn - this prevents showing the "Start My Turn"
+        // screen again even if the backend's isMyTurn hasn't updated yet
+        setHasStartedMyTurn(true);
+        // Request fresh state from WebSocket instead of reloading the page
+        // This is smoother and keeps local state intact
+        requestState();
       }
     } catch (error) {
       logError('Failed to start turn', error as Error, {
@@ -397,7 +406,7 @@ export function BattlePage() {
     } finally {
       setIsStartingTurn(false);
     }
-  }, [battleId, handleError]);
+  }, [battleId, handleError, requestState]);
 
   // Handle challenge refresh (Pip battles and invitation battles)
   const handleRefreshChallenge = useCallback(async () => {
@@ -491,6 +500,26 @@ export function BattlePage() {
   const isWaitingInvitationBattle =
     battleState.phase === 'waiting' && isInvitationBattle && opponentHasNotJoined;
 
+  // Check if this user needs to start their turn in an async battle
+  // This happens when:
+  // 1. It's an invitation (async) battle
+  // 2. The battle is in an active phase (challenger has started)
+  // 3. It's not the user's turn yet (backend says isMyTurn: false)
+  // 4. The user hasn't submitted yet
+  // In this case, show them the "Start My Turn" screen instead of the waiting message
+  const isActiveAsyncPhase = [
+    BATTLE_PHASES.ACTIVE,
+    BATTLE_PHASES.CHALLENGER_TURN,
+    BATTLE_PHASES.OPPONENT_TURN,
+  ].includes(battleState.phase as typeof BATTLE_PHASES.ACTIVE);
+
+  const needsToStartTurn =
+    isInvitationBattle &&
+    isActiveAsyncPhase &&
+    battleState.isMyTurn === false &&
+    !battleState.mySubmission &&
+    !hasStartedMyTurn; // User hasn't clicked "Start My Turn" yet
+
   // Render based on phase
   const renderPhaseContent = () => {
     switch (battleState.phase) {
@@ -511,6 +540,9 @@ export function BattlePage() {
               isStarting={isStartingTurn}
               onRefreshChallenge={handleRefreshChallenge}
               isRefreshingChallenge={isRefreshingChallenge}
+              friendName={localFriendName || battleState.opponent.friendName || ''}
+              onFriendNameChange={setLocalFriendName}
+              battleId={battleId ? parseInt(battleId) : undefined}
             />
           );
         }
@@ -528,6 +560,28 @@ export function BattlePage() {
       case BATTLE_PHASES.ACTIVE:
       case BATTLE_PHASES.CHALLENGER_TURN:
       case BATTLE_PHASES.OPPONENT_TURN:
+        // For async battles where user needs to start their turn, show the start screen
+        // This ensures the user's timer starts when THEY click "Start My Turn"
+        if (needsToStartTurn) {
+          const currentInviteUrl = battleState.inviteUrl || `${window.location.origin}/battle/invite/${battleId}`;
+          return (
+            <ChallengeReadyScreen
+              challengeText={localChallengeText || battleState.challengeText}
+              challengeType={localChallengeType || battleState.challengeType || undefined}
+              inviteUrl={currentInviteUrl}
+              hasSubmitted={false}
+              onStartTurn={handleStartChallengeTurn}
+              isStarting={isStartingTurn}
+              onRefreshChallenge={handleRefreshChallenge}
+              isRefreshingChallenge={isRefreshingChallenge}
+              hideShareOptions={true}
+              friendName={localFriendName || battleState.opponent.friendName || ''}
+              onFriendNameChange={setLocalFriendName}
+              battleId={battleId ? parseInt(battleId) : undefined}
+            />
+          );
+        }
+
         // Active phase and async turn phases all show the battle arena (see isArenaPhase)
         return (
           <>
@@ -538,7 +592,7 @@ export function BattlePage() {
               currentUser={currentUser}
               opponent={{
                 id: battleState.opponent.id,
-                username: battleState.opponent.username,
+                username: localFriendName || battleState.opponent.friendName || battleState.opponent.username,
                 avatarUrl: battleState.opponent.avatarUrl,
                 isAi: battleState.matchSource === 'ai_opponent',
               }}
@@ -552,10 +606,10 @@ export function BattlePage() {
               isRefreshingChallenge={isRefreshingChallenge}
               isAiOpponent={battleState.matchSource === 'ai_opponent'}
               isAsyncBattle={isInvitationBattle}
-              challengerName={battleState.opponent.username}
+              challengerName={localFriendName || battleState.opponent.friendName || battleState.opponent.username}
               isGuestUser={isGuestUser}
               onSignupClick={() => setShowGuestSignupModal(true)}
-              isMyTurn={battleState.isMyTurn ?? true}
+              isMyTurn={hasStartedMyTurn || (battleState.isMyTurn ?? true)}
             />
           </>
         );
