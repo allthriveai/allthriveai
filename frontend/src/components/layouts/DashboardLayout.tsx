@@ -219,8 +219,8 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   };
 
   return (
-    <TopicTrayProvider>
     <ProjectPreviewTrayProvider>
+    <TopicTrayProvider>
     <div className="relative h-screen w-full overflow-hidden">
       {/* Background is now handled by CSS in index.css - uses CSS gradients instead of images */}
 
@@ -327,7 +327,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         )}
       </div>
     </div>
-    </ProjectPreviewTrayProvider>
     </TopicTrayProvider>
+    </ProjectPreviewTrayProvider>
   );
 }
