@@ -260,8 +260,8 @@ class ThriveCircleViewSet(viewsets.ReadOnlyModelViewSet):
         user = request.user
         limit = safe_int_param(request.query_params.get('limit'), default=10, min_val=1, max_val=50)
 
-        # Get users in the same tier (including current user to show community projects)
-        same_tier_users = User.objects.filter(tier=user.tier).values_list('id', flat=True)
+        # Get users in the same tier (including current user to show community projects, exclude guests)
+        same_tier_users = User.objects.filter(tier=user.tier, is_guest=False).values_list('id', flat=True)
 
         # Get recent published projects from same-tier users
         projects = (

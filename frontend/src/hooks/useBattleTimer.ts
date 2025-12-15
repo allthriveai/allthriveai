@@ -32,9 +32,6 @@ export interface UseBattleTimerOptions {
 
   /** Warning threshold in seconds (default: 30) */
   warningThreshold?: number;
-
-  /** How often to re-sync with server time (default: 10 seconds) */
-  syncInterval?: number;
 }
 
 export interface BattleTimerState {
@@ -91,7 +88,6 @@ export function useBattleTimer({
   onExpire,
   onWarning,
   warningThreshold = 30,
-  syncInterval = 10,
 }: UseBattleTimerOptions): BattleTimerState {
   // Local time state for smooth countdown
   const [localTime, setLocalTime] = useState<number | null>(null);
@@ -125,44 +121,10 @@ export function useBattleTimer({
     lastServerTimeRef.current = serverTimeRemaining;
   }, [serverTimeRemaining, localTime]);
 
-  // Track the time when we last synced with server
-  const lastSyncTimeRef = useRef<number>(Date.now());
-
-  // Update last sync time when server time changes
-  useEffect(() => {
-    if (serverTimeRemaining !== null && serverTimeRemaining !== undefined) {
-      lastSyncTimeRef.current = Date.now();
-    }
-  }, [serverTimeRemaining]);
-
-  // Periodic re-sync to prevent drift
-  // Only sync if we've drifted significantly from the expected countdown
-  useEffect(() => {
-    if (!isActive || serverTimeRemaining === null || serverTimeRemaining === undefined) {
-      return;
-    }
-
-    const interval = setInterval(() => {
-      // Calculate what we expect the server time to be based on elapsed time
-      const elapsedSeconds = Math.floor((Date.now() - lastSyncTimeRef.current) / 1000);
-      const expectedServerTime = Math.max(0, (lastServerTimeRef.current ?? serverTimeRemaining) - elapsedSeconds);
-
-      // Only re-sync if there's significant drift (more than 3 seconds)
-      // This prevents the timer from jumping back up after a refresh
-      setLocalTime((currentLocalTime) => {
-        if (currentLocalTime === null) return serverTimeRemaining;
-        const drift = Math.abs(currentLocalTime - expectedServerTime);
-        if (drift > 3) {
-          // Significant drift detected, re-sync
-          lastSyncTimeRef.current = Date.now();
-          return serverTimeRemaining;
-        }
-        return currentLocalTime;
-      });
-    }, syncInterval * 1000);
-
-    return () => clearInterval(interval);
-  }, [serverTimeRemaining, isActive, syncInterval]);
+  // Note: Periodic re-sync was removed because it caused issues when
+  // the challenge is refreshed - the server time becomes a stale snapshot
+  // and the periodic sync would keep resetting the timer back to that value.
+  // The initial sync effect above handles syncing when server time changes.
 
   // Local countdown timer
   // Track whether timer should be running as a separate piece of state

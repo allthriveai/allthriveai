@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -22,6 +22,8 @@ interface ProjectPreviewTrayProps {
   isOpen: boolean;
   onClose: () => void;
   project: Project | null;
+  /** Optional ref to the feed scroll container for scroll-to-close on mobile */
+  feedScrollContainerRef?: React.RefObject<HTMLElement | null>;
 }
 
 /**
@@ -105,7 +107,7 @@ function getFaIcon(iconName: string): React.ComponentType<{ className?: string }
   return Icon || null;
 }
 
-export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewTrayProps) {
+export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContainerRef }: ProjectPreviewTrayProps) {
   const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -145,6 +147,44 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Store onClose in ref to avoid stale closure in scroll handler
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Feed scroll detection - close tray when user scrolls down on the feed behind it (mobile only)
+  useEffect(() => {
+    if (!isOpen || !feedScrollContainerRef?.current || !isMobileRef.current) return;
+
+    const feedContainer = feedScrollContainerRef.current;
+    let lastScrollTop = feedContainer.scrollTop;
+    let scrollDownAccumulator = 0;
+    const SCROLL_DOWN_THRESHOLD = 80; // pixels of downward scroll to trigger close
+
+    const handleFeedScroll = () => {
+      const currentScrollTop = feedContainer.scrollTop;
+      const delta = currentScrollTop - lastScrollTop;
+
+      if (delta > 0) {
+        // Scrolling down - accumulate
+        scrollDownAccumulator += delta;
+        if (scrollDownAccumulator > SCROLL_DOWN_THRESHOLD) {
+          onCloseRef.current();
+          scrollDownAccumulator = 0;
+        }
+      } else {
+        // Scrolling up - reset accumulator
+        scrollDownAccumulator = 0;
+      }
+
+      lastScrollTop = currentScrollTop;
+    };
+
+    feedContainer.addEventListener('scroll', handleFeedScroll, { passive: true });
+    return () => {
+      feedContainer.removeEventListener('scroll', handleFeedScroll);
+    };
+  }, [isOpen, feedScrollContainerRef]);
 
   // Reset drag state when tray closes
   useEffect(() => {
@@ -242,87 +282,111 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
     }
   }, [isOpen, onClose]);
 
-  // Mobile swipe-to-dismiss handlers
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (!isMobileRef.current) return;
+  // Track drag state in refs for native event handlers (to avoid stale closures)
+  const isDraggingRef = useRef(false);
+  const dragOffsetRef = useRef(0);
 
-    const touch = e.touches[0];
-    const scrollContainer = scrollContainerRef.current;
+  // Sync refs with state
+  isDraggingRef.current = isDragging;
+  dragOffsetRef.current = dragOffset;
 
-    touchStartRef.current = {
-      y: touch.clientY,
-      time: Date.now(),
-      scrollTop: scrollContainer?.scrollTop ?? 0,
+  // Mobile swipe-to-dismiss using native event listeners
+  // IMPORTANT: Must use native listeners with { passive: false } for iOS Safari
+  // React's synthetic touch events are passive by default, which prevents preventDefault()
+  useEffect(() => {
+    const tray = trayRef.current;
+    if (!tray || !isMobileRef.current) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const scrollContainer = scrollContainerRef.current;
+
+      touchStartRef.current = {
+        y: touch.clientY,
+        time: Date.now(),
+        scrollTop: scrollContainer?.scrollTop ?? 0,
+      };
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!touchStartRef.current) return;
+
+      const touch = e.touches[0];
+      const deltaY = touch.clientY - touchStartRef.current.y;
+      const scrollContainer = scrollContainerRef.current;
+
+      // Check if user is at the bottom of the scroll container
+      const isAtBottom = scrollContainer
+        ? scrollContainer.scrollHeight - scrollContainer.scrollTop <= scrollContainer.clientHeight + 5
+        : false;
+
+      // Check if user is at the top of the scroll container
+      const isAtTop = scrollContainer ? scrollContainer.scrollTop <= 0 : true;
+
+      // Allow drag dismiss in two cases:
+      // 1. Swiping down and at top of scroll (or not scrolled yet)
+      // 2. Swiping up (continuing scroll) and at bottom of scroll
+      const shouldAllowDrag =
+        (deltaY > 0 && isAtTop) || // Swiping down from top
+        (deltaY < 0 && isAtBottom); // Swiping up at bottom (overscroll)
+
+      if (shouldAllowDrag) {
+        // Prevent the scroll container from scrolling - THIS WORKS with { passive: false }
+        e.preventDefault();
+
+        // For swipe up at bottom, convert to downward drag
+        // (user swipes up, tray moves down)
+        const effectiveDelta = deltaY < 0 ? Math.abs(deltaY) : deltaY;
+
+        // Apply resistance to make drag feel natural
+        const resistance = 0.6;
+        const dragAmount = effectiveDelta * resistance;
+
+        setIsDragging(true);
+        setDragOffset(Math.max(0, dragAmount));
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (!touchStartRef.current || !isDraggingRef.current) {
+        touchStartRef.current = null;
+        return;
+      }
+
+      const endTime = Date.now();
+      const duration = endTime - touchStartRef.current.time;
+      const velocity = dragOffsetRef.current / duration; // pixels per ms
+
+      // Dismiss if dragged far enough or with enough velocity
+      const shouldDismiss = dragOffsetRef.current > DISMISS_THRESHOLD || velocity > VELOCITY_THRESHOLD;
+
+      if (shouldDismiss) {
+        // Animate to full dismiss
+        setDragOffset(window.innerHeight);
+        // Close after animation
+        setTimeout(() => {
+          onCloseRef.current();
+        }, 200);
+      } else {
+        // Snap back to original position
+        setDragOffset(0);
+      }
+
+      setIsDragging(false);
+      touchStartRef.current = null;
+    };
+
+    // Attach with { passive: false } to allow preventDefault() on iOS Safari
+    tray.addEventListener('touchstart', handleTouchStart, { passive: true });
+    tray.addEventListener('touchmove', handleTouchMove, { passive: false });
+    tray.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      tray.removeEventListener('touchstart', handleTouchStart);
+      tray.removeEventListener('touchmove', handleTouchMove);
+      tray.removeEventListener('touchend', handleTouchEnd);
     };
   }, []);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isMobileRef.current || !touchStartRef.current) return;
-
-    const touch = e.touches[0];
-    const deltaY = touch.clientY - touchStartRef.current.y;
-    const scrollContainer = scrollContainerRef.current;
-
-    // Check if user is at the bottom of the scroll container
-    const isAtBottom = scrollContainer
-      ? scrollContainer.scrollHeight - scrollContainer.scrollTop <= scrollContainer.clientHeight + 5
-      : false;
-
-    // Check if user is at the top of the scroll container
-    const isAtTop = scrollContainer ? scrollContainer.scrollTop <= 0 : true;
-
-    // Allow drag dismiss in two cases:
-    // 1. Swiping down and at top of scroll (or not scrolled yet)
-    // 2. Swiping up (continuing scroll) and at bottom of scroll
-    const shouldAllowDrag =
-      (deltaY > 0 && isAtTop) || // Swiping down from top
-      (deltaY < 0 && isAtBottom); // Swiping up at bottom (overscroll)
-
-    if (shouldAllowDrag) {
-      // Prevent the scroll container from scrolling
-      e.preventDefault();
-
-      // For swipe up at bottom, convert to downward drag
-      // (user swipes up, tray moves down)
-      const effectiveDelta = deltaY < 0 ? Math.abs(deltaY) : deltaY;
-
-      // Apply resistance to make drag feel natural
-      const resistance = 0.6;
-      const dragAmount = effectiveDelta * resistance;
-
-      setIsDragging(true);
-      setDragOffset(Math.max(0, dragAmount));
-    }
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
-    if (!isMobileRef.current || !touchStartRef.current || !isDragging) {
-      touchStartRef.current = null;
-      return;
-    }
-
-    const endTime = Date.now();
-    const duration = endTime - touchStartRef.current.time;
-    const velocity = dragOffset / duration; // pixels per ms
-
-    // Dismiss if dragged far enough or with enough velocity
-    const shouldDismiss = dragOffset > DISMISS_THRESHOLD || velocity > VELOCITY_THRESHOLD;
-
-    if (shouldDismiss) {
-      // Animate to full dismiss
-      setDragOffset(window.innerHeight);
-      // Close after animation
-      setTimeout(() => {
-        onClose();
-      }, 200);
-    } else {
-      // Snap back to original position
-      setDragOffset(0);
-    }
-
-    setIsDragging(false);
-    touchStartRef.current = null;
-  }, [dragOffset, isDragging, onClose]);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -975,9 +1039,6 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
           transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
         }}
         onTransitionEnd={handleTransitionEnd}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         {/* Mobile drag handle indicator */}
         <div className="md:hidden flex justify-center pt-2 pb-1">

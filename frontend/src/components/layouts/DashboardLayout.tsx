@@ -13,7 +13,7 @@ import { PendingBattleBanner } from '@/components/battles';
 import { AsyncBattleBanner } from '@/components/battles/AsyncBattleBanner';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { TopicTrayProvider } from '@/context/TopicTrayContext';
-import { ProjectPreviewTrayProvider } from '@/context/ProjectPreviewTrayContext';
+import { ProjectPreviewTrayProvider, useProjectPreviewTraySafe } from '@/context/ProjectPreviewTrayContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveQuest } from '@/hooks/useActiveQuest';
 import type { Project, UserSideQuest } from '@/types/models';
@@ -22,6 +22,32 @@ import type { Project, UserSideQuest } from '@/types/models';
 const GITHUB_OAUTH_TIMESTAMP_KEY = 'github_oauth_timestamp';
 const EMBER_OPEN_CHAT_KEY = 'ember_open_chat';
 const OVERLAY_CLASSNAME = 'fixed inset-0 bg-black/20 z-30 md:hidden';
+
+/**
+ * Inner component that registers the main scroll container with the tray context.
+ * This must be used inside ProjectPreviewTrayProvider.
+ */
+function MainScrollContainer({ children }: { children: ReactNode }) {
+  const mainRef = useRef<HTMLElement>(null);
+  const trayContext = useProjectPreviewTraySafe();
+
+  useEffect(() => {
+    if (trayContext?.setFeedScrollContainer && mainRef.current) {
+      trayContext.setFeedScrollContainer(mainRef.current);
+    }
+    return () => {
+      if (trayContext?.setFeedScrollContainer) {
+        trayContext.setFeedScrollContainer(null);
+      }
+    };
+  }, [trayContext]);
+
+  return (
+    <main ref={mainRef} className="flex-1 overflow-y-auto scroll-pt-16">
+      {children}
+    </main>
+  );
+}
 
 interface DashboardLayoutProps {
   children: ReactNode | ((props: {
@@ -236,8 +262,8 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           onOpenActiveQuest={openActiveQuestTray}
         />
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto scroll-pt-16">
+        {/* Main Content Area - wrapped in MainScrollContainer for scroll-to-close support */}
+        <MainScrollContainer>
           <div style={{ paddingTop: 'calc(4rem + var(--impersonation-offset, 0px))' }}>
             {/* Ember Onboarding Banner - positioned below nav, not sticky */}
             {onboardingContext?.shouldShowBanner && (
@@ -257,7 +283,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
             {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray }) : children}
           </div>
           <Footer />
-        </main>
+        </MainScrollContainer>
 
         {/* Right About Panel */}
         <RightAboutPanel

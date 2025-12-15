@@ -34,8 +34,8 @@ def create_weekly_goals():
     week_start = get_week_start()
     week_end = week_start + timedelta(days=6)
 
-    # Get all active users - convert to list to cache
-    active_users = list(User.objects.filter(is_active=True))
+    # Get all active users - convert to list to cache (exclude guests)
+    active_users = list(User.objects.filter(is_active=True, is_guest=False))
     user_count = len(active_users)
 
     if user_count == 0:
@@ -92,8 +92,8 @@ def check_streak_bonuses():
     """
     today = timezone.now().date()
 
-    # Get users who have activity today - convert to list for caching
-    active_today = list(User.objects.filter(last_activity_date=today))
+    # Get users who have activity today - convert to list for caching (exclude guests)
+    active_today = list(User.objects.filter(last_activity_date=today, is_guest=False))
     active_count = len(active_today)
 
     bonuses_awarded = 0
@@ -251,7 +251,8 @@ def form_weekly_circles():
     users_by_tier = {}
 
     for tier in tiers:
-        users = list(User.objects.filter(is_active=True, tier=tier).values_list('id', flat=True))
+        # Exclude guest users from circle formation
+        users = list(User.objects.filter(is_active=True, is_guest=False, tier=tier).values_list('id', flat=True))
         random.shuffle(users)  # Randomize for fair distribution
         users_by_tier[tier] = users
 

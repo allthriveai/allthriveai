@@ -130,10 +130,17 @@ export function HeroVideo({ videoUrl, redditPermalink, autoplay = false }: HeroV
   let embedUrl = '';
   const autoplayParam = autoplay ? '1' : '0';
   if (videoInfo.platform === 'youtube') {
-    // mute=1 is required for autoplay to work in most browsers
-    embedUrl = `https://www.youtube.com/embed/${videoInfo.id}?rel=0&autoplay=${autoplayParam}${autoplay ? '&mute=1' : ''}`;
+    // For autoplay to work: mute=1 (required), playsinline=1 (mobile), enablejsapi=1 (better control)
+    const youtubeParams = [
+      `rel=0`,
+      `autoplay=${autoplayParam}`,
+      autoplay ? 'mute=1' : '',
+      'playsinline=1', // Critical for mobile autoplay
+      'enablejsapi=1',
+    ].filter(Boolean).join('&');
+    embedUrl = `https://www.youtube.com/embed/${videoInfo.id}?${youtubeParams}`;
   } else if (videoInfo.platform === 'vimeo') {
-    embedUrl = `https://player.vimeo.com/video/${videoInfo.id}?autoplay=${autoplayParam}${autoplay ? '&muted=1' : ''}`;
+    embedUrl = `https://player.vimeo.com/video/${videoInfo.id}?autoplay=${autoplayParam}${autoplay ? '&muted=1' : ''}&playsinline=1`;
   } else if (videoInfo.platform === 'loom') {
     embedUrl = `https://www.loom.com/embed/${videoInfo.id}?autoplay=${autoplayParam}`;
   }
@@ -152,8 +159,9 @@ export function HeroVideo({ videoUrl, redditPermalink, autoplay = false }: HeroV
                 src={embedUrl}
                 title="Project video"
                 className="absolute inset-0 w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
+                loading="eager"
               />
             </div>
           </div>
@@ -172,8 +180,9 @@ export function HeroVideo({ videoUrl, redditPermalink, autoplay = false }: HeroV
               src={embedUrl}
               title="Project video"
               className="absolute inset-0 w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
+              loading="eager"
             />
           </div>
         </div>

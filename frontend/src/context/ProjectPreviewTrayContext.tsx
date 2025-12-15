@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode, type RefObject } from 'react';
 import { ProjectPreviewTray } from '@/components/projects/ProjectPreviewTray';
 import type { Project } from '@/types/models';
 
@@ -11,6 +11,10 @@ interface ProjectPreviewTrayContextValue {
   isProjectPreviewOpen: boolean;
   /** The current project being displayed (null if closed) */
   currentProject: Project | null;
+  /** Register a feed scroll container for scroll-to-close on mobile */
+  setFeedScrollContainer: (element: HTMLElement | null) => void;
+  /** Ref to the feed scroll container */
+  feedScrollContainerRef: RefObject<HTMLElement | null>;
 }
 
 const ProjectPreviewTrayContext = createContext<ProjectPreviewTrayContextValue | undefined>(undefined);
@@ -54,6 +58,7 @@ interface ProjectPreviewTrayProviderProps {
 export function ProjectPreviewTrayProvider({ children }: ProjectPreviewTrayProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const feedScrollContainerRef = useRef<HTMLElement | null>(null);
 
   const openProjectPreview = useCallback((project: Project) => {
     // Close any open tool trays first
@@ -68,6 +73,10 @@ export function ProjectPreviewTrayProvider({ children }: ProjectPreviewTrayProvi
     // the close animation to complete with the content still visible
   }, []);
 
+  const setFeedScrollContainer = useCallback((element: HTMLElement | null) => {
+    feedScrollContainerRef.current = element;
+  }, []);
+
   return (
     <ProjectPreviewTrayContext.Provider
       value={{
@@ -75,6 +84,8 @@ export function ProjectPreviewTrayProvider({ children }: ProjectPreviewTrayProvi
         closeProjectPreview,
         isProjectPreviewOpen: isOpen,
         currentProject,
+        setFeedScrollContainer,
+        feedScrollContainerRef,
       }}
     >
       {children}
@@ -82,6 +93,7 @@ export function ProjectPreviewTrayProvider({ children }: ProjectPreviewTrayProvi
         isOpen={isOpen}
         onClose={closeProjectPreview}
         project={currentProject}
+        feedScrollContainerRef={feedScrollContainerRef}
       />
     </ProjectPreviewTrayContext.Provider>
   );
