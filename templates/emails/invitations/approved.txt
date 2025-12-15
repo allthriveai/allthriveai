@@ -5,6 +5,8 @@ Hi {{ requester_name }},
 
 Great news! Your request to join All Thrive AI has been approved. Welcome to the community!
 
+Your Thrive Code: THRIVE
+
 Create your account here:
 {{ signup_url }}
 
