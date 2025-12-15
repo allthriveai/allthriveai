@@ -277,7 +277,7 @@ export function ProfileSections({
   );
 
   return (
-    <div className="py-8">
+    <div className="pb-8">
       {/* Add Section at Top (editing mode) */}
       {isEditing && onAddSection && (
         <AddSectionButton onClick={() => handleAddClick()} position="top" />

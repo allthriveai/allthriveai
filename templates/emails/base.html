@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}AllThrive AI{% endblock %}</title>
+    <title>{% block title %}All Thrive AI{% endblock %}</title>
     <style>
         /* Reset */
         body, table, td, p, a, li, blockquote {
@@ -55,11 +55,14 @@
         .logo {
             font-size: 24px;
             font-weight: 700;
-            color: #f8fafc;
             text-decoration: none;
         }
-        .logo-accent {
-            color: #22d3ee;
+        .logo-text {
+            background: linear-gradient(135deg, #22d3ee 0%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: #22d3ee; /* Fallback for email clients */
         }
 
         /* Content */
@@ -188,7 +191,8 @@
             <tr>
                 <td class="email-header">
                     <a href="{{ frontend_url }}" class="logo">
-                        All<span class="logo-accent">Thrive</span> AI
+                        <img src="{{ frontend_url }}/all-thrvie-logo.png" alt="All Thrive AI" width="48" height="48" style="display: block; margin: 0 auto 12px auto; border-radius: 8px;">
+                        <span class="logo-text">All Thrive AI</span>
                     </a>
                 </td>
             </tr>
@@ -208,7 +212,7 @@
                         &nbsp;&bull;&nbsp;
                         <a href="{{ unsubscribe_url }}">Unsubscribe</a>
                     </p>
-                    <p>&copy; {{ current_year }} AllThrive AI. All rights reserved.</p>
+                    <p>&copy; {{ current_year }} All Thrive AI. All rights reserved.</p>
                 </td>
             </tr>
         </table>

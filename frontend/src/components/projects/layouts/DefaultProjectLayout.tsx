@@ -7,17 +7,17 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { renderContent } from '@/utils/markdown';
+// renderContent moved to TldrSection component
 import { useProjectContext } from '@/context/ProjectContext';
 import { updateProject, getTaxonomies } from '@/services/projects';
-import { ProjectHero } from '../hero';
+import { ProjectHero, InlineHeroEditor } from '../hero';
 import { ProjectActions } from '../shared/ProjectActions';
 import { ShareModal } from '../shared/ShareModal';
 import {
   InlineEditableTitle,
-  InlineEditableText,
   EditModeIndicator,
 } from '../shared/InlineEditable';
+import { TldrSection } from '../shared/TldrSection';
 import { EditableBlocksContainer } from '../shared/EditableBlocksContainer';
 import { ProjectSections } from '../sections';
 import type { ProjectSection, SectionType } from '@/types/sections';
@@ -29,11 +29,10 @@ import {
   CodeBracketIcon,
   EllipsisVerticalIcon,
   TrashIcon,
-  EyeIcon,
-  EyeSlashIcon,
   ChevronDownIcon,
   CalendarIcon,
   PencilIcon,
+  SwatchIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperclip } from '@fortawesome/free-solid-svg-icons';
@@ -87,7 +86,6 @@ export function DefaultProjectLayout() {
     openToolTray,
     closeToolTray,
     handleDelete,
-    handleToggleShowcase,
     isAuthenticated,
   } = useProjectContext();
 
@@ -105,6 +103,13 @@ export function DefaultProjectLayout() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editedDate, setEditedDate] = useState<string>('');
   const datePickerRef = useRef<HTMLDivElement>(null);
+
+  // Hero editor tray state
+  const [showHeroEditor, setShowHeroEditor] = useState(false);
+
+  // Background gradient picker state
+  const [showGradientPicker, setShowGradientPicker] = useState(false);
+  const gradientPickerRef = useRef<HTMLDivElement>(null);
 
   // Toggle between edit and published view
   const toggleEditMode = useCallback(() => {
@@ -133,6 +138,9 @@ export function DefaultProjectLayout() {
       }
       if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
         setShowDatePicker(false);
+      }
+      if (gradientPickerRef.current && !gradientPickerRef.current.contains(event.target as Node)) {
+        setShowGradientPicker(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -174,23 +182,31 @@ export function DefaultProjectLayout() {
     }
   }, [project.id, setProject]);
 
-  // Handle inline description change
-  const handleDescriptionChange = useCallback(async (newDescription: string) => {
+  // Handle background gradient change
+  const handleGradientChange = useCallback(async (fromColor: string, toColor: string) => {
     try {
-      const updated = await updateProject(project.id, { description: newDescription });
+      setIsSaving(true);
+      const updatedContent = {
+        ...project.content,
+        heroGradientFrom: fromColor || undefined,
+        heroGradientTo: toColor || undefined,
+      };
+      const updated = await updateProject(project.id, { content: updatedContent });
       setProject(updated);
     } catch (error) {
-      console.error('Failed to update description:', error);
+      console.error('Failed to update background gradient:', error);
+    } finally {
+      setIsSaving(false);
     }
-  }, [project.id, setProject]);
+  }, [project.id, project.content, setProject]);
 
   // Helper to filter content keys to only allowed ones
   const filterContentKeys = useCallback((contentObj: Record<string, unknown> | undefined): Record<string, unknown> => {
     const allowedKeys = [
       'blocks', 'cover', 'tags', 'metadata',
       'heroDisplayMode', 'heroQuote', 'heroVideoUrl', 'heroSlideshowImages',
-      'heroSlideUpElement1', 'heroSlideUpElement2',
-      'templateVersion', 'sections', 'github', 'figma'
+      'heroSlideUpElement1', 'heroSlideUpElement2', 'heroGradientFrom', 'heroGradientTo',
+      'templateVersion', 'sections', 'github', 'figma', 'tldrBgColor'
     ];
     const filtered: Record<string, unknown> = {};
     if (contentObj) {
@@ -368,9 +384,14 @@ export function DefaultProjectLayout() {
           project.id
         );
 
+        // Get custom hero gradient colors if set, otherwise use category colors
+        const heroGradientFrom = project.content?.heroGradientFrom || categoryFromColor;
+        const heroGradientTo = project.content?.heroGradientTo || categoryToColor;
+        const hasCustomGradient = project.content?.heroGradientFrom || project.content?.heroGradientTo;
+
         return (
       <div className="relative min-h-screen w-full flex items-center overflow-hidden bg-gray-900">
-        {/* Background Layer - Category colored gradient with animated orbs */}
+        {/* Background Layer - Custom or category colored gradient with animated orbs */}
         <div className="absolute inset-0 z-0">
           {project.bannerUrl ? (
             <>
@@ -385,37 +406,48 @@ export function DefaultProjectLayout() {
               <div
                 className="absolute inset-0 backdrop-blur-[1px]"
                 style={{
-                  background: `linear-gradient(to right, rgba(10,10,18,0.95), rgba(10,10,18,0.7) 50%, ${categoryFromColor}20 100%)`
+                  background: `linear-gradient(to right, rgba(10,10,18,0.95), rgba(10,10,18,0.7) 50%, ${heroGradientFrom}20 100%)`
                 }}
               />
             </>
           ) : (
             <>
-              {/* Dark base with category-colored gradient orbs */}
+              {/* Dark base with custom or category-colored gradient */}
               <div
                 className="w-full h-full"
                 style={{
-                  background: `linear-gradient(135deg, #0a0a12 0%, #0f1420 50%, #0a0a12 100%)`
+                  background: hasCustomGradient
+                    ? `linear-gradient(135deg, ${heroGradientFrom} 0%, ${heroGradientTo} 100%)`
+                    : `linear-gradient(135deg, #0a0a12 0%, #0f1420 50%, #0a0a12 100%)`
                 }}
               />
-              {/* Animated category color orbs */}
+              {/* Dark overlay for text readability on custom gradients */}
+              {hasCustomGradient && (
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.4) 100%)'
+                  }}
+                />
+              )}
+              {/* Animated gradient orbs */}
               <div
                 className="absolute top-0 left-0 w-[60%] h-[60%] rounded-full blur-[120px] opacity-30"
-                style={{ background: categoryFromColor }}
+                style={{ background: heroGradientFrom }}
               />
               <div
                 className="absolute bottom-0 right-0 w-[50%] h-[50%] rounded-full blur-[100px] opacity-20"
-                style={{ background: categoryToColor }}
+                style={{ background: heroGradientTo }}
               />
               <div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] rounded-full blur-[80px] opacity-15"
-                style={{ background: categoryFromColor }}
+                style={{ background: heroGradientFrom }}
               />
               {/* Top accent line */}
               <div
                 className="absolute top-0 left-0 right-0 h-px"
                 style={{
-                  background: `linear-gradient(to right, transparent, ${categoryFromColor}50, transparent)`
+                  background: `linear-gradient(to right, transparent, ${heroGradientFrom}50, transparent)`
                 }}
               />
             </>
@@ -438,22 +470,13 @@ export function DefaultProjectLayout() {
                   <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden z-50">
                     <button
                       onClick={() => {
-                        handleToggleShowcase();
+                        setShowGradientPicker(true);
                         setShowMenu(false);
                       }}
                       className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 flex items-center gap-3 transition-colors"
                     >
-                      {project.isShowcased ? (
-                        <>
-                          <EyeSlashIcon className="w-4 h-4" />
-                          Remove from Showcase
-                        </>
-                      ) : (
-                        <>
-                          <EyeIcon className="w-4 h-4" />
-                          Add to Showcase
-                        </>
-                      )}
+                      <SwatchIcon className="w-4 h-4" />
+                      Change Background
                     </button>
                     <button
                       onClick={handleDelete}
@@ -463,6 +486,101 @@ export function DefaultProjectLayout() {
                       Delete
                     </button>
                   </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Background Gradient Picker Panel */}
+          {showGradientPicker && (
+            <div
+              ref={gradientPickerRef}
+              className="absolute top-0 right-8 z-40 w-72 rounded-xl bg-gray-900/95 backdrop-blur-xl border border-white/20 shadow-2xl overflow-hidden"
+            >
+              <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                  <SwatchIcon className="w-4 h-4" />
+                  Background Gradient
+                </h3>
+                <button
+                  onClick={() => setShowGradientPicker(false)}
+                  className="text-white/60 hover:text-white"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                {/* Preview */}
+                <div
+                  className="w-full h-16 rounded-lg"
+                  style={{
+                    background: `linear-gradient(135deg, ${project.content?.heroGradientFrom || heroGradientFrom} 0%, ${project.content?.heroGradientTo || heroGradientTo} 100%)`
+                  }}
+                />
+
+                {/* Preset Gradients */}
+                <div>
+                  <label className="block text-xs text-white/60 mb-2">Presets</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {[
+                      { from: '#7c3aed', to: '#4f46e5', name: 'Violet' },
+                      { from: '#0ea5e9', to: '#6366f1', name: 'Sky' },
+                      { from: '#10b981', to: '#06b6d4', name: 'Emerald' },
+                      { from: '#f59e0b', to: '#ef4444', name: 'Sunset' },
+                      { from: '#ec4899', to: '#8b5cf6', name: 'Pink' },
+                      { from: '#0a0a12', to: '#1e1b4b', name: 'Dark' },
+                      { from: '#1e3a5f', to: '#0f172a', name: 'Navy' },
+                      { from: '#064e3b', to: '#0f172a', name: 'Forest' },
+                      { from: '#4c1d95', to: '#0f172a', name: 'Plum' },
+                      { from: '#7f1d1d', to: '#0f172a', name: 'Wine' },
+                    ].map((preset) => (
+                      <button
+                        key={preset.name}
+                        onClick={() => handleGradientChange(preset.from, preset.to)}
+                        className={`h-8 rounded-lg border-2 transition-transform hover:scale-110 ${
+                          project.content?.heroGradientFrom === preset.from && project.content?.heroGradientTo === preset.to
+                            ? 'border-white'
+                            : 'border-transparent'
+                        }`}
+                        style={{
+                          background: `linear-gradient(135deg, ${preset.from} 0%, ${preset.to} 100%)`
+                        }}
+                        title={preset.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom Colors */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-white/60 mb-1">From</label>
+                    <input
+                      type="color"
+                      value={project.content?.heroGradientFrom || heroGradientFrom}
+                      onChange={(e) => handleGradientChange(e.target.value, project.content?.heroGradientTo || heroGradientTo)}
+                      className="w-full h-8 rounded cursor-pointer border border-white/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-white/60 mb-1">To</label>
+                    <input
+                      type="color"
+                      value={project.content?.heroGradientTo || heroGradientTo}
+                      onChange={(e) => handleGradientChange(project.content?.heroGradientFrom || heroGradientFrom, e.target.value)}
+                      className="w-full h-8 rounded cursor-pointer border border-white/20"
+                    />
+                  </div>
+                </div>
+
+                {/* Reset */}
+                {(project.content?.heroGradientFrom || project.content?.heroGradientTo) && (
+                  <button
+                    onClick={() => handleGradientChange('', '')}
+                    className="w-full px-3 py-2 text-xs text-white/60 hover:text-white rounded-lg hover:bg-white/10 transition-colors border border-white/10"
+                  >
+                    Reset to default
+                  </button>
                 )}
               </div>
             </div>
@@ -613,30 +731,13 @@ export function DefaultProjectLayout() {
                 </div>
               </div>
 
-              {/* Description - Inline Editable for Owners */}
-              {(project.description || isOwner) && (
-                <div className="relative p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-primary-400 to-secondary-400 opacity-80" />
-                  {isEditing ? (
-                    <InlineEditableText
-                      value={project.description || ''}
-                      isEditable={isEditing}
-                      onChange={handleDescriptionChange}
-                      placeholder="Add a description for your project..."
-                      className="prose prose-lg prose-invert max-w-none pl-2"
-                      multiline
-                      rows={4}
-                    />
-                  ) : (
-                    <div
-                      className="prose prose-lg prose-invert max-w-none pl-2"
-                      dangerouslySetInnerHTML={{
-                        __html: renderContent(project.description || '')
-                      }}
-                    />
-                  )}
-                </div>
-              )}
+              {/* Description (TL;DR) with Color Picker */}
+              <TldrSection
+                project={project}
+                isEditing={isEditing}
+                onProjectUpdate={setProject}
+                darkMode={true}
+              />
 
               {/* Tools Used */}
               {project.toolsDetails && project.toolsDetails.length > 0 && (
@@ -689,6 +790,8 @@ export function DefaultProjectLayout() {
                 isLiked={isLiked}
                 heartCount={heartCount}
                 isAuthenticated={isAuthenticated}
+                isEditing={isEditing}
+                onEditClick={() => setShowHeroEditor(true)}
               />
             </div>
           </div>
@@ -748,6 +851,14 @@ export function DefaultProjectLayout() {
           toolSlug={selectedToolSlug}
         />
       )}
+
+      {/* Inline Hero Editor Tray */}
+      <InlineHeroEditor
+        project={project}
+        isOpen={showHeroEditor}
+        onClose={() => setShowHeroEditor(false)}
+        onProjectUpdate={setProject}
+      />
     </>
   );
 }

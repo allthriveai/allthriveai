@@ -2,6 +2,7 @@
  * ProjectHero - Main hero component that routes to correct display mode
  *
  * Handles all hero display modes: image, video, slideshow, quote, slideup
+ * Supports inline editing for owners.
  */
 
 import type { Project } from '@/types/models';
@@ -20,6 +21,11 @@ interface ProjectHeroProps {
   isLiked?: boolean;
   heartCount?: number;
   isAuthenticated?: boolean;
+  /** Inline editing props */
+  isEditing?: boolean;
+  onHeroImageChange?: (url: string) => void;
+  onHeroImageUpload?: (file: File) => void;
+  isUploadingHeroImage?: boolean;
 }
 
 export function ProjectHero({
@@ -30,6 +36,10 @@ export function ProjectHero({
   isLiked = false,
   heartCount = 0,
   isAuthenticated = false,
+  isEditing = false,
+  onHeroImageChange,
+  onHeroImageUpload,
+  isUploadingHeroImage = false,
 }: ProjectHeroProps) {
   const heroMode = project.content?.heroDisplayMode || 'image';
   const heroQuote = project.content?.heroQuote;
@@ -75,6 +85,10 @@ export function ProjectHero({
       imageUrl={project.featuredImageUrl}
       projectTitle={project.title}
       projectType={project.type}
+      isEditing={isEditing}
+      onImageChange={onHeroImageChange}
+      onImageUpload={onHeroImageUpload}
+      isUploading={isUploadingHeroImage}
     />
   );
 }

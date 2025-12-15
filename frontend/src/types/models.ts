@@ -265,6 +265,8 @@ export interface ProjectContent {
       feedback?: string;
     };
   };
+  // TL;DR section styling
+  tldrBgColor?: string;
 }
 
 // Base block interface

@@ -23,9 +23,10 @@ import { DirectoryTree } from './DirectoryTree';
 import { MermaidDiagram } from '../shared/MermaidDiagram';
 import {
   InlineEditableTitle,
-  InlineEditableText,
   EditModeIndicator,
 } from '../shared/InlineEditable';
+import { ProjectHero, InlineHeroEditor } from '../hero';
+import { TldrSection } from '../shared/TldrSection';
 import {
   CodeBracketIcon,
   CubeIcon,
@@ -45,6 +46,7 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
   const githubData = project.content?.github;
 
   const [isEditMode, setIsEditMode] = useState(false); // Default to published view
+  const [isHeroEditorOpen, setIsHeroEditorOpen] = useState(false);
   const toggleEditMode = useCallback(() => setIsEditMode(prev => !prev), []);
   const isEditing = isOwner && isEditMode;
 
@@ -55,16 +57,6 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
       setProject(updated);
     } catch (error) {
       console.error('Failed to update title:', error);
-    }
-  }, [project.id, setProject]);
-
-  // Handle description change
-  const handleDescriptionChange = useCallback(async (newDescription: string) => {
-    try {
-      const updated = await updateProject(project.id, { description: newDescription });
-      setProject(updated);
-    } catch (error) {
-      console.error('Failed to update description:', error);
     }
   }, [project.id, setProject]);
 
@@ -80,7 +72,16 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
       {/* Edit Mode Toggle for Owners */}
       <EditModeIndicator isOwner={isOwner} isEditMode={isEditMode} onToggle={toggleEditMode} />
 
-      {/* Hero Section */}
+      {/* Hero Display (Image/Video/Slideshow) */}
+      <div className="mb-8">
+        <ProjectHero
+          project={project}
+          isEditing={isEditing}
+          onEditClick={() => setIsHeroEditorOpen(true)}
+        />
+      </div>
+
+      {/* Title & Description Section */}
       <div className="mb-12">
         <div className="flex items-start justify-between mb-4">
           <InlineEditableTitle
@@ -99,14 +100,13 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
           )}
         </div>
 
-        <InlineEditableText
-          value={project.description || ''}
-          isEditable={isEditing}
-          onChange={handleDescriptionChange}
-          placeholder="Add a description for your project..."
-          className="text-xl text-gray-600 dark:text-gray-400 mb-6"
-          multiline
-          rows={3}
+        {/* TL;DR Description with Color Picker */}
+        <TldrSection
+          project={project}
+          isEditing={isEditing}
+          onProjectUpdate={setProject}
+          darkMode={false}
+          className="mb-6"
         />
 
         {/* Project Type Badge */}
@@ -233,6 +233,14 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
           </p>
         </div>
       )}
+
+      {/* Hero Editor Tray */}
+      <InlineHeroEditor
+        project={project}
+        isOpen={isHeroEditorOpen}
+        onClose={() => setIsHeroEditorOpen(false)}
+        onProjectUpdate={setProject}
+      />
     </div>
   );
 }

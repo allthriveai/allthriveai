@@ -23,6 +23,7 @@ import {
   InlineEditableText,
   EditModeIndicator,
 } from '../shared/InlineEditable';
+import { ProjectHero, InlineHeroEditor } from '../hero';
 import { ProjectSections } from '../sections';
 import type { ProjectSection, SectionType } from '@/types/sections';
 import { createDefaultSectionContent, generateSectionId } from '@/types/sections';
@@ -338,6 +339,9 @@ export function VideoProjectLayout() {
   // Check for template v2 sections
   const hasTemplateSections = project.content?.templateVersion === 2 && (project.content?.sections?.length ?? 0) > 0;
 
+  // Hero editor state
+  const [isHeroEditorOpen, setIsHeroEditorOpen] = useState(false);
+
   // Extract video info from content
   // Handle both VideoContent object and legacy string format
   const videoContent = typeof project.content?.video === 'object' ? project.content.video : {};
@@ -357,15 +361,6 @@ export function VideoProjectLayout() {
   const videoUrl = project.content?.heroVideoUrl || directVideoUrl || '';
   const urlIsShort = typeof videoUrl === 'string' && (videoUrl.includes('/shorts/') || videoUrl.includes('youtube.com/shorts'));
   const isShort = hasVerticalFlag || urlIsShort;
-
-  // DEBUG: Log detection values
-  console.log('[VideoProjectLayout] video detection:', {
-    videoContent,
-    isDirectUpload,
-    directVideoUrl,
-    videoId,
-    isShort
-  });
 
   // Build YouTube embed URL - disable autoplay for desktop/tablet
   const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&autoplay=0` : null;
@@ -501,6 +496,21 @@ export function VideoProjectLayout() {
           </div>
         )}
       </div>
+
+      {/* Hero Section - Editable hero display (Image, Video, Slideshow, Quote, SlideUp) */}
+      <ProjectHero
+        project={project}
+        isEditing={isEditing}
+        onEditClick={() => setIsHeroEditorOpen(true)}
+      />
+
+      {/* Inline Hero Editor Tray */}
+      <InlineHeroEditor
+        project={project}
+        isOpen={isHeroEditorOpen}
+        onClose={() => setIsHeroEditorOpen(false)}
+        onProjectUpdate={setProject}
+      />
 
       {/* Video Details Section */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24">

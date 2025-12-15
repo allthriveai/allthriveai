@@ -13,6 +13,8 @@ interface HeroVideoProps {
   videoUrl: string;
   /** Optional Reddit permalink for proper video+audio playback */
   redditPermalink?: string;
+  /** Whether to autoplay the video (default: false for embeds, true for direct videos) */
+  autoplay?: boolean;
 }
 
 /**
@@ -68,7 +70,7 @@ function isDirectVideo(url: string): boolean {
   );
 }
 
-export function HeroVideo({ videoUrl, redditPermalink }: HeroVideoProps) {
+export function HeroVideo({ videoUrl, redditPermalink, autoplay = false }: HeroVideoProps) {
   if (!videoUrl) return null;
 
   // Handle Reddit videos with iframe embed for proper audio support
@@ -126,12 +128,14 @@ export function HeroVideo({ videoUrl, redditPermalink }: HeroVideoProps) {
   if (!videoInfo) return null;
 
   let embedUrl = '';
+  const autoplayParam = autoplay ? '1' : '0';
   if (videoInfo.platform === 'youtube') {
-    embedUrl = `https://www.youtube.com/embed/${videoInfo.id}?rel=0&autoplay=0`;
+    // mute=1 is required for autoplay to work in most browsers
+    embedUrl = `https://www.youtube.com/embed/${videoInfo.id}?rel=0&autoplay=${autoplayParam}${autoplay ? '&mute=1' : ''}`;
   } else if (videoInfo.platform === 'vimeo') {
-    embedUrl = `https://player.vimeo.com/video/${videoInfo.id}`;
+    embedUrl = `https://player.vimeo.com/video/${videoInfo.id}?autoplay=${autoplayParam}${autoplay ? '&muted=1' : ''}`;
   } else if (videoInfo.platform === 'loom') {
-    embedUrl = `https://www.loom.com/embed/${videoInfo.id}`;
+    embedUrl = `https://www.loom.com/embed/${videoInfo.id}?autoplay=${autoplayParam}`;
   }
 
   // YouTube Shorts use vertical aspect ratio (9:16)

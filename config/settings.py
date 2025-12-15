@@ -430,6 +430,10 @@ AI_COST_TRACKING_ENABLED = config('AI_COST_TRACKING_ENABLED', default=True, cast
 AI_MONTHLY_SPEND_LIMIT_USD = config('AI_MONTHLY_SPEND_LIMIT_USD', default=1000.0, cast=float)
 AI_USER_DAILY_SPEND_LIMIT_USD = config('AI_USER_DAILY_SPEND_LIMIT_USD', default=5.0, cast=float)
 
+# RSS Agent Image Generation
+# Set to False in local development to save Gemini API token costs
+RSS_GENERATE_HERO_IMAGES = config('RSS_GENERATE_HERO_IMAGES', default=True, cast=bool)
+
 # Redis Configuration
 # For AWS ElastiCache with TLS + auth, construct URLs from components
 # For local dev, use simple URLs
