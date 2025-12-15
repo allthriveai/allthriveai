@@ -6,9 +6,9 @@ import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, A
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import * as FaIcons from 'react-icons/fa';
 import { HeroVideo } from './hero/HeroVideo';
+import { ToolTray } from '@/components/tools/ToolTray';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { useTopicTray } from '@/context/TopicTrayContext';
 import { toggleProjectLike, getProjectBySlug } from '@/services/projects';
 import { getOptimizedImageUrl } from '@/utils/imageOptimization';
 import type { Project } from '@/types/models';
@@ -103,13 +103,16 @@ function getFaIcon(iconName: string): React.ComponentType<{ className?: string }
 export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewTrayProps) {
   const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
-  const { isTopicTrayOpen, openTopicTray } = useTopicTray();
   const navigate = useNavigate();
 
   // Like state
   const [isLiked, setIsLiked] = useState(project?.isLikedByUser ?? false);
   const [heartCount, setHeartCount] = useState(project?.heartCount ?? 0);
   const [isLiking, setIsLiking] = useState(false);
+
+  // Tool tray state
+  const [showToolTray, setShowToolTray] = useState(false);
+  const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
 
   // Enriched project with full content (fetched when tray opens)
   const [enrichedProject, setEnrichedProject] = useState<Project | null>(null);
@@ -145,12 +148,15 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
     }
   }, [isOpen]);
 
-  // Reset like state when project changes
+  // Reset like state and close tool tray when project changes
   useEffect(() => {
     if (project) {
       setIsLiked(project.isLikedByUser ?? false);
       setHeartCount(project.heartCount ?? 0);
     }
+    // Close tool tray when switching to a different project
+    setShowToolTray(false);
+    setSelectedToolSlug('');
   }, [project?.id]);
 
   // Fetch full project content when tray opens (for non-battle projects without rich content)
@@ -466,7 +472,10 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
                 {project.toolsDetails.slice(0, 3).map((tool) => (
                   <button
                     key={tool.id}
-                    onClick={() => openTopicTray(tool.slug)}
+                    onClick={() => {
+                      setSelectedToolSlug(tool.slug);
+                      setShowToolTray(true);
+                    }}
                     className="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-700 text-gray-300 flex items-center gap-1.5 hover:bg-slate-600 transition-colors cursor-pointer"
                   >
                     {tool.logoUrl && (
@@ -624,7 +633,10 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
               {project.toolsDetails?.slice(0, 3).map((tool) => (
                 <button
                   key={tool.id}
-                  onClick={() => openTopicTray(tool.slug)}
+                  onClick={() => {
+                    setSelectedToolSlug(tool.slug);
+                    setShowToolTray(true);
+                  }}
                   className="px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                 >
                   {tool.logoUrl && (
@@ -828,7 +840,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
       <aside
         className={`fixed top-0 right-0 h-full w-full md:w-96 lg:w-[28rem] border-l border-gray-200 dark:border-white/10 shadow-2xl z-40 overflow-hidden flex flex-col transition-all duration-300 ease-in-out ${
           visuallyOpen ? 'translate-x-0' : 'translate-x-full'
-        } ${isTopicTrayOpen ? 'md:right-[28rem]' : ''}`}
+        } ${showToolTray ? 'md:right-[28rem]' : ''}`}
         style={{
           backgroundColor: isBattle
             ? 'rgb(15, 23, 42)' // slate-900 for battles
@@ -840,6 +852,15 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
       >
         {isBattle ? renderBattleContent() : renderStandardContent()}
       </aside>
+
+      {/* Tool Tray - Opens when clicking a tool badge */}
+      {project?.toolsDetails && project.toolsDetails.length > 0 && showToolTray && (
+        <ToolTray
+          isOpen={showToolTray}
+          onClose={() => setShowToolTray(false)}
+          toolSlug={selectedToolSlug || project.toolsDetails[0].slug}
+        />
+      )}
     </>,
     document.body
   );

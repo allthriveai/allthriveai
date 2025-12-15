@@ -80,6 +80,17 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
+  // Close when a project preview opens (global event)
+  useEffect(() => {
+    const handleCloseAllToolTrays = () => {
+      if (isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('closeAllToolTrays', handleCloseAllToolTrays);
+    return () => window.removeEventListener('closeAllToolTrays', handleCloseAllToolTrays);
+  }, [isOpen, onClose]);
+
   // Load tool data when tray is open and toolSlug changes
   // This avoids unnecessary background requests while scrolling feeds
   useEffect(() => {

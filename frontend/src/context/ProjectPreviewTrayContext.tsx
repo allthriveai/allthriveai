@@ -56,6 +56,8 @@ export function ProjectPreviewTrayProvider({ children }: ProjectPreviewTrayProvi
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
 
   const openProjectPreview = useCallback((project: Project) => {
+    // Close any open tool trays first
+    window.dispatchEvent(new CustomEvent('closeAllToolTrays'));
     setCurrentProject(project);
     setIsOpen(true);
   }, []);
@@ -107,4 +109,13 @@ export function useProjectPreviewTray(): ProjectPreviewTrayContextValue {
     throw new Error('useProjectPreviewTray must be used within a ProjectPreviewTrayProvider');
   }
   return context;
+}
+
+/**
+ * Safe version of useProjectPreviewTray that returns null when outside ProjectPreviewTrayProvider.
+ * Use this in components that may render before the provider is available.
+ */
+export function useProjectPreviewTraySafe(): ProjectPreviewTrayContextValue | null {
+  const context = useContext(ProjectPreviewTrayContext);
+  return context ?? null;
 }

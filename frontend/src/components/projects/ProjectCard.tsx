@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, memo } from 'react';
 import type { Project } from '@/types/models';
-import { useProjectPreviewTray } from '@/context/ProjectPreviewTrayContext';
+import { useProjectPreviewTraySafe } from '@/context/ProjectPreviewTrayContext';
 import {
   QUOTE_CARD_SIZE,
   MAX_VISIBLE_TAGS,
@@ -77,7 +77,8 @@ const typeLabels = PROJECT_TYPE_LABELS;
 export const ProjectCard = memo(function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick, isInShowcase = false, onShowcaseToggle, showShowcaseButton = false, priority = false, enableInlinePreview = false }: ProjectCardProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
-  const { openProjectPreview } = useProjectPreviewTray();
+  const projectPreviewContext = useProjectPreviewTraySafe();
+  const openProjectPreview = projectPreviewContext?.openProjectPreview;
   const [showMenu, setShowMenu] = useState(false);
   const [isLiked, setIsLiked] = useState(project.isLikedByUser);
   const [heartCount, setHeartCount] = useState(project.heartCount);
@@ -123,7 +124,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
       onCardClick(project.id);
     }
     // If inline preview is enabled, open tray instead of navigating
-    if (enableInlinePreview) {
+    if (enableInlinePreview && openProjectPreview) {
       e.preventDefault();
       openProjectPreview(project);
       return;
