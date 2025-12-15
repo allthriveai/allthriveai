@@ -8,6 +8,7 @@ import * as FaIcons from 'react-icons/fa';
 import { HeroVideo } from './hero/HeroVideo';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
+import { useTopicTray } from '@/context/TopicTrayContext';
 import { toggleProjectLike, getProjectBySlug } from '@/services/projects';
 import { getOptimizedImageUrl } from '@/utils/imageOptimization';
 import type { Project } from '@/types/models';
@@ -102,6 +103,7 @@ function getFaIcon(iconName: string): React.ComponentType<{ className?: string }
 export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewTrayProps) {
   const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
+  const { isTopicTrayOpen } = useTopicTray();
   const navigate = useNavigate();
 
   // Like state
@@ -818,11 +820,13 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
         aria-hidden="true"
       />
 
-      {/* Right Sidebar Drawer - Smooth slide animation */}
+      {/* Right Sidebar Drawer - Smooth slide animation
+          On desktop: shifts left when topic tray is open to show both side by side
+          On mobile: stays at right-0 (topic tray overlays on top) */}
       <aside
-        className={`fixed right-0 top-0 h-full w-full md:w-96 lg:w-[28rem] border-l border-gray-200 dark:border-white/10 shadow-2xl z-50 overflow-hidden flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full w-full md:w-96 lg:w-[28rem] border-l border-gray-200 dark:border-white/10 shadow-2xl z-40 overflow-hidden flex flex-col transition-all duration-300 ease-in-out ${
           visuallyOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        } ${isTopicTrayOpen ? 'md:right-[28rem]' : ''}`}
         style={{
           backgroundColor: isBattle
             ? 'rgb(15, 23, 42)' // slate-900 for battles
