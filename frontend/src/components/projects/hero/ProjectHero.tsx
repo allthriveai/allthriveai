@@ -23,6 +23,7 @@ interface ProjectHeroProps {
   isAuthenticated?: boolean;
   /** Inline editing props */
   isEditing?: boolean;
+  onEditClick?: () => void;
   onHeroImageChange?: (url: string) => void;
   onHeroImageUpload?: (file: File) => void;
   isUploadingHeroImage?: boolean;
@@ -37,6 +38,7 @@ export function ProjectHero({
   heartCount = 0,
   isAuthenticated = false,
   isEditing = false,
+  onEditClick,
   onHeroImageChange,
   onHeroImageUpload,
   isUploadingHeroImage = false,
@@ -86,6 +88,7 @@ export function ProjectHero({
       projectTitle={project.title}
       projectType={project.type}
       isEditing={isEditing}
+      onEditClick={onEditClick}
       onImageChange={onHeroImageChange}
       onImageUpload={onHeroImageUpload}
       isUploading={isUploadingHeroImage}

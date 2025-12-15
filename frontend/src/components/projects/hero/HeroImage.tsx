@@ -14,6 +14,7 @@ interface HeroImageProps {
   projectTitle: string;
   projectType?: string; // Optional, kept for backwards compatibility
   isEditing?: boolean;
+  onEditClick?: () => void;
   onImageChange?: (url: string) => void;
   onImageUpload?: (file: File) => void;
   isUploading?: boolean;
@@ -23,6 +24,7 @@ export function HeroImage({
   imageUrl,
   projectTitle,
   isEditing = false,
+  onEditClick,
   onImageChange,
   onImageUpload,
   isUploading = false,
@@ -49,7 +51,14 @@ export function HeroImage({
           disabled={isUploading}
         />
         <div
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => {
+            // If onEditClick is provided, open the tray instead of file picker
+            if (onEditClick) {
+              onEditClick();
+            } else {
+              fileInputRef.current?.click();
+            }
+          }}
           className="relative group transform hover:scale-[1.02] transition-all duration-500 ease-out cursor-pointer"
         >
           <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50" />
@@ -118,10 +127,14 @@ export function HeroImage({
 
       <div
         className={`relative group transform hover:scale-[1.02] transition-all duration-500 ease-out hover:rotate-1 ${
-          isEditing ? 'cursor-default' : 'cursor-zoom-in'
+          isEditing ? 'cursor-pointer' : 'cursor-zoom-in'
         }`}
         onClick={() => {
-          if (!isEditing) setIsModalOpen(true);
+          if (isEditing && onEditClick) {
+            onEditClick();
+          } else if (!isEditing) {
+            setIsModalOpen(true);
+          }
         }}
       >
         {/* Glassy Card Container for Image */}
@@ -146,23 +159,29 @@ export function HeroImage({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    fileInputRef.current?.click();
+                    if (onEditClick) {
+                      onEditClick();
+                    } else {
+                      fileInputRef.current?.click();
+                    }
                   }}
                   className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl text-white transition-colors"
-                  title="Change image"
+                  title="Edit hero"
                 >
                   <PencilIcon className="w-6 h-6" />
                 </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onImageChange) onImageChange('');
-                  }}
-                  className="p-3 bg-red-500/50 hover:bg-red-500/70 backdrop-blur-sm rounded-xl text-white transition-colors"
-                  title="Remove image"
-                >
-                  <TrashIcon className="w-6 h-6" />
-                </button>
+                {!onEditClick && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onImageChange) onImageChange('');
+                    }}
+                    className="p-3 bg-red-500/50 hover:bg-red-500/70 backdrop-blur-sm rounded-xl text-white transition-colors"
+                    title="Remove image"
+                  >
+                    <TrashIcon className="w-6 h-6" />
+                  </button>
+                )}
               </div>
             </div>
           )}
