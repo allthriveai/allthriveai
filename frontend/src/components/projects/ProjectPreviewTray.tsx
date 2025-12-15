@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import * as FaIcons from 'react-icons/fa';
@@ -59,28 +60,26 @@ function getVideoUrl(project: Project): string | null {
 
 /**
  * Extract teaser content from project
+ * Returns full content since the tray supports scrolling and markdown rendering
  */
 function extractTeaserContent(project: Project): string {
-  // 1. Check for overview section description
+  // 1. Check for overview section description (supports markdown)
   const overviewSection = project.content?.sections?.find(
     (s: any) => s.type === 'overview'
   );
   if (overviewSection?.content?.description) {
-    const desc = overviewSection.content.description as string;
-    return desc.length > 300 ? desc.substring(0, 300).trim() + '...' : desc;
+    return overviewSection.content.description as string;
   }
 
   // 2. Check for hero quote
   if (project.content?.heroQuote) {
     const quote = project.content.heroQuote as string;
-    return `"${quote.length > 280 ? quote.substring(0, 280).trim() + '...' : quote}"`;
+    return `> ${quote}`;
   }
 
   // 3. Fall back to project description
   if (project.description) {
-    return project.description.length > 300
-      ? project.description.substring(0, 300).trim() + '...'
-      : project.description;
+    return project.description;
   }
 
   return '';
@@ -645,9 +644,9 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
           {/* Description / Teaser */}
           {teaserContent && (
             <div className="px-4 pb-4">
-              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                {teaserContent}
-              </p>
+              <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-base prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-li:my-0">
+                <ReactMarkdown>{teaserContent}</ReactMarkdown>
+              </div>
             </div>
           )}
 
