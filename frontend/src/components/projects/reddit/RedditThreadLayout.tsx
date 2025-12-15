@@ -195,41 +195,33 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
     permalink,
     score,
     numComments,
-    num_comments,
     createdUtc,
-    created_utc,
     thumbnailUrl,
-    thumbnail_url,
     selftext,
     selftextHtml,
-    selftext_html,
     linkFlairText,
-    link_flair_text,
     linkFlairBackgroundColor,
-    link_flair_background_color,
     isVideo,
-    is_video,
     videoUrl,
-    video_url,
   } = redditData;
 
-  // Handle both snake_case and camelCase
-  const thumbnailImage = thumbnailUrl || thumbnail_url;
+  // Normalize data with defaults
+  const thumbnailImage = thumbnailUrl;
   const postSelftext = selftext || '';
-  const postSelftextHtml = selftextHtml || selftext_html || '';
-  const linkFlair = linkFlairText || link_flair_text || '';
-  const linkFlairBgColor = linkFlairBackgroundColor || link_flair_background_color || '';
-  const commentCount = numComments || num_comments || 0;
+  const postSelftextHtml = selftextHtml || '';
+  const linkFlair = linkFlairText || '';
+  const linkFlairBgColor = linkFlairBackgroundColor || '';
+  const commentCount = numComments || 0;
   const postScore = score || 0;
-  const hasVideo = isVideo || is_video || false;
+  const hasVideo = isVideo || false;
   // Use heroVideoUrl from project content (downloaded videos) if available, otherwise use reddit metadata
-  const postVideoUrl = localProject.content?.heroVideoUrl || videoUrl || video_url || '';
+  const postVideoUrl = localProject.content?.heroVideoUrl || videoUrl || '';
 
   // Clean author name (remove /u/ prefix if present)
   const cleanAuthor = author?.replace(/^\/u\//, '') || 'unknown';
 
   // Format the date
-  const postDate = createdUtc || created_utc;
+  const postDate = createdUtc;
   const formattedDate = postDate
     ? new Date(postDate).toLocaleDateString('en-US', {
         year: 'numeric',

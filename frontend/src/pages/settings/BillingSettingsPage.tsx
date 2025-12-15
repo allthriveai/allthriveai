@@ -310,7 +310,7 @@ function InvoiceList({ invoices, loading }: { invoices: Invoice[]; loading: bool
               <div className="flex items-center gap-4">
                 <span className="text-sm text-slate-300">{formatDate(invoice.created)}</span>
                 <span className="text-sm font-medium text-slate-100">
-                  {formatAmount(invoice.amount_paid, invoice.currency)}
+                  {formatAmount(invoice.amountPaid, invoice.currency)}
                 </span>
                 <span
                   className={`text-xs px-2 py-0.5 rounded ${
@@ -324,9 +324,9 @@ function InvoiceList({ invoices, loading }: { invoices: Invoice[]; loading: bool
                   {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                 </span>
               </div>
-              {invoice.invoice_pdf && (
+              {invoice.invoicePdf && (
                 <a
-                  href={invoice.invoice_pdf}
+                  href={invoice.invoicePdf}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-primary-400 hover:text-primary-300 transition-colors flex items-center gap-1"

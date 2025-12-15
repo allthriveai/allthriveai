@@ -281,16 +281,12 @@ class BattleService:
                 # Fail the submission - user has exceeded their quota
                 raise ValueError(f'Cannot generate image: {reason}')
 
-        # Build the generation prompt
-        enhanced_prompt = f"""
-Challenge: {battle.challenge_text}
-
-Creative Direction from user:
-{submission.prompt_text}
+        # Build the generation prompt - use ONLY the user's creative direction
+        # The challenge text is for inspiration only, not for the AI image generator
+        enhanced_prompt = f"""{submission.prompt_text}
 
 Generate a high-quality, creative image that brings this vision to life.
-Focus on visual impact and artistic interpretation of the user's direction.
-"""
+Focus on visual impact and artistic interpretation."""
 
         try:
             # Use Gemini for image generation

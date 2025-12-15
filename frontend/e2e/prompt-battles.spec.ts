@@ -1035,6 +1035,119 @@ test.describe('Prompt Battles - Guest Invite Flow', () => {
 
     console.log('SUCCESS: Friend name visible in all 3 places - input, battle arena, and My Battles tab');
   });
+
+  test('image generation uses only user prompt, not challenge text', async () => {
+    /**
+     * TDD TEST - Verifies image generation prompt isolation
+     *
+     * SCENARIO: When a user submits their creative prompt in a battle,
+     * the AI image generator should receive ONLY the user's prompt,
+     * NOT the challenge text.
+     *
+     * WHY THIS MATTERS:
+     * - The challenge text (e.g., "Design a creature that only exists because...")
+     *   is meant to INSPIRE the user's creativity
+     * - The user's prompt is their creative interpretation of the challenge
+     * - The AI image generator should create exactly what the user describes
+     * - Including the challenge would pollute the generation and create
+     *   inconsistent results
+     *
+     * EXPECTED:
+     * 1. User's prompt IS included in the generation prompt
+     * 2. Challenge text is NOT included in the generation prompt
+     * 3. API returns challenge_in_prompt: false
+     *
+     * FAILURE:
+     * - Challenge text appears in the generation prompt
+     * - User's unique prompt is not in the generation prompt
+     */
+
+    // Use a unique prompt that we can verify
+    const uniqueUserPrompt = `A magnificent purple dragon with crystalline wings soaring over a moonlit ocean at midnight - ${Date.now()}`;
+
+    // === STEP 1: Create battle invite ===
+    const { id: battleId } = await createBattleInviteViaAPI(challengerPage);
+    console.log(`Created battle ${battleId}`);
+
+    // === STEP 2: Navigate to battle and start turn ===
+    await challengerPage.goto(`/battles/${battleId}`);
+    await challengerPage.waitForLoadState('networkidle');
+
+    // Wait for ChallengeReadyScreen
+    const startMyTurnButton = challengerPage.getByRole('button', { name: /start my turn/i });
+    await expect(startMyTurnButton).toBeVisible({ timeout: 30000 });
+
+    // Get the challenge text BEFORE starting the battle (we need it for verification)
+    const challengeTextElement = challengerPage.locator('[data-testid="challenge-text"]')
+      .or(challengerPage.locator('.challenge-text'))
+      .or(challengerPage.locator('text=/Design|Create|Imagine|Build|Make/i').first());
+
+    const challengeText = await challengeTextElement.textContent({ timeout: 5000 }).catch(() => null);
+    console.log(`Challenge text found: "${challengeText?.substring(0, 50)}..."`);
+
+    // Start the turn
+    await startMyTurnButton.click();
+
+    // Wait for textarea
+    const textarea = challengerPage.locator('textarea').first();
+    await expect(textarea).toBeVisible({ timeout: 10000 });
+
+    // === STEP 3: Type and submit the unique prompt ===
+    await textarea.fill(uniqueUserPrompt);
+    console.log(`Filled prompt: "${uniqueUserPrompt.substring(0, 50)}..."`);
+
+    // Submit the prompt
+    const submitButton = challengerPage.getByRole('button', { name: /submit|send|done/i });
+    await submitButton.click();
+
+    // Wait for submission to be processed
+    await challengerPage.waitForTimeout(3000);
+    console.log('Prompt submitted');
+
+    // === STEP 4: Call test API to get the generation prompt ===
+    const generationPromptData = await getGenerationPromptViaAPI(battleId, challengerPage);
+
+    console.log('Generation prompt data:', JSON.stringify(generationPromptData, null, 2));
+
+    // === STEP 5: CRITICAL ASSERTIONS ===
+
+    // ASSERTION 1: User's prompt MUST be in the generation prompt
+    const userPromptInGeneration = generationPromptData.generation_prompt.includes(uniqueUserPrompt);
+    if (!userPromptInGeneration) {
+      console.error('FAIL: User\'s prompt is NOT in the generation prompt!');
+      console.error('Expected to find:', uniqueUserPrompt);
+      console.error('Generation prompt:', generationPromptData.generation_prompt);
+    }
+    expect(userPromptInGeneration).toBeTruthy();
+    console.log('✓ User prompt is included in generation prompt');
+
+    // ASSERTION 2: Challenge text MUST NOT be in the generation prompt
+    // First check the API's own assessment
+    expect(generationPromptData.challenge_in_prompt).toBeFalsy();
+    console.log('✓ API confirms challenge is NOT in generation prompt');
+
+    // Double-check by looking for challenge keywords (if we got the challenge text)
+    if (challengeText && challengeText.length > 20) {
+      // Take first significant phrase from challenge (skip generic words)
+      const challengePhrase = challengeText.substring(0, 30);
+      const challengeInGeneration = generationPromptData.generation_prompt.toLowerCase()
+        .includes(challengePhrase.toLowerCase());
+
+      if (challengeInGeneration) {
+        console.error('FAIL: Challenge text IS in the generation prompt!');
+        console.error('Challenge phrase found:', challengePhrase);
+        console.error('Generation prompt:', generationPromptData.generation_prompt);
+      }
+      expect(challengeInGeneration).toBeFalsy();
+      console.log('✓ Challenge phrase not found in generation prompt');
+    }
+
+    // ASSERTION 3: User prompt matches what we submitted
+    expect(generationPromptData.user_prompt).toBe(uniqueUserPrompt);
+    console.log('✓ Stored user prompt matches submitted prompt');
+
+    console.log('SUCCESS: Image generation uses ONLY the user prompt, NOT the challenge text');
+  });
 });
 
 // Helper functions
@@ -1145,4 +1258,50 @@ async function completeBattleViaAPI(battleId: number): Promise<void> {
   // 2. AI judging
   // 3. Timer expiration
   // For E2E, we might need a test-only fast-forward endpoint
+}
+
+interface GenerationPromptData {
+  generation_prompt: string;
+  user_prompt: string;
+  challenge_text: string;
+  challenge_in_prompt: boolean;
+}
+
+async function getGenerationPromptViaAPI(battleId: number, page: Page): Promise<GenerationPromptData> {
+  /**
+   * Get the generation prompt that would be sent to the AI image generator.
+   * This calls a test-only API endpoint (DEBUG mode only).
+   *
+   * Used to verify that:
+   * - User's prompt IS in the generation prompt
+   * - Challenge text is NOT in the generation prompt
+   */
+  const result = await page.evaluate(
+    async ({ apiBase, id }) => {
+      const csrfToken = document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+
+      const response = await fetch(`${apiBase}/api/v1/battles/${id}/test-generation-prompt/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken || '',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Failed to get generation prompt: ${response.status} ${text}`);
+      }
+
+      return response.json();
+    },
+    { apiBase: API_BASE_URL, id: battleId }
+  );
+
+  console.log(`Got generation prompt data for battle ${battleId}`);
+  return result;
 }

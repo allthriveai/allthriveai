@@ -1,43 +1,186 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useMemo, useState, memo } from 'react';
+import { motion } from 'framer-motion';
+import { Cloud, fetchSimpleIcons, renderSimpleIcon } from 'react-icon-cloud';
 
 interface HookSceneProps {
   elapsed: number;
 }
 
-// AI tool logos with positions and animation delays
-const AI_TOOLS = [
-  { name: 'ChatGPT', color: '#10a37f', x: -60, y: -80, delay: 0 },
-  { name: 'Midjourney', color: '#ffffff', x: 40, y: -90, delay: 0.1 },
-  { name: 'Claude', color: '#d4a27f', x: -20, y: -50, delay: 0.2 },
-  { name: 'DALL-E', color: '#ff6b6b', x: 80, y: -40, delay: 0.3 },
-  { name: 'Suno', color: '#7c3aed', x: -90, y: -20, delay: 0.15 },
-  { name: 'Runway', color: '#00d4ff', x: 100, y: 10, delay: 0.25 },
-  { name: 'Stable Diffusion', color: '#ff8c00', x: -100, y: 30, delay: 0.35 },
-  { name: 'Gemini', color: '#4285f4', x: 70, y: 50, delay: 0.05 },
-  { name: 'Perplexity', color: '#20b2aa', x: -40, y: 70, delay: 0.2 },
-  { name: 'ElevenLabs', color: '#f472b6', x: 30, y: 80, delay: 0.3 },
-  { name: 'Copilot', color: '#0078d4', x: -70, y: 50, delay: 0.1 },
-  { name: 'Notion AI', color: '#ffffff', x: 90, y: -60, delay: 0.25 },
-  { name: 'Jasper', color: '#ff5733', x: -110, y: -50, delay: 0.15 },
-  { name: 'Copy.ai', color: '#9b59b6', x: 110, y: 40, delay: 0.35 },
-  { name: 'Pika', color: '#f39c12', x: 0, y: 90, delay: 0.05 },
-  { name: 'Luma', color: '#1abc9c', x: -30, y: -100, delay: 0.4 },
+// AI tool slugs from Simple Icons - same as homepage
+const aiToolSlugs = [
+  'openai',
+  'anthropic',
+  'huggingface',
+  'googlegemini',
+  'meta',
+  'nvidia',
+  'pytorch',
+  'tensorflow',
+  'langchain',
+  'github',
+  'python',
+  'typescript',
+  'react',
+  'nodedotjs',
+  'firebase',
+  'vercel',
+  'amazonwebservices',
+  'googlecloud',
+  'canva',
+  'figma',
+  'notion',
+  'linear',
 ];
 
 // Timing breakpoints within the 4-second scene
 const TIMING = {
-  cloudStart: 0,
-  questionAppears: 1200,
-  cloudFadeOut: 2200,
-  makeItFun: 2500,
-  logoAppears: 2800,
+  globeStart: 0,
+  questionAppears: 500,   // Start fading in words at 0.5s
+  convergeStart: 2400,    // Globe starts shrinking
+  logoAppears: 3000,      // Logo appears at 3s, fully visible by 3.5s
+  sceneEnd: 4000,
 };
 
+type SimpleIcon = any;
+type IconData = Awaited<ReturnType<typeof fetchSimpleIcons>>;
+
+const renderCustomIcon = (icon: SimpleIcon) => {
+  return renderSimpleIcon({
+    icon,
+    bgHex: '#020617',
+    fallbackHex: '#22D3EE',
+    minContrastRatio: 2,
+    size: 42,
+    aProps: {
+      href: undefined,
+      target: undefined,
+      rel: undefined,
+      onClick: (e: React.MouseEvent) => e.preventDefault(),
+    },
+  });
+};
+
+// Cloud options - faster rotation for the promo
+const cloudProps = {
+  containerProps: {
+    style: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: '100%',
+      height: '100%',
+      pointerEvents: 'none' as const,
+    },
+  },
+  options: {
+    reverse: true,
+    depth: 1,
+    wheelZoom: false,
+    imageScale: 2,
+    activeCursor: 'default',
+    tooltip: null,
+    initial: [0.1, -0.1],
+    clickToFront: 0,
+    tooltipDelay: 0,
+    outlineColour: '#0000',
+    maxSpeed: 0.03, // Gentle rotation
+    minSpeed: 0.02,
+    freezeActive: false,
+    freezeDecel: false,
+  },
+};
+
+// Fade-in words component
+function FadeInWords({
+  startTime,
+  elapsed,
+}: {
+  startTime: number;
+  elapsed: number;
+}) {
+  const timeSinceStart = elapsed - startTime;
+
+  // Three lines of words with timing
+  const lines = [
+    [
+      { text: 'Overwhelmed', delay: 0 },
+      { text: 'by', delay: 150 },
+      { text: 'how', delay: 300 },
+      { text: 'many', delay: 450 },
+    ],
+    [
+      { text: 'AI tools', delay: 600 },
+    ],
+    [
+      { text: 'are', delay: 800 },
+      { text: 'out', delay: 950 },
+      { text: 'there?', delay: 1100 },
+    ],
+  ];
+
+  return (
+    <div className="text-xl font-bold text-white leading-tight">
+      {lines.map((lineWords, lineIndex) => (
+        <div key={lineIndex} className="min-h-[1.5em] flex flex-wrap justify-center gap-x-2">
+          {lineWords.map((word, i) => {
+            const isVisible = timeSinceStart >= word.delay;
+            const opacity = isVisible ? Math.min(1, (timeSinceStart - word.delay) / 150) : 0;
+            return (
+              <span
+                key={i}
+                style={{ opacity, transition: 'opacity 0.15s ease-out' }}
+              >
+                {word.text}
+              </span>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Memoized Cloud component to prevent re-renders from parent elapsed updates
+const MemoizedIconCloud = memo(function MemoizedIconCloud({ iconData }: { iconData: IconData }) {
+  const renderedIcons = useMemo(() => {
+    return Object.values(iconData.simpleIcons)
+      .filter((icon): icon is SimpleIcon => icon !== undefined)
+      .map((icon) => renderCustomIcon(icon));
+  }, [iconData]);
+
+  return (
+    <div className="w-[350px] h-[350px]">
+      <Cloud {...cloudProps}>
+        {renderedIcons}
+      </Cloud>
+    </div>
+  );
+});
+
 export function HookScene({ elapsed }: HookSceneProps) {
-  const showCloud = elapsed >= TIMING.cloudStart && elapsed < TIMING.cloudFadeOut;
-  const showQuestion = elapsed >= TIMING.questionAppears && elapsed < TIMING.makeItFun;
-  const showMakeItFun = elapsed >= TIMING.makeItFun;
+  const [iconData, setIconData] = useState<IconData | null>(null);
+
+  const showGlobe = elapsed >= TIMING.globeStart;
+  const showQuestion = elapsed >= TIMING.questionAppears && elapsed < TIMING.convergeStart;
+  const isConverging = elapsed >= TIMING.convergeStart;
   const showLogo = elapsed >= TIMING.logoAppears;
+
+  // Calculate convergence progress (0 to 1)
+  const convergeProgress = isConverging
+    ? Math.min(1, (elapsed - TIMING.convergeStart) / (TIMING.logoAppears - TIMING.convergeStart))
+    : 0;
+
+  // Eased convergence for smoother animation
+  const easedConverge = convergeProgress * convergeProgress * (3 - 2 * convergeProgress);
+
+  // Calculate globe scale and opacity based on convergence
+  const globeScale = 1 - easedConverge * 0.8;
+  const globeOpacity = showLogo ? Math.max(0, 1 - (elapsed - TIMING.logoAppears) / 400) : 1;
+
+  // Fetch icons on mount
+  useEffect(() => {
+    fetchSimpleIcons({ slugs: aiToolSlugs }).then(setIconData).catch(console.error);
+  }, []);
 
   return (
     <motion.div
@@ -50,120 +193,104 @@ export function HookScene({ elapsed }: HookSceneProps) {
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#020617] via-[#0a1628] to-[#020617]" />
 
-      {/* CSS for gentle cloud floating animation */}
-      <style>{`
-        @keyframes cloud-float-1 {
-          0%, 100% { transform: translate(0px, 0px); }
-          50% { transform: translate(8px, -12px); }
-        }
-        @keyframes cloud-float-2 {
-          0%, 100% { transform: translate(0px, 0px); }
-          50% { transform: translate(-10px, -8px); }
-        }
-        @keyframes cloud-float-3 {
-          0%, 100% { transform: translate(0px, 0px); }
-          50% { transform: translate(6px, 10px); }
-        }
-        @keyframes cloud-float-4 {
-          0%, 100% { transform: translate(0px, 0px); }
-          50% { transform: translate(-8px, 6px); }
-        }
-      `}</style>
+      {/* 3D Icon Cloud Globe - using CSS transform instead of re-rendering */}
+      {showGlobe && iconData && (
+        <div
+          className="absolute inset-0 flex items-center justify-center transition-transform duration-100"
+          style={{
+            transform: `scale(${globeScale})`,
+            opacity: globeOpacity,
+          }}
+        >
+          <MemoizedIconCloud iconData={iconData} />
+        </div>
+      )}
 
-      {/* Floating cloud of AI tools */}
-      <AnimatePresence>
-        {showCloud && (
+      {/* Loading state while icons fetch */}
+      {showGlobe && !iconData && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full border-2 border-cyan-500/30 border-t-cyan-400 animate-spin" />
+        </div>
+      )}
+
+      {/* Question text with fade-in words effect */}
+      {showQuestion && (
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center z-20"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="text-center px-8 bg-[#020617]/80 py-4 rounded-xl backdrop-blur-sm">
+            <FadeInWords
+              startTime={TIMING.questionAppears}
+              elapsed={elapsed}
+            />
+          </div>
+        </motion.div>
+      )}
+
+      {/* AllThrive Logo - appears as globe converges */}
+      {showLogo && (
+        <motion.div
+          className="absolute inset-0 flex flex-col items-center justify-center z-30"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        >
           <motion.div
-            className="absolute inset-0"
+            className="text-2xl font-black bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent mb-3"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+          >
+            LET'S MAKE IT FUN
+          </motion.div>
+          <motion.img
+            src="/all-thrvie-logo.png"
+            alt="AllThrive"
+            className="w-24 h-24"
+            initial={{ rotate: -180, scale: 0 }}
+            animate={{ rotate: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+          />
+          <motion.div
+            className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent mt-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.3 } }}
+            transition={{ delay: 0.4 }}
           >
-            {AI_TOOLS.map((tool, index) => (
+            allthrive.ai
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Particle implosion effect when converging */}
+      {isConverging && !showLogo && (
+        <>
+          {[...Array(8)].map((_, i) => {
+            const angle = (i / 8) * Math.PI * 2;
+            const startRadius = 150;
+            const currentRadius = startRadius * (1 - easedConverge);
+            return (
               <motion.div
-                key={tool.name}
-                className="absolute text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap"
+                key={i}
+                className="absolute w-1.5 h-1.5 rounded-full"
                 style={{
-                  backgroundColor: `${tool.color}25`,
-                  color: tool.color,
-                  border: `1px solid ${tool.color}50`,
-                  boxShadow: `0 0 15px ${tool.color}30`,
-                  left: `calc(50% + ${tool.x}px)`,
-                  top: `calc(50% + ${tool.y}px)`,
-                  animation: `cloud-float-${(index % 4) + 1} ${2.5 + (index % 3) * 0.5}s ease-in-out infinite`,
-                  animationDelay: `${tool.delay}s`,
+                  background: `linear-gradient(135deg, #22d3ee, #34d399)`,
+                  left: '50%',
+                  top: '50%',
+                  transform: `translate(${Math.cos(angle) * currentRadius}px, ${Math.sin(angle) * currentRadius}px)`,
+                  opacity: 1 - easedConverge,
                 }}
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 0.9, scale: 1 }}
-                transition={{ delay: tool.delay, duration: 0.3 }}
-              >
-                {tool.name}
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+              />
+            );
+          })}
+        </>
+      )}
 
-      {/* Question text */}
-      <AnimatePresence>
-        {showQuestion && (
-          <motion.div
-            className="absolute inset-0 flex items-center justify-center z-20"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.1, transition: { duration: 0.3 } }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="text-center px-8 bg-[#020617]/80 py-4 rounded-xl backdrop-blur-sm">
-              <div className="text-xl font-bold text-white leading-tight">
-                Overwhelmed by how many
-              </div>
-              <div className="text-xl font-bold text-white leading-tight">
-                AI tools are out there?
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Center content */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        {showMakeItFun && (
-          <motion.div
-            className="flex flex-col items-center z-20"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-          >
-            <div className="text-2xl font-black bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent mb-4">
-              LET'S MAKE IT FUN
-            </div>
-          </motion.div>
-        )}
-
-        {showLogo && (
-          <motion.div
-            className="flex flex-col items-center z-20"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          >
-            <motion.img
-              src="/all-thrvie-logo-blue.png"
-              alt="AllThrive"
-              className="w-20 h-20"
-              initial={{ rotate: -180 }}
-              animate={{ rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 150, damping: 15 }}
-            />
-            <div className="text-lg text-white/70 font-medium mt-2">
-              allthrive.ai
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Particle burst */}
+      {/* Burst effect when logo appears */}
       {showLogo && (
         <>
           {[...Array(12)].map((_, i) => (
@@ -179,12 +306,12 @@ export function HookScene({ elapsed }: HookSceneProps) {
               }}
               initial={{ x: 0, y: 0, scale: 1, opacity: 0.8 }}
               animate={{
-                x: Math.cos((i / 12) * Math.PI * 2) * 80,
-                y: Math.sin((i / 12) * Math.PI * 2) * 80,
+                x: Math.cos((i / 12) * Math.PI * 2) * 100,
+                y: Math.sin((i / 12) * Math.PI * 2) * 100,
                 scale: 0,
                 opacity: 0,
               }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
             />
           ))}
         </>

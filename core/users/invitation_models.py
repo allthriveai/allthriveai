@@ -37,6 +37,7 @@ class InvitationRequest(models.Model):
         ('linkedin', 'LinkedIn'),
         ('instagram', 'Instagram'),
         ('figma', 'Figma'),
+        ('url', 'Paste any URL'),
     ]
 
     # Requester info (not linked to User since they don't have account yet)

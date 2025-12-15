@@ -18,6 +18,7 @@ import { getProjectBySlug, deleteProject, updateProject, toggleProjectInShowcase
 import { trackProjectView, getViewSourceFromReferrer } from '@/services/tracking';
 import type { Project } from '@/types/models';
 import { useAuth } from '@/hooks/useAuth';
+import { useEngagementTracking } from '@/hooks/useEngagementTracking';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { ProjectProvider } from '@/context/ProjectContext';
 import { ProjectLayoutRouter } from '@/components/projects/layouts';
@@ -36,6 +37,10 @@ export default function ProjectDetailPage() {
   // Ref to track loading state for event handlers (avoids stale closure)
   const isLoadingRef = useRef(isLoading);
   isLoadingRef.current = isLoading;
+
+  // Track engagement signals for personalization learning
+  // Only tracks for authenticated users viewing loaded projects
+  useEngagementTracking(project?.id, { enabled: isAuthenticated && !!project });
 
   // Load project data
   useEffect(() => {
@@ -102,7 +107,7 @@ export default function ProjectDetailPage() {
 
     if (!contentKey) return;
 
-    const status = project.content?.[contentKey]?.analysis_status;
+    const status = project.content?.[contentKey]?.analysisStatus;
 
     // Poll if analysis is pending
     if (status === 'pending') {
@@ -111,7 +116,7 @@ export default function ProjectDetailPage() {
 
         try {
           const updated = await getProjectBySlug(username, projectSlug);
-          const newStatus = updated.content?.[contentKey]?.analysis_status;
+          const newStatus = updated.content?.[contentKey]?.analysisStatus;
 
           if (newStatus !== 'pending') {
             setProject(updated);

@@ -242,10 +242,10 @@ export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
       </div>
 
       {/* Analysis Footer */}
-      {figmaData?.analyzed_at && (
+      {figmaData?.analyzedAt && (
         <div className="mt-16 pt-8 border-t border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-            Design file analyzed {new Date(figmaData.analyzed_at).toLocaleDateString()}
+            Design file analyzed {new Date(figmaData.analyzedAt).toLocaleDateString()}
           </p>
         </div>
       )}

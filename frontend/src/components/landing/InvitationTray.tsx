@@ -41,6 +41,7 @@ const INTEGRATION_OPTIONS = [
   { key: 'linkedin', label: 'LinkedIn' },
   { key: 'instagram', label: 'Instagram' },
   { key: 'figma', label: 'Figma' },
+  { key: 'url', label: 'Paste any URL' },
 ];
 
 interface FormData {

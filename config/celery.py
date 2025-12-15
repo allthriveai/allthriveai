@@ -24,6 +24,7 @@ app.autodiscover_tasks(
         'core.sms',  # SMS notification tasks
         'core.ai_usage',  # Admin analytics tasks
         'services.weaviate',  # Weaviate sync tasks
+        'core.engagement',  # Engagement tracking tasks
     ]
 )
 
@@ -49,6 +50,7 @@ app.conf.task_queues = (
     Queue('youtube_sync', routing_key='youtube.sync'),
     Queue('youtube_import', routing_key='youtube.import'),
     Queue('battles', routing_key='battles'),  # Prompt battles queue
+    Queue('engagement', routing_key='engagement'),  # Engagement processing queue
 )
 
 # Route tasks to specific queues
@@ -71,6 +73,10 @@ app.conf.task_routes = {
     'core.battles.tasks.send_async_battle_reminders': {'queue': 'default'},
     'core.battles.tasks.start_async_turn_task': {'queue': 'default'},
     'core.battles.tasks.handle_async_turn_timeout_task': {'queue': 'default'},
+    # Engagement tasks
+    'core.engagement.tasks.process_engagement_batch': {'queue': 'engagement'},
+    'core.engagement.tasks.update_user_profile_from_events': {'queue': 'engagement'},
+    'core.engagement.tasks.apply_recency_decay': {'queue': 'engagement'},
 }
 
 # Periodic tasks schedule (Celery Beat)
@@ -224,6 +230,23 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute=0),  # Every hour at minute 0
         'options': {
             'expires': 3600,  # Expires after 1 hour
+        },
+    },
+    # Engagement processing tasks
+    'engagement-process-batch': {
+        'task': 'core.engagement.tasks.process_engagement_batch',
+        'schedule': crontab(minute='*/5'),  # Every 5 minutes
+        'options': {
+            'expires': 300,  # Expires after 5 minutes
+            'queue': 'engagement',
+        },
+    },
+    'engagement-apply-recency-decay': {
+        'task': 'core.engagement.tasks.apply_recency_decay',
+        'schedule': crontab(hour=4, minute=30),  # Daily at 4:30 AM
+        'options': {
+            'expires': 7200,  # Expires after 2 hours
+            'queue': 'engagement',
         },
     },
 }

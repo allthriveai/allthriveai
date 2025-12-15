@@ -29,7 +29,7 @@ export function RightEventsCalendarPanel({ isOpen, onClose }: RightEventsCalenda
   // Track if panel should be rendered (for slide-out animation)
   const [shouldRender, setShouldRender] = useState(false);
 
-  const isAdmin = user?.is_staff || user?.is_superuser;
+  const isAdmin = user?.role === 'admin';
 
   // Handle mount/unmount for animations
   useEffect(() => {

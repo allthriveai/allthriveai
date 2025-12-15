@@ -387,11 +387,16 @@ urlpatterns = [
         PromptBattleViewSet.as_view({'post': 'set_friend_name'}),
         name='battle_set_friend_name',
     ),
-    # Test-only endpoint for E2E testing (only available in DEBUG mode)
+    # Test-only endpoints for E2E testing (only available in DEBUG mode)
     path(
         'battles/<int:pk>/test-expire-invite/',
         PromptBattleViewSet.as_view({'post': 'test_expire_invite'}),
         name='battle_test_expire_invite',
+    ),
+    path(
+        'battles/<int:pk>/test-generation-prompt/',
+        PromptBattleViewSet.as_view({'get': 'test_generation_prompt'}),
+        name='battle_test_generation_prompt',
     ),
     # Bulk battle management endpoints
     path('battles/bulk-delete/', PromptBattleViewSet.as_view({'post': 'bulk_delete'}), name='battles_bulk_delete'),
@@ -406,6 +411,8 @@ urlpatterns = [
     path('', include('core.vendors.urls')),
     # Browser extension API endpoints
     path('extension/', include('core.extension.urls')),
+    # Engagement tracking endpoints
+    path('engagement/', include('core.engagement.urls')),
 ]
 
 # Test-only endpoints (only available in DEBUG mode)

@@ -81,7 +81,7 @@ export interface SemanticSearchFilters {
 export async function semanticSearch(query: string, filters?: SemanticSearchFilters): Promise<Project[]> {
   const response = await api.post<{
     query: string;
-    search_type: string;
+    searchType: string;
     results: { projects: Project[]; tools: any[]; quizzes: any[]; users: any[] };
     meta: any;
   }>('/search/semantic/', {

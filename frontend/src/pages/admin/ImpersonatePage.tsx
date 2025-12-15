@@ -241,15 +241,15 @@ export default function ImpersonatePage() {
                         <div className="flex items-center gap-4 flex-1 min-w-0">
                           {/* Avatar */}
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center overflow-hidden flex-shrink-0 border-2 border-white/30">
-                            {targetUser.avatar_url ? (
+                            {targetUser.avatarUrl ? (
                               <img
-                                src={targetUser.avatar_url}
+                                src={targetUser.avatarUrl}
                                 alt={targetUser.username}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
                               <span className="text-white text-lg font-semibold">
-                                {(targetUser.first_name || targetUser.username || 'U').charAt(0).toUpperCase()}
+                                {(targetUser.firstName || targetUser.username || 'U').charAt(0).toUpperCase()}
                               </span>
                             )}
                           </div>
@@ -258,11 +258,11 @@ export default function ImpersonatePage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-slate-900 dark:text-white truncate">
-                                {targetUser.first_name && targetUser.last_name
-                                  ? `${targetUser.first_name} ${targetUser.last_name}`
+                                {targetUser.firstName && targetUser.lastName
+                                  ? `${targetUser.firstName} ${targetUser.lastName}`
                                   : targetUser.username}
                               </p>
-                              {targetUser.is_guest && (
+                              {targetUser.isGuest && (
                                 <span className="px-2 py-0.5 text-xs bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 rounded-full">
                                   Guest
                                 </span>
@@ -272,7 +272,7 @@ export default function ImpersonatePage() {
                               @{targetUser.username} &middot; {targetUser.email}
                             </p>
                             <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                              Joined {formatDate(targetUser.date_joined)}
+                              Joined {formatDate(targetUser.dateJoined)}
                             </p>
                           </div>
                         </div>
@@ -336,33 +336,33 @@ export default function ImpersonatePage() {
                       >
                         <div className="md:col-span-3">
                           <p className="font-medium text-slate-900 dark:text-white">
-                            @{log.admin_user?.username || 'Unknown'}
+                            @{log.adminUser?.username || 'Unknown'}
                           </p>
                         </div>
                         <div className="md:col-span-3">
                           <p className="text-slate-700 dark:text-slate-300">
-                            @{log.target_user?.username || 'Unknown'}
+                            @{log.targetUser?.username || 'Unknown'}
                           </p>
                         </div>
                         <div className="md:col-span-3">
                           <p className="text-sm text-slate-600 dark:text-slate-400">
-                            {formatDate(log.started_at)}
+                            {formatDate(log.startedAt)}
                           </p>
                         </div>
                         <div className="md:col-span-2">
                           <p className="text-sm text-slate-600 dark:text-slate-400">
-                            {formatDuration(log.started_at, log.ended_at)}
+                            {formatDuration(log.startedAt, log.endedAt)}
                           </p>
                         </div>
                         <div className="md:col-span-1">
                           <span
                             className={`inline-flex px-2 py-1 text-xs rounded-full ${
-                              log.ended_at
+                              log.endedAt
                                 ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
                                 : 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
                             }`}
                           >
-                            {log.ended_at ? 'Ended' : 'Active'}
+                            {log.endedAt ? 'Ended' : 'Active'}
                           </span>
                         </div>
                         {log.reason && (

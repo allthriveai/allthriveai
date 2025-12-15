@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBolt, faTrophy, faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faBolt, faTrophy, faCrown } from '@fortawesome/free-solid-svg-icons';
 
 interface BattleSceneProps {
   progress: number; // 0-1 progress through scene
@@ -9,43 +9,34 @@ interface BattleSceneProps {
 
 // Timing breakpoints within the 8-second scene
 const TIMING = {
-  textBattle: 0,        // 0ms - "BATTLE" crashes in
-  textToLearn: 500,     // 500ms - "TO LEARN" slides in
-  splitLine: 1000,      // 1s - screen splits
+  textBattle: 0,        // 0ms - "BECOME A BETTER" appears
+  textToLearn: 500,     // 500ms - "PROMPT ENGINEER" slides in
+  subtext: 1000,        // 1s - "through player vs player battles"
   player1: 1500,        // 1.5s - Player 1 slides in
   vsBadge: 2000,        // 2s - VS badge slams in
   player2: 2500,        // 2.5s - Player 2 slides in
-  challenge: 3500,      // 3.5s - Challenge text types
-  typing: 5000,         // 5s - Typing indicators
-  submitted: 6000,      // 6s - Submitted checkmarks
-  xpReward: 6500,       // 6.5s - XP reward flies up
+  showPrompt: 3000,     // 3s - Show the challenge/prompt
+  showImages: 4500,     // 4.5s - Show battle images
+  winner: 6000,         // 6s - Winner revealed
+  xpReward: 7000,       // 7s - XP reward flies up
 };
 
-function TypewriterText({ text, isVisible, duration = 1500 }: { text: string; isVisible: boolean; duration?: number }) {
-  if (!isVisible) return null;
-
-  return (
-    <motion.span
-      initial={{ width: 0 }}
-      animate={{ width: 'auto' }}
-      transition={{ duration: duration / 1000, ease: 'linear' }}
-      className="overflow-hidden whitespace-nowrap inline-block"
-    >
-      {text}
-    </motion.span>
-  );
-}
+// DiceBear avatar URLs for fictional players
+const AVATARS = {
+  player1: 'https://api.dicebear.com/9.x/lorelei/svg?seed=nanobanana&backgroundColor=0d9488',
+  player2: 'https://api.dicebear.com/9.x/lorelei/svg?seed=promptpro&backgroundColor=6366f1',
+};
 
 export function BattleScene({ progress: _progress, elapsed }: BattleSceneProps) {
   const showBattle = elapsed >= TIMING.textBattle;
   const showToLearn = elapsed >= TIMING.textToLearn;
-  const showSplitLine = elapsed >= TIMING.splitLine;
+  const showSubtext = elapsed >= TIMING.subtext;
   const showPlayer1 = elapsed >= TIMING.player1;
   const showVsBadge = elapsed >= TIMING.vsBadge;
   const showPlayer2 = elapsed >= TIMING.player2;
-  const showChallenge = elapsed >= TIMING.challenge;
-  const showTyping = elapsed >= TIMING.typing;
-  const showSubmitted = elapsed >= TIMING.submitted;
+  const showPrompt = elapsed >= TIMING.showPrompt;
+  const showImages = elapsed >= TIMING.showImages;
+  const showWinner = elapsed >= TIMING.winner;
   const showXpReward = elapsed >= TIMING.xpReward;
 
   return (
@@ -59,19 +50,6 @@ export function BattleScene({ progress: _progress, elapsed }: BattleSceneProps) 
       {/* Background glows */}
       <div className="absolute -left-20 top-1/4 w-64 h-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
       <div className="absolute -right-20 top-1/3 w-64 h-64 rounded-full opacity-25 blur-3xl bg-green-500" />
-
-      {/* Split line - centered in full screen */}
-      {showSplitLine && (
-        <motion.div
-          initial={{ scaleY: 0 }}
-          animate={{ scaleY: 1 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="absolute left-1/2 top-[30%] bottom-[40%] w-[2px] -translate-x-1/2 origin-center"
-          style={{
-            background: 'linear-gradient(to bottom, transparent, #22D3EE, #34D399, transparent)',
-          }}
-        />
-      )}
 
       {/* Safe zone container - all content goes here */}
       <div
@@ -105,7 +83,7 @@ export function BattleScene({ progress: _progress, elapsed }: BattleSceneProps) 
             </motion.div>
           )}
 
-          {showSplitLine && (
+          {showSubtext && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -118,8 +96,9 @@ export function BattleScene({ progress: _progress, elapsed }: BattleSceneProps) 
         </div>
 
         {/* Battle arena - centered */}
-        <div className="flex-1 flex items-center justify-center px-4">
-          <div className="flex items-center justify-center gap-3 w-full max-w-sm">
+        <div className="flex-1 flex flex-col items-center justify-center px-4">
+          {/* Player avatars row */}
+          <div className="flex items-center justify-center gap-3 w-full max-w-sm mb-3">
             {/* Player 1 */}
             {showPlayer1 && (
               <motion.div
@@ -128,29 +107,31 @@ export function BattleScene({ progress: _progress, elapsed }: BattleSceneProps) 
                 transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                 className="flex flex-col items-center"
               >
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-cyan-500/40">
-                  AD
+                <div className="relative">
+                  <img
+                    src={AVATARS.player1}
+                    alt="Player 1"
+                    className="w-14 h-14 rounded-full object-cover border-2 border-cyan-500/50 shadow-lg shadow-cyan-500/40 bg-slate-700"
+                  />
+                  {showWinner && (
+                    <motion.div
+                      initial={{ scale: 0, y: 10 }}
+                      animate={{ scale: 1, y: 0 }}
+                      transition={{ type: 'spring', stiffness: 400 }}
+                      className="absolute -top-2 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center shadow-lg"
+                    >
+                      <FontAwesomeIcon icon={faCrown} className="w-2.5 h-2.5 text-white" />
+                    </motion.div>
+                  )}
                 </div>
-                <span className="text-white font-semibold text-xs mt-1">@aidesigner</span>
-                {showTyping && !showSubmitted && (
+                <span className="text-white font-semibold text-[10px] mt-1">@nanobanana</span>
+                {showWinner && (
                   <motion.span
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                    className="text-cyan-400 text-[10px] mt-0.5"
+                    animate={{ opacity: 1 }}
+                    className="text-amber-400 text-[9px] font-bold mt-0.5"
                   >
-                    Typing...
-                  </motion.span>
-                )}
-                {showSubmitted && (
-                  <motion.span
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 400 }}
-                    className="text-green-400 text-[10px] mt-0.5 flex items-center gap-0.5"
-                  >
-                    <FontAwesomeIcon icon={faCheck} className="w-2.5 h-2.5" />
-                    Done!
+                    WINNER!
                   </motion.span>
                 )}
               </motion.div>
@@ -164,13 +145,13 @@ export function BattleScene({ progress: _progress, elapsed }: BattleSceneProps) 
                 transition={{ type: 'spring', stiffness: 300, damping: 15 }}
                 className="relative"
               >
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-cyan-500/50 flex items-center justify-center shadow-[0_0_30px_rgba(34,211,238,0.4)]">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-cyan-500/50 flex items-center justify-center shadow-[0_0_30px_rgba(34,211,238,0.4)]">
                   <motion.div
                     className="absolute inset-0 rounded-full border-2 border-cyan-400/50"
                     animate={{ scale: [1, 1.4, 1], opacity: [0.8, 0, 0.8] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
                   />
-                  <span className="text-xl font-black bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
+                  <span className="text-base font-black bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
                     VS
                   </span>
                 </div>
@@ -185,71 +166,98 @@ export function BattleScene({ progress: _progress, elapsed }: BattleSceneProps) 
                 transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                 className="flex flex-col items-center"
               >
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-green-500/40">
-                  PP
-                </div>
-                <span className="text-white font-semibold text-xs mt-1">@promptpro</span>
-                {showTyping && !showSubmitted && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: 0.3 }}
-                    className="text-green-400 text-[10px] mt-0.5"
-                  >
-                    Typing...
-                  </motion.span>
-                )}
-                {showSubmitted && (
-                  <motion.span
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 400, delay: 0.2 }}
-                    className="text-green-400 text-[10px] mt-0.5 flex items-center gap-0.5"
-                  >
-                    <FontAwesomeIcon icon={faCheck} className="w-2.5 h-2.5" />
-                    Done!
-                  </motion.span>
-                )}
+                <img
+                  src={AVATARS.player2}
+                  alt="Player 2"
+                  className="w-14 h-14 rounded-full object-cover border-2 border-green-500/50 shadow-lg shadow-green-500/40 bg-slate-700"
+                />
+                <span className="text-white font-semibold text-[10px] mt-1">@promptpro</span>
               </motion.div>
             )}
           </div>
+
+          {/* Prompt/Challenge Description */}
+          {showPrompt && (
+            <motion.div
+              initial={{ opacity: 0, y: 15, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              className="w-full max-w-xs px-4 mb-3"
+            >
+              <div className="bg-slate-800/80 backdrop-blur-sm rounded-xl p-3 border border-slate-700/50">
+                <div className="text-[10px] text-cyan-400 font-semibold uppercase tracking-wide mb-1">
+                  Challenge
+                </div>
+                <p className="text-white text-sm leading-snug">
+                  "Design a creature that only exists because the universe needed something to guard the TV remote"
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Battle images side by side */}
+          {showImages && (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 200 }}
+              className="flex gap-2 px-4"
+            >
+              {/* Player 1's submission */}
+              <motion.div
+                className={`relative rounded-lg overflow-hidden border-2 ${showWinner ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'border-cyan-500/30'}`}
+                animate={showWinner ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ duration: 0.5 }}
+              >
+                <img
+                  src="/promo-nanobanana.png"
+                  alt="Player 1 submission"
+                  className="w-28 h-28 object-cover"
+                />
+                {showWinner && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="absolute inset-0 bg-gradient-to-t from-amber-500/30 to-transparent"
+                  />
+                )}
+              </motion.div>
+
+              {/* Player 2's submission */}
+              <div className="relative rounded-lg overflow-hidden border-2 border-green-500/30">
+                <img
+                  src="/promo-nanobanana-2.png"
+                  alt="Player 2 submission"
+                  className="w-28 h-28 object-cover"
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {/* XP Reward */}
+          {showXpReward && (
+            <motion.div
+              initial={{ scale: 0, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 400 }}
+              className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/30"
+            >
+              <FontAwesomeIcon icon={faTrophy} className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-amber-400 font-bold text-xs">+200 XP</span>
+            </motion.div>
+          )}
         </div>
 
-        {/* Challenge card - at bottom of safe zone */}
-        {showChallenge && (
+        {/* Live Battle badge */}
+        {showSubtext && (
           <motion.div
-            initial={{ y: 30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 200 }}
-            className="px-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-center"
           >
-            <div className="bg-white/5 backdrop-blur-xl border border-cyan-500/20 rounded-lg p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/30">
-                  <FontAwesomeIcon icon={faBolt} className="w-2.5 h-2.5 text-rose-400" />
-                  <span className="text-[10px] font-semibold text-rose-300 uppercase tracking-wide">Live Battle</span>
-                </div>
-                {showXpReward && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 400 }}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30"
-                  >
-                    <FontAwesomeIcon icon={faTrophy} className="w-3 h-3 text-amber-400" />
-                    <span className="text-amber-400 font-bold text-xs">+200 XP</span>
-                  </motion.div>
-                )}
-              </div>
-
-              <div className="text-[10px] text-cyan-400 font-medium uppercase tracking-wide mb-1">Challenge</div>
-              <p className="text-white text-xs font-medium leading-relaxed">
-                <TypewriterText
-                  text="Create a surreal dreamscape with floating islands"
-                  isVisible={showChallenge}
-                  duration={1200}
-                />
-              </p>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-500/30">
+              <FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-rose-400" />
+              <span className="text-xs font-semibold text-rose-300 uppercase tracking-wide">Live Battle</span>
             </div>
           </motion.div>
         )}

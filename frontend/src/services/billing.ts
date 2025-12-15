@@ -93,17 +93,17 @@ export interface SubscriptionStatus {
 export interface Invoice {
   id: string;
   number: string | null;
-  amount_paid: number | null;
+  amountPaid: number | null;
   currency: string;
   status: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
   created: number;
-  invoice_pdf: string | null;
-  hosted_invoice_url: string | null;
+  invoicePdf: string | null;
+  hostedInvoiceUrl: string | null;
 }
 
 export interface InvoicesResponse {
   invoices: Invoice[];
-  has_more: boolean;
+  hasMore: boolean;
 }
 
 export interface PortalSessionResponse {
@@ -208,10 +208,10 @@ export async function updateSubscription(tierSlug: string): Promise<{
  * @param immediate - If true, cancel immediately. If false (default), cancel at end of billing period.
  */
 export async function cancelSubscription(immediate = false): Promise<{
-  subscription_id: string;
+  subscriptionId: string;
   status: string;
-  cancel_at_period_end: boolean;
-  period_end: string;
+  cancelAtPeriodEnd: boolean;
+  periodEnd: string;
 }> {
   const response = await api.post('/billing/subscriptions/cancel/', { immediate });
   return response.data;
@@ -281,13 +281,13 @@ export async function createPortalSession(returnUrl?: string): Promise<PortalSes
 
 /**
  * Reactivate a canceled subscription (if still in the grace period)
- * This clears the cancel_at_period_end flag
+ * This clears the cancelAtPeriodEnd flag
  */
 export async function reactivateSubscription(): Promise<{
-  subscription_id: string;
+  subscriptionId: string;
   status: string;
 }> {
-  // Reactivating is done by updating to the same tier with cancel_at_period_end=false
+  // Reactivating is done by updating to the same tier with cancelAtPeriodEnd=false
   // We'll use the update endpoint which clears the cancellation
   const response = await api.post('/billing/subscriptions/update/', {});
   return response.data;

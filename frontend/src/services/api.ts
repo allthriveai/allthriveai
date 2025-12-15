@@ -1,3 +1,21 @@
+/**
+ * API Client Configuration
+ *
+ * IMPORTANT: Case Convention
+ * ==========================
+ * This module automatically transforms API request/response data:
+ * - Requests: camelCase → snake_case (for Django backend)
+ * - Responses: snake_case → camelCase (for TypeScript frontend)
+ *
+ * Therefore, ALL TypeScript interfaces for API data MUST use camelCase:
+ *
+ *   WRONG: interface User { first_name: string; created_at: string }
+ *   RIGHT: interface User { firstName: string; createdAt: string }
+ *
+ * ESLint will warn about snake_case in type properties.
+ * See: eslint.config.js → @typescript-eslint/naming-convention
+ */
+
 import axios from 'axios';
 import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { ApiError } from '@/types/api';

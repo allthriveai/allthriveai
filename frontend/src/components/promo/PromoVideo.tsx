@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { HookScene } from './scenes/HookScene';
 import { PortfolioScene } from './scenes/PortfolioScene';
@@ -7,6 +7,9 @@ import { CommunityScene } from './scenes/CommunityScene';
 import { CTAScene } from './scenes/CTAScene';
 
 type SceneType = 'hook' | 'portfolio' | 'battle' | 'community' | 'cta';
+
+// Audio config - start song at 8 seconds
+const AUDIO_START_TIME = 8; // seconds into the song to start
 
 const SCENE_TIMING: Record<SceneType, { start: number; end: number }> = {
   hook: { start: 0, end: 4000 },           // 0-4s: Hook (overwhelm → fun)
@@ -23,7 +26,7 @@ export function usePromoTimeline() {
   // In DEV_MODE, start at the battle scene's start time
   const [elapsed, setElapsed] = useState(DEV_MODE ? SCENE_TIMING.battle.start : 0);
   const [scene, setScene] = useState<SceneType>(DEV_MODE ? 'battle' : 'hook');
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false); // Wait for user to click play
 
   const restart = useCallback(() => {
     setElapsed(DEV_MODE ? SCENE_TIMING.battle.start : 0);
@@ -75,12 +78,78 @@ interface PromoVideoProps {
 
 export function PromoVideo({ onComplete: _onComplete }: PromoVideoProps) {
   const { elapsed, scene, sceneProgress, isPlaying, restart, togglePlayPause } = usePromoTimeline();
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [hasStarted, setHasStarted] = useState(false);
 
   // Scene-local elapsed time (time since scene started)
   const sceneElapsed = elapsed - SCENE_TIMING[scene].start;
 
+  // Handle play/pause state changes
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !hasStarted) return;
+
+    if (isPlaying) {
+      audio.play().catch(console.error);
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying, hasStarted]);
+
+  // Handle restart - reset audio to start position
+  const lastElapsedRef = useRef(elapsed);
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !hasStarted) return;
+
+    // Detect restart (elapsed went from high to low)
+    if (lastElapsedRef.current > 1000 && elapsed < 100) {
+      audio.currentTime = AUDIO_START_TIME;
+      if (isPlaying) {
+        audio.play().catch(console.error);
+      }
+    }
+    lastElapsedRef.current = elapsed;
+  }, [elapsed, hasStarted, isPlaying]);
+
+  // Click handler to start everything (needed for browser autoplay policy)
+  const handleStart = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.currentTime = AUDIO_START_TIME;
+      audio.play().catch(console.error);
+    }
+    setHasStarted(true);
+    restart();
+  }, [restart]);
+
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-[#020617]">
+      {/* Background audio */}
+      <audio
+        ref={audioRef}
+        src="/promo.mp3"
+        preload="auto"
+      />
+
+      {/* Click to start overlay */}
+      {!hasStarted && (
+        <button
+          onClick={handleStart}
+          className="absolute inset-0 z-50 flex items-center justify-center bg-[#020617]/90 cursor-pointer"
+        >
+          <div className="text-center">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-cyan-500 to-green-500 flex items-center justify-center">
+              <svg className="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            <div className="text-white text-lg font-bold">Click to Play</div>
+            <div className="text-white/60 text-sm mt-1">with sound</div>
+          </div>
+        </button>
+      )}
+
       {/* 9:16 Portrait Container with Instagram safe zones */}
       <div
         className="relative overflow-hidden bg-[#020617]"

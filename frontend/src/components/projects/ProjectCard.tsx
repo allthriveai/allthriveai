@@ -269,8 +269,8 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
     if (project.type === 'reddit_thread' && !heroMode) {
       const redditData = project.content?.reddit;
       // Check for video URL in Reddit metadata
-      const videoUrl = redditData?.video_url || redditData?.videoUrl;
-      const isVideo = redditData?.is_video || redditData?.isVideo;
+      const videoUrl = redditData?.videoUrl;
+      const isVideo = redditData?.isVideo;
 
       if (isVideo && videoUrl) {
         return { type: 'video' as const, url: videoUrl };

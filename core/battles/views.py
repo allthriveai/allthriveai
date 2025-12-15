@@ -365,6 +365,62 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+    @action(detail=True, methods=['get'], url_path='test-generation-prompt')
+    def test_generation_prompt(self, request, pk=None):
+        """TEST ONLY: Get the prompt that would be sent to the AI image generator.
+
+        This endpoint is only available in DEBUG mode and allows E2E tests
+        to verify that the challenge text is NOT included in the image generation
+        prompt - only the user's creative direction should be used.
+
+        Returns:
+            - generation_prompt: The actual prompt sent to AI image generator
+            - user_prompt: The user's original prompt text
+            - challenge_text: The battle's challenge text (for verification it's NOT in generation_prompt)
+        """
+        from django.conf import settings
+
+        # Only allow in DEBUG mode
+        if not settings.DEBUG:
+            return Response(
+                {'error': 'This endpoint is only available in DEBUG mode.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        battle = self.get_object()
+
+        # Only participants can access
+        if request.user not in [battle.challenger, battle.opponent]:
+            return Response(
+                {'error': 'Only battle participants can access this endpoint.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Get user's submission
+        try:
+            submission = BattleSubmission.objects.get(battle=battle, user=request.user)
+        except BattleSubmission.DoesNotExist:
+            return Response(
+                {'error': 'No submission found. Submit a prompt first.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Build the SAME prompt that would be sent to the AI image generator
+        # This MUST match the logic in services.py generate_image_for_submission()
+        generation_prompt = f"""{submission.prompt_text}
+
+Generate a high-quality, creative image that brings this vision to life.
+Focus on visual impact and artistic interpretation."""
+
+        return Response(
+            {
+                'generation_prompt': generation_prompt,
+                'user_prompt': submission.prompt_text,
+                'challenge_text': battle.challenge_text,
+                'challenge_in_prompt': battle.challenge_text in generation_prompt,
+            }
+        )
+
     @action(detail=True, methods=['post'])
     def save_to_profile(self, request, pk=None):
         """Save battle result as a project on user's profile."""

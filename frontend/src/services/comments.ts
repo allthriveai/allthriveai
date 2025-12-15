@@ -5,15 +5,15 @@ import type { CompletedQuestInfo } from '@/contexts/QuestCompletionContext';
 export interface Comment {
   id: number;
   username: string;
-  avatar_url: string | null;
+  avatarUrl: string | null;
   content: string;
   upvotes: number;
   downvotes: number;
   score: number;
-  user_vote: 'up' | 'down' | null;
-  moderation_status: 'pending' | 'approved' | 'rejected' | 'flagged';
-  created_at: string;
-  updated_at: string;
+  userVote: 'up' | 'down' | null;
+  moderationStatus: 'pending' | 'approved' | 'rejected' | 'flagged';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CommentCreateData {
@@ -21,7 +21,7 @@ export interface CommentCreateData {
 }
 
 export interface CommentVoteData {
-  vote_type: 'up' | 'down';
+  voteType: 'up' | 'down';
 }
 
 export interface CommentCreateResponse extends Comment {

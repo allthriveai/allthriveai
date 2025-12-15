@@ -3,9 +3,9 @@ import { api } from './api';
 export interface UploadResponse {
   url: string;
   filename: string;
-  original_size: number;
-  optimized_size: number;
-  is_public: boolean;
+  originalSize: number;
+  optimizedSize: number;
+  isPublic: boolean;
 }
 
 export interface UploadOptions {
@@ -57,9 +57,9 @@ export async function uploadImage(
 export interface FileUploadResponse {
   url: string;
   filename: string;
-  file_type: string;
-  file_size: number;
-  is_public: boolean;
+  fileType: string;
+  fileSize: number;
+  isPublic: boolean;
 }
 
 /**

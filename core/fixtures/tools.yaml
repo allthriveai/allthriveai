@@ -1886,6 +1886,34 @@ tools:
   - date: '2025-11-10'
     title: Pre-built Agent Templates
     description: Five ready-to-use agents for common use cases like writing and research.
+- name: OpenAI Codex
+  tagline: AI-powered coding assistant by OpenAI
+  description: Codex is OpenAI's AI system that translates natural language to code, powering GitHub Copilot
+    and other coding tools.
+  category: code
+  tool_type: ai_tool
+  website_url: https://openai.com/codex/
+  logo_url: /logos/ChatGPT-Logo.png
+  pricing_model: freemium
+  has_free_tier: true
+  usage_tips:
+  - Use natural language to describe the code you want to generate
+  - Leverage Codex through GitHub Copilot for IDE integration
+  - Generate code in multiple languages including Python, JavaScript, and more
+  - Use it for code completion, refactoring, and documentation
+  - Combine with ChatGPT for conversational coding assistance
+  overview: OpenAI Codex is a powerful AI model that understands and generates code across multiple programming
+    languages. It can interpret natural language prompts and convert them into functional code, making
+    it ideal for developers looking to accelerate their workflow and automate repetitive coding tasks.
+  meta_description: Codex is OpenAI's AI system that translates natural language to code, powering GitHub
+    Copilot and other coding tools.
+  whats_new:
+  - date: '2025-12-15'
+    title: Enhanced code generation
+    description: Multi-language support improvements
+  - date: '2025-12-15'
+    title: Improved context understanding
+    description: Better code explanations
 - name: Replit
   company: Replit
   tagline: Browser IDE with Agent for building full apps
@@ -2894,6 +2922,34 @@ tools:
   - date: '2025-11-05'
     title: Connected Apps Integration
     description: AI now pulls context from Slack, Google Drive, and other connected services.
+- name: Google NotebookLM
+  tagline: AI-powered notebook assistant for research and learning
+  description: NotebookLM is a personalized AI research assistant powered by Google Gemini that helps
+    you understand and explore your sources.
+  category: research
+  tool_type: ai_tool
+  website_url: https://notebooklm.google/
+  logo_url: /logos/notebooklm-logo.png
+  pricing_model: free
+  has_free_tier: true
+  usage_tips:
+  - Upload multiple source types including PDFs, Google Docs, websites, and YouTube videos
+  - Create Audio Overviews that turn your notes into podcast-style discussions
+  - Use inline citations to verify AI responses against your source material
+  - Organize research into separate notebooks for different projects
+  - Share notebooks with collaborators for team research
+  overview: Google NotebookLM is an AI-powered research and writing assistant that creates a personalized
+    AI collaborator based on your uploaded sources like documents, slides, and videos. It helps you synthesize
+    information, ask questions about your content, and generate insights from your materials.
+  meta_description: NotebookLM is a personalized AI research assistant powered by Google Gemini that helps
+    you understand and explore your sources.
+  whats_new:
+  - date: '2025-12-15'
+    title: Audio Overview feature
+    description: Multilingual audio generation
+  - date: '2025-12-15'
+    title: Multi-source synthesis
+    description: Cross-reference capabilities
 - name: Hugging Face
   company: Hugging Face
   tagline: Open-source model hub and ML infrastructure

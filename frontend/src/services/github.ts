@@ -81,7 +81,7 @@ export async function checkGitHubConnection(): Promise<boolean> {
  */
 export interface GitHubError {
   error: string;
-  error_code?: string;
+  errorCode?: string;
   suggestion?: string;
   project?: {
     id: number;
@@ -105,16 +105,16 @@ export interface TaskResult {
   success: boolean;
   message?: string;
   project?: TaskResultProject;
-  project_id?: number;
+  projectId?: number;
   slug?: string;
   url?: string;
   error?: string;
-  error_code?: string;
+  errorCode?: string;
   suggestion?: string;
 }
 
 export interface TaskStatus {
-  task_id: string;
+  taskId: string;
   status: 'PENDING' | 'STARTED' | 'SUCCESS' | 'FAILURE' | 'RETRY';
   result?: TaskResult;
   error?: string;
@@ -131,7 +131,7 @@ export async function importGitHubRepoAsync(
   isShowcased: boolean = false,
   onProgress?: (status: string) => void
 ): Promise<{
-  project_id: number;
+  projectId: number;
   slug: string;
   url: string;
 }> {
@@ -177,12 +177,12 @@ export async function importGitHubRepoAsync(
       throw new ImportError(result.error || 'Import failed', {
         suggestion: result.suggestion,
         project: result.project as unknown as Project,
-        errorCode: result.error_code,
+        errorCode: result.errorCode,
       });
     }
 
     return {
-      project_id: result.project!.id,
+      projectId: result.project!.id,
       slug: result.project!.slug,
       url: result.project!.url,
     };
@@ -213,7 +213,7 @@ export async function importGitHubRepoAsync(
     throw new ImportError(errorMessage, {
       suggestion: errorData?.suggestion,
       project: errorData?.project as unknown as Project,
-      errorCode: errorData?.error_code,
+      errorCode: errorData?.errorCode,
     });
   }
 }
@@ -244,7 +244,7 @@ async function pollTaskStatus(
         const errorMessage = status.result?.error || status.error || 'Import failed';
         throw new ImportError(errorMessage, {
           suggestion: status.result?.suggestion,
-          errorCode: status.result?.error_code,
+          errorCode: status.result?.errorCode,
         });
       }
 

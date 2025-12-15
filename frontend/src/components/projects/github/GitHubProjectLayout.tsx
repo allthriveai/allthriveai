@@ -226,10 +226,10 @@ export function GitHubProjectLayout({ project }: GitHubProjectLayoutProps) {
       </div>
 
       {/* Analysis Footer */}
-      {githubData?.analyzed_at && (
+      {githubData?.analyzedAt && (
         <div className="mt-16 pt-8 border-t border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-            Repository analyzed {new Date(githubData.analyzed_at).toLocaleDateString()}
+            Repository analyzed {new Date(githubData.analyzedAt).toLocaleDateString()}
           </p>
         </div>
       )}

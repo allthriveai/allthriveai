@@ -427,11 +427,10 @@ class EmbeddingService:
 
         from core.taxonomy.models import UserInteraction
 
+        parts = []
+
         # Get recent interactions
         recent_interactions = UserInteraction.objects.filter(user=user).order_by('-created_at')[:100]
-
-        if not recent_interactions.exists():
-            return ''
 
         # Extract keywords from interactions
         all_keywords = []
@@ -439,17 +438,102 @@ class EmbeddingService:
             keywords = interaction.extracted_keywords or []
             all_keywords.extend(keywords)
 
-        if not all_keywords:
+        if all_keywords:
+            keyword_counts = Counter(all_keywords)
+            top_keywords = [kw for kw, _ in keyword_counts.most_common(20)]
+            if top_keywords:
+                parts.append(f'Activity patterns: {", ".join(top_keywords)}')
+
+        # Get engagement-derived interests from viewed projects
+        engagement_interests = self._get_engagement_derived_interests(user)
+        if engagement_interests:
+            parts.append(engagement_interests)
+
+        return '\n'.join(parts)
+
+    def _get_engagement_derived_interests(self, user: 'User') -> str:
+        """
+        Extract interests from engagement events (view milestones, time spent).
+
+        Projects that users spend significant time viewing indicate interest,
+        even without explicit likes or tag selections.
+        """
+        from collections import Counter
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        try:
+            from core.engagement.models import EngagementEvent
+        except ImportError:
+            # Engagement app not yet installed
             return ''
 
-        # Get top keywords
-        keyword_counts = Counter(all_keywords)
-        top_keywords = [kw for kw, _ in keyword_counts.most_common(20)]
+        # Get recent view milestone and time spent events
+        cutoff = timezone.now() - timedelta(days=30)
 
-        if top_keywords:
-            return f'Activity patterns: {", ".join(top_keywords)}'
+        engagement_events = list(
+            EngagementEvent.objects.filter(
+                user=user,
+                event_type__in=[
+                    EngagementEvent.EventType.VIEW_MILESTONE,
+                    EngagementEvent.EventType.TIME_SPENT,
+                ],
+                created_at__gte=cutoff,
+                project__isnull=False,
+            )
+            .select_related('project')
+            .prefetch_related('project__tools')
+            .order_by('-created_at')[:200]
+        )
 
-        return ''
+        if not engagement_events:
+            return ''
+
+        # Extract topics from viewed projects
+        viewed_topics: Counter = Counter()
+        viewed_tools: Counter = Counter()
+
+        for event in engagement_events:
+            project = event.project
+            if not project:
+                continue
+
+            # Weight view milestones more heavily
+            weight = 2 if event.event_type == EngagementEvent.EventType.VIEW_MILESTONE else 1
+
+            # Time spent events with high seconds get extra weight
+            if event.event_type == EngagementEvent.EventType.TIME_SPENT:
+                seconds = event.payload.get('seconds', 0)
+                if seconds >= 60:
+                    weight = 2
+                elif seconds >= 30:
+                    weight = 1
+                else:
+                    weight = 0.5
+
+            # Extract topics
+            if project.topics:
+                for topic in project.topics:
+                    viewed_topics[topic] += weight
+
+            # Extract tool names
+            tool_names = list(project.tools.values_list('name', flat=True))
+            for tool in tool_names:
+                viewed_tools[tool] += weight
+
+        # Build interest strings
+        parts = []
+
+        top_viewed_topics = [t for t, _ in viewed_topics.most_common(10)]
+        if top_viewed_topics:
+            parts.append(f'Viewed topics: {", ".join(top_viewed_topics)}')
+
+        top_viewed_tools = [t for t, _ in viewed_tools.most_common(5)]
+        if top_viewed_tools:
+            parts.append(f'Viewed tools: {", ".join(top_viewed_tools)}')
+
+        return ' '.join(parts)
 
     def generate_tool_embedding_text(self, tool) -> str:
         """
