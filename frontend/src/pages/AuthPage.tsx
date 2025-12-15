@@ -394,7 +394,7 @@ export default function AuthPage() {
               className="text-lg text-slate-200 mb-3"
               variants={motionVariants}
             >
-              The gamified AI portfolio platform for creators. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.
+              The gamified AI portfolio platform for anyone creating with AI. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.
             </motion.p>
             <motion.p
               className="text-slate-400 text-sm"

@@ -30,7 +30,7 @@ const getBaseUrl = (): string => {
  */
 export function SEO({
   title = 'All Thrive - Gamified AI Portfolio Platform',
-  description = 'The gamified AI portfolio platform for creators. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.',
+  description = 'The gamified AI portfolio platform for anyone creating with AI. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.',
   keywords = 'AI creations, AI portfolio, AI projects, Midjourney, Replit, Claude, AI showcase, AI community, AI builders, AI tools, cross-platform AI',
   image,
   url,

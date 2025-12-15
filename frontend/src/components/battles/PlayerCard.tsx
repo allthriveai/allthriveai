@@ -98,10 +98,10 @@ export function PlayerCard({
             bg-gradient-to-br from-slate-700/50 to-slate-800/50
           `}
         >
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
-          ) : isAi ? (
+          {isAi ? (
             <img src={PIP_AVATAR_URL} alt="Pip" className="w-full h-full object-cover" />
+          ) : avatarUrl ? (
+            <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <UserCircleIcon className="w-10 h-10 md:w-16 md:h-16 text-slate-500" />

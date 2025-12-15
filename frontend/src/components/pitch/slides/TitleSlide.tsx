@@ -82,7 +82,7 @@ export function TitleSlide() {
           transition={{ duration: 0.6, delay: 0.6 }}
           className="text-lg sm:text-xl text-gray-400 max-w-3xl"
         >
-          The gamified AI portfolio platform for creators. Build your portfolio, compete in Prompt Battles, and level up.
+          The gamified AI portfolio platform for anyone creating with AI. Build your portfolio, compete in Prompt Battles, and level up.
         </motion.p>
       </div>
     </PitchSlide>
