@@ -196,7 +196,7 @@ export function BattleVideoScene({ elapsed, isPlaying }: BattleVideoSceneProps) 
                 transition={{ type: 'spring', stiffness: 200, damping: 20 }}
               >
                 <VideoClip
-                  src="/person-1.mov"
+                  src="/person-1.mp4"
                   label="Player 1 video"
                   username="@nanobanana"
                   side="left"
@@ -240,7 +240,7 @@ export function BattleVideoScene({ elapsed, isPlaying }: BattleVideoSceneProps) 
                 transition={{ type: 'spring', stiffness: 200, damping: 20 }}
               >
                 <VideoClip
-                  src="/person-2.mov"
+                  src="/person-2.mp4"
                   label="Player 2 video"
                   username="@promptpro"
                   side="right"

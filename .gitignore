@@ -57,6 +57,3 @@ test-results/
 
 # Large files
 *.pdf
-
-# Large video files (keep local)
-frontend/public/person-*.mov
