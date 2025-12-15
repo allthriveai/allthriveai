@@ -528,9 +528,13 @@ def list_impersonatable_users(request):
         )
         return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
-    # Get non-admin, active users (excluding self)
+    # Get non-admin, active users (excluding self and guests)
     users = (
-        User.objects.exclude(role=UserRole.ADMIN).exclude(is_superuser=True).exclude(id=user.id).filter(is_active=True)
+        User.objects.exclude(role=UserRole.ADMIN)
+        .exclude(is_superuser=True)
+        .exclude(id=user.id)
+        .exclude(is_guest=True)
+        .filter(is_active=True)
     )
 
     # Apply search filter

@@ -13,6 +13,8 @@ interface HeroVideoProps {
   videoUrl: string;
   /** Optional Reddit permalink for proper video+audio playback */
   redditPermalink?: string;
+  /** Whether to autoplay the video (default: false for embeds, true for direct videos) */
+  autoplay?: boolean;
 }
 
 /**
@@ -68,7 +70,7 @@ function isDirectVideo(url: string): boolean {
   );
 }
 
-export function HeroVideo({ videoUrl, redditPermalink }: HeroVideoProps) {
+export function HeroVideo({ videoUrl, redditPermalink, autoplay = false }: HeroVideoProps) {
   if (!videoUrl) return null;
 
   // Handle Reddit videos with iframe embed for proper audio support
@@ -126,12 +128,21 @@ export function HeroVideo({ videoUrl, redditPermalink }: HeroVideoProps) {
   if (!videoInfo) return null;
 
   let embedUrl = '';
+  const autoplayParam = autoplay ? '1' : '0';
   if (videoInfo.platform === 'youtube') {
-    embedUrl = `https://www.youtube.com/embed/${videoInfo.id}?rel=0&autoplay=0`;
+    // For autoplay to work: mute=1 (required), playsinline=1 (mobile), enablejsapi=1 (better control)
+    const youtubeParams = [
+      `rel=0`,
+      `autoplay=${autoplayParam}`,
+      autoplay ? 'mute=1' : '',
+      'playsinline=1', // Critical for mobile autoplay
+      'enablejsapi=1',
+    ].filter(Boolean).join('&');
+    embedUrl = `https://www.youtube.com/embed/${videoInfo.id}?${youtubeParams}`;
   } else if (videoInfo.platform === 'vimeo') {
-    embedUrl = `https://player.vimeo.com/video/${videoInfo.id}`;
+    embedUrl = `https://player.vimeo.com/video/${videoInfo.id}?autoplay=${autoplayParam}${autoplay ? '&muted=1' : ''}&playsinline=1`;
   } else if (videoInfo.platform === 'loom') {
-    embedUrl = `https://www.loom.com/embed/${videoInfo.id}`;
+    embedUrl = `https://www.loom.com/embed/${videoInfo.id}?autoplay=${autoplayParam}`;
   }
 
   // YouTube Shorts use vertical aspect ratio (9:16)
@@ -148,8 +159,9 @@ export function HeroVideo({ videoUrl, redditPermalink }: HeroVideoProps) {
                 src={embedUrl}
                 title="Project video"
                 className="absolute inset-0 w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
+                loading="eager"
               />
             </div>
           </div>
@@ -168,8 +180,9 @@ export function HeroVideo({ videoUrl, redditPermalink }: HeroVideoProps) {
               src={embedUrl}
               title="Project video"
               className="absolute inset-0 w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
+              loading="eager"
             />
           </div>
         </div>

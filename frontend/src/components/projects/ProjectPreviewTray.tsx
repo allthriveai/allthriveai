@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -13,10 +13,17 @@ import { toggleProjectLike, getProjectBySlug } from '@/services/projects';
 import { getOptimizedImageUrl } from '@/utils/imageOptimization';
 import type { Project } from '@/types/models';
 
+// Threshold for dismissing the tray (in pixels)
+const DISMISS_THRESHOLD = 100;
+// Velocity threshold for dismissing (pixels per ms)
+const VELOCITY_THRESHOLD = 0.3;
+
 interface ProjectPreviewTrayProps {
   isOpen: boolean;
   onClose: () => void;
   project: Project | null;
+  /** Optional ref to the feed scroll container for scroll-to-close on mobile */
+  feedScrollContainerRef?: React.RefObject<HTMLElement | null>;
 }
 
 /**
@@ -100,7 +107,7 @@ function getFaIcon(iconName: string): React.ComponentType<{ className?: string }
   return Icon || null;
 }
 
-export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewTrayProps) {
+export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContainerRef }: ProjectPreviewTrayProps) {
   const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -122,6 +129,71 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
   const [shouldRender, setShouldRender] = useState(false);
   // Track the visual open state (delayed to allow animation)
   const [visuallyOpen, setVisuallyOpen] = useState(false);
+
+  // Mobile swipe-to-dismiss state
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const trayRef = useRef<HTMLElement>(null);
+  const touchStartRef = useRef<{ y: number; time: number; scrollTop: number } | null>(null);
+  const isMobileRef = useRef(false);
+
+  // Check if we're on mobile (only enable swipe gestures on mobile)
+  useEffect(() => {
+    const checkMobile = () => {
+      isMobileRef.current = window.innerWidth < 768;
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Store onClose in ref to avoid stale closure in scroll handler
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Feed scroll detection - close tray when user scrolls down on the feed behind it (mobile only)
+  useEffect(() => {
+    if (!isOpen || !feedScrollContainerRef?.current || !isMobileRef.current) return;
+
+    const feedContainer = feedScrollContainerRef.current;
+    let lastScrollTop = feedContainer.scrollTop;
+    let scrollDownAccumulator = 0;
+    const SCROLL_DOWN_THRESHOLD = 80; // pixels of downward scroll to trigger close
+
+    const handleFeedScroll = () => {
+      const currentScrollTop = feedContainer.scrollTop;
+      const delta = currentScrollTop - lastScrollTop;
+
+      if (delta > 0) {
+        // Scrolling down - accumulate
+        scrollDownAccumulator += delta;
+        if (scrollDownAccumulator > SCROLL_DOWN_THRESHOLD) {
+          onCloseRef.current();
+          scrollDownAccumulator = 0;
+        }
+      } else {
+        // Scrolling up - reset accumulator
+        scrollDownAccumulator = 0;
+      }
+
+      lastScrollTop = currentScrollTop;
+    };
+
+    feedContainer.addEventListener('scroll', handleFeedScroll, { passive: true });
+    return () => {
+      feedContainer.removeEventListener('scroll', handleFeedScroll);
+    };
+  }, [isOpen, feedScrollContainerRef]);
+
+  // Reset drag state when tray closes
+  useEffect(() => {
+    if (!isOpen) {
+      setDragOffset(0);
+      setIsDragging(false);
+      touchStartRef.current = null;
+    }
+  }, [isOpen]);
 
   // Handle transition end to unmount after closing
   const handleTransitionEnd = () => {
@@ -210,6 +282,120 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
     }
   }, [isOpen, onClose]);
 
+  // Track drag state in refs for native event handlers (to avoid stale closures)
+  const isDraggingRef = useRef(false);
+  const dragOffsetRef = useRef(0);
+
+  // Sync refs with state
+  isDraggingRef.current = isDragging;
+  dragOffsetRef.current = dragOffset;
+
+  // Mobile swipe-to-dismiss using native event listeners
+  // IMPORTANT: Must use native listeners with { passive: false } for iOS Safari
+  // React's synthetic touch events are passive by default, which prevents preventDefault()
+  useEffect(() => {
+    const tray = trayRef.current;
+    // Only attach on mobile when tray is open and mounted
+    if (!tray || !isOpen) return;
+
+    // Track timeout for cleanup
+    let dismissTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      // Check mobile inside handler so it responds to resize
+      if (!isMobileRef.current) return;
+
+      const touch = e.touches[0];
+      const scrollContainer = scrollContainerRef.current;
+
+      touchStartRef.current = {
+        y: touch.clientY,
+        time: Date.now(),
+        scrollTop: scrollContainer?.scrollTop ?? 0,
+      };
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isMobileRef.current || !touchStartRef.current) return;
+
+      const touch = e.touches[0];
+      const deltaY = touch.clientY - touchStartRef.current.y;
+      const scrollContainer = scrollContainerRef.current;
+
+      // Check if user is at the bottom of the scroll container
+      const isAtBottom = scrollContainer
+        ? scrollContainer.scrollHeight - scrollContainer.scrollTop <= scrollContainer.clientHeight + 5
+        : false;
+
+      // Check if user is at the top of the scroll container
+      const isAtTop = scrollContainer ? scrollContainer.scrollTop <= 0 : true;
+
+      // Allow drag dismiss in two cases:
+      // 1. Swiping down and at top of scroll (or not scrolled yet)
+      // 2. Swiping up (continuing scroll) and at bottom of scroll
+      const shouldAllowDrag =
+        (deltaY > 0 && isAtTop) || // Swiping down from top
+        (deltaY < 0 && isAtBottom); // Swiping up at bottom (overscroll)
+
+      if (shouldAllowDrag) {
+        // Prevent the scroll container from scrolling - THIS WORKS with { passive: false }
+        e.preventDefault();
+
+        // For swipe up at bottom, convert to downward drag
+        // (user swipes up, tray moves down)
+        const effectiveDelta = deltaY < 0 ? Math.abs(deltaY) : deltaY;
+
+        // Apply resistance to make drag feel natural
+        const resistance = 0.6;
+        const dragAmount = effectiveDelta * resistance;
+
+        setIsDragging(true);
+        setDragOffset(Math.max(0, dragAmount));
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (!isMobileRef.current || !touchStartRef.current || !isDraggingRef.current) {
+        touchStartRef.current = null;
+        return;
+      }
+
+      const endTime = Date.now();
+      const duration = endTime - touchStartRef.current.time;
+      const velocity = dragOffsetRef.current / duration; // pixels per ms
+
+      // Dismiss if dragged far enough or with enough velocity
+      const shouldDismiss = dragOffsetRef.current > DISMISS_THRESHOLD || velocity > VELOCITY_THRESHOLD;
+
+      if (shouldDismiss) {
+        // Animate to full dismiss
+        setDragOffset(window.innerHeight);
+        // Close after animation
+        dismissTimeout = setTimeout(() => {
+          onCloseRef.current();
+        }, 200);
+      } else {
+        // Snap back to original position
+        setDragOffset(0);
+      }
+
+      setIsDragging(false);
+      touchStartRef.current = null;
+    };
+
+    // Attach with { passive: false } to allow preventDefault() on iOS Safari
+    tray.addEventListener('touchstart', handleTouchStart, { passive: true });
+    tray.addEventListener('touchmove', handleTouchMove, { passive: false });
+    tray.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      tray.removeEventListener('touchstart', handleTouchStart);
+      tray.removeEventListener('touchmove', handleTouchMove);
+      tray.removeEventListener('touchend', handleTouchEnd);
+      if (dismissTimeout) clearTimeout(dismissTimeout);
+    };
+  }, [isOpen]);
+
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -292,7 +478,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
         </div>
 
         {/* Battle Content - VS Layout */}
-        <div className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-900 to-slate-800">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-900 to-slate-800">
           {/* Your Submission */}
           <div className="p-4">
             <div className="relative">
@@ -594,7 +780,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
         </div>
 
         {/* Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
           {/* Video or Featured Image */}
           <div className="p-4">
             {isVideo && videoUrl ? (
@@ -602,6 +788,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
                 <HeroVideo
                   videoUrl={videoUrl}
                   redditPermalink={project.content?.reddit?.permalink}
+                  autoplay
                 />
               </div>
             ) : project.featuredImageUrl ? (
@@ -827,9 +1014,15 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
     <>
       {/* Backdrop overlay - transparent on desktop to allow feed scrolling, visible on mobile */}
       <div
-        className={`fixed inset-0 z-40 transition-opacity duration-300 ease-in-out md:pointer-events-none ${
-          visuallyOpen ? 'opacity-100 bg-black/30 md:bg-transparent' : 'opacity-0 pointer-events-none'
+        className={`fixed inset-0 z-40 md:pointer-events-none ${
+          isDragging ? '' : 'transition-opacity duration-300 ease-in-out'
+        } ${visuallyOpen && dragOffset === 0 ? 'opacity-100 bg-black/30 md:bg-transparent' : ''} ${
+          !visuallyOpen && dragOffset === 0 ? 'opacity-0 pointer-events-none' : ''
         }`}
+        style={{
+          // Fade backdrop as user drags
+          opacity: dragOffset > 0 ? Math.max(0, 1 - dragOffset / 300) : undefined,
+        }}
         onClick={onClose}
         aria-hidden="true"
       />
@@ -838,8 +1031,11 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
           On desktop: shifts left when topic tray is open to show both side by side
           On mobile: stays at right-0 (topic tray overlays on top) */}
       <aside
-        className={`fixed top-0 right-0 h-full w-full md:w-96 lg:w-[28rem] border-l border-gray-200 dark:border-white/10 shadow-2xl z-40 overflow-hidden flex flex-col transition-all duration-300 ease-in-out ${
-          visuallyOpen ? 'translate-x-0' : 'translate-x-full'
+        ref={trayRef}
+        className={`fixed top-0 right-0 h-full w-full md:w-96 lg:w-[28rem] border-l border-gray-200 dark:border-white/10 shadow-2xl z-40 overflow-hidden flex flex-col ${
+          isDragging ? '' : 'transition-all duration-300 ease-in-out'
+        } ${visuallyOpen && dragOffset === 0 ? 'translate-x-0' : ''} ${
+          !visuallyOpen && dragOffset === 0 ? 'translate-x-full' : ''
         } ${showToolTray ? 'md:right-[28rem]' : ''}`}
         style={{
           backgroundColor: isBattle
@@ -847,9 +1043,15 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
             : (theme === 'dark' ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)'),
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          // Apply drag transform on mobile
+          transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
         }}
         onTransitionEnd={handleTransitionEnd}
       >
+        {/* Mobile drag handle indicator */}
+        <div className="md:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+        </div>
         {isBattle ? renderBattleContent() : renderStandardContent()}
       </aside>
 

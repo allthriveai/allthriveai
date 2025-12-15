@@ -1,4 +1,4 @@
-We got your request! - AllThrive AI
+We got your request! - All Thrive AI
 =====================================
 
 Hi {{ requester_name }},
@@ -17,8 +17,8 @@ We manually review each request to ensure our community stays awesome. You'll re
 In the meantime, feel free to explore our public content:
 {{ frontend_url }}/explore
 
-If you have any questions, feel free to reach out to us at hello@allthrive.ai
+If you have any questions, feel free to reach out to us at support@allthrive.ai
 
 ---
-AllThrive AI
+All Thrive AI
 {{ frontend_url }}

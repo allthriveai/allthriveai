@@ -65,6 +65,9 @@ interface HeroDisplaySectionProps {
   isUploadingSlideUp2?: boolean;
 
   isSaving?: boolean;
+
+  // Upload intent tracking - called when user clicks on upload area (before file picker opens)
+  onUploadIntent?: () => void;
 }
 
 const HERO_MODES = [
@@ -107,6 +110,7 @@ export function HeroDisplaySection({
   handleSlideUpElement2Upload,
   isUploadingSlideUp2 = false,
   isSaving = false,
+  onUploadIntent,
 }: HeroDisplaySectionProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -188,13 +192,15 @@ export function HeroDisplaySection({
                 }}
               />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-3">
-                <label className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                <label className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer" onClick={() => onUploadIntent?.()}>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file && handleFeaturedImageUpload) handleFeaturedImageUpload(file);
+                      if (file && handleFeaturedImageUpload) {
+                        handleFeaturedImageUpload(file);
+                      }
                     }}
                     className="hidden"
                     disabled={isUploadingFeatured}
@@ -211,7 +217,22 @@ export function HeroDisplaySection({
             </div>
           ) : (
             <div>
-              <label className="block w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer">
+              <label
+                className="block w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer"
+                onClick={() => onUploadIntent?.()}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file && handleFeaturedImageUpload) {
+                      handleFeaturedImageUpload(file);
+                    }
+                  }}
+                  className="hidden"
+                  disabled={isUploadingFeatured}
+                />
                 <div className="flex flex-col items-center justify-center h-full text-center p-6">
                   <PhotoIcon className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-3" />
                   <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
@@ -221,16 +242,6 @@ export function HeroDisplaySection({
                     Recommended: 1200x630px (1.91:1 ratio)
                   </p>
                 </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file && handleFeaturedImageUpload) handleFeaturedImageUpload(file);
-                  }}
-                  className="hidden"
-                  disabled={isUploadingFeatured}
-                />
               </label>
               <div className="mt-3">
                 <div className="flex items-center gap-2 mb-2">
@@ -266,7 +277,7 @@ export function HeroDisplaySection({
                 }}
               />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-3">
-                <label className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                <label className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer" onClick={onUploadIntent}>
                   <input
                     type="file"
                     accept="video/mp4,video/webm,video/ogg"
@@ -289,34 +300,39 @@ export function HeroDisplaySection({
             </div>
           ) : (
             <div>
-              <label className="block w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer">
-                <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                  <FaVideo className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-3" />
-                  <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
-                    {isUploadingVideo ? 'Uploading video...' : 'Drop an MP4 video here or click to upload'}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Supports MP4, WebM, OGG formats
-                  </p>
-                </div>
-                <input
-                  type="file"
-                  accept="video/mp4,video/webm,video/ogg"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file && handleVideoUpload) {
-                      try {
-                        await handleVideoUpload(file);
-                      } catch (error: any) {
-                        console.error('Video upload error:', error);
-                        alert(error?.message || error?.response?.data?.error || 'Failed to upload video');
+              <div className="relative">
+                <label
+                  className="block w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer"
+                  onClick={onUploadIntent}
+                >
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm,video/ogg"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file && handleVideoUpload) {
+                        try {
+                          await handleVideoUpload(file);
+                        } catch (error: any) {
+                          console.error('Video upload error:', error);
+                          alert(error?.message || error?.response?.data?.error || 'Failed to upload video');
+                        }
                       }
-                    }
-                  }}
-                  className="hidden"
-                  disabled={isUploadingVideo}
-                />
-              </label>
+                    }}
+                    className="hidden"
+                    disabled={isUploadingVideo}
+                  />
+                  <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                    <FaVideo className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-3" />
+                    <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
+                      {isUploadingVideo ? 'Uploading video...' : 'Drop an MP4 video here or click to upload'}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Supports MP4, WebM, OGG formats
+                    </p>
+                  </div>
+                </label>
+              </div>
               <div className="mt-3">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
@@ -392,7 +408,7 @@ export function HeroDisplaySection({
           )}
 
           {/* Upload Area */}
-          <label className="block w-full cursor-pointer">
+          <label className="block w-full cursor-pointer" onClick={onUploadIntent}>
             <input
               type="file"
               accept="image/*"
@@ -535,7 +551,7 @@ export function HeroDisplaySection({
                 />
               ) : slideUpElement1Type === 'image' ? (
                 <div className="space-y-2">
-                  <label className="block w-full cursor-pointer">
+                  <label className="block w-full cursor-pointer" onClick={onUploadIntent}>
                     <input
                       type="file"
                       accept="image/*"
@@ -570,7 +586,7 @@ export function HeroDisplaySection({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <label className="block w-full cursor-pointer">
+                  <label className="block w-full cursor-pointer" onClick={onUploadIntent}>
                     <input
                       type="file"
                       accept="video/mp4,video/webm,video/ogg"
@@ -678,7 +694,7 @@ export function HeroDisplaySection({
                 />
               ) : slideUpElement2Type === 'image' ? (
                 <div className="space-y-2">
-                  <label className="block w-full cursor-pointer">
+                  <label className="block w-full cursor-pointer" onClick={onUploadIntent}>
                     <input
                       type="file"
                       accept="image/*"
@@ -713,7 +729,7 @@ export function HeroDisplaySection({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <label className="block w-full cursor-pointer">
+                  <label className="block w-full cursor-pointer" onClick={onUploadIntent}>
                     <input
                       type="file"
                       accept="video/mp4,video/webm,video/ogg"

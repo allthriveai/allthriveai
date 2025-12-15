@@ -1,21 +1,23 @@
-You're invited! - AllThrive AI
-===============================
+You're invited! - All Thrive AI
+================================
 
 Hi {{ requester_name }},
 
-Great news! Your request to join AllThrive AI has been approved. Welcome to the community!
+Great news! Your request to join All Thrive AI has been approved. Welcome to the community!
+
+Your Thrive Code: THRIVE
 
 Create your account here:
 {{ signup_url }}
 
-What you can do on AllThrive:
+What you can do on All Thrive:
 - Showcase your AI projects and creations
 - Connect with other AI enthusiasts
 - Complete side quests to level up your skills
 - Get personalized AI assistance
 
-We're excited to have you! If you have any questions, reach out to us at hello@allthrive.ai
+We're excited to have you! If you have any questions, reach out to us at support@allthrive.ai
 
 ---
-AllThrive AI
+All Thrive AI
 {{ frontend_url }}

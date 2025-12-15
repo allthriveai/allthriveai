@@ -32,9 +32,6 @@ export interface UseBattleTimerOptions {
 
   /** Warning threshold in seconds (default: 30) */
   warningThreshold?: number;
-
-  /** How often to re-sync with server time (default: 10 seconds) */
-  syncInterval?: number;
 }
 
 export interface BattleTimerState {
@@ -91,7 +88,6 @@ export function useBattleTimer({
   onExpire,
   onWarning,
   warningThreshold = 30,
-  syncInterval = 10,
 }: UseBattleTimerOptions): BattleTimerState {
   // Local time state for smooth countdown
   const [localTime, setLocalTime] = useState<number | null>(null);
@@ -115,7 +111,7 @@ export function useBattleTimer({
     // Only sync if server time has changed significantly (more than 2 seconds drift)
     // This prevents jarring jumps during normal countdown
     const drift = lastServerTimeRef.current !== null
-      ? Math.abs(localTime ?? 0 - serverTimeRemaining)
+      ? Math.abs((localTime ?? 0) - serverTimeRemaining)
       : Infinity;
 
     if (drift > 2 || lastServerTimeRef.current === null) {
@@ -123,25 +119,19 @@ export function useBattleTimer({
     }
 
     lastServerTimeRef.current = serverTimeRemaining;
-  }, [serverTimeRemaining]);
+  }, [serverTimeRemaining, localTime]);
 
-  // Periodic re-sync to prevent drift
-  useEffect(() => {
-    if (!isActive || serverTimeRemaining === null || serverTimeRemaining === undefined) {
-      return;
-    }
-
-    const interval = setInterval(() => {
-      // Force sync with server time
-      setLocalTime(serverTimeRemaining);
-    }, syncInterval * 1000);
-
-    return () => clearInterval(interval);
-  }, [serverTimeRemaining, isActive, syncInterval]);
+  // Note: Periodic re-sync was removed because it caused issues when
+  // the challenge is refreshed - the server time becomes a stale snapshot
+  // and the periodic sync would keep resetting the timer back to that value.
+  // The initial sync effect above handles syncing when server time changes.
 
   // Local countdown timer
+  // Track whether timer should be running as a separate piece of state
+  const shouldRun = isActive && localTime !== null && localTime > 0;
+
   useEffect(() => {
-    if (!isActive || localTime === null || localTime <= 0) {
+    if (!shouldRun) {
       return;
     }
 
@@ -153,7 +143,7 @@ export function useBattleTimer({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isActive, localTime !== null && localTime > 0]);
+  }, [shouldRun]);
 
   // Handle warning threshold
   useEffect(() => {

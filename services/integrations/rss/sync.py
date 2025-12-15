@@ -7,6 +7,7 @@ from datetime import datetime
 
 import defusedxml.ElementTree as ET
 import requests
+from django.conf import settings as django_settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -551,7 +552,7 @@ class RSSFeedSyncService:
 
             # Determine featured image - use RSS thumbnail or generate with Gemini
             featured_image_url = item_data.get('thumbnail_url') or ''
-            if not featured_image_url:
+            if not featured_image_url and django_settings.RSS_GENERATE_HERO_IMAGES:
                 # Generate a beautiful hero image using Gemini with curator's visual style
                 generated_url = cls._generate_hero_image(item_data, topics, agent.visual_style)
                 if generated_url:
@@ -631,7 +632,7 @@ class RSSFeedSyncService:
         if item_data['thumbnail_url'] and project.featured_image_url != item_data['thumbnail_url']:
             project.featured_image_url = item_data['thumbnail_url']
             updated = True
-        elif not project.featured_image_url:
+        elif not project.featured_image_url and django_settings.RSS_GENERATE_HERO_IMAGES:
             # No image - try to generate one with curator's visual style
             topics = project.topics or cls._extract_topics_from_article(item_data)
             generated_url = cls._generate_hero_image(item_data, topics, agent.visual_style)

@@ -1,7 +1,7 @@
 {
   "name": "All Thrive",
   "short_name": "AllThrive",
-  "description": "The gamified AI portfolio platform for creators. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.",
+  "description": "The gamified AI portfolio platform for anyone creating with AI. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",

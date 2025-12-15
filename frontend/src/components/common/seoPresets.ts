@@ -6,7 +6,7 @@
 export const SEOPresets = {
   home: {
     title: 'All Thrive - Gamified AI Portfolio Platform',
-    description: 'The gamified AI portfolio platform for creators. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.',
+    description: 'The gamified AI portfolio platform for anyone creating with AI. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.',
     keywords: 'AI portfolio, AI projects, prompt battles, AI challenges, gamified learning, AI showcase, AI community, AI builders, achievements, level up',
   },
   about: {

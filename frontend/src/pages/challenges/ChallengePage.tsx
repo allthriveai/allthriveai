@@ -110,9 +110,9 @@ export default function ChallengePage() {
         axiosError?.response?.data?.detail?.toLowerCase().includes('no active challenge');
 
       // Don't set error for expected "no challenge" case - just leave challenge as null
+      // For other errors, show a friendly message instead of technical details
       if (!isNotFound) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load challenge';
-        setError(errorMessage);
+        setError('Challenge coming soon');
       }
     } finally {
       setIsLoading(false);
@@ -291,7 +291,7 @@ export default function ChallengePage() {
                   <TrophyIcon className="w-10 h-10 text-pink-500 dark:text-pink-accent" />
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  {error || 'No Active Challenge'}
+                  Challenge Coming Soon
                 </h1>
                 <p className="text-gray-600 dark:text-slate-400 mb-6">
                   Check back soon for our next weekly challenge!

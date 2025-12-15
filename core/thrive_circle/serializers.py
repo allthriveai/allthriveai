@@ -453,9 +453,11 @@ class CircleDetailSerializer(CircleSerializer):
         )
 
     def get_members(self, obj):
-        """Get all active members of the circle."""
+        """Get all active members of the circle (excluding guests)."""
         memberships = (
-            obj.memberships.filter(is_active=True).select_related('user').order_by('-points_earned_in_circle')[:50]
+            obj.memberships.filter(is_active=True, user__is_guest=False)
+            .select_related('user')
+            .order_by('-points_earned_in_circle')[:50]
         )  # Limit for performance
         return CircleMembershipSerializer(memberships, many=True).data
 

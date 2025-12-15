@@ -99,14 +99,22 @@ class ProjectSerializer(serializers.ModelSerializer):
             'heroSlideshowImages',
             'heroSlideUpElement1',
             'heroSlideUpElement2',
+            'heroGradientFrom',
+            'heroGradientTo',
             # Template v2 section-based content
             'templateVersion',
             'sections',
             # Video project metadata
             'video',
-            # Integration data (GitHub, Figma analysis)
+            # Integration data (GitHub, Figma, Reddit analysis)
             'github',
             'figma',
+            'reddit',
+            'redditPermalink',
+            # TL;DR section styling
+            'tldrBgColor',
+            # Tech stack from GitHub analysis
+            'techStack',
         }
         provided_keys = set(value.keys())
 

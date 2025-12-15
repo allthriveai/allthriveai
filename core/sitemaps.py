@@ -134,10 +134,12 @@ class UserProfileSitemap(Sitemap):
 
             # Only include active users who opted-in to public profiles
             # Respects user privacy - users can opt-out in settings
+            # Exclude guest users from sitemap
             profiles = list(
                 User.objects.filter(
                     is_active=True,
                     is_profile_public=True,  # Privacy: Only users who want to be discovered
+                    is_guest=False,  # Exclude temporary guest accounts
                 )
                 .only(
                     'username',

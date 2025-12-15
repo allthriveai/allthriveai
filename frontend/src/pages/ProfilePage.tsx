@@ -53,6 +53,7 @@ import {
   faPaperclip,
   faWandMagicSparkles,
   faPenToSquare,
+  faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Helper to convert tier code to display name
@@ -1072,7 +1073,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Full-width Showcase Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
               {/* Profile Completeness Indicator - hidden for now, needs rethinking */}
               {/* {isOwnProfile && !isEditingShowcase && displayUser && (
                 <div className="mb-6">
@@ -1724,7 +1725,27 @@ export default function ProfilePage() {
                     </MasonryGrid>
                   ) : (
                     <div className="py-20 text-center">
-                      <p className="text-gray-500 dark:text-gray-400">No playground projects yet.</p>
+                      {isOwnProfile ? (
+                        <button
+                          onClick={() => window.dispatchEvent(new Event('openAddProject'))}
+                          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-base font-medium text-slate-900 transition-all duration-300 hover:scale-105 border border-white/20"
+                          style={{
+                            background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+                            boxShadow: '0 2px 8px rgba(34, 211, 238, 0.15)',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(34, 211, 238, 0.25), 0 2px 8px rgba(74, 222, 128, 0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(34, 211, 238, 0.15)';
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
+                          Add Project
+                        </button>
+                      ) : (
+                        <p className="text-gray-500 dark:text-gray-400">No playground projects yet.</p>
+                      )}
                     </div>
                   )}
                 </div>

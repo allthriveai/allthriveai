@@ -1,7 +1,7 @@
-New Invitation Request - AllThrive AI
-=====================================
+New Invitation Request - All Thrive AI
+======================================
 
-Someone has requested to join AllThrive AI!
+Someone has requested to join All Thrive AI!
 
 Details:
 --------
@@ -25,5 +25,5 @@ Review this request in the admin panel:
 {{ admin_url }}
 
 ---
-AllThrive AI
+All Thrive AI
 {{ frontend_url }}

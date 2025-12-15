@@ -1,5 +1,6 @@
-
+import { useState, useCallback } from 'react';
 import type { Project } from '@/types/models';
+import { useProjectContext } from '@/context/ProjectContext';
 import {
   SwatchIcon,
   CubeIcon,
@@ -7,14 +8,23 @@ import {
   LinkIcon,
   ChartBarIcon,
 } from '@heroicons/react/24/outline';
+import { ProjectHero, InlineHeroEditor } from '../hero';
+import { EditModeIndicator } from '../shared/InlineEditable';
+import { TldrSection } from '../shared/TldrSection';
 
 interface FigmaProjectLayoutProps {
   project: Project;
 }
 
 export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
+  const { isOwner, setProject } = useProjectContext();
   const analysis = project.content?.figma?.analysis;
   const figmaData = project.content?.figma;
+
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isHeroEditorOpen, setIsHeroEditorOpen] = useState(false);
+  const toggleEditMode = useCallback(() => setIsEditMode(prev => !prev), []);
+  const isEditing = isOwner && isEditMode;
 
   if (!analysis) {
     return null;
@@ -28,7 +38,19 @@ export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Hero Section */}
+      {/* Edit Mode Toggle for Owners */}
+      <EditModeIndicator isOwner={isOwner} isEditMode={isEditMode} onToggle={toggleEditMode} />
+
+      {/* Hero Display (Image/Video/Slideshow) */}
+      <div className="mb-8">
+        <ProjectHero
+          project={project}
+          isEditing={isEditing}
+          onEditClick={() => setIsHeroEditorOpen(true)}
+        />
+      </div>
+
+      {/* Title & Description Section */}
       <div className="mb-12">
         <div className="flex items-start justify-between mb-4">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white">{project.title}</h1>
@@ -40,9 +62,14 @@ export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
           )}
         </div>
 
-        {project.description && (
-          <p className="text-xl text-gray-600 dark:text-gray-400 mb-6">{project.description}</p>
-        )}
+        {/* TL;DR Description with Color Picker */}
+        <TldrSection
+          project={project}
+          isEditing={isEditing}
+          onProjectUpdate={setProject}
+          darkMode={false}
+          className="mb-6"
+        />
 
         {/* File Info Badge */}
         {file.name && (
@@ -249,6 +276,14 @@ export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
           </p>
         </div>
       )}
+
+      {/* Hero Editor Tray */}
+      <InlineHeroEditor
+        project={project}
+        isOpen={isHeroEditorOpen}
+        onClose={() => setIsHeroEditorOpen(false)}
+        onProjectUpdate={setProject}
+      />
     </div>
   );
 }
