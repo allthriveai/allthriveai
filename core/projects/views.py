@@ -1218,52 +1218,14 @@ def explore_projects(request):
             # Fall through to default sorting
 
     elif tab == 'new':
-        # Newest-first ordering with user diversity
-        # Sort by published_date if available, otherwise by created_at
+        # Pure chronological - newest first, all projects shown
         from django.db.models.functions import Coalesce
-
-        from services.personalization import apply_user_diversity
 
         queryset = queryset.annotate(effective_date=Coalesce('published_date', 'created_at')).order_by(
             '-effective_date'
         )
 
-        page_size = min(int(request.GET.get('page_size', 30)), 100)
-        page_num = int(request.GET.get('page', 1))
-
-        # Fetch extra to account for diversity filtering
-        start_idx = (page_num - 1) * page_size
-        fetch_size = page_size * 3
-        raw_projects = list(queryset[start_idx : start_idx + fetch_size])
-
-        # Apply user diversity - max 3 posts per user per page
-        diverse_projects = apply_user_diversity(
-            raw_projects,
-            max_per_user=3,
-            page_size=page_size,
-        )
-
-        serializer = ProjectCardSerializer(diverse_projects, many=True)
-        results = serializer.data
-
-        # Prepend promoted projects on page 1
-        if page_num == 1 and promoted_projects:
-            promoted_serializer = ProjectCardSerializer(promoted_projects, many=True)
-            results = promoted_serializer.data + results
-
-        # Build paginated response
-        total_count = queryset.count() + len(promoted_projects)
-        has_next = start_idx + page_size < total_count
-        next_url = f'?tab=new&page={page_num + 1}&page_size={page_size}' if has_next else None
-        prev_url = f'?tab=new&page={page_num - 1}&page_size={page_size}' if page_num > 1 else None
-        return Response(
-            {
-                'count': total_count,
-                'next': next_url,
-                'previous': prev_url,
-                'results': results,
-            }
-        )
+        # Use standard pagination (handled below)
 
     # Default sorting for 'all' tab or fallback
     # If fuzzy search was applied, prioritize by similarity score
