@@ -44,44 +44,59 @@ export default function ProjectDetailPage() {
 
   // Load project data
   useEffect(() => {
-    async function loadProject() {
+    // Flag to track initial load vs background refresh
+    let isInitialLoad = true;
+
+    async function loadProject(showLoadingState = true) {
       if (!username || !projectSlug) {
         setError('Invalid project URL');
         setIsLoading(false);
         return;
       }
 
-      setIsLoading(true);
+      // Only show loading spinner on initial load, not on background refreshes
+      // This prevents unmounting the entire project layout (including InlineHeroEditor)
+      // when the window regains focus after file picker closes
+      if (showLoadingState) {
+        setIsLoading(true);
+      }
       setError(null);
 
       try {
         const data = await getProjectBySlug(username, projectSlug);
         setProject(data);
 
-        // Track the view (fire and forget - don't block UI)
-        if (data.id) {
+        // Track the view only on initial load (fire and forget - don't block UI)
+        if (isInitialLoad && data.id) {
           trackProjectView(data.id, getViewSourceFromReferrer());
+          isInitialLoad = false;
         }
       } catch (err) {
         console.error('Failed to load project:', err);
-        setError('Project not found');
+        // Only show error on initial load, not on background refresh failures
+        if (showLoadingState) {
+          setError('Project not found');
+        }
       } finally {
-        setIsLoading(false);
+        if (showLoadingState) {
+          setIsLoading(false);
+        }
       }
     }
 
-    loadProject();
+    loadProject(true); // Initial load shows loading state
 
     // Reload when window regains focus or becomes visible
+    // IMPORTANT: Use showLoadingState=false to prevent unmounting components
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !isLoadingRef.current) {
-        loadProject();
+        loadProject(false); // Silent refresh - don't unmount components
       }
     };
 
     const handleFocus = () => {
       if (!isLoadingRef.current) {
-        loadProject();
+        loadProject(false); // Silent refresh - don't unmount components
       }
     };
 

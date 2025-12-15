@@ -49,24 +49,41 @@ export function ProjectHero({
   const heroSlideshowImages = project.content?.heroSlideshowImages || [];
   const redditPermalink = project.content?.redditPermalink || project.externalUrl;
 
+  // Helper to wrap content with edit overlay when in editing mode
+  const wrapWithEditOverlay = (content: React.ReactNode) => {
+    if (!isEditing || !onEditClick) return content;
+
+    return (
+      <div className="relative group cursor-pointer" onClick={onEditClick}>
+        {content}
+        {/* Edit overlay */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-2xl">
+          <div className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-xl text-white font-medium">
+            Click to edit hero
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Quote mode
   if (heroMode === 'quote' && heroQuote) {
-    return <HeroQuote quote={heroQuote} />;
+    return wrapWithEditOverlay(<HeroQuote quote={heroQuote} />);
   }
 
   // Video mode
   if (heroMode === 'video' && heroVideoUrl) {
-    return <HeroVideo videoUrl={heroVideoUrl} redditPermalink={redditPermalink} />;
+    return wrapWithEditOverlay(<HeroVideo videoUrl={heroVideoUrl} redditPermalink={redditPermalink} />);
   }
 
   // Slideshow mode
   if (heroMode === 'slideshow' && heroSlideshowImages.length > 0) {
-    return <HeroSlideshow images={heroSlideshowImages} />;
+    return wrapWithEditOverlay(<HeroSlideshow images={heroSlideshowImages} />);
   }
 
   // Slide-up mode
   if (heroMode === 'slideup') {
-    return (
+    return wrapWithEditOverlay(
       <SlideUpHero
         element1={project.content?.heroSlideUpElement1}
         element2={project.content?.heroSlideUpElement2}

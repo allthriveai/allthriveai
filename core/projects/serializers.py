@@ -106,9 +106,11 @@ class ProjectSerializer(serializers.ModelSerializer):
             'sections',
             # Video project metadata
             'video',
-            # Integration data (GitHub, Figma analysis)
+            # Integration data (GitHub, Figma, Reddit analysis)
             'github',
             'figma',
+            'reddit',
+            'redditPermalink',
             # TL;DR section styling
             'tldrBgColor',
             # Tech stack from GitHub analysis
