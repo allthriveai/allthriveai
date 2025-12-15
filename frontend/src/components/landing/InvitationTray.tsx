@@ -325,7 +325,7 @@ export function InvitationTray({ isOpen, onClose }: InvitationTrayProps) {
               {formData.excited_features.includes('portfolio') && (
                 <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20">
                   <label className="block text-sm font-medium text-gray-300 mb-3">
-                    When automatically importing projects into your profile which integration will you likely use?
+                    Import projects from: <span className="text-gray-500">(optional)</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2 mb-3">
                     {INTEGRATION_OPTIONS.map((integration) => {
@@ -362,7 +362,7 @@ export function InvitationTray({ isOpen, onClose }: InvitationTrayProps) {
               {/* Reason */}
               <div>
                 <label htmlFor="reason" className="block text-sm font-medium text-gray-300 mb-2">
-                  Anything else we should know? <span className="text-gray-500">(optional)</span>
+                  Why do you want to join? <span className="text-gray-500">(optional)</span>
                 </label>
                 <textarea
                   id="reason"

@@ -3,7 +3,7 @@ We got your request! - All Thrive AI
 
 Hi {{ requester_name }},
 
-Thanks for your interest in joining All Thrive AI! We've received your invitation request and will review it shortly.
+Thanks for your interest in joining AllThrive AI! We've received your invitation request and will review it shortly.
 {% if excited_features %}
 
 You're excited about:
