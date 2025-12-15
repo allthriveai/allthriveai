@@ -295,9 +295,16 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
   // React's synthetic touch events are passive by default, which prevents preventDefault()
   useEffect(() => {
     const tray = trayRef.current;
-    if (!tray || !isMobileRef.current) return;
+    // Only attach on mobile when tray is open and mounted
+    if (!tray || !isOpen) return;
+
+    // Track timeout for cleanup
+    let dismissTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const handleTouchStart = (e: TouchEvent) => {
+      // Check mobile inside handler so it responds to resize
+      if (!isMobileRef.current) return;
+
       const touch = e.touches[0];
       const scrollContainer = scrollContainerRef.current;
 
@@ -309,7 +316,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!touchStartRef.current) return;
+      if (!isMobileRef.current || !touchStartRef.current) return;
 
       const touch = e.touches[0];
       const deltaY = touch.clientY - touchStartRef.current.y;
@@ -348,7 +355,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     };
 
     const handleTouchEnd = () => {
-      if (!touchStartRef.current || !isDraggingRef.current) {
+      if (!isMobileRef.current || !touchStartRef.current || !isDraggingRef.current) {
         touchStartRef.current = null;
         return;
       }
@@ -364,7 +371,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         // Animate to full dismiss
         setDragOffset(window.innerHeight);
         // Close after animation
-        setTimeout(() => {
+        dismissTimeout = setTimeout(() => {
           onCloseRef.current();
         }, 200);
       } else {
@@ -385,8 +392,9 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
       tray.removeEventListener('touchstart', handleTouchStart);
       tray.removeEventListener('touchmove', handleTouchMove);
       tray.removeEventListener('touchend', handleTouchEnd);
+      if (dismissTimeout) clearTimeout(dismissTimeout);
     };
-  }, []);
+  }, [isOpen]);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
