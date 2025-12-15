@@ -582,6 +582,21 @@ export function BattlePage() {
           );
         }
 
+        // For async battles where user has submitted but opponent hasn't:
+        // Show the GeneratingPhase so user can see their image being generated
+        // instead of just a "Waiting for opponent..." message
+        if (isInvitationBattle && battleState.mySubmission && !battleState.opponentSubmission) {
+          return (
+            <GeneratingPhase
+              myImageGenerating={!battleState.mySubmission.imageUrl}
+              opponentImageGenerating={true}
+              myImageUrl={battleState.mySubmission.imageUrl}
+              opponentUsername={localFriendName || battleState.opponent.friendName || battleState.opponent.username}
+              isJudging={false}
+            />
+          );
+        }
+
         // Active phase and async turn phases all show the battle arena (see isArenaPhase)
         return (
           <>

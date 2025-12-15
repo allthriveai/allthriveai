@@ -1036,6 +1036,245 @@ test.describe('Prompt Battles - Guest Invite Flow', () => {
     console.log('SUCCESS: Friend name visible in all 3 places - input, battle arena, and My Battles tab');
   });
 
+  test('challenger sees their AI generated image immediately after submission', async () => {
+    /**
+     * TDD TEST - Expected to fail until implementation is fixed
+     *
+     * SCENARIO: As a challenger who joins a prompt battle before my friend does,
+     * when I submit my prompt, I want to see my AI generated image right away.
+     *
+     * EXPECTED:
+     * 1. Challenger creates battle and starts their turn
+     * 2. Challenger submits their prompt
+     * 3. Challenger sees their AI generated image immediately
+     * 4. Challenger does NOT have to wait for opponent to submit
+     *
+     * CURRENT FAILURE:
+     * - Challenger has to wait for the other person to submit to see their own image
+     * - The challenged user sees challenger's submitted prompt before judging
+     *
+     * NOTE: This test waits for AI image generation (~30s). Only runs with RUN_CRITICAL_E2E=true
+     */
+
+    // Skip unless running critical E2E tests
+    test.skip(!process.env.RUN_CRITICAL_E2E, 'Skipping slow test - run with RUN_CRITICAL_E2E=true');
+
+    // === STEP 1: Create battle invite ===
+    const { url, id } = await createBattleInviteViaAPI(challengerPage);
+    inviteUrl = url;
+    battleId = id;
+
+    console.log(`Created battle ${battleId}`);
+
+    // === STEP 2: Challenger navigates to battle and starts their turn ===
+    await challengerPage.goto(`/battles/${battleId}`);
+    await challengerPage.waitForLoadState('domcontentloaded');
+
+    const startTurnButton = challengerPage.getByRole('button', { name: /start my turn/i });
+    await expect(startTurnButton).toBeVisible({ timeout: 15000 });
+    await startTurnButton.click();
+
+    // Wait for battle arena with prompt editor
+    await challengerPage.waitForTimeout(3000);
+
+    const promptTextarea = challengerPage.locator('textarea')
+      .or(challengerPage.locator('[data-testid="prompt-editor"]'))
+      .or(challengerPage.getByPlaceholder(/prompt|describe|create/i));
+
+    await expect(promptTextarea).toBeVisible({ timeout: 10000 });
+
+    console.log('Challenger has started their turn and can type their prompt');
+
+    // === STEP 3: Challenger submits their prompt ===
+    const uniquePrompt = `A majestic phoenix rising from golden flames with sparkling feathers - ${Date.now()}`;
+    await promptTextarea.fill(uniquePrompt);
+
+    const submitButton = challengerPage.getByRole('button', { name: /submit|send/i })
+      .or(challengerPage.locator('[data-testid="submit-prompt"]'));
+
+    await expect(submitButton).toBeVisible();
+    await submitButton.click();
+
+    console.log('Challenger submitted their prompt');
+
+    // === STEP 4: Verify submission was processed ===
+    // With the fix, the UI should transition to GeneratingPhase immediately (shows "AI is Creating Magic")
+    // Without the fix, it shows "Prompt Submitted!" with a waiting message
+    const generatingHeading = challengerPage.getByRole('heading', { name: 'AI is Creating Magic' });
+    const submittedHeading = challengerPage.getByRole('heading', { name: 'Prompt Submitted!' });
+
+    // Wait for either heading to appear
+    await challengerPage.waitForTimeout(3000);
+
+    const showsGenerating = await generatingHeading.isVisible().catch(() => false);
+    const showsSubmitted = await submittedHeading.isVisible().catch(() => false);
+
+    if (showsGenerating) {
+      console.log('Challenger sees "AI is Creating Magic" - GeneratingPhase loaded immediately (GOOD!)');
+    } else if (showsSubmitted) {
+      console.log('Challenger sees "Prompt Submitted!" - old behavior (still waiting for opponent)');
+    } else {
+      console.error('Neither generating nor submitted heading visible');
+      await challengerPage.screenshot({ path: 'e2e-post-submit-state.png' });
+    }
+
+    // At minimum, one of these should be visible
+    expect(showsGenerating || showsSubmitted).toBeTruthy();
+
+    // === STEP 5: CRITICAL - Wait for AI image generation and verify image is shown ===
+    // The challenger should see their generated image without waiting for opponent
+    // Image generation typically takes 15-30 seconds
+
+    console.log('Waiting for AI image generation (this may take up to 45 seconds)...');
+
+    // Look for the generated image on challenger's side
+    // This could be:
+    // 1. An image element within the user's player card
+    // 2. A "Your Creation" section with the image
+    // 3. The submission card showing the generated image
+
+    // Look for the generated image - the GeneratingPhase component shows it with alt="Your creation"
+    const challengerImage = challengerPage.locator('img[alt="Your creation"]')
+      .or(challengerPage.locator('[data-testid="user-generated-image"]'))
+      .or(challengerPage.locator('[data-testid="challenger-image"]'))
+      .or(challengerPage.locator('[data-testid="my-submission-image"]'))
+      .or(challengerPage.locator('img[alt*="generated"]'))
+      .or(challengerPage.locator('.submission-image img'));
+
+    // CRITICAL ASSERTION 1: Challenger should see their generated image
+    // WITHOUT waiting for the opponent to submit
+    //
+    // Poll for the image to appear, checking every 5 seconds for up to 60 seconds
+    // This gives the AI image generation time to complete
+    let imageVisible = false;
+    const maxWaitTime = 60000; // 60 seconds
+    const pollInterval = 5000; // 5 seconds
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitTime) {
+      imageVisible = await challengerImage.isVisible({ timeout: 1000 }).catch(() => false);
+
+      if (imageVisible) {
+        console.log(`Image appeared after ${Math.round((Date.now() - startTime) / 1000)}s`);
+        break;
+      }
+
+      // Log current status every poll
+      const elapsedSeconds = Math.round((Date.now() - startTime) / 1000);
+      console.log(`Polling for image... ${elapsedSeconds}s elapsed`);
+
+      // Check what the page currently shows
+      const statusText = await challengerPage.locator('.text-slate-400, .text-sm').first().textContent().catch(() => '');
+      if (statusText) {
+        console.log(`Current status: "${statusText.substring(0, 80)}..."`);
+      }
+
+      await challengerPage.waitForTimeout(pollInterval);
+    }
+
+    if (!imageVisible) {
+      console.error('FAIL: Challenger does NOT see their generated image after 60 seconds');
+      console.error('The challenger is being forced to wait for opponent to submit');
+
+      // Take screenshot for debugging
+      await challengerPage.screenshot({ path: 'e2e-challenger-no-image.png' });
+
+      // Check what the challenger currently sees
+      const pageContent = await challengerPage.content();
+
+      // Does it show "waiting for opponent"?
+      const waitingForOpponent = pageContent.toLowerCase().includes('waiting');
+      if (waitingForOpponent) {
+        console.error('The page shows "waiting" message - challenger blocked on opponent');
+      }
+
+      // Does it show "generating"?
+      const showsGenerating = pageContent.toLowerCase().includes('generating');
+      if (showsGenerating) {
+        console.log('Page shows "generating" - image may still be processing');
+      }
+
+      // Check if there are any console errors
+      const consoleMessages = await challengerPage.evaluate(() => {
+        return (window as unknown as { __consoleErrors?: string[] }).__consoleErrors || [];
+      });
+      if (consoleMessages.length > 0) {
+        console.log('Console errors:', consoleMessages);
+      }
+    }
+
+    expect(imageVisible).toBeTruthy();
+
+    console.log('SUCCESS: Challenger sees their generated image immediately after submission');
+
+    // === STEP 6: Verify the image has valid src (not placeholder) ===
+    const imageSrc = await challengerImage.getAttribute('src');
+
+    // CRITICAL ASSERTION 2: Image should have a real src (not empty or placeholder)
+    expect(imageSrc).toBeTruthy();
+    expect(imageSrc).not.toContain('placeholder');
+    expect(imageSrc).not.toContain('loading');
+
+    // The image should be a real URL (could be S3, CDN, etc.)
+    const isValidImageUrl = imageSrc?.startsWith('http') || imageSrc?.startsWith('data:image');
+    expect(isValidImageUrl).toBeTruthy();
+
+    console.log(`Challenger's image src: ${imageSrc?.substring(0, 80)}...`);
+
+    // === STEP 7: Verify opponent has NOT joined yet (proving we didn't wait) ===
+    // At this point, the guest has NOT accepted the invite
+    // This confirms the challenger got their image without waiting
+
+    // The guest now joins AFTER challenger already has their image
+    await guestPage.goto(inviteUrl);
+    await guestPage.waitForLoadState('domcontentloaded');
+
+    const continueButton = guestPage.getByRole('button', { name: /continue.*guest/i });
+    await expect(continueButton).toBeVisible({ timeout: 15000 });
+
+    console.log('Guest has NOT joined yet - confirming challenger got image independently');
+
+    // === STEP 8: CRITICAL - Guest should NOT see challenger's prompt text ===
+    // The challenged user should NOT be able to see the challenger's submitted prompt
+    // before they submit their own (to prevent cheating/copying)
+
+    await continueButton.click();
+    await guestPage.waitForURL(/\/battles\/\d+/, { timeout: 30000 });
+    await guestPage.waitForLoadState('domcontentloaded');
+    await guestPage.waitForTimeout(3000);
+
+    // Guest clicks "Start My Turn" if needed
+    const guestStartButton = guestPage.getByRole('button', { name: /start my turn/i });
+    if (await guestStartButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await guestStartButton.click();
+      await guestPage.waitForTimeout(2000);
+    }
+
+    // CRITICAL ASSERTION 3: Guest should NOT see challenger's prompt text
+    const guestPageContent = await guestPage.content();
+    const challengerPromptVisible = guestPageContent.includes(uniquePrompt);
+
+    if (challengerPromptVisible) {
+      console.error('FAIL: Challenged user can see challenger\'s submitted prompt!');
+      console.error('This allows the challenged user to copy or be influenced by the challenger\'s prompt');
+      await guestPage.screenshot({ path: 'e2e-guest-sees-challenger-prompt.png' });
+    }
+
+    expect(challengerPromptVisible).toBeFalsy();
+
+    console.log('SUCCESS: Guest cannot see challenger\'s prompt text (no cheating possible)');
+
+    // Also verify guest doesn't see challenger's generated image yet
+    const challengerImageOnGuestPage = guestPage.getByText(/phoenix|flames|feathers/i);
+    const guestSeesDescription = await challengerImageOnGuestPage.isVisible({ timeout: 2000 }).catch(() => false);
+
+    if (guestSeesDescription) {
+      console.error('WARNING: Guest may be able to see description of challenger\'s prompt/image');
+    }
+
+    console.log('SUCCESS: Challenger sees image immediately, guest cannot see challenger\'s prompt');
+  });
+
   test('image generation uses only user prompt, not challenge text', async () => {
     /**
      * TDD TEST - Verifies image generation prompt isolation
