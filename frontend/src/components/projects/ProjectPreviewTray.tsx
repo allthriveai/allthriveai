@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
-import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
+import * as FaIcons from 'react-icons/fa';
 import { HeroVideo } from './hero/HeroVideo';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { toggleProjectLike } from '@/services/projects';
+import { toggleProjectLike, getProjectBySlug } from '@/services/projects';
 import { getOptimizedImageUrl } from '@/utils/imageOptimization';
 import type { Project } from '@/types/models';
 
@@ -92,6 +93,13 @@ function isBattleProject(project: Project): boolean {
   return project.type === 'battle' && !!project.content?.battleResult;
 }
 
+// Helper to get FA icon component by name
+function getFaIcon(iconName: string): React.ComponentType<{ className?: string }> | null {
+  if (!iconName) return null;
+  const Icon = (FaIcons as Record<string, React.ComponentType<{ className?: string }>>)[iconName];
+  return Icon || null;
+}
+
 export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewTrayProps) {
   const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
@@ -101,6 +109,10 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
   const [isLiked, setIsLiked] = useState(project?.isLikedByUser ?? false);
   const [heartCount, setHeartCount] = useState(project?.heartCount ?? 0);
   const [isLiking, setIsLiking] = useState(false);
+
+  // Enriched project with full content (fetched when tray opens)
+  const [enrichedProject, setEnrichedProject] = useState<Project | null>(null);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
 
   // Track if tray should be rendered (for slide-out animation)
   const [shouldRender, setShouldRender] = useState(false);
@@ -139,6 +151,43 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
       setHeartCount(project.heartCount ?? 0);
     }
   }, [project?.id]);
+
+  // Fetch full project content when tray opens (for non-battle projects without rich content)
+  useEffect(() => {
+    if (!isOpen || !project) {
+      setEnrichedProject(null);
+      return;
+    }
+
+    // Battle projects already have the data they need from the list serializer
+    if (isBattleProject(project)) {
+      setEnrichedProject(null);
+      return;
+    }
+
+    // Check if we need to fetch - look for sections in content
+    const hasRichContent = (project.content?.sections?.length ?? 0) > 0;
+    if (hasRichContent) {
+      setEnrichedProject(null);
+      return;
+    }
+
+    // Fetch full project data
+    const fetchFullProject = async () => {
+      setIsLoadingContent(true);
+      try {
+        const fullProject = await getProjectBySlug(project.username, project.slug);
+        setEnrichedProject(fullProject);
+      } catch (error) {
+        console.error('Failed to fetch full project:', error);
+        setEnrichedProject(null);
+      } finally {
+        setIsLoadingContent(false);
+      }
+    };
+
+    fetchFullProject();
+  }, [isOpen, project?.id, project?.username, project?.slug]);
 
   // Handle ESC key to close
   useEffect(() => {
@@ -196,7 +245,6 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
     const opponentSubmission = battleResult.opponentSubmission;
     const opponent = battleResult.opponent;
     const challengeText = battleResult.challengeText || project.title;
-    const _challengeType = battleResult.challengeType;
     const won = battleResult.won;
     const isTie = battleResult.isTie;
 
@@ -482,6 +530,28 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
 
   // Render standard project content
   const renderStandardContent = () => {
+    // Use enriched project data if available, otherwise fall back to original
+    const displayProject = enrichedProject || project;
+    const sections = displayProject.content?.sections || [];
+
+    // Extract specific sections
+    const overviewSection = sections.find((s: any) => s.type === 'overview');
+    const featuresSection = sections.find((s: any) => s.type === 'features');
+    const gallerySection = sections.find((s: any) => s.type === 'gallery');
+    const demoSection = sections.find((s: any) => s.type === 'demo');
+
+    // Get features (limit to 3 for preview)
+    const features = featuresSection?.content?.features?.slice(0, 3) || [];
+
+    // Get gallery images (limit to 4 for preview)
+    const galleryImages = gallerySection?.content?.images?.slice(0, 4) || [];
+
+    // Get CTAs from demo section
+    const ctas = demoSection?.content?.ctas || [];
+
+    // Get headline from overview
+    const headline = overviewSection?.content?.headline;
+
     return (
       <>
         {/* Header - Fixed with opaque background for readability */}
@@ -563,12 +633,110 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
             </div>
           </div>
 
+          {/* Headline (if available) */}
+          {headline && (
+            <div className="px-4 pb-3">
+              <p className="text-base font-medium text-gray-900 dark:text-white leading-snug">
+                {headline}
+              </p>
+            </div>
+          )}
+
           {/* Description / Teaser */}
           {teaserContent && (
             <div className="px-4 pb-4">
               <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                 {teaserContent}
               </p>
+            </div>
+          )}
+
+          {/* Loading indicator for enriched content */}
+          {isLoadingContent && (
+            <div className="px-4 pb-4">
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                Loading more details...
+              </div>
+            </div>
+          )}
+
+          {/* Key Features (if available) */}
+          {features.length > 0 && (
+            <div className="px-4 pb-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                Key Features
+              </h3>
+              <div className="space-y-2">
+                {features.map((feature: any, index: number) => {
+                  const IconComponent = getFaIcon(feature.icon);
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700"
+                    >
+                      {IconComponent && (
+                        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                          <IconComponent className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {feature.title}
+                        </p>
+                        {feature.description && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                            {feature.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Gallery Preview (if available) */}
+          {galleryImages.length > 0 && (
+            <div className="px-4 pb-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                Gallery
+              </h3>
+              <div className={`grid gap-2 ${galleryImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                {galleryImages.map((image: any, index: number) => (
+                  <div
+                    key={index}
+                    className="relative rounded-lg overflow-hidden aspect-video bg-gray-100 dark:bg-slate-800"
+                  >
+                    <img
+                      src={getOptimizedImageUrl(image.url || image, { width: 300 })}
+                      alt={image.caption || `Gallery image ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* CTAs from Demo Section */}
+          {ctas.length > 0 && (
+            <div className="px-4 pb-4">
+              <div className="flex flex-wrap gap-2">
+                {ctas.slice(0, 2).map((cta: any, index: number) => (
+                  <a
+                    key={index}
+                    href={cta.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                    {cta.label}
+                  </a>
+                ))}
+              </div>
             </div>
           )}
 
