@@ -115,7 +115,7 @@ export function useBattleTimer({
     // Only sync if server time has changed significantly (more than 2 seconds drift)
     // This prevents jarring jumps during normal countdown
     const drift = lastServerTimeRef.current !== null
-      ? Math.abs(localTime ?? 0 - serverTimeRemaining)
+      ? Math.abs((localTime ?? 0) - serverTimeRemaining)
       : Infinity;
 
     if (drift > 2 || lastServerTimeRef.current === null) {
@@ -123,25 +123,53 @@ export function useBattleTimer({
     }
 
     lastServerTimeRef.current = serverTimeRemaining;
+  }, [serverTimeRemaining, localTime]);
+
+  // Track the time when we last synced with server
+  const lastSyncTimeRef = useRef<number>(Date.now());
+
+  // Update last sync time when server time changes
+  useEffect(() => {
+    if (serverTimeRemaining !== null && serverTimeRemaining !== undefined) {
+      lastSyncTimeRef.current = Date.now();
+    }
   }, [serverTimeRemaining]);
 
   // Periodic re-sync to prevent drift
+  // Only sync if we've drifted significantly from the expected countdown
   useEffect(() => {
     if (!isActive || serverTimeRemaining === null || serverTimeRemaining === undefined) {
       return;
     }
 
     const interval = setInterval(() => {
-      // Force sync with server time
-      setLocalTime(serverTimeRemaining);
+      // Calculate what we expect the server time to be based on elapsed time
+      const elapsedSeconds = Math.floor((Date.now() - lastSyncTimeRef.current) / 1000);
+      const expectedServerTime = Math.max(0, (lastServerTimeRef.current ?? serverTimeRemaining) - elapsedSeconds);
+
+      // Only re-sync if there's significant drift (more than 3 seconds)
+      // This prevents the timer from jumping back up after a refresh
+      setLocalTime((currentLocalTime) => {
+        if (currentLocalTime === null) return serverTimeRemaining;
+        const drift = Math.abs(currentLocalTime - expectedServerTime);
+        if (drift > 3) {
+          // Significant drift detected, re-sync
+          lastSyncTimeRef.current = Date.now();
+          return serverTimeRemaining;
+        }
+        return currentLocalTime;
+      });
     }, syncInterval * 1000);
 
     return () => clearInterval(interval);
   }, [serverTimeRemaining, isActive, syncInterval]);
 
   // Local countdown timer
+  // Track whether timer should be running as a separate piece of state
+  const shouldRun = isActive && localTime !== null && localTime > 0;
+
   useEffect(() => {
-    if (!isActive || localTime === null || localTime <= 0) {
+    if (!shouldRun) {
       return;
     }
 
@@ -153,7 +181,7 @@ export function useBattleTimer({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isActive, localTime !== null && localTime > 0]);
+  }, [shouldRun]);
 
   // Handle warning threshold
   useEffect(() => {
