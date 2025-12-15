@@ -103,7 +103,7 @@ function getFaIcon(iconName: string): React.ComponentType<{ className?: string }
 export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewTrayProps) {
   const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
-  const { isTopicTrayOpen } = useTopicTray();
+  const { isTopicTrayOpen, openTopicTray } = useTopicTray();
   const navigate = useNavigate();
 
   // Like state
@@ -464,15 +464,16 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
               <p className="text-xs text-gray-500 mb-2">Tools used:</p>
               <div className="flex flex-wrap gap-2">
                 {project.toolsDetails.slice(0, 3).map((tool) => (
-                  <span
+                  <button
                     key={tool.id}
-                    className="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-700 text-gray-300 flex items-center gap-1.5"
+                    onClick={() => openTopicTray(tool.slug)}
+                    className="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-700 text-gray-300 flex items-center gap-1.5 hover:bg-slate-600 transition-colors cursor-pointer"
                   >
                     {tool.logoUrl && (
                       <img src={tool.logoUrl} alt={tool.name} className="w-3.5 h-3.5 rounded" />
                     )}
                     {tool.name}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -621,15 +622,16 @@ export function ProjectPreviewTray({ isOpen, onClose, project }: ProjectPreviewT
                 </span>
               ))}
               {project.toolsDetails?.slice(0, 3).map((tool) => (
-                <span
+                <button
                   key={tool.id}
-                  className="px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-1.5"
+                  onClick={() => openTopicTray(tool.slug)}
+                  className="px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                 >
                   {tool.logoUrl && (
                     <img src={tool.logoUrl} alt={tool.name} className="w-3.5 h-3.5 rounded" />
                   )}
                   {tool.name}
-                </span>
+                </button>
               ))}
             </div>
           </div>
