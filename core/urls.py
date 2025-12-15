@@ -382,6 +382,22 @@ urlpatterns = [
     path('battles/<int:battle_id>/extend-deadline/', extend_battle_deadline, name='extend_deadline'),
     path('battles/<int:battle_id>/send-reminder/', send_battle_reminder, name='send_reminder'),
     path('battles/<int:battle_id>/start-turn/', start_battle_turn, name='start_turn'),
+    path(
+        'battles/<int:pk>/set-friend-name/',
+        PromptBattleViewSet.as_view({'post': 'set_friend_name'}),
+        name='battle_set_friend_name',
+    ),
+    # Test-only endpoints for E2E testing (only available in DEBUG mode)
+    path(
+        'battles/<int:pk>/test-expire-invite/',
+        PromptBattleViewSet.as_view({'post': 'test_expire_invite'}),
+        name='battle_test_expire_invite',
+    ),
+    path(
+        'battles/<int:pk>/test-generation-prompt/',
+        PromptBattleViewSet.as_view({'get': 'test_generation_prompt'}),
+        name='battle_test_generation_prompt',
+    ),
     # Bulk battle management endpoints
     path('battles/bulk-delete/', PromptBattleViewSet.as_view({'post': 'bulk_delete'}), name='battles_bulk_delete'),
     path('battles/my-history/', PromptBattleViewSet.as_view({'get': 'my_history'}), name='battles_my_history'),
@@ -395,6 +411,8 @@ urlpatterns = [
     path('', include('core.vendors.urls')),
     # Browser extension API endpoints
     path('extension/', include('core.extension.urls')),
+    # Engagement tracking endpoints
+    path('engagement/', include('core.engagement.urls')),
 ]
 
 # Test-only endpoints (only available in DEBUG mode)

@@ -209,7 +209,7 @@ export function IntelligentChatPanel({
             uploadedFiles.push({
               name: file.name,
               url: result.url,
-              type: result.file_type,
+              type: result.fileType,
             });
           }
         }

@@ -35,7 +35,7 @@ function getAnalysisStatus(project: Project): 'pending' | 'complete' | 'failed' 
 
   if (!contentKey) return null;
 
-  const status = project.content?.[contentKey]?.analysis_status;
+  const status = project.content?.[contentKey]?.analysisStatus;
   return status || null;
 }
 

@@ -52,6 +52,8 @@ import AdminCircleManagementPage from '@/pages/admin/CircleManagementPage';
 import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
 import ExtensionPage from '@/pages/ExtensionPage';
 import PitchDeckPage from '@/pages/PitchDeckPage';
+import PromoPage from '@/pages/PromoPage';
+import PromoVideoPage from '@/pages/PromoVideoPage';
 import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
 import TermsOfServicePage from '@/pages/TermsOfServicePage';
 
@@ -132,6 +134,12 @@ export function AppRoutes() {
 
       {/* Pitch deck - public route with password gate */}
       <Route path="/pitch" element={<PitchDeckPage />} />
+
+      {/* Feature promo video - public route for screen recording */}
+      <Route path="/feature-promo" element={<PromoPage />} />
+
+      {/* Promo video with real video clips */}
+      <Route path="/promo" element={<PromoVideoPage />} />
 
       {/* Perks - public route (coming soon) */}
       <Route path="/perks" element={<PerksPage />} />

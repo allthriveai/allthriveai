@@ -140,6 +140,9 @@ class PersonalizationSettingsSerializer(serializers.ModelSerializer):
             'discovery_balance',
             'allow_time_tracking',
             'allow_scroll_tracking',
+            'excited_features',
+            'desired_integrations',
+            'desired_integrations_other',
             'created_at',
             'updated_at',
         ]

@@ -64,8 +64,9 @@ export function BattleInvitePage() {
 
         setInvitation(response.data);
       } catch (err: unknown) {
-        const error = err as { response?: { data?: { error?: string } } };
-        setError(error.response?.data?.error || 'Invitation not found');
+        // API interceptor transforms errors to { error: string, statusCode: number }
+        const apiError = err as { error?: string; statusCode?: number };
+        setError(apiError.error || 'Invitation not found');
       } finally {
         setIsLoading(false);
       }

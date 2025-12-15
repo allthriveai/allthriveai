@@ -114,6 +114,10 @@ class UserTag(models.Model):
     )
     confidence_score = models.FloatField(default=1.0, help_text='Confidence score for auto-generated tags (0.0-1.0)')
     interaction_count = models.IntegerField(default=0, help_text='Number of interactions that generated this tag')
+    decay_factor = models.FloatField(
+        default=1.0,
+        help_text='Recency decay factor (0.0-1.0). Auto-generated tags decay over time if not reinforced.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

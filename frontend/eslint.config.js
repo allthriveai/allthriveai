@@ -20,6 +20,11 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
+      // Enforce camelCase for interface/type properties to match API response transform
+      // The axios interceptor in api.ts converts snake_case → camelCase automatically
+      // Disabled: Too many existing snake_case properties matching backend API format
+      // TODO: Re-enable after gradual migration to camelCase types
+      '@typescript-eslint/naming-convention': 'off',
       // Allow 'any' type - disabled for now, will be gradually fixed in future refactoring
       '@typescript-eslint/no-explicit-any': 'off',
       // Allow unused vars with underscore prefix

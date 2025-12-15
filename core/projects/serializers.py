@@ -466,28 +466,47 @@ class ProjectCardSerializer(serializers.ModelSerializer):
         if not obj.content:
             return None
 
-        # Battle projects - return battle result for VS layout
+        # Battle projects - return battle result for VS layout and preview tray
         if obj.type == 'battle':
             battle_result = obj.content.get('battleResult')
             if not battle_result:
                 return None
 
-            # Return only the fields needed for card rendering
+            my_sub = battle_result.get('my_submission', {})
+            opp_sub = battle_result.get('opponent_submission', {})
+            opponent = battle_result.get('opponent', {})
+
+            # Return fields needed for card rendering AND preview tray
             # Camel case keys to match frontend expectations
             return {
                 'battleResult': {
                     'won': battle_result.get('won'),
                     'isTie': battle_result.get('is_tie'),
                     'challengeText': battle_result.get('challenge_text'),
-                    'mySubmission': {
-                        'imageUrl': battle_result.get('my_submission', {}).get('image_url'),
+                    'challengeType': battle_result.get('challenge_type'),
+                    'opponent': {
+                        'username': opponent.get('username'),
+                        'isAi': opponent.get('is_ai', False),
                     }
-                    if battle_result.get('my_submission')
+                    if opponent
+                    else None,
+                    'mySubmission': {
+                        'imageUrl': my_sub.get('image_url'),
+                        'prompt': my_sub.get('prompt'),
+                        'score': my_sub.get('score'),
+                        'criteriaScores': my_sub.get('criteria_scores'),
+                        'feedback': my_sub.get('feedback'),
+                    }
+                    if my_sub
                     else None,
                     'opponentSubmission': {
-                        'imageUrl': battle_result.get('opponent_submission', {}).get('image_url'),
+                        'imageUrl': opp_sub.get('image_url'),
+                        'prompt': opp_sub.get('prompt'),
+                        'score': opp_sub.get('score'),
+                        'criteriaScores': opp_sub.get('criteria_scores'),
+                        'feedback': opp_sub.get('feedback'),
                     }
-                    if battle_result.get('opponent_submission')
+                    if opp_sub
                     else None,
                 }
             }

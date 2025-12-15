@@ -759,6 +759,24 @@ class PersonalizationSettings(models.Model):
         help_text='Track scroll depth to understand engagement',
     )
 
+    # Feature interests (matches invitation request fields)
+    excited_features = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Features the user is most interested in (multi-select)',
+    )
+    desired_integrations = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Integrations user wants for portfolio import',
+    )
+    desired_integrations_other = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        help_text='Other integration specified by user',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -780,6 +798,9 @@ class PersonalizationSettings(models.Model):
         self.discovery_balance = 50
         self.allow_time_tracking = True
         self.allow_scroll_tracking = True
+        self.excited_features = []
+        self.desired_integrations = []
+        self.desired_integrations_other = ''
         self.save()
 
 

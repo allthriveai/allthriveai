@@ -315,8 +315,8 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400">
                                 {(() => {
-                                  if (!comment.created_at) return 'Just now';
-                                  const date = new Date(comment.created_at);
+                                  if (!comment.createdAt) return 'Just now';
+                                  const date = new Date(comment.createdAt);
                                   if (isNaN(date.getTime())) return 'Just now';
                                   return date.toLocaleDateString('en-US', {
                                     month: 'short',
@@ -351,7 +351,7 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
                             onClick={() => handleVote(comment.id, 'up')}
                             disabled={!isAuthenticated}
                             className={`p-1.5 rounded transition-all backdrop-blur-sm ${
-                              comment.user_vote === 'up'
+                              comment.userVote === 'up'
                                 ? 'bg-green-100/80 dark:bg-green-900/40 text-green-600 dark:text-green-400'
                                 : 'hover:bg-white/50 dark:hover:bg-gray-700/50 text-gray-500 dark:text-gray-400'
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -366,7 +366,7 @@ export function CommentTray({ isOpen, onClose, project, isAuthenticated }: Comme
                             onClick={() => handleVote(comment.id, 'down')}
                             disabled={!isAuthenticated}
                             className={`p-1.5 rounded transition-all backdrop-blur-sm ${
-                              comment.user_vote === 'down'
+                              comment.userVote === 'down'
                                 ? 'bg-red-100/80 dark:bg-red-900/40 text-red-600 dark:text-red-400'
                                 : 'hover:bg-white/50 dark:hover:bg-gray-700/50 text-gray-500 dark:text-gray-400'
                             } disabled:opacity-50 disabled:cursor-not-allowed`}

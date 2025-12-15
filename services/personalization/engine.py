@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING
 
 from django.db.models import Count
 
+from services.personalization.settings_aware_scorer import SettingsAwareScorer
+
 if TYPE_CHECKING:
     from django.contrib.auth import get_user_model
 
@@ -407,6 +409,8 @@ class PersonalizationEngine:
         """
         Score all candidate projects using hybrid algorithm.
 
+        Now honors user's PersonalizationSettings via SettingsAwareScorer.
+
         Args:
             user: User to score for
             candidates: List of candidate projects from Weaviate
@@ -416,11 +420,20 @@ class PersonalizationEngine:
         from core.taxonomy.models import UserInteraction, UserTag
         from core.users.models import UserFollow
 
+        # Get settings-aware scorer for this user
+        scorer = SettingsAwareScorer(user)
+        weights = scorer.get_adjusted_weights()
+
         # Get user's data for scoring
         user_tags = set(UserTag.objects.filter(user=user).values_list('name', flat=True))
 
         # Get IDs of users the current user follows (for follow boost)
-        followed_user_ids = set(UserFollow.objects.filter(follower=user).values_list('following_id', flat=True))
+        # Only fetch if social signals are enabled
+        if scorer.should_use_social_signals():
+            followed_user_ids = set(UserFollow.objects.filter(follower=user).values_list('following_id', flat=True))
+        else:
+            followed_user_ids = set()
+
         user_tool_tags = set(
             UserTag.objects.filter(user=user, taxonomy__taxonomy_type='tool').values_list('taxonomy__name', flat=True)
         )
@@ -431,18 +444,30 @@ class PersonalizationEngine:
         )
 
         # Get user's liked projects for behavioral scoring
-        liked_project_ids = set(ProjectLike.objects.filter(user=user).values_list('project_id', flat=True))
+        # Only fetch if learn_from_likes is enabled
+        if scorer.should_penalize_likes():
+            liked_project_ids = set(ProjectLike.objects.filter(user=user).values_list('project_id', flat=True))
+        else:
+            liked_project_ids = set()
 
         # Get viewed project IDs from interactions
-        viewed_project_ids = set(
-            UserInteraction.objects.filter(user=user, interaction_type='project_view').values_list(
-                'metadata__project_id', flat=True
+        # Only fetch if learn_from_views is enabled
+        if scorer.should_penalize_views():
+            viewed_project_ids = set(
+                UserInteraction.objects.filter(user=user, interaction_type='project_view').values_list(
+                    'metadata__project_id', flat=True
+                )
             )
-        )
+        else:
+            viewed_project_ids = set()
 
         # Get collaborative filtering data (what similar users liked)
-        # Pass user_vector to avoid redundant _get_user_vector call
-        collaborative_scores = self._get_collaborative_scores(user, user_vector=user_vector)
+        # Only compute if social signals are enabled
+        if scorer.should_use_social_signals():
+            # Pass user_vector to avoid redundant _get_user_vector call
+            collaborative_scores = self._get_collaborative_scores(user, user_vector=user_vector)
+        else:
+            collaborative_scores = {}
 
         # BATCH QUERY: Get like counts for all candidate owners in ONE query
         # This prevents N+1 queries in the scoring loop below
@@ -517,14 +542,14 @@ class PersonalizationEngine:
             # This helps train the algorithm on what good content looks like
             promotion_score = candidate.get('promotion_score', 0.0)
 
-            # Combine with weights
+            # Combine with settings-adjusted weights
             total_score = (
-                (vector_score * self.WEIGHTS['vector_similarity'])
-                + (explicit_score * self.WEIGHTS['explicit_preferences'])
-                + (behavioral_score * self.WEIGHTS['behavioral_signals'])
-                + (collaborative_score * self.WEIGHTS['collaborative'])
-                + (popularity_score * self.WEIGHTS['popularity'])
-                + (promotion_score * self.WEIGHTS['promotion'])
+                (vector_score * weights['vector_similarity'])
+                + (explicit_score * weights['explicit_preferences'])
+                + (behavioral_score * weights['behavioral_signals'])
+                + (collaborative_score * weights['collaborative'])
+                + (popularity_score * weights['popularity'])
+                + (promotion_score * weights['promotion'])
             )
 
             scored_projects.append(

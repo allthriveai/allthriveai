@@ -36,9 +36,11 @@ Unlike time-bound implementation docs (which go in `/docs/archived/`), these doc
 | [07-WEBSOCKET-IMPLEMENTATION.md](./07-WEBSOCKET-IMPLEMENTATION.md) | ✅ Complete | WebSocket architecture, auth flow, debugging guide |
 | [08-ONBOARDING-ARCHITECTURE.md](./08-ONBOARDING-ARCHITECTURE.md) | ✅ Complete | Auth chat, welcome flow, unified chat onboarding |
 | [09-PROMPT-BATTLES.md](./09-PROMPT-BATTLES.md) | ✅ Complete | Prompt Battles system, challenge templates, AI judging |
-| 10-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
-| 11-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
-| 12-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
+| [10-CICD-PIPELINE.md](./10-CICD-PIPELINE.md) | ✅ Complete | CI/CD pipeline, GitHub Actions, deployment |
+| [11-E2E-USER-JOURNEY-TESTS.md](./11-E2E-USER-JOURNEY-TESTS.md) | ✅ Complete | E2E TDD tests for user journey workflows |
+| 12-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
+| 13-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
+| 14-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
 
 ### Design & UX
 

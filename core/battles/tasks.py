@@ -1120,15 +1120,18 @@ def start_async_turn_task(self, battle_id: int, user_id: int) -> dict[str, Any]:
             return {'status': 'error', 'reason': 'battle_not_found'}
 
         # Validate this is the user's turn
+        # For async battles, we allow parallel play - both players can start their turns independently
+        # The opponent doesn't have to wait for the challenger to submit before starting their own turn
         expected_phase = BattlePhase.CHALLENGER_TURN if user == battle.challenger else BattlePhase.OPPONENT_TURN
         if battle.phase != expected_phase:
             # Check if they can start their turn
             is_challenger_turn = battle.phase == BattlePhase.CHALLENGER_TURN or (
                 battle.phase in [BattlePhase.WAITING, BattlePhase.COUNTDOWN] and not battle.submissions.exists()
             )
+            # Allow opponent to start their turn when challenger is playing (parallel play)
+            # This enables async battles where both players can play independently
             is_opponent_turn = battle.phase == BattlePhase.OPPONENT_TURN or (
-                battle.phase == BattlePhase.CHALLENGER_TURN
-                and battle.submissions.filter(user=battle.challenger).exists()
+                battle.phase == BattlePhase.CHALLENGER_TURN  # Opponent can start during challenger's turn
             )
 
             if user == battle.challenger and not is_challenger_turn:

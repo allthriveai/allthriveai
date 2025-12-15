@@ -25,6 +25,8 @@ interface Invitation {
   email: string;
   name: string;
   reason: string;
+  excitedFeatures: string[];
+  desiredIntegrations: string[];
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   reviewedAt: string | null;
@@ -385,11 +387,43 @@ export default function InvitationsPage() {
                         </div>
                       </div>
 
-                      {/* Reason */}
+                      {/* Reason & Features */}
                       <div className="md:col-span-3">
                         <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
                           {invitation.reason || <span className="text-slate-400 dark:text-slate-500 italic">No reason provided</span>}
                         </p>
+                        {/* Excited Features */}
+                        {invitation.excitedFeatures && invitation.excitedFeatures.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {invitation.excitedFeatures.slice(0, 3).map((feature, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300"
+                                title={feature}
+                              >
+                                {feature.length > 20 ? feature.slice(0, 20) + '...' : feature}
+                              </span>
+                            ))}
+                            {invitation.excitedFeatures.length > 3 && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+                                +{invitation.excitedFeatures.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {/* Desired Integrations */}
+                        {invitation.desiredIntegrations && invitation.desiredIntegrations.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {invitation.desiredIntegrations.map((integration, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300"
+                              >
+                                {integration}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Status */}

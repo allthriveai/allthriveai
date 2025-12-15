@@ -21,6 +21,7 @@ import {
   ClockIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/solid';
+import { api } from '@/services/api';
 
 interface ChallengeReadyScreenProps {
   challengeText: string;
@@ -34,6 +35,14 @@ interface ChallengeReadyScreenProps {
   isStarting?: boolean;
   onRefreshChallenge?: () => void;
   isRefreshingChallenge?: boolean;
+  /** Hide share/copy link options (for guests who already have the link) */
+  hideShareOptions?: boolean;
+  /** Current friend's name (if already set) */
+  friendName?: string;
+  /** Callback when friend's name is updated */
+  onFriendNameChange?: (name: string) => void;
+  /** Battle ID for saving friend name */
+  battleId?: number;
 }
 
 export function ChallengeReadyScreen({
@@ -45,8 +54,49 @@ export function ChallengeReadyScreen({
   isStarting = false,
   onRefreshChallenge,
   isRefreshingChallenge = false,
+  hideShareOptions = false,
+  friendName: initialFriendName = '',
+  onFriendNameChange,
+  battleId,
 }: ChallengeReadyScreenProps) {
   const [copied, setCopied] = useState(false);
+  const [localFriendName, setLocalFriendName] = useState(initialFriendName);
+  const [isSavingFriendName, setIsSavingFriendName] = useState(false);
+
+  // Save friend name to backend
+  const saveFriendName = useCallback(async (name: string) => {
+    if (!battleId || !name.trim()) return;
+
+    setIsSavingFriendName(true);
+    try {
+      const response = await api.post(`/battles/${battleId}/set-friend-name/`, {
+        friend_name: name.trim(),
+      });
+
+      if (response.data?.friend_name) {
+        onFriendNameChange?.(name.trim());
+      }
+    } catch (error) {
+      console.error('Failed to save friend name:', error);
+    } finally {
+      setIsSavingFriendName(false);
+    }
+  }, [battleId, onFriendNameChange]);
+
+  // Update local and parent state when name changes (optimistic update)
+  const handleFriendNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const name = e.target.value;
+    setLocalFriendName(name);
+    // Update parent state immediately so it's available when transitioning to BattleArena
+    onFriendNameChange?.(name);
+  }, [onFriendNameChange]);
+
+  // Save on blur - always save if there's a value
+  const handleFriendNameBlur = useCallback(() => {
+    if (localFriendName.trim()) {
+      saveFriendName(localFriendName);
+    }
+  }, [localFriendName, saveFriendName]);
 
   const handleCopyLink = useCallback(async () => {
     if (!inviteUrl) return;
@@ -247,6 +297,42 @@ export function ChallengeReadyScreen({
           </p>
         </motion.div>
 
+        {/* Friend Name Input (only for challengers, not guests) */}
+        {!hideShareOptions && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="glass-card p-4 mb-6"
+          >
+            <label htmlFor="friend-name" className="block text-sm font-medium text-slate-300 mb-2">
+              Who are you challenging? <span className="text-slate-500">(optional)</span>
+            </label>
+            <div className="relative">
+              <input
+                id="friend-name"
+                type="text"
+                name="friendName"
+                data-testid="friend-name-input"
+                value={localFriendName}
+                onChange={handleFriendNameChange}
+                onBlur={handleFriendNameBlur}
+                placeholder="Enter your friend's name"
+                maxLength={50}
+                className="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/25 transition-colors"
+              />
+              {isSavingFriendName && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <ArrowPathIcon className="w-4 h-4 text-slate-400 animate-spin" />
+                </div>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Their name will appear in the battle while they join
+            </p>
+          </motion.div>
+        )}
+
         {/* Actions */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -269,8 +355,8 @@ export function ChallengeReadyScreen({
             You'll have 3 minutes to write your prompt
           </p>
 
-          {/* Secondary: Share Link */}
-          {inviteUrl && (
+          {/* Secondary: Share Link (hidden for guests who already have the link) */}
+          {inviteUrl && !hideShareOptions && (
             <div className="pt-4 border-t border-slate-800">
               <p className="text-center text-sm text-slate-400 mb-3">
                 Need the link again?
@@ -309,14 +395,16 @@ export function ChallengeReadyScreen({
         </motion.div>
 
         {/* Info */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="text-center text-xs text-slate-500 mt-6"
-        >
-          Your friend can join anytime within 24 hours
-        </motion.p>
+        {!hideShareOptions && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="text-center text-xs text-slate-500 mt-6"
+          >
+            Your friend can join anytime within 24 hours
+          </motion.p>
+        )}
       </motion.div>
     </div>
   );

@@ -11,12 +11,12 @@ export interface ImpersonatableUser {
   id: number;
   username: string;
   email: string;
-  first_name: string;
-  last_name: string;
-  avatar_url: string | null;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
   role: string;
-  date_joined: string;
-  is_guest: boolean;
+  dateJoined: string;
+  isGuest: boolean;
 }
 
 export interface ImpersonationSession {
@@ -35,18 +35,18 @@ export interface ImpersonationSession {
 
 export interface ImpersonationLog {
   id: number;
-  admin_user: {
+  adminUser: {
     id: number;
     username: string;
   };
-  target_user: {
+  targetUser: {
     id: number;
     username: string;
   };
-  started_at: string;
-  ended_at: string | null;
+  startedAt: string;
+  endedAt: string | null;
   reason: string;
-  ip_address: string;
+  ipAddress: string;
 }
 
 export interface StartImpersonationResponse {
@@ -54,10 +54,10 @@ export interface StartImpersonationResponse {
   message: string;
   user: any; // Full user object
   impersonation: {
-    is_impersonating: boolean;
-    original_user: string;
-    target_user: string;
-    session_id: number;
+    isImpersonating: boolean;
+    originalUser: string;
+    targetUser: string;
+    sessionId: number;
   };
 }
 
@@ -66,7 +66,7 @@ export interface StopImpersonationResponse {
   message: string;
   user: any; // Full user object (original admin)
   impersonation: {
-    is_impersonating: boolean;
+    isImpersonating: boolean;
   };
 }
 

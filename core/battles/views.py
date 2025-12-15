@@ -264,6 +264,163 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
             }
         )
 
+    @action(detail=True, methods=['post'], url_path='set-friend-name')
+    def set_friend_name(self, request, pk=None):
+        """Set the friend's name for an invitation battle.
+
+        Allows the challenger to set a display name for their friend before
+        they join the battle. This name shows in the opponent circle.
+        """
+        battle = self.get_object()
+
+        # Only challenger can set friend name
+        if request.user != battle.challenger:
+            return Response(
+                {'error': 'Only the challenger can set the friend name.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Must be an invitation battle
+        if battle.match_source != MatchSource.INVITATION:
+            return Response(
+                {'error': 'Friend name can only be set for invitation battles.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get and validate the friend name
+        friend_name = request.data.get('friend_name', '').strip()
+        if not friend_name:
+            return Response(
+                {'error': 'Friend name is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(friend_name) > 50:
+            return Response(
+                {'error': 'Friend name must be 50 characters or less.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Sanitize the name
+        friend_name = bleach.clean(friend_name, tags=[], strip=True)
+
+        # Update the invitation's recipient_name
+        try:
+            invitation = battle.invitation
+            invitation.recipient_name = friend_name
+            invitation.save(update_fields=['recipient_name'])
+
+            return Response(
+                {
+                    'friend_name': friend_name,
+                    'message': 'Friend name saved!',
+                }
+            )
+        except BattleInvitation.DoesNotExist:
+            return Response(
+                {'error': 'No invitation found for this battle.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=['post'], url_path='test-expire-invite')
+    def test_expire_invite(self, request, pk=None):
+        """TEST ONLY: Expire a battle invitation for E2E testing.
+
+        This endpoint is only available in DEBUG mode and allows tests
+        to expire an invitation without waiting 24 hours.
+        """
+        from django.conf import settings
+
+        # Only allow in DEBUG mode
+        if not settings.DEBUG:
+            return Response(
+                {'error': 'This endpoint is only available in DEBUG mode.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        battle = self.get_object()
+
+        # Only the battle owner can expire the invite
+        if request.user != battle.challenger:
+            return Response(
+                {'error': 'Only the challenger can expire the invite.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Get the invitation and set expires_at to the past
+        try:
+            invitation = battle.invitation
+            invitation.expires_at = timezone.now() - timezone.timedelta(hours=1)
+            invitation.save(update_fields=['expires_at'])
+
+            return Response(
+                {
+                    'message': 'Invitation expired for testing.',
+                    'expires_at': invitation.expires_at.isoformat(),
+                }
+            )
+        except BattleInvitation.DoesNotExist:
+            return Response(
+                {'error': 'No invitation found for this battle.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=['get'], url_path='test-generation-prompt')
+    def test_generation_prompt(self, request, pk=None):
+        """TEST ONLY: Get the prompt that would be sent to the AI image generator.
+
+        This endpoint is only available in DEBUG mode and allows E2E tests
+        to verify that the challenge text is NOT included in the image generation
+        prompt - only the user's creative direction should be used.
+
+        Returns:
+            - generation_prompt: The actual prompt sent to AI image generator
+            - user_prompt: The user's original prompt text
+            - challenge_text: The battle's challenge text (for verification it's NOT in generation_prompt)
+        """
+        from django.conf import settings
+
+        # Only allow in DEBUG mode
+        if not settings.DEBUG:
+            return Response(
+                {'error': 'This endpoint is only available in DEBUG mode.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        battle = self.get_object()
+
+        # Only participants can access
+        if request.user not in [battle.challenger, battle.opponent]:
+            return Response(
+                {'error': 'Only battle participants can access this endpoint.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Get user's submission
+        try:
+            submission = BattleSubmission.objects.get(battle=battle, user=request.user)
+        except BattleSubmission.DoesNotExist:
+            return Response(
+                {'error': 'No submission found. Submit a prompt first.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Build the SAME prompt that would be sent to the AI image generator
+        # This MUST match the logic in services.py generate_image_for_submission()
+        generation_prompt = f"""{submission.prompt_text}
+
+Generate a high-quality, creative image that brings this vision to life.
+Focus on visual impact and artistic interpretation."""
+
+        return Response(
+            {
+                'generation_prompt': generation_prompt,
+                'user_prompt': submission.prompt_text,
+                'challenge_text': battle.challenge_text,
+                'challenge_in_prompt': battle.challenge_text in generation_prompt,
+            }
+        )
+
     @action(detail=True, methods=['post'])
     def save_to_profile(self, request, pk=None):
         """Save battle result as a project on user's profile."""
@@ -515,7 +672,7 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
         offset = (page - 1) * page_size
         battles = queryset[offset : offset + page_size]
 
-        serializer = PromptBattleListSerializer(battles, many=True)
+        serializer = PromptBattleListSerializer(battles, many=True, context={'request': request})
 
         return Response(
             {
@@ -945,6 +1102,16 @@ def accept_invitation_by_token(request, token):
                             'username': accepting_user.username,
                         },
                         'timestamp': timezone.now().isoformat(),
+                    },
+                )
+
+                # ALSO notify any users connected to the battle itself
+                # This updates the challenger's BattlePage if they're already on it
+                battle_group = f'battle_{battle.id}'
+                async_to_sync(channel_layer.group_send)(
+                    battle_group,
+                    {
+                        'type': 'send_state_to_group',
                     },
                 )
         except Exception as ws_error:
@@ -1743,6 +1910,7 @@ def start_battle_turn(request, battle_id):
 def _serialize_async_battle(battle: PromptBattle, user) -> dict:
     """Serialize a battle for the async battles list."""
     opponent = battle.opponent if battle.challenger == user else battle.challenger
+    is_challenger = battle.challenger == user
 
     # Determine user's submission status
     user_submission = battle.submissions.filter(user=user).first()
@@ -1755,6 +1923,25 @@ def _serialize_async_battle(battle: PromptBattle, user) -> dict:
     if battle.current_turn_expires_at:
         deadlines['turn'] = battle.current_turn_expires_at.isoformat()
 
+    # Get friend name from invitation (only show to challenger)
+    friend_name = None
+    if is_challenger:
+        try:
+            invitation = battle.invitation
+            if invitation and invitation.recipient_name:
+                friend_name = invitation.recipient_name
+        except BattleInvitation.DoesNotExist:
+            pass
+
+    # Determine opponent display name (friend name if set, otherwise username)
+    opponent_display_name = None
+    if is_challenger and friend_name:
+        opponent_display_name = friend_name
+    elif opponent:
+        opponent_display_name = opponent.username
+    else:
+        opponent_display_name = 'Waiting...'
+
     return {
         'id': battle.id,
         'opponent': {
@@ -1764,6 +1951,7 @@ def _serialize_async_battle(battle: PromptBattle, user) -> dict:
         }
         if opponent
         else None,
+        'opponent_display_name': opponent_display_name,
         'challenge_text': battle.challenge_text[:100] + ('...' if len(battle.challenge_text) > 100 else ''),
         'challenge_type': {
             'key': battle.challenge_type.key,

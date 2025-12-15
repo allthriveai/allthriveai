@@ -71,6 +71,8 @@ def list_invitations(request):
             'email': inv.email,
             'name': inv.name,
             'reason': inv.reason,
+            'excitedFeatures': inv.get_excited_features_display(),
+            'desiredIntegrations': inv.get_desired_integrations_display(),
             'status': inv.status,
             'createdAt': inv.created_at.isoformat(),
             'reviewedAt': inv.reviewed_at.isoformat() if inv.reviewed_at else None,

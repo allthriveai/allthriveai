@@ -186,13 +186,13 @@ export async function updateProfile(data: Partial<User>): Promise<User> {
 export interface DeactivateAccountResponse {
   success: boolean;
   message: string;
-  subscription_canceled?: boolean;
+  subscriptionCanceled?: boolean;
 }
 
 export interface DeleteAccountResponse {
   success: boolean;
   message: string;
-  user_id: number;
+  userId: number;
   email: string;
 }
 

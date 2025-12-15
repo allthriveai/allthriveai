@@ -19,6 +19,27 @@ class InvitationRequest(models.Model):
         APPROVED = 'approved', 'Approved'
         REJECTED = 'rejected', 'Rejected'
 
+    # Feature choices for "What feature are you most excited about?"
+    FEATURE_CHOICES = [
+        ('portfolio', 'AI Automated Portfolio Showcase'),
+        ('battles', 'Prompt Battles'),
+        ('marketplace', 'Creator Marketplace (sell my courses & projects)'),
+        ('learning', 'Structured Learning Path'),
+        ('microlearning', 'Microlearning through games'),
+        ('challenges', 'Weekly community challenges'),
+        ('investing', 'Finding AI projects to invest in'),
+        ('community', 'Connecting with other AI creators'),
+    ]
+
+    # Integration choices for portfolio import
+    INTEGRATION_CHOICES = [
+        ('github', 'GitHub'),
+        ('linkedin', 'LinkedIn'),
+        ('instagram', 'Instagram'),
+        ('figma', 'Figma'),
+        ('url', 'Paste any URL'),
+    ]
+
     # Requester info (not linked to User since they don't have account yet)
     email = models.EmailField(
         unique=True,
@@ -31,6 +52,23 @@ class InvitationRequest(models.Model):
     reason = models.TextField(
         blank=True,
         help_text='Why they want to join (optional)',
+    )
+
+    # Feature interest survey
+    excited_features = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Features the requester is most excited about (multi-select)',
+    )
+    desired_integrations = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Integrations user wants for portfolio import (shown if portfolio selected)',
+    )
+    desired_integrations_other = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text='Other integration specified by user',
     )
 
     # Request metadata
@@ -113,3 +151,16 @@ class InvitationRequest(models.Model):
         self.review_notes = notes
         self.reviewed_at = timezone.now()
         self.save(update_fields=['status', 'reviewed_by', 'review_notes', 'reviewed_at', 'updated_at'])
+
+    def get_excited_features_display(self) -> list[str]:
+        """Return human-readable labels for selected features."""
+        feature_map = dict(self.FEATURE_CHOICES)
+        return [feature_map.get(key, key) for key in (self.excited_features or [])]
+
+    def get_desired_integrations_display(self) -> list[str]:
+        """Return human-readable labels for selected integrations."""
+        integration_map = dict(self.INTEGRATION_CHOICES)
+        integrations = [integration_map.get(key, key) for key in (self.desired_integrations or [])]
+        if self.desired_integrations_other:
+            integrations.append(f'Other: {self.desired_integrations_other}')
+        return integrations

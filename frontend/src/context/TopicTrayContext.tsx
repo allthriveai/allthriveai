@@ -116,3 +116,12 @@ export function useTopicTray(): TopicTrayContextValue {
   }
   return context;
 }
+
+/**
+ * Safe version of useTopicTray that returns null when outside TopicTrayProvider.
+ * Use this in components that may render before the provider is available.
+ */
+export function useTopicTraySafe(): TopicTrayContextValue | null {
+  const context = useContext(TopicTrayContext);
+  return context ?? null;
+}

@@ -16,6 +16,7 @@ class InvitationRequestAdmin(admin.ModelAdmin):
         'name',
         'email',
         'status_badge',
+        'features_preview',
         'reason_preview',
         'created_at',
         'reviewed_by',
@@ -26,6 +27,8 @@ class InvitationRequestAdmin(admin.ModelAdmin):
         'email',
         'name',
         'reason',
+        'excited_features_display',
+        'desired_integrations_display',
         'ip_address',
         'user_agent',
         'created_at',
@@ -40,6 +43,12 @@ class InvitationRequestAdmin(admin.ModelAdmin):
             'Request Details',
             {
                 'fields': ('name', 'email', 'reason'),
+            },
+        ),
+        (
+            'Feature Interests',
+            {
+                'fields': ('excited_features_display', 'desired_integrations_display'),
             },
         ),
         (
@@ -82,6 +91,44 @@ class InvitationRequestAdmin(admin.ModelAdmin):
         if obj.reason:
             return obj.reason[:50] + '...' if len(obj.reason) > 50 else obj.reason
         return '-'
+
+    @admin.display(description='Interested In')
+    def features_preview(self, obj):
+        """Show abbreviated features list for list display."""
+        features = obj.get_excited_features_display()
+        if not features:
+            return '-'
+        if len(features) <= 2:
+            return ', '.join(features)
+        return f'{features[0]}, +{len(features) - 1} more'
+
+    @admin.display(description='Excited About')
+    def excited_features_display(self, obj):
+        """Show full list of excited features as HTML badges."""
+        features = obj.get_excited_features_display()
+        if not features:
+            return '-'
+        badges = ''.join(
+            f'<span style="background-color: #22d3ee; color: #0f172a; padding: 2px 8px; '
+            f'border-radius: 12px; font-size: 12px; margin: 2px; display: inline-block;">'
+            f'{feature}</span>'
+            for feature in features
+        )
+        return format_html(badges)
+
+    @admin.display(description='Desired Integrations')
+    def desired_integrations_display(self, obj):
+        """Show list of desired integrations as HTML badges."""
+        integrations = obj.get_desired_integrations_display()
+        if not integrations:
+            return '-'
+        badges = ''.join(
+            f'<span style="background-color: #a78bfa; color: #0f172a; padding: 2px 8px; '
+            f'border-radius: 12px; font-size: 12px; margin: 2px; display: inline-block;">'
+            f'{integration}</span>'
+            for integration in integrations
+        )
+        return format_html(badges)
 
     @admin.action(description='Approve selected requests and send invitation emails')
     def approve_requests(self, request, queryset):

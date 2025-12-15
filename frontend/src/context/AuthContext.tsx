@@ -55,8 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email,
         username: user.username,
         role: user.role,
-        tier: user.subscription_tier,
-        totalPoints: user.total_points,
+        tier: user.subscriptionTier,
+        totalPoints: user.totalPoints,
       });
 
       // Apply pending referral code if user just signed up
@@ -103,8 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email,
         username: user.username,
         role: user.role,
-        tier: user.subscription_tier,
-        totalPoints: user.total_points,
+        tier: user.subscriptionTier,
+        totalPoints: user.totalPoints,
       });
     } catch (error) {
       const errorMessage = (error && typeof error === 'object' && 'error' in error)

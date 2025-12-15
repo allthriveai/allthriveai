@@ -149,7 +149,7 @@ export async function createToolReview(data: {
 /**
  * Mark a review as helpful
  */
-export async function markReviewHelpful(reviewId: number): Promise<{ helpful_count: number }> {
+export async function markReviewHelpful(reviewId: number): Promise<{ helpfulCount: number }> {
   const response = await api.post(`/tool-reviews/${reviewId}/mark_helpful/`);
   return response.data;
 }

@@ -175,8 +175,8 @@ export async function deleteProjectById(id: number): Promise<void> {
 /**
  * Bulk delete multiple projects
  */
-export async function bulkDeleteProjects(projectIds: number[]): Promise<{ deleted_count: number; message: string }> {
-  const response = await api.post<{ deleted_count: number; message: string }>('/me/projects/bulk-delete/', {
+export async function bulkDeleteProjects(projectIds: number[]): Promise<{ deletedCount: number; message: string }> {
+  const response = await api.post<{ deletedCount: number; message: string }>('/me/projects/bulk-delete/', {
     project_ids: projectIds,
   });
   return response.data;
@@ -220,12 +220,12 @@ export async function toggleProjectLike(projectId: number): Promise<{
 }> {
   const response = await api.post<{
     liked: boolean;
-    heart_count: number;
+    heartCount: number;
     completedQuests?: CompletedQuestInfo[];
   }>(`/me/projects/${projectId}/toggle-like/`);
   return {
     liked: response.data.liked,
-    heartCount: response.data.heart_count,
+    heartCount: response.data.heartCount,
     completedQuests: response.data.completedQuests,
   };
 }

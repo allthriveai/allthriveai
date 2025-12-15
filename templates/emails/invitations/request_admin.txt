@@ -11,6 +11,14 @@ Email: {{ requester_email }}
 Why they want to join:
 {{ reason }}
 {% endif %}
+{% if excited_features %}
+Excited about:
+{% for feature in excited_features %}- {{ feature }}
+{% endfor %}{% endif %}
+{% if desired_integrations %}
+Wants to import from:
+{% for integration in desired_integrations %}- {{ integration }}
+{% endfor %}{% endif %}
 Submitted: {{ submitted_at }}
 
 Review this request in the admin panel:

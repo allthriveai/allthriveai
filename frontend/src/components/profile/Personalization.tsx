@@ -29,6 +29,13 @@ import {
   ArrowDownTrayIcon,
   TrashIcon,
   ExclamationTriangleIcon,
+  BriefcaseIcon,
+  BoltIcon,
+  ShoppingBagIcon,
+  PuzzlePieceIcon,
+  CalendarDaysIcon,
+  CurrencyDollarIcon,
+  LinkIcon,
 } from '@heroicons/react/24/outline';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -49,6 +56,27 @@ const COLOR_CLASSES: Record<string, string> = {
   slate: 'bg-slate-500',
   fuchsia: 'bg-fuchsia-500',
 };
+
+// Feature options for "What features are you most excited about?"
+const FEATURE_OPTIONS = [
+  { key: 'portfolio', label: 'AI Portfolio', description: 'Auto-showcase your work', icon: BriefcaseIcon },
+  { key: 'battles', label: 'Prompt Battles', description: 'Compete with AI prompts', icon: BoltIcon },
+  { key: 'microlearning', label: 'Explore', description: 'See what others are building', icon: PuzzlePieceIcon },
+  { key: 'learning', label: 'Learning Paths', description: 'Structured AI education', icon: AcademicCapIcon },
+  { key: 'marketplace', label: 'Marketplace', description: 'Sell courses & projects', icon: ShoppingBagIcon },
+  { key: 'challenges', label: 'Games & Challenges', description: 'Weekly games and challenges', icon: CalendarDaysIcon },
+  { key: 'investing', label: 'Investing', description: 'Find AI projects', icon: CurrencyDollarIcon },
+  { key: 'community', label: 'Community', description: 'Connect with creators', icon: UserGroupIcon },
+];
+
+// Integration options for portfolio import
+const INTEGRATION_OPTIONS = [
+  { key: 'github', label: 'GitHub' },
+  { key: 'linkedin', label: 'LinkedIn' },
+  { key: 'instagram', label: 'Instagram' },
+  { key: 'figma', label: 'Figma' },
+  { key: 'url', label: 'Paste any URL' },
+];
 
 export function Personalization() {
   const { theme, toggleTheme } = useTheme();
@@ -71,6 +99,13 @@ export function Personalization() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
 
+  // Feature interests state (local editing)
+  const [localExcitedFeatures, setLocalExcitedFeatures] = useState<string[]>([]);
+  const [localDesiredIntegrations, setLocalDesiredIntegrations] = useState<string[]>([]);
+  const [localIntegrationsOther, setLocalIntegrationsOther] = useState('');
+  const [isSavingFeatures, setIsSavingFeatures] = useState(false);
+  const [featuresError, setFeaturesError] = useState<string | null>(null);
+
   useEffect(() => {
     loadPersonalization();
     loadSettings();
@@ -82,6 +117,10 @@ export function Personalization() {
       setSettingsError(null);
       const data = await getPersonalizationSettings();
       setSettings(data);
+      // Sync local feature interest state
+      setLocalExcitedFeatures(data.excitedFeatures || []);
+      setLocalDesiredIntegrations(data.desiredIntegrations || []);
+      setLocalIntegrationsOther(data.desiredIntegrationsOther || '');
     } catch (err: any) {
       console.error('Failed to load personalization settings:', err);
       setSettingsError('Failed to load settings');
@@ -114,11 +153,11 @@ export function Personalization() {
     if (!settings) return;
 
     const previousSettings = settings;
-    setSettings({ ...settings, discovery_balance: value });
+    setSettings({ ...settings, discoveryBalance: value });
 
     try {
       setSavingSettings(true);
-      const updated = await updatePersonalizationSettings({ discovery_balance: value });
+      const updated = await updatePersonalizationSettings({ discoveryBalance: value });
       setSettings(updated);
     } catch (err: any) {
       console.error('Failed to update discovery balance:', err);
@@ -126,6 +165,64 @@ export function Personalization() {
       setSettingsError('Failed to save setting');
     } finally {
       setSavingSettings(false);
+    }
+  }
+
+  // Toggle feature in local state
+  function toggleFeature(key: string) {
+    const isSelected = localExcitedFeatures.includes(key);
+    const newFeatures = isSelected
+      ? localExcitedFeatures.filter((f) => f !== key)
+      : [...localExcitedFeatures, key];
+
+    // Clear integrations if portfolio is deselected
+    if (key === 'portfolio' && isSelected) {
+      setLocalDesiredIntegrations([]);
+      setLocalIntegrationsOther('');
+    }
+
+    setLocalExcitedFeatures(newFeatures);
+  }
+
+  // Toggle integration in local state
+  function toggleIntegration(key: string) {
+    const isSelected = localDesiredIntegrations.includes(key);
+    setLocalDesiredIntegrations(
+      isSelected
+        ? localDesiredIntegrations.filter((i) => i !== key)
+        : [...localDesiredIntegrations, key]
+    );
+  }
+
+  // Check if there are unsaved feature changes
+  function hasFeatureChanges() {
+    if (!settings) return false;
+    const featuresChanged = JSON.stringify(localExcitedFeatures.sort()) !== JSON.stringify([...(settings.excitedFeatures || [])].sort());
+    const integrationsChanged = JSON.stringify(localDesiredIntegrations.sort()) !== JSON.stringify([...(settings.desiredIntegrations || [])].sort());
+    const otherChanged = localIntegrationsOther !== (settings.desiredIntegrationsOther || '');
+    return featuresChanged || integrationsChanged || otherChanged;
+  }
+
+  // Save feature interests
+  async function handleSaveFeatureInterests() {
+    try {
+      setIsSavingFeatures(true);
+      setFeaturesError(null);
+      const updated = await updatePersonalizationSettings({
+        excitedFeatures: localExcitedFeatures,
+        desiredIntegrations: localDesiredIntegrations,
+        desiredIntegrationsOther: localIntegrationsOther,
+      });
+      setSettings(updated);
+      // Sync local state with saved values
+      setLocalExcitedFeatures(updated.excitedFeatures || []);
+      setLocalDesiredIntegrations(updated.desiredIntegrations || []);
+      setLocalIntegrationsOther(updated.desiredIntegrationsOther || '');
+    } catch (err: any) {
+      console.error('Failed to save feature interests:', err);
+      setFeaturesError('Failed to save feature interests');
+    } finally {
+      setIsSavingFeatures(false);
     }
   }
 
@@ -265,13 +362,13 @@ export function Personalization() {
     try {
       setError(null);
       const data = await getUserPersonalization();
-      setManualTags(data.manual_tags || []);
-      setAutoTags(data.auto_generated_tags || []);
-      setAvailableTopics(data.available_topics || []);
+      setManualTags(data.manualTags || []);
+      setAutoTags(data.autoGeneratedTags || []);
+      setAvailableTopics(data.availableTopics || []);
 
       // Pre-select existing topics
       const existingTopicIds = new Set(
-        (data.selected_topics || []).map((topic: Taxonomy) => topic.id)
+        (data.selectedTopics || []).map((topic: Taxonomy) => topic.id)
       );
       setSelectedTopicIds(existingTopicIds);
     } catch (err: any) {
@@ -368,6 +465,154 @@ export function Personalization() {
         </div>
       </div>
 
+      {/* Feature Interests */}
+      <div className="glass-subtle rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
+          <div>
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <SparklesIcon className="w-5 h-5" />
+              Feature Interests
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Tell us which features you're most excited about so we can prioritize your experience.
+            </p>
+          </div>
+          <button
+            onClick={handleSaveFeatureInterests}
+            disabled={isSavingFeatures || !hasFeatureChanges()}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium w-full sm:w-auto"
+          >
+            {isSavingFeatures ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <CheckIcon className="w-4 h-4" />
+                Save
+              </>
+            )}
+          </button>
+        </div>
+
+        {featuresError && (
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-sm text-red-600 dark:text-red-400">{featuresError}</p>
+          </div>
+        )}
+
+        {settingsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Feature Cards - 2 column grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {FEATURE_OPTIONS.map((feature) => {
+                const isSelected = localExcitedFeatures.includes(feature.key);
+                const Icon = feature.icon;
+
+                return (
+                  <button
+                    key={feature.key}
+                    onClick={() => toggleFeature(feature.key)}
+                    className={`text-left p-3 sm:p-4 rounded-lg border-2 transition-all ${
+                      isSelected
+                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        isSelected
+                          ? 'bg-primary-500 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                      }`}>
+                        <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <h4 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white">
+                            {feature.label}
+                          </h4>
+                          {isSelected && (
+                            <CheckIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {feature.description}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Integration preferences - shown when AI Portfolio is selected */}
+            {localExcitedFeatures.includes('portfolio') && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4" />
+                  Where should we import your portfolio from?
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Select all that apply. We'll prioritize building these integrations.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {INTEGRATION_OPTIONS.map((integration) => {
+                    const isSelected = localDesiredIntegrations.includes(integration.key);
+                    return (
+                      <button
+                        key={integration.key}
+                        onClick={() => toggleIntegration(integration.key)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                          isSelected
+                            ? 'bg-primary-500 text-white'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {integration.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Other integration text input */}
+                <div className="mt-3">
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                    Other integration you'd like to see:
+                  </label>
+                  <input
+                    type="text"
+                    value={localIntegrationsOther}
+                    onChange={(e) => setLocalIntegrationsOther(e.target.value)}
+                    placeholder="e.g., Behance, Dribbble, Notion..."
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Summary of selections */}
+            {localExcitedFeatures.length > 0 && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                  You've selected {localExcitedFeatures.length} feature{localExcitedFeatures.length !== 1 ? 's' : ''}.
+                  {hasFeatureChanges() && (
+                    <span className="text-primary-600 dark:text-primary-400 ml-1">
+                      Click Save to update your preferences.
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Recommendation Controls */}
       <div className="glass-subtle rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
@@ -418,17 +663,17 @@ export function Personalization() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleToggleSetting('use_topic_selections', !settings.use_topic_selections)}
+                    onClick={() => handleToggleSetting('useTopicSelections', !settings.useTopicSelections)}
                     disabled={settingsSaving}
                     className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      settings.use_topic_selections
+                      settings.useTopicSelections
                         ? 'bg-primary-500'
                         : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.use_topic_selections ? 'translate-x-5 sm:translate-x-6' : ''
+                        settings.useTopicSelections ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
@@ -444,17 +689,17 @@ export function Personalization() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleToggleSetting('learn_from_views', !settings.learn_from_views)}
+                    onClick={() => handleToggleSetting('learnFromViews', !settings.learnFromViews)}
                     disabled={settingsSaving}
                     className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      settings.learn_from_views
+                      settings.learnFromViews
                         ? 'bg-primary-500'
                         : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.learn_from_views ? 'translate-x-5 sm:translate-x-6' : ''
+                        settings.learnFromViews ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
@@ -470,17 +715,17 @@ export function Personalization() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleToggleSetting('learn_from_likes', !settings.learn_from_likes)}
+                    onClick={() => handleToggleSetting('learnFromLikes', !settings.learnFromLikes)}
                     disabled={settingsSaving}
                     className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      settings.learn_from_likes
+                      settings.learnFromLikes
                         ? 'bg-primary-500'
                         : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.learn_from_likes ? 'translate-x-5 sm:translate-x-6' : ''
+                        settings.learnFromLikes ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
@@ -496,17 +741,17 @@ export function Personalization() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleToggleSetting('consider_skill_level', !settings.consider_skill_level)}
+                    onClick={() => handleToggleSetting('considerSkillLevel', !settings.considerSkillLevel)}
                     disabled={settingsSaving}
                     className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      settings.consider_skill_level
+                      settings.considerSkillLevel
                         ? 'bg-primary-500'
                         : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.consider_skill_level ? 'translate-x-5 sm:translate-x-6' : ''
+                        settings.considerSkillLevel ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
@@ -522,17 +767,17 @@ export function Personalization() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleToggleSetting('use_social_signals', !settings.use_social_signals)}
+                    onClick={() => handleToggleSetting('useSocialSignals', !settings.useSocialSignals)}
                     disabled={settingsSaving}
                     className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      settings.use_social_signals
+                      settings.useSocialSignals
                         ? 'bg-primary-500'
                         : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.use_social_signals ? 'translate-x-5 sm:translate-x-6' : ''
+                        settings.useSocialSignals ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
@@ -554,16 +799,16 @@ export function Personalization() {
                   type="range"
                   min="0"
                   max="100"
-                  value={settings.discovery_balance}
+                  value={settings.discoveryBalance}
                   onChange={(e) => handleSliderChange(Number(e.target.value))}
                   disabled={settingsSaving}
                   className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-500"
                 />
                 <div className="text-center">
                   <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {settings.discovery_balance < 33
+                    {settings.discoveryBalance < 33
                       ? 'Mostly familiar content'
-                      : settings.discovery_balance > 66
+                      : settings.discoveryBalance > 66
                         ? 'Lots of new discoveries'
                         : 'Balanced mix'}
                   </span>
@@ -591,17 +836,17 @@ export function Personalization() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleToggleSetting('allow_time_tracking', !settings.allow_time_tracking)}
+                    onClick={() => handleToggleSetting('allowTimeTracking', !settings.allowTimeTracking)}
                     disabled={settingsSaving}
                     className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      settings.allow_time_tracking
+                      settings.allowTimeTracking
                         ? 'bg-primary-500'
                         : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.allow_time_tracking ? 'translate-x-5 sm:translate-x-6' : ''
+                        settings.allowTimeTracking ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
@@ -617,17 +862,17 @@ export function Personalization() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleToggleSetting('allow_scroll_tracking', !settings.allow_scroll_tracking)}
+                    onClick={() => handleToggleSetting('allowScrollTracking', !settings.allowScrollTracking)}
                     disabled={settingsSaving}
                     className={`relative w-11 sm:w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      settings.allow_scroll_tracking
+                      settings.allowScrollTracking
                         ? 'bg-primary-500'
                         : 'bg-gray-300 dark:bg-gray-700 ring-1 ring-inset ring-gray-400 dark:ring-gray-600'
                     }`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        settings.allow_scroll_tracking ? 'translate-x-5 sm:translate-x-6' : ''
+                        settings.allowScrollTracking ? 'translate-x-5 sm:translate-x-6' : ''
                       }`}
                     />
                   </button>
