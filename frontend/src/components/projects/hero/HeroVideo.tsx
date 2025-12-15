@@ -18,10 +18,16 @@ interface HeroVideoProps {
 /**
  * Parse video URL to determine platform and video ID
  */
-function parseVideoUrl(url: string): { platform: 'youtube' | 'vimeo' | 'loom'; id: string } | null {
+function parseVideoUrl(url: string): { platform: 'youtube' | 'vimeo' | 'loom'; id: string; isShort?: boolean } | null {
   if (!url) return null;
 
-  // YouTube patterns
+  // YouTube Shorts pattern (must check before regular YouTube)
+  const youtubeShortsMatch = url.match(/youtube\.com\/shorts\/([\w-]{11})/);
+  if (youtubeShortsMatch) {
+    return { platform: 'youtube', id: youtubeShortsMatch[1], isShort: true };
+  }
+
+  // YouTube patterns (regular videos)
   const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
   if (youtubeMatch) {
     return { platform: 'youtube', id: youtubeMatch[1] };
@@ -126,6 +132,30 @@ export function HeroVideo({ videoUrl, redditPermalink }: HeroVideoProps) {
     embedUrl = `https://player.vimeo.com/video/${videoInfo.id}`;
   } else if (videoInfo.platform === 'loom') {
     embedUrl = `https://www.loom.com/embed/${videoInfo.id}`;
+  }
+
+  // YouTube Shorts use vertical aspect ratio (9:16)
+  const isVertical = videoInfo.isShort;
+
+  if (isVertical) {
+    return (
+      <div className="w-full flex justify-center">
+        <div className="relative group inline-block">
+          <div className={VIDEO_GLOW_BACKDROP} />
+          <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl overflow-hidden">
+            <div className="relative w-[280px] md:w-[320px] aspect-[9/16] rounded-xl md:rounded-2xl overflow-hidden bg-black">
+              <iframe
+                src={embedUrl}
+                title="Project video"
+                className="absolute inset-0 w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
