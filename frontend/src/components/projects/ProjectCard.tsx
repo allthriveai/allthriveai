@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, memo } from 'react';
 import type { Project } from '@/types/models';
+import { useProjectPreviewTray } from '@/context/ProjectPreviewTrayContext';
 import {
   QUOTE_CARD_SIZE,
   MAX_VISIBLE_TAGS,
@@ -56,6 +57,7 @@ interface ProjectCardProps {
   onShowcaseToggle?: (projectId: number, added: boolean) => void;  // Callback when showcase status changes
   showShowcaseButton?: boolean;  // Show the add/remove from showcase button
   priority?: boolean;  // Load image eagerly (for above-the-fold content)
+  enableInlinePreview?: boolean;  // Opens tray instead of navigating (for explore feed)
 }
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -72,9 +74,10 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const typeLabels = PROJECT_TYPE_LABELS;
 
-export const ProjectCard = memo(function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick, isInShowcase = false, onShowcaseToggle, showShowcaseButton = false, priority = false }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick, isInShowcase = false, onShowcaseToggle, showShowcaseButton = false, priority = false, enableInlinePreview = false }: ProjectCardProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
+  const { openProjectPreview } = useProjectPreviewTray();
   const [showMenu, setShowMenu] = useState(false);
   const [isLiked, setIsLiked] = useState(project.isLikedByUser);
   const [heartCount, setHeartCount] = useState(project.heartCount);
@@ -118,6 +121,12 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
     // Track click before navigation (fire and forget)
     if (onCardClick) {
       onCardClick(project.id);
+    }
+    // If inline preview is enabled, open tray instead of navigating
+    if (enableInlinePreview) {
+      e.preventDefault();
+      openProjectPreview(project);
+      return;
     }
   };
 
@@ -344,8 +353,9 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
   };
 
   // Keep users on-site for all project types (including RSS articles which now show expert reviews)
-  const CardWrapper = selectionMode ? 'div' : Link;
-  const cardProps = selectionMode
+  // Use div instead of Link when in selection mode or when inline preview is enabled
+  const CardWrapper = (selectionMode || enableInlinePreview) ? 'div' : Link;
+  const cardProps = (selectionMode || enableInlinePreview)
     ? { onClick: handleClick, style: { cursor: 'pointer' } }
     : { to: projectUrl, onClick: handleClick };
 
@@ -507,18 +517,18 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
               const urlIsShort = heroElement.url?.includes('/shorts/') || heroElement.url?.includes('youtube.com/shorts');
               const isYouTubeShort = hasVerticalFlag || urlIsShort;
 
-              // Parse video URL to get embed URL
+              // Parse video URL to get embed URL with autoplay enabled (muted for browser policy)
               const parseVideoUrl = (url: string) => {
                 // YouTube Shorts pattern
                 const shortsMatch = url.match(/youtube\.com\/shorts\/([\w-]{11})/);
                 if (shortsMatch) {
-                  return `https://www.youtube.com/embed/${shortsMatch[1]}?autoplay=0&mute=1&loop=1&controls=0`;
+                  return `https://www.youtube.com/embed/${shortsMatch[1]}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1`;
                 }
 
                 // YouTube patterns
                 const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
                 if (youtubeMatch) {
-                  return `https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=0&mute=1&loop=1&controls=0`;
+                  return `https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1`;
                 }
 
                 // Vimeo patterns
@@ -530,7 +540,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                 // Loom patterns
                 const loomMatch = url.match(/loom\.com\/(?:share|embed)\/([\w-]+)/);
                 if (loomMatch) {
-                  return `https://www.loom.com/embed/${loomMatch[1]}?hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true`;
+                  return `https://www.loom.com/embed/${loomMatch[1]}?hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true&autoplay=1`;
                 }
 
                 // Direct video file

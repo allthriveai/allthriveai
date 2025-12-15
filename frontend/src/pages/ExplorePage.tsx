@@ -613,6 +613,7 @@ export function ExplorePage() {
                               isOwner={user?.username === item.data.username}
                               onCommentClick={openCommentPanel}
                               onCardClick={handleProjectClick}
+                              enableInlinePreview={true}
                             />
                           )}
                         </div>
