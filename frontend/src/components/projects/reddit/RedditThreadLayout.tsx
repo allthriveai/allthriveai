@@ -186,7 +186,31 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
   });
 
   if (!redditData) {
-    return null;
+    // Show fallback UI instead of empty page when reddit data is missing
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-primary-900">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="backdrop-blur-xl bg-white/5 border border-white/10 p-8 shadow-xl" style={{ borderRadius: 'var(--radius)' }}>
+            <h1 className="text-3xl font-bold text-white mb-4">{localProject.title}</h1>
+            {localProject.description && (
+              <p className="text-white/70 mb-6">{localProject.description}</p>
+            )}
+            {localProject.externalUrl && (
+              <a
+                href={localProject.externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold shadow-lg transition-all"
+                style={{ borderRadius: 'var(--radius)' }}
+              >
+                <LinkIcon className="w-5 h-5" />
+                View on Reddit
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const {

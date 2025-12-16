@@ -22,6 +22,8 @@ interface PromptEditorProps {
   disabled?: boolean;
   placeholder?: string;
   timeRemaining?: number | null;
+  /** Key that changes when timer should be reset (e.g., after challenge refresh) */
+  timerResetKey?: number;
 }
 
 export function PromptEditor({
@@ -32,6 +34,7 @@ export function PromptEditor({
   disabled = false,
   placeholder = "Engineer your winning prompt! Be specific: describe the subject, art style (e.g. watercolor, 3D render), mood, lighting, composition, and camera angle. Detailed prompts score higher!",
   timeRemaining: serverTimeRemaining,
+  timerResetKey,
 }: PromptEditorProps) {
   const [prompt, setPrompt] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -46,6 +49,7 @@ export function PromptEditor({
   } = useBattleTimer({
     serverTimeRemaining,
     isActive: !disabled,
+    resetKey: timerResetKey,
   });
 
   const charCount = prompt.length;

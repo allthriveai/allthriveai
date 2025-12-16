@@ -32,6 +32,9 @@ export interface UseBattleTimerOptions {
 
   /** Warning threshold in seconds (default: 30) */
   warningThreshold?: number;
+
+  /** Key that changes when timer should be forcibly reset (e.g., after challenge refresh) */
+  resetKey?: number;
 }
 
 export interface BattleTimerState {
@@ -88,6 +91,7 @@ export function useBattleTimer({
   onExpire,
   onWarning,
   warningThreshold = 30,
+  resetKey,
 }: UseBattleTimerOptions): BattleTimerState {
   // Local time state for smooth countdown
   const [localTime, setLocalTime] = useState<number | null>(null);
@@ -101,25 +105,52 @@ export function useBattleTimer({
   // Track the last server time to detect updates
   const lastServerTimeRef = useRef<number | null>(null);
 
-  // Sync with server time when it changes
+  // Track the previous prop value to detect actual changes
+  const prevServerTimeRef = useRef<number | null | undefined>(undefined);
+
+  // Track the previous reset key to detect when we need to force reset
+  const prevResetKeyRef = useRef<number | undefined>(undefined);
+
+  // Sync with server time when the prop actually changes
+  // Note: We only sync when serverTimeRemaining prop changes value, NOT when
+  // localTime drifts. This prevents the timer from constantly resetting during
+  // normal countdown (which was the bug when localTime was in dependencies).
   useEffect(() => {
     if (serverTimeRemaining === null || serverTimeRemaining === undefined) {
       setLocalTime(null);
+      prevServerTimeRef.current = serverTimeRemaining;
+      lastServerTimeRef.current = null;
       return;
     }
 
-    // Only sync if server time has changed significantly (more than 2 seconds drift)
-    // This prevents jarring jumps during normal countdown
-    const drift = lastServerTimeRef.current !== null
-      ? Math.abs((localTime ?? 0) - serverTimeRemaining)
-      : Infinity;
+    // Only sync if the prop actually changed value
+    // This handles: initial load, challenge refresh, and backend time updates
+    const propChanged = prevServerTimeRef.current !== serverTimeRemaining;
+    prevServerTimeRef.current = serverTimeRemaining;
 
-    if (drift > 2 || lastServerTimeRef.current === null) {
+    if (propChanged || lastServerTimeRef.current === null) {
       setLocalTime(serverTimeRemaining);
+      lastServerTimeRef.current = serverTimeRemaining;
     }
+  }, [serverTimeRemaining]); // Only run when serverTimeRemaining prop changes
 
-    lastServerTimeRef.current = serverTimeRemaining;
-  }, [serverTimeRemaining, localTime]);
+  // Force reset timer when resetKey changes
+  // This handles the case where serverTimeRemaining value stays the same (e.g., 180 -> 180)
+  // but we want to reset the timer (e.g., after clicking "Try a different prompt")
+  useEffect(() => {
+    if (resetKey === undefined) return;
+
+    const keyChanged = prevResetKeyRef.current !== undefined && prevResetKeyRef.current !== resetKey;
+    prevResetKeyRef.current = resetKey;
+
+    if (keyChanged && serverTimeRemaining != null) {
+      setLocalTime(serverTimeRemaining);
+      lastServerTimeRef.current = serverTimeRemaining;
+      // Reset warning/expiration flags since we're starting fresh
+      hasWarnedRef.current = false;
+      hasExpiredRef.current = false;
+    }
+  }, [resetKey, serverTimeRemaining]);
 
   // Note: Periodic re-sync was removed because it caused issues when
   // the challenge is refreshed - the server time becomes a stale snapshot

@@ -572,7 +572,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         </div>
 
         {/* Battle Content - VS Layout */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain bg-gradient-to-b from-slate-900 to-slate-800">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain bg-gradient-to-b from-slate-900 to-slate-800 pb-10">
           {/* Your Submission */}
           <div className="p-4">
             <div className="relative">
@@ -874,7 +874,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         </div>
 
         {/* Content - Scrollable */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain pb-10">
           {/* Video or Featured Image */}
           <div className="p-4">
             {isVideo && videoUrl ? (

@@ -12,9 +12,11 @@ interface QuizOverlayProps {
   isOpen: boolean;
   onClose: () => void;
   quizSlug: string;
+  /** Optional ref to the feed scroll container for scroll-to-close on mobile */
+  feedScrollContainerRef?: React.RefObject<HTMLElement | null>;
 }
 
-export function QuizOverlay({ isOpen, onClose, quizSlug }: QuizOverlayProps) {
+export function QuizOverlay({ isOpen, onClose, quizSlug, feedScrollContainerRef }: QuizOverlayProps) {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -27,6 +29,148 @@ export function QuizOverlay({ isOpen, onClose, quizSlug }: QuizOverlayProps) {
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const questionStartTime = useRef<number>(Date.now());
+
+  // Scroll-to-close refs
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isMobileRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Check if we're on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      isMobileRef.current = window.innerWidth < 768;
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Feed scroll detection - close overlay when user scrolls down on the feed behind it (mobile only)
+  useEffect(() => {
+    if (!isOpen || !feedScrollContainerRef?.current || !isMobileRef.current) return;
+
+    const feedContainer = feedScrollContainerRef.current;
+    let lastScrollTop = feedContainer.scrollTop;
+    let scrollDownAccumulator = 0;
+    const SCROLL_DOWN_THRESHOLD = 80;
+
+    const handleFeedScroll = () => {
+      const currentScrollTop = feedContainer.scrollTop;
+      const delta = currentScrollTop - lastScrollTop;
+
+      if (delta > 0) {
+        scrollDownAccumulator += delta;
+        if (scrollDownAccumulator > SCROLL_DOWN_THRESHOLD) {
+          onCloseRef.current();
+          scrollDownAccumulator = 0;
+        }
+      } else {
+        scrollDownAccumulator = 0;
+      }
+
+      lastScrollTop = currentScrollTop;
+    };
+
+    feedContainer.addEventListener('scroll', handleFeedScroll, { passive: true });
+    return () => {
+      feedContainer.removeEventListener('scroll', handleFeedScroll);
+    };
+  }, [isOpen, feedScrollContainerRef]);
+
+  // Wheel event detection for desktop - close overlay when user scrolls past bottom
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!isOpen || !scrollContainer) return;
+
+    let overscrollAccumulator = 0;
+    const OVERSCROLL_THRESHOLD = 100;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.deltaY <= 0) {
+        overscrollAccumulator = 0;
+        return;
+      }
+
+      const isAtBottom =
+        scrollContainer.scrollHeight - scrollContainer.scrollTop <= scrollContainer.clientHeight + 5;
+
+      if (isAtBottom) {
+        overscrollAccumulator += e.deltaY;
+        if (overscrollAccumulator > OVERSCROLL_THRESHOLD) {
+          onCloseRef.current();
+          overscrollAccumulator = 0;
+        }
+      } else {
+        overscrollAccumulator = 0;
+      }
+    };
+
+    scrollContainer.addEventListener('wheel', handleWheel, { passive: true });
+    return () => {
+      scrollContainer.removeEventListener('wheel', handleWheel);
+    };
+  }, [isOpen]);
+
+  // Mobile: detect overscroll at bottom using touch events
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!isOpen || !scrollContainer) return;
+
+    let touchStartY = 0;
+    let wasAtBottom = false;
+    let overscrollCount = 0;
+    const OVERSCROLL_COUNT_THRESHOLD = 2;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (!isMobileRef.current) return;
+      touchStartY = e.touches[0].clientY;
+      wasAtBottom =
+        scrollContainer.scrollHeight - scrollContainer.scrollTop <= scrollContainer.clientHeight + 5;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!isMobileRef.current) return;
+
+      const touchEndY = e.changedTouches[0].clientY;
+      const deltaY = touchStartY - touchEndY;
+
+      const isAtBottom =
+        scrollContainer.scrollHeight - scrollContainer.scrollTop <= scrollContainer.clientHeight + 5;
+
+      if (wasAtBottom && isAtBottom && deltaY > 30) {
+        overscrollCount++;
+        if (overscrollCount >= OVERSCROLL_COUNT_THRESHOLD) {
+          onCloseRef.current();
+          overscrollCount = 0;
+        }
+      } else if (!isAtBottom) {
+        overscrollCount = 0;
+      }
+    };
+
+    scrollContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+    scrollContainer.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      scrollContainer.removeEventListener('touchstart', handleTouchStart);
+      scrollContainer.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isOpen]);
+
+  // Handle ESC key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onCloseRef.current();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && quizSlug) {
@@ -167,7 +311,7 @@ export function QuizOverlay({ isOpen, onClose, quizSlug }: QuizOverlayProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain p-6 pb-16">
           {/* Loading State */}
           {loading && (
             <div className="text-center py-12">

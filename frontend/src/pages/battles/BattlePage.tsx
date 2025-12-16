@@ -50,6 +50,9 @@ export function BattlePage() {
   const [localChallengeText, setLocalChallengeText] = useState<string | null>(null);
   const [localTimeRemaining, setLocalTimeRemaining] = useState<number | null>(null);
   const [localChallengeType, setLocalChallengeType] = useState<{ key: string; name: string } | null>(null);
+  // Reset key to force timer reset when challenge is refreshed
+  // This ensures the timer resets even if the time value stays the same (e.g., 180 -> 180)
+  const [timerResetKey, setTimerResetKey] = useState(0);
   const [showGuestSignupBanner, setShowGuestSignupBanner] = useState(false);
   const [showGuestSignupModal, setShowGuestSignupModal] = useState(false);
   const [notification, setNotification] = useState<{
@@ -421,6 +424,8 @@ export function BattlePage() {
       const newChallengeType = response.data.challengeType;
       setLocalChallengeText(newChallenge);
       setLocalTimeRemaining(newTimeRemaining);
+      // Increment reset key to force timer reset even if time value is the same
+      setTimerResetKey(k => k + 1);
       if (newChallengeType) {
         setLocalChallengeType(newChallengeType);
       }
@@ -614,6 +619,7 @@ export function BattlePage() {
               currentUserStatus={myStatus}
               opponentStatus={mappedOpponentStatus}
               timeRemaining={localTimeRemaining ?? battleState.timeRemaining}
+              timerResetKey={timerResetKey}
               hasSubmitted={!!battleState.mySubmission}
               onSubmit={handleSubmit}
               onTyping={handleTyping}

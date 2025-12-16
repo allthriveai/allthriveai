@@ -28,6 +28,8 @@ interface BattleArenaProps {
   currentUserStatus: PlayerStatus;
   opponentStatus: PlayerStatus;
   timeRemaining: number | null;
+  /** Key that changes when timer should be reset (e.g., after challenge refresh) */
+  timerResetKey?: number;
   hasSubmitted: boolean;
   onSubmit: (prompt: string) => void;
   onTyping: (isTyping: boolean) => void;
@@ -57,6 +59,7 @@ export function BattleArena({
   currentUserStatus,
   opponentStatus,
   timeRemaining,
+  timerResetKey,
   hasSubmitted,
   onSubmit,
   onTyping,
@@ -315,6 +318,7 @@ export function BattleArena({
               onSubmit={onSubmit}
               onTyping={onTyping}
               timeRemaining={timeRemaining}
+              timerResetKey={timerResetKey}
               minLength={10}
               maxLength={2000}
             />
