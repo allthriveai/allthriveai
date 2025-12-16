@@ -95,6 +95,7 @@ class TrendingEngine:
         tool_ids: list[int] | None = None,
         category_ids: list[int] | None = None,
         topic_names: list[str] | None = None,
+        freshness_token: str | None = None,
     ) -> dict:
         """
         Get trending projects feed.
@@ -107,6 +108,7 @@ class TrendingEngine:
             tool_ids: Filter to projects with ANY of these tools (OR logic)
             category_ids: Filter to projects with ANY of these categories (OR logic)
             topic_names: Filter to projects with ANY of these topics (OR logic)
+            freshness_token: Token for exploration scoring and soft shuffling
 
         Returns:
             Dict with 'projects' list and 'metadata'
@@ -115,11 +117,13 @@ class TrendingEngine:
         try:
             # Try Weaviate first for pre-computed velocities
             if self.weaviate_client.is_available():
-                return self._get_trending_from_weaviate(user, page, page_size, tool_ids, category_ids, topic_names)
+                return self._get_trending_from_weaviate(
+                    user, page, page_size, tool_ids, category_ids, topic_names, freshness_token
+                )
 
             # Fallback to real-time calculation (includes ALL projects)
             return self._calculate_trending_realtime(
-                user, page, page_size, time_window_hours, tool_ids, category_ids, topic_names
+                user, page, page_size, time_window_hours, tool_ids, category_ids, topic_names, freshness_token
             )
 
         except Exception as e:
@@ -134,9 +138,11 @@ class TrendingEngine:
         tool_ids: list[int] | None = None,
         category_ids: list[int] | None = None,
         topic_names: list[str] | None = None,
+        freshness_token: str | None = None,
     ) -> dict:
         """Get trending projects from Weaviate pre-computed velocities."""
         from core.projects.models import Project
+        from services.personalization.freshness import FreshnessService
 
         # Fetch more to support pagination
         trending = self.weaviate_client.get_trending_projects(
@@ -160,10 +166,54 @@ class TrendingEngine:
             matching_ids = set(query.distinct().values_list('id', flat=True))
             trending = [t for t in trending if t.get('project_id') in matching_ids]
 
+        # Apply freshness (exploration noise + deprioritization)
+        if freshness_token:
+            user_id = user.id if user and user.is_authenticated else None
+            recently_served = FreshnessService.get_recently_served(user_id) if user_id else set()
+
+            for t in trending:
+                project_id = t.get('project_id')
+                velocity = t.get('engagement_velocity', 0)
+
+                # Add exploration noise
+                exploration = FreshnessService.calculate_exploration_score(project_id, freshness_token)
+                noise = (exploration - 0.5) * 0.1  # +/- 5% noise
+                velocity += noise
+
+                # Apply deprioritization for recently served
+                if user_id and project_id in recently_served:
+                    penalty = FreshnessService.calculate_deprioritization(user_id, project_id)
+                    velocity -= penalty
+
+                t['engagement_velocity'] = velocity
+
+            # Re-sort after applying freshness
+            trending.sort(key=lambda x: x.get('engagement_velocity', 0), reverse=True)
+
+            # Apply soft shuffle for variety
+            # Convert to TrendingProject-like objects for shuffle
+            class TrendingDict:
+                def __init__(self, d):
+                    self._d = d
+                    self.trending_score = d.get('engagement_velocity', 0)
+
+            wrapped = [TrendingDict(t) for t in trending]
+            wrapped = FreshnessService.apply_soft_shuffle(
+                wrapped, freshness_token, score_attr='trending_score', tolerance=0.15
+            )
+            trending = [w._d for w in wrapped]
+
         # Paginate
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size
         page_results = trending[start_idx:end_idx]
+
+        # Record served projects for future deprioritization
+        if freshness_token and user and user.is_authenticated and page_results:
+            FreshnessService.record_served_projects(
+                user.id,
+                [t.get('project_id') for t in page_results],
+            )
 
         # Get Django objects
         project_ids = [t.get('project_id') for t in page_results]
@@ -198,6 +248,8 @@ class TrendingEngine:
                 'total_trending': total_available,
                 'weaviate_trending': len(trending),
                 'algorithm': 'weaviate_velocity',
+                'freshness_token': freshness_token,
+                'freshness_applied': bool(freshness_token),
                 'scores': [
                     {
                         'project_id': t.get('project_id'),
@@ -223,6 +275,7 @@ class TrendingEngine:
         tool_ids: list[int] | None = None,
         category_ids: list[int] | None = None,
         topic_names: list[str] | None = None,
+        freshness_token: str | None = None,
     ) -> dict:
         """Calculate trending scores in real-time from database.
 
@@ -344,11 +397,46 @@ class TrendingEngine:
         # This puts engaged projects at top, then newest projects below
         trending_projects.sort(key=lambda x: (x.trending_score, x.recency_factor), reverse=True)
 
+        # Apply freshness (exploration noise + deprioritization)
+        if freshness_token:
+            from services.personalization.freshness import FreshnessService
+
+            user_id = user.id if user and user.is_authenticated else None
+            recently_served = FreshnessService.get_recently_served(user_id) if user_id else set()
+
+            for tp in trending_projects:
+                # Add exploration noise
+                exploration = FreshnessService.calculate_exploration_score(tp.project_id, freshness_token)
+                noise = (exploration - 0.5) * 0.1  # +/- 5% noise
+                tp.trending_score += noise
+
+                # Apply deprioritization for recently served
+                if user_id and tp.project_id in recently_served:
+                    penalty = FreshnessService.calculate_deprioritization(user_id, tp.project_id)
+                    tp.trending_score -= penalty
+
+            # Re-sort after applying freshness
+            trending_projects.sort(key=lambda x: x.trending_score, reverse=True)
+
+            # Apply soft shuffle for variety
+            trending_projects = FreshnessService.apply_soft_shuffle(
+                trending_projects, freshness_token, score_attr='trending_score', tolerance=0.15
+            )
+
         # Paginate
         total_count = len(trending_projects)
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size
         page_results = trending_projects[start_idx:end_idx]
+
+        # Record served projects for future deprioritization
+        if freshness_token and user and user.is_authenticated and page_results:
+            from services.personalization.freshness import FreshnessService
+
+            FreshnessService.record_served_projects(
+                user.id,
+                [tp.project_id for tp in page_results],
+            )
 
         # Get project objects in order
         project_ids = [tp.project_id for tp in page_results]
@@ -362,6 +450,8 @@ class TrendingEngine:
                 'page_size': page_size,
                 'total_trending': total_count,
                 'algorithm': 'realtime_velocity',
+                'freshness_token': freshness_token,
+                'freshness_applied': bool(freshness_token),
                 'scores': [tp.to_dict() for tp in page_results],
                 'filters_applied': {
                     'tool_ids': tool_ids,

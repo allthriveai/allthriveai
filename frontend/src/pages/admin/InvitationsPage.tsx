@@ -32,6 +32,7 @@ interface Invitation {
   reviewedAt: string | null;
   reviewedBy: string | null;
   reviewNotes: string;
+  approvalEmailSentAt: string | null;
 }
 
 interface InvitationStats {
@@ -164,6 +165,18 @@ export default function InvitationsPage() {
       setError(err.response?.data?.error || 'Failed to bulk reject');
     } finally {
       setBulkActionLoading(false);
+    }
+  };
+
+  const handleResendEmail = async (id: number) => {
+    setActionLoading(id);
+    try {
+      await api.post(`/admin/invitations/${id}/resend-email/`);
+      await fetchInvitations();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to resend email');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -347,9 +360,10 @@ export default function InvitationsPage() {
                       />
                     </div>
                   )}
-                  <div className={statusFilter === 'pending' ? 'col-span-3' : 'col-span-4'}>Requester</div>
-                  <div className="col-span-3">Reason</div>
+                  <div className={statusFilter === 'pending' ? 'col-span-3' : statusFilter === 'approved' ? 'col-span-3' : 'col-span-4'}>Requester</div>
+                  <div className={statusFilter === 'approved' ? 'col-span-2' : 'col-span-3'}>Reason</div>
                   <div className="col-span-2">Status</div>
+                  {statusFilter === 'approved' && <div className="col-span-2">Email</div>}
                   <div className="col-span-2">Date</div>
                   {statusFilter === 'pending' && <div className="col-span-1">Actions</div>}
                 </div>
@@ -375,7 +389,7 @@ export default function InvitationsPage() {
                       )}
 
                       {/* Requester */}
-                      <div className={`${statusFilter === 'pending' ? 'md:col-span-3' : 'md:col-span-4'}`}>
+                      <div className={`${statusFilter === 'pending' ? 'md:col-span-3' : statusFilter === 'approved' ? 'md:col-span-3' : 'md:col-span-4'}`}>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
                             <UserIcon className="w-5 h-5 text-primary-600 dark:text-cyan-neon" />
@@ -388,7 +402,7 @@ export default function InvitationsPage() {
                       </div>
 
                       {/* Reason & Features */}
-                      <div className="md:col-span-3">
+                      <div className={statusFilter === 'approved' ? 'md:col-span-2' : 'md:col-span-3'}>
                         <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
                           {invitation.reason || <span className="text-slate-400 dark:text-slate-500 italic">No reason provided</span>}
                         </p>
@@ -430,6 +444,31 @@ export default function InvitationsPage() {
                       <div className="md:col-span-2 flex items-center">
                         <StatusBadge status={invitation.status} />
                       </div>
+
+                      {/* Email Sent Status (approved only) */}
+                      {statusFilter === 'approved' && (
+                        <div className="md:col-span-2 flex items-center">
+                          {invitation.approvalEmailSentAt ? (
+                            <span
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-500/30"
+                              title={`Sent ${formatDate(invitation.approvalEmailSentAt)}`}
+                            >
+                              <CheckCircleIcon className="w-3.5 h-3.5" />
+                              Sent
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleResendEmail(invitation.id)}
+                              disabled={actionLoading === invitation.id}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-500/30 hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                              title="Click to send approval email"
+                            >
+                              <EnvelopeIcon className="w-3.5 h-3.5" />
+                              {actionLoading === invitation.id ? 'Sending...' : 'Not Sent - Click to Send'}
+                            </button>
+                          )}
+                        </div>
+                      )}
 
                       {/* Date */}
                       <div className="md:col-span-2 flex items-center">

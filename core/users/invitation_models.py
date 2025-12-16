@@ -109,6 +109,11 @@ class InvitationRequest(models.Model):
         blank=True,
         help_text='When the request was approved/rejected',
     )
+    approval_email_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the approval/welcome email was sent',
+    )
 
     class Meta:
         ordering = ['-created_at']

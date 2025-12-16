@@ -13,6 +13,9 @@ import { faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { useProfileGeneratorChat, type ProfileChatMessage } from '@/hooks/useProfileGeneratorChat';
 import type { ProfileSection } from '@/types/profileSections';
 
+// LinkedIn profile generation is disabled - LinkedIn's basic OAuth only provides
+// name and avatar, not headline/bio (requires Partner API access)
+
 // Typing animation component for welcome message
 function TypingMessage({
   content,
@@ -232,7 +235,7 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
           </div>
         </div>
 
-        {/* Messages Container */}
+        {/* Chat Content Area */}
         <div className="flex-1 overflow-y-auto p-4">
           {state.messages.map(renderMessage)}
 
@@ -311,7 +314,7 @@ export function ProfileGeneratorTray({ isOpen, onClose, onSectionsGenerated }: P
           </div>
         )}
 
-        {/* Input Area - sticky at bottom, safe area padding for mobile */}
+        {/* Input Area */}
         <div className="flex-shrink-0 px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <div className="flex gap-3">
             <div className="flex-1 relative">

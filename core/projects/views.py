@@ -1108,6 +1108,12 @@ def explore_projects(request):
         except (ValueError, IndexError):
             filter_topic_names = None  # Invalid topics, ignore
 
+    # Extract freshness token for fresh content on each page visit
+    # Frontend generates a new token each time the user navigates to /explore
+    # This enables exploration scoring, deprioritization of recently-served content,
+    # and soft shuffling for variety in all tabs
+    freshness_token = request.GET.get('freshness_token')
+
     # Apply sorting or personalization based on tab
     if tab == 'for-you':
         # Use new personalization engine for "For You" feed
@@ -1130,6 +1136,7 @@ def explore_projects(request):
                         tool_ids=filter_tool_ids,
                         category_ids=filter_category_ids,
                         topic_names=filter_topic_names,
+                        freshness_token=freshness_token,
                     )
                     return Response(
                         build_paginated_response(
@@ -1202,6 +1209,7 @@ def explore_projects(request):
                 tool_ids=filter_tool_ids,
                 category_ids=filter_category_ids,
                 topic_names=filter_topic_names,
+                freshness_token=freshness_token,
             )
             return Response(
                 build_paginated_response(
@@ -1221,15 +1229,16 @@ def explore_projects(request):
     elif tab == 'new':
         # Seeded random ordering - randomized but stable across pagination
         # Uses a seed to create deterministic pseudo-random order:
-        # - Frontend can pass a seed for session-stable randomness
-        # - Falls back to hourly seed so order refreshes periodically
+        # - Frontend passes freshness_token for fresh ordering each page visit
+        # - Falls back to legacy 'seed' param or hourly seed
         import time
 
         from django.db.models import CharField, Value
         from django.db.models.functions import MD5, Cast, Concat
 
-        # Get or generate seed - frontend can pass one, or we use hourly seed
-        seed = request.GET.get('seed')
+        # Use freshness_token as seed for fresh ordering each visit
+        # Fall back to legacy seed param or hourly seed
+        seed = freshness_token or request.GET.get('seed')
         if not seed:
             # Hourly seed - all users see same "random" order within the hour
             seed = str(int(time.time() // 3600))
@@ -1251,6 +1260,15 @@ def explore_projects(request):
         serializer = ProjectCardSerializer(page, many=True)
         results = serializer.data
 
+        # Record served projects for future deprioritization (new tab)
+        if freshness_token and request.user.is_authenticated and page:
+            from services.personalization.freshness import FreshnessService
+
+            FreshnessService.record_served_projects(
+                request.user.id,
+                [p.id for p in page],
+            )
+
         # Prepend promoted projects on page 1
         if page_num == 1 and promoted_projects:
             promoted_serializer = ProjectCardSerializer(promoted_projects, many=True)
@@ -1262,6 +1280,7 @@ def explore_projects(request):
             response.data['count'] = response.data.get('count', 0) + len(promoted_projects)
         # Include seed in response so frontend can use it for subsequent pages
         response.data['seed'] = seed
+        response.data['freshness_token'] = freshness_token
         return response
 
     # Default sorting for 'all' tab or fallback

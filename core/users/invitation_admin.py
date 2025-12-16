@@ -16,12 +16,13 @@ class InvitationRequestAdmin(admin.ModelAdmin):
         'name',
         'email',
         'status_badge',
+        'email_sent_badge',
         'features_preview',
         'reason_preview',
         'created_at',
         'reviewed_by',
     ]
-    list_filter = ['status', 'created_at']
+    list_filter = ['status', 'created_at', 'approval_email_sent_at']
     search_fields = ['name', 'email', 'reason']
     readonly_fields = [
         'email',
@@ -34,9 +35,10 @@ class InvitationRequestAdmin(admin.ModelAdmin):
         'created_at',
         'updated_at',
         'reviewed_at',
+        'approval_email_sent_at',
     ]
     ordering = ['-created_at']
-    actions = ['approve_requests', 'reject_requests']
+    actions = ['approve_requests', 'reject_requests', 'resend_approval_emails']
 
     fieldsets = (
         (
@@ -83,6 +85,26 @@ class InvitationRequestAdmin(admin.ModelAdmin):
             'border-radius: 4px; font-size: 11px; font-weight: bold;">{}</span>',
             color,
             obj.status.upper(),
+        )
+
+    @admin.display(
+        description='Email Sent',
+        ordering='approval_email_sent_at',
+    )
+    def email_sent_badge(self, obj):
+        """Display whether approval email was sent."""
+        if obj.status != InvitationRequest.Status.APPROVED:
+            return format_html('<span style="color: #94a3b8; font-size: 11px;">—</span>')
+        if obj.approval_email_sent_at:
+            return format_html(
+                '<span style="background-color: #22c55e; color: white; padding: 3px 8px; '
+                'border-radius: 4px; font-size: 11px; font-weight: bold;" '
+                'title="Sent {}">✓ SENT</span>',
+                obj.approval_email_sent_at.strftime('%Y-%m-%d %H:%M'),
+            )
+        return format_html(
+            '<span style="background-color: #ef4444; color: white; padding: 3px 8px; '
+            'border-radius: 4px; font-size: 11px; font-weight: bold;">NOT SENT</span>'
         )
 
     @admin.display(description='Reason')
@@ -183,6 +205,49 @@ class InvitationRequestAdmin(admin.ModelAdmin):
             f'Rejected {count} request(s).',
             messages.SUCCESS,
         )
+
+    @admin.action(description='Resend approval emails (only to approved without email sent)')
+    def resend_approval_emails(self, request, queryset):
+        """Resend approval emails to approved requests that haven't received one."""
+        # Only resend to approved requests that don't have email sent timestamp
+        needs_email = queryset.filter(
+            status=InvitationRequest.Status.APPROVED,
+            approval_email_sent_at__isnull=True,
+        )
+        sent_count = 0
+        failed_count = 0
+        skipped_count = queryset.count() - needs_email.count()
+
+        for invitation in needs_email:
+            try:
+                send_approval_email(invitation)
+                sent_count += 1
+            except Exception as e:
+                failed_count += 1
+                self.message_user(
+                    request,
+                    f'Failed to send to {invitation.email}: {e}',
+                    messages.ERROR,
+                )
+
+        if sent_count:
+            self.message_user(
+                request,
+                f'Successfully sent {sent_count} approval email(s).',
+                messages.SUCCESS,
+            )
+        if skipped_count:
+            self.message_user(
+                request,
+                f'Skipped {skipped_count} (already sent or not approved).',
+                messages.INFO,
+            )
+        if failed_count:
+            self.message_user(
+                request,
+                f'Failed to send {failed_count} email(s).',
+                messages.WARNING,
+            )
 
     def save_model(self, request, obj, form, change):
         """Handle individual approval/rejection from edit form."""

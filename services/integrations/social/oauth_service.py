@@ -48,8 +48,8 @@ class OAuthProviderConfig:
         SocialProvider.LINKEDIN: {
             'authorize_url': 'https://www.linkedin.com/oauth/v2/authorization',
             'token_url': 'https://www.linkedin.com/oauth/v2/accessToken',
-            'user_info_url': 'https://api.linkedin.com/v2/me',
-            'scopes': ['r_liteprofile', 'r_emailaddress'],
+            'user_info_url': 'https://api.linkedin.com/v2/userinfo',
+            'scopes': ['openid', 'profile'],  # email scope requires LinkedIn approval
             'client_id_setting': 'LINKEDIN_OAUTH_CLIENT_ID',
             'client_secret_setting': 'LINKEDIN_OAUTH_CLIENT_SECRET',
         },
@@ -233,15 +233,19 @@ class SocialOAuthService:
             }
 
         elif self.provider == SocialProvider.LINKEDIN:
+            # OpenID Connect userinfo endpoint format
             return {
-                'provider_user_id': user_info.get('id', ''),
-                'provider_username': user_info.get('localizedFirstName', '')
-                + ' '
-                + user_info.get('localizedLastName', ''),
-                'provider_email': None,  # Requires separate API call
+                'provider_user_id': user_info.get('sub', ''),
+                'provider_username': user_info.get('name', ''),
+                'provider_email': user_info.get('email'),  # Only if email scope approved
                 'profile_url': '',
-                'avatar_url': '',
-                'extra_data': user_info,
+                'avatar_url': user_info.get('picture', ''),
+                'extra_data': {
+                    'given_name': user_info.get('given_name'),
+                    'family_name': user_info.get('family_name'),
+                    'locale': user_info.get('locale'),
+                    'email_verified': user_info.get('email_verified'),
+                },
             }
 
         elif self.provider == SocialProvider.FIGMA:

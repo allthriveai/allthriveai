@@ -78,6 +78,7 @@ def list_invitations(request):
             'reviewedAt': inv.reviewed_at.isoformat() if inv.reviewed_at else None,
             'reviewedBy': inv.reviewed_by.username if inv.reviewed_by else None,
             'reviewNotes': inv.review_notes,
+            'approvalEmailSentAt': inv.approval_email_sent_at.isoformat() if inv.approval_email_sent_at else None,
         }
         for inv in invitations
     ]
@@ -340,3 +341,53 @@ def bulk_reject_invitations(request):
             'rejected': rejected,
         }
     )
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminRole])
+def resend_approval_email(request, invitation_id):
+    """Resend approval email for an approved invitation.
+
+    Args:
+        invitation_id: ID of the invitation
+
+    Returns:
+        200: Success
+        404: Invitation not found
+        400: Not approved or email already sent
+    """
+    try:
+        invitation = InvitationRequest.objects.get(id=invitation_id)
+    except InvitationRequest.DoesNotExist:
+        return Response(
+            {'error': 'Invitation not found'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if invitation.status != InvitationRequest.Status.APPROVED:
+        return Response(
+            {'error': 'Can only resend email for approved invitations'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if invitation.approval_email_sent_at:
+        return Response(
+            {'error': 'Email already sent', 'sentAt': invitation.approval_email_sent_at.isoformat()},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        send_approval_email(invitation)
+        logger.info(f'Resent approval email for invitation {invitation_id} by {request.user.username}')
+        return Response(
+            {
+                'success': True,
+                'approvalEmailSentAt': invitation.approval_email_sent_at.isoformat(),
+            }
+        )
+    except Exception as e:
+        logger.error(f'Failed to resend approval email for invitation {invitation_id}: {e}')
+        return Response(
+            {'error': f'Failed to send email: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

@@ -332,17 +332,24 @@ def send_approval_email(invitation: InvitationRequest):
         html_content = render_to_string('emails/invitations/approved.html', context)
         text_content = render_to_string('emails/invitations/approved.txt', context)
 
+        # Use support@ for welcome emails (more personal than noreply@)
+        from_email = 'AllThrive AI <support@allthrive.ai>'
+
         email = EmailMultiAlternatives(
             subject="You're invited to join AllThrive AI!",
             body=text_content,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=from_email,
             to=[invitation.email],
         )
         email.attach_alternative(html_content, 'text/html')
         email.send(fail_silently=False)
 
-        logger.info(f'Approval email sent for invitation id={invitation.id}')
+        # Record that the email was sent
+        invitation.approval_email_sent_at = timezone.now()
+        invitation.save(update_fields=['approval_email_sent_at', 'updated_at'])
+
+        logger.info(f'Approval email sent for invitation id={invitation.id} to {invitation.email}')
 
     except Exception as e:
-        logger.error(f'Failed to send approval email for invitation id={invitation.id}: {e}')
+        logger.error(f'Failed to send approval email for invitation id={invitation.id}: {e}', exc_info=True)
         raise

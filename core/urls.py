@@ -6,7 +6,13 @@ from core.ai_usage import views as admin_analytics_views
 
 from .achievements.views import AchievementViewSet, get_user_achievements
 from .agents.auth_chat_views import auth_chat_finalize, auth_chat_state, auth_chat_stream
-from .agents.profile_views import profile_generate_auto, profile_generate_stream, profile_preview_sections
+from .agents.profile_views import (
+    profile_generate_auto,
+    profile_generate_from_linkedin,
+    profile_generate_sources,
+    profile_generate_stream,
+    profile_preview_sections,
+)
 from .agents.project_chat_views import project_chat_stream_v2
 from .agents.views import ConversationViewSet, CreateProjectFromImageView, MessageViewSet, detect_intent
 from .auth.impersonation import (
@@ -60,6 +66,11 @@ from .integrations.github.views import (
     list_user_repos,
 )
 from .integrations.gitlab.views import list_user_projects as list_gitlab_projects
+from .integrations.linkedin.views import (
+    get_linkedin_posts,
+    get_linkedin_profile,
+    import_linkedin_content,
+)
 from .integrations.views import import_from_url, list_integrations, scrape_url_for_project
 from .projects.comment_views import ProjectCommentViewSet
 from .projects.topic_suggestions import get_topic_suggestions
@@ -120,6 +131,7 @@ from .users.invitation_api_views import (
     invitation_stats,
     list_invitations,
     reject_invitation,
+    resend_approval_email,
 )
 from .users.invitation_views import request_invitation
 from .users.views import (
@@ -209,6 +221,9 @@ urlpatterns = [
     path('admin/invitations/<int:invitation_id>/reject/', reject_invitation, name='admin_reject_invitation'),
     path('admin/invitations/bulk-approve/', bulk_approve_invitations, name='admin_bulk_approve_invitations'),
     path('admin/invitations/bulk-reject/', bulk_reject_invitations, name='admin_bulk_reject_invitations'),
+    path(
+        'admin/invitations/<int:invitation_id>/resend-email/', resend_approval_email, name='admin_resend_approval_email'
+    ),
     # Admin Impersonation (Masquerade) endpoints
     path('admin/impersonate/start/', start_impersonation, name='admin_start_impersonation'),
     path('admin/impersonate/stop/', stop_impersonation, name='admin_stop_impersonation'),
@@ -292,6 +307,8 @@ urlpatterns = [
     path('profile/generate/stream/', profile_generate_stream, name='profile_generate_stream'),
     path('profile/generate/auto/', profile_generate_auto, name='profile_generate_auto'),
     path('profile/generate/preview/', profile_preview_sections, name='profile_preview_sections'),
+    path('profile/generate/sources/', profile_generate_sources, name='profile_generate_sources'),
+    path('profile/generate/from-linkedin/', profile_generate_from_linkedin, name='profile_generate_from_linkedin'),
     # Agent endpoints
     path('agents/detect-intent/', detect_intent, name='detect_intent'),
     path('agents/create-project-from-image/', CreateProjectFromImageView.as_view(), name='create_project_from_image'),
@@ -361,6 +378,10 @@ urlpatterns = [
     # Figma integration endpoints
     path('figma/files/', list_figma_files, name='figma_files'),
     path('figma/files/<str:file_key>/preview/', get_figma_file_preview, name='figma_file_preview'),
+    # LinkedIn integration endpoints
+    path('integrations/linkedin/profile/', get_linkedin_profile, name='linkedin_profile'),
+    path('integrations/linkedin/posts/', get_linkedin_posts, name='linkedin_posts'),
+    path('integrations/linkedin/import/', import_linkedin_content, name='linkedin_import'),
     # Battle endpoints
     path('battles/stats/', battle_stats, name='battle_stats'),
     path('battles/leaderboard/', battle_leaderboard, name='battle_leaderboard'),
