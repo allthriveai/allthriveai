@@ -212,7 +212,7 @@ function WelcomeStep({ onContinue }: { onContinue: () => void }) {
 
   // Problem statements
   const problems = [
-    { text: "Your AI projects are scattered across a dozen different tools.", delay: 0 },
+    { text: "Your AI projects are scattered across many platforms.", delay: 0 },
     { text: "There are so many AI tools it can feel overwhelming.", delay: 600 },
     { text: "Hard to learn what's valuable vs. AI hype without wasting hours.", delay: 1200 },
   ];

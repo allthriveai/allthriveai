@@ -1218,14 +1218,50 @@ def explore_projects(request):
             # Fall through to default sorting
 
     elif tab == 'new':
-        # Pure chronological - newest first, all projects shown
-        from django.db.models.functions import Coalesce
+        # Seeded random ordering - randomized but stable across pagination
+        # Uses a seed to create deterministic pseudo-random order:
+        # - Frontend can pass a seed for session-stable randomness
+        # - Falls back to hourly seed so order refreshes periodically
+        import time
 
-        queryset = queryset.annotate(effective_date=Coalesce('published_date', 'created_at')).order_by(
-            '-effective_date'
+        from django.db.models import CharField, Value
+        from django.db.models.functions import MD5, Cast, Concat
+
+        # Get or generate seed - frontend can pass one, or we use hourly seed
+        seed = request.GET.get('seed')
+        if not seed:
+            # Hourly seed - all users see same "random" order within the hour
+            seed = str(int(time.time() // 3600))
+
+        # Create deterministic random order using MD5 hash of (id + seed)
+        # This produces the same order for the same seed across all page requests
+        queryset = queryset.annotate(random_order=MD5(Concat(Cast('id', CharField()), Value(seed)))).order_by(
+            'random_order'
         )
 
-        # Use standard pagination (handled below)
+        # Use standard pagination (no user diversity for "new" tab)
+        page_num = int(request.GET.get('page', 1))
+        page_size = min(int(request.GET.get('page_size', 30)), 100)
+
+        paginator = ProjectPagination()
+        paginator.page_size = page_size
+        page = paginator.paginate_queryset(queryset, request)
+
+        serializer = ProjectCardSerializer(page, many=True)
+        results = serializer.data
+
+        # Prepend promoted projects on page 1
+        if page_num == 1 and promoted_projects:
+            promoted_serializer = ProjectCardSerializer(promoted_projects, many=True)
+            results = promoted_serializer.data + results
+
+        response = paginator.get_paginated_response(results)
+        # Adjust count to include promoted projects
+        if promoted_projects:
+            response.data['count'] = response.data.get('count', 0) + len(promoted_projects)
+        # Include seed in response so frontend can use it for subsequent pages
+        response.data['seed'] = seed
+        return response
 
     # Default sorting for 'all' tab or fallback
     # If fuzzy search was applied, prioritize by similarity score

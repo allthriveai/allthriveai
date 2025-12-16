@@ -54,6 +54,11 @@ export function ExplorePage() {
   // Intersection observer ref for infinite scroll
   const observerTarget = useRef<HTMLDivElement>(null);
 
+  // Seed for stable random ordering on "new" tab
+  // Generated once per session, ensures infinite scroll shows consistent order
+  // Refreshing the page generates a new seed = new random order
+  const randomSeed = useMemo(() => Math.random().toString(36).substring(2, 15), []);
+
   // Sync state to URL
   useEffect(() => {
     const params = new URLSearchParams();
@@ -114,7 +119,9 @@ export function ExplorePage() {
     categories: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
     tools: selectedToolIds.length > 0 ? selectedToolIds : undefined,
     page_size: 30,
-  }), [apiTab, searchQuery, selectedCategoryIds, selectedToolIds]);
+    // Include seed for "new" tab to ensure stable random ordering across pagination
+    seed: apiTab === 'new' ? randomSeed : undefined,
+  }), [apiTab, searchQuery, selectedCategoryIds, selectedToolIds, randomSeed]);
 
   const {
     data: projectsData,
