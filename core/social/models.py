@@ -43,9 +43,9 @@ class SocialConnection(models.Model):
 
     scopes = models.TextField(blank=True, help_text='Comma-separated list of granted OAuth scopes')
 
-    profile_url = models.URLField(blank=True, help_text='Link to user profile on provider')
+    profile_url = models.URLField(max_length=500, blank=True, help_text='Link to user profile on provider')
 
-    avatar_url = models.URLField(blank=True, help_text='Profile picture from provider')
+    avatar_url = models.URLField(max_length=500, blank=True, help_text='Profile picture from provider')
 
     extra_data = models.JSONField(default=dict, blank=True, help_text='Additional provider-specific data')
 

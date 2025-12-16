@@ -10,7 +10,8 @@ export interface ExploreParams {
   page?: number;
   page_size?: number;
   sort?: string;          // Sort order (e.g., 'trending', 'new', 'top')
-  seed?: string;          // Random seed for stable shuffled ordering (used by 'new' tab)
+  seed?: string;          // Random seed for stable shuffled ordering (legacy, used by 'new' tab)
+  freshness_token?: string;  // Freshness token for exploration scoring, deprioritization, and shuffling
 }
 
 export interface UserTool {
@@ -47,6 +48,7 @@ export async function exploreProjects(params: ExploreParams): Promise<PaginatedR
   if (params.page) queryParams.append('page', params.page.toString());
   if (params.page_size) queryParams.append('page_size', params.page_size.toString());
   if (params.seed) queryParams.append('seed', params.seed);
+  if (params.freshness_token) queryParams.append('freshness_token', params.freshness_token);
 
   // Add array parameters without brackets (categories=1&categories=2)
   if (params.categories) {

@@ -23,6 +23,7 @@ import {
 import { getQuizzes } from '@/services/quiz';
 import { useAuth } from '@/hooks/useAuth';
 import { trackProjectClick, getClickSourceFromTab } from '@/services/tracking';
+import { useFreshnessToken } from '@/hooks/useFreshnessToken';
 
 
 export function ExplorePage() {
@@ -54,10 +55,10 @@ export function ExplorePage() {
   // Intersection observer ref for infinite scroll
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  // Seed for stable random ordering on "new" tab
-  // Generated once per session, ensures infinite scroll shows consistent order
-  // Refreshing the page generates a new seed = new random order
-  const randomSeed = useMemo(() => Math.random().toString(36).substring(2, 15), []);
+  // Freshness token for ensuring fresh content on each page visit
+  // Generated on component mount, stable during re-renders (for pagination)
+  // Regenerates on navigation (page remount) = fresh content each visit
+  const freshnessToken = useFreshnessToken();
 
   // Sync state to URL
   useEffect(() => {
@@ -119,9 +120,11 @@ export function ExplorePage() {
     categories: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
     tools: selectedToolIds.length > 0 ? selectedToolIds : undefined,
     page_size: 30,
-    // Include seed for "new" tab to ensure stable random ordering across pagination
-    seed: apiTab === 'new' ? randomSeed : undefined,
-  }), [apiTab, searchQuery, selectedCategoryIds, selectedToolIds, randomSeed]);
+    // Include freshness_token for all tabs to ensure fresh content on each page visit
+    // This enables backend exploration scoring, deprioritization of recently-served content,
+    // and soft shuffling for variety. Token is stable during pagination.
+    freshness_token: freshnessToken,
+  }), [apiTab, searchQuery, selectedCategoryIds, selectedToolIds, freshnessToken]);
 
   const {
     data: projectsData,

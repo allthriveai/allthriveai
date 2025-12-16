@@ -161,6 +161,7 @@ class PersonalizationEngine:
         tool_ids: list[int] | None = None,
         category_ids: list[int] | None = None,
         topic_names: list[str] | None = None,
+        freshness_token: str | None = None,
     ) -> dict:
         """
         Get personalized "For You" feed for a user.
@@ -173,6 +174,7 @@ class PersonalizationEngine:
             tool_ids: Filter to projects with ANY of these tools (OR logic)
             category_ids: Filter to projects with ANY of these categories (OR logic)
             topic_names: Filter to projects with ANY of these topics (OR logic)
+            freshness_token: Token for exploration scoring and soft shuffling
 
         Returns:
             Dict with 'projects' list and 'metadata'
@@ -207,19 +209,46 @@ class PersonalizationEngine:
             # Step 4: Apply diversity boost
             scored_projects = self._apply_diversity_boost(scored_projects)
 
-            # Step 5: Sort by total score
+            # Step 5: Apply freshness scoring (exploration + deprioritization)
+            if freshness_token:
+                from services.personalization.freshness import FreshnessService
+
+                scored_projects = FreshnessService.apply_freshness_to_scores(
+                    scored_projects,
+                    user_id=user.id,
+                    freshness_token=freshness_token,
+                    score_attr='total_score',
+                )
+
+            # Step 6: Sort by total score
             scored_projects.sort(key=lambda x: x.total_score, reverse=True)
 
-            # Step 6: Apply filters if provided (before pagination)
+            # Step 7: Apply soft shuffle for variety (if freshness enabled)
+            if freshness_token:
+                scored_projects = FreshnessService.apply_soft_shuffle(
+                    scored_projects,
+                    freshness_token,
+                    score_attr='total_score',
+                    tolerance=0.10,
+                )
+
+            # Step 8: Apply filters if provided (before pagination)
             if tool_ids or category_ids or topic_names:
                 scored_projects = self._apply_filters(scored_projects, tool_ids, category_ids, topic_names)
 
-            # Step 7: Paginate
+            # Step 9: Paginate
             start_idx = (page - 1) * page_size
             end_idx = start_idx + page_size
             page_results = scored_projects[start_idx:end_idx]
 
-            # Step 8: Get Django Project objects
+            # Step 10: Record served projects for future deprioritization
+            if freshness_token and page_results:
+                FreshnessService.record_served_projects(
+                    user.id,
+                    [sp.project_id for sp in page_results],
+                )
+
+            # Step 11: Get Django Project objects
             project_ids = [sp.project_id for sp in page_results]
             projects = (
                 Project.objects.filter(id__in=project_ids)
@@ -253,6 +282,8 @@ class PersonalizationEngine:
                     'total_candidates': total_available,
                     'weaviate_candidates': len(scored_projects),
                     'algorithm': 'hybrid_personalization',
+                    'freshness_token': freshness_token,
+                    'freshness_applied': bool(freshness_token),
                     'scores': [sp.to_dict() for sp in page_results],
                     'filters_applied': {
                         'tool_ids': tool_ids,

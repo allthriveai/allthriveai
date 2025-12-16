@@ -249,12 +249,63 @@ def gather_user_data(
             for tag in tags
         ]
 
+    # Fetch LinkedIn profile data if available
+    linkedin_data = _fetch_linkedin_data_for_user(user)
+    if linkedin_data:
+        data['linkedin_profile'] = linkedin_data
+
     logger.info(
         f'Gathered data for {user.username}: {len(data.get("projects", []))} projects, '
-        f'{len(data.get("achievements", []))} achievements, {len(data.get("interests", []))} interests'
+        f'{len(data.get("achievements", []))} achievements, {len(data.get("interests", []))} interests, '
+        f'linkedin={bool(data.get("linkedin_profile"))}'
     )
 
     return data
+
+
+def _fetch_linkedin_data_for_user(user) -> dict | None:
+    """
+    Helper to fetch LinkedIn data for a user without raising exceptions.
+    """
+    from core.integrations.linkedin.helpers import get_user_linkedin_token
+    from core.social.models import SocialConnection, SocialProvider
+
+    # Check for LinkedIn connection
+    try:
+        connection = SocialConnection.objects.get(
+            user=user,
+            provider=SocialProvider.LINKEDIN,
+            is_active=True,
+        )
+    except SocialConnection.DoesNotExist:
+        return None
+
+    # Return stored data from connection
+    linkedin_data = {
+        'full_name': connection.provider_username,
+        'email': connection.provider_email,
+        'avatar_url': connection.avatar_url,
+    }
+
+    # Add extra data if available
+    if connection.extra_data:
+        linkedin_data.update(connection.extra_data)
+
+    # Try to get fresh data if token is available
+    # Using fetch_userinfo() which is compatible with OpenID Connect scopes
+    token = get_user_linkedin_token(user)
+    if token:
+        try:
+            from core.integrations.linkedin.service import LinkedInService
+
+            service = LinkedInService(token)
+            fresh_data = service.fetch_userinfo()
+            if fresh_data:
+                linkedin_data.update(fresh_data)
+        except Exception as e:
+            logger.debug(f'Could not fetch fresh LinkedIn data: {e}')
+
+    return linkedin_data
 
 
 def select_template_for_user(
@@ -682,6 +733,83 @@ def save_profile_sections(
         'sections_saved': len(sections),
         'message': f'Successfully saved {len(sections)} profile sections',
     }
+
+
+# =============================================================================
+# LinkedIn Data Gathering
+# =============================================================================
+
+
+class GatherLinkedInDataInput(BaseModel):
+    """Input for gather_linkedin_data tool."""
+
+    pass  # No input needed, uses user_id from state
+
+
+def gather_linkedin_data(user_id: int) -> dict:
+    """
+    Gather LinkedIn profile data for a user.
+
+    Fetches the user's LinkedIn profile information if they have a connected account.
+
+    Args:
+        user_id: The user's database ID
+
+    Returns:
+        Dictionary with LinkedIn profile data or None if not connected
+    """
+    from django.contrib.auth import get_user_model
+
+    from core.integrations.linkedin.helpers import get_user_linkedin_token
+    from core.integrations.linkedin.service import LinkedInService
+    from core.social.models import SocialConnection, SocialProvider
+
+    User = get_user_model()
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'linkedin_profile': None, 'error': 'User not found'}
+
+    # Check for LinkedIn connection
+    try:
+        connection = SocialConnection.objects.get(
+            user=user,
+            provider=SocialProvider.LINKEDIN,
+            is_active=True,
+        )
+    except SocialConnection.DoesNotExist:
+        return {'linkedin_profile': None}
+
+    # Try to fetch fresh LinkedIn data
+    token = get_user_linkedin_token(user)
+    if not token:
+        # Fall back to stored data
+        return {
+            'linkedin_profile': {
+                'full_name': connection.provider_username,
+                'email': connection.provider_email,
+                'avatar_url': connection.avatar_url,
+                **connection.extra_data,
+            }
+        }
+
+    try:
+        service = LinkedInService(token)
+        # Use fetch_userinfo which is compatible with OpenID Connect scopes
+        profile_data = service.fetch_userinfo()
+        return {'linkedin_profile': profile_data}
+    except Exception as e:
+        logger.warning(f'Failed to fetch LinkedIn profile for user {user_id}: {e}')
+        # Fall back to stored data from connection
+        return {
+            'linkedin_profile': {
+                'full_name': connection.provider_username,
+                'email': connection.provider_email,
+                'avatar_url': connection.avatar_url,
+                **connection.extra_data,
+            }
+        }
 
 
 # Tool list for agent

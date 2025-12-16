@@ -843,6 +843,11 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     // Get headline from overview
     const headline = overviewSection?.content?.headline;
 
+    // Check if this is a Reddit thread and get the discussion content
+    const isRedditThread = displayProject.type === 'reddit_thread';
+    const redditData = displayProject.content?.reddit;
+    const redditSelftext = redditData?.selftext || '';
+
     return (
       <>
         {/* Header - Fixed with opaque background for readability */}
@@ -943,6 +948,63 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
             <div className="px-4 pb-4">
               <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-base prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-li:my-0">
                 <ReactMarkdown>{teaserContent}</ReactMarkdown>
+              </div>
+            </div>
+          )}
+
+          {/* Reddit Discussion Content */}
+          {isRedditThread && redditSelftext && (
+            <div className="px-4 pb-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                Discussion
+              </h3>
+              <div className="p-4 rounded-lg bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700">
+                <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-base prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-li:my-0">
+                  <ReactMarkdown>{redditSelftext}</ReactMarkdown>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Reddit Metadata (subreddit, score, comments) */}
+          {isRedditThread && redditData && (
+            <div className="px-4 pb-4">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                {redditData.subreddit && (
+                  <a
+                    href={`https://reddit.com/r/${redditData.subreddit}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 hover:text-orange-500 transition-colors"
+                  >
+                    <span className="font-medium">r/{redditData.subreddit}</span>
+                  </a>
+                )}
+                {redditData.score !== undefined && (
+                  <span className="flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
+                    </svg>
+                    {redditData.score.toLocaleString()}
+                  </span>
+                )}
+                {redditData.numComments !== undefined && (
+                  <span className="flex items-center gap-1">
+                    <ChatBubbleLeftIcon className="w-3.5 h-3.5" />
+                    {redditData.numComments.toLocaleString()} comments
+                  </span>
+                )}
+                {redditData.permalink && (
+                  <a
+                    href={`https://reddit.com${redditData.permalink}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 hover:text-orange-500 transition-colors ml-auto"
+                  >
+                    <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                    View on Reddit
+                  </a>
+                )}
               </div>
             </div>
           )}

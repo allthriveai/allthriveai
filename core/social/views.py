@@ -80,27 +80,37 @@ def available_providers(request):
 @permission_classes([IsAuthenticated])
 def connect_li(request):
     """LinkedIn connect alias (to avoid ad-blocker blocking 'linkedin' URLs)."""
-    return connect_provider(request, 'linkedin')
+    return _connect_provider_internal(request, 'linkedin')
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def disconnect_li(request):
     """LinkedIn disconnect alias (to avoid ad-blocker blocking 'linkedin' URLs)."""
-    return disconnect_provider(request, 'linkedin')
+    return _disconnect_provider_internal(request, 'linkedin')
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def status_li(request):
     """LinkedIn status alias (to avoid ad-blocker blocking 'linkedin' URLs)."""
-    return connection_status(request, 'linkedin')
+    return _connection_status_internal(request, 'linkedin')
+
+
+def _connect_provider_internal(request, provider):
+    """Internal: Initiate OAuth flow without decorators (for alias endpoints)."""
+    return _do_connect_provider(request, provider)
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def connect_provider(request, provider):
     """Initiate OAuth flow to connect a provider."""
+    return _do_connect_provider(request, provider)
+
+
+def _do_connect_provider(request, provider):
+    """Core logic for initiating OAuth flow."""
     logger.info(f'OAuth connection initiated for {provider} by user {request.user.username} (id={request.user.id})')
 
     # Validate provider
@@ -145,8 +155,26 @@ def connect_provider(request, provider):
     # Get authorization URL
     auth_url = oauth_service.get_authorization_url(redirect_uri, state)
 
-    # Redirect directly to the OAuth provider
-    return redirect(auth_url)
+    # Check if client wants JSON response (AJAX request) or redirect
+    # AJAX requests can't follow cross-origin redirects, so return JSON
+    accept_header = request.headers.get('Accept', '')
+    x_requested_with = request.headers.get('X-Requested-With', '')
+
+    if 'application/json' in accept_header or x_requested_with == 'XMLHttpRequest':
+        # Return JSON for AJAX requests - frontend will redirect
+        logger.info(f'Returning auth URL as JSON for {provider}')
+        return Response(
+            {
+                'success': True,
+                'data': {
+                    'authUrl': auth_url,
+                    'provider': provider,
+                },
+            }
+        )
+    else:
+        # Redirect directly for non-AJAX requests
+        return redirect(auth_url)
 
 
 @api_view(['GET'])
@@ -218,10 +246,20 @@ def oauth_callback(request, provider):
         return redirect(f'{next_url}{separator}error=connection_failed')
 
 
+def _disconnect_provider_internal(request, provider):
+    """Internal: Disconnect provider without decorators (for alias endpoints)."""
+    return _do_disconnect_provider(request, provider)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def disconnect_provider(request, provider):
     """Disconnect a social provider."""
+    return _do_disconnect_provider(request, provider)
+
+
+def _do_disconnect_provider(request, provider):
+    """Core logic for disconnecting a provider."""
     logger.info(f'Disconnect {provider} requested by user {request.user.username} (id={request.user.id})')
 
     try:
@@ -243,10 +281,20 @@ def disconnect_provider(request, provider):
         return Response({'success': False, 'error': 'Connection not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
+def _connection_status_internal(request, provider):
+    """Internal: Get connection status without decorators (for alias endpoints)."""
+    return _do_connection_status(request, provider)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def connection_status(request, provider):
     """Get connection status for a specific provider."""
+    return _do_connection_status(request, provider)
+
+
+def _do_connection_status(request, provider):
+    """Core logic for getting connection status."""
     from allauth.socialaccount.models import SocialAccount
 
     # Check django-allauth first

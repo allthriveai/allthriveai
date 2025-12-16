@@ -247,6 +247,23 @@ Resources:
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: !Ref APIOriginRequestPolicy
 
+          # Static files (Django admin CSS/JS via WhiteNoise)
+          # Required for Django admin styling to work
+          - PathPattern: '/static/*'
+            TargetOriginId: ALBBackendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            # Use CachingOptimized policy - static files are immutable
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            OriginRequestPolicyId: !Ref FrontendOriginRequestPolicy
+
           # SEO: Sitemaps (Django-generated)
           - PathPattern: '/sitemap*.xml'
             TargetOriginId: ALBBackendOrigin
