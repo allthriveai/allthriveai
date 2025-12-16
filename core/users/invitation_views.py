@@ -244,7 +244,8 @@ def _send_invitation_emails(invitation: InvitationRequest):
     2. Confirmation to the requester
     """
     frontend_url = settings.FRONTEND_URL
-    admin_url = f'{frontend_url.replace("3000", "8000")}/admin/users/invitationrequest/{invitation.id}/change/'
+    backend_url = settings.BACKEND_URL
+    admin_url = f'{backend_url}/admin/users/invitationrequest/{invitation.id}/change/'
 
     # Common context
     base_context = {
