@@ -81,6 +81,9 @@ def explore_users(request):
         .exclude(
             role=UserRole.ADMIN  # Don't show admins in explore
         )
+        .exclude(
+            is_guest=True  # Don't show guest users in explore
+        )
     )
 
     # Annotate with project count

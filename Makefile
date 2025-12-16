@@ -107,6 +107,8 @@ help:
 	@echo "  make aws-run-command CMD=\"...\" - Run a Django management command on AWS ECS"
 	@echo "  make aws-seed-test-users - Create test users on AWS for impersonation"
 	@echo "  make aws-seed-all    - Seed all initial data on AWS"
+	@echo "  make sync-user-projects USERNAME=... - Export local user projects to S3"
+	@echo "  make aws-import-user-projects USERNAME=... - Import user projects on AWS from S3"
 	@echo "  make pull-prod-db    - Pull production database to local (ENVIRONMENT=production|staging)"
 	@echo ""
 	@echo "Django:"
@@ -874,6 +876,31 @@ aws-seed-all:
 	@make aws-run-command CMD="create_pip"
 	@make aws-run-command CMD="create_test_users --count=10"
 	@echo "✓ All data seeded on AWS!"
+
+# Sync user projects from local to AWS production
+# Step 1: Export local projects to S3 (run locally)
+sync-user-projects:
+	@if [ -z "$(USERNAME)" ]; then \
+		echo "❌ Error: USERNAME is required"; \
+		echo "Usage: make sync-user-projects USERNAME=midjourney-reddit-agent"; \
+		echo "Add DRY_RUN=1 to preview without uploading"; \
+		exit 1; \
+	fi
+	@if [ "$(DRY_RUN)" = "1" ]; then \
+		docker-compose exec web python manage.py sync_user_projects_to_prod --username $(USERNAME) --dry-run; \
+	else \
+		docker-compose exec web python manage.py sync_user_projects_to_prod --username $(USERNAME); \
+	fi
+
+# Step 2: Import projects on AWS from S3 (run on AWS)
+aws-import-user-projects:
+	@if [ -z "$(USERNAME)" ]; then \
+		echo "❌ Error: USERNAME is required"; \
+		echo "Usage: make aws-import-user-projects USERNAME=midjourney-reddit-agent"; \
+		exit 1; \
+	fi
+	@echo "Importing projects for $(USERNAME) on AWS..."
+	@make aws-run-command CMD="sync_user_projects_to_prod --username $(USERNAME) --import"
 
 # Pull production database to local
 pull-prod-db:
