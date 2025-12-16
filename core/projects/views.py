@@ -1029,7 +1029,8 @@ def explore_projects(request):
 
         # Also check topics (stored as ArrayField of strings)
         # Use case-insensitive contains on array elements
-        topics_match = queryset.filter(topics__icontains=search_query.lower())
+        # Must use .distinct() to match exact_match for union compatibility
+        topics_match = queryset.filter(topics__icontains=search_query.lower()).distinct()
 
         # Combine both querysets
         combined_match = (exact_match | topics_match).distinct()
