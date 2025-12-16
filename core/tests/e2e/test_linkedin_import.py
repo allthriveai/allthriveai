@@ -402,6 +402,12 @@ class LinkedInChatIntegrationTest(TestCase):
         Test that sending "I want to import from LinkedIn" to chat
         triggers the correct flow.
         """
+        from django.conf import settings
+
+        # Skip if no OpenAI API key configured (required for supervisor agent)
+        if not getattr(settings, 'OPENAI_API_KEY', None):
+            self.skipTest('OPENAI_API_KEY not configured')
+
         # This tests the routing in the supervisor agent
         from services.agents.orchestrator.handoff import AgentType
         from services.agents.orchestrator.supervisor import get_supervisor
