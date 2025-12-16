@@ -225,6 +225,57 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     };
   }, [isOpen, shouldRender]);
 
+  // Mobile: detect overscroll at bottom using touch events
+  // This works as a fallback when preventDefault() can't stop native scrolling
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!isOpen || !shouldRender || !scrollContainer) return;
+
+    let touchStartY = 0;
+    let wasAtBottom = false;
+    let overscrollCount = 0;
+    const OVERSCROLL_COUNT_THRESHOLD = 2; // Number of overscroll attempts to trigger close
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (!isMobileRef.current) return;
+      touchStartY = e.touches[0].clientY;
+      // Check if at bottom when touch starts
+      wasAtBottom =
+        scrollContainer.scrollHeight - scrollContainer.scrollTop <= scrollContainer.clientHeight + 5;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!isMobileRef.current) return;
+
+      const touchEndY = e.changedTouches[0].clientY;
+      const deltaY = touchStartY - touchEndY; // Positive = scrolling down (finger moved up)
+
+      // Check if still at bottom
+      const isAtBottom =
+        scrollContainer.scrollHeight - scrollContainer.scrollTop <= scrollContainer.clientHeight + 5;
+
+      // If user was at bottom, is still at bottom, and tried to scroll down
+      if (wasAtBottom && isAtBottom && deltaY > 30) {
+        overscrollCount++;
+        if (overscrollCount >= OVERSCROLL_COUNT_THRESHOLD) {
+          onCloseRef.current();
+          overscrollCount = 0;
+        }
+      } else if (!isAtBottom) {
+        // Reset if not at bottom
+        overscrollCount = 0;
+      }
+    };
+
+    scrollContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+    scrollContainer.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      scrollContainer.removeEventListener('touchstart', handleTouchStart);
+      scrollContainer.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isOpen, shouldRender]);
+
   // Reset drag state when tray closes
   useEffect(() => {
     if (!isOpen) {
@@ -332,10 +383,11 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
   // Mobile swipe-to-dismiss using native event listeners
   // IMPORTANT: Must use native listeners with { passive: false } for iOS Safari
   // React's synthetic touch events are passive by default, which prevents preventDefault()
+  // Note: shouldRender is in deps to ensure this runs after tray element is mounted
   useEffect(() => {
     const tray = trayRef.current;
     // Only attach on mobile when tray is open and mounted
-    if (!tray || !isOpen) return;
+    if (!tray || !isOpen || !shouldRender) return;
 
     // Track timeout for cleanup
     let dismissTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -377,8 +429,11 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         (deltaY < 0 && isAtBottom); // Swiping up at bottom (overscroll)
 
       if (shouldAllowDrag) {
-        // Prevent the scroll container from scrolling - THIS WORKS with { passive: false }
-        e.preventDefault();
+        // Prevent the scroll container from scrolling if possible
+        // Note: cancelable may be false if browser already started scrolling
+        if (e.cancelable) {
+          e.preventDefault();
+        }
 
         // For swipe up at bottom, convert to downward drag
         // (user swipes up, tray moves down)
@@ -433,7 +488,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
       tray.removeEventListener('touchend', handleTouchEnd);
       if (dismissTimeout) clearTimeout(dismissTimeout);
     };
-  }, [isOpen]);
+  }, [isOpen, shouldRender]);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -517,7 +572,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         </div>
 
         {/* Battle Content - VS Layout */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-900 to-slate-800">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain bg-gradient-to-b from-slate-900 to-slate-800">
           {/* Your Submission */}
           <div className="p-4">
             <div className="relative">
@@ -819,7 +874,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         </div>
 
         {/* Content - Scrollable */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain">
           {/* Video or Featured Image */}
           <div className="p-4">
             {isVideo && videoUrl ? (
