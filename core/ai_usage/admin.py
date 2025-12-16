@@ -360,6 +360,32 @@ class PlatformDailyStatsAdmin(admin.ModelAdmin):
     ]
     list_filter = [('date', admin.DateFieldListFilter)]
     search_fields = ['date']
+    actions = ['run_aggregation_for_selected', 'run_aggregation_today', 'run_aggregation_yesterday']
+
+    @admin.action(description='Re-aggregate stats for selected dates')
+    def run_aggregation_for_selected(self, request, queryset):
+        from .tasks import aggregate_platform_daily_stats
+
+        for obj in queryset:
+            aggregate_platform_daily_stats(str(obj.date))
+        self.message_user(request, f'Re-aggregated stats for {queryset.count()} date(s)')
+
+    @admin.action(description='Run aggregation for TODAY')
+    def run_aggregation_today(self, request, queryset):
+        from .tasks import aggregate_platform_daily_stats
+
+        today = timezone.now().date()
+        result = aggregate_platform_daily_stats(str(today))
+        self.message_user(request, f'Aggregated stats for today ({today}): {result}')
+
+    @admin.action(description='Run aggregation for YESTERDAY')
+    def run_aggregation_yesterday(self, request, queryset):
+        from .tasks import aggregate_platform_daily_stats
+
+        yesterday = (timezone.now() - timedelta(days=1)).date()
+        result = aggregate_platform_daily_stats(str(yesterday))
+        self.message_user(request, f'Aggregated stats for yesterday ({yesterday}): {result}')
+
     readonly_fields = [
         'date',
         'total_users',
