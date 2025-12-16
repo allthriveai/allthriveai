@@ -476,8 +476,27 @@ class ProjectCardSerializer(serializers.ModelSerializer):
         Only returns data needed for specific card types:
         - Battle projects: battleResult with image URLs for VS layout
         - RSS Article projects: sections with overview description for card preview
+        - Reddit thread projects: video URL for autoplay
         - Other projects: None (full content available on detail page)
         """
+        # Reddit thread projects - return video URL for autoplay in explore feed
+        # Check this BEFORE the content check since reddit data comes from related model
+        if obj.type == 'reddit_thread':
+            # Use getattr to safely access related object (may not exist)
+            reddit_thread = getattr(obj, 'reddit_thread', None)
+            if reddit_thread and reddit_thread.reddit_metadata:
+                metadata = reddit_thread.reddit_metadata
+                is_video = metadata.get('is_video', False)
+                video_url = metadata.get('video_url', '')
+                if is_video and video_url:
+                    return {
+                        'reddit': {
+                            'isVideo': True,
+                            'videoUrl': video_url,
+                        }
+                    }
+            return None
+
         if not obj.content:
             return None
 

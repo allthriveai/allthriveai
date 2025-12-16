@@ -518,30 +518,35 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
               const urlIsShort = heroElement.url?.includes('/shorts/') || heroElement.url?.includes('youtube.com/shorts');
               const isYouTubeShort = hasVerticalFlag || urlIsShort;
 
-              // Parse video URL to get embed URL with autoplay enabled (muted for browser policy)
+              // Only autoplay videos from midjourney-reddit-agent in the explore feed
+              const shouldAutoplay = project.username === 'midjourney-reddit-agent';
+
+              // Parse video URL to get embed URL (autoplay only for midjourney-reddit-agent)
               const parseVideoUrl = (url: string) => {
+                const autoplayParam = shouldAutoplay ? '1' : '0';
+
                 // YouTube Shorts pattern
                 const shortsMatch = url.match(/youtube\.com\/shorts\/([\w-]{11})/);
                 if (shortsMatch) {
-                  return `https://www.youtube.com/embed/${shortsMatch[1]}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1`;
+                  return `https://www.youtube.com/embed/${shortsMatch[1]}?autoplay=${autoplayParam}&mute=1&loop=1&controls=0&playsinline=1`;
                 }
 
                 // YouTube patterns
                 const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/);
                 if (youtubeMatch) {
-                  return `https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1`;
+                  return `https://www.youtube.com/embed/${youtubeMatch[1]}?autoplay=${autoplayParam}&mute=1&loop=1&controls=0&playsinline=1`;
                 }
 
                 // Vimeo patterns
                 const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
                 if (vimeoMatch) {
-                  return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&muted=1&loop=1&background=1`;
+                  return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=${shouldAutoplay ? '1' : '0'}&muted=1&loop=1&background=1`;
                 }
 
                 // Loom patterns
                 const loomMatch = url.match(/loom\.com\/(?:share|embed)\/([\w-]+)/);
                 if (loomMatch) {
-                  return `https://www.loom.com/embed/${loomMatch[1]}?hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true&autoplay=1`;
+                  return `https://www.loom.com/embed/${loomMatch[1]}?hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true&autoplay=${autoplayParam}`;
                 }
 
                 // Direct video file
@@ -582,7 +587,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                 <video
                   src={heroElement.url}
                   className="w-full h-auto block pb-36 md:pb-0"
-                  autoPlay
+                  autoPlay={shouldAutoplay}
                   loop
                   muted
                   playsInline
