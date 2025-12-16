@@ -181,6 +181,14 @@ export function PromoVideoPlayer() {
         </AnimatePresence>
       </div>
 
+      {/* Homepage link - positioned above controls */}
+      <a
+        href="/"
+        className="fixed bottom-20 right-4 z-50 px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-purple-400 transition-all shadow-lg"
+      >
+        Visit AllThrive
+      </a>
+
       {/* Dev controls - positioned outside video area */}
       <div className="fixed bottom-4 right-4 flex items-center gap-3 text-xs text-white/50 z-50 bg-slate-900/80 px-3 py-2 rounded-lg backdrop-blur-sm">
         <button
