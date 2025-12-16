@@ -189,6 +189,10 @@ class BattleService:
             extra={'battle_id': battle.id, 'user_id': user.id},
         )
 
+        # NOTE: Pip's submission is NOT triggered here.
+        # Pip starts when the user begins typing (first keystroke).
+        # This allows users to refresh the challenge without wasting tokens.
+
         return new_challenge
 
     def get_battle(self, battle_id: int) -> PromptBattle | None:

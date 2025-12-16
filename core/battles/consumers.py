@@ -161,6 +161,14 @@ class BattleConsumer(AsyncWebsocketConsumer):
                     },
                 )
 
+                # For Pip battles: trigger Pip's submission on first typing event
+                # This ensures Pip uses the current challenge (after any refreshes)
+                # and generates in parallel while user types
+                if data.get('is_typing', False):
+                    battle = await self._get_battle()
+                    if battle:
+                        await self._maybe_trigger_pip_submission(battle)
+
             elif message_type == 'submit_prompt':
                 prompt_text = data.get('prompt_text', '').strip()
                 if prompt_text:
@@ -398,15 +406,9 @@ class BattleConsumer(AsyncWebsocketConsumer):
             # Send updated battle state
             await self.send_battle_state()
 
-            # For Pip battles, start generating Pip's submission immediately
-            # This runs in parallel while user is crafting their prompt
-            if battle:
-                is_pip_battle = await self._is_pip_battle(battle)
-                if is_pip_battle:
-                    from core.battles.tasks import create_pip_submission_task
-
-                    # Start immediately - no artificial delay
-                    create_pip_submission_task.delay(battle.id)
+            # NOTE: Pip submission is NOT triggered here anymore.
+            # It's triggered when the user starts typing (first keystroke).
+            # This allows users to refresh the challenge without wasting tokens.
 
             # Schedule timeout task for when battle duration expires
             if battle:
@@ -490,6 +492,43 @@ class BattleConsumer(AsyncWebsocketConsumer):
     def _is_pip_battle(self, battle: PromptBattle) -> bool:
         """Check if this is a battle against Pip (AI opponent)."""
         return battle.match_source == MatchSource.AI_OPPONENT
+
+    async def _maybe_trigger_pip_submission(self, battle: PromptBattle):
+        """Trigger Pip's submission creation if this is a Pip battle and Pip hasn't started yet.
+
+        Called on first typing event to ensure:
+        1. Pip uses the current challenge (after any refreshes by user)
+        2. Pip generates in parallel while user types (no wait after submit)
+        3. Tokens aren't wasted on refreshed challenges
+        """
+        # Only for Pip battles
+        is_pip_battle = await self._is_pip_battle(battle)
+        if not is_pip_battle:
+            return
+
+        # Check if Pip already has a submission (don't trigger twice)
+        pip_submission_exists = await self._pip_has_submission(battle)
+        if pip_submission_exists:
+            return
+
+        # Trigger Pip's submission creation
+        from core.battles.tasks import create_pip_submission_task
+
+        create_pip_submission_task.delay(battle.id)
+        logger.info(
+            f'Triggered Pip submission on user typing for battle {battle.id}',
+            extra={'battle_id': battle.id, 'user_id': self.user.id},
+        )
+
+    @database_sync_to_async
+    def _pip_has_submission(self, battle: PromptBattle) -> bool:
+        """Check if Pip already has a submission for this battle."""
+        from core.users.models import User
+
+        pip_user = User.objects.filter(username='pip').first()
+        if not pip_user:
+            return False
+        return BattleSubmission.objects.filter(battle=battle, user=pip_user).exists()
 
     @database_sync_to_async
     def _create_submission(self, battle: PromptBattle, prompt_text: str) -> BattleSubmission:
