@@ -249,11 +249,11 @@ def dashboard_content_metrics(request):
 
         return Response(
             {
-                'total_projects': total_projects,
-                'total_views': total_views,
-                'total_clicks': total_clicks,
-                'total_comments': total_comments,
-                'engagement_rate': round(engagement_rate, 2),
+                'totalProjects': total_projects,
+                'totalViews': total_views,
+                'totalClicks': total_clicks,
+                'totalComments': total_comments,
+                'engagementRate': round(engagement_rate, 2),
             }
         )
     except Exception as e:

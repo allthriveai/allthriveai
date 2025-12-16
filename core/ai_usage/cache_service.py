@@ -143,10 +143,10 @@ def get_overview_kpis(days: int = 30) -> dict:
         latest = PlatformDailyStats.objects.filter(date__lte=end_date).order_by('-date').first()
 
         return {
-            'total_users': latest.total_users if latest else 0,
-            'active_users': int(stats['avg_dau'] or 0),
-            'total_ai_cost': float(stats['total_ai_cost'] or 0),
-            'total_projects': latest.total_projects if latest else 0,
+            'totalUsers': latest.total_users if latest else 0,
+            'activeUsers': int(stats['avg_dau'] or 0),
+            'totalAiCost': float(stats['total_ai_cost'] or 0),
+            'totalProjects': latest.total_projects if latest else 0,
         }
 
     return xfetch_get_or_compute(cache_key, compute, CACHE_TTL_OVERVIEW)
@@ -282,11 +282,11 @@ def get_user_growth_metrics(days: int = 30) -> dict:
         stickiness = (avg_dau / avg_mau * 100) if avg_mau > 0 else 0
 
         return {
-            'total_users': latest.total_users if latest else 0,
-            'new_users': total_new_users,
-            'avg_dau': int(avg_dau),
-            'avg_mau': int(avg_mau),
-            'growth_rate': round(growth_rate, 2),
+            'totalUsers': latest.total_users if latest else 0,
+            'newUsers': total_new_users,
+            'avgDau': int(avg_dau),
+            'avgMau': int(avg_mau),
+            'growthRate': round(growth_rate, 2),
             'stickiness': round(stickiness, 2),
         }
 
