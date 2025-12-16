@@ -63,6 +63,11 @@ class Command(BaseCommand):
             default='us-east-1',
             help='AWS region (default: us-east-1)',
         )
+        parser.add_argument(
+            '--update-existing',
+            action='store_true',
+            help='Update existing projects (add missing RedditThread records)',
+        )
 
     def get_s3_key(self, username):
         """Get S3 key for user's export file."""
@@ -70,7 +75,7 @@ class Command(BaseCommand):
 
     def serialize_project(self, project):
         """Serialize a project to a dict for JSON export."""
-        return {
+        data = {
             'slug': project.slug,
             'title': project.title,
             'description': project.description or '',
@@ -97,6 +102,28 @@ class Command(BaseCommand):
             'tool_slugs': [t.slug for t in project.tools.all()],
             'category_slugs': [c.slug for c in project.categories.all()],
         }
+
+        # Include RedditThread data for reddit_thread projects
+        if project.type == 'reddit_thread':
+            try:
+                rt = project.reddit_thread
+                data['reddit_thread'] = {
+                    'reddit_post_id': rt.reddit_post_id,
+                    'subreddit': rt.subreddit,
+                    'author': rt.author,
+                    'permalink': rt.permalink,
+                    'score': rt.score,
+                    'num_comments': rt.num_comments,
+                    'thumbnail_url': rt.thumbnail_url or '',
+                    'created_utc': rt.created_utc.isoformat() if rt.created_utc else None,
+                    'reddit_metadata': rt.reddit_metadata or {},
+                    # Store agent username to look up on import
+                    'agent_username': rt.agent.agent_user.username if rt.agent else None,
+                }
+            except Exception:
+                data['reddit_thread'] = None
+
+        return data
 
     def export_projects(self, username, dry_run, aws_region):
         """Export user's projects to S3."""
@@ -174,7 +201,7 @@ class Command(BaseCommand):
         self.stdout.write(f'  make aws-run-command CMD="sync_user_projects_to_prod --username {username} --import"')
         self.stdout.write('=' * 60)
 
-    def import_projects(self, username, aws_region):
+    def import_projects(self, username, aws_region, update_existing=False):
         """Import user's projects from S3 (run on AWS)."""
         from core.taxonomy.models import Taxonomy
         from core.tools.models import Tool
@@ -183,6 +210,8 @@ class Command(BaseCommand):
         self.stdout.write('=' * 60)
         self.stdout.write('  Import User Projects from S3')
         self.stdout.write(f'  Username: {username}')
+        if update_existing:
+            self.stdout.write('  Mode: UPDATE EXISTING (add missing RedditThread records)')
         self.stdout.write('=' * 60)
         self.stdout.write('')
 
@@ -234,9 +263,10 @@ class Command(BaseCommand):
             if len(projects_skipped) > 5:
                 self.stdout.write(f'     ... and {len(projects_skipped) - 5} more')
 
-        if not projects_to_import:
+        if not projects_to_import and not update_existing:
             self.stdout.write('')
             self.stdout.write(self.style.SUCCESS('All projects already exist. Nothing to import.'))
+            self.stdout.write(self.style.WARNING('Tip: Use --update-existing to add missing RedditThread records'))
             return
 
         # Step 5: Build tool and category mappings
@@ -298,16 +328,128 @@ class Command(BaseCommand):
                 if cats_to_add:
                     project.categories.set(cats_to_add)
 
+                # Create RedditThread for reddit_thread projects
+                if project_data['type'] == 'reddit_thread' and project_data.get('reddit_thread'):
+                    from core.integrations.models import RedditCommunityAgent, RedditThread
+
+                    rt_data = project_data['reddit_thread']
+                    created_utc = None
+                    if rt_data.get('created_utc'):
+                        from django.utils.dateparse import parse_datetime
+
+                        created_utc = parse_datetime(rt_data['created_utc'])
+
+                    # Look up the agent by username
+                    agent = None
+                    agent_username = rt_data.get('agent_username')
+                    if agent_username:
+                        try:
+                            agent_user = User.objects.get(username=agent_username)
+                            agent = RedditCommunityAgent.objects.get(agent_user=agent_user)
+                        except (User.DoesNotExist, RedditCommunityAgent.DoesNotExist):
+                            self.stdout.write(
+                                self.style.WARNING(f'     Agent {agent_username} not found, skipping RedditThread')
+                            )
+
+                    if agent:
+                        RedditThread.objects.create(
+                            project=project,
+                            agent=agent,
+                            reddit_post_id=rt_data['reddit_post_id'],
+                            subreddit=rt_data['subreddit'],
+                            author=rt_data['author'],
+                            permalink=rt_data['permalink'],
+                            score=rt_data.get('score', 0),
+                            num_comments=rt_data.get('num_comments', 0),
+                            thumbnail_url=rt_data.get('thumbnail_url', ''),
+                            created_utc=created_utc,
+                            reddit_metadata=rt_data.get('reddit_metadata', {}),
+                        )
+
                 imported_count += 1
                 self.stdout.write(self.style.SUCCESS(f'   + {project.slug} (ID: {project.id})'))
 
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f'   x {project_data["slug"]} FAILED: {e}'))
 
-        # Summary
+        # Summary for new imports
+        if projects_to_import:
+            self.stdout.write('')
+            self.stdout.write(self.style.SUCCESS(f'  Imported {imported_count}/{len(projects_to_import)} new projects'))
+
+        # Step 7: Update existing projects (add missing RedditThread records)
+        if update_existing and projects_skipped:
+            from core.integrations.models import RedditCommunityAgent, RedditThread
+
+            self.stdout.write('')
+            self.stdout.write('7. Updating existing projects (adding missing RedditThread records)...')
+
+            updated_count = 0
+            for project_data in projects_skipped:
+                if project_data['type'] != 'reddit_thread' or not project_data.get('reddit_thread'):
+                    continue
+
+                try:
+                    # Find the existing project
+                    project = Project.objects.get(user=user, slug=project_data['slug'])
+
+                    # Check if RedditThread already exists
+                    try:
+                        _ = project.reddit_thread  # noqa: F841
+                        # Already has RedditThread, skip
+                        continue
+                    except RedditThread.DoesNotExist:
+                        pass
+
+                    rt_data = project_data['reddit_thread']
+                    created_utc = None
+                    if rt_data.get('created_utc'):
+                        from django.utils.dateparse import parse_datetime
+
+                        created_utc = parse_datetime(rt_data['created_utc'])
+
+                    # Look up the agent by username
+                    agent = None
+                    agent_username = rt_data.get('agent_username')
+                    if agent_username:
+                        try:
+                            agent_user = User.objects.get(username=agent_username)
+                            agent = RedditCommunityAgent.objects.get(agent_user=agent_user)
+                        except (User.DoesNotExist, RedditCommunityAgent.DoesNotExist):
+                            self.stdout.write(
+                                self.style.WARNING(f'     Agent {agent_username} not found for {project.slug}')
+                            )
+                            continue
+
+                    if agent:
+                        RedditThread.objects.create(
+                            project=project,
+                            agent=agent,
+                            reddit_post_id=rt_data['reddit_post_id'],
+                            subreddit=rt_data['subreddit'],
+                            author=rt_data['author'],
+                            permalink=rt_data['permalink'],
+                            score=rt_data.get('score', 0),
+                            num_comments=rt_data.get('num_comments', 0),
+                            thumbnail_url=rt_data.get('thumbnail_url', ''),
+                            created_utc=created_utc,
+                            reddit_metadata=rt_data.get('reddit_metadata', {}),
+                        )
+                        updated_count += 1
+                        self.stdout.write(self.style.SUCCESS(f'   ~ {project.slug} (added RedditThread)'))
+
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'   x {project_data["slug"]} FAILED: {e}'))
+
+            self.stdout.write('')
+            self.stdout.write(
+                self.style.SUCCESS(f'  Updated {updated_count} existing projects with RedditThread records')
+            )
+
+        # Final summary
         self.stdout.write('')
         self.stdout.write('=' * 60)
-        self.stdout.write(self.style.SUCCESS(f'  Imported {imported_count}/{len(projects_to_import)} projects'))
+        self.stdout.write(self.style.SUCCESS('  Sync complete!'))
         self.stdout.write('=' * 60)
 
     def handle(self, *args, **options):
@@ -315,8 +457,9 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         do_import = options['do_import']
         aws_region = options['aws_region']
+        update_existing = options['update_existing']
 
         if do_import:
-            self.import_projects(username, aws_region)
+            self.import_projects(username, aws_region, update_existing)
         else:
             self.export_projects(username, dry_run, aws_region)
