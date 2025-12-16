@@ -321,7 +321,7 @@ def send_approval_email(invitation: InvitationRequest):
     context = {
         'requester_name': invitation.name,
         'requester_email': invitation.email,
-        'signup_url': f'{frontend_url}/auth/signup?beta=THRIVE&email={invitation.email}',
+        'signup_url': f'{frontend_url}/auth?beta=THRIVE&email={invitation.email}',
         'frontend_url': frontend_url,
         'current_year': timezone.now().year,
         'settings_url': f'{frontend_url}/settings/notifications',
