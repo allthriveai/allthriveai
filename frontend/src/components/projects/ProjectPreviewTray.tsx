@@ -186,6 +186,45 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     };
   }, [isOpen, feedScrollContainerRef]);
 
+  // Wheel event detection for desktop - close tray when user scrolls past bottom
+  // Note: shouldRender is in deps to ensure this runs after scroll container is mounted
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!isOpen || !shouldRender || !scrollContainer) return;
+
+    let overscrollAccumulator = 0;
+    const OVERSCROLL_THRESHOLD = 100; // pixels of overscroll to trigger close
+
+    const handleWheel = (e: WheelEvent) => {
+      // Only care about scrolling down (deltaY > 0) when at bottom
+      if (e.deltaY <= 0) {
+        overscrollAccumulator = 0;
+        return;
+      }
+
+      // Check if at bottom of scroll container
+      const isAtBottom =
+        scrollContainer.scrollHeight - scrollContainer.scrollTop <= scrollContainer.clientHeight + 5;
+
+      if (isAtBottom) {
+        // User is scrolling down but already at bottom - accumulate overscroll
+        overscrollAccumulator += e.deltaY;
+        if (overscrollAccumulator > OVERSCROLL_THRESHOLD) {
+          onCloseRef.current();
+          overscrollAccumulator = 0;
+        }
+      } else {
+        // Not at bottom, reset
+        overscrollAccumulator = 0;
+      }
+    };
+
+    scrollContainer.addEventListener('wheel', handleWheel, { passive: true });
+    return () => {
+      scrollContainer.removeEventListener('wheel', handleWheel);
+    };
+  }, [isOpen, shouldRender]);
+
   // Reset drag state when tray closes
   useEffect(() => {
     if (!isOpen) {
