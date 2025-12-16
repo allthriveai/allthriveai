@@ -501,29 +501,32 @@ class PlatformDailyStatsAdmin(admin.ModelAdmin):
 
     @admin.display(description='Total Users')
     def total_users_display(self, obj):
+        total = obj.total_users or 0
+        new = obj.new_users_today or 0
         return format_html(
             '<span style="font-weight: bold;">{:,}</span> <span style="color: #28a745;">(+{})</span>',
-            obj.total_users,
-            obj.new_users_today,
+            total,
+            new,
         )
 
     @admin.display(description='AI Requests')
     def total_ai_requests_display(self, obj):
-        return f'{obj.total_ai_requests:,}'
+        return f'{(obj.total_ai_requests or 0):,}'
 
     @admin.display(description='AI Cost')
     def total_ai_cost_display(self, obj):
-        if obj.total_ai_cost > 100:
+        cost = obj.total_ai_cost or 0
+        if cost > 100:
             color = '#dc3545'
-        elif obj.total_ai_cost > 10:
+        elif cost > 10:
             color = '#ffc107'
         else:
             color = '#28a745'
-        return format_html('<span style="color: {}; font-weight: bold;">${:.2f}</span>', color, obj.total_ai_cost)
+        return format_html('<span style="color: {}; font-weight: bold;">${:.2f}</span>', color, cost)
 
     @admin.display(description='CAU')
     def cau_display(self, obj):
-        return f'${obj.cau:.2f}'
+        return f'${(obj.cau or 0):.2f}'
 
     def has_add_permission(self, request):
         """Prevent manual creation - these are created by Celery tasks."""
