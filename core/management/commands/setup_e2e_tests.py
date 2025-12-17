@@ -158,6 +158,7 @@ class Command(BaseCommand):
                 'featured_image_url': 'https://images.unsplash.com/photo-1557683316-973673baf926?w=800&h=600&fit=crop',
                 'external_url': 'https://example.com',
                 'content': {
+                    'templateVersion': 2,
                     'heroDisplayMode': 'image',
                     'blocks': [
                         {
@@ -171,6 +172,27 @@ class Command(BaseCommand):
                             'content': 'This is a test project for e2e testing. It should have editable content.',
                         },
                     ],
+                    'sections': [
+                        {
+                            'id': 'architecture-1',
+                            'type': 'architecture',
+                            'enabled': True,
+                            'order': 1,
+                            'content': {
+                                'title': 'System Architecture',
+                                'diagram': (
+                                    'graph TD\n'
+                                    '    A[Frontend] --> B[API Gateway]\n'
+                                    '    B --> C[Backend Service]\n'
+                                    '    C --> D[(Database)]\n'
+                                    '    C --> E[Cache]'
+                                ),
+                                'description': (
+                                    'This is a sample architecture diagram ' 'for testing the regeneration feature.'
+                                ),
+                            },
+                        },
+                    ],
                 },
             },
         )
@@ -179,7 +201,50 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'✅ Created test project: {project_slug}'))
             self.stdout.write(f'   URL: {settings.FRONTEND_URL}/{username}/{project_slug}')
         else:
-            self.stdout.write(self.style.WARNING(f'ℹ️  Test project already exists: {project_slug}'))
+            # Update project content to ensure architecture section exists with correct format
+            content = project.content or {}
+            sections = content.get('sections', [])
+
+            # Check if architecture section exists (sections should be an array now)
+            has_architecture = False
+            if isinstance(sections, list):
+                has_architecture = any(s.get('type') == 'architecture' for s in sections)
+
+            if not has_architecture:
+                # Ensure sections is a list
+                if not isinstance(sections, list):
+                    sections = []
+
+                sections.append(
+                    {
+                        'id': 'architecture-1',
+                        'type': 'architecture',
+                        'enabled': True,
+                        'order': 1,
+                        'content': {
+                            'title': 'System Architecture',
+                            'diagram': (
+                                'graph TD\n'
+                                '    A[Frontend] --> B[API Gateway]\n'
+                                '    B --> C[Backend Service]\n'
+                                '    C --> D[(Database)]\n'
+                                '    C --> E[Cache]'
+                            ),
+                            'description': (
+                                'This is a sample architecture diagram ' 'for testing the regeneration feature.'
+                            ),
+                        },
+                    }
+                )
+                content['sections'] = sections
+                content['templateVersion'] = 2
+                project.content = content
+                project.save()
+                self.stdout.write(
+                    self.style.SUCCESS(f'✅ Updated test project with architecture section: {project_slug}')
+                )
+            else:
+                self.stdout.write(self.style.WARNING(f'ℹ️  Test project already exists: {project_slug}'))
             self.stdout.write(f'   URL: {settings.FRONTEND_URL}/{username}/{project_slug}')
 
         self.stdout.write('')

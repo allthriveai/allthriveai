@@ -23,12 +23,20 @@ export function HeroSection({ onRequestInvite, isModalOpen = false }: HeroSectio
                 All Thrive
               </span>
             </a>
-            <a
-              href="/auth"
-              className="px-5 py-2 rounded-sm border border-white/20 text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/30 transition-all duration-300"
-            >
-              Sign In
-            </a>
+            <div className="flex items-center gap-4">
+              <a
+                href="/explore"
+                className="text-white/70 font-medium text-sm hover:text-white transition-colors duration-300"
+              >
+                Explore
+              </a>
+              <a
+                href="/auth"
+                className="px-5 py-2 rounded-sm border border-white/20 text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/30 transition-all duration-300"
+              >
+                Sign In
+              </a>
+            </div>
           </div>
         </div>
       </div>

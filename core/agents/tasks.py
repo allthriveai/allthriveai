@@ -212,6 +212,8 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         # Both project and product creation conversations use the LangGraph agent with tools
         is_project_conversation = conversation_id.startswith('project-')
         is_product_conversation = conversation_id.startswith('product-')
+        # Check if this is an architecture regeneration conversation (e.g., project-123-architecture)
+        is_architecture_conversation = '-architecture' in conversation_id
 
         # Fetch recent conversation history for context-aware intent detection
         conversation_history = _get_conversation_history(conversation_id, limit=5)
@@ -227,6 +229,7 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
             conversation_history=conversation_history,
             is_project_conversation=is_project_conversation,
             is_product_conversation=is_product_conversation,
+            is_architecture_conversation=is_architecture_conversation,
         )
 
         # Send completion event
@@ -345,6 +348,7 @@ def _process_with_orchestrator(
     conversation_history: list[dict] | None = None,
     is_project_conversation: bool = False,
     is_product_conversation: bool = False,
+    is_architecture_conversation: bool = False,
 ) -> dict:
     """
     Process message using the multi-agent orchestrator.
@@ -364,6 +368,7 @@ def _process_with_orchestrator(
         conversation_history: Recent conversation context
         is_project_conversation: Whether this is a project creation flow
         is_product_conversation: Whether this is a product creation flow
+        is_architecture_conversation: Whether this is an architecture diagram regeneration flow
 
     Returns:
         Dict with processing results
@@ -377,6 +382,19 @@ def _process_with_orchestrator(
     logger.info(f'Processing with orchestrator: conversation={conversation_id}')
 
     result = {'project_created': False, 'intent': 'orchestrated'}
+
+    # Fast-path: Architecture regeneration conversations go directly to project agent
+    # These are triggered from the architecture section's regenerate button
+    if is_architecture_conversation:
+        logger.info('Fast-path: Architecture regeneration - using project agent directly')
+        result['intent'] = 'architecture-regeneration'
+        return _process_with_langgraph_agent(
+            conversation_id=conversation_id,
+            message=message,
+            user=user,
+            channel_name=channel_name,
+            channel_layer=channel_layer,
+        )
 
     # Fast-path: Check for obvious image generation requests to skip supervisor LLM call
     # This routes directly to Gemini without using OpenAI for routing
@@ -393,7 +411,6 @@ def _process_with_orchestrator(
         'make a visual',
         'create image',
         'create infographic',
-        'nano banana',
     ]
     if any(keyword in message_lower for keyword in image_keywords):
         logger.info('Fast-path: Routing directly to image generation (Gemini)')

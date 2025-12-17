@@ -148,7 +148,8 @@ export function IntelligentChatPanel({
       messages.length === 0
     ) {
       // Send an initial message to trigger the AI to ask for architecture description
-      const initialMessage = `I want to regenerate the architecture diagram for my project "${architectureRegenerateContext.projectTitle}" (project ID: ${architectureRegenerateContext.projectId}). The current diagram is incorrect.`;
+      // Include project ID so the AI can use it when calling regenerate_architecture_diagram
+      const initialMessage = `The architecture diagram on my project "${architectureRegenerateContext.projectTitle}" (ID: ${architectureRegenerateContext.projectId}) is wrong, can you help me fix it?`;
       sendMessage(initialMessage);
       setArchitectureInitialMessageSent(true);
     }
