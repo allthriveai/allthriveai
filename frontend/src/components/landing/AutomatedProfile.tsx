@@ -46,7 +46,7 @@ export function AutomatedProfile() {
             </span>
           </h2>
           <p className="text-lg text-gray-400 max-w-4xl mx-auto">
-            Your AI creations are scattered everywhere. All Thrive automatically transforms your AI project into a showcase-ready portfolio. Just paste a link, clip from the web, or let our integrations sync your work.
+            You've used ChatGPT, made images on Midjourney, built a micro app with coding agents—but where do you showcase it all? All Thrive brings your AI creations together in one place. Just paste a link, clip from the web, and All Thrive will turn it into a beautiful project portfolio that you can share with the community.
           </p>
         </motion.div>
 
