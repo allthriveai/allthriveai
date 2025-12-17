@@ -740,8 +740,19 @@ def sync_quiz_to_weaviate(self, quiz_id: str):
         category_names = list(quiz.categories.values_list('name', flat=True))
         topics = quiz.topics or []
 
+        # Extract question text for better searchability (limit to first 10 questions)
+        question_texts = []
+        for question in quiz.questions.all()[:10]:
+            if question.question:
+                question_texts.append(question.question)
+            if hasattr(question, 'explanation') and question.explanation:
+                question_texts.append(question.explanation)
+
+        questions_str = ' '.join(question_texts)[:1500]  # Limit question text length
+
         embedding_text = (
             f'{quiz.title}. {quiz.description or ""}. Topic: {quiz.topic or ""}. '
+            f'Questions: {questions_str}. '
             f'Topics: {", ".join(topics)}. Tools: {", ".join(tool_names)}. '
             f'Categories: {", ".join(category_names)}.'
         )

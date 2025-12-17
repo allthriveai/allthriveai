@@ -338,32 +338,161 @@ class EmbeddingService:
         return '\n'.join(parts)
 
     def _extract_text_from_content(self, content: dict) -> str:
-        """Extract readable text from project content blocks."""
+        """Extract readable text from project content (sections or legacy blocks)."""
         texts = []
 
-        # Handle different content structures
-        if isinstance(content, dict):
-            # Check for blocks array
-            blocks = content.get('blocks', [])
-            if isinstance(blocks, list):
-                for block in blocks:
-                    if isinstance(block, dict):
-                        # Text blocks
-                        if block.get('type') == 'text':
+        if not isinstance(content, dict):
+            return ''
+
+        # Handle templateVersion 2 (sections-based structure)
+        sections = content.get('sections', [])
+        if isinstance(sections, list):
+            for section in sections:
+                if not isinstance(section, dict):
+                    continue
+
+                section_type = section.get('type', '')
+                section_content = section.get('content', {})
+
+                if not isinstance(section_content, dict):
+                    continue
+
+                # Overview section - headline and description
+                if section_type == 'overview':
+                    if section_content.get('headline'):
+                        texts.append(section_content['headline'])
+                    if section_content.get('description'):
+                        texts.append(section_content['description'])
+
+                # Features section - feature titles and descriptions
+                elif section_type == 'features':
+                    features = section_content.get('features', [])
+                    for feature in features:
+                        if isinstance(feature, dict):
+                            if feature.get('title'):
+                                texts.append(feature['title'])
+                            if feature.get('description'):
+                                texts.append(feature['description'])
+
+                # Challenges section - problems and solutions
+                elif section_type == 'challenges':
+                    items = section_content.get('items', [])
+                    for item in items:
+                        if isinstance(item, dict):
+                            if item.get('challenge'):
+                                texts.append(item['challenge'])
+                            if item.get('solution'):
+                                texts.append(item['solution'])
+                            if item.get('outcome'):
+                                texts.append(item['outcome'])
+
+                # Tech stack section - technology names
+                elif section_type == 'tech_stack':
+                    categories = section_content.get('categories', [])
+                    for category in categories:
+                        if isinstance(category, dict):
+                            if category.get('name'):
+                                texts.append(category['name'])
+                            techs = category.get('technologies', [])
+                            for tech in techs:
+                                if isinstance(tech, dict) and tech.get('name'):
+                                    texts.append(tech['name'])
+                                elif isinstance(tech, str):
+                                    texts.append(tech)
+
+                # Video section - title and platform context
+                elif section_type == 'video':
+                    if section_content.get('title'):
+                        texts.append(section_content['title'])
+                    # Add platform context for searchability (e.g., "youtube tutorial")
+                    platform = section_content.get('platform', '')
+                    if platform and platform != 'other':
+                        texts.append(f'{platform} video')
+
+                # Gallery section - image captions and alt text
+                elif section_type == 'gallery':
+                    if section_content.get('title'):
+                        texts.append(section_content['title'])
+                    images = section_content.get('images', [])
+                    for image in images:
+                        if isinstance(image, dict):
+                            if image.get('caption'):
+                                texts.append(image['caption'])
+                            if image.get('alt'):
+                                texts.append(image['alt'])
+
+                # Demo section - CTAs and live URL context
+                elif section_type == 'demo':
+                    if section_content.get('title'):
+                        texts.append(section_content['title'])
+                    ctas = section_content.get('ctas', [])
+                    for cta in ctas:
+                        if isinstance(cta, dict):
+                            if cta.get('label'):
+                                texts.append(cta['label'])
+                    if section_content.get('liveUrl'):
+                        texts.append('Live Demo')
+
+                # Slideup section - element captions and text content
+                elif section_type == 'slideup':
+                    for element_key in ['element1', 'element2']:
+                        element = section_content.get(element_key)
+                        if element and isinstance(element, dict):
+                            if element.get('caption'):
+                                texts.append(element['caption'])
+                            # Extract text content from text-type elements
+                            if element.get('type') == 'text' and element.get('content'):
+                                texts.append(element['content'])
+
+                # Architecture section - description
+                elif section_type == 'architecture':
+                    if section_content.get('description'):
+                        texts.append(section_content['description'])
+                    if section_content.get('title'):
+                        texts.append(section_content['title'])
+
+                # Links section - link labels and descriptions
+                elif section_type == 'links':
+                    links = section_content.get('links', [])
+                    for link in links:
+                        if isinstance(link, dict):
+                            if link.get('label'):
+                                texts.append(link['label'])
+                            if link.get('description'):
+                                texts.append(link['description'])
+
+                # Custom section - extract from blocks
+                elif section_type == 'custom':
+                    if section_content.get('title'):
+                        texts.append(section_content['title'])
+                    blocks = section_content.get('blocks', [])
+                    for block in blocks:
+                        if isinstance(block, dict):
                             text = block.get('content', '') or block.get('text', '')
                             if text:
                                 texts.append(text)
-                        # Header blocks
-                        elif block.get('type') == 'header':
-                            text = block.get('text', '')
-                            if text:
-                                texts.append(text)
 
-            # Check for description/summary fields
-            if content.get('description'):
-                texts.append(content['description'])
-            if content.get('summary'):
-                texts.append(content['summary'])
+        # Legacy: Check for blocks array (templateVersion 1 or no version)
+        blocks = content.get('blocks', [])
+        if isinstance(blocks, list):
+            for block in blocks:
+                if isinstance(block, dict):
+                    # Text blocks
+                    if block.get('type') == 'text':
+                        text = block.get('content', '') or block.get('text', '')
+                        if text:
+                            texts.append(text)
+                    # Header blocks
+                    elif block.get('type') == 'header':
+                        text = block.get('text', '')
+                        if text:
+                            texts.append(text)
+
+        # Check for top-level description/summary fields
+        if content.get('description'):
+            texts.append(content['description'])
+        if content.get('summary'):
+            texts.append(content['summary'])
 
         return ' '.join(texts)[:5000]  # Limit extracted content
 
