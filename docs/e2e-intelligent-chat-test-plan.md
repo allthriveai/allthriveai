@@ -530,6 +530,9 @@ test.describe('AI URL Import Tests', () => {
 - [x] Network offline handling
 - [x] Error message display (non-technical)
 - [x] Basic user workflows (YouTube, GitHub, general questions)
+- [x] GitHub import without connection - ask to connect or clip
+- [x] GitHub import without connection - clip flow when user chooses "just clip it"
+- [x] GitHub import without connection - direct to Settings when user wants to connect
 
 ### High Priority - To Implement
 - [ ] All Critical priority tests above
