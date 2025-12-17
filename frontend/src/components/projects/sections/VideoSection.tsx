@@ -1,8 +1,9 @@
 /**
  * VideoSection - Embedded video player for clipped content
  *
- * A simple, focused video section for displaying YouTube/Vimeo embeds.
- * Used primarily for clipped articles that have embedded videos.
+ * Supports:
+ * - YouTube/Vimeo embeds via iframe
+ * - Direct video file URLs (S3/MinIO uploads) via HTML5 video player
  *
  * Note: Some videos may have domain-restricted embedding. We show a thumbnail
  * with a "Watch on YouTube" link as a fallback since we can't detect domain
@@ -15,6 +16,20 @@ import type { VideoSectionContent } from '@/types/sections';
 
 interface VideoSectionProps {
   content: VideoSectionContent;
+}
+
+/**
+ * Check if a URL is a direct video file (S3, MinIO, or video file extension)
+ */
+function isDirectVideoUrl(url: string): boolean {
+  if (!url) return false;
+  const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.m4v'];
+  const lowerUrl = url.toLowerCase();
+  // Check for video file extensions or S3/MinIO URLs
+  return videoExtensions.some(ext => lowerUrl.includes(ext)) ||
+         lowerUrl.includes('s3.amazonaws.com') ||
+         lowerUrl.includes('.s3.') ||
+         lowerUrl.includes('minio');
 }
 
 export function VideoSection({ content }: VideoSectionProps) {
@@ -32,9 +47,12 @@ export function VideoSection({ content }: VideoSectionProps) {
     return null;
   }
 
+  // Check if this is a direct video upload (S3/MinIO)
+  const isDirectUpload = platform === 'direct' || isDirectVideoUrl(url);
+
   // Build embed URL based on platform
   let embedSrc = embedUrl;
-  if (!embedSrc) {
+  if (!embedSrc && !isDirectUpload) {
     if (platform === 'youtube' && videoId) {
       embedSrc = `https://www.youtube.com/embed/${videoId}?rel=0`;
     } else if (platform === 'vimeo' && videoId) {
@@ -42,19 +60,20 @@ export function VideoSection({ content }: VideoSectionProps) {
     }
   }
 
-  // Build watch URL for fallback
-  const watchUrl = url || (platform === 'youtube' && videoId
+  // Build watch URL for fallback (only for YouTube/Vimeo)
+  const watchUrl = !isDirectUpload ? (url || (platform === 'youtube' && videoId
     ? `https://www.youtube.com/watch?v=${videoId}`
     : platform === 'vimeo' && videoId
     ? `https://vimeo.com/${videoId}`
-    : null);
+    : null)) : null;
 
   // Build thumbnail URL
   const thumbnailUrl = thumbnail || (platform === 'youtube' && videoId
     ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
     : null);
 
-  if (!embedSrc && !watchUrl) {
+  // If no playable content, return null
+  if (!embedSrc && !watchUrl && !isDirectUpload) {
     return null;
   }
 
@@ -77,7 +96,22 @@ export function VideoSection({ content }: VideoSectionProps) {
 
         {/* Video container */}
         <div className="relative bg-black rounded-xl overflow-hidden shadow-lg aspect-video">
-          {embedSrc && !embedFailed ? (
+          {isDirectUpload && url ? (
+            /* Direct video upload - HTML5 native video player */
+            <video
+              src={url}
+              title={title || 'Video'}
+              controls
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className="absolute inset-0 w-full h-full object-contain"
+            >
+              Your browser does not support the video tag.
+            </video>
+          ) : embedSrc && !embedFailed ? (
             <iframe
               src={embedSrc}
               title={title || 'Video'}

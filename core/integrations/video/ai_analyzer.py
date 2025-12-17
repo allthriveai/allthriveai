@@ -137,15 +137,18 @@ def analyze_video_for_template(
         section_order = 0
         name_slug = _slugify(filename)[:8]
 
-        # Video hero section - the video itself
+        # Video section - the video itself (using 'direct' platform for uploaded videos)
         sections.append(
             {
                 'id': f'section-video-{name_slug}',
-                'type': 'video_hero',
+                'type': 'video',
                 'enabled': True,
                 'order': section_order,
                 'content': {
                     'url': video_url,
+                    'platform': 'direct',
+                    'video_id': '',
+                    'title': '',
                     'filename': filename,
                     'fileType': file_type,
                 },
@@ -230,11 +233,14 @@ def _fallback_analysis(video_url: str, filename: str, file_type: str) -> dict:
         'sections': [
             {
                 'id': f'section-video-{name_slug}',
-                'type': 'video_hero',
+                'type': 'video',
                 'enabled': True,
                 'order': 0,
                 'content': {
                     'url': video_url,
+                    'platform': 'direct',
+                    'video_id': '',
+                    'title': '',
                     'filename': filename,
                     'fileType': file_type,
                 },
