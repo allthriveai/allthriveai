@@ -209,9 +209,10 @@ class ColdStartService:
     ) -> dict:
         """Get feed for cold-start users.
 
-        Shows newest projects first to ensure fresh content appears at the top,
-        with like count as a secondary sort for projects of similar age.
-        Uses simple pagination to ensure all projects are accessible.
+        Shows newest projects first with user diversity applied to prevent
+        content from a single creator dominating the feed. Projects are
+        fetched in chronological order, then reordered to spread out
+        content from the same user.
         """
         from core.projects.models import Project
 
@@ -241,18 +242,28 @@ class ColdStartService:
         # Get total count for pagination
         total_count = queryset.count()
 
-        # Simple pagination - no user diversity (was causing overlapping window bugs)
-        # This ensures all projects are accessible through infinite scroll
+        # Fetch more projects than needed to allow for diversity reordering
+        # We fetch 3x the page size to have enough variety to work with
+        fetch_size = page_size * 3
         start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
+
+        # For first page, fetch extra and apply diversity
+        # For later pages, use simple offset to avoid complexity
+        if page == 1:
+            candidates = list(queryset[:fetch_size])
+            diverse_projects = self._apply_user_diversity(candidates, page_size)
+        else:
+            # For pagination, apply diversity to the window we're showing
+            candidates = list(queryset[start_idx : start_idx + fetch_size])
+            diverse_projects = self._apply_user_diversity(candidates, page_size)
 
         return {
-            'projects': list(queryset[start_idx:end_idx]),
+            'projects': diverse_projects,
             'metadata': {
                 'page': page,
                 'page_size': page_size,
                 'total_candidates': total_count,
-                'algorithm': 'newest_first',
+                'algorithm': 'newest_first_diverse',
                 'filters_applied': {
                     'tool_ids': tool_ids,
                     'category_ids': category_ids,
@@ -260,6 +271,67 @@ class ColdStartService:
                 },
             },
         }
+
+    def _apply_user_diversity(
+        self,
+        projects: list,
+        target_size: int,
+        max_consecutive: int = 2,
+    ) -> list:
+        """Apply user diversity to spread out content from the same creator.
+
+        This prevents feeds from being dominated by a single user's content
+        (e.g., when a YouTube agent syncs many videos at once).
+
+        Args:
+            projects: List of projects sorted by recency
+            target_size: Number of projects to return
+            max_consecutive: Maximum projects from same user in a row
+
+        Returns:
+            Reordered list with user diversity applied
+        """
+        if not projects:
+            return []
+
+        result = []
+        remaining = list(projects)
+        user_last_added: dict[int, int] = {}  # user_id -> position last added
+
+        while remaining and len(result) < target_size:
+            best_idx = None
+            best_score = -1
+
+            for idx, project in enumerate(remaining):
+                user_id = project.user_id
+
+                # Calculate diversity score
+                # Higher score = better candidate (more diverse)
+                score = 100 - idx  # Prefer earlier items (more recent)
+
+                # Check how recently this user appeared
+                if user_id in user_last_added:
+                    distance = len(result) - user_last_added[user_id]
+                    if distance < max_consecutive:
+                        # Too recent, heavily penalize
+                        score -= 200
+                    else:
+                        # Reward diversity
+                        score += min(distance * 10, 50)
+
+                if score > best_score:
+                    best_score = score
+                    best_idx = idx
+
+            if best_idx is not None:
+                project = remaining.pop(best_idx)
+                user_last_added[project.user_id] = len(result)
+                result.append(project)
+            else:
+                # Shouldn't happen, but safety fallback
+                break
+
+        return result
 
     def get_onboarding_status(self, user: 'User') -> dict:
         """

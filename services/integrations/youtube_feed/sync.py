@@ -195,7 +195,10 @@ class YouTubeFeedSyncService:
                         except (ValueError, IndexError):
                             pass  # If we can't parse the date, allow the video
 
-                    cls._create_video_project(agent, video_info)
+                    # Use a savepoint so failures don't corrupt the entire transaction
+                    # This allows other videos to continue processing even if one fails
+                    with transaction.atomic():
+                        cls._create_video_project(agent, video_info)
                     results['created'] += 1
                     logger.info(f'Created new video project: {video_info["title"][:50]}...')
 
@@ -225,75 +228,78 @@ class YouTubeFeedSyncService:
 
     @classmethod
     def _create_video_project(cls, agent: YouTubeFeedAgent, video_info: dict):
-        """Create a new video project from YouTube data."""
-        with transaction.atomic():
-            # Build content structure
-            content = cls._build_video_content(video_info, agent)
+        """Create a new video project from YouTube data.
 
-            # Use AI analyzer to extract tools, categories, and topics
-            analysis_result = analyze_youtube_video(video_info, user=agent.agent_user)
-            tools = analysis_result.get('tools', [])
-            categories = analysis_result.get('categories', [])
-            topics = analysis_result.get('topics', [])
+        Note: This method should be called within a transaction.atomic() block
+        to ensure proper rollback if any step fails.
+        """
+        # Build content structure
+        content = cls._build_video_content(video_info, agent)
 
-            logger.info(
-                f'AI analysis for "{video_info["title"][:40]}...": '
-                f'{len(tools)} tools, {len(categories)} categories, {len(topics)} topics'
-            )
+        # Use AI analyzer to extract tools, categories, and topics
+        analysis_result = analyze_youtube_video(video_info, user=agent.agent_user)
+        tools = analysis_result.get('tools', [])
+        categories = analysis_result.get('categories', [])
+        topics = analysis_result.get('topics', [])
 
-            # Parse published date
-            published_at = cls._parse_youtube_date(video_info.get('published_at'))
+        logger.info(
+            f'AI analysis for "{video_info["title"][:40]}...": '
+            f'{len(tools)} tools, {len(categories)} categories, {len(topics)} topics'
+        )
 
-            # Generate slug
-            slug = generate_video_slug(video_info['title'], video_info['video_id'])
+        # Parse published date
+        published_at = cls._parse_youtube_date(video_info.get('published_at'))
 
-            # Create project
-            project = Project.objects.create(
-                user=agent.agent_user,
-                slug=slug,
-                title=video_info['title'],
-                description=video_info.get('description', '')[:500],
-                type=Project.ProjectType.VIDEO,
-                external_url=f'https://www.youtube.com/watch?v={video_info["video_id"]}',
-                featured_image_url=video_info.get('thumbnail_url', ''),
-                content=content,
-                topics=topics,
-                is_showcased=True,
-                is_private=False,
-            )
+        # Generate slug
+        slug = generate_video_slug(video_info['title'], video_info['video_id'])
 
-            # Add tools and categories to project
-            if tools:
-                project.tools.add(*tools)
-                logger.debug(f'Added {len(tools)} tools to project: {[t.name for t in tools]}')
-            if categories:
-                project.categories.add(*categories)
-                logger.debug(f'Added {len(categories)} categories to project: {[c.name for c in categories]}')
+        # Create project
+        project = Project.objects.create(
+            user=agent.agent_user,
+            slug=slug,
+            title=video_info['title'],
+            description=video_info.get('description', '')[:500],
+            type=Project.ProjectType.VIDEO,
+            external_url=f'https://www.youtube.com/watch?v={video_info["video_id"]}',
+            featured_image_url=video_info.get('thumbnail_url', ''),
+            content=content,
+            topics=topics,
+            is_showcased=True,
+            is_private=False,
+        )
 
-            # Parse duration
-            duration_iso = video_info.get('duration', '')
-            duration_seconds = parse_iso_duration_to_seconds(duration_iso)
+        # Add tools and categories to project
+        if tools:
+            project.tools.add(*tools)
+            logger.debug(f'Added {len(tools)} tools to project: {[t.name for t in tools]}')
+        if categories:
+            project.categories.add(*categories)
+            logger.debug(f'Added {len(categories)} categories to project: {[c.name for c in categories]}')
 
-            # Create feed video metadata
-            feed_video = YouTubeFeedVideo.objects.create(
-                project=project,
-                agent=agent,
-                video_id=video_info['video_id'],
-                channel_id=video_info['channel_id'],
-                channel_name=video_info['channel_name'],
-                permalink=f'https://www.youtube.com/watch?v={video_info["video_id"]}',
-                thumbnail_url=video_info.get('thumbnail_url', ''),
-                duration=duration_seconds,
-                duration_iso=duration_iso,
-                view_count=video_info.get('view_count', 0),
-                like_count=video_info.get('like_count', 0),
-                published_at=published_at or timezone.now(),
-                tags=video_info.get('tags', []),
-                category_id=video_info.get('category_id', ''),
-                youtube_metadata=video_info,
-            )
+        # Parse duration
+        duration_iso = video_info.get('duration', '')
+        duration_seconds = parse_iso_duration_to_seconds(duration_iso)
 
-            logger.info(f'Created YouTube video project: {project.title} ({feed_video.video_id})')
+        # Create feed video metadata
+        feed_video = YouTubeFeedVideo.objects.create(
+            project=project,
+            agent=agent,
+            video_id=video_info['video_id'],
+            channel_id=video_info['channel_id'],
+            channel_name=video_info['channel_name'],
+            permalink=f'https://www.youtube.com/watch?v={video_info["video_id"]}',
+            thumbnail_url=video_info.get('thumbnail_url', ''),
+            duration=duration_seconds,
+            duration_iso=duration_iso,
+            view_count=video_info.get('view_count', 0),
+            like_count=video_info.get('like_count', 0),
+            published_at=published_at or timezone.now(),
+            tags=video_info.get('tags', []),
+            category_id=video_info.get('category_id', ''),
+            youtube_metadata=video_info,
+        )
+
+        logger.info(f'Created YouTube video project: {project.title} ({feed_video.video_id})')
 
     @classmethod
     def _update_video(cls, video_id: str, video_info: dict):
