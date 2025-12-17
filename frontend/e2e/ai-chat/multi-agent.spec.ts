@@ -15,7 +15,7 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
-import { loginViaAPI, TEST_USER } from '../helpers';
+import { loginViaAPI } from '../helpers';
 
 // Skip all tests unless RUN_AI_TESTS=true
 const RUN_AI_TESTS = process.env.RUN_AI_TESTS === 'true';
